@@ -10,11 +10,14 @@ os princípios documentados aqui.
 ## 1. Visão Geral
 
 **DIMAP GeoCoder** é um aplicativo web de geocodificação que opera sobre os dados oficiais de
-logradouros, lotes fiscais e endereços fiscais da Prefeitura de São Paulo (PMSP). Converte
-endereços em coordenadas geográficas e números de contribuinte em polígonos de lotes fiscais,
-servindo como infraestrutura para localização de imóveis e logradouros.
+logradouros, lotes fiscais e endereços fiscais da Prefeitura de São Paulo (PMSP). O aplicativo tem por objetivo disponibilizar ao usuário uma interface simples e intuitiva para obter dados georreferenciados de endereços, logradouros ou lotes na cidade de São Paulo. A busca pode ser realizada por endereço, nome ou código de logradouro e/ou número de contribuinte. O aplicativo identifica automaticamente qual o critério de busca e com base nele retorna em um mapa interativo:
+1. Se a busca foi por nome ou código de logradouro: a linha que representa esse logradoro
+2. Se a busca foi por número de contribuinte ou endereço que corresponde exatamente a um imóvel cadastrado na base do IPTU: o polígono que representa esse imóvle;
+3. Se a busca foi por endereço apenas: o ponto no mapa que representa a geocodificação desse endereço.
 
-### As três bases oficiais
+Posteriormente, o sistema permitirá também a busca por batches (com base em planilhas pré-formatadas para cada tipo de busca), assim como exportar os resultados em formato geopackage, geojson ou shapefile.
+
+### Fontes de dados
 
 Toda a aplicação se apoia em três bases da PMSP. Cada uma alimenta um dos apps de domínio:
 
@@ -29,20 +32,21 @@ Toda a aplicação se apoia em três bases da PMSP. Cada uma alimenta um dos app
    fiscal, municipal etc.). **Código exato, sem variação.** Os metadados alimentam a busca
    detalhada.
 
-**Regra de ouro de matching:** códigos (`codlog`, número de contribuinte) são identificadores
-exatos — match direto. Texto livre (nome de rua, endereço por extenso) passa pela base de
-variações.
+Inicialmente as bases serão extraídas dos dados públicos do GeoSampa, mas posteriormente serão usados os dados internos do MDSF (em ambos os casos trata-se de geoservers consultados por meio de WFS).
 
-### O fluxo central
+
+### O fluxo da aplicação - UX
 
 A interação parte de uma **barra de pesquisa única**. O sistema oferece dois caminhos de entrada
 — **busca simples** e **busca detalhada** — e um único destino: o mapa.
 
 **Busca simples.** O usuário digita o que quiser na barra única: nome de rua, endereço completo,
 codlog ou número de contribuinte. A aplicação usa **regex** para fazer o roteamento e inferir o
-tipo da consulta **antes de qualquer outra coisa** — inclusive antes de sugerir resultados.
-Identificado o tipo, a busca é direcionada ao domínio correspondente e as sugestões assíncronas
-retornam já no contexto certo.
+tipo da consulta (se é logradouro, lote ou endereço). Identificado o tipo, é feito uma busca com match exato para trazer sugestões a cada keyup (por exemplo, começou a digitar o número do contribuinte 001.002 - e parou aqui - aí trago 5 contribuintes que começam com essa numeração como sugestão, o mesmo valeria para os endereços da "Rua Direita, 1..."). Caso a pessoa clique em uma das sugestões, essa sugestão é inputada como match. Caso não selecione nenhum sugestão, é feito o match com base na regra abaixo:
+
+**Regra para matching:** códigos (`codlog`, número de contribuinte) são identificadores
+exatos — match direto. Texto livre (nome de rua, endereço por extenso) passa pela base de
+variações e o match é feito com fuzzy string match.
 
 Os desfechos possíveis da inferência:
 
@@ -80,7 +84,7 @@ serviço **WMS do GeoSampa**) com a geometria correspondente: **ponto** para end
 
 > **Tailwind 4 + DaisyUI 5:** o Tailwind 4 descobre templates **exclusivamente** via diretivas
 > `@source` no CSS de entrada. Toda nova pasta de templates precisa ser declarada lá. DaisyUI
-> entra como `@plugin "daisyui";`.
+> entra como `@plugin "daisyui";`. Inicialmente durante o desenvolvimento podemos usar o CDN para simplificar, mas quando for dar deploy precisa compilar e minificar.
 
 ---
 
@@ -91,7 +95,7 @@ na camada `services/`. Três regras estruturam tudo:
 
 ### 3.1 HATEOAS via HTMX
 - **Todas** as rotas Django retornam *partial templates* HTML.
-- O frontend **não consome JSON via JavaScript**. Padrões de SPA são **vedados**.
+- O frontend **não consome JSON via JavaScript**. Padrões de SPA/React são **vedados**.
 - **Única exceção:** a futura API REST provida pelo Django-Ninja.
 - A interatividade nasce de atributos HTMX e de JS estritamente local ao Leaflet.
 
@@ -102,10 +106,26 @@ na camada `services/`. Três regras estruturam tudo:
 
 ### 3.3 Isolamento rigoroso entre camadas
 ```
-Interface (HTML / HTMX / views)  →  Domínio (services/)  →  Persistência (Django Models)
+        ┌──────────────── Django ────────────────┐
+Request → views (orquestração) → services/ (domínio) → models (persistência)
+        └→ templates/partials HTMX (resposta) ←──────────────────────────────┘
 ```
-- A camada de interface chama o domínio; o domínio chama a persistência e integrações.
-- O domínio **não importa** views, requests, nem objetos de interface do Django.
+O **Django ocupa as duas pontas**: é ele quem recebe o request, **orquestra** o fluxo (chama o
+domínio, decide o que fazer com o retorno), **serve as views** renderizando os *partials* HTMX como
+resposta, **e** persiste via ORM. A camada `services/` é a única parte que **não** é Django — é onde
+mora a lógica de negócio.
+
+Os papéis, então:
+- **Interface + orquestração (Django: views + templates).** Traduz request → DTO, chama o domínio,
+  escolhe o *partial* e responde com HTML. **Sem lógica de negócio** — orquestrar é decidir o quê
+  chamar e o que devolver, não implementar a regra.
+- **Domínio (`services/`).** Toda a lógica. **Não importa** views, requests nem objetos de interface
+  do Django.
+- **Persistência (Django Models).** Validação de persistência e mapeamento relacional, nada além
+  (ver §3.2).
+
+Regras de fronteira:
+- A orquestração chama o domínio; o domínio chama persistência e integrações.
 - A comunicação com o domínio se dá por **DTOs Pydantic** — nunca por `request`, `QueryDict` ou
   dicionários soltos.
 
@@ -135,18 +155,53 @@ Uma única spec costuma tocar **vários apps** (ex.: uma spec do épico "busca d
 `apps/search`, `apps/logradouro_matcher`, `services/domain` e `services/scripts` ao mesmo tempo).
 Isso é esperado: o épico é a unidade de valor; o app é onde o código acaba morando.
 
-### 4.2 Como usar uma SPEC
-- Toda nova funcionalidade começa por escrever (ou receber) uma SPEC no padrão de §4.3.
+### 4.2 Versionamento de SPECs
+**Um arquivo por SPEC — não se cria um novo arquivo a cada mudança.** Quando uma SPEC evolui, ela é
+editada no lugar e o **código de versão** no cabeçalho é incrementado (`v1`, `v2`, …). Assim fica
+claro que ela mudou sem multiplicar arquivos. A versão vive no front-matter da própria SPEC junto
+de um *changelog* curto:
+
+```markdown
+---
+spec: <epico>/<nº>
+versao: v3
+atualizado_em: 2026-06-16
+changelog:
+  - v3: ajusta critério de aceite X
+  - v2: troca a fonte de dados para o WFS
+  - v1: versão inicial
+---
+```
+
+Mudanças de escopo/intenção e pequenas correções compartilham o mesmo versionamento: tanto uma
+revisão de critério quanto um bugfix incrementam a versão. A diferença é onde ficam registrados —
+mudanças de intenção no corpo da SPEC; **correções e bugfixes na seção `Patches`** (ver template em
+§4.4), para deixar rastro sem poluir a especificação.
+
+### 4.3 Como usar uma SPEC
+- Toda nova funcionalidade começa por escrever (ou receber) uma SPEC no padrão de §4.4.
 - A SPEC é a fonte de verdade da iteração: a implementação segue o que está nela.
 - Snippets de código na SPEC são **direção sugerida**, não dogma — mas divergir deles exige razão
-  explícita, e a divergência deve respeitar os princípios de arquitetura (§3).
-- Referências a arquivos existentes na SPEC devem ser seguidas: editar o arquivo apontado, não
-  recriar um paralelo.
+  explícita, e a divergência deve respeitar os princípios de arquitetura (§3) e o estilo (§10).
+- **A SPEC não engessa os arquivos.** Ela **não lista** quais arquivos serão criados ou alterados —
+  isso é decisão de implementação. O que a SPEC traz é uma lista de **arquivos/peças de referência
+  já existentes** que devem ser **compostos**, deixando explícito o que já temos pronto. Ex.:
+  *"importe `WfsClient` de `@services/integrations/wfs` e use por composição para buscar os
+  dados"*. Quando uma referência existente é citada, deve ser reutilizada — não reimplementada em
+  paralelo.
 
-### 4.3 Padrão do arquivo de SPEC
+### 4.4 Padrão do arquivo de SPEC
 Cada SPEC é um `.md` com a estrutura abaixo:
 
 ````markdown
+---
+spec: <epico>/<nº>
+versao: v1
+atualizado_em: <AAAA-MM-DD>
+changelog:
+  - v1: versão inicial
+---
+
 # SPEC <épico>/<nº> — <título curto>
 
 ## User story
@@ -160,16 +215,14 @@ Como <persona>, quero <objetivo>, para <valor/razão>.
 <Em que camadas mexe (interface / domínio / persistência), quais princípios de §3 se aplicam,
 por que esta abordagem. Fluxo resumido da funcionalidade.>
 
-## Arquivos do projeto
-**Existentes (editar):**
-- `caminho/para/arquivo.py` — <o que muda>
-
-**Novos (criar):**
-- `caminho/para/novo_arquivo.py` — <responsabilidade>
+## Peças de referência a compor
+<Funcionalidades JÁ existentes que esta SPEC deve reutilizar por composição — não recriar.>
+- `@services/integrations/wfs` → `WfsClient`: usar por composição para buscar os dados do GeoSampa.
+- `@services/utils` → função de normalização de texto: reutilizar no matching.
 
 ## Snippets sugeridos
 ```python
-# direção de implementação — adaptar conforme necessário, sem violar §3
+# direção de implementação — adaptar conforme necessário, sem violar §3 nem §10
 ```
 
 ## Fora de escopo
@@ -177,6 +230,11 @@ por que esta abordagem. Fluxo resumido da funcionalidade.>
 
 ## Notas de teste
 <O que precisa de teste; casos de borda relevantes.>
+
+## Patches
+<Pequenas correções e bugfixes registrados após a SPEC estar em uso. Cada patch incrementa a
+versão (changelog no front-matter) e fica registrado aqui com data e a versão que gerou.>
+- <AAAA-MM-DD> (v2): corrige <bug/ajuste pontual>.
 ````
 
 Regra prática: se uma SPEC está crescendo a ponto de tocar funcionalidades não relacionadas,
@@ -206,8 +264,10 @@ documento.
 
 ## 6. Aplicativos Django (`apps/`)
 
-Apps são **finos**: roteamento, views que devolvem partials, models de persistência e *management
-commands*. Toda decisão de negócio é delegada a `services/`. São **6 apps** (5 de domínio + a UX).
+Apps são **magros** (thin ), mas é neles que mora a **orquestração**: roteamento, views que traduzem o
+request, chamam o domínio e devolvem *partials*, models de persistência e *management commands*.
+Toda **regra de negócio** é delegada a `services/` — orquestrar (decidir o quê chamar e o que
+responder) não é implementar a regra. São **6 apps** (5 de domínio + a UX).
 
 | App                  | O que persiste                                                              | Responsabilidade                                                       |
 |----------------------|-----------------------------------------------------------------------------|------------------------------------------------------------------------|
@@ -218,7 +278,8 @@ commands*. Toda decisão de negócio é delegada a `services/`. São **6 apps** 
 | `lote_matcher`       | Lote (número de contribuinte, id de polígono, tipo: fiscal / municipal / …).| Views da busca de lote → resultado: **polígono**. Metadados alimentam a busca detalhada. |
 | `mapping`            | — (config do WMS pode ser settings/constante)                               | Partial do Leaflet que recebe a geometria e renderiza sobre o WMS GeoSampa. |
 
-**Lembrete:** o app guarda **o que** persiste e **as views**; o **como** está em `services/`.
+**Lembrete:** o app **orquestra** (views), guarda **o que** persiste (models) e responde com HTML;
+o **como** da regra de negócio está em `services/`.
 
 ---
 
@@ -229,16 +290,13 @@ explicitamente neutros). Testável de forma independente. Dividida em quatro sub
 
 ### 7.1 `utils/`
 Funções utilitárias de escopo geral, sem domínio: padrões de regex para o roteamento da busca
-simples e — crítico — a **função única de normalização de texto** (uppercase + remoção de
+simples e a **função única de normalização de texto** (uppercase + remoção de
 acentos). Qualquer matching textual usa essa mesma função em tempo de preparação de dados e em
 tempo de consulta. Duplicar essa regra é o erro que mais quebra esse tipo de sistema.
 
-> Os **dados versionados** (dicionários e mapeamentos, como o de variações por tipo de logradouro:
-> `AV` → `AVENIDA`, `AV.`, `AVN.`; `RUA` → `R.`; etc.) ficam em **`data/` na raiz do projeto** — não
-> dentro de `services/`. São dados, não código, e crescem conforme novos formatos aparecem na base.
 
 ### 7.2 `integrations/`
-Comunicação com sistemas externos — prioritariamente o **WFS do GeoSampa**. Contratos de dados
+Comunicação com sistemas externos — prioritariamente a conexão com WFS e WMS (inicialmente GeoSampa posteriormente MDSF, mas ambos são geoservers que implementam WFS). Contratos de dados
 definidos com **modelos Pydantic**. Classes executoras (clients) e modelos de contrato são
 **expostos no `__init__.py`** do módulo, para que o resto do sistema importe pelo nível superior
 sem alcançar caminhos internos. Erros de rede/HTTP são encapsulados em exceções próprias; o
@@ -251,7 +309,7 @@ Pydantic**. Regras estruturantes:
 
 - **Match exato vs. match com variação.** Códigos (`codlog`, número de contribuinte) são
   resolvidos por **lookup direto** na base. Texto livre (nome de rua, endereço por extenso)
-  consulta a **base de variações** preparada pelos scripts.
+  consulta a **base de variações** preparada pelos scripts e faz o match com fuzzy string match.
 - **Sugestões assíncronas** (durante a digitação) consultam estruturas cacheadas via uma
   interface de lookup — barato e desacoplado do ORM. A implementação atual é um dict em memória;
   troca futura para Redis fica isolada nessa interface.
@@ -266,11 +324,15 @@ Pydantic**. Regras estruturantes:
 Rotinas com **execução apartada do runtime web**: cargas das três bases oficiais (logradouros,
 endereços fiscais, lotes) e preparação das estruturas de cache consumidas pelo domínio. A geração
 de variações de escrita roda sobre **logradouros e endereços fiscais** — não sobre lotes, cujo
-identificador é exato. Consome `data/` (dicionários, na raiz) e a normalização de `utils/` para que
-as chaves geradas casem com as chaves buscadas em tempo de execução.
+identificador é exato. Consome `a normalização de `utils/` para que
+as chaves geradas casem com as chaves buscadas em tempo de execução. Os dados são salvos em `data/` na raiz do projeto.
 
 Scripts são funções/classes puras: a entrada de programa é via *management commands* (§8).
 **Nunca** rodam durante o ciclo de request/response.
+
+> Os **dados versionados** (dicionários e mapeamentos, como o de variações por tipo de logradouro:
+> `AV` → `AVENIDA`, `AV.`, `AVN.`; `RUA` → `R.`; etc.) ficam em **`data/` na raiz do projeto** — não
+> dentro de `services/`. São dados, não código, e crescem conforme novos formatos aparecem na base.
 
 ---
 
@@ -278,8 +340,7 @@ Scripts são funções/classes puras: a entrada de programa é via *management c
 
 Os scripts se integram ao Django como **comandos customizados do `manage.py`**, em
 `management/commands/` do app de domínio mais próximo do dado. O comando é **fino**: só faz
-parsing de argumentos, chama o script em `services/scripts/` e dá feedback no `stdout`.
-**Sem lógica.** Padrão:
+parsing de argumentos, chama o script em `services/scripts/` e dá feedback no `stdout`. A lógica/regra de negócio não fica no comando, fica no script. Padrão:
 
 ```python
 from django.core.management.base import BaseCommand
@@ -328,7 +389,7 @@ A view do app correspondente:
 
 Resultado final ─────────────────────────────────────────────────────────────
    ▼
-hx-get → apps/mapping → partial do Leaflet recebe a geometria
+hx-post → apps/mapping → partial do Leaflet recebe a geometria
                         (ponto / linha / polígono) e renderiza sobre o WMS GeoSampa
 ```
 
@@ -337,7 +398,37 @@ direto no módulo de domínio correspondente.
 
 ---
 
-## 10. Convenções de Código
+## 10. Estilo de Código
+
+Princípios que regem **como** o código é escrito, complementando os princípios de arquitetura (§3).
+
+### 10.1 Responsabilidade única
+Cada classe ou função tem **uma só razão para mudar** (*Single Responsibility Principle*).
+Se uma peça acumula responsabilidades, ela é dividida. Esse princípio é prioritário no projeto. ALém disso, os módulos representam diferentes **domínios** do projeto. Um mesmo módulo não pode atacar dois domínios simultaneamente (por exemplo lotes E logradouros - são coisas diferentes).
+
+### 10.2 Nomenclatura
+- **Classes:** `PascalCase` (ex.: `WfsClient`, `LogradouroMatcher`).
+- **Funções e métodos:** `snake_case` (ex.: `resolve_codlog`, `build_lookup`).
+- **Constantes:** `UPPER_CASE` (ex.: `DEFAULT_SRID`, `GEOSAMPA_WFS_URL`).
+
+### 10.3 Constantes
+- **Locais ao módulo:** definidas em `UPPER_CASE` nas linhas iniciais do arquivo, **logo após os
+  imports**.
+- **Vindas de configuração:** lidas via **Pydantic Settings** e, no início do módulo (após os
+  imports), **reextraídas para constantes** `UPPER_CASE` locais — o resto do módulo referencia a
+  constante, não o objeto de settings.
+
+### 10.4 Classes: callables, composição e contratos
+- Sempre que couber, classes são **callables**: implementam `__call__` como ponto de entrada da sua
+  responsabilidade.
+- A integração entre classes é por **composição**. **Herança é exceção rara**, reservada a quando
+  se quer definir uma **interface** (ex.: `ABC`) — e nesse caso a SPEC dirá explicitamente.
+- Classes recebem **DTOs de input** e retornam **DTOs de output**, deixando o contrato de dados
+  explícito em ambas as pontas (Pydantic — ver §3.3 e §11).
+
+---
+
+## 11. Convenções de Código
 
 - **Tipagem integral:** *type annotations* em **todo o código Python** (não se aplica a templates
   HTML/HTMX). `mypy` deve passar limpo.
@@ -360,7 +451,7 @@ direto no módulo de domínio correspondente.
 
 ---
 
-## 11. Comandos de Desenvolvimento
+## 12. Comandos de Desenvolvimento
 
 ```bash
 # Ambiente Python
@@ -371,7 +462,7 @@ pip install -e .                      # ou: uv sync
 python manage.py migrate
 
 # Pipeline de dados (apartado do runtime web): cargas → variações → cache
-python manage.py <cada management command, na ordem definida em §8>
+python manage.py <cada management command
 
 # Build do CSS (Tailwind 4 + DaisyUI 5) — terminal separado, em watch
 npx @tailwindcss/cli -i static/src/input.css -o static/dist/output.css --watch
@@ -387,30 +478,33 @@ python manage.py test
 
 ---
 
-## 12. Regras Críticas — checklist antes de codar
+## 13. Regras Críticas — checklist antes de codar
 
 - [ ] Existe uma **SPEC** (em `SPECS/<épico>/`) guiando esta iteração? Nenhum código nasce sem ela.
 - [ ] A rota retorna **partial HTML**? (exceto a API REST futura) Se devolve JSON, está errado.
 - [ ] Há **JS consumindo JSON** no frontend? Vedado (exceto Leaflet renderizando o mapa).
 - [ ] A lógica de negócio está em **`services/`**, não em view/model/template/command?
 - [ ] Entradas e saídas do domínio são **DTOs Pydantic**?
-- [ ] Na busca simples, o **roteamento por regex** roda **antes** de qualquer consulta de domínio?
-- [ ] Códigos (`codlog`, nº de contribuinte) são resolvidos por **match exato**? Apenas texto livre
-      passa pela base de **variações**?
+- [ ] Cada classe/função tem **responsabilidade única**?
+- [ ] Classes são **callables** (`__call__`) quando cabe, integradas por **composição** (herança só
+      como interface `ABC`, e só quando a SPEC pedir)?
+- [ ] Nomenclatura: classes `PascalCase`, funções/métodos `snake_case`, constantes `UPPER_CASE`?
+- [ ] Constantes locais e de configuração (via Pydantic Settings) estão extraídas em `UPPER_CASE`
+      logo após os imports do módulo?
+- [ ] A SPEC reaproveitou as **peças de referência** existentes por composição, em vez de
+      reimplementá-las?
 - [ ] Qualquer matching textual usa a **mesma** normalização (`utils.text`) em tempo de preparação
       e em tempo de consulta?
 - [ ] Dicionários e mapeamentos estão em **`data/` na raiz** (dado versionado), não embutidos na
       lógica nem dentro de `services/`?
-- [ ] Sugestões assíncronas consultam o **cache via interface de lookup**, não o ORM a cada tecla?
 - [ ] Contratos de integração são **Pydantic** e estão **expostos no `__init__.py`**?
 - [ ] **Type annotations** em tudo? `mypy` limpo?
 - [ ] Models contêm **apenas** persistência? Commands **sem** lógica?
-- [ ] A geometria de saída (ponto / linha / polígono) bate com o tipo da consulta?
 - [ ] Nova pasta de templates registrada com `@source` no CSS de entrada?
 
 ---
 
-## 13. Roadmap por Fase
+## 14. Roadmap por Fase
 
 A fase 1 é construída na ordem abaixo — cada item se apoia no anterior:
 
