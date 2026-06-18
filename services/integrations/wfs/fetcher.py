@@ -5,6 +5,7 @@ from typing import Generator
 
 import requests
 
+from .exceptions import WfsInvalidResponseError
 from .models import WfsConnectionConfig, WfsFeatureCollection, WfsFeatureRequest
 
 
@@ -35,7 +36,7 @@ class WfsFetcher:
         try:
             payload = resp.json()
         except JSONDecodeError:
-            raise ValueError(f"Resposta não é JSON válido: {resp.text[:500]}")
+            raise WfsInvalidResponseError(f"Resposta não é JSON válido: {resp.text[:500]}")
         return WfsFeatureCollection.model_validate(payload)
 
     def fetch_feature_batches(
