@@ -5,7 +5,7 @@ from typing import Generator
 
 import requests
 
-from .exceptions import WfsInvalidResponseError
+from .exceptions import WfsHttpError, WfsInvalidResponseError
 from .models import WfsConnectionConfig, WfsFeatureCollection, WfsFeatureRequest
 
 
@@ -32,7 +32,10 @@ class WfsFetcher:
         if self.verbose:
             print(f"WFS GET {self.config.url_base} :: {params}")
         resp = requests.get(self.config.url_base, params=params)
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as exc:
+            raise WfsHttpError(str(exc), response=resp) from exc
         try:
             payload = resp.json()
         except JSONDecodeError:

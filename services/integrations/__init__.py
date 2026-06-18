@@ -5,6 +5,7 @@ from .wfs import (
     WfsFeatureCollection,
     WfsFeatureRequest,
     WfsFetcher,
+    WfsHttpError,
     WfsInvalidResponseError,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "WfsFeatureCollection",
     "CqlFilter",
     "CqlPredicate",
+    "WfsHttpError",
     "WfsInvalidResponseError",
 ]

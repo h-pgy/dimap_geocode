@@ -2,6 +2,9 @@ import pytest
 from json import JSONDecodeError
 from unittest.mock import Mock, patch
 
+import requests as _requests
+
+from services.integrations.wfs.exceptions import WfsHttpError, WfsInvalidResponseError
 from services.integrations.wfs.fetcher import WfsFetcher
 from services.integrations.wfs.models import WfsConnectionConfig, WfsFeatureRequest
 
@@ -26,7 +29,7 @@ def _fake_response(
     else:
         resp.json.return_value = json_payload
     if status != 200:
-        resp.raise_for_status.side_effect = Exception(f"HTTP {status}")
+        resp.raise_for_status.side_effect = _requests.exceptions.HTTPError(f"HTTP {status}", response=resp)
     else:
         resp.raise_for_status.return_value = None
     return resp
@@ -72,17 +75,17 @@ def test_empty_stops(config: WfsConnectionConfig) -> None:
         assert list(WfsFetcher(config)(WfsFeatureRequest(nome_camada="lote"))) == []
 
 
-def test_http_error_raises(config: WfsConnectionConfig) -> None:
+def test_http_error_raises_wfs_http_error(config: WfsConnectionConfig) -> None:
     with patch("services.integrations.wfs.fetcher.requests.get") as mock_get:
         mock_get.return_value = _fake_response(None, status=500)
-        with pytest.raises(Exception):
+        with pytest.raises(WfsHttpError):
             list(WfsFetcher(config)(WfsFeatureRequest(nome_camada="lote")))
 
 
-def test_invalid_json_raises_valueerror(config: WfsConnectionConfig) -> None:
+def test_invalid_json_raises_wfs_error(config: WfsConnectionConfig) -> None:
     with patch("services.integrations.wfs.fetcher.requests.get") as mock_get:
         mock_get.return_value = _fake_response(None, raise_json=True)
-        with pytest.raises(ValueError):
+        with pytest.raises(WfsInvalidResponseError):
             list(WfsFetcher(config)(WfsFeatureRequest(nome_camada="lote")))
 
 

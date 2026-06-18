@@ -1,4 +1,4 @@
-from .exceptions import WfsInvalidResponseError
+from .exceptions import WfsHttpError, WfsInvalidResponseError
 from .fetcher import WfsFetcher
 from .models import (
     CqlFilter,
@@ -15,5 +15,6 @@ __all__ = [
     "WfsFeatureCollection",
     "CqlFilter",
     "CqlPredicate",
+    "WfsHttpError",
     "WfsInvalidResponseError",
 ]
