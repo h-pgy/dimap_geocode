@@ -1,10 +1,10 @@
-from .wfs import (
+from .fetcher import WfsFetcher
+from .models import (
     CqlFilter,
     CqlPredicate,
     WfsConnectionConfig,
     WfsFeatureCollection,
     WfsFeatureRequest,
-    WfsFetcher,
 )
 
 __all__ = [

@@ -31,12 +31,26 @@ class _Settings(BaseSettings):
     postgres_host: str = Field(default="localhost", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
 
+    wfs_domain: str = Field(default="wfs.geosampa.prefeitura.sp.gov.br", alias="WFS_DOMAIN")
+    wfs_endpoint: str = Field(default="geoserver/geoportal/wfs", alias="WFS_ENDPOINT")
+    wfs_namespace: str = Field(default="geoportal", alias="WFS_NAMESPACE")
+    wfs_service: str = Field(default="WFS", alias="WFS_SERVICE")
+    wfs_version: str = Field(default="1.0.0", alias="WFS_VERSION")
+
 
 _env = _Settings()
 
 SECRET_KEY = _env.secret_key
 DEBUG = _env.debug
 ALLOWED_HOSTS = [host.strip() for host in _env.allowed_hosts.split(",") if host.strip()]
+
+# WFS (GeoSampa → MDSF). A orquestração lê essas constantes e monta
+# WfsConnectionConfig para injetar no WfsFetcher (nunca o domínio lê daqui).
+WFS_DOMAIN = _env.wfs_domain
+WFS_ENDPOINT = _env.wfs_endpoint
+WFS_NAMESPACE = _env.wfs_namespace
+WFS_SERVICE = _env.wfs_service
+WFS_VERSION = _env.wfs_version
 
 
 # Application definition
