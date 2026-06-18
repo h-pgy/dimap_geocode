@@ -537,6 +537,9 @@ Se uma peça acumula responsabilidades, ela é dividida. Esse princípio é prio
 - Classes recebem **DTOs de input** e retornam **DTOs de output**, deixando o contrato de dados
   explícito em ambas as pontas (Pydantic — ver §3.3 e §11).
 
+### 10.5 Estamos usando python 3.14 - nao use futures
+Já estamso na versao mais atual do python, não é para usar from __future__ !
+
 ---
 
 ## 11. Convenções de Código
