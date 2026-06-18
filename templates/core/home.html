@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+<main class="container mx-auto max-w-3xl px-6 py-16">
+  <h1 class="text-4xl font-bold tracking-tight">DIMAP GeoCoder</h1>
+  <p class="mt-3 text-base-content/70">
+    Geocodificação sobre os dados oficiais de logradouros, lotes e endereços
+    fiscais da Prefeitura de São Paulo.
+  </p>
+
+  {# A barra de busca única (apps/search) e o mapa (apps/mapping) entram aqui
+     quando suas SPECs forem implementadas (roadmap §14). #}
+  <div class="mt-8 rounded-box border border-base-300 bg-base-200 p-6">
+    <p class="text-sm text-base-content/60">Scaffold inicial — apps de busca e mapa em breve.</p>
+  </div>
+</main>
+{% endblock %}

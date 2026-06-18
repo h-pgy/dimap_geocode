@@ -32,9 +32,16 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
+# Entrypoint: roda migrações e repassa o controle ao CMD/command (fica em /
+# para não ser escondido pelo bind mount do código em /app).
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Código da aplicação (em dev é sobreposto pelo bind mount do compose).
 COPY . .
 
 EXPOSE 8000
 
+ENTRYPOINT ["/entrypoint.sh"]
+# Default de desenvolvimento; troque por gunicorn/uvicorn no deploy.
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

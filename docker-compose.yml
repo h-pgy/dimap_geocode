@@ -19,12 +19,11 @@ services:
 
   web:
     build: .
-    # migrate só roda depois que o projeto Django (manage.py/config) existir.
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
+    # Sem `command`: usa o CMD do Dockerfile (runserver). A migração é feita
+    # pelo entrypoint.sh, compartilhado entre dev e prod.
     environment:
       # Consumidos pelo config/settings.py (via Pydantic Settings, ver CLAUDE.md §10.3).
+      DJANGO_AUTO_MIGRATE: ${DJANGO_AUTO_MIGRATE:-1}
       POSTGRES_DB: ${POSTGRES_DB:-dimap_geocode}
       POSTGRES_USER: ${POSTGRES_USER:-dimap}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dimap}

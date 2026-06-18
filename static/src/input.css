@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* Tailwind 4 descobre os templates exclusivamente via @source (CLAUDE.md §2).
+   Toda nova pasta de templates precisa ser declarada aqui. */
+@source "../../templates";
+@source "../../apps";
