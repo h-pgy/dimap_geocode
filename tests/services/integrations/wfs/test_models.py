@@ -1,4 +1,12 @@
-from services.integrations.wfs.models import CqlFilter, CqlPredicate, WfsFeatureCollection
+import pytest
+from pydantic import ValidationError
+
+from services.integrations.wfs.models import (
+    CqlFilter,
+    CqlPredicate,
+    WfsFeatureCollection,
+    WfsRetryPolicy,
+)
 
 
 def test_cql_escapes_single_quote() -> None:
@@ -59,6 +67,29 @@ def test_collection_parses_int_matched() -> None:
         {"type": "FeatureCollection", "numberMatched": 42, "features": []}
     )
     assert fc.number_matched == 42
+
+
+def test_retry_policy_defaults() -> None:
+    p = WfsRetryPolicy()
+    assert p.request_timeout_seconds == 30.0
+    assert p.max_retries == 3
+    assert p.retry_wait_min_seconds == 1.0
+    assert p.retry_wait_max_seconds == 5.0
+
+
+def test_retry_policy_rejects_negative_max_retries() -> None:
+    with pytest.raises(ValidationError):
+        WfsRetryPolicy(max_retries=-1)
+
+
+def test_retry_policy_rejects_negative_wait() -> None:
+    with pytest.raises(ValidationError):
+        WfsRetryPolicy(retry_wait_min_seconds=-1.0)
+
+
+def test_retry_policy_rejects_inverted_wait_bounds() -> None:
+    with pytest.raises(ValidationError):
+        WfsRetryPolicy(retry_wait_min_seconds=5.0, retry_wait_max_seconds=1.0)
 
 
 def test_collection_parses_geometry_point() -> None:

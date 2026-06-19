@@ -1,5 +1,5 @@
 from . import utils
-from .exceptions import WfsHttpError, WfsInvalidResponseError
+from .exceptions import WfsConnectionError, WfsHttpError, WfsInvalidResponseError, WfsTimeoutError
 from .fetcher import WfsFetcher
 from .models import (
     CqlFilter,
@@ -7,6 +7,7 @@ from .models import (
     WfsConnectionConfig,
     WfsFeatureCollection,
     WfsFeatureRequest,
+    WfsRetryPolicy,
 )
 
 __all__ = [
@@ -15,8 +16,11 @@ __all__ = [
     "WfsConnectionConfig",
     "WfsFeatureRequest",
     "WfsFeatureCollection",
+    "WfsRetryPolicy",
     "CqlFilter",
     "CqlPredicate",
     "WfsHttpError",
     "WfsInvalidResponseError",
+    "WfsTimeoutError",
+    "WfsConnectionError",
 ]

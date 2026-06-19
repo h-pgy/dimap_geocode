@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class WfsConnectionConfig(BaseModel):
@@ -72,6 +70,23 @@ class WfsFeatureRequest(BaseModel):
             params["propertyName"] = ",".join(self.property_names)
         params.update(self.extra_params)
         return params
+
+
+class WfsRetryPolicy(BaseModel):
+    request_timeout_seconds: float = 30.0
+    max_retries: int = 3
+    retry_wait_min_seconds: float = 1.0
+    retry_wait_max_seconds: float = 5.0
+
+    @model_validator(mode="after")
+    def _check_bounds(self) -> "WfsRetryPolicy":
+        if self.max_retries < 0:
+            raise ValueError("max_retries não pode ser negativo")
+        if self.retry_wait_min_seconds < 0 or self.retry_wait_max_seconds < 0:
+            raise ValueError("esperas não podem ser negativas")
+        if self.retry_wait_max_seconds < self.retry_wait_min_seconds:
+            raise ValueError("retry_wait_max_seconds deve ser >= retry_wait_min_seconds")
+        return self
 
 
 class WfsGeometry(BaseModel):
