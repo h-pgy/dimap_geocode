@@ -1,8 +1,9 @@
 ---
 spec: ingestao-dados/001
-versao: v2
+versao: v3
 atualizado_em: 2026-06-19
 changelog:
+  - v3: planeja a fiação da WfsRetryPolicy nos 3 management commands de ingestão (settings → DTO → run → WfsFetcher) — ver Patches
   - v2: planeja resiliência a timeout/conexão no WfsFetcher (retries limitados + backoff aleatório + WfsTimeoutError/WfsConnectionError) — ver Patches
   - v1: versão inicial
 ---
@@ -538,3 +539,116 @@ ao import e ao `__all__`, mantendo a regra de §7.2 (contratos expostos no níve
   `WfsInvalidResponseError` **na 1ª tentativa**, sem retry.
 - **DTO:** `WfsRetryPolicy` rejeita `max_retries` negativo e `retry_wait_max_seconds <
   retry_wait_min_seconds`.
+
+### 2026-06-19 (v3) — Fiação da `WfsRetryPolicy` nos commands de ingestão
+
+**Problema.** O patch v2 criou a `WfsRetryPolicy` e fez o `WfsFetcher` aceitá-la por injeção, mas
+**ninguém a injeta ainda**: os três management commands de ingestão constroem só o
+`WfsConnectionConfig` e chamam `run(config, request, verbose=...)`. Sem o policy, todo fetch usa os
+**defaults** do `WfsFetcher` — os parâmetros não são configuráveis por ambiente. Este patch
+**operacionaliza** a nota "Orquestração (fora desta SPEC, mas anotado)" do v2: ler os quatro
+parâmetros do `settings` e injetá-los até o fetcher.
+
+**Commands afetados (orquestração — leem `settings`, montam DTO, §3.3).**
+- `apps/address_geocoder/management/commands/extrair_enderecos_fiscais.py`
+- `apps/address_geocoder/management/commands/extrair_segmentos_logradouros.py`
+- `apps/logradouro_matcher/management/commands/extrair_nomes_logradouros.py`
+
+**Onde cada parâmetro entra (caminho completo).**
+```
+config/settings.py (env → constante UPPER_CASE)
+   → command monta WfsRetryPolicy(...)            [orquestração]
+       → run(config, request, retry_policy=...)    [script, repassa]
+           → WfsFetcher(config, retry_policy=...)   [domínio, já pronto desde v2]
+```
+
+**1) `config/settings.py` — quatro constantes novas.** Seguindo o padrão §10.3/§11 já presente no
+arquivo (campo no `_Settings` com `alias` + reextração para constante `UPPER_CASE`). Defaults
+**idênticos** aos da `WfsRetryPolicy`, para que "não configurar nada" preserve o comportamento atual:
+
+```python
+# dentro de _Settings(BaseSettings):
+    wfs_request_timeout_seconds: float = Field(default=30.0, alias="WFS_REQUEST_TIMEOUT_SECONDS")
+    wfs_max_retries: int = Field(default=3, alias="WFS_MAX_RETRIES")
+    wfs_retry_wait_min_seconds: float = Field(default=1.0, alias="WFS_RETRY_WAIT_MIN_SECONDS")
+    wfs_retry_wait_max_seconds: float = Field(default=5.0, alias="WFS_RETRY_WAIT_MAX_SECONDS")
+
+# reextração (após _env = _Settings(), junto das demais WFS_*):
+WFS_REQUEST_TIMEOUT_SECONDS = _env.wfs_request_timeout_seconds
+WFS_MAX_RETRIES = _env.wfs_max_retries
+WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds
+WFS_RETRY_WAIT_MAX_SECONDS = _env.wfs_retry_wait_max_seconds
+```
+> A validação de limites (min ≤ max, não-negativos) **continua na `WfsRetryPolicy`** — o `settings`
+> só carrega os valores; o DTO valida ao ser instanciado no command. Não duplicar regra.
+> Anotar os quatro novos nomes no `.env.example` (o `settings` referencia esse arquivo).
+
+**2) As três funções `run(...)` em `services/scripts/*` — repassam o policy.** Hoje cada `run` faz
+`fetcher = WfsFetcher(config, verbose=verbose)`. Acrescentar um parâmetro **opcional** que é apenas
+encaminhado — o script **não lê settings nem constrói o policy** (isso é orquestração); ele só passa
+adiante. `None` mantém o default (o `WfsFetcher` já faz `retry_policy or WfsRetryPolicy()`), então a
+mudança é **retrocompatível**:
+
+```python
+from services.integrations.wfs import WfsConnectionConfig, WfsFetcher, WfsRetryPolicy
+
+def run(
+    config: WfsConnectionConfig,
+    request: <RequestDoScript>,
+    retry_policy: WfsRetryPolicy | None = None,
+    verbose: bool = False,
+) -> <ResultDoScript>:
+    fetcher = WfsFetcher(config, retry_policy=retry_policy, verbose=verbose)
+    ...  # resto inalterado
+```
+Aplicar idêntico aos três: `logradouros`, `enderecos_fiscais`, `segmentos_logradouros`.
+
+**3) Cada command — monta o policy a partir do `settings` e injeta.** Espelha o que já se faz com
+`WfsConnectionConfig` (mesmo arquivo, logo acima). Direção (exemplo do `extrair_nomes_logradouros`):
+
+```python
+from services.integrations.wfs import WfsConnectionConfig, WfsRetryPolicy
+
+    def handle(self, *args: object, **options: object) -> None:
+        config = WfsConnectionConfig(
+            domain=settings.WFS_DOMAIN,
+            endpoint=settings.WFS_ENDPOINT,
+            namespace=settings.WFS_NAMESPACE,
+            service=settings.WFS_SERVICE,
+            version=settings.WFS_VERSION,
+        )
+        retry_policy = WfsRetryPolicy(
+            request_timeout_seconds=settings.WFS_REQUEST_TIMEOUT_SECONDS,
+            max_retries=settings.WFS_MAX_RETRIES,
+            retry_wait_min_seconds=settings.WFS_RETRY_WAIT_MIN_SECONDS,
+            retry_wait_max_seconds=settings.WFS_RETRY_WAIT_MAX_SECONDS,
+        )
+        request = NomesLogradourosRequest(...)
+        result = run(config, request, retry_policy=retry_policy, verbose=bool(options["verbose"]))
+        ...
+```
+Os outros dois commands recebem o mesmo bloco `retry_policy = WfsRetryPolicy(...)` e passam
+`retry_policy=retry_policy` no `run(...)`, mantendo intactos os respectivos `request`/mensagens.
+
+**Decisão: duplicar o bloco vs. extrair helper.** Mantém-se a **duplicação** do `WfsRetryPolicy(...)`
+nos três commands, espelhando a duplicação já existente do `WfsConnectionConfig(...)` — é
+orquestração fina e local, e um helper compartilhado entre apps distintos (`address_geocoder` e
+`logradouro_matcher`) criaria acoplamento sem ganho real nesta fase. Se um dia virar quatro+ commands,
+reavaliar um pequeno builder em `config/` (registrar em novo patch).
+
+**Fora de escopo deste patch.**
+- Flags de CLI para sobrescrever os parâmetros por execução (`--max-retries` etc.): o controle é por
+  ambiente/`settings`; abrir patch próprio se necessário.
+- Qualquer mudança no `WfsFetcher`/`WfsRetryPolicy` — já prontos no v2.
+
+**Notas de teste do patch.**
+- **`run` repassa o policy:** com `requests.get` mockado, chamar `run(config, request,
+  retry_policy=WfsRetryPolicy(max_retries=0))` e, via `patch` em `WfsFetcher`, assertar que recebeu
+  o `retry_policy` (ou, integrado: `Timeout` no `requests.get` + `max_retries=0` → `WfsTimeoutError`
+  numa única tentativa).
+- **`run` sem policy:** `retry_policy=None` continua funcionando (usa default) — protege a
+  retrocompatibilidade.
+- **Command → policy:** teste de management command (`call_command`) com `settings` sobrescritos
+  (`override_settings`) montando o `WfsRetryPolicy` esperado; mockar o `run` e assertar que foi
+  chamado com o `retry_policy` correspondente aos `settings`. Sem rede.
+- **Defaults do settings:** sem env, `WFS_MAX_RETRIES == 3` etc. (batem com os defaults do DTO).

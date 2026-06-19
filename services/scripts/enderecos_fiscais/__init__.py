@@ -1,4 +1,4 @@
-from services.integrations.wfs import WfsConnectionConfig, WfsFetcher
+from services.integrations.wfs import WfsConnectionConfig, WfsFetcher, WfsRetryPolicy
 from services.utils.io import write_parquet_to_data
 
 from .constants import ATRIBUTOS_ALVO
@@ -28,9 +28,10 @@ def _to_columns(rows: list[EnderecoFiscal]) -> dict[str, list[str | None]]:
 def run(
     config: WfsConnectionConfig,
     request: EnderecosFiscaisRequest,
+    retry_policy: WfsRetryPolicy | None = None,
     verbose: bool = False,
 ) -> EnderecosFiscaisResult:
-    fetcher = WfsFetcher(config, verbose=verbose)
+    fetcher = WfsFetcher(config, retry_policy=retry_policy, verbose=verbose)
     rows = EnderecosFiscaisExtractor(fetcher)(request)
 
     output_path = write_parquet_to_data(_to_columns(rows), OUTPUT_FILENAME)

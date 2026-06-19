@@ -1,4 +1,4 @@
-from services.integrations.wfs import WfsConnectionConfig, WfsFetcher
+from services.integrations.wfs import WfsConnectionConfig, WfsFetcher, WfsRetryPolicy
 from services.utils.io import write_parquet_to_data
 
 from .extractor import SegmentosLogradourosExtractor
@@ -30,9 +30,10 @@ def _to_columns(rows: list[SegmentoLogradouro]) -> dict[str, list[str | None]]:
 def run(
     config: WfsConnectionConfig,
     request: SegmentosLogradourosRequest,
+    retry_policy: WfsRetryPolicy | None = None,
     verbose: bool = False,
 ) -> SegmentosLogradourosResult:
-    fetcher = WfsFetcher(config, verbose=verbose)
+    fetcher = WfsFetcher(config, retry_policy=retry_policy, verbose=verbose)
     rows = SegmentosLogradourosExtractor(fetcher)(request)
 
     output_path = write_parquet_to_data(_to_columns(rows), OUTPUT_FILENAME)

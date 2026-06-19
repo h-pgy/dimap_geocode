@@ -38,6 +38,10 @@ class _Settings(BaseSettings):
     wfs_version: str = Field(default="1.0.0", alias="WFS_VERSION")
     wfs_layer_logradouros: str = Field(default="segmento_logradouro", alias="WFS_LAYER_LOGRADOUROS")
     wfs_layer_lote_cidadao: str = Field(default="lote_cidadao", alias="WFS_LAYER_LOTE_CIDADAO")
+    wfs_request_timeout_seconds: float = Field(default=30.0, alias="WFS_REQUEST_TIMEOUT_SECONDS")
+    wfs_max_retries: int = Field(default=3, alias="WFS_MAX_RETRIES")
+    wfs_retry_wait_min_seconds: float = Field(default=1.0, alias="WFS_RETRY_WAIT_MIN_SECONDS")
+    wfs_retry_wait_max_seconds: float = Field(default=5.0, alias="WFS_RETRY_WAIT_MAX_SECONDS")
 
 
 _env = _Settings()
@@ -55,6 +59,10 @@ WFS_SERVICE = _env.wfs_service
 WFS_VERSION = _env.wfs_version
 WFS_LAYER_LOGRADOUROS = _env.wfs_layer_logradouros
 WFS_LAYER_LOTE_CIDADAO = _env.wfs_layer_lote_cidadao
+WFS_REQUEST_TIMEOUT_SECONDS = _env.wfs_request_timeout_seconds
+WFS_MAX_RETRIES = _env.wfs_max_retries
+WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds
+WFS_RETRY_WAIT_MAX_SECONDS = _env.wfs_retry_wait_max_seconds
 
 
 # Application definition

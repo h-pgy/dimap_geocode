@@ -1,6 +1,6 @@
 from functools import partial
 
-from services.integrations.wfs import WfsConnectionConfig, WfsFetcher
+from services.integrations.wfs import WfsConnectionConfig, WfsFetcher, WfsRetryPolicy
 from services.utils.io import write_parquet
 
 from .extractor import NomesLogradourosExtractor
@@ -29,9 +29,10 @@ def _to_columns(rows: list[LogradouroNome]) -> dict[str, list[str]]:
 def run(
     config: WfsConnectionConfig,
     request: NomesLogradourosRequest,
+    retry_policy: WfsRetryPolicy | None = None,
     verbose: bool = False,
 ) -> NomesLogradourosResult:
-    fetcher = WfsFetcher(config, verbose=verbose)
+    fetcher = WfsFetcher(config, retry_policy=retry_policy, verbose=verbose)
     rows = NomesLogradourosExtractor(fetcher)(request)
 
     write_parquet_to_data = partial(write_parquet, folder=request.data_folder)
