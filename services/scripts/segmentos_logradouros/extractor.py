@@ -40,8 +40,8 @@ class SegmentosLogradourosExtractor:
                 cd_identificador = props.get("cd_identificador")
                 if codlog is None or cd_identificador is None:
                     continue
-                records.append(SegmentoLogradouro(
-                    **{name: _as_str(props.get(name)) for name in PROPERTY_NAMES}
+                records.append(SegmentoLogradouro.model_validate(
+                    {name: _as_str(props.get(name)) for name in PROPERTY_NAMES}
                 ))
 
         return sorted(records, key=lambda x: (x.codlog, x.cd_identificador))

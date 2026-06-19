@@ -1,3 +1,5 @@
+from argparse import ArgumentParser
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
@@ -8,8 +10,8 @@ from services.scripts.segmentos_logradouros import SegmentosLogradourosRequest, 
 class Command(BaseCommand):
     help = "Extrai identificadores e intervalos de numeração de segmentos viários do WFS para data/segmentos_logradouros.parquet."
 
-    def add_arguments(self, parser: object) -> None:
-        parser.add_argument("--verbose", action="store_true")  # type: ignore[union-attr]
+    def add_arguments(self, parser: ArgumentParser) -> None:
+        parser.add_argument("--verbose", action="store_true")
 
     def handle(self, *args: object, **options: object) -> None:
         config = WfsConnectionConfig(

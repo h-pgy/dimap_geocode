@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from pathlib import Path
 
 from django.conf import settings
@@ -10,8 +11,8 @@ from services.scripts.logradouros import NomesLogradourosRequest, run
 class Command(BaseCommand):
     help = "Extrai codlog/tipo/nome únicos de logradouros do WFS e salva em data/nomes_logradouros.parquet."
 
-    def add_arguments(self, parser: object) -> None:
-        parser.add_argument("--verbose", action="store_true")  # type: ignore[union-attr]
+    def add_arguments(self, parser: ArgumentParser) -> None:
+        parser.add_argument("--verbose", action="store_true")
 
     def handle(self, *args: object, **options: object) -> None:
         config = WfsConnectionConfig(

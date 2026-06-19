@@ -575,30 +575,32 @@ Já estamso na versao mais atual do python, não é para usar from __future__ !
 
 ## 12. Comandos de Desenvolvimento
 
+**Gerenciador de dependências: `uv`.** Todo o ciclo de vida do projeto (instalar, adicionar e
+remover pacotes, rodar comandos dentro do ambiente) passa pelo `uv`. Não use `pip` diretamente nem
+crie venvs manualmente — o `uv` cuida disso.
+
 ```bash
-# Ambiente Python
-python -m venv .venv && source .venv/bin/activate
-pip install -e .                      # ou: uv sync
-# Dependência do banco (psycopg 3): pip install "psycopg[binary]"
+# Ambiente Python — instalar dependências do projeto
+uv sync
 # Bibliotecas de sistema exigidas pelo GeoDjango: GEOS, GDAL, PROJ
 # Banco: PostgreSQL com PostGIS habilitado -> CREATE EXTENSION postgis;
 
 # Banco (PostGIS desde a fase inicial)
-python manage.py migrate
+uv run python manage.py migrate
 
 # Pipeline de dados (apartado do runtime web): cargas → variações → cache
-python manage.py <cada management command>
+uv run python manage.py <cada management command>
 
 # Build do CSS (Tailwind 4 + DaisyUI 5) — terminal separado, em watch
 npx @tailwindcss/cli -i static/src/input.css -o static/dist/output.css --watch
 
 # Servidor de desenvolvimento
-python manage.py runserver
+uv run python manage.py runserver
 
 # Qualidade
-mypy .
-ruff check .
-python manage.py test
+uv run mypy .
+uv run ruff check .
+uv run python manage.py test
 ```
 
 ---

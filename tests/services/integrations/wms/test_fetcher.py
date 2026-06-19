@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 import requests
 from unittest.mock import Mock, patch
@@ -37,7 +39,7 @@ def _resp(
     return r
 
 
-def _req(**kw: object) -> WmsMapRequest:
+def _req(**kw: Any) -> WmsMapRequest:
     return WmsMapRequest(layer="cam:lote", bbox=BBOX, **kw)
 
 

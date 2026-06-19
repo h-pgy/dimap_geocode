@@ -35,6 +35,6 @@ class EnderecosFiscaisExtractor:
                     k: str(props.get(k)) if props.get(k) is not None else None
                     for k in ATRIBUTOS_ALVO
                 }
-                records.append(EnderecoFiscal(**kwargs))
+                records.append(EnderecoFiscal.model_validate(kwargs))
 
         return sorted(records, key=lambda x: x.cd_identificador)
