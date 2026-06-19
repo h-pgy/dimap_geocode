@@ -1,8 +1,8 @@
 ---
 
 spec: ingestao-dados/005
-versao: v6
-atualizado_em: 2026-06-18
+versao: v7
+atualizado_em: 2026-06-19
 changelog:
 
 * v1: versão inicial
@@ -11,6 +11,7 @@ changelog:
 * v4: refatoração da construção de dicionários e transposição de colunas utilizando iteração dinâmica sobre a constante de atributos
 * v5: simplificação do laço de extração e delegação da conversão de tipos
 * v6: remoção de função auxiliar de conversão e adoção de condicional inline na construção do dicionário
+* v7: correção do cql_filter — substituição de string literal por utils.cql_eq via services/integrations/wfs/utils
 
 ---
 
@@ -99,6 +100,7 @@ class EnderecosFiscaisResult(BaseModel):
 ```python
 # services/scripts/enderecos_fiscais/extractor.py
 from collections.abc import Callable, Iterable
+from services.integrations import wfs
 from services.integrations.wfs import WfsFeatureRequest, WfsFeatureCollection
 from .constants import ATRIBUTOS_ALVO
 from .models import EnderecoFiscal, EnderecosFiscaisRequest
@@ -116,7 +118,7 @@ class EnderecosFiscaisExtractor:
             nome_camada=request.layer_name,
             property_names=ATRIBUTOS_ALVO,
             count=PAGE_SIZE,
-            cql_filter="cd_situacao=1",
+            cql_filter=wfs.utils.cql_eq("cd_situacao", 1),
         )
         records: list[EnderecoFiscal] = []
         
@@ -261,3 +263,7 @@ Esta especificação não engloba o processamento de geometrias poligonais ou co
 ## Notas de teste
 
 Os testes unitários devem validar o comportamento do extrator com dublês de paginação sem efetuar conexões externas. Os cenários precisam cobrir o descarte de feições sem identificador principal ou número de contribuinte e a correta manutenção de valores nulos nos campos opcionais. A validação do arquivo final deve inspecionar a presença exata das colunas declaradas através do modelo e iteradas dinamicamente.
+
+## Patches
+
+- 2026-06-19 (v7): cql_filter do extractor estava tipado como string literal; corrigido para usar `wfs.utils.cql_eq("cd_situacao", 1)`. A função `cql_eq` foi criada em `services/integrations/wfs/utils.py` junto com as demais funções utilitárias de construção de filtros CQL (`cql_not_eq`, `cql_gt`, `cql_lt`, `cql_gte`, `cql_lte`, `cql_like`, `cql_ilike`), expostas via `from services.integrations import wfs`.

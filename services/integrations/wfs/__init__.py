@@ -1,3 +1,4 @@
+from . import utils
 from .exceptions import WfsHttpError, WfsInvalidResponseError
 from .fetcher import WfsFetcher
 from .models import (
@@ -9,6 +10,7 @@ from .models import (
 )
 
 __all__ = [
+    "utils",
     "WfsFetcher",
     "WfsConnectionConfig",
     "WfsFeatureRequest",
