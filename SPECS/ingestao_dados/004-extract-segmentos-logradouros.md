@@ -1,8 +1,8 @@
 ---
 
 spec: ingestao-dados/004
-versao: v6
-atualizado_em: 2026-06-18
+versao: v7
+atualizado_em: 2026-06-19
 changelog:
 
 * v1: versão inicial
@@ -11,6 +11,7 @@ changelog:
 * v4: adequação do formato dos critérios de aceite, redução de verbosidade e tipagem opcional para atributos numéricos
 * v5: correção do fluxo de IO, adotando a função write_parquet_in pré-existente
 * v6: remoção do parâmetro data_folder do DTO e adoção da partial pré-existente write_parquet_to_data
+* v7: management command realocado para apps/address_geocoder — segmentos alimentam a interpolação de numeração (geocodificação de endereços), não o matching de logradouros
 
 ---
 
@@ -29,7 +30,7 @@ Como desenvolvedor do domínio, quero um script de carga que extraia da camada d
 * [ ] O arquivo de saída é gravado como data/segmentos_logradouros.parquet contendo as seis colunas mapeadas.
 * [ ] O modelo Pydantic define os quatro atributos de numeração como opcionais, tolerando valores nulos oriundos da base cartográfica, e o DTO de requisição recebe apenas o nome da camada.
 * [ ] O nome da camada é resolvido pela orquestração e injetado no construtor via DTO, mantendo o domínio independente da leitura direta de configurações do sistema.
-* [ ] Existe um management command em apps/logradouro_matcher/management/commands/ que orquestra o processo, lendo as chaves de integração e injetando as dependências na camada de domínio.
+* [ ] Existe um management command em apps/address_geocoder/management/commands/ que orquestra o processo, lendo as chaves de integração e injetando as dependências na camada de domínio.
 * [ ] O código possui tipagem estrita compatível com mypy e não utiliza importações do módulo future.
 * [ ] Testes automatizados validam o fluxo sem acesso à rede, utilizando fetchers dublês para verificar a extração de dados e o tratamento de valores nulos.
 
@@ -47,7 +48,7 @@ O módulo compõe WfsFetcher, WfsConnectionConfig, WfsFeatureRequest e WfsFeatur
 
 A escrita do arquivo utiliza a função write_parquet_to_data exposta por services/utils/io/.
 
-A orquestração via management command lê as chaves de ambiente do Django que definem credenciais e o nome da camada geográfica, repassando os parâmetros ao script isolado.
+A orquestração via management command reside em apps/address_geocoder, app responsável pela geocodificação de endereços — o consumidor direto desta base. O comando lê as chaves de ambiente do Django que definem credenciais e o nome da camada geográfica, repassando os parâmetros ao script isolado.
 
 ## Snippets sugeridos
 
@@ -172,7 +173,7 @@ def run(
 ```
 
 ```python
-# apps/logradouro_matcher/management/commands/extrair_segmentos_logradouros.py
+# apps/address_geocoder/management/commands/extrair_segmentos_logradouros.py
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from services.integrations.wfs import WfsConnectionConfig
