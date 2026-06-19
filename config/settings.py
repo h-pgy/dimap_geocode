@@ -36,6 +36,7 @@ class _Settings(BaseSettings):
     wfs_namespace: str = Field(default="geoportal", alias="WFS_NAMESPACE")
     wfs_service: str = Field(default="WFS", alias="WFS_SERVICE")
     wfs_version: str = Field(default="1.0.0", alias="WFS_VERSION")
+    wfs_layer_logradouros: str = Field(default="segmento_logradouro", alias="WFS_LAYER_LOGRADOUROS")
 
 
 _env = _Settings()
@@ -51,6 +52,7 @@ WFS_ENDPOINT = _env.wfs_endpoint
 WFS_NAMESPACE = _env.wfs_namespace
 WFS_SERVICE = _env.wfs_service
 WFS_VERSION = _env.wfs_version
+WFS_LAYER_LOGRADOUROS = _env.wfs_layer_logradouros
 
 
 # Application definition
@@ -64,6 +66,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "apps.core",
+    "apps.logradouro_matcher",
 ]
 
 MIDDLEWARE = [
