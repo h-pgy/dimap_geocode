@@ -1,8 +1,9 @@
 ---
 spec: ingestao-dados/001
-versao: v1
-atualizado_em: 2026-06-18
+versao: v2
+atualizado_em: 2026-06-19
 changelog:
+  - v2: planeja resiliência a timeout/conexão no WfsFetcher (retries limitados + backoff aleatório + WfsTimeoutError/WfsConnectionError) — ver Patches
   - v1: versão inicial
 ---
 
@@ -352,3 +353,188 @@ def test_collection_coerces_unknown():
 
 ## Patches
 <!-- correções/bugfixes após a SPEC em uso; cada patch incrementa a versão no front-matter -->
+
+### 2026-06-19 (v2) — Resiliência a timeout/conexão no `WfsFetcher`
+
+**Problema.** Rotinas de ingestão que puxam camadas grandes (lotes, endereços) sobrecarregam o
+GeoServer upstream, que fica lento e pode estourar timeout ou recusar/derrubar a conexão. Hoje o
+`requests.get` em `_get_page` **não passa `timeout=`** (espera indefinidamente) e **não há retry**:
+uma página lenta ou uma falha transitória de conexão derruba toda a paginação. Queremos tolerar
+lentidão/instabilidade transitória sem travar e sem risco de **loop infinito**.
+
+**Decisão de arquitetura (onde os parâmetros moram).** A política de resiliência tem **quatro
+parâmetros**, todos com **nomes semânticos** e **definidos no `settings` do Django**:
+
+| Constante no `settings`         | Significado |
+|---------------------------------|-------------|
+| `WFS_REQUEST_TIMEOUT_SECONDS`   | timeout (connect+read) passado ao `requests.get` |
+| `WFS_MAX_RETRIES`               | nº **máximo de retentativas** após a 1ª falha (limite duro) |
+| `WFS_RETRY_WAIT_MIN_SECONDS`    | piso da espera aleatória entre tentativas |
+| `WFS_RETRY_WAIT_MAX_SECONDS`    | teto da espera aleatória entre tentativas |
+
+> **Tensão com §3.3 resolvida por injeção.** O `WfsFetcher` é domínio e **não pode ler `settings`**
+> (a SPEC já proíbe: "a classe não importa Django"). Portanto o `settings` é lido pela
+> **orquestração** (view / management command), que monta um DTO e o **injeta** no fetcher — exatamente
+> como já se faz com `WfsConnectionConfig`. "Definido no settings" significa **origem** do valor; o
+> domínio recebe o valor **já resolvido** via DTO.
+
+**Novo DTO — `WfsRetryPolicy` (Pydantic, em `models.py`).** Responsabilidade única: descrever a
+política de resiliência, separada de *como conectar* (`WfsConnectionConfig`) e *o que pedir*
+(`WfsFeatureRequest`). Campos com nomes semânticos espelhando as constantes do settings:
+
+```python
+# direção — adaptar sem violar §3/§10
+class WfsRetryPolicy(BaseModel):
+    request_timeout_seconds: float = 30.0
+    max_retries: int = 3                      # limite duro de retentativas
+    retry_wait_min_seconds: float = 1.0
+    retry_wait_max_seconds: float = 5.0
+
+    @model_validator(mode="after")
+    def _check_bounds(self) -> "WfsRetryPolicy":
+        if self.max_retries < 0:
+            raise ValueError("max_retries não pode ser negativo")
+        if self.retry_wait_min_seconds < 0 or self.retry_wait_max_seconds < 0:
+            raise ValueError("esperas não podem ser negativas")
+        if self.retry_wait_max_seconds < self.retry_wait_min_seconds:
+            raise ValueError("retry_wait_max_seconds deve ser >= retry_wait_min_seconds")
+        return self
+```
+
+Defaults sensatos garantem que **callers atuais continuam funcionando** sem mudança (o policy é
+opcional na injeção).
+
+**Novas exceptions (em `exceptions.py`).** Conforme decidido, ambas herdam da exception própria já
+existente `WfsHttpError`. São levantadas **apenas quando os retries se esgotam**, encadeando
+(`raise ... from exc`) a última falha. Cada uma nomeia semanticamente o tipo de falha — um
+`ConnectionError` não deve surgir como "timeout" e vice-versa:
+
+```python
+class WfsTimeoutError(WfsHttpError):
+    """Levantada quando o GeoServer não respondeu dentro do timeout após esgotar os retries."""
+
+
+class WfsConnectionError(WfsHttpError):
+    """Levantada quando a conexão com o GeoServer falhou após esgotar os retries."""
+```
+
+Como `WfsHttpError.__init__` aceita `response=`, e numa falha de rede não há resposta, o `response`
+fica `None`. Ambas exportadas no `__init__.py`.
+
+**Composição no `WfsFetcher`.** O policy é **injetado** por composição (não lido de settings):
+
+```python
+def __init__(
+    self,
+    config: WfsConnectionConfig,
+    *,
+    retry_policy: WfsRetryPolicy | None = None,
+    verbose: bool = False,
+) -> None:
+    self.config = config
+    self.retry_policy = retry_policy or WfsRetryPolicy()
+    self.verbose = verbose
+    self.features_fetched_count = 0
+```
+
+**Onde o retry envolve (escopo cirúrgico).** O retry envolve **só a chamada de rede** — o
+`requests.get(..., timeout=request_timeout_seconds)`. Dispara retry em **falhas de rede
+transitórias**: `requests.exceptions.Timeout` **e** `requests.exceptions.ConnectionError`. **NÃO**
+se reexecuta em `raise_for_status` (erro de status é determinístico, não transitório) nem em corpo
+não-JSON (`WfsInvalidResponseError`): esses propagam na 1ª ocorrência, como já é hoje.
+
+**Qual exception ao esgotar.** Despacha pela última falha capturada: `Timeout` → `WfsTimeoutError`;
+`ConnectionError` → `WfsConnectionError`. Detalhe de hierarquia do `requests`:
+`ConnectTimeout` herda de **ambos** `ConnectionError` e `Timeout`; por isso o teste de `Timeout` vem
+**primeiro**, tratando um timeout-na-conexão como timeout (mais informativo).
+
+**Loop limitado — sem infinito (regra inegociável).** A repetição é um `for` sobre um range
+**finito** de `max_retries + 1` tentativas (1 original + as retentativas). A espera aleatória
+(`random.uniform(retry_wait_min_seconds, retry_wait_max_seconds)`) ocorre **entre** tentativas —
+nunca antes da 1ª, nunca após a falha final. Esgotado o range, levanta a exception correspondente.
+Não há `while True` no caminho de retry.
+
+**Três peças, responsabilidade única (§10.1).** Para o loop não acumular orquestração + decisão de
+retry + tradução de exception, o tratamento de erro sai do `_request_with_retries`:
+- `_request_with_retries` — só o loop enxuto: tenta `requests.get`/`return`; no `except`, delega.
+- `_handle_network_failure` — decide o destino da falha: **primeiro** trata "excedeu `max_retries`"
+  (chama a função que levanta); **em seguida** (não excedeu) faz o `sleep` e deixa o loop repetir.
+- `_raise_network_error` — tradução semântica (`NoReturn`): `Timeout` → `WfsTimeoutError`,
+  `ConnectionError` → `WfsConnectionError`. Tipá-la `NoReturn` deixa o mypy entender o fluxo.
+
+```python
+# direção — método novo, isolando a chamada de rede com resiliência
+def _request_with_retries(self, params: dict[str, str | int]) -> requests.Response:
+    policy = self.retry_policy
+    for attempt_number in range(policy.max_retries + 1):   # range FINITO → sem loop infinito
+        try:
+            return requests.get(
+                self.config.url_base,
+                params=params,
+                timeout=policy.request_timeout_seconds,
+            )
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            self._handle_network_failure(exc, attempt_number)
+    # inalcançável: a última tentativa sempre retorna ou levanta (via _raise_network_error).
+    raise AssertionError("loop de retry terminou sem retornar nem levantar")
+
+
+def _handle_network_failure(
+    self, exc: requests.exceptions.RequestException, attempt_number: int
+) -> None:
+    """Destino de uma falha de rede: esgotou os retries → levanta; senão → espera e repete."""
+    policy = self.retry_policy
+    if self.verbose:
+        print(
+            f"WFS falha de rede (tentativa {attempt_number + 1}/{policy.max_retries + 1}): {exc!r}"
+        )
+    if attempt_number >= policy.max_retries:           # excedeu o limite → levanta
+        self._raise_network_error(exc)
+    time.sleep(random.uniform(                          # ainda há retry → espera entre tentativas
+        policy.retry_wait_min_seconds,
+        policy.retry_wait_max_seconds,
+    ))
+
+
+def _raise_network_error(self, exc: requests.exceptions.RequestException) -> NoReturn:
+    """Traduz a falha de rede na exception própria correspondente. Timeout primeiro:
+    ConnectTimeout herda de ambos e é, na prática, um timeout."""
+    total_attempts = self.retry_policy.max_retries + 1
+    if isinstance(exc, requests.exceptions.Timeout):
+        raise WfsTimeoutError(
+            f"WFS não respondeu (timeout={self.retry_policy.request_timeout_seconds}s) "
+            f"após {total_attempts} tentativas"
+        ) from exc
+    raise WfsConnectionError(
+        f"Falha de conexão com o WFS após {total_attempts} tentativas"
+    ) from exc
+```
+
+`_get_page` passa a chamar `_request_with_retries(params)` no lugar do `requests.get` direto;
+o resto de `_get_page` (status, JSON, `model_validate`) e toda a paginação em
+`fetch_feature_batches` **ficam intactos** — a resiliência é transparente para o gerador.
+
+**Exports (`__init__.py`).** Acrescentar `WfsTimeoutError`, `WfsConnectionError` e `WfsRetryPolicy`
+ao import e ao `__all__`, mantendo a regra de §7.2 (contratos expostos no nível superior).
+
+**Orquestração (fora desta SPEC, mas anotado).** A view / management command lê
+`WFS_REQUEST_TIMEOUT_SECONDS`, `WFS_MAX_RETRIES`, `WFS_RETRY_WAIT_MIN_SECONDS`,
+`WFS_RETRY_WAIT_MAX_SECONDS` do `settings`, monta `WfsRetryPolicy(...)` e injeta no `WfsFetcher`.
+
+**Notas de teste do patch (mockar tudo — sem rede, sem dormir de verdade).**
+- Mockar `time.sleep` e `random.uniform` (assertar que dorme dentro de
+  `[retry_wait_min_seconds, retry_wait_max_seconds]` e que **não** dorme após a falha final).
+- **Sucesso após falhas transitórias:** `requests.get` com `side_effect=[Timeout, ConnectionError, resposta_ok]`
+  e `max_retries=3` → retorna a página; `requests.get` chamado **3 vezes**.
+- **Esgota retries (timeout) → `WfsTimeoutError`:** `side_effect=Timeout` sempre, `max_retries=2` →
+  levanta `WfsTimeoutError`; `requests.get` chamado **exatamente 3 vezes** (1 + 2) — prova do
+  **limite duro**.
+- **Esgota retries (conexão) → `WfsConnectionError`:** `side_effect=ConnectionError` sempre →
+  levanta `WfsConnectionError`.
+- **`ConnectTimeout` → `WfsTimeoutError`:** confirma o despacho "Timeout primeiro".
+- **`max_retries=0`:** uma única tentativa; falha → exception correspondente sem nenhum `sleep`.
+- **Encadeamento:** `__cause__` da exception levantada é a última falha capturada.
+- **Não-retry:** `raise_for_status`/corpo não-JSON continuam levantando `WfsHttpError`/
+  `WfsInvalidResponseError` **na 1ª tentativa**, sem retry.
+- **DTO:** `WfsRetryPolicy` rejeita `max_retries` negativo e `retry_wait_max_seconds <
+  retry_wait_min_seconds`.
