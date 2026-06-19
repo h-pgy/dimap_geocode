@@ -1,7 +1,7 @@
 ---
 
 spec: ingestao-dados/005
-versao: v7
+versao: v8
 atualizado_em: 2026-06-19
 changelog:
 
@@ -12,6 +12,7 @@ changelog:
 * v5: simplificação do laço de extração e delegação da conversão de tipos
 * v6: remoção de função auxiliar de conversão e adoção de condicional inline na construção do dicionário
 * v7: correção do cql_filter — substituição de string literal por utils.cql_eq via services/integrations/wfs/utils
+* v8: nr_contribuinte removido — campo não é retornado pelo WFS; cd_identificador passa a ser o único campo obrigatório e chave de ordenação
 
 ---
 
@@ -30,7 +31,7 @@ Como desenvolvedor do domínio, quero um script de carga que extraia da camada d
 * [ ] A paginação itera sobre as respostas e acumula os registros em memória construindo os dicionários de forma dinâmica baseada na constante de atributos, com conversão de tipos inline e preservação de nulos.
 * [ ] O módulo de domínio utiliza a função partial pré-existente write_parquet_to_data de services/utils/io/ para persistência direta na pasta de dados, com a transposição de linhas para colunas realizada iterativamente via getattr.
 * [ ] O arquivo de saída é gravado como data/enderecos_fiscais.parquet contendo as colunas mapeadas.
-* [ ] O modelo Pydantic define nr_contribuinte e cd_identificador como obrigatórios, mantendo os demais atributos de localização como opcionais com valor nulo nativo.
+* [ ] O modelo Pydantic define cd_identificador como único campo obrigatório, mantendo os demais atributos de localização como opcionais com valor nulo nativo.
 * [ ] O nome da camada geoportal:lote_cidadao é configurado no management command e injetado no domínio por meio do DTO de requisição, sem repasse de atributos.
 * [ ] Existe um management command em apps/address_geocoder/management/commands/ que orquestra o processo.
 * [ ] O código possui tipagem estrita compatível com mypy e não utiliza importações do módulo future.
@@ -267,3 +268,4 @@ Os testes unitários devem validar o comportamento do extrator com dublês de pa
 ## Patches
 
 - 2026-06-19 (v7): cql_filter do extractor estava tipado como string literal; corrigido para usar `wfs.utils.cql_eq("cd_situacao", 1)`. A função `cql_eq` foi criada em `services/integrations/wfs/utils.py` junto com as demais funções utilitárias de construção de filtros CQL (`cql_not_eq`, `cql_gt`, `cql_lt`, `cql_gte`, `cql_lte`, `cql_like`, `cql_ilike`), expostas via `from services.integrations import wfs`.
+- 2026-06-19 (v8): nr_contribuinte não é retornado pelo WFS da camada lote_cidadao; campo removido de ATRIBUTOS_ALVO, do modelo EnderecoFiscal e da guard do extractor. cd_identificador passa a ser o único campo obrigatório e chave de ordenação do resultado.

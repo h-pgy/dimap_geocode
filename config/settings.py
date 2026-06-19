@@ -37,6 +37,7 @@ class _Settings(BaseSettings):
     wfs_service: str = Field(default="WFS", alias="WFS_SERVICE")
     wfs_version: str = Field(default="1.0.0", alias="WFS_VERSION")
     wfs_layer_logradouros: str = Field(default="segmento_logradouro", alias="WFS_LAYER_LOGRADOUROS")
+    wfs_layer_lote_cidadao: str = Field(default="lote_cidadao", alias="WFS_LAYER_LOTE_CIDADAO")
 
 
 _env = _Settings()
@@ -53,6 +54,7 @@ WFS_NAMESPACE = _env.wfs_namespace
 WFS_SERVICE = _env.wfs_service
 WFS_VERSION = _env.wfs_version
 WFS_LAYER_LOGRADOUROS = _env.wfs_layer_logradouros
+WFS_LAYER_LOTE_CIDADAO = _env.wfs_layer_lote_cidadao
 
 
 # Application definition

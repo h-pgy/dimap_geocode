@@ -39,7 +39,7 @@ class WfsFetcher:
         try:
             payload = resp.json()
         except JSONDecodeError:
-            raise WfsInvalidResponseError(f"Resposta não é JSON válido: {resp.text[:500]}")
+            raise WfsInvalidResponseError(f"Resposta não é JSON válido: {resp.text}")
         return WfsFeatureCollection.model_validate(payload)
 
     def fetch_feature_batches(
