@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "apps.core",
     "apps.logradouro_matcher",
+    "apps.address_geocoder",
 ]
 
 MIDDLEWARE = [
