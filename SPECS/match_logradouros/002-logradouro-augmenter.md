@@ -3,6 +3,7 @@ spec: match-logradouros/002
 versao: v2
 atualizado_em: 2026-06-21
 changelog: |
+  v3 - codigo do script reorganizado para melhorar legibilidade e reuso
   v2 - adiciona utils de I/O para JSON (services/utils/io/json.py) e config
        compartilhado de _DATA_DIR (services/utils/io/config.py); o script passa
        a usar read_json_from_data em vez de json.load direto
@@ -395,4 +396,5 @@ class Command(BaseCommand):
 - **Cobertura do mapa:** 26 letras (A–Z) como chave; nenhum valor fora de `[A-Z0-9]`.
 
 ## Patches
-(nenhum ainda)
+
+1. Todo o código do script foi reorganizado em submódulos (arquivos.py) para melhorar legibilidade e reuso e manter padrão com os outros scripts.

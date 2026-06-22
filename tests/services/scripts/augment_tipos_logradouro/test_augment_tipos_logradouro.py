@@ -1,14 +1,13 @@
-from services.scripts.logradouros.augment_tipos_logradouro import (
-    QWERTY_ABNT2_NEIGHBORS,
-    _gerar_variacoes,
-    run,
-)
+from services.scripts.augment_tipos_logradouro import (
+    gerar_variacoes_nome,
+    run
+    )
 from services.utils.io import read_parquet_from_data
 from services.utils.normalization import normalize_text
 
 
 def test_variacoes_avenida_contem_trocas_esperadas() -> None:
-    variacoes = _gerar_variacoes("AVENIDA", QWERTY_ABNT2_NEIGHBORS)
+    variacoes = gerar_variacoes_nome("AVENIDA")
 
     # A (pos 0) → vizinhos QWSZ
     assert "QVENIDA" in variacoes
