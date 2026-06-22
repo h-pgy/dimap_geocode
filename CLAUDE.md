@@ -605,7 +605,23 @@ uv run python manage.py test
 
 ---
 
-## 13. Regras Críticas — checklist antes de codar
+## 13. Política de Testes
+
+**Testes unitários são desenvolvidos sob demanda explícita, nunca como parte automática da implementação de uma SPEC.**
+
+O fluxo correto é:
+1. Escrever (ou receber) a SPEC.
+2. Implementar o código da SPEC.
+3. Validar a implementação (smoke test manual, mypy, etc.).
+4. **Só então**, quando o desenvolvedor pedir explicitamente, escrever os testes unitários.
+
+**Nunca** escreva testes junto com a implementação da SPEC sem ser solicitado. Isso se aplica mesmo quando a SPEC traz "Notas de teste" — essa seção é um guia para *quando os testes forem pedidos*, não uma ordem para criá-los imediatamente.
+
+> **Razão:** no desenvolvimento assistido por IA, gerar testes antes da validação humana desperdiça tokens e ciclos de revisão. O desenvolvedor precisa primeiro confirmar que a implementação está correta; os testes vêm depois, para fixar esse comportamento.
+
+---
+
+## 14. Regras Críticas — checklist antes de codar
 
 Princípios inegociáveis. Cada item remete à seção onde o detalhe vive — consulte-a em vez de
 tratar este checklist como a especificação completa.
