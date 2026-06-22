@@ -24,3 +24,4 @@ def read_parquet(filename: str, folder: Path | str) -> dict[str, list[object]]:
 
 
 write_parquet_to_data = partial(write_parquet, folder=_DATA_DIR)
+read_parquet_from_data = partial(read_parquet, folder=_DATA_DIR)
