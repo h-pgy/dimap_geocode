@@ -5,10 +5,9 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-Columns = Mapping[str, Sequence[object]]
+from .config import _DATA_DIR
 
-# Raiz do projeto: services/utils/io/ está três níveis abaixo de <project_root>/
-_DATA_DIR: Path = Path(__file__).resolve().parents[3] / "data"
+Columns = Mapping[str, Sequence[object]]
 
 
 def write_parquet(columns: Columns, filename: str, folder: Path | str) -> Path:
