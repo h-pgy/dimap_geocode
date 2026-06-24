@@ -29,6 +29,10 @@ changelog:
         `parse.completo`). O discriminador `tipo` passa para o próprio `*Parse`: cada parse É o
         candidato. `Candidato` vira a união discriminada dos parses; usa-se `.completo` (não mais
         `formato_completo`).
+  - v8: cada atributo dos parses vira um `Campo` genérico (`valor` + `completo`) — acessa-se
+        `candidato.setor.valor` / `candidato.setor.completo` (substitui os booleans
+        `setor_completo`/`quadra_completo`/etc.). Os parses herdam um `ParseBase` com a `@property`
+        `campos_completos` (todos os `Campo` já completos).
 ---
 
 # SPEC roteamento-busca/001 — Roteador de Entrada (classifica o texto da barra única)
@@ -78,7 +82,11 @@ pois rua não começa com dígito); e ao digitar `rua itat`, que entenda que é 
       LOGRADOURO **completo** (nome de rua sem tipo); `paulista, 300` + finalizado é ENDERECO
       **completo**. Como o módulo chega a esse `True` (Enter no front etc.) **não importa** aqui.
       **Códigos não são afetados** (completude continua por nº de dígitos).
-- [ ] **Parses fazem o parse de verdade**, em campos estruturados:
+- [ ] **Cada atributo é um `Campo` genérico** (`valor` + `completo`): acessa-se `candidato.setor.valor`
+      e `candidato.setor.completo` — sem precisar saber o nome do booleano por atributo
+      (`setor_completo` etc. somem). Os parses **herdam** um `ParseBase` que expõe a `@property`
+      `campos_completos` (dict dos `Campo` já completos, por nome).
+- [ ] **Parses fazem o parse de verdade**, em atributos `Campo`:
       - **Contribuinte:** `setor` (3 díg.), `quadra` (3), `lote` (4) e `dv` (2 díg. verificadores,
         **opcionais**), com `mascara` (`001.001.0004-01`). Placeholder `calcular_dv()` para o DV.
       - **Codlog:** `codlog` (5 díg.) e `digito_verificador` (1 díg., **opcional**), com `mascara`
@@ -86,10 +94,10 @@ pois rua não começa com dígito); e ao digitar `rua itat`, que entenda que é 
       - **Logradouro:** `tipo_logradouro` e `nome` (como digitados).
       - **Endereço:** **compõe** um `LogradouroParse` (campo `logradouro`) **+** `numero` — o
         endereço *contém* um logradouro (§10.4).
-- [ ] **Parseamento parcial com flags de completude.** Cada parse expõe completude **por atributo**
-      (ex.: `setor_completo`, `lote_completo`) **e** uma flag agregada `completo` ("fechou 100%").
-      Digitar `20` produz um contribuinte com `setor="20"` (`setor_completo=False`, `completo=False`)
-      e um codlog com `codlog="20"` (`completo=False`).
+- [ ] **Parseamento parcial.** Cada `Campo` traz seu `completo` (ex.: `setor` com menos de 3 dígitos →
+      `completo=False`) e o parse expõe a flag agregada `completo` ("fechou 100%"). Digitar `20` →
+      contribuinte `setor.valor="20"` (`setor.completo=False`, `completo=False`) e codlog
+      `codlog.valor="20"` (`completo=False`).
 - [ ] **Status do resultado em enum**, incluindo o caso **impossível**: `RoteamentoStatus` com
       `UNICO` (1 interpretação), `AMBIGUO` (2+), `IMPOSSIVEL` (texto não-vazio que não casa com nada —
       ex.: 25 dígitos) e `VAZIO` (entrada vazia/só espaços).
@@ -278,98 +286,93 @@ class RoteamentoStatus(StrEnum):
     VAZIO = "vazio"            # entrada vazia / só espaços
 
 
-# ---- parses (fazem o parse de verdade; cada um carrega o discriminador `tipo` e É o candidato) ----
-class ContribuinteParse(BaseModel):
-    tipo: Literal[TipoEntrada.CONTRIBUINTE] = TipoEntrada.CONTRIBUINTE
-    setor: str          # até 3 dígitos
-    quadra: str         # até 3
-    lote: str           # até 4
-    dv: str             # até 2 (verificadores; "" quando ausente)
+# ---- atributo genérico: valor + completo ----
+class Campo(BaseModel):
+    valor: str
+    completo: bool
 
-    @computed_field  # type: ignore[prop-decorator]
+
+def campo_tamanho(valor: str, tamanho: int) -> Campo:   # código: completo ao atingir o tamanho
+    return Campo(valor=valor, completo=len(valor) == tamanho)
+
+
+def campo_texto(valor: str) -> Campo:                   # texto livre: completo quando não-vazio
+    return Campo(valor=valor, completo=bool(valor))
+
+
+# ---- base dos parses: expõe os Campo já completos (a SPEC pede esta herança; §10.4) ----
+class ParseBase(BaseModel):
     @property
-    def setor_completo(self) -> bool: return len(self.setor) == 3
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def quadra_completo(self) -> bool: return len(self.quadra) == 3
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def lote_completo(self) -> bool: return len(self.lote) == 4
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def dv_completo(self) -> bool: return len(self.dv) == 2
+    def campos_completos(self) -> dict[str, Campo]:
+        return {nome: v for nome, v in self if isinstance(v, Campo) and v.completo}
+
+
+# ---- parses (cada um carrega o discriminador `tipo` e É o candidato) ----
+class ContribuinteParse(ParseBase):
+    tipo: Literal[TipoEntrada.CONTRIBUINTE] = TipoEntrada.CONTRIBUINTE
+    setor: Campo                # 3 dígitos
+    quadra: Campo               # 3
+    lote: Campo                 # 4
+    dv: Campo                   # 2 (verificadores; "" quando ausente)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def completo(self) -> bool:           # "fechou 100%" o núcleo (DV é derivável)
-        return self.setor_completo and self.quadra_completo and self.lote_completo
+        return self.setor.completo and self.quadra.completo and self.lote.completo
 
     @property
     def digitos(self) -> str:
-        return f"{self.setor}{self.quadra}{self.lote}{self.dv}"
+        return f"{self.setor.valor}{self.quadra.valor}{self.lote.valor}{self.dv.valor}"
 
     @property
     def mascara(self) -> str:             # display progressivo: "001.001.0004-01"
-        base = ".".join(p for p in (self.setor, self.quadra, self.lote) if p)
-        return f"{base}-{self.dv}" if self.dv else base
+        base = ".".join(c.valor for c in (self.setor, self.quadra, self.lote) if c.valor)
+        return f"{base}-{self.dv.valor}" if self.dv.valor else base
 
     def calcular_dv(self) -> str:         # placeholder p/ algoritmo futuro do DV
         raise NotImplementedError("DV do contribuinte: algoritmo a definir.")
 
 
-class CodlogParse(BaseModel):
+class CodlogParse(ParseBase):
     tipo: Literal[TipoEntrada.CODLOG] = TipoEntrada.CODLOG
-    codlog: str                 # até 5 dígitos (o codlog em si)
-    digito_verificador: str     # até 1 dígito ("" quando ausente)
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def codlog_completo(self) -> bool: return len(self.codlog) == 5
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def dv_completo(self) -> bool: return len(self.digito_verificador) == 1
+    codlog: Campo               # 5 dígitos (o codlog em si)
+    digito_verificador: Campo   # 1 dígito ("" quando ausente)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def completo(self) -> bool:           # DV é derivável
-        return self.codlog_completo
+        return self.codlog.completo
 
     @property
     def mascara(self) -> str:             # "16321-0" com DV; "16321" sem (ou prefixo parcial)
-        return f"{self.codlog}-{self.digito_verificador}" if self.digito_verificador else self.codlog
+        dv = self.digito_verificador.valor
+        return f"{self.codlog.valor}-{dv}" if dv else self.codlog.valor
 
     def calcular_dv(self) -> str:         # placeholder p/ algoritmo futuro do DV
         raise NotImplementedError("DV do codlog: algoritmo a definir.")
 
 
-class LogradouroParse(BaseModel):
+class LogradouroParse(ParseBase):
     tipo: Literal[TipoEntrada.LOGRADOURO] = TipoEntrada.LOGRADOURO   # discriminador (≠ tipo_logradouro)
-    tipo_logradouro: str        # 1º token, como digitado ("" quando o usuário digitou só o nome)
-    nome: str                   # resto, como digitado
+    tipo_logradouro: Campo      # 1º token ("" quando o usuário digitou só o nome)
+    nome: Campo                 # resto, como digitado
     entrada_finalizada: bool = False   # = finished_typing: torna o tipo opcional
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def tipo_completo(self) -> bool: return bool(self.tipo_logradouro)
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def nome_completo(self) -> bool: return bool(self.nome)
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
     def completo(self) -> bool:           # nome + (tipo OU entrada finalizada)
-        return self.nome_completo and (self.tipo_completo or self.entrada_finalizada)
+        return self.nome.completo and (self.tipo_logradouro.completo or self.entrada_finalizada)
 
 
-class EnderecoParse(BaseModel):
+class EnderecoParse(ParseBase):
     tipo: Literal[TipoEntrada.ENDERECO] = TipoEntrada.ENDERECO
-    logradouro: LogradouroParse   # endereço CONTÉM um logradouro (tipo + nome)
-    numero: str                   # número do imóvel ("3", "100", "100A")
+    logradouro: LogradouroParse   # endereço CONTÉM um logradouro
+    numero: Campo                 # número do imóvel ("3", "100", "100A")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def completo(self) -> bool:   # completo só com logradouro completo (tipo+nome) E número
-        return self.logradouro.completo and bool(self.numero)
+    def completo(self) -> bool:
+        return self.logradouro.completo and self.numero.completo
 
 
 # ---- candidato = união discriminada dos próprios parses (sem camada de wrapper) ----
@@ -412,7 +415,7 @@ Identificador de contribuinte com ponto de extensão de regras (`contribuinte.py
 ```python
 import re
 from typing import Protocol
-from .models import ContribuinteParse
+from .models import ContribuinteParse, campo_tamanho
 
 SEPARADORES = re.compile(r"[.\-\s]")
 DASH_CODLOG = re.compile(r"\d{1,5}-\d")   # forma "16321-0" -> é codlog, não contribuinte
@@ -442,7 +445,10 @@ class ContribuinteIdentifier:
         if not digitos or not digitos.isdigit() or len(digitos) > COMP_COM_DV:
             return None
         parse = ContribuinteParse(
-            setor=digitos[0:3], quadra=digitos[3:6], lote=digitos[6:10], dv=digitos[10:12]
+            setor=campo_tamanho(digitos[0:3], 3),
+            quadra=campo_tamanho(digitos[3:6], 3),
+            lote=campo_tamanho(digitos[6:10], 4),
+            dv=campo_tamanho(digitos[10:12], 2),
         )
         if not all(regra(parse) for regra in self._regras):
             return None
@@ -454,7 +460,7 @@ Identificador de codlog (`codlog.py`) — mesma forma (regras + parse):
 ```python
 import re
 from typing import Protocol
-from .models import CodlogParse
+from .models import CodlogParse, campo_tamanho
 
 DASH_CODLOG = re.compile(r"\d{1,5}-\d")   # "16321-0"
 COMP_CODLOG = 6                           # codlog(5) + DV(1)
@@ -481,7 +487,10 @@ class CodlogIdentifier:
         digitos = bruto.replace("-", "").replace(" ", "")
         if not digitos or not digitos.isdigit() or len(digitos) > COMP_CODLOG:
             return None                          # >6 -> é contribuinte
-        parse = CodlogParse(codlog=digitos[0:5], digito_verificador=digitos[5:6])
+        parse = CodlogParse(
+            codlog=campo_tamanho(digitos[0:5], 5),
+            digito_verificador=campo_tamanho(digitos[5:6], 1),
+        )
         if not all(regra(parse) for regra in self._regras):
             return None
         return parse
@@ -523,7 +532,7 @@ def split_tipo_nome(texto: str) -> tuple[str, str]:
 Identificador de endereço (`endereco.py`) — separa número, quebra tipo↔nome e **compõe** o logradouro:
 
 ```python
-from .models import EnderecoParse, LogradouroParse
+from .models import EnderecoParse, LogradouroParse, campo_texto
 from .parsing import separar_numero, split_tipo_nome
 
 
@@ -536,16 +545,18 @@ class EnderecoIdentifier:
         tipo, nome = split_tipo_nome(logradouro_txt)
         return EnderecoParse(
             logradouro=LogradouroParse(
-                tipo_logradouro=tipo, nome=nome, entrada_finalizada=finished_typing
+                tipo_logradouro=campo_texto(tipo),
+                nome=campo_texto(nome),
+                entrada_finalizada=finished_typing,
             ),
-            numero=numero,
+            numero=campo_texto(numero),
         )
 ```
 
 Identificador de logradouro (`logradouro.py`) — compõe os mesmos helpers:
 
 ```python
-from .models import LogradouroParse
+from .models import LogradouroParse, campo_texto
 from .parsing import COMECA_COM_LETRA, separar_numero, split_tipo_nome
 
 
@@ -559,7 +570,11 @@ class LogradouroIdentifier:
         tipo, nome = split_tipo_nome(limpo.rstrip(","))
         if not tipo and not nome:
             return None
-        return LogradouroParse(tipo_logradouro=tipo, nome=nome, entrada_finalizada=finished_typing)
+        return LogradouroParse(
+            tipo_logradouro=campo_texto(tipo),
+            nome=campo_texto(nome),
+            entrada_finalizada=finished_typing,
+        )
 ```
 
 Orquestrador (`router.py`) — sem normalização; passa o texto bruto a cada identificador:
@@ -603,7 +618,7 @@ Exposição (`__init__.py`):
 
 ```python
 from .models import (
-    Candidato, CodlogParse, ContribuinteParse, EnderecoParse, LogradouroParse,
+    Campo, Candidato, CodlogParse, ContribuinteParse, EnderecoParse, LogradouroParse,
     RoteamentoQuery, RoteamentoResult, RoteamentoStatus, TipoEntrada,
 )
 from .router import EntradaRouter, rotear_entrada
@@ -611,7 +626,7 @@ from .router import EntradaRouter, rotear_entrada
 __all__ = [
     "rotear_entrada", "EntradaRouter",
     "RoteamentoQuery", "RoteamentoResult", "RoteamentoStatus", "TipoEntrada",
-    "Candidato",
+    "Candidato", "Campo",
     "ContribuinteParse", "CodlogParse", "LogradouroParse", "EnderecoParse",
 ]
 ```
@@ -658,50 +673,52 @@ O roteador (e a busca detalhada) monta a query com `fazer_split=False`, passando
 
 Texto preservado + quebra tipo↔nome (sem normalizar):
 
-- `"Avenida Paulista"` → `UNICO` LOGRADOURO, `tipo_logradouro=="Avenida"`, `nome=="Paulista"`
+- `"Avenida Paulista"` → `UNICO` LOGRADOURO, `tipo_logradouro.valor=="Avenida"`, `nome.valor=="Paulista"`
   (casing/acentos como digitados), `completo==True`.
-- `"paulista"` (só nome, `finished_typing=False`) → `UNICO` LOGRADOURO, `tipo_logradouro==""`,
-  `nome=="paulista"`, `completo==False`.
-- `"  Avenida Paulista , 3 "` → `UNICO` ENDERECO, `logradouro.tipo_logradouro=="Avenida"`,
-  `logradouro.nome=="Paulista"`, `numero=="3"`, `completo==True`.
+- `"paulista"` (só nome, `finished_typing=False`) → `UNICO` LOGRADOURO, `tipo_logradouro.valor==""`,
+  `nome.valor=="paulista"`, `completo==False`.
+- `"  Avenida Paulista , 3 "` → `UNICO` ENDERECO, `logradouro.tipo_logradouro.valor=="Avenida"`,
+  `logradouro.nome.valor=="Paulista"`, `numero.valor=="3"`, `completo==True`.
 
 Códigos (desambiguação por separador + nº de dígitos; status; máscaras):
 
-- `"20"` → `AMBIGUO`: CONTRIBUINTE (`setor=="20"`, `setor_completo==False`, `completo==False`) **e**
-  CODLOG (`codlog=="20"`, `mascara=="20"`, `completo==False`).
-- `"163210"` → `AMBIGUO`: CODLOG completo (`codlog=="16321"`, `digito_verificador=="0"`,
+- `"20"` → `AMBIGUO`: CONTRIBUINTE (`setor.valor=="20"`, `setor.completo==False`, `completo==False`)
+  **e** CODLOG (`codlog.valor=="20"`, `mascara=="20"`, `completo==False`).
+- `"163210"` → `AMBIGUO`: CODLOG completo (`codlog.valor=="16321"`, `digito_verificador.valor=="0"`,
   `mascara=="16321-0"`) **e** CONTRIBUINTE parcial (núcleo 6/10).
-- `"16321-0"` → `UNICO` CODLOG (`codlog=="16321"`, `digito_verificador=="0"`, `mascara=="16321-0"`);
-  contribuinte rejeita.
-- `"001.001"` → `UNICO` CONTRIBUINTE parcial (`setor=="001"`, `quadra=="001"`, `mascara=="001.001"`);
-  codlog rejeita (tem ponto).
-- `"001.001.0004"` → `UNICO` CONTRIBUINTE, `lote=="0004"`, `dv==""`, `completo==True`.
-- `"001.001.0004-01"` / `"001001000401"` → `UNICO` CONTRIBUINTE, `dv=="01"`, `dv_completo==True`.
+- `"16321-0"` → `UNICO` CODLOG (`codlog.valor=="16321"`, `digito_verificador.valor=="0"`,
+  `mascara=="16321-0"`); contribuinte rejeita.
+- `"001.001"` → `UNICO` CONTRIBUINTE parcial (`setor.valor=="001"`, `quadra.valor=="001"`,
+  `mascara=="001.001"`); codlog rejeita (tem ponto).
+- `"001.001.0004"` → `UNICO` CONTRIBUINTE, `lote.valor=="0004"`, `dv.valor==""`, `completo==True`.
+- `"001.001.0004-01"` / `"001001000401"` → `UNICO` CONTRIBUINTE, `dv.valor=="01"`, `dv.completo==True`.
 - `"0010010004"` → `UNICO` CONTRIBUINTE completo (codlog rejeita, >6).
-- `"00100100"` (8 díg.) → `UNICO` CONTRIBUINTE **parcial** (`lote_completo==False`).
+- `"00100100"` (8 díg.) → `UNICO` CONTRIBUINTE **parcial** (`lote.completo==False`); `campos_completos`
+  traz `setor`, `quadra` (e não `lote`).
 - `"0010010004001"` (13 díg.) → `IMPOSSIVEL`.
 - `"abc!@#"` → `UNICO` LOGRADOURO (começa por letra; validação de conteúdo não é concern deste módulo).
 - `""` / `"   "` → `VAZIO`.
 
 Texto (exclusão mútua; ruas numeradas; só-nome vs tipo+nome):
 
-- `"rua itat"` → `UNICO` LOGRADOURO, `tipo_logradouro=="rua"`, `nome=="itat"`, `completo==True`.
+- `"rua itat"` → `UNICO` LOGRADOURO, `tipo_logradouro.valor=="rua"`, `nome.valor=="itat"`, `completo==True`.
 - `"avenida paulista 3"`, `"avenida paulista, 3, consolação, são paulo"` → `UNICO` ENDERECO,
-  `logradouro.tipo_logradouro=="avenida"`, `logradouro.nome=="paulista"`, `numero=="3"`,
+  `logradouro.tipo_logradouro.valor=="avenida"`, `logradouro.nome.valor=="paulista"`, `numero.valor=="3"`,
   `completo==True`, complemento descartado.
 - `"paulista 3"` (nome + número, sem tipo) → `UNICO` ENDERECO **parcial**:
-  `logradouro.tipo_logradouro==""`, `logradouro.nome=="paulista"`, `numero=="3"`, `completo==False`
-  (endereço exige tipo + nome + número).
-- `"rua 25 de março"` → `UNICO` LOGRADOURO, `tipo_logradouro=="rua"`, `nome=="25 de março"`.
+  `logradouro.tipo_logradouro.valor==""`, `logradouro.nome.valor=="paulista"`, `numero.valor=="3"`,
+  `completo==False` (endereço exige tipo + nome + número).
+- `"rua 25 de março"` → `UNICO` LOGRADOURO, `tipo_logradouro.valor=="rua"`, `nome.valor=="25 de março"`.
 - `"rua 25 de março, 100"` / `"rua 25 de março 100"` → `UNICO` ENDERECO,
-  `logradouro.tipo_logradouro=="rua"`, `logradouro.nome=="25 de março"`, `numero=="100"`.
+  `logradouro.tipo_logradouro.valor=="rua"`, `logradouro.nome.valor=="25 de março"`, `numero.valor=="100"`.
 
 `finished_typing` (relaxa o tipo do logradouro; não afeta códigos):
 
-- `"paulista"` com `finished_typing=True` → `UNICO` LOGRADOURO **completo** (`tipo_logradouro==""`,
-  `nome=="paulista"`, `completo==True`).
+- `"paulista"` com `finished_typing=True` → `UNICO` LOGRADOURO **completo** (`tipo_logradouro.valor==""`,
+  `nome.valor=="paulista"`, `completo==True`).
 - `"paulista, 300"` com `finished_typing=True` → `UNICO` ENDERECO **completo**
-  (`logradouro.tipo_logradouro==""`, `logradouro.nome=="paulista"`, `numero=="300"`, `completo==True`).
+  (`logradouro.tipo_logradouro.valor==""`, `logradouro.nome.valor=="paulista"`, `numero.valor=="300"`,
+  `completo==True`).
 - `"paulista 300"` com `finished_typing=False` → `UNICO` ENDERECO **parcial** (`completo==False`).
 - `"avenida paulista"` → `completo==True` com ou sem `finished_typing` (já tem tipo + nome).
 - `"00100100"` (8 díg.) com `finished_typing=True` → ainda `UNICO` CONTRIBUINTE **parcial**
@@ -722,3 +739,8 @@ Contrato:
   que agora é, ele mesmo, o candidato; `Candidato` virou a união discriminada dos parses. Consome-se
   `.completo` no lugar de `formato_completo`. Implementação validada (`mypy --strict`, `ruff`,
   round-trip de serialização da união discriminada).
+- 2026-06-24 (v8): cada atributo dos parses vira um `Campo` genérico (`valor` + `completo`), via
+  builders `campo_tamanho`/`campo_texto`. Consome-se `candidato.setor.valor` / `candidato.setor.completo`
+  (os booleans `setor_completo`/`quadra_completo`/etc. somem). Os parses herdam `ParseBase`, que expõe
+  a `@property` `campos_completos` (dict dos `Campo` já completos). Facilita montar a view sem repetir
+  o nome do booleano de cada atributo.
