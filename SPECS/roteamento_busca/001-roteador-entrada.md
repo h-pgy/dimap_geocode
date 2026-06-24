@@ -25,6 +25,10 @@ changelog:
         obrigatório para LOGRADOURO/ENDERECO serem completos (ex.: "paulista" + Enter = nome de rua
         completo sem tipo). Threaded como `entrada_finalizada` no LogradouroParse. Códigos não são
         afetados (completude por nº de dígitos).
+  - v7: remove a camada de wrappers `Candidato*` (eram redundantes — `formato_completo` era sempre
+        `parse.completo`). O discriminador `tipo` passa para o próprio `*Parse`: cada parse É o
+        candidato. `Candidato` vira a união discriminada dos parses; usa-se `.completo` (não mais
+        `formato_completo`).
 ---
 
 # SPEC roteamento-busca/001 — Roteador de Entrada (classifica o texto da barra única)
@@ -231,8 +235,10 @@ identificador (§10.3, fonte única do formato — §10.1). Os **helpers de text
 LOGRADOURO e ENDERECO (detecção de número e quebra tipo↔nome) ficam num pequeno módulo interno do
 submódulo (evita import circular entre `logradouro.py` e `endereco.py`).
 
-**Contratos (§3.3, §10.4).** Entrada/saída do orquestrador são DTOs Pydantic; a saída é uma **união
-discriminada** por `tipo`, com um parse específico por tipo.
+**Contratos (§3.3, §10.4).** Entrada/saída do orquestrador são DTOs Pydantic; a lista `candidatos` é
+uma **união discriminada** por `tipo` cujos membros são os **próprios `*Parse`** — cada parse carrega
+seu discriminador `tipo` e **é** o candidato (sem camada de wrapper). A completude de cada candidato é
+o seu `.completo`.
 
 ## Peças de referência a compor
 
@@ -272,8 +278,9 @@ class RoteamentoStatus(StrEnum):
     VAZIO = "vazio"            # entrada vazia / só espaços
 
 
-# ---- parses (fazem o parse de verdade; suportam prefixo) ----
+# ---- parses (fazem o parse de verdade; cada um carrega o discriminador `tipo` e É o candidato) ----
 class ContribuinteParse(BaseModel):
+    tipo: Literal[TipoEntrada.CONTRIBUINTE] = TipoEntrada.CONTRIBUINTE
     setor: str          # até 3 dígitos
     quadra: str         # até 3
     lote: str           # até 4
@@ -311,6 +318,7 @@ class ContribuinteParse(BaseModel):
 
 
 class CodlogParse(BaseModel):
+    tipo: Literal[TipoEntrada.CODLOG] = TipoEntrada.CODLOG
     codlog: str                 # até 5 dígitos (o codlog em si)
     digito_verificador: str     # até 1 dígito ("" quando ausente)
 
@@ -335,6 +343,7 @@ class CodlogParse(BaseModel):
 
 
 class LogradouroParse(BaseModel):
+    tipo: Literal[TipoEntrada.LOGRADOURO] = TipoEntrada.LOGRADOURO   # discriminador (≠ tipo_logradouro)
     tipo_logradouro: str        # 1º token, como digitado ("" quando o usuário digitou só o nome)
     nome: str                   # resto, como digitado
     entrada_finalizada: bool = False   # = finished_typing: torna o tipo opcional
@@ -353,6 +362,7 @@ class LogradouroParse(BaseModel):
 
 
 class EnderecoParse(BaseModel):
+    tipo: Literal[TipoEntrada.ENDERECO] = TipoEntrada.ENDERECO
     logradouro: LogradouroParse   # endereço CONTÉM um logradouro (tipo + nome)
     numero: str                   # número do imóvel ("3", "100", "100A")
 
@@ -362,33 +372,11 @@ class EnderecoParse(BaseModel):
         return self.logradouro.completo and bool(self.numero)
 
 
-# ---- candidatos (união discriminada por tipo) ----
-class CandidatoContribuinte(BaseModel):
-    tipo: Literal[TipoEntrada.CONTRIBUINTE] = TipoEntrada.CONTRIBUINTE
-    formato_completo: bool
-    parse: ContribuinteParse
-
-
-class CandidatoCodlog(BaseModel):
-    tipo: Literal[TipoEntrada.CODLOG] = TipoEntrada.CODLOG
-    formato_completo: bool
-    parse: CodlogParse
-
-
-class CandidatoLogradouro(BaseModel):
-    tipo: Literal[TipoEntrada.LOGRADOURO] = TipoEntrada.LOGRADOURO
-    formato_completo: bool
-    parse: LogradouroParse
-
-
-class CandidatoEndereco(BaseModel):
-    tipo: Literal[TipoEntrada.ENDERECO] = TipoEntrada.ENDERECO
-    formato_completo: bool
-    parse: EnderecoParse
-
-
+# ---- candidato = união discriminada dos próprios parses (sem camada de wrapper) ----
+# O discriminador `tipo` em cada parse dá narrowing estático (mypy) e desserialização correta da
+# lista heterogênea. A completude é o `.completo` de cada parse (não há `formato_completo` separado).
 Candidato = Annotated[
-    CandidatoContribuinte | CandidatoCodlog | CandidatoLogradouro | CandidatoEndereco,
+    ContribuinteParse | CodlogParse | LogradouroParse | EnderecoParse,
     Field(discriminator="tipo"),
 ]
 
@@ -424,7 +412,7 @@ Identificador de contribuinte com ponto de extensão de regras (`contribuinte.py
 ```python
 import re
 from typing import Protocol
-from .models import CandidatoContribuinte, ContribuinteParse
+from .models import ContribuinteParse
 
 SEPARADORES = re.compile(r"[.\-\s]")
 DASH_CODLOG = re.compile(r"\d{1,5}-\d")   # forma "16321-0" -> é codlog, não contribuinte
@@ -445,7 +433,7 @@ class ContribuinteIdentifier:
     def __init__(self, regras: tuple[RegraContribuinte, ...] = REGRAS_CONTRIBUINTE) -> None:
         self._regras = regras
 
-    def __call__(self, texto: str, finished_typing: bool) -> CandidatoContribuinte | None:
+    def __call__(self, texto: str, finished_typing: bool) -> ContribuinteParse | None:
         # finished_typing não afeta códigos (completude é por nº de dígitos)
         bruto = texto.strip()
         if "." not in bruto and DASH_CODLOG.fullmatch(bruto):
@@ -458,7 +446,7 @@ class ContribuinteIdentifier:
         )
         if not all(regra(parse) for regra in self._regras):
             return None
-        return CandidatoContribuinte(formato_completo=parse.completo, parse=parse)
+        return parse
 ```
 
 Identificador de codlog (`codlog.py`) — mesma forma (regras + parse):
@@ -466,7 +454,7 @@ Identificador de codlog (`codlog.py`) — mesma forma (regras + parse):
 ```python
 import re
 from typing import Protocol
-from .models import CandidatoCodlog, CodlogParse
+from .models import CodlogParse
 
 DASH_CODLOG = re.compile(r"\d{1,5}-\d")   # "16321-0"
 COMP_CODLOG = 6                           # codlog(5) + DV(1)
@@ -483,7 +471,7 @@ class CodlogIdentifier:
     def __init__(self, regras: tuple[RegraCodlog, ...] = REGRAS_CODLOG) -> None:
         self._regras = regras
 
-    def __call__(self, texto: str, finished_typing: bool) -> CandidatoCodlog | None:
+    def __call__(self, texto: str, finished_typing: bool) -> CodlogParse | None:
         # finished_typing não afeta códigos (completude é por nº de dígitos)
         bruto = texto.strip()
         if "." in bruto:
@@ -496,7 +484,7 @@ class CodlogIdentifier:
         parse = CodlogParse(codlog=digitos[0:5], digito_verificador=digitos[5:6])
         if not all(regra(parse) for regra in self._regras):
             return None
-        return CandidatoCodlog(formato_completo=parse.completo, parse=parse)
+        return parse
 ```
 
 Helpers de texto compartilhados (`parsing.py`) — detecção de número e quebra tipo↔nome, sem
@@ -535,35 +523,34 @@ def split_tipo_nome(texto: str) -> tuple[str, str]:
 Identificador de endereço (`endereco.py`) — separa número, quebra tipo↔nome e **compõe** o logradouro:
 
 ```python
-from .models import CandidatoEndereco, EnderecoParse, LogradouroParse
+from .models import EnderecoParse, LogradouroParse
 from .parsing import separar_numero, split_tipo_nome
 
 
 class EnderecoIdentifier:
-    def __call__(self, texto: str, finished_typing: bool) -> CandidatoEndereco | None:
+    def __call__(self, texto: str, finished_typing: bool) -> EnderecoParse | None:
         partes = separar_numero(texto)
         if partes is None:
             return None
         logradouro_txt, numero = partes
         tipo, nome = split_tipo_nome(logradouro_txt)
-        parse = EnderecoParse(
+        return EnderecoParse(
             logradouro=LogradouroParse(
                 tipo_logradouro=tipo, nome=nome, entrada_finalizada=finished_typing
             ),
             numero=numero,
         )
-        return CandidatoEndereco(formato_completo=parse.completo, parse=parse)
 ```
 
 Identificador de logradouro (`logradouro.py`) — compõe os mesmos helpers:
 
 ```python
-from .models import CandidatoLogradouro, LogradouroParse
+from .models import LogradouroParse
 from .parsing import COMECA_COM_LETRA, separar_numero, split_tipo_nome
 
 
 class LogradouroIdentifier:
-    def __call__(self, texto: str, finished_typing: bool) -> CandidatoLogradouro | None:
+    def __call__(self, texto: str, finished_typing: bool) -> LogradouroParse | None:
         limpo = texto.strip()
         if not COMECA_COM_LETRA.match(limpo):
             return None                              # começa com dígito -> não é rua
@@ -572,8 +559,7 @@ class LogradouroIdentifier:
         tipo, nome = split_tipo_nome(limpo.rstrip(","))
         if not tipo and not nome:
             return None
-        parse = LogradouroParse(tipo_logradouro=tipo, nome=nome, entrada_finalizada=finished_typing)
-        return CandidatoLogradouro(formato_completo=parse.completo, parse=parse)
+        return LogradouroParse(tipo_logradouro=tipo, nome=nome, entrada_finalizada=finished_typing)
 ```
 
 Orquestrador (`router.py`) — sem normalização; passa o texto bruto a cada identificador:
@@ -617,8 +603,7 @@ Exposição (`__init__.py`):
 
 ```python
 from .models import (
-    Candidato, CandidatoCodlog, CandidatoContribuinte, CandidatoEndereco, CandidatoLogradouro,
-    CodlogParse, ContribuinteParse, EnderecoParse, LogradouroParse,
+    Candidato, CodlogParse, ContribuinteParse, EnderecoParse, LogradouroParse,
     RoteamentoQuery, RoteamentoResult, RoteamentoStatus, TipoEntrada,
 )
 from .router import EntradaRouter, rotear_entrada
@@ -626,8 +611,7 @@ from .router import EntradaRouter, rotear_entrada
 __all__ = [
     "rotear_entrada", "EntradaRouter",
     "RoteamentoQuery", "RoteamentoResult", "RoteamentoStatus", "TipoEntrada",
-    "Candidato", "CandidatoContribuinte", "CandidatoCodlog",
-    "CandidatoLogradouro", "CandidatoEndereco",
+    "Candidato",
     "ContribuinteParse", "CodlogParse", "LogradouroParse", "EnderecoParse",
 ]
 ```
@@ -695,7 +679,8 @@ Códigos (desambiguação por separador + nº de dígitos; status; máscaras):
 - `"001.001.0004-01"` / `"001001000401"` → `UNICO` CONTRIBUINTE, `dv=="01"`, `dv_completo==True`.
 - `"0010010004"` → `UNICO` CONTRIBUINTE completo (codlog rejeita, >6).
 - `"00100100"` (8 díg.) → `UNICO` CONTRIBUINTE **parcial** (`lote_completo==False`).
-- `"0010010004001"` (13 díg.) e `"abc!@#"` → `IMPOSSIVEL`.
+- `"0010010004001"` (13 díg.) → `IMPOSSIVEL`.
+- `"abc!@#"` → `UNICO` LOGRADOURO (começa por letra; validação de conteúdo não é concern deste módulo).
 - `""` / `"   "` → `VAZIO`.
 
 Texto (exclusão mútua; ruas numeradas; só-nome vs tipo+nome):
@@ -732,4 +717,8 @@ Contrato:
 
 ## Patches
 
-- (nenhum até o momento)
+- 2026-06-24 (v7): remove a camada de wrappers `Candidato*`. Eram redundantes — `formato_completo`
+  era sempre igual a `parse.completo`. O discriminador `tipo` passou para dentro de cada `*Parse`,
+  que agora é, ele mesmo, o candidato; `Candidato` virou a união discriminada dos parses. Consome-se
+  `.completo` no lugar de `formato_completo`. Implementação validada (`mypy --strict`, `ruff`,
+  round-trip de serialização da união discriminada).
