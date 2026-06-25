@@ -1,9 +1,11 @@
 ---
 spec: roteamento-busca/002
-versao: v1
+versao: v3
 atualizado_em: 2026-06-24
 changelog:
   - v1: versão inicial
+  - v2: refatora ContribuinteMatcher para separação de responsabilidades no __call__
+  - v3: move o parâmetro limite para o contrato de entrada ContribuinteMatchInput
 ---
 
 # SPEC roteamento-busca/002 — Módulo de busca e correspondência de contribuintes - filtro_contribuinte
@@ -40,6 +42,7 @@ class ContribuinteMatchInput(BaseModel):
     quadra: str | None = Field(default=None, pattern=r"^\d{3}$")
     lote: str | None = Field(default=None, pattern=r"^\d{4}$")
     dv: str | None = Field(default=None, pattern=r"^\d{2}$")
+    limite: int = Field(default=5, gt=0)
 
     @model_validator(mode="after")
     def _validar_dependencia_quadra_lote(self) -> "ContribuinteMatchInput":
@@ -62,24 +65,31 @@ class ContribuinteMatchOutput(BaseModel):
 
 class ContribuinteMatcher:
     def __init__(self, nome_arquivo: str = "enderecos_fiscais.parquet"):
-        self._dataframe = read_parquet_from_data(nome_arquivo)
+        self._dataframe = pd.DataFrame(read_parquet_from_data(nome_arquivo))
 
-    def __call__(self, payload: ContribuinteMatchInput, limite: int = 5) -> list[ContribuinteMatchOutput]:
-        mascara = self._dataframe["cd_setor_fiscal"] == payload.setor
-
-        if payload.quadra:
-            mascara &= (self._dataframe["cd_quadra_fiscal"] == payload.quadra)
-
+    def __call__(self, payload: ContribuinteMatchInput) -> list[ContribuinteMatchOutput]:
         if payload.lote:
-            mascara &= (self._dataframe["cd_lote"] == payload.lote)
+            df = self._busca_lote(payload.setor, payload.quadra, payload.lote)
+        elif payload.quadra:
+            df = self._busca_quadra(payload.setor, payload.quadra).head(payload.limite)
+        else:
+            df = self._busca_setor(payload.setor).head(payload.limite)
+        return self._mapear_resultados(df)
 
-        dataframe_filtrado = self._dataframe[mascara]
+    def _busca_setor(self, setor: str) -> pd.DataFrame:
+        return self._dataframe[self._dataframe["cd_setor_fiscal"] == setor]
 
-        if not payload.lote:
-            dataframe_filtrado = dataframe_filtrado.head(limite)
+    def _busca_quadra(self, setor: str, quadra: str) -> pd.DataFrame:
+        df = self._busca_setor(setor)
+        return df[df["cd_quadra_fiscal"] == quadra]
 
+    def _busca_lote(self, setor: str, quadra: str, lote: str) -> pd.DataFrame:
+        df = self._busca_quadra(setor, quadra)
+        return df[df["cd_lote"] == lote]
+
+    def _mapear_resultados(self, dataframe: pd.DataFrame) -> list[ContribuinteMatchOutput]:
         resultados = []
-        for _, linha in dataframe_filtrado.iterrows():
+        for _, linha in dataframe.iterrows():
             resultados.append(
                 ContribuinteMatchOutput(
                     id_poligono=str(linha["cd_identificador"]),
@@ -109,7 +119,8 @@ Verificar comportamento do validador Pydantic perante inserção de atributos co
 
 ## Patches
 
-Não aplicável.
+- 2026-06-24 (v2): refatora `ContribuinteMatcher.__call__` para atuar apenas como dispatcher, delegando filtragem a `_busca_setor`, `_busca_quadra` e `_busca_lote` (cada um compondo o anterior) e mapeamento a `_mapear_resultados`.
+- 2026-06-24 (v3): move `limite` de parâmetro do `__call__` para campo do `ContribuinteMatchInput` (`Field(default=5, gt=0)`), mantendo o contrato de entrada como fonte única dos parâmetros da busca.
 
 ```
 
