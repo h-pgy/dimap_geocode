@@ -13,6 +13,7 @@ dependencies = [
     "requests>=2.34.2",
     "pyarrow>=19.0",
     "pandas>=3.0.3",
+    "rapidfuzz>=3.14.5",
 ]
 
 [dependency-groups]
@@ -21,6 +22,13 @@ dev = [
     "ruff>=0.9",
     "mypy>=1.15",
     "django-stubs>=6.0.5",
+    "pandas-stubs>=2.2",
+]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not integration'"
+markers = [
+    "integration: testes de integração com dados reais (rode com: pytest -m integration)",
 ]
 
 [tool.mypy]
