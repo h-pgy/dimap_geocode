@@ -1,11 +1,12 @@
 ---
 spec: roteamento-busca/002
-versao: v3
-atualizado_em: 2026-06-24
+versao: v4
+atualizado_em: 2026-06-26
 changelog:
   - v1: versão inicial
   - v2: refatora ContribuinteMatcher para separação de responsabilidades no __call__
   - v3: move o parâmetro limite para o contrato de entrada ContribuinteMatchInput
+  - v4: altera ContribuinteMatcher para usar a propriedade cacheada _dataframe com @ttl_cached_property
 ---
 
 # SPEC roteamento-busca/002 — Módulo de busca e correspondência de contribuintes - filtro_contribuinte
@@ -35,6 +36,7 @@ O módulo aloca-se em services/domain, isolado de regras de interface web e orqu
 ```python
 import pandas as pd
 from pydantic import BaseModel, Field, model_validator
+from services.utils.cache import ttl_cached_property
 from services.utils.io import read_parquet_from_data
 
 class ContribuinteMatchInput(BaseModel):
@@ -65,7 +67,11 @@ class ContribuinteMatchOutput(BaseModel):
 
 class ContribuinteMatcher:
     def __init__(self, nome_arquivo: str = "enderecos_fiscais.parquet"):
-        self._dataframe = pd.DataFrame(read_parquet_from_data(nome_arquivo))
+        self._nome_arquivo = nome_arquivo
+
+    @ttl_cached_property(ttl_seconds=3600)
+    def _dataframe(self) -> pd.DataFrame:
+        return pd.DataFrame(read_parquet_from_data(self._nome_arquivo))
 
     def __call__(self, payload: ContribuinteMatchInput) -> list[ContribuinteMatchOutput]:
         if payload.lote:
@@ -121,6 +127,7 @@ Verificar comportamento do validador Pydantic perante inserção de atributos co
 
 - 2026-06-24 (v2): refatora `ContribuinteMatcher.__call__` para atuar apenas como dispatcher, delegando filtragem a `_busca_setor`, `_busca_quadra` e `_busca_lote` (cada um compondo o anterior) e mapeamento a `_mapear_resultados`.
 - 2026-06-24 (v3): move `limite` de parâmetro do `__call__` para campo do `ContribuinteMatchInput` (`Field(default=5, gt=0)`), mantendo o contrato de entrada como fonte única dos parâmetros da busca.
+- 2026-06-26 (v4): altera `ContribuinteMatcher` para inicializar de forma preguiçosa (lazy) usando a propriedade cacheada `@ttl_cached_property` para o `_dataframe`.
 
 ```
 

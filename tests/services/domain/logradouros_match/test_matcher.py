@@ -234,6 +234,7 @@ def test_tipo_codigo_no_item_vem_da_linha_casada() -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 class TestIntegracaoDadosReais:
     """Testes contra os parquets reais em data/. Marcados para eventual separação."""
 

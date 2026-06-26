@@ -23,13 +23,15 @@ _DADOS_FAKE: dict[str, list[object]] = {
 }
 
 
+from collections.abc import Generator
+
 @pytest.fixture
-def matcher() -> ContribuinteMatcher:
+def matcher() -> Generator[ContribuinteMatcher, None, None]:
     with patch(
         "services.domain.contribuinte_match.matcher.read_parquet_from_data",
         return_value=_DADOS_FAKE,
     ):
-        return ContribuinteMatcher()
+        yield ContribuinteMatcher()
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +137,7 @@ def test_rejeita_limite_zero() -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 class TestIntegracaoDadosReais:
     def test_busca_por_setor_retorna_resultados_do_setor(self) -> None:
         from services.domain.contribuinte_match import match_contribuinte

@@ -25,6 +25,12 @@ dev = [
     "pandas-stubs>=2.2",
 ]
 
+[tool.pytest.ini_options]
+addopts = "-m 'not integration'"
+markers = [
+    "integration: testes de integração com dados reais (rode com: pytest -m integration)",
+]
+
 [tool.mypy]
 plugins = ["mypy_django_plugin.main"]
 

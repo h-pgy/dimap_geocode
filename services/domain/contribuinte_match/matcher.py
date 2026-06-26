@@ -1,5 +1,6 @@
 import pandas as pd
 
+from services.utils.cache import ttl_cached_property
 from services.utils.io import read_parquet_from_data
 
 from .models import ContribuinteMatchInput, ContribuinteMatchOutput
@@ -9,7 +10,11 @@ NOME_ARQUIVO_PADRAO = "enderecos_fiscais.parquet"
 
 class ContribuinteMatcher:
     def __init__(self, nome_arquivo: str = NOME_ARQUIVO_PADRAO) -> None:
-        self._dataframe: pd.DataFrame = pd.DataFrame(read_parquet_from_data(nome_arquivo))
+        self._nome_arquivo = nome_arquivo
+
+    @ttl_cached_property(ttl_seconds=3600)
+    def _dataframe(self) -> pd.DataFrame:
+        return pd.DataFrame(read_parquet_from_data(self._nome_arquivo))
 
     def __call__(self, payload: ContribuinteMatchInput) -> list[ContribuinteMatchOutput]:
         if payload.lote:
