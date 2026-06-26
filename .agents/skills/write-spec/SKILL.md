@@ -1,0 +1,1 @@
+/home/hpougy/projects/dimap_geocode/.claude/skills/specs/SKILL.md
