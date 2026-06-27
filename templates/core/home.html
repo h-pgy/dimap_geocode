@@ -10,11 +10,24 @@
     fiscais da Prefeitura de São Paulo.
   </p>
 
-  {# A barra de busca única (apps/search) e o mapa (apps/mapping) entram aqui
-     quando suas SPECs forem implementadas (roadmap §14). #}
-  <div class="mt-8 rounded-box border border-base-300 bg-base-200 p-6">
-    <p class="text-sm text-base-content/60">Scaffold inicial — apps de busca e mapa em breve.</p>
-  </div>
+  <form class="mt-8 flex gap-2"
+        hx-post="{% url 'logradouro_matcher:buscar_codlog' %}"
+        hx-target="#resultados-codlog"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <input
+      type="text"
+      name="input_codlog"
+      placeholder="Código do logradouro (codlog)"
+      inputmode="numeric"
+      maxlength="5"
+      class="input input-bordered flex-1"
+      required
+    />
+    <button type="submit" class="btn btn-primary">Buscar</button>
+  </form>
+
+  <div id="resultados-codlog" class="mt-6"></div>
 
   {# Bloco de teste — remover quando o middleware estiver validado #}
   <div class="mt-6">
