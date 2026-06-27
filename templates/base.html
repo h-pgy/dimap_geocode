@@ -10,10 +10,21 @@
 
     {# Dev: Tailwind 4 + DaisyUI via CDN. No deploy, compilar static/src/input.css
        -> static/dist/output.css e trocar por:
-       <link rel="stylesheet" href="{% load static %}{% static 'output.css' %}" /> (CLAUDE.md §2/§12). #}
+       <link rel="stylesheet" href="{% load static %}{% static 'output.css' %}" /> (CLAUDE.md §2/§12).
+       O browser build do Tailwind não suporta @plugin — DaisyUI entra como CSS separado. #}
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style type="text/tailwindcss">@plugin "daisyui";</style>
     <script src="https://unpkg.com/htmx.org@2"></script>
+    <script>
+      // 422 (ValidationError do Pydantic) deve fazer swap normalmente.
+      // Os demais 4xx/5xx mantêm o comportamento padrão (sem swap).
+      htmx.config.responseHandling = [
+        {code: "204", swap: false},
+        {code: "[23]..", swap: true},
+        {code: "422", swap: true},
+        {code: "[45]..", swap: false, error: true},
+      ];
+    </script>
 
     {% block head %}{% endblock %}
   </head>
