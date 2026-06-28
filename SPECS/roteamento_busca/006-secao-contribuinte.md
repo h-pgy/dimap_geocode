@@ -2,14 +2,14 @@
 spec: roteamento-busca/006
 versao: v1
 atualizado_em: 2026-06-28
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
 ---
 
 # SPEC roteamento-busca/006 — Seção de sugestões de contribuinte (pluga o match de lote no roteador)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 

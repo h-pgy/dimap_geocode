@@ -1,0 +1,19 @@
+{# templates/lote_matcher/partials/resultados_contribuinte.html — fragmento HTMX, sem extends #}
+{# Recebe: resultados (list[ContribuinteMatchOutput])                                         #}
+
+{% if resultados %}
+  <ul class="divide-y divide-base-300">
+    {% for r in resultados %}
+      <li class="py-3 flex items-baseline gap-4">
+        <span class="font-mono text-sm text-base-content/60 w-32 shrink-0">
+          {{ r.setor }}.{{ r.quadra }}.{{ r.lote }}{% if r.digito %}-{{ r.digito }}{% endif %}
+        </span>
+        <span class="font-medium">
+          {{ r.logradouro }}, {{ r.numero }}{% if r.complemento %} — {{ r.complemento }}{% endif %}
+        </span>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-base-content/60 text-sm py-4">Nenhum lote encontrado.</p>
+{% endif %}

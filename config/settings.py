@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.search",
     "apps.logradouro_matcher",
+    "apps.lote_matcher",
     "apps.address_geocoder",
 ]
 

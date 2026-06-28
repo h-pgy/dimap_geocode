@@ -5,6 +5,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
 from apps.logradouro_matcher.views import secao_codlog
+from apps.lote_matcher.views import secao_contribuinte
 from apps.search.secoes import SecaoResultado
 from services.domain.roteamento_busca import Candidato, RoteamentoQuery, TipoEntrada, rotear_entrada
 
@@ -12,6 +13,7 @@ SectionRenderer = Callable[..., SecaoResultado]
 
 REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
     TipoEntrada.CODLOG: secao_codlog,
+    TipoEntrada.CONTRIBUINTE: secao_contribuinte,
 }
 
 
