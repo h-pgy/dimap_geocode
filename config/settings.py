@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "apps.core",
+    "apps.search",
     "apps.logradouro_matcher",
     "apps.address_geocoder",
 ]

@@ -10,24 +10,23 @@
     fiscais da Prefeitura de São Paulo.
   </p>
 
-  <form class="mt-8 flex gap-2"
-        hx-post="{% url 'logradouro_matcher:buscar_codlog' %}"
-        hx-target="#resultados-codlog"
-        hx-swap="innerHTML">
-    {% csrf_token %}
+  <div class="mt-8">
     <input
-      type="text"
-      name="input_codlog"
-      placeholder="Código do logradouro (codlog)"
-      inputmode="numeric"
-      maxlength="5"
-      class="input input-bordered flex-1"
-      required
+      type="search"
+      id="input_search"
+      name="termo_pesquisa"
+      placeholder="Rua, endereço, codlog ou nº de contribuinte…"
+      class="input input-bordered w-full"
+      hx-post="{% url 'search:rotear_busca' %}"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+      hx-trigger="keyup changed delay:300ms, search"
+      hx-target="#sugestoes-busca"
+      hx-swap="innerHTML"
+      hx-on:htmx:config-request="event.detail.parameters['tipo_evento'] = event.detail.triggeringEvent.type"
     />
-    <button type="submit" class="btn btn-primary">Buscar</button>
-  </form>
+  </div>
 
-  <div id="resultados-codlog" class="mt-6"></div>
+  <div id="sugestoes-busca" class="mt-4"></div>
 
   {# Bloco de teste — remover quando o middleware estiver validado #}
   <div class="mt-6">

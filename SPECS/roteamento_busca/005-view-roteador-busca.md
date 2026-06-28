@@ -1,18 +1,21 @@
 ---
 spec: roteamento-busca/005
-versao: v3
+versao: v4
 atualizado_em: 2026-06-28
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: a view do roteador, o registro de seções e o partial agregador moram no app `search`
         (não no `core`) — alinhando ao §6 do CLAUDE.md; criação do app `search` faz parte da SPEC.
   - v3: nomes HTMX semânticos — alvo `#sugestoes-busca` e partial agregador `_sugestoes.html`.
+  - v4: `SecaoResultado` movida de `logradouro_matcher/views.py` para `apps/search/secoes.py`
+        como Pydantic `BaseModel` (não dataclass) — o contrato pertence ao `search`, que é quem
+        agrega todas as seções; os matchers importam dali.
 ---
 
 # SPEC roteamento-busca/005 — View do roteador na barra única (agrega seções de sugestões)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada**
 
 ## User story
 
@@ -302,4 +305,7 @@ urlpatterns = [
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+- 2026-06-28 (v4): `SecaoResultado` movida de `apps/logradouro_matcher/views.py` para
+  `apps/search/secoes.py` como Pydantic `BaseModel`. A dataclass no matcher era errada de
+  origem — o contrato de seção pertence ao `search` (agregador), e todos os matchers futuros
+  importarão dali. Evita import circular: `secoes.py` não importa de nenhum outro app.
