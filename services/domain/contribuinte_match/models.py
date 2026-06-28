@@ -2,10 +2,10 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class ContribuinteMatchInput(BaseModel):
-    setor: str = Field(pattern=r"^\d{3}$")
-    quadra: str | None = Field(default=None, pattern=r"^\d{3}$")
-    lote: str | None = Field(default=None, pattern=r"^\d{4}$")
-    dv: str | None = Field(default=None, pattern=r"^\d{2}$")
+    setor: str = Field(pattern=r"^\d{1,3}$")
+    quadra: str | None = Field(default=None, pattern=r"^\d{1,3}$")
+    lote: str | None = Field(default=None, pattern=r"^\d{1,4}$")
+    dv: str | None = Field(default=None, pattern=r"^\d{1,2}$")
     limite: int = Field(default=5, gt=0)
 
     @model_validator(mode="after")

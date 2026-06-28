@@ -67,6 +67,37 @@ def test_setor_inexistente_retorna_lista_vazia(matcher: ContribuinteMatcher) -> 
     assert resultado == []
 
 
+def test_prefixo_setor_parcial_casa_todos_setores(matcher: ContribuinteMatcher) -> None:
+    resultado = matcher(ContribuinteMatchInput(setor="0", limite=10))
+    assert len(resultado) == 4
+
+
+def test_prefixo_setor_dois_digitos_casa_todos_setores(matcher: ContribuinteMatcher) -> None:
+    resultado = matcher(ContribuinteMatchInput(setor="00", limite=10))
+    assert len(resultado) == 4
+
+
+def test_prefixo_setor_completo_equivale_igualdade(matcher: ContribuinteMatcher) -> None:
+    resultado = matcher(ContribuinteMatchInput(setor="001", limite=10))
+    assert len(resultado) == 3
+    assert all(r.setor == "001" for r in resultado)
+
+
+def test_prefixo_quadra_parcial_casa_todas_quadras_do_setor(matcher: ContribuinteMatcher) -> None:
+    resultado = matcher(ContribuinteMatchInput(setor="001", quadra="0", limite=10))
+    assert len(resultado) == 3
+
+
+def test_prefixo_lote_parcial_casa_todos_lotes_da_quadra(matcher: ContribuinteMatcher) -> None:
+    resultado = matcher(ContribuinteMatchInput(setor="001", quadra="002", lote="0", limite=10))
+    assert len(resultado) == 2
+
+
+def test_limite_aplica_com_prefixo_setor_parcial(matcher: ContribuinteMatcher) -> None:
+    resultado = matcher(ContribuinteMatchInput(setor="0", limite=2))
+    assert len(resultado) == 2
+
+
 # ---------------------------------------------------------------------------
 # Resultados do match — mapeamento de campos
 # ---------------------------------------------------------------------------
@@ -112,9 +143,9 @@ def test_rejeita_lote_sem_quadra() -> None:
         ContribuinteMatchInput(setor="001", lote="0001")
 
 
-def test_rejeita_setor_com_dois_digitos() -> None:
+def test_rejeita_setor_com_quatro_digitos() -> None:
     with pytest.raises(ValidationError):
-        ContribuinteMatchInput(setor="01")
+        ContribuinteMatchInput(setor="0001")
 
 
 def test_rejeita_quadra_com_quatro_digitos() -> None:
@@ -122,9 +153,9 @@ def test_rejeita_quadra_com_quatro_digitos() -> None:
         ContribuinteMatchInput(setor="001", quadra="0002")
 
 
-def test_rejeita_lote_com_tres_digitos() -> None:
+def test_rejeita_lote_com_cinco_digitos() -> None:
     with pytest.raises(ValidationError):
-        ContribuinteMatchInput(setor="001", quadra="002", lote="001")
+        ContribuinteMatchInput(setor="001", quadra="002", lote="00001")
 
 
 def test_rejeita_limite_zero() -> None:

@@ -17,24 +17,13 @@ class ContribuinteMatcher:
         return pd.DataFrame(read_parquet_from_data(self._nome_arquivo))
 
     def __call__(self, payload: ContribuinteMatchInput) -> list[ContribuinteMatchOutput]:
+        df = self._dataframe
+        mask = df["cd_setor_fiscal"].str.startswith(payload.setor)
+        if payload.quadra:
+            mask &= df["cd_quadra_fiscal"].str.startswith(payload.quadra)
         if payload.lote:
-            df = self._busca_lote(payload.setor, payload.quadra, payload.lote)  # type: ignore[arg-type]
-        elif payload.quadra:
-            df = self._busca_quadra(payload.setor, payload.quadra).head(payload.limite)
-        else:
-            df = self._busca_setor(payload.setor).head(payload.limite)
-        return self._mapear_resultados(df)
-
-    def _busca_setor(self, setor: str) -> pd.DataFrame:
-        return self._dataframe[self._dataframe["cd_setor_fiscal"] == setor]
-
-    def _busca_quadra(self, setor: str, quadra: str) -> pd.DataFrame:
-        df = self._busca_setor(setor)
-        return df[df["cd_quadra_fiscal"] == quadra]
-
-    def _busca_lote(self, setor: str, quadra: str, lote: str) -> pd.DataFrame:
-        df = self._busca_quadra(setor, quadra)
-        return df[df["cd_lote"] == lote]
+            mask &= df["cd_lote"].str.startswith(payload.lote)
+        return self._mapear_resultados(df[mask].head(payload.limite))
 
     def _mapear_resultados(self, dataframe: pd.DataFrame) -> list[ContribuinteMatchOutput]:
         resultados: list[ContribuinteMatchOutput] = []
