@@ -47,9 +47,11 @@ def _catalog_padrao() -> FakeCatalog:
         LogradouroRow(codlog="000004", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
         LogradouroRow(codlog="000007", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
         LogradouroRow(codlog="000005", cd_tipo_logradouro="AL", nm_logradouro="SANTOS"),
-        # logradouros cujo nome contém substrings para testes de contains
+        # prefixos — nomes que começam com "PAUL"
         LogradouroRow(codlog="000006", cd_tipo_logradouro="AV", nm_logradouro="PAULINO GUEDES"),
         LogradouroRow(codlog="000008", cd_tipo_logradouro="R", nm_logradouro="PAULO AFONSO"),
+        # "BRASIL" aparece no meio (não é prefixo) — para testes do fallback substring
+        LogradouroRow(codlog="000009", cd_tipo_logradouro="R", nm_logradouro="JARDIM BRASIL"),
     ]
     variacoes = {
         "AVENIDA": "AV",
@@ -92,14 +94,14 @@ def test_nome_vazio_ignorou_false() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_substring_casa_logradouro_exato() -> None:
+def test_prefixo_casa_logradouro_exato() -> None:
     result = _matcher()(LiteralLogradouroQuery(nome="paulista"))
     codlogs = [lg.codlog for lg in result.logradouros]
     assert "000001" in codlogs
 
 
-def test_substring_paul_casa_multiplos() -> None:
-    # "PAUL" está em PAULISTA, PAULINO GUEDES e PAULO AFONSO
+def test_prefixo_paul_casa_multiplos() -> None:
+    # "PAUL" é prefixo de PAULISTA, PAULINO GUEDES e PAULO AFONSO — todos retornados via prefixo
     result = _matcher()(LiteralLogradouroQuery(nome="paul", limite=10))
     codlogs = {lg.codlog for lg in result.logradouros}
     assert {"000001", "000006", "000008"} == codlogs
@@ -108,6 +110,28 @@ def test_substring_paul_casa_multiplos() -> None:
 def test_sem_tipo_ignorou_false() -> None:
     result = _matcher()(LiteralLogradouroQuery(nome="paul"))
     assert result.ignorou_filtro_tipo is False
+
+
+# ---------------------------------------------------------------------------
+# Prefixo vs. substring — comportamento v3
+# ---------------------------------------------------------------------------
+
+
+def test_prefixo_encontrado_exclui_substring() -> None:
+    # "BRASIL" é prefixo de BRASIL (000002); JARDIM BRASIL (000009) tem "BRASIL" no meio.
+    # Quando o prefixo dá resultado, o substring NÃO é aplicado.
+    result = _matcher()(LiteralLogradouroQuery(nome="brasil", limite=10))
+    codlogs = {lg.codlog for lg in result.logradouros}
+    assert "000002" in codlogs
+    assert "000009" not in codlogs
+
+
+def test_fallback_substring_quando_nenhum_prefixo_casa() -> None:
+    # "ISTA" não é prefixo de nenhum logradouro, mas está contido em PAULISTA.
+    # O fallback para substring deve encontrá-lo.
+    result = _matcher()(LiteralLogradouroQuery(nome="ista", limite=10))
+    codlogs = {lg.codlog for lg in result.logradouros}
+    assert "000001" in codlogs
 
 
 # ---------------------------------------------------------------------------

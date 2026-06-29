@@ -1,11 +1,12 @@
 ---
 spec: match-logradouros/005
-versao: v2
+versao: v3
 atualizado_em: 2026-06-28
 implementado: true
 changelog:
   - v1: versão inicial
   - v2: remove sugestão opcional de linhas_contendo_nome no catálogo — contains é responsabilidade do matcher
+  - v3: match de nome passa a ser prefixo (startswith) primeiro, com fallback para substring (contains) quando o prefixo dá vazio
 ---
 
 # SPEC match-logradouros/005 — Matcher literal de logradouros (contains, para sugestões)
@@ -34,9 +35,12 @@ threshold — só verificação de "o texto digitado está contido no nome do lo
       como única fonte de dados — **não** instancia catálogo próprio.
 - [ ] O DTO de **input** tem um atributo **`nome`** (str, **obrigatório**) e um atributo
       **`tipo`** (str, **opcional**, default `None`), além de um `limite` de sugestões.
-- [ ] O match de nome é **literal por substring**: uma linha do catálogo é sugerida quando o **nome
-      digitado (normalizado) está contido** no `nm_logradouro` da linha (`normalize(query.nome) in
-      row.nm_logradouro`). Sem fuzzy, sem threshold.
+- [ ] O match de nome é **literal, em duas etapas com prioridade ao prefixo**: dentro do universo de
+      busca, uma linha é sugerida quando o **nome digitado (normalizado) é prefixo** do `nm_logradouro`
+      (`row.nm_logradouro.startswith(normalize(query.nome))`). **Só se o prefixo der vazio** o matcher
+      reexecuta o filtro **por substring** sobre o mesmo universo (`normalize(query.nome) in
+      row.nm_logradouro`). Sem fuzzy, sem threshold. Motivação: `contains` puro trazia muitos
+      resultados ruins; o prefixo prioriza o que o usuário tende a estar digitando.
 - [ ] Quando o **`tipo` é informado**, ele é resolvido a um **código** (`cd_tipo_logradouro`) via o
       catálogo, e o universo de busca fica **restrito a esse tipo** antes do filtro por substring.
 - [ ] Quando o **`tipo` não é informado**, **não resolve a um código** (variação desconhecida), **ou**
@@ -83,17 +87,25 @@ do `__init__.py` em vez de criar o seu.
    resultado vazio (não faz sentido sugerir tudo a cada keyup sem texto).
 2. **Resolve o tipo** (se informado): normaliza o `tipo` e busca o **código** correspondente no
    catálogo (`codigo_da_variacao`). Tipo ausente/em branco ou variação desconhecida → sem código.
-3. **Busca com tipo** (se houver código): filtra as linhas **daquele tipo** mantendo as cujo
-   `nm_logradouro` **contém** o nome digitado. Se houver resultado, é o desfecho
-   (`ignorou_filtro_tipo = False`).
-4. **Fallback sem tipo:** se não havia código, ou a busca com tipo deu **vazia**, refaz o filtro por
-   substring sobre **todas** as linhas. `ignorou_filtro_tipo` é **True** apenas quando um tipo havia
-   sido informado mas a busca final o ignorou; quando nenhum tipo foi informado, é **False** (não
-   havia filtro a ignorar — análogo ao fast-forward da match-logradouros/004).
+3. **Busca com tipo** (se houver código): no universo **daquele tipo**, aplica o **match de nome em
+   duas etapas** — primeiro mantém as linhas cujo `nm_logradouro` **começa com** o nome digitado; se
+   esse filtro der **vazio**, refaz mantendo as cujo `nm_logradouro` **contém** o nome digitado. Se
+   houver resultado, é o desfecho (`ignorou_filtro_tipo = False`).
+4. **Fallback sem tipo:** se não havia código, ou a busca com tipo deu **vazia**, refaz o **match de
+   nome em duas etapas** (prefixo → substring) sobre **todas** as linhas. `ignorou_filtro_tipo` é
+   **True** apenas quando um tipo havia sido informado mas a busca final o ignorou; quando nenhum tipo
+   foi informado, é **False** (não havia filtro a ignorar — análogo ao fast-forward da
+   match-logradouros/004).
 5. **Monta o resultado:** aplica o `limite`, converte as linhas em `LogradouroMatch` e devolve o DTO.
 
-**`contains` é lógica de domínio.** A verificação `nome in row.nm_logradouro` fica no **matcher**
-(domínio), compondo os acessores brutos do catálogo (`linhas_do_tipo`, `todas_as_linhas`).
+> **Ordem das duas etapas vs. fallback de tipo.** O par prefixo→substring é resolvido **dentro de um
+> mesmo universo** (o do tipo, ou o de todos). Ou seja: primeiro tenta prefixo no universo do tipo;
+> só se prefixo **e** substring derem vazio nesse universo é que se cai para o universo de todos os
+> tipos (e lá novamente prefixo→substring).
+
+**O match literal é lógica de domínio.** As verificações `nm_logradouro.startswith(nome)` e
+`nome in nm_logradouro` ficam no **matcher** (domínio), compondo os acessores brutos do catálogo
+(`linhas_do_tipo`, `todas_as_linhas`).
 
 **Normalização (§7.1, §11).** Os `nm_logradouro` e as variações de tipo nos parquets **já estão
 normalizados** (maiúsculas, sem acento) pela `normalize_text` na ingestão. Logo, normaliza-se apenas
@@ -160,10 +172,10 @@ class LiteralLogradouroMatcher:
         tipo_informado = bool(query.tipo and query.tipo.strip())
         codigo = self._resolve_tipo(query.tipo)
         if codigo is not None:
-            rows = self._contendo(nome, codigo)
+            rows = self._match_nome(nome, codigo)
             if rows:
                 return self._build(rows, query.limite, ignorou=False)
-        rows = self._contendo(nome, None)               # fallback: ignora o tipo
+        rows = self._match_nome(nome, None)             # fallback: ignora o tipo
         return self._build(rows, query.limite, ignorou=tipo_informado)
 
     def _resolve_tipo(self, tipo: str | None) -> str | None:
@@ -171,10 +183,14 @@ class LiteralLogradouroMatcher:
             return None
         return self._catalog.codigo_da_variacao(normalize_text(tipo))
 
-    def _contendo(self, nome: str, codigo: str | None) -> list[LogradouroRow]:
+    def _match_nome(self, nome: str, codigo: str | None) -> list[LogradouroRow]:
         universo = (
             self._catalog.linhas_do_tipo(codigo) if codigo else self._catalog.todas_as_linhas()
         )
+        # prefixo primeiro; só cai para substring quando o prefixo não casa nada
+        prefixo = [row for row in universo if row.nm_logradouro.startswith(nome)]
+        if prefixo:
+            return prefixo
         return [row for row in universo if nome in row.nm_logradouro]
 
     def _build(
@@ -240,8 +256,12 @@ no `__init__.py`).
 
 ## Notas de teste
 
-- `nome="paul"`, `tipo=None` → sugere logradouros cujo nome contém `PAUL` (ex.: `PAULISTA`),
+- `nome="paul"`, `tipo=None` → sugere logradouros cujo nome **começa com** `PAUL` (ex.: `PAULISTA`),
   `ignorou_filtro_tipo == False`.
+- Prefixo vs. fallback substring: se algum nome **começa com** o digitado, só esses entram (o
+  substring é ignorado). Ex.: `nome="brasil"` casa `BRASIL` no início e **não** traz nomes em que
+  `BRASIL` aparece só no meio; já `nome="xyz"` que não é prefixo de nenhum nome, mas aparece no meio
+  de algum, cai no fallback e traz esses por substring.
 - `nome="paul"`, `tipo="av"` → restringe ao tipo `AV` e filtra por substring; resultado não vazio →
   `ignorou_filtro_tipo == False`.
 - `nome="paul"`, `tipo="rua"` (PAULISTA é AV) → filtro com tipo dá vazio → refaz sem tipo, acha
@@ -257,4 +277,10 @@ no `__init__.py`).
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+- **v3 (2026-06-28).** O match de nome deixa de ser apenas `contains` e passa a priorizar **prefixo**:
+  dentro do universo de busca, filtra primeiro por `nm_logradouro.startswith(nome)`; **só quando o
+  prefixo dá vazio** reexecuta o filtro por substring (`nome in nm_logradouro`) sobre o mesmo
+  universo. Motivo: `contains` puro estava trazendo resultados ruins nas sugestões. O fallback de
+  **tipo** (prefixo→substring no universo do tipo e, se vazio, no universo de todos) permanece
+  inalterado; muda só a estratégia de match do nome dentro de cada universo (método `_match_nome`,
+  antes `_contendo`).
