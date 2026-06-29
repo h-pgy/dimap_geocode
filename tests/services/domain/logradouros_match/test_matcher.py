@@ -1,6 +1,6 @@
 import pytest
 
-from services.domain.logradouros_match import LogradouroMatch, LogradouroMatchQuery, LogradouroMatchResult
+from services.domain.logradouros_match import LogradouroMatchOutput, LogradouroMatchQuery, LogradouroMatchResult
 from services.domain.logradouros_match.catalog import LogradouroCatalog
 from services.domain.logradouros_match.matcher import DEFAULT_NAME_SCORE_THRESHOLD, LogradouroMatcher
 from services.domain.logradouros_match.models import LogradouroRow

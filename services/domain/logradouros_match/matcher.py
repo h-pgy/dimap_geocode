@@ -1,7 +1,7 @@
 from services.utils.fuzzy_matcher import FuzzyMatchResult, fuzzy_match
 
 from .catalog import LogradouroCatalog
-from .models import LogradouroMatch, LogradouroMatchQuery, LogradouroMatchResult
+from .models import LogradouroMatchOutput, LogradouroMatchQuery, LogradouroMatchResult
 
 DEFAULT_NAME_SCORE_THRESHOLD = 80.0
 
@@ -67,7 +67,7 @@ class LogradouroMatcher:
         filtro = None if ignorou else codigo
         rows = self._catalog.linhas_por_nome(melhor.original_string, filtro) if melhor else []
         logradouros = [
-            LogradouroMatch(
+            LogradouroMatchOutput(
                 codlog=row.codlog,
                 tipo_codigo=row.cd_tipo_logradouro,
                 nome_logradouro=row.nm_logradouro,

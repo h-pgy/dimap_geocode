@@ -4,7 +4,7 @@ from .catalog import LogradouroCatalog
 from .models import (
     LiteralLogradouroQuery,
     LiteralLogradouroResult,
-    LogradouroMatch,
+    LogradouroMatchOutput,
     LogradouroRow,
 )
 
@@ -47,7 +47,7 @@ class LiteralLogradouroMatcher:
         self, rows: list[LogradouroRow], limite: int, ignorou: bool
     ) -> LiteralLogradouroResult:
         logradouros = [
-            LogradouroMatch(
+            LogradouroMatchOutput(
                 codlog=row.codlog,
                 tipo_codigo=row.cd_tipo_logradouro,
                 nome_logradouro=row.nm_logradouro,

@@ -4,7 +4,7 @@ from .matcher import LogradouroMatcher
 from .models import (
     LiteralLogradouroQuery,
     LiteralLogradouroResult,
-    LogradouroMatch,
+    LogradouroMatchOutput,
     LogradouroMatchQuery,
     LogradouroMatchResult,
 )
@@ -16,7 +16,7 @@ match_logradouro_literal = LiteralLogradouroMatcher(catalog=_catalog)
 __all__ = [
     "match_logradouro",
     "match_logradouro_literal",
-    "LogradouroMatch",
+    "LogradouroMatchOutput",
     "LogradouroMatchQuery",
     "LogradouroMatchResult",
     "LiteralLogradouroQuery",

@@ -14,7 +14,7 @@ class LogradouroRow(BaseModel):
     nm_logradouro: str
 
 
-class LogradouroMatch(BaseModel):
+class LogradouroMatchOutput(BaseModel):
     codlog: str
     tipo_codigo: str
     nome_logradouro: str
@@ -23,7 +23,7 @@ class LogradouroMatch(BaseModel):
 class LogradouroMatchResult(BaseModel):
     match_tipo: FuzzyMatchResult | None
     match_nome: FuzzyMatchResult
-    logradouros: list[LogradouroMatch]
+    logradouros: list[LogradouroMatchOutput]
     ignorou_filtro_tipo: bool
 
     @computed_field  # type: ignore[prop-decorator]
@@ -49,5 +49,5 @@ class LiteralLogradouroQuery(BaseModel):
 
 
 class LiteralLogradouroResult(BaseModel):
-    logradouros: list[LogradouroMatch]
+    logradouros: list[LogradouroMatchOutput]
     ignorou_filtro_tipo: bool
