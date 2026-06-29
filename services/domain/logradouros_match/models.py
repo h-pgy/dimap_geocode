@@ -40,3 +40,14 @@ class LogradouroMatchResult(BaseModel):
     def nome_logradouro(self) -> str | None:
         item = self.match_nome.best_match
         return item.original_string if item else None
+
+
+class LiteralLogradouroQuery(BaseModel):
+    nome: str
+    tipo: str | None = None
+    limite: int = 5
+
+
+class LiteralLogradouroResult(BaseModel):
+    logradouros: list[LogradouroMatch]
+    ignorou_filtro_tipo: bool

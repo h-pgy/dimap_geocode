@@ -67,6 +67,10 @@ Toda SPEC declara se já foi implementada, em **dois lugares que andam juntos**:
 **Sempre que a SPEC for implementada, marque o check e ponha `implementado: true`** — é o que
 libera o uso da seção `Patches`.
 
+> **Marcar como implementada NÃO incrementa a versão.** Virar o flag `implementado: false → true`
+> e o check `[ ] → [x]` é um estado administrativo, não uma mudança de conteúdo. A versão e o
+> `changelog` ficam intocados; nada é acrescentado ao `changelog` só por causa desta marcação.
+
 ---
 
 ## Como usar uma SPEC (instruções para o implementador)
@@ -149,6 +153,8 @@ Antes de apresentar a SPEC ao usuário, verifique:
 - [ ] Front-matter completo: `spec`, `versao`, `atualizado_em`, `implementado`, `changelog`.
 - [ ] Check `- [ ] **Implementada**` presente logo após o título, coerente com `implementado:`
       no front-matter (ambos só viram `true`/`[x]` quando o código é entregue).
+- [ ] Marcar a SPEC como implementada (`implementado: true` + `[x]`) **não incrementa a versão**
+      nem adiciona entrada no `changelog` — é só um estado administrativo.
 - [ ] Se a SPEC **ainda não foi implementada**, a seção `Patches` está vazia ("Nenhum patch
       registrado até o momento.") e toda mudança foi registrada no `changelog`, não em `Patches`.
 - [ ] Slug do arquivo no padrão `NNN-slug-da-spec.md` dentro da subpasta do épico correto.

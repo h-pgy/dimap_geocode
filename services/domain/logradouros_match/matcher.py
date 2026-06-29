@@ -82,4 +82,3 @@ class LogradouroMatcher:
         )
 
 
-match_logradouro = LogradouroMatcher()
