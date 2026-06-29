@@ -1,15 +1,16 @@
 ---
 spec: roteamento-busca/007
-versao: v1
+versao: v2
 atualizado_em: 2026-06-28
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
+  - v2: o partial passa a exibir o tipo do logradouro junto do nome (ex.: "AV PAULISTA"), não só o nome
 ---
 
 # SPEC roteamento-busca/007 — Seção de sugestões de logradouro por nome (pluga o literal matcher no roteador)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 
@@ -45,8 +46,13 @@ Falta apenas a **interface** que adapta o candidato em DTO, chama o domínio e r
       **"Logradouro (por nome)"** (a seção de codlog permanece "Logradouro (por codlog)").
 - [ ] O `logradouro_matcher` tem um *partial* próprio `resultados_logradouro.html` que recebe o
       **`LiteralLogradouroResult`** (lista de **`LogradouroMatch`** + flag `ignorou_filtro_tipo`) e
-      renderiza cada logradouro exibindo pelo menos o **nome do logradouro** e o **codlog**; lista
-      vazia exibe um aviso de "nenhum logradouro encontrado".
+      renderiza cada logradouro exibindo o **tipo + nome do logradouro** (ex.: `AV PAULISTA`, a partir
+      de `tipo_codigo` + `nome_logradouro`) e o **codlog**; lista vazia exibe um aviso de "nenhum
+      logradouro encontrado".
+- [ ] O `tipo_codigo` do `LogradouroMatch` **já é a sigla legível** do tipo (ex.: `AV`, `R`, `AL`) — o
+      *partial* apenas o **prefixa** ao nome, sem resolução adicional no domínio. Quando o
+      `tipo_codigo` vier **vazio/em branco** (logradouro sem tipo no cadastro), o *partial* exibe **só
+      o nome**, sem espaço sobrando à frente.
 - [ ] Quando `ignorou_filtro_tipo` for **`True`** (o tipo digitado não foi reconhecido e o match caiu
       para todos os tipos), o *partial* exibe um **aviso discreto** ao usuário (ex.: "tipo não
       reconhecido — mostrando todos os logradouros"); quando `False`, nenhum aviso aparece.
@@ -213,7 +219,8 @@ REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
     {% for r in resultado.logradouros %}
       <li class="py-3 flex items-baseline gap-4">
         <span class="font-mono text-sm text-base-content/60 w-16 shrink-0">{{ r.codlog }}</span>
-        <span class="font-medium">{{ r.nome_logradouro }}</span>
+        {# tipo_codigo já é a sigla (AV, R, AL); só prefixa quando não for vazio #}
+        <span class="font-medium">{% if r.tipo_codigo|stringformat:'s'|cut:' ' %}{{ r.tipo_codigo }} {% endif %}{{ r.nome_logradouro }}</span>
       </li>
     {% endfor %}
   </ul>
@@ -240,7 +247,9 @@ REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
 ## Notas de teste
 
 - POST `termo_pesquisa="PAULISTA"`, `tipo_evento="keyup"` → 200; a `<section>` "Logradouro (por
-  nome)" traz até `limite` logradouros cujo nome contém `PAULISTA`.
+  nome)" traz até `limite` logradouros casando `PAULISTA`, cada item exibido como **tipo + nome**
+  (ex.: `AV PAULISTA`).
+- Logradouro com `tipo_codigo` vazio/em branco → o item exibe **só o nome**, sem espaço inicial.
 - POST `termo_pesquisa="AV PAULISTA"` (tipo reconhecido) → a seção filtra pelo tipo `AV` e
   **não** exibe o aviso de tipo (`ignorou_filtro_tipo=False`).
 - POST `termo_pesquisa="XPTO PAULISTA"` (tipo não reconhecido) → a seção exibe o **aviso discreto** e
@@ -255,4 +264,10 @@ REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+- **v2 (2026-06-28).** O *partial* `resultados_logradouro.html` passa a exibir **tipo + nome** do
+  logradouro (ex.: `AV PAULISTA`) em vez de só o nome. Como o `tipo_codigo` de `LogradouroMatch` já é
+  a **sigla legível** do tipo (`AV`, `R`, `AL`, …), basta prefixá-lo ao `nome_logradouro` no template —
+  sem nova resolução no domínio nem mudança no renderer/DTO. O *partial* guarda o caso de
+  `tipo_codigo` **vazio/em branco** (alguns logradouros não têm tipo), exibindo só o nome sem espaço
+  à frente. Mudança restrita à camada de interface (partial); critérios de aceite e snippet
+  atualizados.
