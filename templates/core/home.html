@@ -10,10 +10,37 @@
     fiscais da Prefeitura de São Paulo.
   </p>
 
-  {# A barra de busca única (apps/search) e o mapa (apps/mapping) entram aqui
-     quando suas SPECs forem implementadas (roadmap §14). #}
-  <div class="mt-8 rounded-box border border-base-300 bg-base-200 p-6">
-    <p class="text-sm text-base-content/60">Scaffold inicial — apps de busca e mapa em breve.</p>
+  <div class="mt-8">
+    <input
+      type="search"
+      id="input_search"
+      name="termo_pesquisa"
+      placeholder="Rua, endereço, codlog ou nº de contribuinte…"
+      class="input input-bordered w-full"
+      hx-post="{% url 'search:rotear_busca' %}"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+      hx-trigger="keyup changed delay:300ms, search"
+      hx-target="#sugestoes-busca"
+      hx-swap="innerHTML"
+      hx-on:htmx:config-request="event.detail.parameters['tipo_evento'] = event.detail.triggeringEvent.type"
+    />
+  </div>
+
+  <div id="sugestoes-busca" class="mt-4"></div>
+
+  <div id="resultado-busca" class="mt-4"></div>
+
+  {# Bloco de teste — remover quando o middleware estiver validado #}
+  <div class="mt-6">
+    <button
+      class="btn btn-error btn-sm"
+      hx-get="{% url 'core:teste_validacao' %}"
+      hx-target="#resultado-teste"
+      hx-swap="innerHTML"
+    >
+      Testar middleware de validação
+    </button>
+    <div id="resultado-teste" class="mt-4"></div>
   </div>
 </main>
 {% endblock %}

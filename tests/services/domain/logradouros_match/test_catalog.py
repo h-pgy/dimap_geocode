@@ -16,8 +16,10 @@ _TIPOS_DATA = {
     "cd_tipo_logradouro": ["AV", "AV", "AV", "R", "R", "AL"],
 }
 
+# codlog vem com 6 dígitos (5 + dígito verificador); o catálogo descarta o DV e expõe só os 5
+# primeiros. Por isso os primeiros 5 dígitos precisam ser distintos entre as linhas.
 _NOMES_DATA = {
-    "codlog": ["000001", "000002", "000003", "000004", "000005"],
+    "codlog": ["000017", "000025", "000033", "000041", "000050"],
     "cd_tipo_logradouro": ["AV", "AV", "R", "R", "AL"],
     "nm_logradouro": ["PAULISTA", "BRASIL", "PAULISTA", "DIREITA", "SANTOS"],
 }
@@ -113,10 +115,10 @@ def test_todas_as_linhas_retorna_logradouro_rows() -> None:
 
 def test_linhas_por_nome_com_filtro_de_tipo() -> None:
     c = _catalog_com_dados_sinteticos()
-    # PAULISTA existe em AV (codlog 000001) e R (codlog 000003); filtro em AV retorna só 000001
+    # PAULISTA existe em AV (codlog 00001) e R (codlog 00003); filtro em AV retorna só 00001
     linhas = c.linhas_por_nome("PAULISTA", "AV")
     assert len(linhas) == 1
-    assert linhas[0].codlog == "000001"
+    assert linhas[0].codlog == "00001"
 
 
 def test_linhas_por_nome_sem_filtro_retorna_homonimos() -> None:
@@ -124,7 +126,7 @@ def test_linhas_por_nome_sem_filtro_retorna_homonimos() -> None:
     # sem filtro de tipo, PAULISTA aparece nos dois tipos
     linhas = c.linhas_por_nome("PAULISTA", None)
     codlogs = {r.codlog for r in linhas}
-    assert codlogs == {"000001", "000003"}
+    assert codlogs == {"00001", "00003"}
 
 
 def test_linhas_por_nome_retorna_vazio_quando_nao_encontra() -> None:

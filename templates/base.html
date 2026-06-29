@@ -5,18 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}DIMAP GeoCoder{% endblock %}</title>
 
+    {# Leaflet (mapa) — CSS no head #}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css" />
+
     {# Dev: Tailwind 4 + DaisyUI via CDN. No deploy, compilar static/src/input.css
-       -> static/dist/output.css e trocar por <link> do build (CLAUDE.md §2). #}
+       -> static/dist/output.css e trocar por:
+       <link rel="stylesheet" href="{% load static %}{% static 'output.css' %}" /> (CLAUDE.md §2/§12).
+       O browser build do Tailwind não suporta @plugin — DaisyUI entra como CSS separado. #}
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style type="text/tailwindcss">
-      @plugin "daisyui";
-    </style>
     <script src="https://unpkg.com/htmx.org@2"></script>
+    <script>
+      // 422 (ValidationError do Pydantic) deve fazer swap normalmente.
+      // Os demais 4xx/5xx mantêm o comportamento padrão (sem swap).
+      htmx.config.responseHandling = [
+        {code: "204", swap: false},
+        {code: "[23]..", swap: true},
+        {code: "422", swap: true},
+        {code: "[45]..", swap: false, error: true},
+      ];
+    </script>
 
     {% block head %}{% endblock %}
   </head>
-  <body class="min-h-screen bg-base-100 text-base-content">
+
+  {# CSRF herdado por todos os elementos HTMX descendentes (skill htmx → hx-headers) #}
+  <body class="min-h-screen bg-base-100 text-base-content"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+    <nav class="navbar bg-base-200 border-b border-base-300">
+      <div class="flex-1">
+        <a href="{% url 'core:home' %}" class="btn btn-ghost text-xl">DIMAP GeoCoder</a>
+      </div>
+      <div class="flex-none">
+        {% block navbar_session %}{# accounts: login/logout (SPEC futura) #}{% endblock %}
+      </div>
+    </nav>
+
+    {% if messages %}
+      <div class="container mx-auto px-6 pt-4 space-y-2">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags|default:'info' }}">
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     {% block content %}{% endblock %}
+
+    {# Leaflet JS antes do fim do body; páginas com mapa inicializam no bloco scripts #}
+    <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
     {% block scripts %}{% endblock %}
   </body>
 </html>

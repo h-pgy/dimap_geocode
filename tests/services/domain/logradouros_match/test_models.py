@@ -1,6 +1,6 @@
 import pytest
 
-from services.domain.logradouros_match import LogradouroMatch, LogradouroMatchQuery, LogradouroMatchResult
+from services.domain.logradouros_match import LogradouroMatchOutput, LogradouroMatchQuery, LogradouroMatchResult
 from services.utils.fuzzy_matcher import FuzzyMatchResult, FuzzyMatchItem
 
 
@@ -21,8 +21,8 @@ def _make_fuzzy_result(query: str = "q", best: str = "B", score: float = 95.0) -
     )
 
 
-def _make_match(codlog: str = "000001", tipo: str = "AV", nome: str = "PAULISTA") -> LogradouroMatch:
-    return LogradouroMatch(codlog=codlog, tipo_codigo=tipo, nome_logradouro=nome)
+def _make_match(codlog: str = "000001", tipo: str = "AV", nome: str = "PAULISTA") -> LogradouroMatchOutput:
+    return LogradouroMatchOutput(codlog=codlog, tipo_codigo=tipo, nome_logradouro=nome)
 
 
 # ---------------------------------------------------------------------------

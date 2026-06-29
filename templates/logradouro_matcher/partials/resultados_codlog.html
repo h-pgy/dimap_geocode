@@ -1,0 +1,20 @@
+{# templates/logradouro_matcher/partials/resultados_codlog.html — fragmento HTMX, sem extends #}
+{# Recebe: resultados (list[CodlogMatchOutput])                                               #}
+
+{% if resultados %}
+  <ul class="divide-y divide-base-300">
+    {% for r in resultados %}
+      <li class="py-3 flex items-baseline gap-4 cursor-pointer hover:bg-base-200"
+          hx-post="{% url 'logradouro_matcher:selecionar' %}"
+          hx-vals='{"codlog": "{{ r.codlog }}"}'
+          hx-target="#resultado-busca"
+          hx-swap="innerHTML"
+      >
+        <span class="font-mono text-sm text-base-content/60 w-16 shrink-0">{{ r.codlog }}-{{ r.dv }}</span>
+        <span class="font-medium">{{ r.nome_completo }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-base-content/60 text-sm py-4">Nenhum logradouro encontrado.</p>
+{% endif %}

@@ -44,9 +44,32 @@ evolui, ela é editada no lugar e o **código de versão** no cabeçalho é incr
 
 Mudanças de escopo/intenção e pequenas correções compartilham o mesmo versionamento:
 tanto uma revisão de critério quanto um bugfix incrementam a versão. A diferença é
-**onde** ficam registrados:
-- **Mudanças de intenção** → corpo da SPEC.
-- **Correções e bugfixes** → seção `Patches` (mantém rastro sem poluir a especificação).
+**onde** ficam registrados — e isso depende de a SPEC **já ter sido implementada ou não**:
+
+- **SPEC ainda NÃO implementada** (sem o check de implementação — ver abaixo): qualquer
+  mudança, seja de intenção/escopo seja um ajuste pontual, é editada **no corpo da SPEC** e
+  registrada **apenas no `changelog`** do front-matter. **Não existe `Patches` nesta fase** —
+  enquanto não houver código, não há o que "corrigir depois do fato".
+- **SPEC já implementada** (check marcado): mudanças de intenção continuam indo para o corpo +
+  `changelog`; **correções e bugfixes** vão para a seção `Patches` (mantém rastro do que mudou
+  *após* a entrega, sem poluir a especificação). Todo patch também incrementa a versão.
+
+> **Regra de ouro do `Patches`:** só se preenche `Patches` depois que a SPEC foi implementada
+> (check marcado). Antes disso, tudo é `changelog`.
+
+### Flag de implementação
+
+Toda SPEC declara se já foi implementada, em **dois lugares que andam juntos**:
+
+1. No front-matter: `implementado: false` (vira `true` quando o código da SPEC é entregue).
+2. Logo após o título, um **check** `- [ ] **Implementada**` (vira `- [x] **Implementada**`).
+
+**Sempre que a SPEC for implementada, marque o check e ponha `implementado: true`** — é o que
+libera o uso da seção `Patches`.
+
+> **Marcar como implementada NÃO incrementa a versão.** Virar o flag `implementado: false → true`
+> e o check `[ ] → [x]` é um estado administrativo, não uma mudança de conteúdo. A versão e o
+> `changelog` ficam intocados; nada é acrescentado ao `changelog` só por causa desta marcação.
 
 ---
 
@@ -75,11 +98,14 @@ Ao redigir uma SPEC, use exatamente este template (substitua os campos `<…>`):
 spec: <epico>/<nº>
 versao: v1
 atualizado_em: <AAAA-MM-DD>
+implementado: false
 changelog:
   - v1: versão inicial
 ---
 
 # SPEC <épico>/<nº> — <título curto>
+
+- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como <persona>, quero <objetivo>, para <valor/razão>.
@@ -110,9 +136,12 @@ CLAUDE.md se aplicam, por que esta abordagem. Fluxo resumido da funcionalidade.>
 não para implementar agora.>
 
 ## Patches
-<Pequenas correções e bugfixes registrados após a SPEC estar em uso. Cada patch incrementa
-a versão (changelog no front-matter) e fica registrado aqui com data e versão.>
-- <AAAA-MM-DD> (v2): corrige <bug/ajuste pontual>.
+<SÓ existe depois que a SPEC foi implementada (check `Implementada` marcado). Pequenas correções
+e bugfixes registrados após a entrega; cada patch incrementa a versão (changelog no front-matter)
+e fica registrado aqui com data e versão. Enquanto a SPEC NÃO foi implementada, deixe esta seção
+como abaixo e registre tudo no `changelog`.>
+
+_Nenhum patch registrado até o momento._
 ````
 
 ---
@@ -121,7 +150,13 @@ a versão (changelog no front-matter) e fica registrado aqui com data e versão.
 
 Antes de apresentar a SPEC ao usuário, verifique:
 
-- [ ] Front-matter completo: `spec`, `versao`, `atualizado_em`, `changelog`.
+- [ ] Front-matter completo: `spec`, `versao`, `atualizado_em`, `implementado`, `changelog`.
+- [ ] Check `- [ ] **Implementada**` presente logo após o título, coerente com `implementado:`
+      no front-matter (ambos só viram `true`/`[x]` quando o código é entregue).
+- [ ] Marcar a SPEC como implementada (`implementado: true` + `[x]`) **não incrementa a versão**
+      nem adiciona entrada no `changelog` — é só um estado administrativo.
+- [ ] Se a SPEC **ainda não foi implementada**, a seção `Patches` está vazia ("Nenhum patch
+      registrado até o momento.") e toda mudança foi registrada no `changelog`, não em `Patches`.
 - [ ] Slug do arquivo no padrão `NNN-slug-da-spec.md` dentro da subpasta do épico correto.
 - [ ] User story com persona, objetivo e valor claros.
 - [ ] Critérios de aceite são **condições observáveis** (não tarefas técnicas).

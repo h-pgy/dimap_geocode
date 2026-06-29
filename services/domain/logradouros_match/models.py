@@ -14,7 +14,7 @@ class LogradouroRow(BaseModel):
     nm_logradouro: str
 
 
-class LogradouroMatch(BaseModel):
+class LogradouroMatchOutput(BaseModel):
     codlog: str
     tipo_codigo: str
     nome_logradouro: str
@@ -23,7 +23,7 @@ class LogradouroMatch(BaseModel):
 class LogradouroMatchResult(BaseModel):
     match_tipo: FuzzyMatchResult | None
     match_nome: FuzzyMatchResult
-    logradouros: list[LogradouroMatch]
+    logradouros: list[LogradouroMatchOutput]
     ignorou_filtro_tipo: bool
 
     @computed_field  # type: ignore[prop-decorator]
@@ -40,3 +40,14 @@ class LogradouroMatchResult(BaseModel):
     def nome_logradouro(self) -> str | None:
         item = self.match_nome.best_match
         return item.original_string if item else None
+
+
+class LiteralLogradouroQuery(BaseModel):
+    nome: str
+    tipo: str | None = None
+    limite: int = 5
+
+
+class LiteralLogradouroResult(BaseModel):
+    logradouros: list[LogradouroMatchOutput]
+    ignorou_filtro_tipo: bool

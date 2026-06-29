@@ -76,7 +76,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "apps.core",
+    "apps.search",
     "apps.logradouro_matcher",
+    "apps.lote_matcher",
     "apps.address_geocoder",
 ]
 
@@ -88,6 +90,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.PydanticValidationMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

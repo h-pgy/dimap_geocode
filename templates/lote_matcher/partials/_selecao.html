@@ -1,0 +1,7 @@
+{# partial de seleção de lote — stub: imprime no stdout, exibe confirmação #}
+<p class="text-sm text-base-content/70">
+  Lote selecionado:
+  <span class="font-mono font-medium">
+    {{ selecao.setor }}.{{ selecao.quadra }}.{{ selecao.lote }}{% if selecao.dv %}-{{ selecao.dv }}{% endif %}
+  </span>
+</p>

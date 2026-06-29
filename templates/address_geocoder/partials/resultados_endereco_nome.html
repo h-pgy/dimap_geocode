@@ -1,0 +1,20 @@
+{# fragmento HTMX, sem extends — recebe: resultado (LiteralLogradouroResult), numero (int) #}
+{% if resultado.ignorou_filtro_tipo %}
+  <p class="text-warning text-xs py-1">Tipo não reconhecido — mostrando todos os logradouros.</p>
+{% endif %}
+{% if resultado.logradouros %}
+  <ul class="divide-y divide-base-300">
+    {% for r in resultado.logradouros %}
+      <li class="py-3 flex items-baseline gap-4 cursor-pointer hover:bg-base-200"
+          hx-post="{% url 'address_geocoder:selecionar' %}"
+          hx-vals='{"codlog": "{{ r.codlog }}", "numero": "{{ numero }}"}'
+          hx-target="#resultado-busca"
+          hx-swap="innerHTML">
+        <span class="font-mono text-sm text-base-content/60 w-16 shrink-0">{{ r.codlog }}</span>
+        <span class="font-medium">{% if r.tipo_codigo|stringformat:'s'|cut:' ' %}{{ r.tipo_codigo }} {% endif %}{{ r.nome_logradouro }}, {{ numero }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-base-content/60 text-sm py-4">Nenhum logradouro encontrado.</p>
+{% endif %}

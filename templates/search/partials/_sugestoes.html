@@ -1,0 +1,13 @@
+{# templates/search/partials/_sugestoes.html — fragmento HTMX, sem extends #}
+{# Recebe: secoes (list[SecaoResultado])                                     #}
+
+{% if secoes %}
+  <div class="space-y-4">
+    {% for secao in secoes %}
+      <section>
+        <h3 class="text-sm font-semibold text-base-content/60 mb-1">{{ secao.titulo }}</h3>
+        {{ secao.html|safe }}
+      </section>
+    {% endfor %}
+  </div>
+{% endif %}

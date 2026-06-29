@@ -1,6 +1,6 @@
 import pytest
 
-from services.domain.logradouros_match import LogradouroMatch, LogradouroMatchQuery, LogradouroMatchResult
+from services.domain.logradouros_match import LogradouroMatchOutput, LogradouroMatchQuery, LogradouroMatchResult
 from services.domain.logradouros_match.catalog import LogradouroCatalog
 from services.domain.logradouros_match.matcher import DEFAULT_NAME_SCORE_THRESHOLD, LogradouroMatcher
 from services.domain.logradouros_match.models import LogradouroRow
@@ -238,11 +238,11 @@ def test_tipo_codigo_no_item_vem_da_linha_casada() -> None:
 class TestIntegracaoDadosReais:
     """Testes contra os parquets reais em data/. Marcados para eventual separação."""
 
-    def test_av_paulista_codlog_156566(self) -> None:
+    def test_av_paulista_codlog_15656(self) -> None:
         from services.domain.logradouros_match import match_logradouro
 
         result = match_logradouro(LogradouroMatchQuery(texto="avenida paulista"))
-        assert "156566" in result.codlogs
+        assert "15656" in result.codlogs
 
     def test_av_paulista_tipo_av(self) -> None:
         from services.domain.logradouros_match import match_logradouro
@@ -262,14 +262,14 @@ class TestIntegracaoDadosReais:
         result = match_logradouro(LogradouroMatchQuery(texto="paulista"))
         assert result.match_tipo is None
         assert result.ignorou_filtro_tipo is False
-        assert "156566" in result.codlogs
+        assert "15656" in result.codlogs
 
     def test_typo_no_tipo_avnda_resolve_av(self) -> None:
         from services.domain.logradouros_match import match_logradouro
 
         result = match_logradouro(LogradouroMatchQuery(texto="avnda paulista"))
         assert result.match_tipo is not None
-        assert "156566" in result.codlogs
+        assert "15656" in result.codlogs
 
     def test_rua_abaete_homonimos(self) -> None:
         from services.domain.logradouros_match import match_logradouro

@@ -9,6 +9,7 @@ class TipoEntrada(StrEnum):
     CODLOG = "codlog"
     LOGRADOURO = "logradouro"
     ENDERECO = "endereco"
+    ENDERECO_CODLOG = "endereco_codlog"
 
 
 class RoteamentoStatus(StrEnum):
@@ -116,18 +117,27 @@ class LogradouroParse(BaseModel):
 class EnderecoParse(BaseModel):
     tipo: Literal[TipoEntrada.ENDERECO] = TipoEntrada.ENDERECO
     logradouro: LogradouroParse
-    numero: str
+    numero: int
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def completo(self) -> bool:
-        return self.logradouro.completo and bool(self.numero)
+        return self.logradouro.completo and self.numero > 0
 
 
-# União discriminada por `tipo`: cada parse é, ele mesmo, um candidato. O discriminador dá
-# narrowing estático (mypy) e desserialização correta da lista heterogênea.
+class EnderecoCodlogParse(BaseModel):
+    tipo: Literal[TipoEntrada.ENDERECO_CODLOG] = TipoEntrada.ENDERECO_CODLOG
+    codlog: CodlogParse
+    numero: int
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def completo(self) -> bool:
+        return self.codlog.completo and self.numero > 0
+
+
 Candidato = Annotated[
-    ContribuinteParse | CodlogParse | LogradouroParse | EnderecoParse,
+    ContribuinteParse | CodlogParse | LogradouroParse | EnderecoParse | EnderecoCodlogParse,
     Field(discriminator="tipo"),
 ]
 
