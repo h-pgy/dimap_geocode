@@ -1,8 +1,8 @@
 from django.urls import path
 
-from apps.logradouro_matcher import views
+from apps.address_geocoder import views
 
-app_name = "logradouro_matcher"
+app_name = "address_geocoder"
 
 urlpatterns = [
     path("selecionar/", views.selecionar, name="selecionar"),

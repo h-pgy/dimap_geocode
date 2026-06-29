@@ -1,5 +1,9 @@
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import render
 from django.template.loader import render_to_string
+from django.views.decorators.http import require_POST
 
+from apps.logradouro_matcher.schemas import LogradouroSelection
 from apps.search.secoes import SecaoResultado
 from services.domain.codlog_match import CodlogMatchInput, match_codlog
 from services.domain.logradouros_match import LiteralLogradouroQuery, match_logradouro_literal
@@ -38,3 +42,10 @@ def secao_logradouro(candidato: LogradouroParse) -> SecaoResultado:
         tipo=candidato.tipo_logradouro or None,
     )
     return SecaoResultado(titulo=TITULO_LOGRADOURO_NOME, html=_render_logradouro(dto))
+
+
+@require_POST
+def selecionar(request: HttpRequest) -> HttpResponse:
+    selecao = LogradouroSelection(codlog=request.POST.get("codlog", ""))
+    print(f"[SELEÇÃO] tipo=logradouro {selecao!r}")
+    return render(request, "logradouro_matcher/partials/_selecao.html", {"selecao": selecao})

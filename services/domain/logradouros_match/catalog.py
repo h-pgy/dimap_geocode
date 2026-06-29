@@ -25,7 +25,7 @@ class LogradouroCatalog:
         tipos = cast(list[str], cols["cd_tipo_logradouro"])
         nomes = cast(list[str], cols["nm_logradouro"])
         return [
-            LogradouroRow(codlog=c, cd_tipo_logradouro=t, nm_logradouro=n)
+            LogradouroRow(codlog=c[:5], cd_tipo_logradouro=t, nm_logradouro=n)
             for c, t, n in zip(codlogs, tipos, nomes)
         ]
 

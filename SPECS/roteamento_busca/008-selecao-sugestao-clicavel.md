@@ -2,7 +2,10 @@
 spec: roteamento_busca/008
 versao: v3
 atualizado_em: 2026-06-29
-implementado: false
+patches:
+  - p1: DTOs de seleção movidos para schemas.py em cada app (fora do views.py)
+  - p2: codlog normalizado para 5 dígitos no LogradouroCatalog (catalog.py)
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: view de seleção de endereço passa a receber codlog + número (em vez de
@@ -13,7 +16,7 @@ changelog:
 
 # SPEC roteamento_busca/008 — Seleção de sugestão clicável
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como usuário da busca simples, quero **clicar** numa sugestão da lista suspensa para
@@ -160,4 +163,18 @@ path("endereco/",   include("apps.address_geocoder.urls")),
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### p1 — DTOs de seleção em `schemas.py`
+Os DTOs `LogradouroSelection`, `LoteSelection` e `EnderecoSelection` ficam em
+`apps/<app>/schemas.py` (um módulo por app), não embutidos no `views.py`. As views
+importam de lá. Padrão a seguir em toda nova view de seleção.
+
+### p2 — codlog normalizado para 5 dígitos no `LogradouroCatalog`
+**Problema:** o parquet armazena `codlog` como 6 chars (5 dígitos + 1 DV concatenados).
+O `CodlogMatcher` já fatia corretamente (`[:5]` e `[5]`), mas o `LogradouroCatalog._rows`
+repassava o valor bruto de 6 chars para `LogradouroMatchOutput.codlog`. Como resultado,
+o template `resultados_logradouro.html` postava um codlog de 6 dígitos que falhava no
+padrão `^\d{1,5}$` do `LogradouroSelection`, gerando 422.
+
+**Correção:** `LogradouroCatalog._rows` agora fatia `c[:5]` ao instanciar `LogradouroRow`,
+mantendo `LogradouroMatchOutput.codlog` sempre com 5 dígitos — consistente com
+`CodlogMatchOutput.codlog`.
