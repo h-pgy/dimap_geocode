@@ -457,6 +457,10 @@ Já estamso na versao mais atual do python, não é para usar from __future__ !
   projeto**, não dentro de `services/`.
 - **Imports do domínio:** importar de `services.integrations` e `services.domain` pelos
   `__init__.py` expostos; não alcançar submódulos internos.
+- **`__init__.py` só reexporta — nunca implementa.** Toda implementação (funções, classes,
+  constantes) vive em submódulos próprios (ex.: `numero.py`, `matcher.py`). O `__init__.py`
+  apenas importa e expõe o que o consumidor externo precisa. Colocar lógica ou constantes
+  diretamente no `__init__.py` é padrão proibido neste projeto.
 - **Management commands sem lógica:** só parsing + chamada ao script + feedback.
 - **JavaScript no frontend (restrito):** só **JS puro** (sem TypeScript/frameworks), em **dois
   casos**: (1) funções de *callback* que escutam eventos do **HTMX** (`htmx.on(...)`); e (2) funções

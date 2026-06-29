@@ -2,6 +2,7 @@ from .models import (
     Candidato,
     CodlogParse,
     ContribuinteParse,
+    EnderecoCodlogParse,
     EnderecoParse,
     LogradouroParse,
     RoteamentoQuery,
@@ -23,4 +24,5 @@ __all__ = [
     "CodlogParse",
     "LogradouroParse",
     "EnderecoParse",
+    "EnderecoCodlogParse",
 ]

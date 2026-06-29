@@ -318,7 +318,7 @@ class TestEndereco:
         assert isinstance(m, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "avenida"
         assert m.logradouro.nome == "paulista"
-        assert m.numero == "3"
+        assert m.numero == 3
         assert m.completo is True
 
     def test_tipo_nome_numero_sem_virgula(self) -> None:
@@ -328,7 +328,7 @@ class TestEndereco:
         assert isinstance(m, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "avenida"
         assert m.logradouro.nome == "paulista"
-        assert m.numero == "3"
+        assert m.numero == 3
         assert m.completo is True
 
     def test_so_nome_numero_sem_virgula_parcial(self) -> None:
@@ -338,7 +338,7 @@ class TestEndereco:
         assert isinstance(m, EnderecoParse)
         assert m.logradouro.tipo_logradouro == ""
         assert m.logradouro.nome == "paulista"
-        assert m.numero == "3"
+        assert m.numero == 3
         assert m.completo is False
 
     def test_so_nome_numero_com_virgula_parcial(self) -> None:
@@ -348,7 +348,7 @@ class TestEndereco:
         assert isinstance(m, EnderecoParse)
         assert m.logradouro.tipo_logradouro == ""
         assert m.logradouro.nome == "paulista"
-        assert m.numero == "3"
+        assert m.numero == 3
         assert m.completo is False
 
     def test_so_nome_numero_finished_typing_completo(self) -> None:
@@ -356,7 +356,7 @@ class TestEndereco:
         m = r.match
         assert isinstance(m, EnderecoParse)
         assert m.logradouro.tipo_logradouro == ""
-        assert m.numero == "300"
+        assert m.numero == 300
         assert m.completo is True
 
     def test_descarta_complemento(self) -> None:
@@ -365,7 +365,7 @@ class TestEndereco:
         assert isinstance(m, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "avenida"
         assert m.logradouro.nome == "paulista"
-        assert m.numero == "3"
+        assert m.numero == 3
         assert m.completo is True
 
     def test_rua_numerada_com_virgula(self) -> None:
@@ -375,7 +375,7 @@ class TestEndereco:
         assert isinstance(m, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "rua"
         assert m.logradouro.nome == "25 de março"
-        assert m.numero == "100"
+        assert m.numero == 100
         assert m.completo is True
 
     def test_rua_numerada_sem_virgula(self) -> None:
@@ -385,7 +385,7 @@ class TestEndereco:
         assert isinstance(m, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "rua"
         assert m.logradouro.nome == "25 de março"
-        assert m.numero == "100"
+        assert m.numero == 100
         assert m.completo is True
 
     def test_exclusao_mutua_com_logradouro(self) -> None:
