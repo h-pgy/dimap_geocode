@@ -7,7 +7,8 @@
     {% for r in resultado.logradouros %}
       <li class="py-3 flex items-baseline gap-4">
         <span class="font-mono text-sm text-base-content/60 w-16 shrink-0">{{ r.codlog }}</span>
-        <span class="font-medium">{{ r.nome_logradouro }}</span>
+        {# tipo_codigo já é a sigla (AV, R, AL); só prefixa quando não for vazio #}
+        <span class="font-medium">{% if r.tipo_codigo|stringformat:'s'|cut:' ' %}{{ r.tipo_codigo }} {% endif %}{{ r.nome_logradouro }}</span>
       </li>
     {% endfor %}
   </ul>
