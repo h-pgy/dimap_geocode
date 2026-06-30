@@ -1,0 +1,4 @@
+{# templates/mapping/_mapa.html — partial agnóstico de domínio: só container + dados (sem <script>) #}
+<div id="map" class="h-[70vh] w-full rounded-lg"></div>
+{{ wms|json_script:"mapa-wms" }}
+{{ payload|json_script:"mapa-payload" }}

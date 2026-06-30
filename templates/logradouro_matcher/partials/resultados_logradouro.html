@@ -6,8 +6,8 @@
   <ul class="divide-y divide-base-300">
     {% for r in resultado.logradouros %}
       <li class="py-3 flex items-baseline gap-4 cursor-pointer hover:bg-base-200"
-          hx-post="{% url 'logradouro_matcher:selecionar' %}"
-          hx-vals='{"codlog": "{{ r.codlog }}", "digito_verificador": "{{ r.dv }}"}'
+          hx-post="{% url 'logradouro_geocoder:geocodificar' %}"
+          hx-vals='{"codlog": "{{ r.codlog }}{{ r.dv }}"}'
           hx-target="#resultado-busca"
           hx-swap="innerHTML"
       >

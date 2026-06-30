@@ -43,6 +43,18 @@ class _Settings(BaseSettings):
     wfs_retry_wait_min_seconds: float = Field(default=1.0, alias="WFS_RETRY_WAIT_MIN_SECONDS")
     wfs_retry_wait_max_seconds: float = Field(default=5.0, alias="WFS_RETRY_WAIT_MAX_SECONDS")
 
+    wms_url: str = Field(
+        default="https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+        alias="WMS_URL",
+    )
+    wms_version: str = Field(default="1.3.0", alias="WMS_VERSION")
+    wms_layer_ortofoto: str = Field(default="geoportal:ORTO_RGB_2020", alias="WMS_LAYER_ORTOFOTO")
+    wms_layer_mapa_base: str = Field(
+        default="geoportal:MapaBase_Politico", alias="WMS_LAYER_MAPA_BASE"
+    )
+    map_cor_linha: str = Field(default="#3b82f6", alias="MAP_COR_LINHA")
+    map_cor_poligono: str = Field(default="#f97316", alias="MAP_COR_POLIGONO")
+
 
 _env = _Settings()
 
@@ -64,6 +76,25 @@ WFS_MAX_RETRIES = _env.wfs_max_retries
 WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds
 WFS_RETRY_WAIT_MAX_SECONDS = _env.wfs_retry_wait_max_seconds
 
+# WMS (GeoSampa → Leaflet tile layer). Config lida aqui e injetada no contexto do
+# app mapping; o JS nunca hardcoda URL, versão ou nomes de camadas (§11).
+WMS_URL = _env.wms_url
+WMS_VERSION = _env.wms_version
+WMS_LAYER_ORTOFOTO = _env.wms_layer_ortofoto
+WMS_LAYER_MAPA_BASE = _env.wms_layer_mapa_base
+# Lista ordenada de bases; a 1ª é a visível por padrão.
+WMS_BASES: list[dict[str, str]] = [
+    {"nome": "Ortofoto", "layers": WMS_LAYER_ORTOFOTO},
+    {"nome": "Mapa base", "layers": WMS_LAYER_MAPA_BASE},
+]
+
+# Mapa — CRS de saída, centro/zoom default e cores por tipo de geometria.
+MAP_OUTPUT_CRS = 4326
+MAP_CENTRO_DEFAULT: list[float] = [-23.55, -46.63]
+MAP_ZOOM_DEFAULT = 12
+MAP_COR_LINHA = _env.map_cor_linha
+MAP_COR_POLIGONO = _env.map_cor_poligono
+
 
 # Application definition
 
@@ -80,6 +111,8 @@ INSTALLED_APPS = [
     "apps.logradouro_matcher",
     "apps.lote_matcher",
     "apps.address_geocoder",
+    "apps.mapping",
+    "apps.logradouro_geocoder",
 ]
 
 MIDDLEWARE = [
@@ -149,6 +182,6 @@ USE_TZ = True
 # Static files — saída do build do Tailwind/DaisyUI (CLAUDE.md §5).
 
 STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static" / "dist"]
+STATICFILES_DIRS = [BASE_DIR / "static" / "dist", BASE_DIR / "static" / "src"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
