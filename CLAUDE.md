@@ -429,6 +429,12 @@ Se uma peça acumula responsabilidades, ela é dividida. Esse princípio é prio
 ### 10.4 Classes: callables, composição e contratos
 - Sempre que couber, classes são **callables**: implementam `__call__` como ponto de entrada da sua
   responsabilidade.
+- **`__call__` é fino e não acumula passos.** Quando a responsabilidade da classe envolve mais de uma
+  etapa, o `__call__` apenas **delega** a um método `pipeline` (que **orquestra** a sequência), e cada
+  etapa vira um **método próprio** (`_montar_request`, `_feature_para_segmento`, …). Lógica de
+  múltiplos passos empilhada dentro do `__call__` é proibida — é o mesmo Single Responsibility de
+  §10.1 aplicado ao corpo do método: `__call__` = porta de entrada; `pipeline` = orquestração; cada
+  passo = um método.
 - A integração entre classes é por **composição**. **Herança é exceção rara**, reservada a quando
   se quer definir uma **interface** (ex.: `ABC`) — e nesse caso a SPEC dirá explicitamente.
 - Classes recebem **DTOs de input** e retornam **DTOs de output**, deixando o contrato de dados
