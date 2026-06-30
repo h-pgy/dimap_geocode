@@ -1,3 +1,3 @@
-from .models import GeoFeature, LineGeometry
+from .models import GeoFeature, LineGeometry, PolygonGeometry
 
-__all__ = ["GeoFeature", "LineGeometry"]
+__all__ = ["GeoFeature", "LineGeometry", "PolygonGeometry"]

@@ -2,7 +2,7 @@ from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, model_validator
 
-from .coordinates import eh_linha, eh_multilinha
+from .coordinates import eh_linha, eh_multilinha, eh_poligono, eh_multipoligono
 
 
 class LineGeometry(BaseModel):
@@ -14,6 +14,21 @@ class LineGeometry(BaseModel):
     @model_validator(mode="after")
     def _validar_forma(self) -> "LineGeometry":
         valida = eh_linha if self.type == "LineString" else eh_multilinha
+        if not valida(self.coordinates):
+            raise ValueError(f"coordinates não tem a forma de {self.type}")
+        return self
+
+
+class PolygonGeometry(BaseModel):
+    """GeoJSON de polígono vindo do WFS. Validação estrutural rasa da forma de `coordinates`
+    (sem converter em objeto geométrico nem varrer todos os anéis/vértices). Espelha o
+    `LineGeometry`: um único model cobre o tipo simples e o múltiplo."""
+    type: Literal["Polygon", "MultiPolygon"]
+    coordinates: list[Any]
+
+    @model_validator(mode="after")
+    def _validar_forma(self) -> "PolygonGeometry":
+        valida = eh_poligono if self.type == "Polygon" else eh_multipoligono
         if not valida(self.coordinates):
             raise ValueError(f"coordinates não tem a forma de {self.type}")
         return self

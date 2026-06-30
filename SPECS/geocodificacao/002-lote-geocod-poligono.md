@@ -2,14 +2,14 @@
 spec: geocodificacao/002
 versao: v1
 atualizado_em: 2026-06-29
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
 ---
 
 # SPEC geocodificacao/002 — Geocodificação de lote por nº de contribuinte (setor/quadra/lote → polígono)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como desenvolvedor do domínio, quero um serviço que receba a numeração de um lote fiscal

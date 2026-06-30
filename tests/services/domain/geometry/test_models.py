@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from services.domain.geometry import GeoFeature, LineGeometry
+from services.domain.geometry import GeoFeature, LineGeometry, PolygonGeometry
 from services.domain.logradouro_geocod import SegmentoLogradouroAttributes
 
 LINESTRING_COORDS = [[0.0, 0.0], [1.0, 1.0]]
@@ -86,3 +86,58 @@ def test_geofeature_rejeita_geometria_invalida() -> None:
             attributes=_attrs(),
             crs=4326,
         )
+
+
+# ---------------------------------------------------------------------------
+# PolygonGeometry
+# ---------------------------------------------------------------------------
+
+ANEL_FECHADO = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]
+POLYGON_COORDS = [ANEL_FECHADO]
+MULTIPOLYGON_COORDS = [
+    [ANEL_FECHADO],
+    [[[2.0, 2.0], [3.0, 2.0], [3.0, 3.0], [2.0, 3.0], [2.0, 2.0]]],
+]
+
+
+def test_polygongeometry_aceita_polygon() -> None:
+    g = PolygonGeometry(type="Polygon", coordinates=POLYGON_COORDS)
+    assert g.type == "Polygon"
+
+
+def test_polygongeometry_aceita_multipolygon() -> None:
+    g = PolygonGeometry(type="MultiPolygon", coordinates=MULTIPOLYGON_COORDS)
+    assert g.type == "MultiPolygon"
+
+
+def test_polygongeometry_rejeita_tipo_invalido() -> None:
+    with pytest.raises(ValidationError):
+        PolygonGeometry(type="Point", coordinates=POLYGON_COORDS)  # type: ignore[arg-type]
+
+
+def test_polygongeometry_rejeita_anel_aberto() -> None:
+    anel_aberto = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]  # primeiro != último
+    with pytest.raises(ValidationError):
+        PolygonGeometry(type="Polygon", coordinates=[anel_aberto])
+
+
+def test_polygongeometry_rejeita_polygon_vazio() -> None:
+    with pytest.raises(ValidationError):
+        PolygonGeometry(type="Polygon", coordinates=[])
+
+
+def test_polygongeometry_rejeita_multipolygon_vazio() -> None:
+    with pytest.raises(ValidationError):
+        PolygonGeometry(type="MultiPolygon", coordinates=[])
+
+
+def test_polygongeometry_rejeita_profundidade_errada_para_multipolygon() -> None:
+    with pytest.raises(ValidationError):
+        PolygonGeometry(type="MultiPolygon", coordinates=POLYGON_COORDS)
+
+
+def test_polygongeometry_model_validate_de_dict() -> None:
+    data = {"type": "Polygon", "coordinates": POLYGON_COORDS}
+    g = PolygonGeometry.model_validate(data)
+    assert g.type == "Polygon"
+    assert len(g.coordinates) == 1
