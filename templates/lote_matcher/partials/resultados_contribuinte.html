@@ -6,13 +6,14 @@
     {% for r in resultados %}
       <li class="py-3 flex items-baseline gap-4 cursor-pointer hover:bg-base-200"
           hx-post="{% url 'lote_matcher:selecionar' %}"
-          hx-vals='{"setor": "{{ r.setor }}", "quadra": "{{ r.quadra }}", "lote": "{{ r.lote }}", "dv": "{{ r.digito|default:"" }}"}'
+          hx-vals='{"setor": "{{ r.setor }}", "quadra": "{{ r.quadra }}", "lote": "{{ r.lote }}", "dv": "{{ r.digito|default:"" }}", "tipo_lote": "{{ r.tipo_lote }}"}'
           hx-target="#resultado-busca"
           hx-swap="innerHTML"
       >
         <span class="font-mono text-sm text-base-content/60 w-32 shrink-0">
           {{ r.setor }}.{{ r.quadra }}.{{ r.lote }}{% if r.digito %}-{{ r.digito }}{% endif %}
         </span>
+        <span class="badge badge-sm badge-ghost shrink-0">{{ r.tipo_lote }}</span>
         <span class="font-medium">
           {{ r.logradouro }}, {{ r.numero }}{% if r.complemento %} — {{ r.complemento }}{% endif %}
         </span>

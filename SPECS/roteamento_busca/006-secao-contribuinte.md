@@ -1,10 +1,11 @@
 ---
 spec: roteamento-busca/006
-versao: v1
-atualizado_em: 2026-06-28
+versao: v2
+atualizado_em: 2026-06-29
 implementado: true
 changelog:
   - v1: versão inicial
+  - v2: tipo de lote (cd_tipo_lote) passa a fluir ponta a ponta — exibido em cada sugestão E propagado pelo clique (hx-vals → LoteSelection → view selecionar), pois a geocodificação do lote (geocodificacao/002) filtra por cd_tipo_lote e precisa do tipo escolhido
 ---
 
 # SPEC roteamento-busca/006 — Seção de sugestões de contribuinte (pluga o match de lote no roteador)
@@ -52,9 +53,18 @@ recebo 5 lotes que casam".
       **`TipoEntrada.CONTRIBUINTE` → `secao_contribuinte`**, **sem alterar** o laço de `rotear_busca`
       nem o *partial* agregador `_sugestoes.html` (a estrutura da 005 é reaproveitada como está).
 - [ ] O `lote_matcher` tem um *partial* próprio `resultados_contribuinte.html` que recebe a lista de
-      **`ContribuinteMatchOutput`** e renderiza cada lote (máscara `setor.quadra.lote-dv` + endereço:
-      logradouro, número e complemento quando houver); lista vazia exibe um aviso de "nenhum lote
-      encontrado".
+      **`ContribuinteMatchOutput`** e renderiza cada lote (máscara `setor.quadra.lote-dv` + **tipo de
+      lote** (`r.tipo_lote`) + endereço: logradouro, número e complemento quando houver); lista vazia
+      exibe um aviso de "nenhum lote encontrado". O `tipo_lote` já existe em `ContribuinteMatchOutput`
+      e é exibido como um rótulo/badge ao lado da numeração, para o usuário distinguir lotes de tipos
+      diferentes (fiscal, municipal etc.) antes de clicar na sugestão.
+- [ ] **O `tipo_lote` é propagado pelo clique, não só exibido.** O `hx-vals` de cada sugestão passa a
+      incluir `tipo_lote` (junto de `setor/quadra/lote/dv`), de modo que o POST de seleção carregue o
+      tipo escolhido. Em consequência, o DTO **`LoteSelection`** ganha o campo **`tipo_lote`** e a view
+      **`selecionar`** passa a lê-lo do POST. Isso é necessário porque a **geocodificação do lote**
+      (geocodificacao/002) filtra a feição por `cd_tipo_lote` — sem o tipo escolhido, a seleção não tem
+      informação suficiente para a busca final do polígono. O `tipo_lote` selecionado é obrigatório na
+      seleção (vem sempre da sugestão clicada).
 - [ ] Entrada **ambígua** continua coerente: para uma entrada numérica que gere candidatos `CODLOG`
       **e** `CONTRIBUINTE`, **ambas** as seções podem aparecer (codlog desde a 005; contribuinte a
       partir desta SPEC), cada uma no seu `<section>`.
@@ -234,10 +244,17 @@ REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
 {% if resultados %}
   <ul class="divide-y divide-base-300">
     {% for r in resultados %}
-      <li class="py-3 flex items-baseline gap-4">
+      {# tipo_lote vai tanto no badge (exibição) quanto no hx-vals (propagação ao clicar) #}
+      <li class="py-3 flex items-baseline gap-4 cursor-pointer hover:bg-base-200"
+          hx-post="{% url 'lote_matcher:selecionar' %}"
+          hx-vals='{"setor": "{{ r.setor }}", "quadra": "{{ r.quadra }}", "lote": "{{ r.lote }}", "dv": "{{ r.digito|default:"" }}", "tipo_lote": "{{ r.tipo_lote }}"}'
+          hx-target="#resultado-busca"
+          hx-swap="innerHTML"
+      >
         <span class="font-mono text-sm text-base-content/60 w-32 shrink-0">
           {{ r.setor }}.{{ r.quadra }}.{{ r.lote }}{% if r.digito %}-{{ r.digito }}{% endif %}
         </span>
+        <span class="badge badge-sm badge-ghost shrink-0">{{ r.tipo_lote }}</span>
         <span class="font-medium">
           {{ r.logradouro }}, {{ r.numero }}{% if r.complemento %} — {{ r.complemento }}{% endif %}
         </span>
@@ -247,6 +264,29 @@ REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
 {% else %}
   <p class="text-base-content/60 text-sm py-4">Nenhum lote encontrado.</p>
 {% endif %}
+```
+
+### Seleção carrega o tipo de lote (`apps/lote_matcher/schemas.py` + `views.py`)
+
+```python
+# schemas.py — LoteSelection ganha tipo_lote, para alimentar a geocodificação (geocodificacao/002)
+class LoteSelection(BaseModel):
+    setor: str = Field(pattern=r"^\d{1,3}$")
+    quadra: str = Field(pattern=r"^\d{1,3}$")
+    lote: str = Field(pattern=r"^\d{1,4}$")
+    dv: str | None = Field(default=None, pattern=r"^\d{1,2}$")
+    tipo_lote: str  # obrigatório: vem sempre da sugestão clicada (hx-vals)
+```
+
+```python
+# views.py — selecionar passa a ler tipo_lote do POST
+selecao = LoteSelection(
+    setor=request.POST.get("setor", ""),
+    quadra=request.POST.get("quadra", ""),
+    lote=request.POST.get("lote", ""),
+    dv=request.POST.get("dv") or None,
+    tipo_lote=request.POST.get("tipo_lote", ""),
+)
 ```
 
 ## Fora de escopo
@@ -283,4 +323,15 @@ REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+- **v2 (2026-06-29):** o **tipo de lote** (`cd_tipo_lote`) passa a fluir **ponta a ponta**, motivado
+  pela geocodificacao/002, que filtra a feição do lote por `cd_tipo_lote` e portanto exige o tipo
+  escolhido para a busca final do polígono. Duas frentes:
+  - **Exibição:** o *partial* `resultados_contribuinte.html` mostra o `tipo_lote` (badge ao lado da
+    numeração), para o usuário distinguir lotes de tipos diferentes (fiscal, municipal etc.) antes de
+    clicar. O campo já existia em `ContribuinteMatchOutput.tipo_lote` (mapeado de `cd_tipo_lote` no
+    `ContribuinteMatcher`) — nada muda no domínio nem no registro de seções.
+  - **Propagação:** o `hx-vals` de cada sugestão passa a incluir `tipo_lote`; o DTO `LoteSelection`
+    ganha o campo `tipo_lote` e a view `selecionar` passa a lê-lo do POST. Assim a seleção do lote já
+    carrega o tipo, deixando a seleção pronta para alimentar a `LoteGeocodInput` (geocodificacao/002)
+    sem ter de reconsultar a base só para descobrir o tipo. Continua sendo só interface/orquestração
+    (§3.3) — sem regra de negócio nova.

@@ -36,6 +36,7 @@ def selecionar(request: HttpRequest) -> HttpResponse:
         quadra=request.POST.get("quadra", ""),
         lote=request.POST.get("lote", ""),
         dv=request.POST.get("dv") or None,
+        tipo_lote=request.POST.get("tipo_lote", ""),
     )
-    print(f"[SELEÇÃO] tipo=lote {selecao!r}")
+    print(f"[SELEÇÃO] tipo=lote tipo_lote={selecao.tipo_lote!r} {selecao!r}")
     return render(request, "lote_matcher/partials/_selecao.html", {"selecao": selecao})
