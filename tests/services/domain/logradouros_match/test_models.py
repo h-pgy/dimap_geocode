@@ -21,8 +21,8 @@ def _make_fuzzy_result(query: str = "q", best: str = "B", score: float = 95.0) -
     )
 
 
-def _make_match(codlog: str = "000001", tipo: str = "AV", nome: str = "PAULISTA") -> LogradouroMatchOutput:
-    return LogradouroMatchOutput(codlog=codlog, tipo_codigo=tipo, nome_logradouro=nome)
+def _make_match(codlog: str = "000001", dv: str = "0", tipo: str = "AV", nome: str = "PAULISTA") -> LogradouroMatchOutput:
+    return LogradouroMatchOutput(codlog=codlog, dv=dv, tipo_codigo=tipo, nome_logradouro=nome)
 
 
 # ---------------------------------------------------------------------------

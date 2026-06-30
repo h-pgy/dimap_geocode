@@ -41,17 +41,17 @@ class FakeCatalog(LogradouroCatalog):
 
 def _catalog_padrao() -> FakeCatalog:
     rows = [
-        LogradouroRow(codlog="000001", cd_tipo_logradouro="AV", nm_logradouro="PAULISTA"),
-        LogradouroRow(codlog="000002", cd_tipo_logradouro="AV", nm_logradouro="BRASIL"),
-        LogradouroRow(codlog="000003", cd_tipo_logradouro="R", nm_logradouro="DIREITA"),
-        LogradouroRow(codlog="000004", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
-        LogradouroRow(codlog="000007", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
-        LogradouroRow(codlog="000005", cd_tipo_logradouro="AL", nm_logradouro="SANTOS"),
+        LogradouroRow(codlog="000001", dv="0", cd_tipo_logradouro="AV", nm_logradouro="PAULISTA"),
+        LogradouroRow(codlog="000002", dv="0", cd_tipo_logradouro="AV", nm_logradouro="BRASIL"),
+        LogradouroRow(codlog="000003", dv="0", cd_tipo_logradouro="R", nm_logradouro="DIREITA"),
+        LogradouroRow(codlog="000004", dv="0", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
+        LogradouroRow(codlog="000007", dv="0", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
+        LogradouroRow(codlog="000005", dv="0", cd_tipo_logradouro="AL", nm_logradouro="SANTOS"),
         # prefixos — nomes que começam com "PAUL"
-        LogradouroRow(codlog="000006", cd_tipo_logradouro="AV", nm_logradouro="PAULINO GUEDES"),
-        LogradouroRow(codlog="000008", cd_tipo_logradouro="R", nm_logradouro="PAULO AFONSO"),
+        LogradouroRow(codlog="000006", dv="0", cd_tipo_logradouro="AV", nm_logradouro="PAULINO GUEDES"),
+        LogradouroRow(codlog="000008", dv="0", cd_tipo_logradouro="R", nm_logradouro="PAULO AFONSO"),
         # "BRASIL" aparece no meio (não é prefixo) — para testes do fallback substring
-        LogradouroRow(codlog="000009", cd_tipo_logradouro="R", nm_logradouro="JARDIM BRASIL"),
+        LogradouroRow(codlog="000009", dv="0", cd_tipo_logradouro="R", nm_logradouro="JARDIM BRASIL"),
     ]
     variacoes = {
         "AVENIDA": "AV",

@@ -38,13 +38,13 @@ class FakeCatalog(LogradouroCatalog):
 
 def _catalog_padrao() -> FakeCatalog:
     rows = [
-        LogradouroRow(codlog="000001", cd_tipo_logradouro="AV", nm_logradouro="PAULISTA"),
-        LogradouroRow(codlog="000002", cd_tipo_logradouro="AV", nm_logradouro="BRASIL"),
-        LogradouroRow(codlog="000003", cd_tipo_logradouro="R", nm_logradouro="DIREITA"),
+        LogradouroRow(codlog="000001", dv="0", cd_tipo_logradouro="AV", nm_logradouro="PAULISTA"),
+        LogradouroRow(codlog="000002", dv="0", cd_tipo_logradouro="AV", nm_logradouro="BRASIL"),
+        LogradouroRow(codlog="000003", dv="0", cd_tipo_logradouro="R", nm_logradouro="DIREITA"),
         # homônimos: AURORA com dois codlogs dentro do mesmo tipo R
-        LogradouroRow(codlog="000004", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
-        LogradouroRow(codlog="000007", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
-        LogradouroRow(codlog="000005", cd_tipo_logradouro="AL", nm_logradouro="SANTOS"),
+        LogradouroRow(codlog="000004", dv="0", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
+        LogradouroRow(codlog="000007", dv="0", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
+        LogradouroRow(codlog="000005", dv="0", cd_tipo_logradouro="AL", nm_logradouro="SANTOS"),
     ]
     variacoes = {
         "AVENIDA": "AV",

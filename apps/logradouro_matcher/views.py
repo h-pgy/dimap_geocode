@@ -46,6 +46,9 @@ def secao_logradouro(candidato: LogradouroParse) -> SecaoResultado:
 
 @require_POST
 def selecionar(request: HttpRequest) -> HttpResponse:
-    selecao = LogradouroSelection(codlog=request.POST.get("codlog", ""))
+    selecao = LogradouroSelection(
+        codlog=request.POST.get("codlog", ""),
+        digito_verificador=request.POST.get("digito_verificador", ""),
+    )
     print(f"[SELEÇÃO] tipo=logradouro {selecao!r}")
     return render(request, "logradouro_matcher/partials/_selecao.html", {"selecao": selecao})

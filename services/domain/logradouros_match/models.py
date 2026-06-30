@@ -10,12 +10,14 @@ class LogradouroMatchQuery(BaseModel):
 
 class LogradouroRow(BaseModel):
     codlog: str
+    dv: str
     cd_tipo_logradouro: str
     nm_logradouro: str
 
 
 class LogradouroMatchOutput(BaseModel):
     codlog: str
+    dv: str
     tipo_codigo: str
     nome_logradouro: str
 
