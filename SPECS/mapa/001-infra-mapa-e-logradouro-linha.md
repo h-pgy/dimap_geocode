@@ -1,14 +1,15 @@
 ---
 spec: mapa/001
-versao: v3
+versao: v6
 atualizado_em: 2026-07-01
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: WMS base concretizado (URL/camada ortofoto/versão do GeoSampa) e versão do WMS injetada via settings (não hardcoded no JS); fronteira explícita — o fundo do Leaflet é um `L.tileLayer.wms` direto, NÃO o `services/integrations/wms` (esse puxa imagens GetMap server-side, outro caso de uso)
   - v3: duas camadas base (ortofoto `geoportal:ORTO_RGB_2020` + mapa base político `geoportal:MapaBase_Politico`) num `L.control.layers` (radio); config do WMS passa a carregar uma LISTA de bases nomeadas (a 1ª visível por padrão), com nomes vindos de settings (nada hardcoded no JS)
   - v4: URL por base — a ortofoto é servida por um WMS de RASTER em outro domínio (`WMS_RASTER_URL`), não pelo WMS geral. Cada entrada de `WMS_BASES` pode ter uma chave `url` própria; o JS resolve `b.url || wms.url` (patch 001)
   - v5: `minZoom` do `L.map` sobe de 10 para 13 — a base ortofoto não tem cobertura em zooms mais baixos (patch 002)
+  - v6: construção do `WfsFetcher` centralizada em `services/integrations/wfs` (`build_fetcher`), removendo o `_fetcher()` inline da view; o factory recebe um objeto settings-like por injeção (Protocol), sem acoplar `services/` ao Django (patch 003)
 ---
 
 # SPEC mapa/001 — Infra do mapa + plotagem de logradouro (codlog → linha no Leaflet)
@@ -506,7 +507,7 @@ própria `url`**: `WMS_BASES` ganha a chave opcional `url` por entrada. Quem nã
 Nenhuma mudança no partial, no `contexto_mapa` (já repassa `bases` inteiro) nem no fluxo de
 logradouro → linha.
 
-### Patch 002 (v4) — zoom mínimo mais alto (ortofoto não tem cobertura em zoom baixo)
+### Patch 002 (v5) — zoom mínimo mais alto (ortofoto não tem cobertura em zoom baixo)
 
 **Sintoma.** Com `minZoom: 10` (`static/src/js/mapa/criar_mapa.js`), o usuário consegue afastar o
 mapa até um nível em que a camada base **ortofoto** (`ORTO_RGB_2020`, servida pelo `WMS_RASTER_URL`
@@ -527,3 +528,66 @@ config de `settings`, então não passa por `json_script`).
   ```
 
 Nenhuma mudança no `contexto_mapa`, no partial ou nas demais camadas base.
+
+### Patch 003 (v6) — construção do `WfsFetcher` centralizada no integrador WFS (`build_fetcher`)
+
+**Sintoma.** A montagem do `WfsFetcher` (ler `settings.WFS_*` → `WfsConnectionConfig` +
+`WfsRetryPolicy` → `WfsFetcher`) estava **duplicada** como um `_fetcher()` privado dentro de cada
+view de geocodificação (`logradouro_geocoder` e, na SPEC mapa/002, `lote_geocoder`) — e ainda
+repetida nos *management commands*. Código de integração (montar o cliente WFS) vazando para a
+camada de orquestração, contra §3/§7.2.
+
+**Decisão.** A construção do cliente vira responsabilidade do **próprio integrador**
+(`services/integrations/wfs`), num **factory** `build_fetcher`. Para não acoplar `services/` ao
+Django (§3.3), o factory **não importa `django.conf.settings`**: recebe por **injeção** um objeto
+*settings-like* descrito por um `Protocol` (`WfsSettingsLike`) com os atributos `WFS_*`. A view
+passa o `settings` do Django — que satisfaz o contrato **estruturalmente** —, mantendo o integrador
+neutro em relação à interface. É legítimo uma função de `services/` **receber** um objeto de
+configuração por parâmetro; o que não pode é `services/` **alcançar** o `settings` do Django.
+
+**Ajustes.**
+
+- `services/integrations/wfs/utils.py` vira o **pacote** `services/integrations/wfs/utils/`, com
+  dois submódulos de responsabilidade única — `cql_utils.py` (os helpers `cql_eq`, `cql_ilike`, …
+  que já existiam) e `client.py` (o `Protocol` `WfsSettingsLike` + `build_connection_config`,
+  `build_retry_policy` e `build_fetcher`, que o compõe). O `utils/__init__.py` **reexporta tudo**,
+  preservando o acesso existente `wfs.utils.cql_eq(...)`.
+
+- `services/integrations/wfs/__init__.py` passa a reexportar `build_fetcher` (e os builders
+  parciais) no nível do pacote — o consumidor importa `from services.integrations.wfs import
+  build_fetcher` (§11).
+
+  ```python
+  # services/integrations/wfs/utils/client.py
+  from typing import Protocol
+
+  from ..fetcher import WfsFetcher
+  from ..models import WfsConnectionConfig, WfsRetryPolicy
+
+
+  class WfsSettingsLike(Protocol):
+      WFS_DOMAIN: str
+      WFS_ENDPOINT: str
+      WFS_NAMESPACE: str
+      WFS_SERVICE: str
+      WFS_VERSION: str
+      WFS_REQUEST_TIMEOUT_SECONDS: float
+      WFS_MAX_RETRIES: int
+      WFS_RETRY_WAIT_MIN_SECONDS: float
+      WFS_RETRY_WAIT_MAX_SECONDS: float
+
+
+  def build_fetcher(source: WfsSettingsLike, *, verbose: bool = False) -> WfsFetcher:
+      return WfsFetcher(
+          build_connection_config(source),
+          retry_policy=build_retry_policy(source),
+          verbose=verbose,
+      )
+  ```
+
+- `apps/logradouro_geocoder/views.py`: some o `_fetcher()`; a view chama
+  `LogradouroGeocoder(build_fetcher(settings))(entrada)`.
+
+Os *management commands* (que montam `config`/`retry_policy` **separados** para passar ao `run`)
+continuam funcionando e **podem** adotar `build_connection_config`/`build_retry_policy` numa próxima
+iteração — fora do escopo deste patch.

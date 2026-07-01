@@ -50,12 +50,21 @@ tanto uma revisão de critério quanto um bugfix incrementam a versão. A difere
   mudança, seja de intenção/escopo seja um ajuste pontual, é editada **no corpo da SPEC** e
   registrada **apenas no `changelog`** do front-matter. **Não existe `Patches` nesta fase** —
   enquanto não houver código, não há o que "corrigir depois do fato".
-- **SPEC já implementada** (check marcado): mudanças de intenção continuam indo para o corpo +
-  `changelog`; **correções e bugfixes** vão para a seção `Patches` (mantém rastro do que mudou
-  *após* a entrega, sem poluir a especificação). Todo patch também incrementa a versão.
+- **SPEC já implementada** (check marcado): **correções, bugfixes e refactors** vão para a seção
+  `Patches` (mantém rastro do que mudou *após* a entrega, sem poluir a especificação). Todo patch
+  também incrementa a versão.
 
 > **Regra de ouro do `Patches`:** só se preenche `Patches` depois que a SPEC foi implementada
 > (check marcado). Antes disso, tudo é `changelog`.
+
+> **Patch = APPEND-ONLY.** Um patch **nunca edita o corpo da SPEC** (user story, critérios de aceite,
+> contexto, peças de referência, snippets). Ele faz **duas coisas e só essas**: (1) **append** de uma
+> nova entrada `### Patch NNN (vX) — <título>` **no final** da seção `Patches`; (2) atualização do
+> **front-matter** (bump de `versao`, nova linha no `changelog`, `atualizado_em`). O corpo permanece
+> **congelado** como a especificação original — quem quiser saber o que mudou lê os patches. Não
+> reescreva snippets nem listas de referência "para refletir o novo estado": isso queima tokens e
+> desalinha o histórico. O snippet dentro da entrada de patch é onde o novo código aparece, se
+> necessário.
 
 ### Flag de implementação
 
@@ -136,10 +145,11 @@ CLAUDE.md se aplicam, por que esta abordagem. Fluxo resumido da funcionalidade.>
 não para implementar agora.>
 
 ## Patches
-<SÓ existe depois que a SPEC foi implementada (check `Implementada` marcado). Pequenas correções
-e bugfixes registrados após a entrega; cada patch incrementa a versão (changelog no front-matter)
-e fica registrado aqui com data e versão. Enquanto a SPEC NÃO foi implementada, deixe esta seção
-como abaixo e registre tudo no `changelog`.>
+<SÓ existe depois que a SPEC foi implementada (check `Implementada` marcado). Correções, bugfixes e
+refactors registrados após a entrega. **APPEND-ONLY:** cada patch é uma nova entrada acrescentada ao
+FINAL desta seção — o corpo da SPEC NUNCA é editado por um patch. Cada patch incrementa a versão
+(changelog no front-matter) e fica registrado aqui com versão e título. Enquanto a SPEC NÃO foi
+implementada, deixe esta seção como abaixo e registre tudo no `changelog`.>
 
 _Nenhum patch registrado até o momento._
 ````
@@ -157,6 +167,8 @@ Antes de apresentar a SPEC ao usuário, verifique:
       nem adiciona entrada no `changelog` — é só um estado administrativo.
 - [ ] Se a SPEC **ainda não foi implementada**, a seção `Patches` está vazia ("Nenhum patch
       registrado até o momento.") e toda mudança foi registrada no `changelog`, não em `Patches`.
+- [ ] Se a mudança é um **patch** (SPEC já implementada), ela foi **apenas acrescentada ao final** da
+      seção `Patches` + front-matter (versão/changelog) — o **corpo da SPEC não foi editado**.
 - [ ] Slug do arquivo no padrão `NNN-slug-da-spec.md` dentro da subpasta do épico correto.
 - [ ] User story com persona, objetivo e valor claros.
 - [ ] Critérios de aceite são **condições observáveis** (não tarefas técnicas).

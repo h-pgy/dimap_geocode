@@ -1,10 +1,11 @@
 ---
 spec: mapa/002
-versao: v1
-atualizado_em: 2026-06-29
-implementado: false
+versao: v2
+atualizado_em: 2026-07-01
+implementado: true
 changelog:
   - v1: versão inicial
+  - v2: a view monta o `WfsFetcher` via `services.integrations.wfs.build_fetcher` (settings-like injetado por Protocol), em vez do `_fetcher()` inline — acompanha a mapa/001 (patch 001)
 ---
 
 # SPEC mapa/002 — Plotagem de lote (nº de contribuinte → polígono no Leaflet)
@@ -179,4 +180,10 @@ tipo {{ a.tipo_lote }}{% if a.condominio %} · cond. {{ a.condominio }}{% endif 
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v2) — `build_fetcher` no lugar do `_fetcher()` inline
+
+Acompanha o Patch 003 da mapa/001: a construção do `WfsFetcher` deixa de ser um `_fetcher()`
+privado na view e passa a vir do integrador — `from services.integrations.wfs import build_fetcher`,
+com o `settings` do Django injetado (Protocol `WfsSettingsLike`), mantendo `services/` desacoplado do
+Django. A view do `lote_geocoder` chama `LoteGeocoder(build_fetcher(settings))(entrada)`. Nenhuma
+outra mudança no fluxo lote → polígono.

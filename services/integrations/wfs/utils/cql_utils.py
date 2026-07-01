@@ -1,4 +1,4 @@
-from .models import CqlFilter, CqlPredicate
+from ..models import CqlFilter, CqlPredicate
 
 CqlValue = str | int | float | bool
 
