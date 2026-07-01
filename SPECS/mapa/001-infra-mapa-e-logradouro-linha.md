@@ -7,6 +7,7 @@ changelog:
   - v1: versão inicial
   - v2: WMS base concretizado (URL/camada ortofoto/versão do GeoSampa) e versão do WMS injetada via settings (não hardcoded no JS); fronteira explícita — o fundo do Leaflet é um `L.tileLayer.wms` direto, NÃO o `services/integrations/wms` (esse puxa imagens GetMap server-side, outro caso de uso)
   - v3: duas camadas base (ortofoto `geoportal:ORTO_RGB_2020` + mapa base político `geoportal:MapaBase_Politico`) num `L.control.layers` (radio); config do WMS passa a carregar uma LISTA de bases nomeadas (a 1ª visível por padrão), com nomes vindos de settings (nada hardcoded no JS)
+  - v4: URL por base — a ortofoto é servida por um WMS de RASTER em outro domínio (`WMS_RASTER_URL`), não pelo WMS geral. Cada entrada de `WMS_BASES` pode ter uma chave `url` própria; o JS resolve `b.url || wms.url` (patch 001)
 ---
 
 # SPEC mapa/001 — Infra do mapa + plotagem de logradouro (codlog → linha no Leaflet)
@@ -463,4 +464,43 @@ codlog {{ a.codlog }}{% if a.titulo %} · {{ a.titulo }}{% endif %}
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v4) — URL por base: ortofoto vem de um WMS de raster em outro domínio
+
+**Sintoma.** O mapa base político (`geoportal:MapaBase_Politico`) e a plotagem dos segmentos de
+linha do codlog funcionam normalmente, mas a **base ortofoto não retorna nada**. Motivo: a ortofoto
+**não é servida pelo WMS geral** (`WMS_URL`, `.../geoserver/geoportal/ows`) e sim por um **WMS de
+raster** hospedado em outro domínio:
+
+```
+WMS_RASTER_URL = "http://raster.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/wms"
+```
+
+A configuração do serviço é a mesma (WMS 1.3.0, mesma camada `geoportal:ORTO_RGB_2020`), só muda a
+**URL** do endpoint.
+
+**Decisão.** Mantida toda a arquitetura da SPEC (config de WMS vinda de `settings` → `json_script`,
+tile layer cliente direto, nada hardcoded no JS). A única mudança é que **cada base pode ter sua
+própria `url`**: `WMS_BASES` ganha a chave opcional `url` por entrada. Quem não define `url` cai no
+`WMS_URL` geral; a ortofoto passa a apontar para `WMS_RASTER_URL`.
+
+**Ajustes.**
+
+- `config/settings.py`: nova env `wms_raster_url` (alias `WMS_RASTER_URL`, default acima) e constante
+  `WMS_RASTER_URL`. A entrada da ortofoto em `WMS_BASES` recebe `"url": WMS_RASTER_URL`:
+
+  ```python
+  WMS_BASES: list[dict[str, str]] = [
+      {"nome": "Ortofoto", "layers": WMS_LAYER_ORTOFOTO, "url": WMS_RASTER_URL},
+      {"nome": "Mapa base", "layers": WMS_LAYER_MAPA_BASE},
+  ]
+  ```
+
+- `static/src/js/mapa/camada_base.js`: o tile layer resolve a URL por base, com fallback ao WMS
+  geral — continua **sem hardcode** (a URL vem do servidor):
+
+  ```javascript
+  const layer = L.tileLayer.wms(b.url || wms.url, { ... });
+  ```
+
+Nenhuma mudança no partial, no `contexto_mapa` (já repassa `bases` inteiro) nem no fluxo de
+logradouro → linha.

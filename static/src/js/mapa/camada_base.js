@@ -4,7 +4,9 @@
 export function adicionarBaseWms(map, wms) {
   const baseMaps = {};
   wms.bases.forEach((b, i) => {
-    const layer = L.tileLayer.wms(wms.url, {
+    // Cada base pode ter sua própria URL (ex.: a ortofoto vem do WMS de raster,
+    // em outro domínio); sem `url` própria, cai no WMS geral.
+    const layer = L.tileLayer.wms(b.url || wms.url, {
       layers: b.layers,
       version: wms.version,
       format: "image/png",
