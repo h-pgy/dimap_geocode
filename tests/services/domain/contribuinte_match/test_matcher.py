@@ -28,7 +28,7 @@ from collections.abc import Generator
 @pytest.fixture
 def matcher() -> Generator[ContribuinteMatcher, None, None]:
     with patch(
-        "services.domain.contribuinte_match.matcher.read_parquet_from_data",
+        "services.domain.contribuinte_match.catalog.read_parquet_from_data",
         return_value=_DADOS_FAKE,
     ):
         yield ContribuinteMatcher()

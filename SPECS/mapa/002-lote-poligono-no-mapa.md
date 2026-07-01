@@ -1,11 +1,12 @@
 ---
 spec: mapa/002
-versao: v2
+versao: v3
 atualizado_em: 2026-07-01
 implementado: true
 changelog:
   - v1: versão inicial
   - v2: a view monta o `WfsFetcher` via `services.integrations.wfs.build_fetcher` (settings-like injetado por Protocol), em vez do `_fetcher()` inline — acompanha a mapa/001 (patch 001)
+  - v3: quando o lote não retorna geometria (feature list vazia), a view renderiza o aviso agnóstico do `mapping` (entregue na mapa/001 patch 004) em vez de um mapa vazio — reuso, sem UI nova (patch 002)
 ---
 
 # SPEC mapa/002 — Plotagem de lote (nº de contribuinte → polígono no Leaflet)
@@ -187,3 +188,36 @@ privado na view e passa a vir do integrador — `from services.integrations.wfs 
 com o `settings` do Django injetado (Protocol `WfsSettingsLike`), mantendo `services/` desacoplado do
 Django. A view do `lote_geocoder` chama `LoteGeocoder(build_fetcher(settings))(entrada)`. Nenhuma
 outra mudança no fluxo lote → polígono.
+
+### Patch 002 (v3) — aviso quando o lote não possui geometria (reuso da mapa/001)
+
+**Sintoma.** Igual ao da mapa/001 (patch 004), do lado do lote: se o nº de contribuinte escolhido
+**não tem polígono** cadastrado no WFS, a geocodificação devolve **lista vazia**, o serializador
+produz uma `FeatureCollection` sem features e o `mapping` desenha um **mapa em branco**, sem avisar
+que não há geometria para exibir.
+
+**Decisão.** **Reuso total** da solução da mapa/001 (§14 — composição sobre reimplementação): o
+partial de aviso agnóstico (`templates/mapping/_aviso.html`) e o helper `contexto_aviso` já foram
+entregues no `mapping` pela mapa/001. Aqui **nada de UI é criado**: a view do `lote_geocoder` só
+ramifica quando não há features e renderiza o mesmo aviso, montando a mensagem própria do lote
+(presentation). A decisão continua sendo **orquestração** na view; domínio e serializador intactos.
+
+**Ajuste.**
+
+- `apps/lote_geocoder/views.py`: espelha o `logradouro_geocoder`.
+
+  ```python
+  from apps.mapping.context import contexto_aviso, contexto_mapa
+  ...
+  features = LoteGeocoder(build_fetcher(settings))(entrada)
+  if not features:
+      return render(
+          request,
+          "mapping/_aviso.html",
+          contexto_aviso("Este lote não possui geometria cadastrada para exibir no mapa."),
+      )
+  geojson = to_geojson_feature_collection(features, _properties)
+  return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_POLIGONO))
+  ```
+
+Nenhuma mudança no `mapping` (reusado), no serializador, no domínio de lote ou no JS.

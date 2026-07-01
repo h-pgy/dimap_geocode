@@ -21,3 +21,8 @@ def contexto_mapa(geometria: dict[str, Any], cor: str) -> dict[str, Any]:
             "zoom": MAP_ZOOM_DEFAULT,
         },
     }
+
+
+def contexto_aviso(mensagem: str) -> dict[str, Any]:
+    """Contexto do partial de aviso do mapping: só a mensagem pronta (agnóstico de domínio)."""
+    return {"mensagem": mensagem}

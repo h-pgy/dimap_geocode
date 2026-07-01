@@ -1,29 +1,28 @@
 import pandas as pd
 
-from services.utils.cache import ttl_cached_property
-from services.utils.io import read_parquet_from_data
-
+from .catalog import ContribuinteCatalog
 from .models import ContribuinteMatchInput, ContribuinteMatchOutput
-
-NOME_ARQUIVO_PADRAO = "enderecos_fiscais.parquet"
 
 
 class ContribuinteMatcher:
-    def __init__(self, nome_arquivo: str = NOME_ARQUIVO_PADRAO) -> None:
-        self._nome_arquivo = nome_arquivo
-
-    @ttl_cached_property(ttl_seconds=3600)
-    def _dataframe(self) -> pd.DataFrame:
-        return pd.DataFrame(read_parquet_from_data(self._nome_arquivo))
+    def __init__(self, catalog: ContribuinteCatalog | None = None) -> None:
+        self._catalog = catalog or ContribuinteCatalog()
 
     def __call__(self, payload: ContribuinteMatchInput) -> list[ContribuinteMatchOutput]:
-        df = self._dataframe
+        return self._pipeline(payload)
+
+    def _pipeline(self, payload: ContribuinteMatchInput) -> list[ContribuinteMatchOutput]:
+        df = self._catalog.enderecos_fiscais
+        mask = self._build_mask(df, payload)
+        return self._mapear_resultados(df[mask].head(payload.limite))
+
+    def _build_mask(self, df: pd.DataFrame, payload: ContribuinteMatchInput) -> pd.Series:
         mask = df["cd_setor_fiscal"].str.startswith(payload.setor)
         if payload.quadra:
             mask &= df["cd_quadra_fiscal"].str.startswith(payload.quadra)
         if payload.lote:
             mask &= df["cd_lote"].str.startswith(payload.lote)
-        return self._mapear_resultados(df[mask].head(payload.limite))
+        return mask
 
     def _mapear_resultados(self, dataframe: pd.DataFrame) -> list[ContribuinteMatchOutput]:
         resultados: list[ContribuinteMatchOutput] = []
@@ -44,6 +43,3 @@ class ContribuinteMatcher:
                 )
             )
         return resultados
-
-
-match_contribuinte = ContribuinteMatcher()

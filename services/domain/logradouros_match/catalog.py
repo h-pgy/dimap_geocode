@@ -1,3 +1,4 @@
+import time
 from typing import cast
 
 from services.utils.cache import ttl_cached_property
@@ -52,3 +53,11 @@ class LogradouroCatalog:
     def linhas_por_nome(self, nome: str, codigo: str | None) -> list[LogradouroRow]:
         universo = self.linhas_do_tipo(codigo) if codigo else self._rows
         return [row for row in universo if row.nm_logradouro == nome]
+
+    def aquecer(self) -> None:
+        print("[LogradouroCatalog] aquecendo cache...")
+        inicio = time.perf_counter()
+        _ = self._variacoes
+        _ = self._por_tipo
+        duracao = time.perf_counter() - inicio
+        print(f"[LogradouroCatalog] cache aquecido em {duracao:.2f}s")

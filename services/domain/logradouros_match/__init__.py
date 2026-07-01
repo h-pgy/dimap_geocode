@@ -12,10 +12,12 @@ from .models import (
 _catalog = LogradouroCatalog()
 match_logradouro = LogradouroMatcher(catalog=_catalog)
 match_logradouro_literal = LiteralLogradouroMatcher(catalog=_catalog)
+logradouro_catalog = _catalog
 
 __all__ = [
     "match_logradouro",
     "match_logradouro_literal",
+    "logradouro_catalog",
     "LogradouroMatchOutput",
     "LogradouroMatchQuery",
     "LogradouroMatchResult",

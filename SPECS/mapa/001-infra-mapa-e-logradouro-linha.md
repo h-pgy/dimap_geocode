@@ -1,6 +1,6 @@
 ---
 spec: mapa/001
-versao: v6
+versao: v7
 atualizado_em: 2026-07-01
 implementado: true
 changelog:
@@ -10,6 +10,7 @@ changelog:
   - v4: URL por base — a ortofoto é servida por um WMS de RASTER em outro domínio (`WMS_RASTER_URL`), não pelo WMS geral. Cada entrada de `WMS_BASES` pode ter uma chave `url` própria; o JS resolve `b.url || wms.url` (patch 001)
   - v5: `minZoom` do `L.map` sobe de 10 para 13 — a base ortofoto não tem cobertura em zooms mais baixos (patch 002)
   - v6: construção do `WfsFetcher` centralizada em `services/integrations/wfs` (`build_fetcher`), removendo o `_fetcher()` inline da view; o factory recebe um objeto settings-like por injeção (Protocol), sem acoplar `services/` ao Django (patch 003)
+  - v7: quando a geocodificação não retorna geometria (feature list vazia), a view deixa de renderizar um mapa vazio e passa a renderizar um aviso ao usuário; o `mapping` ganha um partial de aviso genérico (agnóstico de domínio) + helper de contexto, reusável por logradouro e lote (patch 004)
 ---
 
 # SPEC mapa/001 — Infra do mapa + plotagem de logradouro (codlog → linha no Leaflet)
@@ -591,3 +592,63 @@ configuração por parâmetro; o que não pode é `services/` **alcançar** o `s
 Os *management commands* (que montam `config`/`retry_policy` **separados** para passar ao `run`)
 continuam funcionando e **podem** adotar `build_connection_config`/`build_retry_policy` numa próxima
 iteração — fora do escopo deste patch.
+
+### Patch 004 (v7) — aviso quando o registro sugerido não possui geometria
+
+**Sintoma.** Ao escolher uma sugestão cujo registro **não tem geometria cadastrada** no serviço WFS
+(acontece principalmente com **logradouros**, mas também é possível com lote), a geocodificação
+devolve uma **lista vazia** de features. O serializador produz `{"type":"FeatureCollection",
+"features":[]}` (comportamento correto e agnóstico, mantido) e o `mapping` renderiza um **mapa em
+branco** — sem nenhuma sinalização ao usuário de que a busca não encontrou geometria. A pessoa fica
+sem saber se o registro não existe, se não tem geometria ou se algo falhou.
+
+**Decisão.** A decisão "há ou não geometria para plotar" é **orquestração** (§3): fica na **view**,
+não no domínio nem no serializador (que seguem intactos — lista vazia continua sendo lista vazia). A
+view passa a **checar se a geocodificação retornou features**: se sim, renderiza o mapa como antes;
+se **não**, renderiza um **partial de aviso** em vez do mapa vazio.
+
+O aviso é **UI agnóstica de domínio**, então mora no **`mapping`** (como o `_mapa.html`): um partial
+`templates/mapping/_aviso.html` (alert DaisyUI) que recebe uma **mensagem pronta**, mais um helper
+`contexto_aviso(mensagem)` em `apps/mapping/context.py`. O `mapping` **não** sabe o que é logradouro
+ou lote — só exibe a mensagem que a view (presentation) montar. Assim o mesmo aviso é **reusado** por
+logradouro e lote (a mapa/002 só compõe, ver patch da mapa/002), sem cruzar domínios (§10.1) e sem
+duplicar UI. Ambos os partials (`_mapa.html`/`_aviso.html`) são trocados no mesmo alvo
+`#resultado-busca`, então o *swap* do HTMX não muda.
+
+**Ajustes.**
+
+- `apps/mapping/context.py`: novo helper agnóstico que só embrulha a mensagem.
+
+  ```python
+  def contexto_aviso(mensagem: str) -> dict[str, Any]:
+      """Contexto do partial de aviso do mapping: só a mensagem pronta (agnóstico de domínio)."""
+      return {"mensagem": mensagem}
+  ```
+
+- `templates/mapping/_aviso.html`: alert DaisyUI, sem lógica (a mensagem já vem pronta).
+
+  ```html
+  {# aviso agnóstico de domínio: exibe a mensagem montada pela view #}
+  <div role="alert" class="alert alert-warning">
+    <span>{{ mensagem }}</span>
+  </div>
+  ```
+
+- `apps/logradouro_geocoder/views.py`: a view passa a ramificar quando não há geometria. A mensagem
+  (presentation, com o nome/`codlog` do logradouro) é montada na view; o `mapping` só a exibe.
+
+  ```python
+  features = LogradouroGeocoder(build_fetcher(settings))(entrada)
+  if not features:
+      return render(
+          request,
+          "mapping/_aviso.html",
+          contexto_aviso("Este logradouro não possui geometria cadastrada para exibir no mapa."),
+      )
+  geojson = to_geojson_feature_collection(features, _properties)
+  return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_LINHA))
+  ```
+
+O serializador `to_geojson_feature_collection`, o domínio `logradouro_geocod`, o partial do mapa e o
+JS centralizado **não mudam** — a única fronteira nova é a ramificação de orquestração na view mais o
+partial/helper de aviso no `mapping`.

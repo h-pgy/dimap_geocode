@@ -6,7 +6,7 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 
-from apps.mapping.context import contexto_mapa
+from apps.mapping.context import contexto_aviso, contexto_mapa
 from services.domain.geometry import GeoFeature, to_geojson_feature_collection
 from services.domain.lote_geocod import LoteGeocoder, LoteGeocodInput
 from services.integrations.wfs import build_fetcher
@@ -36,5 +36,11 @@ def geocodificar(request: HttpRequest) -> HttpResponse:
         output_crs=MAP_OUTPUT_CRS,
     )
     features = LoteGeocoder(build_fetcher(settings))(entrada)
+    if not features:
+        return render(
+            request,
+            "mapping/_aviso.html",
+            contexto_aviso("Este lote não possui geometria cadastrada para exibir no mapa."),
+        )
     geojson = to_geojson_feature_collection(features, _properties)
     return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_POLIGONO))
