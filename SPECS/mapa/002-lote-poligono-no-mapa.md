@@ -9,7 +9,7 @@ changelog:
 
 # SPEC mapa/002 — Plotagem de lote (nº de contribuinte → polígono no Leaflet)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [X] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como visitante da aplicação, quero que, ao escolher um lote nas sugestões da busca por número de

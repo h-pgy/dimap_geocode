@@ -1,18 +1,19 @@
 ---
 spec: mapa/001
 versao: v3
-atualizado_em: 2026-06-30
+atualizado_em: 2026-07-01
 implementado: false
 changelog:
   - v1: versão inicial
   - v2: WMS base concretizado (URL/camada ortofoto/versão do GeoSampa) e versão do WMS injetada via settings (não hardcoded no JS); fronteira explícita — o fundo do Leaflet é um `L.tileLayer.wms` direto, NÃO o `services/integrations/wms` (esse puxa imagens GetMap server-side, outro caso de uso)
   - v3: duas camadas base (ortofoto `geoportal:ORTO_RGB_2020` + mapa base político `geoportal:MapaBase_Politico`) num `L.control.layers` (radio); config do WMS passa a carregar uma LISTA de bases nomeadas (a 1ª visível por padrão), com nomes vindos de settings (nada hardcoded no JS)
   - v4: URL por base — a ortofoto é servida por um WMS de RASTER em outro domínio (`WMS_RASTER_URL`), não pelo WMS geral. Cada entrada de `WMS_BASES` pode ter uma chave `url` própria; o JS resolve `b.url || wms.url` (patch 001)
+  - v5: `minZoom` do `L.map` sobe de 10 para 13 — a base ortofoto não tem cobertura em zooms mais baixos (patch 002)
 ---
 
 # SPEC mapa/001 — Infra do mapa + plotagem de logradouro (codlog → linha no Leaflet)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [X] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como visitante da aplicação, quero que, ao escolher um logradouro nas sugestões da busca, a **linha**
@@ -504,3 +505,25 @@ própria `url`**: `WMS_BASES` ganha a chave opcional `url` por entrada. Quem nã
 
 Nenhuma mudança no partial, no `contexto_mapa` (já repassa `bases` inteiro) nem no fluxo de
 logradouro → linha.
+
+### Patch 002 (v4) — zoom mínimo mais alto (ortofoto não tem cobertura em zoom baixo)
+
+**Sintoma.** Com `minZoom: 10` (`static/src/js/mapa/criar_mapa.js`), o usuário consegue afastar o
+mapa até um nível em que a camada base **ortofoto** (`ORTO_RGB_2020`, servida pelo `WMS_RASTER_URL`
+— patch 001) não tem dados naquele zoom e aparece em branco/quebrada.
+
+**Decisão.** Subir o `minZoom` do `L.map` de `10` para `13`, nível em que a ortofoto tem cobertura
+garantida. Sem mudança de arquitetura — o valor continua fixo no módulo `criar_mapa.js` (não é
+config de `settings`, então não passa por `json_script`).
+
+**Ajuste.**
+
+- `static/src/js/mapa/criar_mapa.js`:
+
+  ```javascript
+  export function criarMapa(elId, centro, zoom) {
+    return L.map(elId, { minZoom: 13, maxZoom: 19 }).setView(centro, zoom);
+  }
+  ```
+
+Nenhuma mudança no `contexto_mapa`, no partial ou nas demais camadas base.

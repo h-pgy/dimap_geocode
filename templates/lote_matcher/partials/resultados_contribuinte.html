@@ -5,8 +5,8 @@
   <ul class="divide-y divide-base-300">
     {% for r in resultados %}
       <li class="py-3 flex items-baseline gap-4 cursor-pointer hover:bg-base-200"
-          hx-post="{% url 'lote_matcher:selecionar' %}"
-          hx-vals='{"setor": "{{ r.setor }}", "quadra": "{{ r.quadra }}", "lote": "{{ r.lote }}", "dv": "{{ r.digito|default:"" }}", "tipo_lote": "{{ r.tipo_lote }}"}'
+          hx-post="{% url 'lote_geocoder:geocodificar' %}"
+          hx-vals='{"setor": "{{ r.setor }}", "quadra": "{{ r.quadra }}", "lote": "{{ r.lote }}", "tipo_lote": "{{ r.tipo_lote }}"}'
           hx-target="#resultado-busca"
           hx-swap="innerHTML"
       >

@@ -8,5 +8,6 @@ urlpatterns = [
     path("logradouro/", include("apps.logradouro_matcher.urls")),
     path("logradouro/", include("apps.logradouro_geocoder.urls")),
     path("lote/", include("apps.lote_matcher.urls")),
+    path("lote/", include("apps.lote_geocoder.urls")),
     path("endereco/", include("apps.address_geocoder.urls")),
 ]

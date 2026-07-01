@@ -121,6 +121,7 @@ INSTALLED_APPS = [
     "apps.address_geocoder",
     "apps.mapping",
     "apps.logradouro_geocoder",
+    "apps.lote_geocoder",
 ]
 
 MIDDLEWARE = [
