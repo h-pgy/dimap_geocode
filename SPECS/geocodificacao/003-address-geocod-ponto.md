@@ -1,19 +1,20 @@
 ---
 spec: geocodificacao/003
-versao: v4
+versao: v6
 atualizado_em: 2026-07-02
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: PointGeometry documenta a forma de `coordinates` via alias `Position` (list[float]); campo segue `list[Any]` com validação rasa por `eh_ponto` (espelha Line/PolygonGeometry, que passam a citar os aliases de `coordinates.py`)
   - v3: pipeline do AddressGeocoder só orquestra (§10.4) — paridade vira `_definir_paridade`; `_buscar_com_numeracao` é quebrado em `_buscar_segmentos` + `_filtrar_com_numeracao`; a proporção da interpolação sai para `_definir_proporcao`
   - v4: `Paridade` + `intervalo_numeracao` saem de `models.py` (que fica só com DTOs) para um módulo local `numeracao.py`, espelhando o padrão de `address_match/numero.py` e `geometry/coordinates.py`
   - v5: interpolação sai do geocoder para `interpolacao.py` — classe callable `InterpoladorSegmento` (com `_definir_proporcao` como método privado), composta pelo AddressGeocoder como par do `SolverOrientacaoSegmento`
+  - v6: patch pós-implementação (ver Patch 001) — corrige heurística de orientação, trata via de segmento único, lê o CRS da própria feature e tipa a dependência injetada como Callable
 ---
 
 # SPEC geocodificacao/003 — Geocodificação de endereço (codlog + número → ponto)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como desenvolvedor do domínio, quero um serviço que receba um `codlog` + um `número` de imóvel e
@@ -479,4 +480,37 @@ __all__ = [
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v6) — correção de orientação, via de segmento único, CRS pela feature e tipagem da injeção
+
+Descoberto ao escrever os testes unitários (pedidos após a entrega). Quatro mudanças, nenhuma
+altera o contrato dos DTOs (`AddressGeocodInput`/`EnderecoFeature` inalterados):
+
+1. **Bugfix — correção de orientação não invertia.** A heurística portada (snippet original do
+   `SolverOrientacaoSegmento`) comparava **uma** extremidade de `escolhido` contra as **duas** do
+   segmento adjacente; num traçado colinear isso nunca detecta a inversão, e o ponto caía do lado
+   errado da quadra. Passa a comparar **as duas extremidades de `escolhido`** contra o adjacente
+   (cada uma via a extremidade mais próxima dele — robusto à orientação do próprio adjacente):
+   decide qual ponta carrega a numeração baixa. O caso midpoint (`proporção == 0.5`) mascarava o bug
+   no smoke test por ser direção-independente.
+
+2. **Bugfix — via de segmento único quebrava.** `_adjacente` fazia `min()`/`max()` sobre lista
+   vazia quando o `escolhido` não tem vizinho (logradouro de segmento único). Agora `_adjacente`
+   devolve `SegmentoLogradouroFeature | None`; sem vizinho, `__call__` mantém a ordem de origem
+   (não há como inferir orientação sem adjacente).
+
+3. **Refactor — CRS vem da própria feature.** `linha_geos` deixa de receber `srid` como parâmetro e
+   lê `feature.crs` (o envelope `GeoFeature` já carrega o CRS). O `interpolation_crs` fica com **um
+   único ponto de uso** — a busca dos segmentos em `_buscar_segmentos` — e daí em diante o CRS
+   "viaja" com a geometria (`feature.crs` → `linha.srid` → `ponto.srid`). O `SolverOrientacaoSegmento`
+   e o `InterpoladorSegmento` deixam de receber o CRS. Também: o SRID é atribuído **após** construir
+   o `GEOSGeometry` (que assume 4326 ao desserializar GeoJSON e recusa `srid` divergente no
+   construtor), apenas rotulando as coordenadas cruas sem reprojetar.
+
+4. **Refactor — dependência injetada tipada como Callable.** O construtor do `AddressGeocoder` passa
+   a tipar `logradouro_geocoder` como `SegmentosDeCodlog = Callable[[LogradouroGeocodInput],
+   list[SegmentoLogradouroFeature]]` (em vez do concreto `LogradouroGeocoder`), espelhando o padrão
+   `WfsBatches` de `LogradouroGeocoder`/`LoteGeocoder` — mantém a composição desacoplada e testável
+   por injeção (§3.3, §10.4).
+
+Validação: `mypy`/`ruff` limpos; suíte unitária do módulo verde; teste de integração contra o WFS
+real (Av. Paulista, 300 — codlog 156566) devolvendo ponto plausível em São Paulo.

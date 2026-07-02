@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from services.domain.geometry import GeoFeature, LineGeometry, PolygonGeometry
+from services.domain.geometry import GeoFeature, LineGeometry, PointGeometry, PolygonGeometry
 from services.domain.logradouro_geocod import SegmentoLogradouroAttributes
 
 LINESTRING_COORDS = [[0.0, 0.0], [1.0, 1.0]]
@@ -141,3 +141,45 @@ def test_polygongeometry_model_validate_de_dict() -> None:
     g = PolygonGeometry.model_validate(data)
     assert g.type == "Polygon"
     assert len(g.coordinates) == 1
+
+
+# ---------------------------------------------------------------------------
+# PointGeometry
+# ---------------------------------------------------------------------------
+
+
+def test_pointgeometry_aceita_posicao_2d() -> None:
+    g = PointGeometry(type="Point", coordinates=[-46.6, -23.5])
+    assert g.type == "Point"
+    assert g.coordinates == [-46.6, -23.5]
+
+
+def test_pointgeometry_rejeita_tipo_invalido() -> None:
+    with pytest.raises(ValidationError):
+        PointGeometry(type="LineString", coordinates=[-46.6, -23.5])  # type: ignore[arg-type]
+
+
+def test_pointgeometry_rejeita_posicao_com_um_numero() -> None:
+    with pytest.raises(ValidationError):
+        PointGeometry(type="Point", coordinates=[-46.6])
+
+
+def test_pointgeometry_rejeita_posicao_3d() -> None:
+    with pytest.raises(ValidationError):
+        PointGeometry(type="Point", coordinates=[-46.6, -23.5, 10.0])
+
+
+def test_pointgeometry_rejeita_posicao_vazia() -> None:
+    with pytest.raises(ValidationError):
+        PointGeometry(type="Point", coordinates=[])
+
+
+def test_pointgeometry_rejeita_bool_como_coordenada() -> None:
+    with pytest.raises(ValidationError):
+        PointGeometry(type="Point", coordinates=[True, False])
+
+
+def test_pointgeometry_model_validate_de_dict() -> None:
+    g = PointGeometry.model_validate({"type": "Point", "coordinates": [-46.6, -23.5]})
+    assert g.type == "Point"
+    assert len(g.coordinates) == 2

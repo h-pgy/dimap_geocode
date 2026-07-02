@@ -2,7 +2,22 @@ from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, model_validator
 
-from .coordinates import eh_linha, eh_multilinha, eh_poligono, eh_multipoligono
+from .coordinates import eh_linha, eh_multilinha, eh_poligono, eh_multipoligono, eh_ponto
+
+
+class PointGeometry(BaseModel):
+    """GeoJSON de ponto gerado no domínio. `coordinates` tem a forma `Position` (list[float] de
+    tamanho 2) — ver `coordinates.py`. Validação estrutural rasa via `eh_ponto` (que também rejeita
+    bool e posições 3D), por isso o campo é `list[Any]` e não `list[float]`: o alias documenta a
+    forma sem delegar a checagem ao Pydantic (que coagiria bool->float e aceitaria posições 3D)."""
+    type: Literal["Point"]
+    coordinates: list[Any]
+
+    @model_validator(mode="after")
+    def _validar_forma(self) -> "PointGeometry":
+        if not eh_ponto(self.coordinates):
+            raise ValueError("coordinates não tem a forma de Point")
+        return self
 
 
 class LineGeometry(BaseModel):
