@@ -2,14 +2,14 @@
 spec: mapa/003
 versao: v1
 atualizado_em: 2026-07-02
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
 ---
 
 # SPEC mapa/003 — Plotagem de endereço (codlog + número → ponto no Leaflet)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como visitante da aplicação, quero que, ao escolher um endereço nas sugestões da busca (logradouro +

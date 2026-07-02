@@ -58,6 +58,7 @@ class _Settings(BaseSettings):
     )
     map_cor_linha: str = Field(default="#3b82f6", alias="MAP_COR_LINHA")
     map_cor_poligono: str = Field(default="#f97316", alias="MAP_COR_POLIGONO")
+    map_cor_ponto: str = Field(default="#ef4444", alias="MAP_COR_PONTO")
 
 
 _env = _Settings()
@@ -98,10 +99,14 @@ WMS_BASES: list[dict[str, str]] = [
 
 # Mapa — CRS de saída, centro/zoom default e cores por tipo de geometria.
 MAP_OUTPUT_CRS = 4326
+# CRS projetado/métrico p/ interpolar o número do endereço sobre o segmento (§7.3);
+# 31983 = SIRGAS 2000 / UTM 23S, nativo do GeoSampa.
+MAP_INTERPOLATION_CRS = 31983
 MAP_CENTRO_DEFAULT: list[float] = [-23.55, -46.63]
 MAP_ZOOM_DEFAULT = 12
 MAP_COR_LINHA = _env.map_cor_linha
 MAP_COR_POLIGONO = _env.map_cor_poligono
+MAP_COR_PONTO = _env.map_cor_ponto
 
 
 # Application definition

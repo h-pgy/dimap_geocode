@@ -20,5 +20,11 @@ class EnderecoAttributes(BaseModel):
     id_segmento: str            # segmento que originou a interpolação
     titulo: str | None = None
 
+    @property
+    def nome_completo(self) -> str:
+        """tipo + título (se houver) + nome — ex.: 'AV DR PAULISTA', 'R DIREITA'."""
+        partes = [self.tipo_logradouro, self.titulo, self.nome_logradouro]
+        return " ".join(p for p in partes if p)
+
 
 EnderecoFeature = GeoFeature[PointGeometry, EnderecoAttributes]
