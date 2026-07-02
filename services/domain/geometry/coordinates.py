@@ -1,5 +1,16 @@
 from typing import Any
 
+# Formas de `coordinates` (GeoJSON) por tipo de geometria — servem de DOCUMENTAÇÃO da estrutura
+# esperada em cada nível de aninhamento. A validação em si continua RASA e leniente: os `eh_*`
+# abaixo amostram apenas o primeiro elemento (não varrem todos os vértices). Por isso os models
+# mantêm `coordinates: list[Any]` no campo Pydantic — evitando a revalidação profunda de cada
+# vértice vindo do WFS — e usam estes aliases só como referência de leitura nos docstrings.
+type Position = list[float]                    # [lon, lat] — uma posição 2D (também é o Point)
+type LineCoords = list[Position]               # LineString      -> lista de posições
+type MultiLineCoords = list[LineCoords]        # MultiLineString -> lista de linhas
+type PolygonCoords = list[LineCoords]          # Polygon         -> lista de anéis (1º = exterior)
+type MultiPolygonCoords = list[PolygonCoords]  # MultiPolygon    -> lista de polígonos
+
 
 def eh_ponto(coords: Any) -> bool:
     """Um PONTO é uma posição GeoJSON 2D: sequência com exatamente 2 números [lon, lat].

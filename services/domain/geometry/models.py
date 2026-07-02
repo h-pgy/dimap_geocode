@@ -6,8 +6,10 @@ from .coordinates import eh_linha, eh_multilinha, eh_poligono, eh_multipoligono
 
 
 class LineGeometry(BaseModel):
-    """GeoJSON de linha vindo do WFS. Validação estrutural rasa da forma de `coordinates`
-    (sem converter em objeto geométrico nem varrer todos os vértices)."""
+    """GeoJSON de linha vindo do WFS. `coordinates` tem a forma `LineCoords` (LineString) ou
+    `MultiLineCoords` (MultiLineString) — ver `coordinates.py`. Validação estrutural rasa da forma
+    (sem converter em objeto geométrico nem varrer todos os vértices), por isso o campo é
+    `list[Any]` e não o alias aninhado (que forçaria revalidação profunda)."""
     type: Literal["LineString", "MultiLineString"]
     coordinates: list[Any]
 
@@ -20,9 +22,10 @@ class LineGeometry(BaseModel):
 
 
 class PolygonGeometry(BaseModel):
-    """GeoJSON de polígono vindo do WFS. Validação estrutural rasa da forma de `coordinates`
-    (sem converter em objeto geométrico nem varrer todos os anéis/vértices). Espelha o
-    `LineGeometry`: um único model cobre o tipo simples e o múltiplo."""
+    """GeoJSON de polígono vindo do WFS. `coordinates` tem a forma `PolygonCoords` (Polygon) ou
+    `MultiPolygonCoords` (MultiPolygon) — ver `coordinates.py`. Validação estrutural rasa da forma
+    (sem converter em objeto geométrico nem varrer todos os anéis/vértices), por isso o campo é
+    `list[Any]`. Espelha o `LineGeometry`: um único model cobre o tipo simples e o múltiplo."""
     type: Literal["Polygon", "MultiPolygon"]
     coordinates: list[Any]
 
