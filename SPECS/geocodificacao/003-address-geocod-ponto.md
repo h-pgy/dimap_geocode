@@ -1,11 +1,14 @@
 ---
 spec: geocodificacao/003
-versao: v2
+versao: v4
 atualizado_em: 2026-07-02
 implementado: false
 changelog:
   - v1: versão inicial
   - v2: PointGeometry documenta a forma de `coordinates` via alias `Position` (list[float]); campo segue `list[Any]` com validação rasa por `eh_ponto` (espelha Line/PolygonGeometry, que passam a citar os aliases de `coordinates.py`)
+  - v3: pipeline do AddressGeocoder só orquestra (§10.4) — paridade vira `_definir_paridade`; `_buscar_com_numeracao` é quebrado em `_buscar_segmentos` + `_filtrar_com_numeracao`; a proporção da interpolação sai para `_definir_proporcao`
+  - v4: `Paridade` + `intervalo_numeracao` saem de `models.py` (que fica só com DTOs) para um módulo local `numeracao.py`, espelhando o padrão de `address_match/numero.py` e `geometry/coordinates.py`
+  - v5: interpolação sai do geocoder para `interpolacao.py` — classe callable `InterpoladorSegmento` (com `_definir_proporcao` como método privado), composta pelo AddressGeocoder como par do `SolverOrientacaoSegmento`
 ---
 
 # SPEC geocodificacao/003 — Geocodificação de endereço (codlog + número → ponto)
@@ -163,17 +166,10 @@ __all__ = [
 ```
 
 ```python
-# services/domain/address_geocod/models.py
-from enum import Enum
-
+# services/domain/address_geocod/models.py — só DTOs Pydantic (contratos de entrada/saída)
 from pydantic import BaseModel, Field
 
 from services.domain.geometry import GeoFeature, PointGeometry
-
-
-class Paridade(Enum):
-    IMPAR = 1
-    PAR = 2
 
 
 class AddressGeocodInput(BaseModel):
@@ -195,13 +191,23 @@ class EnderecoAttributes(BaseModel):
 
 
 EnderecoFeature = GeoFeature[PointGeometry, EnderecoAttributes]
+```
+
+```python
+# services/domain/address_geocod/numeracao.py — paridade + tradução paridade → colunas de numeração
+from enum import Enum
+
+
+class Paridade(Enum):
+    IMPAR = 1
+    PAR = 2
 
 
 def intervalo_numeracao(
     attrs: object, paridade: Paridade
 ) -> tuple[int | None, int | None]:
-    """Par (inicial, final) da numeração do lado par/ímpar. Compartilhado pelo geocoder e
-    pelo solver de orientação — evita duplicar a tradução paridade → colunas."""
+    """Par (inicial, final) da numeração do lado par/ímpar do segmento. Compartilhado pelo
+    geocoder e pelo solver de orientação — evita duplicar a tradução paridade → colunas."""
     if paridade is Paridade.PAR:
         return attrs.numero_inicial_par, attrs.numero_final_par  # type: ignore[attr-defined]
     return attrs.numero_inicial_impar, attrs.numero_final_impar  # type: ignore[attr-defined]
@@ -227,7 +233,7 @@ from django.contrib.gis.geos import GEOSGeometry, LineString, MultiLineString
 from services.domain.geometry import LineGeometry
 from services.domain.logradouro_geocod import SegmentoLogradouroFeature
 
-from .models import Paridade, intervalo_numeracao
+from .numeracao import Paridade, intervalo_numeracao
 
 
 def linha_geos(line: LineGeometry, srid: int) -> LineString:
@@ -281,6 +287,45 @@ class SolverOrientacaoSegmento:
 ```
 
 ```python
+# services/domain/address_geocod/interpolacao.py — proporção do número + ponto interpolado/reprojetado
+from django.contrib.gis.geos import LineString, Point
+
+from services.domain.logradouro_geocod import SegmentoLogradouroFeature
+
+from .numeracao import Paridade, intervalo_numeracao
+
+
+class InterpoladorSegmento:
+    """Interpola o ponto do número sobre a linha do segmento (no CRS de interpolação) e o reprojeta
+    ao CRS de saída. Peça separada (SRP §10.1), composta pelo AddressGeocoder — par do
+    SolverOrientacaoSegmento."""
+
+    def __call__(
+        self,
+        linha: LineString,
+        escolhido: SegmentoLogradouroFeature,
+        numero: int,
+        paridade: Paridade,
+        interpolation_crs: int,
+        output_crs: int,
+    ) -> Point:
+        proporcao = self._definir_proporcao(escolhido, numero, paridade)
+        ponto: Point = linha.interpolate_normalized(proporcao)
+        ponto.srid = interpolation_crs
+        ponto.transform(output_crs)   # reprojeção centralizada (§7.3)
+        return ponto
+
+    def _definir_proporcao(
+        self, escolhido: SegmentoLogradouroFeature, numero: int, paridade: Paridade
+    ) -> float:
+        # proporção normalizada do número no intervalo; sem intervalo (inicial == final) -> meio
+        inicial, final = intervalo_numeracao(escolhido.attributes, paridade)
+        if final == inicial:
+            return 0.5
+        return (numero - inicial) / (final - inicial)  # type: ignore[operator]
+```
+
+```python
 # services/domain/address_geocod/geocoder.py
 from django.contrib.gis.geos import Point
 
@@ -292,13 +337,9 @@ from services.domain.logradouro_geocod import (
 )
 
 from .exceptions import NumeracaoNaoEncontradaError, SegmentoNaoEncontradoError
-from .models import (
-    AddressGeocodInput,
-    EnderecoAttributes,
-    EnderecoFeature,
-    Paridade,
-    intervalo_numeracao,
-)
+from .interpolacao import InterpoladorSegmento
+from .models import AddressGeocodInput, EnderecoAttributes, EnderecoFeature
+from .numeracao import Paridade, intervalo_numeracao
 from .orientacao import SolverOrientacaoSegmento
 
 
@@ -306,22 +347,30 @@ class AddressGeocoder:
     def __init__(self, logradouro_geocoder: LogradouroGeocoder) -> None:
         self._segmentos = logradouro_geocoder                 # composição (§10.4)
         self._corrigir_orientacao = SolverOrientacaoSegmento()
+        self._interpolar = InterpoladorSegmento()
 
     def __call__(self, entrada: AddressGeocodInput) -> EnderecoFeature:
         return self.pipeline(entrada)                         # porta de entrada fina (§10.4)
 
     def pipeline(self, entrada: AddressGeocodInput) -> EnderecoFeature:
-        paridade = Paridade.PAR if entrada.numero % 2 == 0 else Paridade.IMPAR
-        candidatos = self._buscar_com_numeracao(entrada, paridade)
+        paridade = self._definir_paridade(entrada.numero)
+        segmentos = self._buscar_segmentos(entrada)
+        candidatos = self._filtrar_com_numeracao(segmentos, paridade)
         escolhido = self._segmento_do_numero(candidatos, entrada.numero, paridade)
         linha = self._corrigir_orientacao(
             escolhido, candidatos, paridade, entrada.interpolation_crs
         )
-        ponto = self._interpolar(linha, escolhido, entrada, paridade)
+        ponto = self._interpolar(
+            linha, escolhido, entrada.numero, paridade,
+            entrada.interpolation_crs, entrada.output_crs,
+        )
         return self._montar_feature(ponto, escolhido, entrada)
 
-    def _buscar_com_numeracao(
-        self, entrada: AddressGeocodInput, paridade: Paridade
+    def _definir_paridade(self, numero: int) -> Paridade:
+        return Paridade.PAR if numero % 2 == 0 else Paridade.IMPAR
+
+    def _buscar_segmentos(
+        self, entrada: AddressGeocodInput
     ) -> list[SegmentoLogradouroFeature]:
         # compõe o LogradouroGeocoder pedindo os segmentos JÁ no CRS de interpolação (métrico)
         segmentos = self._segmentos(LogradouroGeocodInput(
@@ -331,11 +380,16 @@ class AddressGeocoder:
         ))
         if not segmentos:
             raise SegmentoNaoEncontradoError(entrada.codlog)
-        com_numeracao = [
+        return segmentos
+
+    def _filtrar_com_numeracao(
+        self, segmentos: list[SegmentoLogradouroFeature], paridade: Paridade
+    ) -> list[SegmentoLogradouroFeature]:
+        # mantém só os segmentos com numeração para a paridade buscada (ambos os lados não nulos)
+        return [
             s for s in segmentos
             if all(v is not None for v in intervalo_numeracao(s.attributes, paridade))
         ]
-        return com_numeracao
 
     def _segmento_do_numero(
         self, candidatos: list[SegmentoLogradouroFeature], numero: int, paridade: Paridade
@@ -348,17 +402,6 @@ class AddressGeocoder:
         if not contem:
             raise NumeracaoNaoEncontradaError(numero)
         return contem[0]   # mais de um: usa o primeiro (§critérios)
-
-    def _interpolar(
-        self, linha, escolhido: SegmentoLogradouroFeature, entrada: AddressGeocodInput,
-        paridade: Paridade,
-    ) -> Point:
-        inicial, final = intervalo_numeracao(escolhido.attributes, paridade)
-        proporcao = 0.5 if final == inicial else (entrada.numero - inicial) / (final - inicial)
-        ponto: Point = linha.interpolate_normalized(proporcao)
-        ponto.srid = entrada.interpolation_crs
-        ponto.transform(entrada.output_crs)   # reprojeção centralizada (§7.3)
-        return ponto
 
     def _montar_feature(
         self, ponto: Point, escolhido: SegmentoLogradouroFeature, entrada: AddressGeocodInput
@@ -382,12 +425,8 @@ class AddressGeocoder:
 # services/domain/address_geocod/__init__.py — só reexporta (§11)
 from .exceptions import NumeracaoNaoEncontradaError, SegmentoNaoEncontradoError
 from .geocoder import AddressGeocoder
-from .models import (
-    AddressGeocodInput,
-    EnderecoAttributes,
-    EnderecoFeature,
-    Paridade,
-)
+from .models import AddressGeocodInput, EnderecoAttributes, EnderecoFeature
+from .numeracao import Paridade
 
 __all__ = [
     "AddressGeocoder",
