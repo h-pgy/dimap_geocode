@@ -6,14 +6,15 @@ from django.views.decorators.http import require_POST
 
 from apps.address_geocoder.views import secao_endereco, secao_endereco_codlog
 from apps.logradouro_matcher.views import secao_codlog, secao_logradouro
-from apps.lote_matcher.views import secao_contribuinte
+from apps.lote_matcher.views import secao_contribuinte, secao_endereco_lote
 from apps.search.secoes import SecaoResultado
 from services.domain.roteamento_busca import Candidato, RoteamentoQuery, TipoEntrada, rotear_entrada
 
-SectionRenderer = Callable[..., SecaoResultado]
+SectionRenderer = Callable[..., SecaoResultado | None]
 
 REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
     TipoEntrada.CONTRIBUINTE: secao_contribuinte,
+    TipoEntrada.ENDERECO_LOTE: secao_endereco_lote,
     TipoEntrada.ENDERECO_CODLOG: secao_endereco_codlog,
     TipoEntrada.ENDERECO: secao_endereco,
     TipoEntrada.CODLOG: secao_codlog,
@@ -29,8 +30,9 @@ def rotear_busca(request: HttpRequest) -> HttpResponse:
     )
     result = rotear_entrada(query)
     secoes = [
-        render_secao(candidato)
+        secao
         for candidato in result.candidatos
         if (render_secao := REGISTRO_SECOES.get(candidato.tipo)) is not None
+        and (secao := render_secao(candidato)) is not None
     ]
     return render(request, "search/partials/_sugestoes.html", {"secoes": secoes})

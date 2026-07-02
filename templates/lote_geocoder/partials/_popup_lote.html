@@ -1,2 +1,3 @@
 <b>{{ a.setor }}.{{ a.quadra }}.{{ a.lote }}</b><br>
+{% if a.endereco %}{{ a.endereco }}<br>{% endif %}
 tipo {{ a.tipo_lote }}{% if a.condominio %} · cond. {{ a.condominio }}{% endif %}

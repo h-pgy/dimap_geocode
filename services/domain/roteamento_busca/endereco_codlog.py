@@ -1,6 +1,8 @@
+from services.domain.address_match import parse_numero_imovel
+
 from .codlog import CodlogIdentifier
 from .models import EnderecoCodlogParse
-from .parsing import separar_numero_codlog
+from .split_localizadores import separar_numero_codlog
 
 
 class CodlogNumeroIdentifier:
@@ -11,8 +13,11 @@ class CodlogNumeroIdentifier:
         partes = separar_numero_codlog(texto)
         if partes is None:
             return None
-        codlog_txt, numero = partes
+        codlog_txt, token = partes
+        numero = parse_numero_imovel(token)  # estrito: int ou None — MESMO parser de hoje
+        if numero is None:
+            return None
         codlog = self._codlog(codlog_txt, finished_typing)
         if codlog is None:
             return None
-        return EnderecoCodlogParse(codlog=codlog, numero=numero)
+        return EnderecoCodlogParse(codlog=codlog, numero=numero, numero_bruto=token)

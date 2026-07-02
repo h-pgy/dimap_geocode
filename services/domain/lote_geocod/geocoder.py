@@ -18,6 +18,9 @@ PAGE_SIZE: int = 10_000
 _OPCIONAIS: dict[str, str] = {
     "cd_tipo_quadra": "tipo_quadra",
     "cd_condominio": "condominio",
+    "cd_logradouro": "codlog",
+    "nm_logradouro_completo": "nome_logradouro",
+    "cd_numero_porta": "numero_porta",
 }
 
 
@@ -94,5 +97,5 @@ class LoteGeocoder:
             quadra=quadra,
             lote=lote,
             tipo_lote=tipo_lote,
-            **{campo: _as_str(props.get(origem)) for origem, campo in _OPCIONAIS.items()},
+            **{campo: _as_str(props.get(origem)) for origem, campo in _OPCIONAIS.items()},  # type: ignore[arg-type]
         )

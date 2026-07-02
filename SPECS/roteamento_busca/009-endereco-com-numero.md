@@ -25,7 +25,7 @@ changelog:
 
 # SPEC roteamento_busca/009 — Endereço com número (seções de endereço por codlog e por nome + ordenação por prioridade)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [X] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 

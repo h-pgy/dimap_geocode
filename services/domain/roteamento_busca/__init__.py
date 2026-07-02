@@ -3,6 +3,7 @@ from .models import (
     CodlogParse,
     ContribuinteParse,
     EnderecoCodlogParse,
+    EnderecoLoteParse,
     EnderecoParse,
     LogradouroParse,
     RoteamentoQuery,
@@ -25,4 +26,5 @@ __all__ = [
     "LogradouroParse",
     "EnderecoParse",
     "EnderecoCodlogParse",
+    "EnderecoLoteParse",
 ]
