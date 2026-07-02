@@ -63,7 +63,7 @@ def _attrs() -> SegmentoLogradouroAttributes:
     return SegmentoLogradouroAttributes(
         id_segmento="SEG001",
         codlog="156566",
-        cd_tipo_logradouro="AV",
+        tipo_logradouro="AV",
         nome_logradouro="PAULISTA",
     )
 

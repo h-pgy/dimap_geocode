@@ -70,7 +70,7 @@ class LogradouroMatcher:
             LogradouroMatchOutput(
                 codlog=row.codlog,
                 dv=row.dv,
-                tipo_codigo=row.cd_tipo_logradouro,
+                tipo_codigo=row.tipo_logradouro,
                 nome_logradouro=row.nm_logradouro,
             )
             for row in rows

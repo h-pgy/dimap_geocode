@@ -11,7 +11,7 @@ class LogradouroMatchQuery(BaseModel):
 class LogradouroRow(BaseModel):
     codlog: str
     dv: str
-    cd_tipo_logradouro: str
+    tipo_logradouro: str
     nm_logradouro: str
 
 

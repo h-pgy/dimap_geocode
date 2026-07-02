@@ -26,7 +26,7 @@ class FakeCatalog(LogradouroCatalog):
         return self._variacoes_data.get(variacao)
 
     def linhas_do_tipo(self, codigo: str) -> list[LogradouroRow]:
-        return [r for r in self._rows_data if r.cd_tipo_logradouro == codigo]
+        return [r for r in self._rows_data if r.tipo_logradouro == codigo]
 
     def todas_as_linhas(self) -> list[LogradouroRow]:
         return list(self._rows_data)
@@ -38,13 +38,13 @@ class FakeCatalog(LogradouroCatalog):
 
 def _catalog_padrao() -> FakeCatalog:
     rows = [
-        LogradouroRow(codlog="000001", dv="0", cd_tipo_logradouro="AV", nm_logradouro="PAULISTA"),
-        LogradouroRow(codlog="000002", dv="0", cd_tipo_logradouro="AV", nm_logradouro="BRASIL"),
-        LogradouroRow(codlog="000003", dv="0", cd_tipo_logradouro="R", nm_logradouro="DIREITA"),
+        LogradouroRow(codlog="000001", dv="0", tipo_logradouro="AV", nm_logradouro="PAULISTA"),
+        LogradouroRow(codlog="000002", dv="0", tipo_logradouro="AV", nm_logradouro="BRASIL"),
+        LogradouroRow(codlog="000003", dv="0", tipo_logradouro="R", nm_logradouro="DIREITA"),
         # homônimos: AURORA com dois codlogs dentro do mesmo tipo R
-        LogradouroRow(codlog="000004", dv="0", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
-        LogradouroRow(codlog="000007", dv="0", cd_tipo_logradouro="R", nm_logradouro="AURORA"),
-        LogradouroRow(codlog="000005", dv="0", cd_tipo_logradouro="AL", nm_logradouro="SANTOS"),
+        LogradouroRow(codlog="000004", dv="0", tipo_logradouro="R", nm_logradouro="AURORA"),
+        LogradouroRow(codlog="000007", dv="0", tipo_logradouro="R", nm_logradouro="AURORA"),
+        LogradouroRow(codlog="000005", dv="0", tipo_logradouro="AL", nm_logradouro="SANTOS"),
     ]
     variacoes = {
         "AVENIDA": "AV",
@@ -224,7 +224,7 @@ def test_nome_logradouro_property_bate_com_best_match() -> None:
 
 
 def test_tipo_codigo_no_item_vem_da_linha_casada() -> None:
-    # "av paulista" → tipo do item é o cd_tipo_logradouro real da linha
+    # "av paulista" → tipo do item é o tipo_logradouro real da linha
     result = _matcher()(LogradouroMatchQuery(texto="avenida paulista"))
     assert result.logradouros[0].tipo_codigo == "AV"
 

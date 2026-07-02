@@ -37,7 +37,7 @@ def _seg(
         attributes={
             "id_segmento": id_segmento,
             "codlog": CODLOG,
-            "cd_tipo_logradouro": "AV",
+            "tipo_logradouro": "AV",
             "nome_logradouro": "PAULISTA",
             "titulo": "DR",
             "preposicao": None,
@@ -301,7 +301,7 @@ def test_attributes_carregam_proveniencia() -> None:
     a = resultado.attributes
     assert a.codlog == CODLOG
     assert a.nome_logradouro == "PAULISTA"
-    assert a.cd_tipo_logradouro == "AV"
+    assert a.tipo_logradouro == "AV"
     assert a.numero == 75
     assert a.id_segmento == "SEG2"
     assert a.titulo == "DR"

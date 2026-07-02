@@ -50,6 +50,10 @@ tanto uma revisão de critério quanto um bugfix incrementam a versão. A difere
   mudança, seja de intenção/escopo seja um ajuste pontual, é editada **no corpo da SPEC** e
   registrada **apenas no `changelog`** do front-matter. **Não existe `Patches` nesta fase** —
   enquanto não houver código, não há o que "corrigir depois do fato".
+  > **Exceção (rascunho v1):** enquanto a SPEC está na **v1 e ainda não foi implementada**,
+  > correções pequenas (typo, snippet incompleto, ajuste de redação) são só **edição do rascunho**
+  > — **não** incrementam a versão nem geram linha no `changelog`. Só se sai da v1 quando há
+  > evolução real de escopo/intenção.
 - **SPEC já implementada** (check marcado): **correções, bugfixes e refactors** vão para a seção
   `Patches` (mantém rastro do que mudou *após* a entrega, sem poluir a especificação). Todo patch
   também incrementa a versão.

@@ -10,7 +10,7 @@ class NomesLogradourosRequest(BaseModel):
 
 class LogradouroNome(BaseModel):
     codlog: str
-    cd_tipo_logradouro: str
+    tipo_logradouro: str
     nm_logradouro: str
 
 

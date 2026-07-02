@@ -26,7 +26,7 @@ class LogradouroCatalog:
         tipos = cast(list[str], cols["cd_tipo_logradouro"])
         nomes = cast(list[str], cols["nm_logradouro"])
         return [
-            LogradouroRow(codlog=c[:5], dv=c[5], cd_tipo_logradouro=t, nm_logradouro=n)
+            LogradouroRow(codlog=c[:5], dv=c[5], tipo_logradouro=t, nm_logradouro=n)
             for c, t, n in zip(codlogs, tipos, nomes)
         ]
 
@@ -34,7 +34,7 @@ class LogradouroCatalog:
     def _por_tipo(self) -> dict[str, list[LogradouroRow]]:
         indice: dict[str, list[LogradouroRow]] = {}
         for row in self._rows:
-            indice.setdefault(row.cd_tipo_logradouro, []).append(row)
+            indice.setdefault(row.tipo_logradouro, []).append(row)
         return indice
 
     @property

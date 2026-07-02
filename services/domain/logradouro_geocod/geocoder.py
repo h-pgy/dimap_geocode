@@ -85,7 +85,7 @@ class LogradouroGeocoder:
         return SegmentoLogradouroAttributes(
             id_segmento=id_segmento,
             codlog=codlog,
-            cd_tipo_logradouro=cd_tipo,
+            tipo_logradouro=cd_tipo,
             nome_logradouro=nome,
             titulo=_as_str(props.get("cd_titulo_logradouro")),
             preposicao=_as_str(props.get("tx_preposicao_logradouro")),

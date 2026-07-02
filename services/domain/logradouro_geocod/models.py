@@ -18,7 +18,7 @@ class SegmentoLogradouroAttributes(BaseModel):
     """Atributos do segmento de logradouro (camada `attributes` da feature)."""
     id_segmento: str
     codlog: str
-    cd_tipo_logradouro: str
+    tipo_logradouro: str
     nome_logradouro: str
     titulo: str | None = None
     preposicao: str | None = None

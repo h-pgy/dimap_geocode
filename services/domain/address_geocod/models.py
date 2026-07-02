@@ -15,7 +15,7 @@ class EnderecoAttributes(BaseModel):
     """Proveniência do ponto geocodificado (camada `attributes` da feature)."""
     codlog: str
     nome_logradouro: str
-    cd_tipo_logradouro: str
+    tipo_logradouro: str
     numero: int
     id_segmento: str            # segmento que originou a interpolação
     titulo: str | None = None

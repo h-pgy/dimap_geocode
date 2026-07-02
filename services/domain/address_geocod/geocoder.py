@@ -85,7 +85,7 @@ class AddressGeocoder:
             attributes=EnderecoAttributes(
                 codlog=a.codlog,
                 nome_logradouro=a.nome_logradouro,
-                cd_tipo_logradouro=a.cd_tipo_logradouro,
+                tipo_logradouro=a.tipo_logradouro,
                 numero=entrada.numero,
                 id_segmento=a.id_segmento,
                 titulo=a.titulo,

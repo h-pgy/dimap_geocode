@@ -103,7 +103,7 @@ def test_traduz_todos_os_atributos_obrigatorios() -> None:
     attrs = resultado[0].attributes
     assert attrs.id_segmento == "SEG001"
     assert attrs.codlog == "156566"
-    assert attrs.cd_tipo_logradouro == "AV"
+    assert attrs.tipo_logradouro == "AV"
     assert attrs.nome_logradouro == "PAULISTA"
 
 
@@ -358,7 +358,7 @@ class TestIntegracaoGeoSampa:
         for r in resultado:
             assert r.attributes.id_segmento
             assert r.attributes.codlog
-            assert r.attributes.cd_tipo_logradouro
+            assert r.attributes.tipo_logradouro
             assert r.attributes.nome_logradouro
 
     def test_codlog_inexistente_retorna_lista_vazia(self) -> None:
