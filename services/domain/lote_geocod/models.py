@@ -9,6 +9,7 @@ class LoteGeocodInput(BaseModel):
     lote: str = Field(pattern=r"^\d{4}$")
     tipo_lote: str
     layer_name: str
+    cod_condominio: str | None = None
 
     @field_validator("tipo_lote", mode="before")
     @classmethod
@@ -29,6 +30,12 @@ class LoteAttributes(BaseModel):
     numero_porta: str = ""             # cd_numero_porta ORIGINAL (str; '' quando ausente/None)
     tipo_quadra: str | None = None
     condominio: str | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_condominio(self) -> bool:
+        """True quando o lote pertence a um condomínio (cd_condominio diferente de '00')."""
+        return self.condominio is not None and self.condominio != "00"
 
     @field_validator("nome_logradouro", "numero_porta", mode="before")
     @classmethod

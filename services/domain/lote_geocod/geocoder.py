@@ -46,17 +46,19 @@ class LoteGeocoder:
         return lotes
 
     def _montar_request(self, entrada: LoteGeocodInput) -> WfsFeatureRequest:
+        predicates = [
+            CqlPredicate(field="cd_setor_fiscal", op="=", value=entrada.setor),
+            CqlPredicate(field="cd_quadra_fiscal", op="=", value=entrada.quadra),
+            CqlPredicate(field="cd_lote", op="=", value=entrada.lote),
+            CqlPredicate(field="cd_tipo_lote", op="=", value=entrada.tipo_lote),
+        ]
+        if entrada.cod_condominio is not None:
+            predicates.append(
+                CqlPredicate(field="cd_condominio", op="=", value=entrada.cod_condominio),
+            )
         return WfsFeatureRequest(
             nome_camada=entrada.layer_name,
-            cql_filter=CqlFilter(
-                logic="AND",
-                predicates=[
-                    CqlPredicate(field="cd_setor_fiscal", op="=", value=entrada.setor),
-                    CqlPredicate(field="cd_quadra_fiscal", op="=", value=entrada.quadra),
-                    CqlPredicate(field="cd_lote", op="=", value=entrada.lote),
-                    CqlPredicate(field="cd_tipo_lote", op="=", value=entrada.tipo_lote),
-                ],
-            ),
+            cql_filter=CqlFilter(logic="AND", predicates=predicates),
             srs_name=f"EPSG:{entrada.output_crs}",
             count=PAGE_SIZE,
         )

@@ -20,6 +20,8 @@ def mapear_resultados(dataframe: pd.DataFrame) -> list[ContribuinteMatchOutput]:
                 complemento=str(linha["tx_complemento_endereco"]) if pd.notna(linha["tx_complemento_endereco"]) else None,
                 tipo_quadra=str(linha["cd_tipo_quadra"]),
                 tipo_lote=str(linha["cd_tipo_lote"]),
+                cd_condominio=str(linha["cd_condominio"]),
+                is_condominio=bool(linha["is_condominio"]),
             )
         )
     return resultados

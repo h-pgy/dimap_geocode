@@ -21,6 +21,7 @@ from services.domain.logradouro_geocod import LogradouroGeocoder
 from services.domain.logradouros_match import LiteralLogradouroQuery, match_logradouro_literal
 from services.domain.roteamento_busca import EnderecoCodlogParse, EnderecoParse
 from services.integrations.wfs import build_fetcher
+from services.domain.geometry.models import GeoJsonProperties
 
 TITULO_ENDERECO_CODLOG = "Endereço (por codlog)"
 TITULO_ENDERECO_NOME = "Endereço (por nome)"
@@ -64,14 +65,15 @@ def secao_endereco(candidato: EnderecoParse) -> SecaoResultado | None:
     return SecaoResultado(titulo=TITULO_ENDERECO_NOME, html=html)
 
 
-def _properties(f: EnderecoFeature) -> dict[str, Any]:
+def _properties(f: EnderecoFeature) -> GeoJsonProperties:
     a = f.attributes
-    return {
-        "popup_html": render_to_string(
+    return GeoJsonProperties(
+        popup_html=render_to_string(
             "address_geocoder/partials/_popup_endereco.html", {"a": a}
         ),
-        "rotulo": f"{a.nome_completo}, {a.numero}",
-    }
+        rotulo=f"{a.nome_completo}, {a.numero}",
+        cor=None,
+    )
 
 
 @require_POST

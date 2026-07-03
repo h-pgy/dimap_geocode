@@ -27,6 +27,8 @@ class ContribuinteMatchOutput(BaseModel):
     complemento: str | None
     tipo_quadra: str
     tipo_lote: str
+    cd_condominio: str
+    is_condominio: bool
 
 
 class EnderecoFiscalMatchInput(BaseModel):

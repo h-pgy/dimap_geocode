@@ -16,7 +16,10 @@ class ContribuinteCatalog:
 
     @ttl_cached_property(ttl_seconds=DATA_TTL_SECONDS)
     def enderecos_fiscais(self) -> pd.DataFrame:
-        return pd.DataFrame(read_parquet_from_data(self._nome_arquivo))
+        df = pd.DataFrame(read_parquet_from_data(self._nome_arquivo))
+        # '00' significa "não é condomínio" — enderecos_fiscais_com_chave herda via .copy()
+        df["is_condominio"] = df["cd_condominio"] != "00"
+        return df
 
     @ttl_cached_property(ttl_seconds=DATA_TTL_SECONDS)
     def enderecos_fiscais_com_chave(self) -> pd.DataFrame:
