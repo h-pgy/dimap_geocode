@@ -5,23 +5,34 @@ A implementação atual usa strings simples nos campos dos parses (setor, codlog
 com computed_fields booleanos (setor_completo, codlog_completo, ...). Os testes validam
 o comportamento do roteador end-to-end via `rotear_entrada`.
 """
+from typing import TypeVar
+
 import pytest
 
 from services.domain.roteamento_busca import (
     CodlogParse,
     ContribuinteParse,
+    EnderecoLoteParse,
     EnderecoParse,
     EntradaRouter,
     LogradouroParse,
     RoteamentoQuery,
+    RoteamentoResult,
     RoteamentoStatus,
     TipoEntrada,
     rotear_entrada,
 )
 
+T = TypeVar("T")
 
-def rotear(texto: str, finished_typing: bool = False) -> ...:  # type: ignore[return]
+
+def rotear(texto: str, finished_typing: bool = False) -> RoteamentoResult:
     return rotear_entrada(RoteamentoQuery(texto=texto, finished_typing=finished_typing))
+
+
+def achar(r: RoteamentoResult, tipo: type[T]) -> T:
+    """Extrai o candidato de um tipo específico (o roteamento agora é frequentemente ambíguo)."""
+    return next(c for c in r.candidatos if isinstance(c, tipo))
 
 
 # ---------------------------------------------------------------------------
@@ -311,11 +322,15 @@ class TestLogradouro:
 
 
 class TestEndereco:
+    # A partir da SPEC 010 toda entrada com cara de endereço emite TAMBÉM o candidato
+    # especulativo ENDERECO_LOTE (que precede ENDERECO na precedência). Logo o roteamento
+    # de um endereço numérico deixa de ser UNICO e passa a ser AMBIGUO — o candidato
+    # ENDERECO continua presente, com o mesmo conteúdo de antes, e é extraído por `achar`.
+
     def test_tipo_nome_numero_com_virgula(self) -> None:
         r = rotear("avenida paulista, 3")
-        assert r.status == RoteamentoStatus.UNICO
-        m = r.match
-        assert isinstance(m, EnderecoParse)
+        assert r.status == RoteamentoStatus.AMBIGUO
+        m = achar(r, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "avenida"
         assert m.logradouro.nome == "paulista"
         assert m.numero == 3
@@ -323,9 +338,8 @@ class TestEndereco:
 
     def test_tipo_nome_numero_sem_virgula(self) -> None:
         r = rotear("avenida paulista 3")
-        assert r.status == RoteamentoStatus.UNICO
-        m = r.match
-        assert isinstance(m, EnderecoParse)
+        assert r.status == RoteamentoStatus.AMBIGUO
+        m = achar(r, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "avenida"
         assert m.logradouro.nome == "paulista"
         assert m.numero == 3
@@ -333,9 +347,8 @@ class TestEndereco:
 
     def test_so_nome_numero_sem_virgula_parcial(self) -> None:
         r = rotear("paulista 3")
-        assert r.status == RoteamentoStatus.UNICO
-        m = r.match
-        assert isinstance(m, EnderecoParse)
+        assert r.status == RoteamentoStatus.AMBIGUO
+        m = achar(r, EnderecoParse)
         assert m.logradouro.tipo_logradouro == ""
         assert m.logradouro.nome == "paulista"
         assert m.numero == 3
@@ -343,9 +356,8 @@ class TestEndereco:
 
     def test_so_nome_numero_com_virgula_parcial(self) -> None:
         r = rotear("paulista, 3")
-        assert r.status == RoteamentoStatus.UNICO
-        m = r.match
-        assert isinstance(m, EnderecoParse)
+        assert r.status == RoteamentoStatus.AMBIGUO
+        m = achar(r, EnderecoParse)
         assert m.logradouro.tipo_logradouro == ""
         assert m.logradouro.nome == "paulista"
         assert m.numero == 3
@@ -353,16 +365,14 @@ class TestEndereco:
 
     def test_so_nome_numero_finished_typing_completo(self) -> None:
         r = rotear("paulista, 300", finished_typing=True)
-        m = r.match
-        assert isinstance(m, EnderecoParse)
+        m = achar(r, EnderecoParse)
         assert m.logradouro.tipo_logradouro == ""
         assert m.numero == 300
         assert m.completo is True
 
     def test_descarta_complemento(self) -> None:
         r = rotear("avenida paulista, 3, consolação, são paulo")
-        m = r.match
-        assert isinstance(m, EnderecoParse)
+        m = achar(r, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "avenida"
         assert m.logradouro.nome == "paulista"
         assert m.numero == 3
@@ -370,9 +380,8 @@ class TestEndereco:
 
     def test_rua_numerada_com_virgula(self) -> None:
         r = rotear("rua 25 de março, 100")
-        assert r.status == RoteamentoStatus.UNICO
-        m = r.match
-        assert isinstance(m, EnderecoParse)
+        assert r.status == RoteamentoStatus.AMBIGUO
+        m = achar(r, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "rua"
         assert m.logradouro.nome == "25 de março"
         assert m.numero == 100
@@ -380,13 +389,19 @@ class TestEndereco:
 
     def test_rua_numerada_sem_virgula(self) -> None:
         r = rotear("rua 25 de março 100")
-        assert r.status == RoteamentoStatus.UNICO
-        m = r.match
-        assert isinstance(m, EnderecoParse)
+        assert r.status == RoteamentoStatus.AMBIGUO
+        m = achar(r, EnderecoParse)
         assert m.logradouro.tipo_logradouro == "rua"
         assert m.logradouro.nome == "25 de março"
         assert m.numero == 100
         assert m.completo is True
+
+    def test_numero_bruto_preservado(self) -> None:
+        # o campo de auditoria numero_bruto carrega o token como digitado; numero segue int
+        r = rotear("rua x, 10A")
+        m = achar(r, EnderecoParse)
+        assert m.numero == 10
+        assert m.numero_bruto == "10A"
 
     def test_exclusao_mutua_com_logradouro(self) -> None:
         r = rotear("avenida paulista 3")
@@ -394,7 +409,7 @@ class TestEndereco:
 
     def test_tipo_enum(self) -> None:
         r = rotear("avenida paulista, 3")
-        assert r.tipos == [TipoEntrada.ENDERECO]
+        assert r.tipos == [TipoEntrada.ENDERECO_LOTE, TipoEntrada.ENDERECO]
 
 
 # ---------------------------------------------------------------------------
@@ -444,3 +459,74 @@ class TestExtensaoRegras:
         # contribuinte reprovado pela regra → só codlog
         assert r.status == RoteamentoStatus.UNICO
         assert r.tipos == [TipoEntrada.CODLOG]
+
+
+# ---------------------------------------------------------------------------
+# Endereço-lote (SPEC 010): candidato especulativo com precedência
+# ---------------------------------------------------------------------------
+
+
+class TestEnderecoLoteRoteador:
+    def test_endereco_por_nome_gera_endereco_lote(self) -> None:
+        r = rotear("avenida paulista, 100")
+        assert TipoEntrada.ENDERECO_LOTE in r.tipos
+        m = achar(r, EnderecoLoteParse)
+        assert m.logradouro is not None
+        assert m.logradouro.tipo_logradouro == "avenida"
+        assert m.logradouro.nome == "paulista"
+        assert m.codlog is None
+        assert m.numero_bruto == "100"
+
+    def test_endereco_lote_precede_endereco(self) -> None:
+        # ENDERECO_LOTE sempre à frente de ENDERECO na ordenação por precedência
+        r = rotear("avenida paulista, 100")
+        assert r.tipos == [TipoEntrada.ENDERECO_LOTE, TipoEntrada.ENDERECO]
+
+    def test_endereco_por_codlog_gera_endereco_lote(self) -> None:
+        r = rotear("12345 100")
+        m = achar(r, EnderecoLoteParse)
+        assert m.codlog is not None
+        assert m.codlog.codlog == "12345"
+        assert m.logradouro is None
+        assert m.numero_bruto == "100"
+
+    def test_codlog_numero_precedencia_completa(self) -> None:
+        # CONTRIBUINTE (8 dígitos) > ENDERECO_LOTE > ENDERECO_CODLOG
+        r = rotear("12345 100")
+        assert r.tipos == [
+            TipoEntrada.CONTRIBUINTE,
+            TipoEntrada.ENDERECO_LOTE,
+            TipoEntrada.ENDERECO_CODLOG,
+        ]
+
+    def test_sem_numero_gera_so_endereco_lote_e_logradouro(self) -> None:
+        # "s/n" não é int → NÃO gera ENDERECO; gera ENDERECO_LOTE e mantém LOGRADOURO
+        r = rotear("rua x, s/n")
+        assert TipoEntrada.ENDERECO_LOTE in r.tipos
+        assert TipoEntrada.ENDERECO not in r.tipos
+        assert TipoEntrada.LOGRADOURO in r.tipos
+
+    def test_sem_numero_padronizado_no_parse(self) -> None:
+        # o computed_field numero_padronizado canoniza "s/n" -> "SN"
+        r = rotear("rua x, s/n")
+        m = achar(r, EnderecoLoteParse)
+        assert m.numero_bruto == "s/n"
+        assert m.numero_padronizado == "SN"
+
+    def test_alfanumerico_gera_endereco_e_endereco_lote(self) -> None:
+        # "10A": ENDERECO (numero=10) coexiste com ENDERECO_LOTE (numero_bruto="10A")
+        r = rotear("rua x, 10A")
+        assert TipoEntrada.ENDERECO in r.tipos
+        endereco_lote = achar(r, EnderecoLoteParse)
+        assert endereco_lote.numero_bruto == "10A"
+        assert endereco_lote.numero_padronizado == "10A"
+
+    def test_codlog_numero_com_ponto_nao_gera_endereco_lote_por_codlog(self) -> None:
+        # ponto é formato de contribuinte: o caminho por codlog é rejeitado
+        r = rotear("12345, s.n.")
+        assert TipoEntrada.ENDERECO_LOTE not in r.tipos
+
+    def test_logradouro_sem_numero_nao_gera_endereco_lote(self) -> None:
+        # sem número, nenhuma forma de endereço-lote é emitida
+        r = rotear("avenida paulista")
+        assert TipoEntrada.ENDERECO_LOTE not in r.tipos
