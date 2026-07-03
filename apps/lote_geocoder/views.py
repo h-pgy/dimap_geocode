@@ -27,11 +27,14 @@ def _properties(f: GeoFeature[Any, Any]) -> dict[str, Any]:
 
 @require_POST
 def geocodificar(request: HttpRequest) -> HttpResponse:
+    cd_cond_raw = request.POST.get("cd_condominio", "")
+    cod_condominio = cd_cond_raw if cd_cond_raw and cd_cond_raw != "None" else None
     entrada = LoteGeocodInput(
         setor=request.POST.get("setor", ""),
         quadra=request.POST.get("quadra", ""),
         lote=request.POST.get("lote", ""),
         tipo_lote=request.POST.get("tipo_lote", ""),
+        cod_condominio=cod_condominio,
         layer_name=WFS_LAYER_LOTE_CIDADAO,
         output_crs=MAP_OUTPUT_CRS,
     )

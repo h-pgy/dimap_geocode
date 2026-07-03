@@ -578,3 +578,7 @@ commands*, e o mapa Leaflet + WMS GeoSampa renderizando ponto / linha / polígon
 | Fase 2 | **Digitalização manual no mapa** (modo projeto): o usuário desenha pontos/linhas/polígonos no Leaflet e salva no layer adequado. JS utilitário extrai a geometria e dispara HTMX; o backend valida e persiste via GeoDjango (ver regra de JS em §11). Detalhes na SPEC. |
 | Fase 2 | API REST com Django-Ninja.                                                                   |
 | —      | Cache de lookup migra de dict em memória para Redis, isolado atrás da interface.            |
+### Regra de workflow do usuário (memorizada)
+
+**Sempre escrever a SPEC antes de implementar e aguardar aprovação do usuário.** Nunca
+começar a codar sem que a SPEC tenha sido escrita, apresentada ao usuário e aprovada por ele.
