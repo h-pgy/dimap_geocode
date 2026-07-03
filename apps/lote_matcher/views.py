@@ -19,22 +19,21 @@ TITULO_CONTRIBUINTE = "Lote (por nº de contribuinte)"
 TITULO_ENDERECO_LOTE = "Endereço cadastrado (lote)"
 
 
-def _render_contribuinte(dto: ContribuinteMatchInput) -> str:
-    resultados = match_contribuinte(dto)
-    return render_to_string(
-        "lote_matcher/partials/resultados_contribuinte.html",
-        {"resultados": resultados},
-    )
-
-
-def secao_contribuinte(candidato: ContribuinteParse) -> SecaoResultado:
+def secao_contribuinte(candidato: ContribuinteParse) -> SecaoResultado | None:
     dto = ContribuinteMatchInput(
         setor=candidato.setor,
         quadra=candidato.quadra or None,
         lote=candidato.lote or None,
         dv=candidato.dv or None,
     )
-    return SecaoResultado(titulo=TITULO_CONTRIBUINTE, html=_render_contribuinte(dto))
+    resultados = match_contribuinte(dto)
+    if not resultados:
+        return None  # seção OMITIDA: sem match não polui a UX
+    html = render_to_string(
+        "lote_matcher/partials/resultados_contribuinte.html",
+        {"resultados": resultados},
+    )
+    return SecaoResultado(titulo=TITULO_CONTRIBUINTE, html=html)
 
 
 def _resolver_codlogs(candidato: EnderecoLoteParse) -> list[str]:

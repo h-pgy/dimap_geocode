@@ -1,11 +1,12 @@
 ---
 spec: roteamento-busca/006
-versao: v2
-atualizado_em: 2026-06-29
+versao: v3
+atualizado_em: 2026-07-02
 implementado: true
 changelog:
   - v1: versão inicial
   - v2: tipo de lote (cd_tipo_lote) passa a fluir ponta a ponta — exibido em cada sugestão E propagado pelo clique (hx-vals → LoteSelection → view selecionar), pois a geocodificação do lote (geocodificacao/002) filtra por cd_tipo_lote e precisa do tipo escolhido
+  - v3: seção sem match é OMITIDA (secao_contribuinte retorna None); partial sem o ramo "Nenhum lote encontrado"
 ---
 
 # SPEC roteamento-busca/006 — Seção de sugestões de contribuinte (pluga o match de lote no roteador)
@@ -335,3 +336,8 @@ selecao = LoteSelection(
     carrega o tipo, deixando a seleção pronta para alimentar a `LoteGeocodInput` (geocodificacao/002)
     sem ter de reconsultar a base só para descobrir o tipo. Continua sendo só interface/orquestração
     (§3.3) — sem regra de negócio nova.
+
+- **v3 (2026-07-02):** retirado o comportamento de "sugestão vazia". Quando o match não retorna
+  lotes, `secao_contribuinte` devolve `None` e a seção é **omitida por inteiro** (não mais uma
+  seção com "Nenhum lote encontrado"); o `resultados_contribuinte.html` perde esse ramo. Alinha
+  com o padrão de omissão da roteamento_busca/010.

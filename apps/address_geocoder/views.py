@@ -34,26 +34,32 @@ MSG_SEM_SEGMENTO = "Não foi possível localizar o logradouro para geocodificar 
 MSG_SEM_NUMERACAO = "O número informado está fora da faixa de numeração cadastrada para este logradouro."
 
 
-def secao_endereco_codlog(candidato: EnderecoCodlogParse) -> SecaoResultado:
+def secao_endereco_codlog(candidato: EnderecoCodlogParse) -> SecaoResultado | None:
     dto = CodlogMatchInput(
         input_codlog=candidato.codlog.codlog,
         digito_verificador=candidato.codlog.digito_verificador or None,
     )
+    resultados = match_codlog(dto)
+    if not resultados:
+        return None  # seção OMITIDA: sem match não polui a UX
     html = render_to_string(
         "address_geocoder/partials/resultados_endereco_codlog.html",
-        {"resultados": match_codlog(dto), "numero": candidato.numero},
+        {"resultados": resultados, "numero": candidato.numero},
     )
     return SecaoResultado(titulo=TITULO_ENDERECO_CODLOG, html=html)
 
 
-def secao_endereco(candidato: EnderecoParse) -> SecaoResultado:
+def secao_endereco(candidato: EnderecoParse) -> SecaoResultado | None:
     dto = LiteralLogradouroQuery(
         nome=candidato.logradouro.nome,
         tipo=candidato.logradouro.tipo_logradouro or None,
     )
+    resultado = match_logradouro_literal(dto)
+    if not resultado.logradouros:
+        return None  # seção OMITIDA: sem match não polui a UX
     html = render_to_string(
         "address_geocoder/partials/resultados_endereco_nome.html",
-        {"resultado": match_logradouro_literal(dto), "numero": candidato.numero},
+        {"resultado": resultado, "numero": candidato.numero},
     )
     return SecaoResultado(titulo=TITULO_ENDERECO_NOME, html=html)
 
