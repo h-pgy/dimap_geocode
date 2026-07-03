@@ -10,19 +10,21 @@ from apps.mapping.context import contexto_aviso, contexto_mapa
 from services.domain.geometry import GeoFeature, to_geojson_feature_collection
 from services.domain.logradouro_geocod import LogradouroGeocoder, LogradouroGeocodInput
 from services.integrations.wfs import build_fetcher
+from services.domain.geometry.models import GeoJsonProperties
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 WFS_LAYER_LOGRADOUROS: str = settings.WFS_LAYER_LOGRADOUROS
 MAP_COR_LINHA: str = settings.MAP_COR_LINHA
 
 
-def _properties(f: GeoFeature[Any, Any]) -> dict[str, Any]:
-    return {
-        "popup_html": render_to_string(
+def _properties(f: GeoFeature[Any, Any]) -> GeoJsonProperties:
+    return GeoJsonProperties(
+        popup_html=render_to_string(
             "logradouro_geocoder/partials/_popup_segmento.html", {"a": f.attributes}
         ),
-        "rotulo": f.attributes.nome_logradouro,
-    }
+        rotulo=f.attributes.nome_logradouro,
+        cor=None,
+    )
 
 
 @require_POST

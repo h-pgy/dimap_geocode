@@ -10,19 +10,22 @@ from apps.mapping.context import contexto_aviso, contexto_mapa
 from services.domain.geometry import GeoFeature, to_geojson_feature_collection
 from services.domain.lote_geocod import LoteGeocoder, LoteGeocodInput
 from services.integrations.wfs import build_fetcher
+from services.domain.geometry.models import GeoJsonProperties
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 WFS_LAYER_LOTE_CIDADAO: str = settings.WFS_LAYER_LOTE_CIDADAO
 MAP_COR_POLIGONO: str = settings.MAP_COR_POLIGONO
 
 
-def _properties(f: GeoFeature[Any, Any]) -> dict[str, Any]:
-    return {
-        "popup_html": render_to_string(
+def _properties(f: GeoFeature[Any, Any]) -> GeoJsonProperties:
+    cor_condominio = "#76e60d" if getattr(f.attributes, "is_condominio", False) else None
+    return GeoJsonProperties(
+        popup_html=render_to_string(
             "lote_geocoder/partials/_popup_lote.html", {"a": f.attributes}
         ),
-        "rotulo": f"{f.attributes.setor}.{f.attributes.quadra}.{f.attributes.lote}",
-    }
+        rotulo=f"{f.attributes.setor}.{f.attributes.quadra}.{f.attributes.lote}",
+        cor=cor_condominio,
+    )
 
 
 @require_POST

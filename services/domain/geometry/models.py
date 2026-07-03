@@ -63,3 +63,10 @@ class GeoFeature(BaseModel, Generic[GeomT, AttrT]):
     geometry: GeomT
     attributes: AttrT
     crs: int
+
+
+class GeoJsonProperties(BaseModel):
+    """Contrato de propriedades GeoJSON interpretadas e esperadas pelo frontend (Leaflet)."""
+    popup_html: str | None = None
+    rotulo: str | None = None
+    cor: str | None = None
