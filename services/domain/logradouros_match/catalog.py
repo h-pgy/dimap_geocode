@@ -1,3 +1,4 @@
+import time
 from typing import cast
 
 from services.utils.cache import ttl_cached_property
@@ -25,7 +26,7 @@ class LogradouroCatalog:
         tipos = cast(list[str], cols["cd_tipo_logradouro"])
         nomes = cast(list[str], cols["nm_logradouro"])
         return [
-            LogradouroRow(codlog=c[:5], cd_tipo_logradouro=t, nm_logradouro=n)
+            LogradouroRow(codlog=c[:5], dv=c[5], tipo_logradouro=t, nm_logradouro=n)
             for c, t, n in zip(codlogs, tipos, nomes)
         ]
 
@@ -33,7 +34,7 @@ class LogradouroCatalog:
     def _por_tipo(self) -> dict[str, list[LogradouroRow]]:
         indice: dict[str, list[LogradouroRow]] = {}
         for row in self._rows:
-            indice.setdefault(row.cd_tipo_logradouro, []).append(row)
+            indice.setdefault(row.tipo_logradouro, []).append(row)
         return indice
 
     @property
@@ -52,3 +53,11 @@ class LogradouroCatalog:
     def linhas_por_nome(self, nome: str, codigo: str | None) -> list[LogradouroRow]:
         universo = self.linhas_do_tipo(codigo) if codigo else self._rows
         return [row for row in universo if row.nm_logradouro == nome]
+
+    def aquecer(self) -> None:
+        print("[LogradouroCatalog] aquecendo cache...")
+        inicio = time.perf_counter()
+        _ = self._variacoes
+        _ = self._por_tipo
+        duracao = time.perf_counter() - inicio
+        print(f"[LogradouroCatalog] cache aquecido em {duracao:.2f}s")

@@ -4,11 +4,13 @@ from .codlog import CodlogIdentifier
 from .contribuinte import ContribuinteIdentifier
 from .endereco import EnderecoIdentifier
 from .endereco_codlog import CodlogNumeroIdentifier
+from .endereco_lote import EnderecoLoteIdentifier
 from .logradouro import LogradouroIdentifier
 from .models import Candidato, RoteamentoQuery, RoteamentoResult, TipoEntrada
 
 PRIORIDADE_TIPOS: tuple[TipoEntrada, ...] = (
     TipoEntrada.CONTRIBUINTE,
+    TipoEntrada.ENDERECO_LOTE,  # novo: precede os demais endereços
     TipoEntrada.ENDERECO_CODLOG,
     TipoEntrada.ENDERECO,
     TipoEntrada.CODLOG,
@@ -28,6 +30,7 @@ class EntradaRouter:
             CodlogIdentifier(),
             LogradouroIdentifier(),
             EnderecoIdentifier(),
+            EnderecoLoteIdentifier(),
         )
 
     def __call__(self, query: RoteamentoQuery) -> RoteamentoResult:

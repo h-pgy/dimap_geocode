@@ -39,6 +39,6 @@ class NomesLogradourosExtractor:
                 ))
 
         return [
-            LogradouroNome(codlog=c, cd_tipo_logradouro=t, nm_logradouro=n)
+            LogradouroNome(codlog=c, tipo_logradouro=t, nm_logradouro=n)
             for c, t, n in sorted(seen, key=lambda k: (k[0], k[2]))
         ]

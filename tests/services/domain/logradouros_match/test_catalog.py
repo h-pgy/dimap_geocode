@@ -83,7 +83,7 @@ def test_codigo_da_variacao_retorna_none_para_variacao_inexistente() -> None:
 def test_linhas_do_tipo_retorna_apenas_linhas_do_codigo() -> None:
     c = _catalog_com_dados_sinteticos()
     linhas = c.linhas_do_tipo("AV")
-    assert all(r.cd_tipo_logradouro == "AV" for r in linhas)
+    assert all(r.tipo_logradouro == "AV" for r in linhas)
     assert len(linhas) == 2
 
 

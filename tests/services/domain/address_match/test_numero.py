@@ -1,6 +1,6 @@
 import pytest
 
-from services.domain.address_match import eh_so_marcador, parse_numero_imovel
+from services.domain.address_match import eh_so_marcador, parse_numero_imovel, parse_numero_porta
 
 
 # ---------------------------------------------------------------------------
@@ -201,3 +201,69 @@ class TestEhSoMarcadorFalso:
 
     def test_string_vazia(self) -> None:
         assert eh_so_marcador("") is False
+
+
+# ---------------------------------------------------------------------------
+# parse_numero_porta (SPEC 010) — leitor permissivo do cadastro fiscal
+# ---------------------------------------------------------------------------
+
+
+class TestParseNumeroPortaNumericos:
+    def test_digito_puro(self) -> None:
+        assert parse_numero_porta("100") == "100"
+
+    def test_sufixo_letra(self) -> None:
+        # devolve o token BRUTO (com o sufixo de unidade), não só o número
+        assert parse_numero_porta("10A") == "10A"
+
+    def test_sufixo_com_traco(self) -> None:
+        assert parse_numero_porta("10-A") == "10-A"
+
+    def test_marcador_removido(self) -> None:
+        # o marcador ('nº') sai; o número bruto fica
+        assert parse_numero_porta("nº 10A") == "10A"
+
+    def test_espacos_nas_pontas(self) -> None:
+        assert parse_numero_porta("  42B  ") == "42B"
+
+
+class TestParseNumeroPortaSemNumero:
+    # a grafia de "sem número" volta como digitada (bruta); a canonicalização é feita depois
+    @pytest.mark.parametrize("token", ["s/n", "S/N", "sn", "s.n.", "sem número"])
+    def test_formas_sem_numero_voltam_como_digitadas(self, token: str) -> None:
+        assert parse_numero_porta(token) == token.strip()
+
+
+class TestParseNumeroPortaRetornaNone:
+    def test_texto_puro(self) -> None:
+        assert parse_numero_porta("abc") is None
+
+    def test_string_vazia(self) -> None:
+        assert parse_numero_porta("") is None
+
+    def test_so_marcador_sem_digito(self) -> None:
+        assert parse_numero_porta("nº") is None
+
+
+class TestParseNumeroPortaSuperconjuntoDoEstrito:
+    # é match de PREFIXO (não fullmatch): tudo que parse_numero_imovel aceita, este aceita.
+    @pytest.mark.parametrize(
+        "token, esperado",
+        [
+            ("10.", "10"),
+            ("10 apto 5", "10"),
+            ("10, casa 2", "10"),
+            ("1.578", "1"),  # mesmo comportamento do estrito (para no primeiro grupo de dígitos)
+        ],
+    )
+    def test_tokens_sujos_prefixo(self, token: str, esperado: str) -> None:
+        assert parse_numero_porta(token) == esperado
+
+    @pytest.mark.parametrize(
+        "token",
+        ["1", "100", "1a", "1-A", "250B", "n1", "nº1", "nro. 1", "# 1", "10.", "10 apto 5", "1.578"],
+    )
+    def test_todo_token_aceito_pelo_estrito_e_aceito_aqui(self, token: str) -> None:
+        # propriedade do superconjunto: estrito != None ⇒ permissivo != None
+        if parse_numero_imovel(token) is not None:
+            assert parse_numero_porta(token) is not None

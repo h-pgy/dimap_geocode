@@ -54,8 +54,11 @@
 
     {% block content %}{% endblock %}
 
-    {# Leaflet JS antes do fim do body; páginas com mapa inicializam no bloco scripts #}
+    {# Leaflet JS antes do fim do body #}
     <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+    {# JS centralizado do mapa — registra htmx.onLoad uma única vez (§11 caso 1) #}
+    {% load static %}
+    <script type="module" src="{% static 'js/mapa/init.js' %}"></script>
     {% block scripts %}{% endblock %}
   </body>
 </html>

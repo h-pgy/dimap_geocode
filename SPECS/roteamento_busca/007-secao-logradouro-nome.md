@@ -1,11 +1,12 @@
 ---
 spec: roteamento-busca/007
-versao: v2
-atualizado_em: 2026-06-28
+versao: v3
+atualizado_em: 2026-07-02
 implementado: true
 changelog:
   - v1: versão inicial
   - v2: o partial passa a exibir o tipo do logradouro junto do nome (ex.: "AV PAULISTA"), não só o nome
+  - v3: seção sem match é OMITIDA (secao_logradouro retorna None); partial sem o ramo "Nenhum logradouro encontrado"
 ---
 
 # SPEC roteamento-busca/007 — Seção de sugestões de logradouro por nome (pluga o literal matcher no roteador)
@@ -271,3 +272,9 @@ REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
   `tipo_codigo` **vazio/em branco** (alguns logradouros não têm tipo), exibindo só o nome sem espaço
   à frente. Mudança restrita à camada de interface (partial); critérios de aceite e snippet
   atualizados.
+
+- **v3 (2026-07-02).** Retirado o comportamento de "sugestão vazia". Quando o match literal não
+  retorna logradouros, `secao_logradouro` devolve `None` e a seção é **omitida por inteiro**; o
+  `resultados_logradouro.html` perde o ramo "Nenhum logradouro encontrado" (o aviso de
+  `ignorou_filtro_tipo` permanece, pois só aparece quando há resultados). Alinha com o padrão de
+  omissão da roteamento_busca/010.

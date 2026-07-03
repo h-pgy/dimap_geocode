@@ -1,7 +1,7 @@
 ---
 spec: roteamento-busca/005
-versao: v4
-atualizado_em: 2026-06-28
+versao: v5
+atualizado_em: 2026-07-02
 implementado: true
 changelog:
   - v1: versão inicial
@@ -11,6 +11,7 @@ changelog:
   - v4: `SecaoResultado` movida de `logradouro_matcher/views.py` para `apps/search/secoes.py`
         como Pydantic `BaseModel` (não dataclass) — o contrato pertence ao `search`, que é quem
         agrega todas as seções; os matchers importam dali.
+  - v5: seção sem match é OMITIDA (renderer retorna None); partials sem o ramo "Nenhum ... encontrado"
 ---
 
 # SPEC roteamento-busca/005 — View do roteador na barra única (agrega seções de sugestões)
@@ -309,3 +310,7 @@ urlpatterns = [
   `apps/search/secoes.py` como Pydantic `BaseModel`. A dataclass no matcher era errada de
   origem — o contrato de seção pertence ao `search` (agregador), e todos os matchers futuros
   importarão dali. Evita import circular: `secoes.py` não importa de nenhum outro app.
+- 2026-07-02 (v5): retirado o comportamento de "sugestão vazia". Uma seção cujo match não
+  retorna nada é agora **omitida por inteiro** (o renderer devolve `None`, já filtrado no laço
+  de `rotear_busca`), e os partials de sugestão perderam o ramo "Nenhum ... encontrado" — para
+  não poluir a UX com títulos de seção sem conteúdo.

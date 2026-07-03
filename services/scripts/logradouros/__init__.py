@@ -21,7 +21,7 @@ __all__ = [
 def _to_columns(rows: list[LogradouroNome]) -> dict[str, list[str]]:
     return {
         "codlog": [r.codlog for r in rows],
-        "cd_tipo_logradouro": [r.cd_tipo_logradouro for r in rows],
+        "cd_tipo_logradouro": [r.tipo_logradouro for r in rows],
         "nm_logradouro": [r.nm_logradouro for r in rows],
     }
 

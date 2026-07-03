@@ -1,7 +1,7 @@
 ---
 spec: roteamento_busca/009
-versao: v5
-atualizado_em: 2026-06-29
+versao: v6
+atualizado_em: 2026-07-02
 implementado: false
 changelog:
   - v1: versão inicial
@@ -21,11 +21,12 @@ changelog:
     morar no domínio de endereço `services/domain/address_match` (semeando esse módulo),
     expostos no seu `__init__.py`. Os localizadores `separar_numero`/`separar_numero_codlog`
     em `roteamento_busca` passam a COMPOR esse parser por import do nível superior.
+  - v6: seções de endereço sem match são OMITIDAS (secao_endereco/secao_endereco_codlog retornam None); partials sem o ramo "Nenhum logradouro encontrado"
 ---
 
 # SPEC roteamento_busca/009 — Endereço com número (seções de endereço por codlog e por nome + ordenação por prioridade)
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [X] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 
@@ -452,4 +453,8 @@ REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+- **v6 (2026-07-02):** retirado o comportamento de "sugestão vazia". Quando o match não retorna
+  nada, `secao_endereco` e `secao_endereco_codlog` devolvem `None` e a seção é **omitida por
+  inteiro**; os partials `resultados_endereco_nome.html` e `resultados_endereco_codlog.html`
+  perdem o ramo "Nenhum logradouro encontrado". Alinha com o padrão de omissão da
+  roteamento_busca/010.

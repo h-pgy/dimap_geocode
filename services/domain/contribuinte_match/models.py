@@ -27,3 +27,9 @@ class ContribuinteMatchOutput(BaseModel):
     complemento: str | None
     tipo_quadra: str
     tipo_lote: str
+
+
+class EnderecoFiscalMatchInput(BaseModel):
+    codlogs: list[str] = Field(min_length=1)
+    numero_padronizado: str = Field(min_length=1)  # já normalizado no parse (candidato.numero_padronizado)
+    limite: int = Field(default=5, gt=0)

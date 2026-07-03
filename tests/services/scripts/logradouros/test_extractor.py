@@ -37,7 +37,7 @@ def test_skips_rows_without_codlog_and_converts_nulls_to_empty_strings() -> None
     ])]
     rows = NomesLogradourosExtractor(lambda req: iter(pages))(_req())
     assert [r.codlog for r in rows] == ["200000"]
-    assert rows[0].cd_tipo_logradouro == "" and rows[0].nm_logradouro == ""
+    assert rows[0].tipo_logradouro == "" and rows[0].nm_logradouro == ""
 
 
 def test_ignores_geometry_when_present() -> None:

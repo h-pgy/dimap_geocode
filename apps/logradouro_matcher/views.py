@@ -12,40 +12,41 @@ from services.domain.roteamento_busca import CodlogParse, LogradouroParse
 TITULO_LOGRADOURO_NOME = "Logradouro (por nome)"
 
 
-def _render_codlog(dto: CodlogMatchInput) -> str:
-    resultados = match_codlog(dto)
-    return render_to_string(
-        "logradouro_matcher/partials/resultados_codlog.html",
-        {"resultados": resultados},
-    )
-
-
-def secao_codlog(candidato: CodlogParse) -> SecaoResultado:
+def secao_codlog(candidato: CodlogParse) -> SecaoResultado | None:
     dto = CodlogMatchInput(
         input_codlog=candidato.codlog,
         digito_verificador=candidato.digito_verificador or None,
     )
-    return SecaoResultado(titulo="Logradouro (por codlog)", html=_render_codlog(dto))
-
-
-def _render_logradouro(dto: LiteralLogradouroQuery) -> str:
-    resultado = match_logradouro_literal(dto)
-    return render_to_string(
-        "logradouro_matcher/partials/resultados_logradouro.html",
-        {"resultado": resultado},
+    resultados = match_codlog(dto)
+    if not resultados:
+        return None  # seção OMITIDA: sem match não polui a UX
+    html = render_to_string(
+        "logradouro_matcher/partials/resultados_codlog.html",
+        {"resultados": resultados},
     )
+    return SecaoResultado(titulo="Logradouro (por codlog)", html=html)
 
 
-def secao_logradouro(candidato: LogradouroParse) -> SecaoResultado:
+def secao_logradouro(candidato: LogradouroParse) -> SecaoResultado | None:
     dto = LiteralLogradouroQuery(
         nome=candidato.nome,
         tipo=candidato.tipo_logradouro or None,
     )
-    return SecaoResultado(titulo=TITULO_LOGRADOURO_NOME, html=_render_logradouro(dto))
+    resultado = match_logradouro_literal(dto)
+    if not resultado.logradouros:
+        return None  # seção OMITIDA: sem match não polui a UX
+    html = render_to_string(
+        "logradouro_matcher/partials/resultados_logradouro.html",
+        {"resultado": resultado},
+    )
+    return SecaoResultado(titulo=TITULO_LOGRADOURO_NOME, html=html)
 
 
 @require_POST
 def selecionar(request: HttpRequest) -> HttpResponse:
-    selecao = LogradouroSelection(codlog=request.POST.get("codlog", ""))
+    selecao = LogradouroSelection(
+        codlog=request.POST.get("codlog", ""),
+        digito_verificador=request.POST.get("digito_verificador", ""),
+    )
     print(f"[SELEÇÃO] tipo=logradouro {selecao!r}")
     return render(request, "logradouro_matcher/partials/_selecao.html", {"selecao": selecao})
