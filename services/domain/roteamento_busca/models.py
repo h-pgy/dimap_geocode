@@ -28,6 +28,8 @@ class ContribuinteParse(BaseModel):
     quadra: str
     lote: str
     dv: str
+    cd_condominio: str | None = None
+    is_condominio: bool | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
