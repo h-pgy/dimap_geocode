@@ -1,0 +1,12 @@
+{
+  "theme": "onsen_inverno",
+  "colors": {
+    "primary": "#48CAE4",
+    "secondary": "#5E412F",
+    "accent": "#0F766E",
+    "neutral": "#0D1B2A",
+    "base-100": "#F8F9FA",
+    "base-content": "#0D1B2A"
+  },
+  "description": "Paleta baseada na estética de vidro fosco sobre água glacial com rochas vulcânicas e detalhes em madeira."
+}
