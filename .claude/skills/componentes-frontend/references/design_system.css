@@ -1,0 +1,62 @@
+/* 
+  DIMAP GeoCoder - Design System "Onsen de Inverno"
+  Classes utilitárias base prontas para inclusão no Tailwind CSS global.
+*/
+@layer utilities {
+  /* A Base do Vidro Espesso (3px) com Sombra Tintada Ciana (Para painéis flutuantes) */
+  .glass-panel {
+    @apply backdrop-blur-[2px] border-[3px] border-t-white/10 border-l-white/5 border-r-white/5 border-b-transparent shadow-[0_20px_40px_-10px_rgba(72,202,228,0.35)];
+  }
+
+  /* Variação para a Gaveta: Borda esquerda zerada e Sombra projetada para a Direita (contida no mobile) */
+  .glass-drawer-panel {
+    @apply backdrop-blur-[2px] border-[3px] border-t-white/10 border-r-white/5 border-l-0 border-b-transparent shadow-[10px_0_20px_-5px_rgba(72,202,228,0.3)] sm:shadow-[20px_0_50px_-10px_rgba(72,202,228,0.3)];
+  }
+
+  /* Gradiente da Gaveta (Brilha na direita, esmaece na esquerda) */
+  .glass-drawer-bg {
+    @apply bg-gradient-to-l from-base-100/50 via-base-100/20 to-base-100/10;
+  }
+
+  /* Gradiente de Painéis Flutuantes Centrais (ex: Barra de Busca) */
+  .glass-float-bg {
+    @apply bg-gradient-to-br from-base-100/10 to-base-100/20;
+  }
+
+  /* Ícones em Alto Relevo de Vidro */
+  .glass-icon {
+    @apply !bg-transparent stroke-white/50 text-white/10 drop-shadow-[0_4px_8px_rgba(72,202,228,0.4)];
+  }
+
+  /* Badges e Tags (Cristalinas) */
+  .glass-badge {
+    @apply bg-accent/10 text-accent font-bold rounded-md px-3 border border-accent/40;
+  }
+
+  /* Transições e Coreografia de Foco */
+  .transition-glass {
+    @apply transition-all duration-500 ease-in-out;
+  }
+
+  /* Ocultação cinematográfica (ex: Barra de Busca sumindo quando gaveta abre) */
+  .glass-hide-up {
+    @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
+  }
+
+  /* Refinamento dos Tooltips para o padrão Glass (translúcidos e arredondados) */
+  .tooltip::before {
+    @apply !bg-neutral/60 !backdrop-blur-md !text-secondary-content !rounded-xl !border !border-white/10 !shadow-lg !font-medium !px-4 !py-2;
+  }
+  .tooltip::after {
+    @apply !hidden; /* Remove a setinha opaca padrão */
+  }
+
+  /* Camada de Desfoque Dinâmico (Lente) */
+  .cinematic-blur-layer {
+    @apply absolute inset-0 z-10 pointer-events-none opacity-0 backdrop-blur-sm transition-opacity duration-500;
+  }
+  
+  .cinematic-blur-layer.active {
+    @apply opacity-100 pointer-events-auto;
+  }
+}
