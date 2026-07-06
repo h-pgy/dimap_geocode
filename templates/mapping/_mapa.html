@@ -2,3 +2,5 @@
 {# O mapa é singleton da home (mapping/_mapa_fullscreen.html); este partial nunca recria o mapa,  #}
 {# só entrega geometria + cor para o init.js trocar a camada de resultado (sem <script> aqui).    #}
 {{ payload|json_script:"mapa-payload" }}
+{# comitar uma busca fecha a lista de sugestões (OOB) — clique numa sugestão ou Enter #}
+<div id="sugestoes-busca" hx-swap-oob="innerHTML"></div>

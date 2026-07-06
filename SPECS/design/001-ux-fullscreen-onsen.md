@@ -1,6 +1,6 @@
 ---
 spec: design/001
-versao: v2
+versao: v3
 atualizado_em: 2026-07-06
 implementado: true
 changelog:
@@ -8,6 +8,11 @@ changelog:
   - v2: paleta do DS vira JSON em config/ consultado pelo settings; rolagem por seção de
     sugestões com altura máxima do painel; aderência explícita à skill componentes-frontend
     (tokens via @apply)
+  - v3: patch 001 — zoom inicial mais próximo; cor de polígono do mapa mais legível sobre a
+    ortofoto (madeira-400 + traço reforçado); barra de busca recolhe de hero para o topo ao
+    comitar a busca (CSS :has, sugestões fecham por OOB); Enter aciona o melhor match via view
+    de commit no app search; corrige comentário multi-linha que vazava no topo da página;
+    micro-interação de confirmação (pulso ciano) ao selecionar sugestão por clique ou Enter
 ---
 
 # SPEC design/001 — UX fullscreen "Onsen de Inverno": mapa como canvas + cores das camadas no DS
@@ -248,4 +253,143 @@ Widget do usuário no `base.html` — estático, com id estável para a lógica 
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v3) — zoom inicial, cor de polígono legível, recolhimento da barra e Enter
+
+Três melhorias sobre a UX entregue na v2. **Nada muda no domínio** (`services/`) — segue
+100% interface/orquestração. Decisões confirmadas com o usuário (cor madeira-400 + traço; barra
+hero→topo; Enter aciona o melhor match).
+
+**1. Zoom inicial mais próximo.**
+- `config/settings.py`: `MAP_ZOOM_DEFAULT` sobe de `12` para `14`. Em 12/13 a viewport mostra além
+  dos limites do município (a ortofoto só existe dentro da cidade, sobra "vazio"); em 14 a foto
+  preenche a tela. `MAP_CENTRO_DEFAULT` permanece `[-23.55, -46.63]` (central) e o `minZoom` do
+  Leaflet segue `13` (`criar_mapa.js`), então o usuário ainda pode afastar um passo.
+
+**2. Cor do polígono legível sobre a ortofoto (resolve também o "condomínio não muda").**
+- Diagnóstico: a troca de cor condominial **já funciona** no servidor (o lote condominial retorna
+  `#5E412F` e o comum `#9C6644`). O problema é perceptivo — madeira-500 e madeira-700 são marrons
+  próximos e "somem" sobre a ortofoto, parecendo a mesma cor. Corrigindo o contraste do polígono,
+  os dois passam a ler.
+- Cor default do polígono do **mapa** passa de `geometrias.poligono` (madeira-500 `#9C6644`) para
+  **madeira-400 `#B08968`** (mais clara), e o condominial segue **madeira-700 `#5E412F`** — agora
+  com contraste claro entre os dois. A fonte é o JSON de paleta (`config/paleta_ds.json` →
+  `escalas.madeira`), sem hex solto no `settings.py`:
+  ```python
+  # config/settings.py — default do polígono do mapa lê a escala madeira (não geometrias.poligono)
+  map_cor_poligono: str = Field(default=_ESCALAS["madeira"]["400"], alias="MAP_COR_POLIGONO")
+  # condominial permanece _ESCALAS["madeira"]["700"] (já existente)
+  ```
+  O token de badge do DS (`.badge-poligono`, sobre vidro) **não muda** — segue madeira-500; a
+  alteração é só a cor de *render da camada no mapa* (contexto ortofoto ≠ contexto vidro), e o JSON
+  de paleta / `geometrias.poligono` (fonte da verdade do DS) permanece intacto.
+- Traço reforçado no render para pesar mais sobre a foto (`static/src/js/mapa/camada_resultado.js`):
+  `weight` de `3` → `4` e `fillOpacity` de `0.3` → `0.35` (afeta linha e polígono; ponto usa
+  `pointToLayer` próprio). Ajuste de leitura, não de cor.
+
+**3. Recolhimento da barra (hero → topo) + fechar sugestões + Enter.**
+Comportamento: com o mapa já aberto, a barra nasce em destaque no meio-alto (~15vh). Ao **comitar**
+uma busca — clicar numa sugestão **ou** dar Enter — as sugestões fecham e a barra **anima subindo
+para o topo-central** (entre o chip DIMAP à esquerda e o widget de usuário à direita), liberando o
+mapa. Uma vez comitada a primeira busca, a barra permanece no topo (estado "pesquisado").
+
+- **Barra hero→topo por CSS puro (HATEOAS, sem JS de layout).** O container flutuante da home usa
+  `:has()` reagindo à presença de resultado no DOM (o servidor controla o DOM; o CSS reage). Como
+  `#resultado-busca` só é preenchido ao comitar (e só é *substituído*, nunca esvaziado, ao digitar
+  de novo), o estado "topo" é naturalmente pegajoso:
+  ```html
+  {# home.html — o layer da UI transita o padding-top conforme há resultado #}
+  <div class="… pt-[15vh] transition-glass
+              [body:has(#resultado-busca:not(:empty))_&]:pt-6">
+  ```
+  (Se a variante arbitrária `[body:has(...)_&]` não compilar limpa no Tailwind 4, nasce como token
+  `@apply`/classe de estado da skill — ex. `.ui-search-layer` + regra `:has()` no `input.css` e no
+  espelho do `base.html`, registrada no styleguide, seguindo §2 da skill.)
+
+- **Sugestões fecham ao comitar por OOB (HATEOAS, sem JS).** Os partials de resultado do `mapping`
+  (`_mapa.html` e `_aviso.html`) — que só são renderizados quando uma busca é comitada — passam a
+  carregar um swap *out-of-band* que esvazia `#sugestoes-busca`:
+  ```html
+  {# _mapa.html / _aviso.html — além do conteúdo próprio #}
+  <div id="sugestoes-busca" hx-swap-oob="innerHTML"></div>
+  ```
+  Assim o clique numa sugestão (que já responde `_mapa.html`/`_aviso.html`) fecha a lista sem
+  acoplar UI ao domínio; ao digitar de novo, `#sugestoes-busca` volta a ser preenchido normalmente
+  (não há CSS escondendo a lista — o fechamento é evento de commit, não estado permanente).
+
+- **Enter aciona o melhor match via view de commit no `search` (HATEOAS, sem JS de teclado).**
+  Como a regra de JS (§11) não cobre um handler de teclado imperativo, o Enter é servido por HTMX
+  nativo: a barra ganha um gatilho de Enter que faz `hx-post` para uma nova view `search:comitar`
+  (alvo `#resultado-busca`). Essa view **orquestra** (não é domínio novo): reusa
+  `rotear_entrada` para pegar o candidato de topo (o "melhor match", mesma ordem das sugestões) e
+  **compõe os geocoders de domínio já existentes** (`LogradouroGeocoder` / `LoteGeocoder` /
+  `AddressGeocoder`) para produzir o **mesmo** partial de resultado (`_mapa.html` ou `_aviso.html`).
+  Como o desfecho é o partial de resultado padrão, o Enter dispara automaticamente o mesmo
+  recolhimento (CSS) e o fechamento de sugestões (OOB) do clique — comportamento idêntico.
+  ```html
+  {# home.html — input da busca: além do trigger de sugestões, um trigger de Enter que comita #}
+  hx-trigger="keyup changed delay:300ms, search"                {# sugestões (inalterado) #}
+  {# … e um elemento/gatilho de commit no Enter apontando para search:comitar → #resultado-busca #}
+  ```
+  A view `comitar` vive em `apps/search` (orquestração), monta os DTOs Pydantic e chama o domínio —
+  sem regra de negócio nova; se o roteamento não achar candidato, responde o `_aviso.html`.
+
+**4. Remover comentário de dev que vaza como texto no topo da página.**
+- Sintoma: um bloco de texto (instruções de compilar o CSS para deploy) aparece **visível no topo**
+  da home. Causa: o comentário no `<head>` do `base.html` é um `{# … #}` **multi-linha** — o Django
+  só reconhece `{# #}` numa **única linha**; multi-linha **vaza como texto literal** no `<head>`, e o
+  parser do browser reposiciona esse texto solto para o topo do `<body>`. (Confirmado: só há este
+  caso multi-linha em `base.html:16`; os demais comentários são de uma linha e são stripados.)
+- Correção: trocar aquele `{# … #}` por `{% comment %} … {% endcomment %}` (bloco multi-linha
+  correto do Django, que também **não processa** os `{% load static %}` / `{% static %}` internos —
+  ficam inertes como devem). Sem mudança de conteúdo/estilo — só o comentário deixa de vazar.
+
+**5. Micro-interação de confirmação ao selecionar (clique e Enter).**
+Objetivo: a linha escolhida "acende" brevemente antes da lista fechar, confirmando a escolha.
+Adere ao DS — água = energia/ação → um **pulso ciano** (glow + leve tint + micro-scale de pressão),
+na mesma linguagem de brilho já existente (`glass-glow`, `icon-glow`, focos água). **Sem JS**:
+dirigido pela classe `htmx-request` que o HTMX aplica ao elemento requisitante enquanto a
+requisição de commit está no ar.
+```css
+/* nasce como token da skill: input.css + espelho no base.html + design_system.css + styleguide */
+@keyframes onsen-confirm {
+  0%   { box-shadow: inset 0 0 0 1.5px rgba(72,202,228,.6), 0 0 0 rgba(72,202,228,0); }
+  55%  { box-shadow: inset 0 0 0 1.5px rgba(72,202,228,.95), 0 0 22px rgba(72,202,228,.6); }
+  100% { box-shadow: inset 0 0 0 1.5px rgba(72,202,228,.6), 0 0 12px rgba(72,202,228,.4); }
+}
+.suggestion-item.htmx-request { @apply bg-agua-400/30 scale-[0.99]; animation: onsen-confirm .5s ease-out both; }
+```
+- **Clique:** o próprio `<li>` clicado é o elemento requisitante → recebe `htmx-request` → toca a
+  animação durante a requisição; ao chegar a resposta, o OOB do item 3 fecha a lista. "Acende e
+  fecha", como pedido. (`.suggestion-item` só casa a linha — não pega o input da busca.)
+- **Enter:** a requisição parte do gatilho de commit (item 3), não da linha. Para acender **a 1ª
+  sugestão**, o gatilho usa `hx-indicator` mirando exatamente ela, e o HTMX põe `htmx-request` no
+  primeiro item. Para o seletor pegar só o topo global (há várias seções), `_sugestoes.html` marca a
+  **primeira seção** com um id:
+  ```html
+  {# _sugestoes.html — só a 1ª seção ganha o id-âncora do topo #}
+  <div class="suggestion-section-scroll"{% if forloop.first %} id="sugestao-top"{% endif %}>…</div>
+  {# gatilho de Enter (item 3): #}  hx-indicator="#sugestao-top .suggestion-item:first-child"
+  ```
+  A 1ª `.suggestion-item` é o candidato de topo que `search:comitar` geocodifica — visual e ação
+  apontam para o mesmo item. Sem sugestões na tela, o `hx-indicator` não casa nada (sem animação) e o
+  commit responde `_aviso.html`.
+
+**Peças a compor (já existentes):** `apps/search` (`rotear_busca`, `REGISTRO_SECOES`,
+`rotear_entrada`) para a view de commit; os geocoders de domínio (`LogradouroGeocoder`,
+`LoteGeocoder`, `AddressGeocoder`) e as views que já montam seus DTOs; `mapping/_mapa.html` e
+`_aviso.html` como destino comum; `config/paleta_ds.json` (escala madeira) para as cores;
+`static/src/js/mapa/camada_resultado.js` para o traço; tokens de vidro/coreografia do DS
+(`transition-glass`) para a animação.
+
+**Fora de escopo do patch:** unificar o chip DIMAP + barra + botão num único top-bar como no
+wireframe (a barra continua painel próprio, só muda de posição); "match fuzzy sem sugestão" como
+feature de domínio nova (o Enter reusa o candidato de topo do roteamento existente, não introduz
+novo matching); atalho real Ctrl+K.
+
+**Notas de teste (para quando forem pedidos):** `MAP_ZOOM_DEFAULT == 14`; payload de polígono comum
+traz cor default madeira-400 e condominial madeira-700 (distintas); `search:comitar` com texto de
+logradouro/endereço/lote responde o `_mapa.html` correspondente e, sem match, o `_aviso.html`;
+resposta de resultado inclui o OOB que zera `#sugestoes-busca`; o HTML servido da home **não**
+contém o texto do comentário de dev (nada vaza no `<head>`); `_sugestoes.html` põe `id="sugestao-top"`
+só na 1ª seção; verificação visual do recolhimento hero→topo, do reaparecimento de sugestões ao
+redigitar e do pulso ciano de confirmação no clique e no Enter (browser).

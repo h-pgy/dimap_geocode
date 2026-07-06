@@ -66,7 +66,9 @@ class _Settings(BaseSettings):
         default="geoportal:MapaBase_Politico", alias="WMS_LAYER_MAPA_BASE"
     )
     map_cor_linha: str = Field(default=_GEOMETRIAS["linha"], alias="MAP_COR_LINHA")
-    map_cor_poligono: str = Field(default=_GEOMETRIAS["poligono"], alias="MAP_COR_POLIGONO")
+    # Polígono no mapa lê madeira-400 (mais clara) e não geometrias.poligono (madeira-500): o
+    # contexto ortofoto exige mais contraste que o badge sobre vidro. Ver SPEC design/001 patch 001.
+    map_cor_poligono: str = Field(default=_ESCALAS["madeira"]["400"], alias="MAP_COR_POLIGONO")
     map_cor_ponto: str = Field(default=_GEOMETRIAS["ponto"], alias="MAP_COR_PONTO")
     map_cor_poligono_condominio: str = Field(
         default=_ESCALAS["madeira"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
@@ -115,7 +117,8 @@ MAP_OUTPUT_CRS = 4326
 # 31983 = SIRGAS 2000 / UTM 23S, nativo do GeoSampa.
 MAP_INTERPOLATION_CRS = 31983
 MAP_CENTRO_DEFAULT: list[float] = [-23.55, -46.63]
-MAP_ZOOM_DEFAULT = 12
+# 14 preenche a viewport com a ortofoto sem mostrar os limites do município (em 12/13 sobra "vazio").
+MAP_ZOOM_DEFAULT = 14
 MAP_COR_LINHA = _env.map_cor_linha
 MAP_COR_POLIGONO = _env.map_cor_poligono
 MAP_COR_PONTO = _env.map_cor_ponto

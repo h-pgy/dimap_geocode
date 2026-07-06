@@ -3,7 +3,7 @@ export function adicionarResultado(map, geometria, corPadrao) {
   const camada = L.geoJSON(geometria, {
     style: (f) => {
       const c = (f.properties && f.properties.cor) ? f.properties.cor : corPadrao;
-      return { color: c, weight: 3, opacity: 1, fillColor: c, fillOpacity: 0.3 };
+      return { color: c, weight: 4, opacity: 1, fillColor: c, fillOpacity: 0.35 };
     },
     pointToLayer: (f, latlng) => {
       const c = (f.properties && f.properties.cor) ? f.properties.cor : corPadrao;

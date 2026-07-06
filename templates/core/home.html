@@ -8,7 +8,7 @@
 
   {# UI flutuante sobre o mapa (skill componentes-frontend §6/mock_ui): sem pointer-events no #}
   {# layer, cada painel reabre a interação em pointer-events-auto. #}
-  <div class="absolute inset-0 z-10 pointer-events-none flex flex-col items-center pt-[15vh] px-4">
+  <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">
     <div class="pointer-events-auto w-11/12 max-w-2xl glass-panel p-4 flex flex-col gap-2">
       <div class="flex gap-2 relative">
         <div class="relative w-full flex items-center">
@@ -23,13 +23,23 @@
             class="input input-glass pl-11"
             hx-post="{% url 'search:rotear_busca' %}"
             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-            hx-trigger="keyup changed delay:300ms, search"
+            hx-trigger="keyup changed delay:300ms"
             hx-target="#sugestoes-busca"
             hx-swap="innerHTML"
             hx-on:htmx:config-request="event.detail.parameters['tipo_evento'] = event.detail.triggeringEvent.type"
           />
         </div>
       </div>
+      {# Enter comita a busca: aciona o melhor match (equivale à 1ª sugestão) via search:comitar.  #}
+      {# hx-indicator acende a 1ª sugestão (item 5 da SPEC) enquanto a requisição de commit roda.   #}
+      <span
+        hx-post="{% url 'search:comitar' %}"
+        hx-trigger="keyup[key=='Enter'] from:#input_search"
+        hx-include="#input_search"
+        hx-target="#resultado-busca"
+        hx-swap="innerHTML"
+        hx-indicator="#sugestao-top .suggestion-item:first-child"
+        class="hidden"></span>
       <div class="flex justify-between px-2 pt-1 items-center">
         <span class="text-overline">
           Pressione <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">Ctrl</kbd> + <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">K</kbd>

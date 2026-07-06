@@ -27,10 +27,10 @@ def _properties(f: GeoFeature[Any, Any]) -> GeoJsonProperties:
     )
 
 
-@require_POST
-def geocodificar(request: HttpRequest) -> HttpResponse:
+def geocodificar_codlog(request: HttpRequest, codlog: str) -> HttpResponse:
+    """Geocodifica um codlog (6 dígitos) → linha. Reutilizável pela view e pela busca comitada."""
     entrada = LogradouroGeocodInput(
-        codlog=request.POST.get("codlog", ""),
+        codlog=codlog,
         layer_name=WFS_LAYER_LOGRADOUROS,
         output_crs=MAP_OUTPUT_CRS,
     )
@@ -43,3 +43,8 @@ def geocodificar(request: HttpRequest) -> HttpResponse:
         )
     geojson = to_geojson_feature_collection(features, _properties)
     return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_LINHA))
+
+
+@require_POST
+def geocodificar(request: HttpRequest) -> HttpResponse:
+    return geocodificar_codlog(request, request.POST.get("codlog", ""))

@@ -1,5 +1,3 @@
-from typing import Any
-
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
@@ -76,11 +74,12 @@ def _properties(f: EnderecoFeature) -> GeoJsonProperties:
     )
 
 
-@require_POST
-def selecionar(request: HttpRequest) -> HttpResponse:
+def geocodificar_endereco(request: HttpRequest, codlog: str, numero: object) -> HttpResponse:
+    """Geocodifica endereço (codlog 6 dígitos + número) → ponto. Reutilizável pela view e pela
+    busca comitada. `numero` chega como str (POST) ou int (candidato) — o Pydantic coage."""
     entrada = AddressGeocodInput.model_validate({
-        "codlog": request.POST.get("codlog", ""),
-        "numero": request.POST.get("numero", ""),   # Pydantic coage "123" → 123 (Field(gt=0))
+        "codlog": codlog,
+        "numero": numero,                            # Pydantic coage "123" → 123 (Field(gt=0))
         "layer_name": WFS_LAYER_LOGRADOUROS,
         "interpolation_crs": MAP_INTERPOLATION_CRS,
         "output_crs": MAP_OUTPUT_CRS,
@@ -94,3 +93,10 @@ def selecionar(request: HttpRequest) -> HttpResponse:
         return render(request, "mapping/_aviso.html", contexto_aviso(MSG_SEM_NUMERACAO))
     geojson = to_geojson_feature_collection([feature], _properties)
     return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_PONTO))
+
+
+@require_POST
+def selecionar(request: HttpRequest) -> HttpResponse:
+    return geocodificar_endereco(
+        request, request.POST.get("codlog", ""), request.POST.get("numero", "")
+    )
