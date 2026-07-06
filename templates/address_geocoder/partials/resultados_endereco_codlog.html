@@ -1,14 +1,15 @@
 {# fragmento HTMX, sem extends — recebe: resultados (list[CodlogMatchOutput]), numero (int) #}
 {# resultados nunca vazia: seção omitida a montante                                        #}
-<ul class="divide-y divide-base-300">
+<ul class="flex flex-col gap-0.5">
   {% for r in resultados %}
-    <li class="py-3 flex items-baseline gap-4 cursor-pointer hover:bg-base-200"
+    <li class="suggestion-item items-baseline gap-4"
         hx-post="{% url 'address_geocoder:selecionar' %}"
         hx-vals='{"codlog": "{{ r.codlog }}{{ r.dv }}", "numero": "{{ numero }}"}'
         hx-target="#resultado-busca"
         hx-swap="innerHTML">
-      <span class="font-mono text-sm text-base-content/60 w-16 shrink-0">{{ r.codlog }}-{{ r.dv }}</span>
+      <span class="text-code text-sm w-16 shrink-0">{{ r.codlog }}-{{ r.dv }}</span>
       <span class="font-medium">{{ r.nome_completo }}, {{ numero }}</span>
+      <span class="badge badge-ponto badge-sm shrink-0 ml-auto">Endereço</span>
     </li>
   {% endfor %}
 </ul>

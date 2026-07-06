@@ -1,3 +1,4 @@
-<b>{{ a.setor }}.{{ a.quadra }}.{{ a.lote }}</b><br>
+{# popup Leaflet — conteúdo renderizado dentro de .leaflet-popup-content #}
+<span class="font-bold text-madeira-700 font-mono">{{ a.setor }}.{{ a.quadra }}.{{ a.lote }}</span><br>
 {% if a.endereco %}{{ a.endereco }}<br>{% endif %}
-tipo {{ a.tipo_lote }}{% if a.is_condominio %} · <span style="color:#3b82f6;font-weight:600">condomínio {{ a.condominio }}</span>{% elif a.condominio %} · cond. {{ a.condominio }}{% endif %}
+tipo {{ a.tipo_lote }}{% if a.is_condominio %} · <span class="text-agua-700 font-semibold">condomínio {{ a.condominio }}</span>{% elif a.condominio %} · cond. {{ a.condominio }}{% endif %}

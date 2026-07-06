@@ -1,4 +1,8 @@
 {# aviso agnóstico de domínio: exibe a mensagem montada pela view #}
-<div role="alert" class="alert alert-warning">
+<div role="alert" class="alert alert-warning alert-soft">
+  <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 9v2m0 4h.01M10.29 3.86l-8.02 13.89A1.5 1.5 0 003.57 20h16.86a1.5 1.5 0 001.3-2.25L13.71 3.86a1.5 1.5 0 00-2.6 0z" />
+  </svg>
   <span>{{ mensagem }}</span>
 </div>
