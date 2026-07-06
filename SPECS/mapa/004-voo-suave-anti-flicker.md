@@ -1,10 +1,11 @@
 ---
 spec: mapa/004
-versao: v1
+versao: v2
 atualizado_em: 2026-07-06
 implementado: true
 changelog:
   - v1: versão inicial
+  - v2: revertida — suspeita de causar proxy error no WMS de raster do GeoSampa
 ---
 
 # SPEC mapa/004 — Voo suave anti-flicker ao reenquadrar o resultado
@@ -150,4 +151,24 @@ smoke test manual:
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v2) — revertida
+
+Logo após o deploy desta SPEC, o GeoSampa passou a devolver **proxy error** no WMS de raster
+(`WMS_RASTER_URL`, ortofoto) fora do horário/padrão em que isso costumava acontecer — enquanto o
+próprio portal do GeoSampa seguia respondendo normalmente. Suspeita: as duas alavancas somadas
+(`keepBuffer: 6` na base + `flyToBounds`/`flyTo` passando por vários níveis de zoom intermediários
+em buscas "longe") geram uma rajada de requisições `GetMap` bem maior do que o salto direto de
+antes, e o proxy/rate-limiter do GeoSampa reage a essa rajada.
+
+Sem forma de confirmar a causa raiz sem acesso aos logs do GeoSampa — a decisão foi **reverter** as
+duas alavancas por precaução, voltando ao comportamento anterior a esta SPEC:
+- `camada_base.js`: remove `keepBuffer: 6` (volta ao padrão do Leaflet).
+- `camada_resultado.js`: remove `reenquadrar`/voo condicional; volta a `fitBounds`/`setView` diretos
+  (sem `flyToBounds`/`flyTo`).
+
+O fade-in das tiles (alavanca 2, nunca desligada) não foi tocado — não gera requisições extras,
+então não é suspeita.
+
+Critérios de aceite desta SPEC (voo condicional, `keepBuffer` maior) **não valem mais** enquanto este
+patch estiver em vigor. Se o flicker voltar a incomodar, retomar via nova SPEC/patch com throttling
+de requisições (ex.: `updateWhenIdle`, `updateInterval` maior) em vez de mais buffer/animação.
