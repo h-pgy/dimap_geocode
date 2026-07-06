@@ -1,95 +1,194 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dimap">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DIMAP GeoCoder - Mock UI @Apply</title>
-  
+  <title>DIMAP GeoCoder - Mock UI v2 (Onsen de Inverno)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <script>
-    // Recuperando a paleta via config do Tailwind para não depender do parser de temas do CDN
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: "#48CAE4",
-            secondary: "#5E412F",
-            accent: "#0F766E",
-            neutral: "#0D1B2A",
-            "base-100": "#F8F9FA",
-            "base-content": "#0D1B2A",
-            "primary-content": "#0D1B2A",
-            "secondary-content": "#F8F9FA"
-          }
-        }
-      }
-    }
-  </script>
-  
-  <style type="text/tailwindcss">
-    /* Nossas classes do Design System Onsen de Inverno */
-    @layer utilities {
-      .glass-panel {
-        @apply backdrop-blur-[2px] border-[3px] border-t-white/10 border-l-white/5 border-r-white/5 border-b-transparent shadow-[0_20px_40px_-10px_rgba(72,202,228,0.35)];
-      }
-      .glass-drawer-panel {
-        @apply backdrop-blur-[2px] border-[3px] border-t-white/10 border-r-white/5 border-l-0 border-b-transparent shadow-[10px_0_20px_-5px_rgba(72,202,228,0.3)] sm:shadow-[20px_0_50px_-10px_rgba(72,202,228,0.3)];
-      }
-      .glass-drawer-bg {
-        @apply bg-gradient-to-l from-base-100/50 via-base-100/20 to-base-100/10;
-      }
-      .glass-float-bg {
-        @apply bg-gradient-to-br from-base-100/10 to-base-100/20;
-      }
-      .glass-icon {
-        @apply !bg-transparent stroke-white/50 text-white/10 drop-shadow-[0_4px_8px_rgba(72,202,228,0.4)];
-      }
-      .glass-badge {
-        @apply bg-accent/10 text-accent font-bold rounded-md px-3 border border-accent/40;
-      }
-      .transition-glass {
-        @apply transition-all duration-500 ease-in-out;
-      }
-      .glass-hide-up {
-        @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
-      }
-      .tooltip::before {
-        @apply !bg-neutral/60 !backdrop-blur-md !text-secondary-content !rounded-xl !border !border-white/10 !shadow-lg !font-medium !px-4 !py-2;
-      }
-      .tooltip::after {
-        @apply !hidden;
-      }
-      .cinematic-blur-layer {
-        @apply absolute inset-0 z-10 pointer-events-none opacity-0 backdrop-blur-sm transition-opacity duration-500;
-      }
-      .cinematic-blur-layer.active {
-        @apply opacity-100 pointer-events-auto;
-      }
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema DIMAP (inverno claro): sobrepõe as variáveis dos temas builtin do daisyUI (CDN) -->
+  <style>
+    html[data-theme="dimap"] {
+      color-scheme: light;
+      --color-base-100: #f2f8fb;
+      --color-base-200: #e3eff5;
+      --color-base-300: #cfe2eb;
+      --color-base-content: #0d1b2a;
+      --color-primary: #0096c7;
+      --color-primary-content: #f2fbff;
+      --color-secondary: #5e412f;
+      --color-secondary-content: #f6eee6;
+      --color-accent: #0f766e;
+      --color-accent-content: #ecfdf9;
+      --color-neutral: #1b263b;
+      --color-neutral-content: #e0e1dd;
+      --color-info: #0284c7;
+      --color-info-content: #f0f9ff;
+      --color-success: #059669;
+      --color-success-content: #ecfdf5;
+      --color-warning: #b45309;
+      --color-warning-content: #fef3c7;
+      --color-error: #dc2626;
+      --color-error-content: #fef2f2;
+      --radius-selector: 1rem;
+      --radius-field: 0.5rem;
+      --radius-box: 1rem;
+      --size-selector: 0.25rem;
+      --size-field: 0.25rem;
+      --border: 1px;
+      --depth: 1;
+      --noise: 0;
     }
   </style>
 
   <style type="text/tailwindcss">
-    body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: system-ui, sans-serif;}
+    @theme {
+      --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
+      --font-mono: "Roboto Mono", ui-monospace, "SFMono-Regular", monospace;
+
+      /* ÁGUA — escala da cor primária */
+      --color-agua-100: #caf0f8;
+      --color-agua-200: #ade8f4;
+      --color-agua-300: #90e0ef;
+      --color-agua-400: #48cae4;
+      --color-agua-500: #00b4d8;
+      --color-agua-600: #0096c7;
+      --color-agua-700: #0077b6;
+      --color-agua-800: #023e8a;
+      --color-agua-900: #03045e;
+
+      /* ROCHA — escala neutra */
+      --color-rocha-100: #e0e1dd;
+      --color-rocha-200: #c5ccd3;
+      --color-rocha-300: #a9bcd0;
+      --color-rocha-400: #8fa3bb;
+      --color-rocha-500: #778da9;
+      --color-rocha-600: #5b7290;
+      --color-rocha-700: #415a77;
+      --color-rocha-800: #2e4560;
+      --color-rocha-900: #1b263b;
+      --color-rocha-950: #0d1b2a;
+
+      /* MADEIRA — escala quente */
+      --color-madeira-100: #ede0d4;
+      --color-madeira-200: #e6ccb2;
+      --color-madeira-300: #ddb892;
+      --color-madeira-400: #b08968;
+      --color-madeira-500: #9c6644;
+      --color-madeira-600: #7f5539;
+      --color-madeira-700: #5e412f;
+      --color-madeira-800: #46301f;
+      --color-madeira-900: #2e1f16;
+
+      /* Papéis semânticos daisyUI (duplicados para compilar as utilities) */
+      --color-primary: #0096c7;
+      --color-primary-content: #f2fbff;
+      --color-secondary: #5e412f;
+      --color-secondary-content: #f6eee6;
+      --color-accent: #0f766e;
+      --color-accent-content: #ecfdf9;
+      --color-neutral: #1b263b;
+      --color-neutral-content: #e0e1dd;
+      --color-base-100: #f2f8fb;
+      --color-base-200: #e3eff5;
+      --color-base-300: #cfe2eb;
+      --color-base-content: #0d1b2a;
+      --color-info: #0284c7;
+      --color-info-content: #f0f9ff;
+      --color-success: #059669;
+      --color-success-content: #ecfdf5;
+      --color-warning: #b45309;
+      --color-warning-content: #fef3c7;
+      --color-error: #dc2626;
+      --color-error-content: #fef2f2;
+    }
+
+    @layer components {
+      /* ==================== TOKENS DE MATERIAL (gelo/vidro) ==================== */
+      .glass-blur   { @apply backdrop-blur-[10px]; }
+      .glass-bg     { @apply bg-gradient-to-br from-white/65 via-white/45 to-white/30; }
+      .glass-bg-deep { @apply bg-gradient-to-br from-rocha-950/80 to-rocha-900/70; }
+      .glass-edge   { @apply border border-white/60; }
+      .glass-shadow { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)]; }
+      .glass-glow   { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_32px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.5)]; }
+
+      /* ==================== MATERIAIS COMPOSTOS ==================== */
+      /* Gelo fosco: painel padrão, tinta ESCURA sobre vidro claro */
+      .glass-panel {
+        @apply rounded-2xl backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
+      }
+      /* Vidro profundo: variante escura pontual (tooltips, contrastes) — tinta CLARA */
+      .glass-panel-deep {
+        @apply rounded-2xl backdrop-blur-[8px] bg-gradient-to-br from-rocha-950/80 to-rocha-900/70 border border-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(7,58,84,0.35),0_0_24px_rgba(72,202,228,0.25)] text-rocha-100;
+      }
+      /* Gaveta lateral: gelo mais denso (texto longo) */
+      .glass-drawer-panel {
+        @apply backdrop-blur-[12px] bg-gradient-to-l from-white/80 via-white/65 to-white/55 border-r border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),12px_0_40px_rgba(7,58,84,0.3),0_0_40px_rgba(72,202,228,0.25)];
+      }
+      /* Poço rebaixado: sub-cards dentro de painéis */
+      .card-well {
+        @apply rounded-2xl bg-white/30 border border-white/45 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
+      }
+
+      /* ==================== ÁTOMOS ==================== */
+      .btn-onsen {
+        @apply border-none rounded-xl font-bold text-rocha-950 bg-gradient-to-br from-agua-300 to-agua-500 shadow-[0_4px_20px_rgba(0,150,199,0.4)] transition-all duration-300 hover:brightness-105 hover:shadow-[0_4px_28px_rgba(0,150,199,0.55)];
+      }
+      .btn-glass {
+        @apply rounded-full backdrop-blur-[10px] bg-white/50 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(7,58,84,0.2)] transition-all duration-300 hover:bg-white/70 hover:shadow-[0_4px_20px_rgba(72,202,228,0.4)];
+      }
+      .input-glass {
+        @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/60 focus:border-agua-500 focus:outline-none focus:shadow-[0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
+      }
+      .icon-glow    { @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)]; }
+      .text-overline { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
+      .text-code    { @apply font-mono text-agua-700; }
+
+      .badge-ponto    { @apply border border-agua-600/40 bg-agua-500/15 text-agua-700 font-medium; }
+      .badge-linha    { @apply border border-accent/40 bg-accent/10 text-accent font-medium; }
+      .badge-poligono { @apply border border-madeira-500/50 bg-madeira-400/15 text-madeira-700 font-medium; }
+
+      /* ==================== MOLÉCULAS ==================== */
+      .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }
+      .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.15)]; }
+
+      /* ==================== COREOGRAFIA ==================== */
+      .transition-glass { @apply transition-all duration-500 ease-in-out; }
+      .glass-hide-up    { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }
+      .cinematic-blur-layer { @apply absolute inset-0 z-10 pointer-events-none opacity-0 backdrop-blur-sm transition-opacity duration-500; }
+      .cinematic-blur-layer.active { @apply opacity-100 pointer-events-auto; }
+
+      /* Tooltip: vidro profundo (contraste invertido proposital) */
+      .tooltip::before { @apply bg-rocha-950/85! backdrop-blur-md! text-rocha-100! rounded-xl! border! border-white/15! shadow-lg! font-medium! px-4! py-2!; }
+      .tooltip::after  { @apply hidden!; }
+    }
+
+    body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+    body { font-family: "Roboto", sans-serif; }
     .btn, .input { transition: all 0.25s ease-out; }
-    
+
     /* Dinâmica de Foco baseada na Gaveta */
     #lote-drawer:checked ~ .drawer-content #blur-layer {
       @apply opacity-100 pointer-events-auto;
     }
-    
+
     #lote-drawer:checked ~ .drawer-content #search-bar-container,
     #lote-drawer:checked ~ .drawer-content #drawer-open-btn {
-      @apply glass-hide-up;
+      @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
     }
 
     @media (max-width: 639px) {
       #lote-drawer:checked ~ .drawer-content #user-widget {
-        @apply glass-hide-up;
+        @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
       }
     }
   </style>
@@ -99,62 +198,65 @@
   <!-- Wrapper Principal da Aplicação (Drawer na Raiz) -->
   <div class="drawer">
     <input id="lote-drawer" type="checkbox" class="drawer-toggle" />
-    
+
     <!-- Conteúdo Principal da Tela -->
     <div class="drawer-content relative h-screen w-screen">
-      
-      <!-- O Mapa é o Fundo do Drawer Content -->
-      <div id="map" class="absolute inset-0 z-0 saturate-[0.6] brightness-[0.90] contrast-[1.1]"></div>
-      <div id="map-overlay" class="absolute inset-0 z-[1] pointer-events-none mix-blend-multiply bg-primary/20"></div>
-      
+
+      <!-- O Mapa é o Fundo do Drawer Content (água límpida sob luz fria) -->
+      <div id="map" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+      <!-- Tinta de água límpida (multiply com ciano claro) -->
+      <div id="map-overlay" class="absolute inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+      <!-- Lente (efeito globo LEVE): vinheta ciana nas bordas + desfoque de borda + luz fria no centro -->
+      <div id="map-lens-vignette" class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+      <div id="map-lens-blur" class="absolute inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+      <div id="map-lens-light" class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
       <!-- Camada de foco dinâmico: só liga quando a gaveta abre (blur dinâmico) -->
-      <div id="blur-layer" class="cinematic-blur-layer !z-[2]"></div>
+      <div id="blur-layer" class="cinematic-blur-layer z-[2]!"></div>
 
       <!-- UI Flutuante sobre o Mapa -->
       <div id="ui-layer" class="absolute inset-0 z-10 pointer-events-none flex flex-col items-center pt-[15vh]">
-        
+
         <!-- Botão Flutuante Esquerdo para Abrir a Gaveta -->
         <div id="drawer-open-btn" class="pointer-events-auto absolute left-6 top-6 transition-glass">
-          <label for="lote-drawer" class="btn btn-circle btn-ghost !bg-transparent hover:!bg-base-100/10 glass-panel glass-float-bg tooltip tooltip-right flex items-center justify-center" data-tip="Detalhes do Imóvel">
-            <svg class="w-10 h-10 translate-x-0.5 glass-icon" stroke-width="1" fill="currentColor" viewBox="0 0 24 24"><path stroke-linejoin="round" stroke-linecap="round" d="M8 5.5l9.5 6.5-9.5 6.5z"></path></svg>
+          <label for="lote-drawer" class="btn btn-ghost btn-glass btn-circle w-14 h-14 tooltip tooltip-right flex items-center justify-center" data-tip="Detalhes do Imóvel">
+            <svg class="w-8 h-8 translate-x-0.5 icon-glow" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5.5l9.5 6.5-9.5 6.5z"></path></svg>
           </label>
         </div>
 
         <!-- Barra flutuante principal -->
-        <div id="search-bar-container" class="pointer-events-auto transition-glass w-11/12 max-w-2xl rounded-2xl p-4 flex flex-col gap-2 glass-panel glass-float-bg">
-          
+        <div id="search-bar-container" class="pointer-events-auto transition-glass w-11/12 max-w-2xl glass-panel p-4 flex flex-col gap-2">
+
           <div class="flex gap-2 relative">
             <div class="relative w-full flex items-center">
-              <svg class="w-5 h-5 absolute left-4 text-base-content/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-              
-              <input type="text" placeholder="Busque por endereço, lote ou logradouro..." 
-                     class="input w-full pl-11 !bg-base-100/5 border-base-100/20 backdrop-blur-[2px] shadow-inner text-base-content placeholder-base-content/50 focus:!bg-base-100/10 focus:border-primary focus:ring-2 focus:ring-primary/30 rounded-xl" />
+              <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+
+              <input type="text" placeholder="Busque por endereço, lote ou logradouro..."
+                     class="input input-glass pl-11" />
             </div>
-            
-            <button class="btn btn-primary bg-gradient-to-br from-primary to-[#2B9CB3] border-none shadow-[0_4px_14px_0_rgba(72,202,228,0.4)] rounded-xl hover:brightness-110 text-primary-content">Buscar</button>
+
+            <button class="btn btn-onsen">Buscar</button>
           </div>
 
           <div class="flex justify-between px-2 pt-1 items-center">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-base-content/50">
-              Pressione <kbd class="kbd kbd-xs bg-base-100/10 border-none shadow-none text-base-content/60">Ctrl</kbd> + <kbd class="kbd kbd-xs bg-base-100/10 border-none shadow-none text-base-content/60">K</kbd>
+            <span class="text-overline">
+              Pressione <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">Ctrl</kbd> + <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">K</kbd>
             </span>
             <div class="flex flex-wrap gap-2">
-              <span class="badge badge-sm border-none bg-secondary/20 text-secondary font-bold shadow-sm px-3 whitespace-nowrap h-auto py-0.5">Lotes Fiscais</span>
-              <span class="glass-badge badge-sm whitespace-nowrap h-auto py-0.5">Logradouros</span>
+              <span class="badge badge-poligono badge-sm whitespace-nowrap h-auto py-0.5">Lotes Fiscais</span>
+              <span class="badge badge-linha badge-sm whitespace-nowrap h-auto py-0.5">Logradouros</span>
             </div>
           </div>
         </div>
-        
+
         <!-- Widget de Usuário -->
-        <div id="user-widget" class="pointer-events-auto absolute top-6 right-6 rounded-full p-1.5 flex items-center sm:gap-3 glass-panel glass-float-bg cursor-pointer hover:!bg-base-100/10 transition-glass">
-          <div class="avatar">
-            <div class="w-11 rounded-full bg-neutral text-secondary-content flex items-center justify-center font-bold shadow-inner border border-base-100/20">
-              <svg class="w-5 h-5 m-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-            </div>
+        <div id="user-widget" class="pointer-events-auto absolute top-6 right-6 glass-panel rounded-full! p-1.5 flex items-center sm:gap-3 cursor-pointer transition-glass hover:bg-white/60">
+          <div class="w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+            <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
           </div>
           <div class="hidden sm:block pr-4">
-            <p class="text-sm font-bold m-0 leading-tight text-base-content">Projetos</p>
-            <p class="text-[10px] uppercase tracking-wide font-semibold m-0 leading-tight mt-0.5 text-secondary">Área do Usuário</p>
+            <p class="text-sm font-bold m-0 leading-tight">Projetos</p>
+            <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">Área do Usuário</p>
           </div>
         </div>
       </div>
@@ -162,62 +264,62 @@
 
     <!-- Gaveta Lateral Esquerda -->
     <div class="drawer-side z-20">
-      <label for="lote-drawer" aria-label="close sidebar" class="drawer-overlay !bg-transparent"></label>  
-      <div class="w-[85vw] sm:w-[420px] min-h-full rounded-r-3xl glass-drawer-panel glass-drawer-bg p-6 flex flex-col gap-6">
-        
+      <label for="lote-drawer" aria-label="close sidebar" class="drawer-overlay bg-transparent!"></label>
+      <div class="w-[85vw] sm:w-[420px] min-h-full rounded-r-3xl glass-drawer-panel p-6 flex flex-col gap-6">
+
         <div class="flex justify-between items-start mt-2">
           <div>
-            <h2 class="text-3xl font-bold tracking-tight text-base-content leading-none">Imóvel Fiscal</h2>
-            <p class="text-sm font-mono font-bold text-secondary mt-2 opacity-90">SQL 098.112.0034-1</p>
+            <h2 class="text-3xl font-bold tracking-tight leading-none text-madeira-700">Imóvel Fiscal</h2>
+            <p class="text-code text-sm font-medium mt-2">SQL 098.112.0034-1</p>
           </div>
-          <label for="lote-drawer" class="btn btn-sm btn-circle btn-ghost text-base-content/60 hover:text-base-content hover:bg-base-100/20">✕</label>
+          <label for="lote-drawer" class="btn btn-sm btn-circle btn-ghost text-base-content/60 hover:text-base-content hover:bg-rocha-950/10">✕</label>
         </div>
 
         <div class="flex flex-col gap-4">
-          <div class="p-4 rounded-2xl bg-base-100/5 border border-white/20 shadow-inner flex gap-4 items-center">
-            <div class="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center shadow-inner border border-primary/30">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          <div class="card-well p-4 flex gap-4 items-center">
+            <div class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             </div>
             <div>
-              <p class="text-[10px] uppercase tracking-wider text-base-content/50 font-bold mb-0.5">Endereço Principal</p>
-              <p class="text-base font-bold text-base-content leading-tight">Av. Paulista, 1578</p>
+              <p class="text-overline mb-0.5">Endereço Principal</p>
+              <p class="text-base font-bold leading-tight">Av. Paulista, 1578</p>
               <p class="text-xs text-base-content/70">Bela Vista, São Paulo - SP</p>
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
-            <div class="p-4 rounded-2xl bg-base-100/5 border border-white/20 shadow-inner">
-              <p class="text-[10px] uppercase tracking-wider text-base-content/50 font-bold mb-1">Área do Terreno</p>
-              <p class="text-xl font-bold text-base-content">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Área do Terreno</p>
+              <p class="text-xl font-bold">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
             </div>
-            <div class="p-4 rounded-2xl bg-base-100/5 border border-white/20 shadow-inner">
-              <p class="text-[10px] uppercase tracking-wider text-base-content/50 font-bold mb-1">Área Construída</p>
-              <p class="text-xl font-bold text-base-content">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Área Construída</p>
+              <p class="text-xl font-bold">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p>
             </div>
           </div>
 
-          <!-- Restrições (Madeira Escura / Secundária) -->
-          <div class="p-4 rounded-2xl bg-base-100/5 border border-white/20 shadow-inner flex flex-col gap-4">
+          <!-- Zoneamento e Restrições -->
+          <div class="card-well p-4 flex flex-col gap-4">
             <div>
-              <p class="text-[10px] uppercase tracking-wider text-base-content/50 font-bold mb-2">Zoneamento (LPUOS)</p>
+              <p class="text-overline mb-2">Zoneamento (LPUOS)</p>
               <div class="flex items-center gap-3">
-                <span class="badge border-none bg-primary text-primary-content font-bold px-3 py-3 shadow-md shadow-primary/20">ZCOR-2</span>
-                <span class="text-sm text-base-content font-medium">Zona Corredor Comercial</span>
+                <span class="badge bg-primary text-primary-content border-none font-bold px-3 py-3 shadow-[0_2px_12px_rgba(0,150,199,0.35)]">ZCOR-2</span>
+                <span class="text-sm font-medium">Zona Corredor Comercial</span>
               </div>
             </div>
-            <div class="h-px w-full bg-white/10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]"></div>
+            <div class="h-px w-full bg-rocha-950/10"></div>
             <div>
-              <p class="text-[10px] uppercase tracking-wider text-base-content/50 font-bold mb-2">Restrições Históricas</p>
+              <p class="text-overline mb-2">Restrições Históricas</p>
               <div class="flex items-center gap-3">
-                <span class="badge border border-secondary/30 bg-secondary/10 text-secondary font-bold px-3 py-3 shadow-sm">Tombado</span>
-                <span class="text-sm text-base-content font-medium">CONPRESP (Res. 14/2012)</span>
+                <span class="badge badge-warning badge-soft font-bold px-3 py-3">Tombado</span>
+                <span class="text-sm font-medium">CONPRESP (Res. 14/2012)</span>
               </div>
             </div>
           </div>
         </div>
 
         <div class="mt-auto pt-6 pb-2">
-          <button class="btn btn-primary w-full bg-gradient-to-br from-primary to-[#2B9CB3] border-none shadow-[0_4px_14px_0_rgba(72,202,228,0.4)] rounded-xl hover:brightness-110 text-primary-content text-lg h-14">
+          <button class="btn btn-onsen w-full text-lg h-14">
             Salvar no Projeto
           </button>
         </div>

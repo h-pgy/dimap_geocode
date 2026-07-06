@@ -1,137 +1,228 @@
 ---
 name: componentes-frontend
-description: Princípios de design, UX e padronização dos componentes de front-end do DIMAP GeoCoder. Sempre ative ao trabalhar na interface web, views ou templates HTML.
+description: Design system "Onsen de Inverno" e padronização dos componentes de front-end do DIMAP GeoCoder (Atomic Design sobre Tailwind 4 + daisyUI 5 + HTMX). Sempre ative ao trabalhar na interface web, views ou templates HTML.
 ---
 
-# Princípios de Design e Front-end (DIMAP GeoCoder)
+# Design System "Onsen de Inverno" — DIMAP GeoCoder
 
-Esta skill define as diretrizes arquiteturais de UI/UX e a padronização do código front-end (HTML, CSS, HTMX) do projeto DIMAP GeoCoder.
+Esta skill define o design system do projeto e **como construir componentes com Atomic Design**.
+A referência visual validada vive em `examples/design_system.html` (styleguide sobre mapa vivo) e
+`examples/mock_ui.html` (aplicação mockada). Qualquer componente novo nasce seguindo o método do §2.
 
-## 1. O Tema "Onsen de Inverno" (Cores, Essência e Poesia Visual)
-O design system do projeto transcende paletas estáticas para abraçar uma experiência sensorial: a de estar em um **"Onsen de Inverno"**. O usuário deve sentir como se estivesse *observando as montanhas geladas sob a luz fria de um dia encoberto de inverno, através de um vidro espesso e levemente embaçado, enquanto a iluminação ciana da água quente pulsa logo abaixo de si*. 
-A interface materializa essa poesia contrastando o mapa geográfico denso e escurecido (a paisagem fria/água profunda) com componentes de UI maciços, feitos de vidro grosso esculpido que captura e refrata a luz ambiente.
-- **O Mapa (Água Fria):** Escuro, dessaturado e com um tom azulado constante. 
-- **Primária (`#48CAE4` - Ciano/Água):** Cor de energia. Usada puramente para luz, sombras (tintadas) e brilho de elementos ativos.
-- **Secundária (`#5E412F` - Madeira escurecida):** Traz calor orgânico. Usada ESTRITAMENTE para tipografia (fontes) e ícones. **Jamais** use a cor secundária como *background* de preenchimento de painéis ou botões, pois destrói o contraste com o fundo escuro.
-- **Accent (`#0F766E` - Dark Teal/Verde):** Cor de suporte fria para dar leitura em badges, tags e rótulos menores, sem quebrar o clima gélido.
-*(Consulte `references/paleta.json` e a visualização `wireframes/paleta_onsen_inverno.html` para as escalas exatas)*.
+## 1. O Conceito: água límpida sob luz fria de inverno
 
-### 1.1 A Paleta Base (Configuração Tailwind)
-Esta é a assinatura exata de cores que deve guiar a configuração do Tailwind no projeto. 
-*(Nota: No ambiente de produção com Tailwind v4, essas variáveis serão mapeadas nativamente via `@theme` no CSS).*
+O usuário observa a cidade através de uma **água límpida em tons ciano** (o mapa), sob a luz fria de
+um dia claro de inverno. Sobre essa água flutuam **placas de gelo fosco** (os painéis de UI), com
+arestas que capturam a luz. A tinta que escreve sobre o gelo é **escura**: azul-rocha para o corpo
+de texto e **madeira quente para os títulos** — o único calor orgânico da cena.
 
-```javascript
-// Configuração do Tema - Onsen de Inverno
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        primary: "#48CAE4",
-        secondary: "#5E412F",
-        accent: "#0F766E",
-        neutral: "#0D1B2A",
-        "base-100": "#F8F9FA",
-        "base-content": "#0D1B2A",
-        "primary-content": "#0D1B2A",
-        "secondary-content": "#F8F9FA"
-      }
-    }
-  }
-}
+- **O mapa (água límpida):** claro, banhado de ciano, sempre visível e legível. Nunca escurecido.
+- **O vidro (gelo fosco):** branco translúcido, blur forte o bastante para separar figura do fundo.
+- **A tinta (rocha + madeira):** escura sobre o gelo. Regra de ouro de leitura: **tinta escura
+  sobre vidro claro**. O inverso (texto claro) só existe no material `glass-panel-deep` (§5).
+- **O ciano (água/energia):** cor de ação e brilho — gradientes de botão, glows, focos, códigos.
+
+## 2. Atomic Design — o método para criar componentes
+
+O design system tem **quatro camadas**. Toda peça de UI pertence a exatamente uma delas:
+
+```
+TOKENS  →  ÁTOMOS  →  MOLÉCULAS  →  ORGANISMOS
+(design)   (elementos) (combinações) (seções de domínio)
 ```
 
-### 1.2 Progressive Disclosure (Arquivos de Referência)
-Para garantir que outros desenvolvedores e agentes de IA compreendam a construção da interface em camadas (do conceito abstrato ao código exato), os seguintes artefatos oficiais devem ser consultados na seguinte ordem:
-1. **Moodboard Conceitual:** `references/onsen_inverno_moodboard.jpg` (A visão sensorial da iluminação ciana sobre água fria).
-2. **Imagens de Inspiração:** `references/referencia_original_ui_1.jpg` e `references/referencia_original_ui_2.jpg` (As referências brutas fornecidas na concepção, ditando o nível de transparência, vidro e polimento esperado).
-3. **Utilitárias CSS Base:** `references/design_system.css` (O arquivo contendo as abstrações `@apply` das regras visuais do vidro espesso, prontas para inclusão em produção).
-4. **Mockup Funcional Original:** `examples/mock_ui_initial.html` (A prova de conceito HTML inicial onde todas as classes foram testadas de forma inline).
-5. **Mockup Componentizado:** `examples/mock_ui.html` (A prova de conceito final, refatorada com o bloco CSS de `@apply` abstraído para fácil visualização e compartilhamento).
+### 2.1 Tokens (a camada de design)
+Valores e materiais compartilhados, definidos **uma única vez** no CSS de entrada:
+- **Cores**: as escalas `agua-*`, `rocha-*`, `madeira-*` e os papéis do tema daisyUI (§3).
+  Definidas via `@theme` (Tailwind 4) + tema daisyUI.
+- **Tipografia**: Roboto + Roboto Mono e a hierarquia do §4.
+- **Materiais de vidro**: classes `@apply` que agrupam utilities — `.glass-blur`, `.glass-bg`,
+  `.glass-bg-deep`, `.glass-edge`, `.glass-shadow`, `.glass-glow` — e os **materiais compostos**
+  `.glass-panel`, `.glass-panel-deep`, `.glass-drawer-panel`, `.card-well` (§5).
+- **Coreografia**: `.transition-glass`, `.glass-hide-up`, `.cinematic-blur-layer` (§7).
 
-## 2. Padronização: Partials (Domínio) vs `@apply` (Design Coeso)
-A divisão de responsabilidades na montagem da UI deve seguir a regra:
-- **Partials do Django/HTMX resolvem DOMÍNIO:** Crie arquivos HTML separados (`card_imovel.html`, `card_logradouro.html`) encapsulando a lógica de cada entidade de negócio. Não misture domínios com `if/elses` no mesmo HTML.
-- **`@apply` no CSS resolve DESIGN:** Para garantir o "mesmo DNA" visual nas diferentes entidades, crie classes unificadas no CSS do Tailwind (ex: `.card-resultado { @apply ...; }`).
-- **NÃO crie classes via `@utility`** para bordas/cores avulsas. Confie nas variáveis semânticas do tema (`bg-base-100`, `text-primary`).
+Regras dos tokens:
+- Cor nova **entra numa escala existente** ou não entra. Proibido hex solto no HTML/CSS de componente.
+- Material novo **compõe os tokens de vidro** existentes; não se inventa outro vocabulário de sombra/blur.
+- Token é classe com `@apply` **apenas de utilities Tailwind**. **NUNCA faça `@apply` de classe do
+  daisyUI** (`btn`, `input`, `badge`...): o build quebra e a folha inteira cai. A classe daisyUI fica
+  no HTML, empilhada com o token (§2.2).
 
-### 2.1 CSS Base (Referência de `@apply`)
-Para garantir a consistência do design system, as seguintes classes devem ser declaradas no arquivo CSS principal do projeto (`index.css` ou `global.css`) usando a diretiva `@apply` do Tailwind:
+### 2.2 Átomos (elementos mínimos)
+O menor elemento com identidade própria: botão, input, badge, kbd, ícone, tooltip, toggle, loading.
+**Um átomo = daisyUI (comportamento/estrutura) + token do DS (pele)**, empilhados no HTML:
 
+```html
+<button class="btn btn-onsen">Buscar</button>
+<input  class="input input-glass pl-11" />
+<span   class="badge badge-poligono badge-sm">Lote</span>
+<label  class="btn btn-ghost btn-glass btn-circle">…</label>
+```
+
+Átomos existentes (ver todos renderizados em `examples/design_system.html`, seção 2):
+| Átomo | Classe do DS | Sobre |
+|---|---|---|
+| Botão de energia (CTA) | `.btn-onsen` | gradiente `agua-300→500`, tinta escura, glow ciano |
+| Botão de vidro | `.btn-glass` | gelo fosco circular/pill; ações secundárias e ícones |
+| Input de vidro | `.input-glass` | fundo `white/45`, foco com anel ciano |
+| Badges de geometria | `.badge-ponto` `.badge-linha` `.badge-poligono` | tipo do resultado/camada |
+| Badges semânticos | `badge-{info,success,warning,error} badge-soft` | estado do sistema (daisyUI puro) |
+| Ícone com brilho | `.icon-glow` | `agua-600` + drop-shadow ciano |
+| Overline | `.text-overline` | rótulo 11px caps `rocha-700` |
+| Código | `.text-code` | Roboto Mono `agua-700` (SQL, codlog) |
+
+Para criar um átomo novo: (1) confira se um componente daisyUI já resolve o comportamento;
+(2) crie **uma** classe `@apply` de utilities com a pele do DS; (3) registre-o no styleguide.
+
+### 2.3 Moléculas (combinações pequenas)
+Grupo de átomos funcionando como uma unidade: o grupo de busca (input + botão), o item de sugestão
+(`.suggestion-item` + `.icon-bubble` + badge de tipo), o stat tile (overline + valor num `.card-well`),
+o item de layer (cor + nome + badge + toggle + lixeira). Moléculas ganham classe própria **só quando
+têm layout interno recorrente** (`.suggestion-item`); caso contrário são apenas composição de átomos
+com utilities de layout no HTML.
+
+### 2.4 Organismos (seções de domínio)
+Seções autônomas da interface: o painel de busca completo, a gaveta de detalhes do imóvel, o widget
+de usuário, o painel de camadas do projeto. **Organismo = partial Django/HTMX** (`_gaveta_lote.html`,
+`_painel_busca.html`): é aqui que o Atomic Design encontra a arquitetura do projeto —
+**partials resolvem DOMÍNIO, classes `@apply` resolvem DESIGN**:
+- Um partial por entidade de negócio. Não misture domínios com `if/else` no mesmo HTML.
+- O "mesmo DNA" visual entre entidades vem das classes compartilhadas (átomos/materiais), nunca de
+  copiar blocos de utilities.
+
+### 2.5 Checklist para qualquer componente novo
+1. Já existe no styleguide (`examples/design_system.html`)? **Reutilize.**
+2. O daisyUI tem o comportamento? Use o componente dele como base.
+3. Precisa de pele nova? Componha **tokens existentes**; se surgir cor/sombra nova, ela entra como
+   token antes de aparecer em componente.
+4. Classe nova só com `@apply` de utilities; classe daisyUI empilhada no HTML.
+5. Renderize o novo componente no styleguide (é o contrato visual do projeto).
+
+## 3. Paleta
+
+Três escalas próprias (utilities `bg-agua-400`, `text-madeira-700`, etc.) + papéis daisyUI.
+Fonte da verdade dos valores: `references/paleta.json`.
+
+### 3.1 Escalas
+- **Água** (primária — energia, luz, ações, geometria de *ponto*):
+  `100 #CAF0F8 · 200 #ADE8F4 · 300 #90E0EF · 400 #48CAE4 ★ · 500 #00B4D8 · 600 #0096C7 ✦ · 700 #0077B6 · 800 #023E8A · 900 #03045E`
+  ★ tom de marca (preenchimentos, gradientes, brilhos). ✦ ciano de **texto/ação** sobre vidro claro
+  (`agua-600`/`agua-700`). Os tons 100–400 são luz, **nunca texto sobre fundo claro**.
+- **Rocha** (neutra — tinta, superfícies, profundidade):
+  `100 #E0E1DD · 200 #C5CCD3 · 300 #A9BCD0 · 400 #8FA3BB · 500 #778DA9 · 600 #5B7290 · 700 #415A77 ✦ · 800 #2E4560 · 900 #1B263B · 950 #0D1B2A ★`
+  ★ tinta padrão do corpo (`base-content`). ✦ rótulos secundários/overlines.
+- **Madeira** (quente — tinta de títulos, acentos orgânicos, geometria de *polígono*):
+  `100 #EDE0D4 · 200 #E6CCB2 · 300 #DDB892 · 400 #B08968 · 500 #9C6644 · 600 #7F5539 · 700 #5E412F ★ · 800 #46301F · 900 #2E1F16`
+  ★ a tinta quente dos títulos sobre o gelo. Tons claros (200–300) só sobre `glass-panel-deep`.
+
+### 3.2 Papéis do tema daisyUI (tema `dimap`, claro)
+```
+base-100 #F2F8FB · base-200 #E3EFF5 · base-300 #CFE2EB · base-content #0D1B2A
+primary #0096C7 (content #F2FBFF) · secondary #5E412F (content #F6EEE6)
+accent #0F766E (content #ECFDF9) · neutral #1B263B (content #E0E1DD)
+info #0284C7 · success #059669 · warning #B45309 · error #DC2626 (contents claros)
+radius: selector 1rem · field 0.5rem · box 1rem
+```
+**Cores semânticas são obrigatórias para estado do sistema** (Nielsen #1): sucesso de salvamento,
+erro de busca, avisos (ex.: "Tombado" = `badge-warning badge-soft`). Nunca improvise verde/vermelho.
+
+### 3.3 Cores por geometria (default das camadas do mapa)
+Ponto = `agua-500` · Linha = `accent #0F766E` · Polígono = `madeira-500`. Badges correspondentes:
+`.badge-ponto`, `.badge-linha`, `.badge-poligono`.
+
+## 4. Tipografia
+
+**Roboto** (UI/texto, pesos 400/500/700/900) + **Roboto Mono** (códigos). Hierarquia:
+| Papel | Spec | Cor |
+|---|---|---|
+| Display | Roboto 900 · 30px · tracking-tight | `madeira-700` |
+| Título de painel | Roboto 700 · 24px | `madeira-700` |
+| Subtítulo | Roboto 700 · 18px | `rocha-950` |
+| Corpo | Roboto 400 · 15px | `base-content/90` |
+| Legenda | Roboto 400 · 13px | `base-content/70` |
+| Overline (`.text-overline`) | Roboto 500 · 11px · caps · tracking 0.14em | `rocha-700` |
+| Código (`.text-code`) | Roboto Mono 500 | `agua-700` |
+
+Hierarquia se faz por **peso e tamanho**, nunca reduzindo contraste abaixo do legível.
+Título flutuando direto sobre o mapa recebe halo frio: `drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]`.
+
+## 5. Materiais de vidro (o gelo fosco)
+
+Receita: **blur 10px** + gradiente branco translúcido + aresta `white/60` + **sombra em duas
+camadas** — azul-fria `rgba(7,58,84,.25)` (separação) + ciana `rgba(72,202,228,.25)` (vida) — e o
+brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `references/design_system.css`.
+
+| Material | Uso | Tinta |
+|---|---|---|
+| `.glass-panel` | painel flutuante padrão | escura |
+| `.glass-drawer-panel` | gaveta lateral (texto denso; blur 12px, mais opaco) | escura |
+| `.card-well` | poço rebaixado: sub-cards dentro de painéis (stats, metadados) | escura |
+| `.glass-panel-deep` | variante escura **pontual**: tooltips, contraste invertido | clara (`rocha-100`, acentos `agua-300`/`madeira-300`) |
+
+Regras:
+- Blur fraco (2px) é proibido: não separa figura do fundo. O mapa continua legível com 10px.
+- Sombra preta pura é proibida; sombra **apenas ciana** também (não separa). Sempre as duas camadas.
+- Nunca borda branca opaca contínua; a aresta é translúcida (`white/60`) + inset highlight.
+- Hover de vidro **acende** o gelo (`hover:bg-white/60`/`white/70`), não muda de cor.
+
+## 6. O mapa como canvas (água límpida)
+
+O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
+```html
+<div id="map" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+<!-- tinta de água límpida -->
+<div class="absolute inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+<!-- lente (efeito globo LEVE): vinheta ciana + desfoque de borda + luz fria central -->
+<div class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+<div class="absolute inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+<div class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+```
+- **Nunca escureça o mapa** nem aplique overlay preto/`bg-black/*` para dar foco.
+- **Foco por desfoque**: ao abrir gaveta/modal, ligue a `.cinematic-blur-layer` (blur dinâmico em
+  ~500ms) entre o mapa e o painel. O mapa embaça; nada escurece.
+- A "lente" é óptica simulada por overlays `pointer-events-none`. **Proibido distorcer o mapa
+  geometricamente** (transforms/SVG displacement): desalinha os cliques do Leaflet.
+
+## 7. Coreografia, micro-interações e HTMX
+
+- **Direções**: dados/busca (gavetas de lote, logradouro, inspeção) nascem **da esquerda**;
+  sistema/gestão (conta, projetos, camadas) nasce **da direita**. Modais críticos: scale-up no centro.
+- **UI concorrente se recolhe**: quando a gaveta abre, a barra de busca sai de cena via CSS de estado
+  (`#lote-drawer:checked ~ .drawer-content #search-bar-container { opacity-0 -translate-y-5 scale-95
+  pointer-events-none }`) — sem JavaScript imperativo.
+- **Todo interativo reage** a `hover:`/`focus:`/`active:`; transições `duration-300`–`500`.
+- **HTMX é a SPA**: sem full page reload após a carga do mapa. Swaps com `.htmx-indicator` +
+  `.loading` do daisyUI (a UI de vidro nunca bloqueia sem feedback). Use `.htmx-added`/`.htmx-swapping`
+  para amarrar animações de entrada/saída dos partials.
+- **JS restrito** (regra do projeto): callbacks de eventos HTMX e utilitários do Leaflet, nada mais.
+
+## 8. Setup técnico (produção, Tailwind 4 + daisyUI 5)
+
+No CSS de entrada (`static/src/input.css`):
 ```css
-/* A Base do Vidro Espesso (3px) com Sombra Tintada Ciana */
-.glass-panel {
-  @apply backdrop-blur-[2px] border-[3px] border-t-white/10 border-l-white/5 border-r-white/5 border-b-transparent shadow-[0_20px_40px_-10px_rgba(72,202,228,0.35)];
-}
-
-/* Gradiente da Gaveta (Brilha na direita, esmaece na esquerda) */
-.glass-drawer-bg {
-  @apply bg-gradient-to-l from-base-100/50 via-base-100/20 to-base-100/10;
-}
-
-/* Gradiente de Painéis Flutuantes Centrais (ex: Barra de Busca) */
-.glass-float-bg {
-  @apply bg-gradient-to-br from-base-100/10 to-base-100/20;
-}
-
-/* Ícones em Alto Relevo de Vidro */
-.glass-icon {
-  @apply !bg-transparent stroke-white/50 text-white/10 drop-shadow-[0_4px_8px_rgba(72,202,228,0.4)];
-}
-
-/* Badges e Tags (Cristalinas) */
-.glass-badge {
-  @apply bg-accent/10 text-accent font-medium rounded-md px-2 py-1 border border-accent/20;
-}
-
-/* Transições e Coreografia de Foco */
-.transition-glass {
-  @apply transition-all duration-500 ease-in-out;
-}
-
-/* Ocultação cinematográfica (ex: Barra de Busca sumindo quando gaveta abre) */
-.glass-hide-up {
-  @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
-}
-
-/* Camada de Desfoque Dinâmico (Lente) */
-.cinematic-blur-layer {
-  @apply absolute inset-0 z-10 pointer-events-none opacity-0 backdrop-blur-sm transition-opacity duration-500;
-}
-.cinematic-blur-layer.active {
-  @apply opacity-100 pointer-events-auto;
-}
+@import "tailwindcss";
+@plugin "daisyui" { themes: dimap --default; }
+@plugin "daisyui/theme" { name: "dimap"; /* papéis do §3.2 */ }
+@source "../../templates/**/*.html";  /* toda nova pasta de template entra aqui */
+@theme  { /* fontes + escalas agua/rocha/madeira do §3.1 */ }
+@layer components { /* tokens/átomos/moléculas de references/design_system.css */ }
 ```
+Cuidados que já quebraram build/render:
+- `@apply` **só de utilities** (nunca classes daisyUI) — ver §2.1.
+- `shadow-inner` não existe no Tailwind 4; use `shadow-[inset_...]` arbitrária.
+- Sintaxe de important no Tailwind 4 é sufixo: `bg-transparent!` (não `!bg-transparent`).
+- Nos mocks (CDN `@tailwindcss/browser` + `daisyui@5`), o tema é forçado via variáveis em
+  `html[data-theme="dimap"]` **e** duplicado no `@theme` — ver cabeçalho dos exemplos.
 
-## 3. Glassmorphism Padrão Ouro (O Vidro Espesso)
-*(Referência prática: inspecione os componentes da UI no arquivo de demonstração em `examples/mock_ui_initial.html`)*
-Os elementos flutuantes do sistema NÃO são plástico transparente fino; eles simulam **blocos de vidro espesso**. Para atingir esse padrão, aplique religiosamente as seguintes regras:
-- **Blur Fraco (`backdrop-blur-[2px]`):** Blurs pesados (como `blur-md` ou `blur-2xl`) estragam o vidro e o deixam opaco ("chapadão"). O mapa ao fundo **deve** ser perfeitamente legível em movimento atrás da UI.
-- **Massa e Arestas (`border-[3px]`):** O vidro precisa de volume físico. Todas as bordas primárias têm exatos 3 pixels de espessura (ou `border-y-[3px] border-r-[3px] border-l-0` dependendo das quinas expostas).
-- **Refração Subliminar (Bordas Direcionais):** A luz ambiente bate na quina do vidro e some rapidamente. NUNCA desenhe bordas brancas opacas e contínuas (ex: `border-white/80` é terminantemente proibido). A aresta externa de onde vem a luz ganha apenas `border-t-white/10`, as laterais enfraquecem para `border-x-white/5` e a base de oclusão afunda na água com `border-b-transparent`.
-- **Luminosidade Interna (Background Gradients):** O preenchimento do vidro deve contrabalançar o escurecimento do mapa ao fundo, "emitindo" luz. Use gradientes opacos que partem da borda exterior em direção à raiz do elemento. Ex: `bg-gradient-to-l from-base-100/50 via-base-100/20 to-base-100/10`.
-- **Sombras Tintadas (Efeito Neon na Água):** Sombras pretas ou neutras (`shadow-xl`) são vetadas em elementos *glass*. A sombra representa a luz colorida da UI atravessando o vidro e batendo na água. Use *drop-shadows* puramente Cianos: `shadow-[0_20px_40px_-10px_rgba(72,202,228,0.35)]`.
-- **Alto Relevo de Vidro (Ícones):** Ícones flutuantes dentro do vidro não são pintados, parecem ser esculpidos em alto relevo na própria chapa. Use fundo transparente (`!bg-transparent`), traços sutis (`stroke-white/50`), preenchimento quase nulo (`text-white/10`) e um *drop-shadow* Ciano projetado (`drop-shadow-[0_4px_8px_rgba(72,202,228,0.4)]`).
-- **Badges:** Não use preenchimentos sólidos agressivos. Aplique banhos translúcidos como `bg-accent/10` para criar rótulos, mantendo a estética cristalina intacta.
+## 9. Arquivos de referência (ordem de consulta)
 
-## 4. O Mapa como Canvas e Foco Dinâmico (Lente Cinematográfica)
-O mapa base Leaflet não é um iframe no meio da página; ele é a própria tela (UI Espacial).
-- **Atmosfera Permanente:** O mapa base possui um tratamento fixo (`brightness-[0.90] contrast-[1.1] saturate-[0.6]` + overlay em `bg-primary/20`) que o deixa levemente escuro e denso, servindo de cama escura para o UI de vidro brilhar (gerando contraste natural).
-- **Lentes Cinematográficas para Foco (NUNCA Escurecer a Tela):** Quando um painel modal ou gaveta se abrir, **jamais** aplique overlays de fundo escuro (`bg-black/40` ou `drawer-overlay` com fundos). Ao escurecer o fundo, a transparência do vidro rouba a escuridão, "desligando" o brilho natural da UI que já estava iluminada.
-- **Foco por Desfoque (`#blur-layer`):** O jeito correto de dar foco ao componente aberto é usar um desfoque cinematográfico dinâmico (Depth of Field). Injete via CSS um `backdrop-blur-sm` no nível exato entre a UI flutuante e o mapa (`z-index` menor que a gaveta). O mapa inteiro embaça em 500ms, isolando o vidro brilhante da gaveta sem roubar sua luz.
-- **Coreografia Silenciosa da UI Concorrente:** O foco numa ação deve ser exclusivo. Quando a Gaveta abrir, a Barra de Busca (que não é o foco atual) deve desaparecer graciosamente. Utilize as regras do estado ativador (ex: `#lote-drawer:checked ~ .drawer-content`) para esconder componentes via CSS usando `transform: translateY(-20px) scale(0.95); opacity: 0; pointer-events: none;`, sem depender de JavaScript imperativo.
-
-## 5. Micro-interações e Estados Dinâmicos
-- **Feedback Constante:** Todo elemento interativo precisa reagir via `hover:`, `focus:` e `active:`.
-- **Transições Suaves:** Mutações no estado da interface devem deslizar fluidamente usando `transition-all duration-300` ou `duration-500`.
-- **"Acender" Elementos (Opacidade Dinâmica):** Para transicionar um componente *glass* inativo para o estado "hover/focus", não mude a cor, apenas jogue luz "acendendo" o vidro. Suba o alpha do branco ligeiramente (`hover:!bg-base-100/10`), criando um efeito orgânico.
-
-## 6. Estados de Carregamento e Experiência HTMX
-- A aplicação é uma SPA orquestrada estritamente por HTMX; recarregamentos de página (Full Page Reloads) são proibidos após a carga do mapa.
-- Operações de CRUD e buscas injetam/substituem pedaços de DOM (Swaps). Use `.htmx-indicator` e as utilitárias `.loading` do daisyUI nos alvos de requisição, pois a UI de vidro não pode ser bloqueante (o usuário precisa saber que os dados da API estão viajando).
-
-## 7. Foco Progressivo e Movimentação Espacial
-A direção na qual um componente "nasce" importa e segue uma gramática estrita:
-- **Idle:** Barra central flutuando serenamente sobre a tela.
-- **Da Esquerda para a Direita (Domínio de Dados/Busca):** Toda gaveta, resultado de lote fiscal, detalhe de logradouro ou inspeção espacial **nasce colada no eixo esquerdo** e expande para a direita do monitor (Glide-in à direita).
-- **Da Direita para a Esquerda (Sistema/Gestão):** Gerenciamento de conta, áreas de usuário, painéis de camadas de projetos salvos residem e "abrem" a partir do canto superior direito (Glide-in à esquerda).
-- **Integração Visual de Animações:** Use os sufixos temporários do HTMX (como `.htmx-added` e `.htmx-swapping`) para amarrar movimentos elegantes de entrada e saída, impedindo que o DOM seja renderizado secamente. Modais absolutos e alertas críticos explodem a partir do eixo Z (Scale-up no centro da tela).
+1. **Styleguide vivo:** `examples/design_system.html` — tokens, átomos, moléculas e organismos
+   renderizados sobre o mapa real. **É o contrato visual**; componente novo é registrado aqui.
+2. **Aplicação mockada:** `examples/mock_ui.html` — o design system aplicado na UX completa
+   (barra única, gaveta, coreografia de foco).
+3. **CSS dos tokens:** `references/design_system.css` — o bloco `@layer components` pronto para o
+   CSS de entrada da produção.
+4. **Paleta:** `references/paleta.json` — escalas e papéis em JSON (fonte da verdade dos valores).
+5. **Referências visuais:** `references/onsen_inverno_moodboard.jpg`,
+   `references/referencia_original_ui_1.jpg`, `references/referencia_original_ui_2.jpg` — a água
+   límpida ciano, a luz fria e o nível de polimento esperado do vidro.
