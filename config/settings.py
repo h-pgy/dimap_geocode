@@ -47,6 +47,7 @@ class _Settings(BaseSettings):
     wfs_version: str = Field(default="1.0.0", alias="WFS_VERSION")
     wfs_layer_logradouros: str = Field(default="segmento_logradouro", alias="WFS_LAYER_LOGRADOUROS")
     wfs_layer_lote_cidadao: str = Field(default="lote_cidadao", alias="WFS_LAYER_LOTE_CIDADAO")
+    wfs_verbose: bool = Field(default=True, alias="WFS_VERBOSE")
     wfs_request_timeout_seconds: float = Field(default=30.0, alias="WFS_REQUEST_TIMEOUT_SECONDS")
     wfs_max_retries: int = Field(default=3, alias="WFS_MAX_RETRIES")
     wfs_retry_wait_min_seconds: float = Field(default=1.0, alias="WFS_RETRY_WAIT_MIN_SECONDS")
@@ -90,6 +91,9 @@ WFS_SERVICE = _env.wfs_service
 WFS_VERSION = _env.wfs_version
 WFS_LAYER_LOGRADOUROS = _env.wfs_layer_logradouros
 WFS_LAYER_LOTE_CIDADAO = _env.wfs_layer_lote_cidadao
+# Liga o log da requisição WFS (URL + params) em todos os geocoders — diagnóstico
+# do GeoSampa. O WfsFetcher imprime cada GET quando verbose; build_fetcher lê daqui.
+WFS_VERBOSE = _env.wfs_verbose
 WFS_REQUEST_TIMEOUT_SECONDS = _env.wfs_request_timeout_seconds
 WFS_MAX_RETRIES = _env.wfs_max_retries
 WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds

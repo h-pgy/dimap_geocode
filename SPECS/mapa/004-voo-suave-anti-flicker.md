@@ -1,11 +1,12 @@
 ---
 spec: mapa/004
-versao: v2
+versao: v3
 atualizado_em: 2026-07-06
 implementado: true
 changelog:
   - v1: versão inicial
   - v2: revertida — suspeita de causar proxy error no WMS de raster do GeoSampa
+  - v3: suavidade via zoomAnimationThreshold (sem flyTo)
 ---
 
 # SPEC mapa/004 — Voo suave anti-flicker ao reenquadrar o resultado
@@ -172,3 +173,32 @@ então não é suspeita.
 Critérios de aceite desta SPEC (voo condicional, `keepBuffer` maior) **não valem mais** enquanto este
 patch estiver em vigor. Se o flicker voltar a incomodar, retomar via nova SPEC/patch com throttling
 de requisições (ex.: `updateWhenIdle`, `updateInterval` maior) em vez de mais buffer/animação.
+
+### Patch 002 (v3) — suavidade via zoomAnimationThreshold, sem flyTo
+
+Retomada a busca por suavidade, mas **sem `flyTo`**: o `flyTo`/`flyToBounds` é o que percorre vários
+níveis de zoom intermediários e, em cada um, pede um lote novo de tiles ao WMS — o suspeito do Patch
+001. A alternativa usa só a animação **nativa** de pan+zoom do Leaflet (CSS transform sobre as tiles
+já carregadas), que pede tile **apenas do zoom final** — igual ao salto direto de hoje, sem rajada.
+
+O motivo do `fitBounds`/`setView` de hoje não animar em saltos grandes: o Leaflet só aplica essa
+animação nativa quando a diferença de zoom fica dentro de `zoomAnimationThreshold` (padrão da lib:
+`4`); acima disso, ele faz um "snap" instantâneo. Como o mapa tem `minZoom: 13` / `maxZoom: 19` (span
+de 6), buscas que cruzam mais de 4 níveis perdiam a animação. A mudança:
+
+```js
+// static/src/js/mapa/criar_mapa.js
+const mapa = L.map(elId, {
+  minZoom: MIN_ZOOM,
+  maxZoom: MAX_ZOOM,
+  zoomControl: false,
+  zoomAnimationThreshold: MAX_ZOOM - MIN_ZOOM, // cobre o span inteiro de zoom do mapa
+}).setView(centro, zoom);
+```
+
+`camada_resultado.js` não muda — continua com `fitBounds`/`setView` diretos (do Patch 001); agora
+eles só passam a **sempre** animar suavemente, em vez de dar snap nos saltos maiores.
+
+Fora do escopo deste patch: `keepBuffer` maior e a técnica de overlay/crossfade (print da tela atual
+com fade) cogitada como alternativa mais fiel ao efeito "voo" — descartada por exigir mais JS para um
+ganho ainda não comprovado como necessário.

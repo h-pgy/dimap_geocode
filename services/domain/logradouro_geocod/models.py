@@ -1,17 +1,14 @@
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field
 
 from services.domain.geometry import GeoFeature, LineGeometry
 
 
 class LogradouroGeocodInput(BaseModel):
+    # codlog é string com zero à esquerda ("059447"): a camada segmento_logradouro
+    # do GeoSampa guarda o campo como texto, então o CQL precisa consultar por string.
     codlog: str = Field(pattern=r"^\d{6}$")
     layer_name: str
     output_crs: int
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def codlog_int(self) -> int:
-        return int(self.codlog)
 
 
 class SegmentoLogradouroAttributes(BaseModel):

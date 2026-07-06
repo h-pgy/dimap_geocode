@@ -49,7 +49,7 @@ class LogradouroGeocoder:
     def _montar_request(self, entrada: LogradouroGeocodInput) -> WfsFeatureRequest:
         return WfsFeatureRequest(
             nome_camada=entrada.layer_name,
-            cql_filter=utils.cql_eq("codlog", entrada.codlog_int),
+            cql_filter=utils.cql_eq("codlog", entrada.codlog),
             srs_name=f"EPSG:{entrada.output_crs}",
             count=PAGE_SIZE,
         )

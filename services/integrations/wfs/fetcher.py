@@ -2,6 +2,7 @@ import random
 import time
 from json import JSONDecodeError
 from typing import Generator, NoReturn
+from urllib.parse import unquote_plus
 
 import requests
 
@@ -75,11 +76,20 @@ class WfsFetcher:
             f"Falha de conexão com o WFS após {total_attempts} tentativas"
         ) from exc
 
+    def _full_url(self, params: dict[str, str | int]) -> str:
+        """URL completa (base + query string) decodificada — legível e colável no navegador
+        (o browser reencoda ao enviar; %3D→'=', +→espaço saem do log)."""
+        encoded = requests.Request("GET", self.config.url_base, params=params).prepare().url or ""
+        return unquote_plus(encoded)
+
+    def _log_request(self, params: dict[str, str | int]) -> None:
+        if self.verbose:
+            print(f"WFS GET {self._full_url(params)}")
+
     def _get_page(self, request: WfsFeatureRequest, start_index: int) -> WfsFeatureCollection:
         params = self._base_params(request)
         params["startIndex"] = start_index
-        if self.verbose:
-            print(f"WFS GET {self.config.url_base} :: {params}")
+        self._log_request(params)
         resp = self._request_with_retries(params)
         try:
             resp.raise_for_status()
