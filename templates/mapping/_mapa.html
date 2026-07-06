@@ -1,13 +1,4 @@
-{# templates/mapping/_mapa.html — partial agnóstico de domínio: só container + dados (sem <script>) #}
-{# Moldura de gelo + tratamento "água límpida" com lente leve (skill componentes-frontend §6).      #}
-{# Overlays são pointer-events-none: não interferem na interação do Leaflet.                        #}
-<div class="glass-panel p-1.5">
-  <div class="relative rounded-xl overflow-hidden">
-    <div id="map" class="h-[70vh] w-full saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
-    <div class="absolute inset-0 z-[1000] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
-    <div class="absolute inset-0 z-[1000] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
-    <div class="absolute inset-0 z-[1000] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
-  </div>
-</div>
-{{ wms|json_script:"mapa-wms" }}
+{# templates/mapping/_mapa.html — partial agnóstico de domínio: só o payload do resultado.       #}
+{# O mapa é singleton da home (mapping/_mapa_fullscreen.html); este partial nunca recria o mapa,  #}
+{# só entrega geometria + cor para o init.js trocar a camada de resultado (sem <script> aqui).    #}
 {{ payload|json_script:"mapa-payload" }}

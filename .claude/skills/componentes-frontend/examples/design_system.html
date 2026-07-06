@@ -162,6 +162,9 @@
       .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }
       .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.15)]; }
 
+      .suggestion-panel          { @apply p-3 space-y-3 max-h-[45vh] overflow-hidden flex flex-col; }
+      .suggestion-section-scroll { @apply overflow-y-auto max-h-40; }
+
       /* ==================== COREOGRAFIA ==================== */
       .transition-glass { @apply transition-all duration-500 ease-in-out; }
       .glass-hide-up    { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }
@@ -535,6 +538,36 @@
             </div>
             <span class="badge badge-poligono badge-sm shrink-0">Lote</span>
           </div>
+        </div>
+
+        <!-- Painel de sugestões: altura máxima + rolagem independente por seção -->
+        <div class="glass-panel suggestion-panel">
+          <p class="text-overline px-4 pt-1">Painel de sugestões (altura máxima + scroll por seção)</p>
+          <section class="min-h-0 flex flex-col">
+            <h3 class="text-overline px-2 mb-1 shrink-0">Endereço (por codlog)</h3>
+            <div class="suggestion-section-scroll flex flex-col gap-0.5">
+              <div class="suggestion-item">
+                <span class="text-code text-sm w-16 shrink-0">08040-0</span>
+                <span class="font-medium">Av. Paulista, 1578</span>
+                <span class="badge badge-ponto badge-sm shrink-0 ml-auto">Endereço</span>
+              </div>
+              <div class="suggestion-item">
+                <span class="text-code text-sm w-16 shrink-0">08040-1</span>
+                <span class="font-medium">Av. Paulistânia, 1578</span>
+                <span class="badge badge-ponto badge-sm shrink-0 ml-auto">Endereço</span>
+              </div>
+            </div>
+          </section>
+          <section class="min-h-0 flex flex-col">
+            <h3 class="text-overline px-2 mb-1 shrink-0">Logradouro</h3>
+            <div class="suggestion-section-scroll flex flex-col gap-0.5">
+              <div class="suggestion-item">
+                <span class="text-code text-sm w-16 shrink-0">08040-0</span>
+                <span class="font-medium">Avenida Paulista</span>
+                <span class="badge badge-linha badge-sm shrink-0 ml-auto">Logradouro</span>
+              </div>
+            </div>
+          </section>
         </div>
 
         <!-- Item de layer -->

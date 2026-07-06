@@ -2,7 +2,7 @@
 spec: design/001
 versao: v2
 atualizado_em: 2026-07-06
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: paleta do DS vira JSON em config/ consultado pelo settings; rolagem por seção de
@@ -12,7 +12,7 @@ changelog:
 
 # SPEC design/001 — UX fullscreen "Onsen de Inverno": mapa como canvas + cores das camadas no DS
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como usuário do GeoCoder, quero interagir com um mapa em tela cheia que está sempre aberto —

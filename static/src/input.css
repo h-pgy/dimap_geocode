@@ -128,6 +128,11 @@
   .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }
   .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.15)]; }
 
+  /* Painel de sugestões flutuante: altura máxima (o mapa continua protagonista) e cada seção
+     rola por conta própria (título fixo, lista com scroll). */
+  .suggestion-panel        { @apply p-3 space-y-3 max-h-[45vh] overflow-hidden flex flex-col; }
+  .suggestion-section-scroll { @apply overflow-y-auto max-h-40; }
+
   /* ==================== COREOGRAFIA ==================== */
   .transition-glass { @apply transition-all duration-500 ease-in-out; }
   .glass-hide-up    { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }

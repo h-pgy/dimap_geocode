@@ -15,10 +15,13 @@ from services.domain.geometry.models import GeoJsonProperties
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 WFS_LAYER_LOTE_CIDADAO: str = settings.WFS_LAYER_LOTE_CIDADAO
 MAP_COR_POLIGONO: str = settings.MAP_COR_POLIGONO
+MAP_COR_POLIGONO_CONDOMINIO: str = settings.MAP_COR_POLIGONO_CONDOMINIO
 
 
 def _properties(f: GeoFeature[Any, Any]) -> GeoJsonProperties:
-    cor_condominio = "#76e60d" if getattr(f.attributes, "is_condominio", False) else None
+    cor_condominio = (
+        MAP_COR_POLIGONO_CONDOMINIO if getattr(f.attributes, "is_condominio", False) else None
+    )
     return GeoJsonProperties(
         popup_html=render_to_string(
             "lote_geocoder/partials/_popup_lote.html", {"a": f.attributes}

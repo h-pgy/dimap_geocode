@@ -6,12 +6,21 @@ constantes UPPER_CASE locais (CLAUDE.md §10.3 / §11). O resto do módulo
 referencia as constantes, não o objeto de settings.
 """
 
+import json
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Paleta do design system "Onsen de Inverno" — espelho de
+# .claude/skills/componentes-frontend/references/paleta.json (fonte da verdade dos valores).
+# Falha alto no boot se o JSON estiver ausente ou malformado (nunca silenciosamente).
+_PALETA_DS: dict[str, Any] = json.loads((BASE_DIR / "config" / "paleta_ds.json").read_text())
+_GEOMETRIAS: dict[str, str] = _PALETA_DS["geometrias"]
+_ESCALAS: dict[str, dict[str, str]] = _PALETA_DS["escalas"]
 
 
 class _Settings(BaseSettings):
@@ -56,9 +65,12 @@ class _Settings(BaseSettings):
     wms_layer_mapa_base: str = Field(
         default="geoportal:MapaBase_Politico", alias="WMS_LAYER_MAPA_BASE"
     )
-    map_cor_linha: str = Field(default="#3b82f6", alias="MAP_COR_LINHA")
-    map_cor_poligono: str = Field(default="#f97316", alias="MAP_COR_POLIGONO")
-    map_cor_ponto: str = Field(default="#ef4444", alias="MAP_COR_PONTO")
+    map_cor_linha: str = Field(default=_GEOMETRIAS["linha"], alias="MAP_COR_LINHA")
+    map_cor_poligono: str = Field(default=_GEOMETRIAS["poligono"], alias="MAP_COR_POLIGONO")
+    map_cor_ponto: str = Field(default=_GEOMETRIAS["ponto"], alias="MAP_COR_PONTO")
+    map_cor_poligono_condominio: str = Field(
+        default=_ESCALAS["madeira"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
+    )
 
 
 _env = _Settings()
@@ -107,6 +119,8 @@ MAP_ZOOM_DEFAULT = 12
 MAP_COR_LINHA = _env.map_cor_linha
 MAP_COR_POLIGONO = _env.map_cor_poligono
 MAP_COR_PONTO = _env.map_cor_ponto
+# Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (madeira-700).
+MAP_COR_POLIGONO_CONDOMINIO = _env.map_cor_poligono_condominio
 
 
 # Application definition

@@ -1,0 +1,80 @@
+{
+  "theme": "onsen_inverno_v2",
+  "description": "Água límpida em tons ciano sob luz fria de inverno; gelo fosco com tinta escura (rocha) e títulos quentes (madeira). Fonte da verdade dos valores do design system.",
+  "escalas": {
+    "agua": {
+      "descricao": "Primária — energia, luz, ações, geometria de ponto. 400 = tom de marca; 600/700 = ciano de texto/ação sobre vidro claro. 100-400 são luz, nunca texto sobre fundo claro.",
+      "100": "#CAF0F8",
+      "200": "#ADE8F4",
+      "300": "#90E0EF",
+      "400": "#48CAE4",
+      "500": "#00B4D8",
+      "600": "#0096C7",
+      "700": "#0077B6",
+      "800": "#023E8A",
+      "900": "#03045E"
+    },
+    "rocha": {
+      "descricao": "Neutra — tinta, superfícies, profundidade. 950 = tinta padrão (base-content); 700 = overlines e rótulos secundários.",
+      "100": "#E0E1DD",
+      "200": "#C5CCD3",
+      "300": "#A9BCD0",
+      "400": "#8FA3BB",
+      "500": "#778DA9",
+      "600": "#5B7290",
+      "700": "#415A77",
+      "800": "#2E4560",
+      "900": "#1B263B",
+      "950": "#0D1B2A"
+    },
+    "madeira": {
+      "descricao": "Quente — tinta de títulos (700), acentos orgânicos, geometria de polígono. Tons claros (200-300) só sobre o vidro profundo escuro.",
+      "100": "#EDE0D4",
+      "200": "#E6CCB2",
+      "300": "#DDB892",
+      "400": "#B08968",
+      "500": "#9C6644",
+      "600": "#7F5539",
+      "700": "#5E412F",
+      "800": "#46301F",
+      "900": "#2E1F16"
+    }
+  },
+  "tema_daisyui": {
+    "nome": "dimap",
+    "color_scheme": "light",
+    "base-100": "#F2F8FB",
+    "base-200": "#E3EFF5",
+    "base-300": "#CFE2EB",
+    "base-content": "#0D1B2A",
+    "primary": "#0096C7",
+    "primary-content": "#F2FBFF",
+    "secondary": "#5E412F",
+    "secondary-content": "#F6EEE6",
+    "accent": "#0F766E",
+    "accent-content": "#ECFDF9",
+    "neutral": "#1B263B",
+    "neutral-content": "#E0E1DD",
+    "info": "#0284C7",
+    "info-content": "#F0F9FF",
+    "success": "#059669",
+    "success-content": "#ECFDF5",
+    "warning": "#B45309",
+    "warning-content": "#FEF3C7",
+    "error": "#DC2626",
+    "error-content": "#FEF2F2",
+    "radius-selector": "1rem",
+    "radius-field": "0.5rem",
+    "radius-box": "1rem"
+  },
+  "geometrias": {
+    "descricao": "Cores default por tipo de geometria das camadas do mapa.",
+    "ponto": "#00B4D8",
+    "linha": "#0F766E",
+    "poligono": "#9C6644"
+  },
+  "fontes": {
+    "sans": "Roboto (400/500/700/900)",
+    "mono": "Roboto Mono (400/500/700)"
+  }
+}

@@ -1,0 +1,10 @@
+{# templates/mapping/_mapa_fullscreen.html — canvas singleton do mapa, instanciado uma única vez #}
+{# pela home. Água límpida + lente leve (skill componentes-frontend §6). Sem geometria ainda:    #}
+{# resultados chegam depois como payload (mapping/_mapa.html) trocado pelo init.js.               #}
+<div id="map" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+<div class="absolute inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+<div class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+<div class="absolute inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+<div class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+{{ wms|json_script:"mapa-wms" }}
+{{ config|json_script:"mapa-config" }}

@@ -2,11 +2,11 @@
 {# Recebe: secoes (list[SecaoResultado])                                     #}
 
 {% if secoes %}
-  <div class="glass-panel p-3 space-y-4">
+  <div class="glass-panel suggestion-panel">
     {% for secao in secoes %}
-      <section>
-        <h3 class="text-overline px-2 mb-1">{{ secao.titulo }}</h3>
-        {{ secao.html|safe }}
+      <section class="min-h-0 flex flex-col">
+        <h3 class="text-overline px-2 mb-1 shrink-0">{{ secao.titulo }}</h3>
+        <div class="suggestion-section-scroll">{{ secao.html|safe }}</div>
       </section>
     {% endfor %}
   </div>

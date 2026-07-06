@@ -9,18 +9,19 @@ MAP_CENTRO_DEFAULT: list[float] = settings.MAP_CENTRO_DEFAULT
 MAP_ZOOM_DEFAULT: int = settings.MAP_ZOOM_DEFAULT
 
 
-def contexto_mapa(geometria: dict[str, Any], cor: str) -> dict[str, Any]:
-    """Monta o contexto do partial do mapa: geometria GeoJSON 4326 + cor + config WMS/centro.
-    Agnóstico de domínio — não conhece logradouro/lote, só geometria pronta."""
+def contexto_mapa_base() -> dict[str, Any]:
+    """Contexto do canvas singleton da home: base WMS + centro/zoom, sem geometria.
+    O mapa nasce uma única vez na home; resultados chegam depois como payload (§ contexto_mapa)."""
     return {
         "wms": {"url": WMS_URL, "version": WMS_VERSION, "bases": WMS_BASES},
-        "payload": {
-            "geometria": geometria,
-            "cor": cor,
-            "centro": MAP_CENTRO_DEFAULT,
-            "zoom": MAP_ZOOM_DEFAULT,
-        },
+        "config": {"centro": MAP_CENTRO_DEFAULT, "zoom": MAP_ZOOM_DEFAULT},
     }
+
+
+def contexto_mapa(geometria: dict[str, Any], cor: str) -> dict[str, Any]:
+    """Monta o contexto de payload de um resultado: geometria GeoJSON 4326 + cor, sem WMS
+    (o mapa singleton já existe). Agnóstico de domínio — só geometria pronta."""
+    return {"payload": {"geometria": geometria, "cor": cor}}
 
 
 def contexto_aviso(mensagem: str) -> dict[str, Any]:
