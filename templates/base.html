@@ -169,7 +169,9 @@
 
         .suggestion-panel          { @apply p-3 space-y-3 max-h-[45vh] overflow-hidden flex flex-col; }
         .suggestion-section-scroll { @apply overflow-y-auto max-h-40; }
-        .suggestion-item.htmx-request { @apply bg-agua-400/30 scale-[0.99]; animation: onsen-confirm 0.5s ease-out both; }
+        .suggestion-item.htmx-request,
+        .suggestion-panel.pos-commit #sugestao-top .suggestion-item:first-child { @apply bg-agua-400/30 scale-[0.99]; animation: onsen-confirm 0.5s ease-out both; }
+        .suggestion-panel.dismissing { @apply transition-all duration-500 ease-in-out opacity-0 -translate-y-3 scale-95 pointer-events-none; }
 
         .transition-glass { @apply transition-all duration-500 ease-in-out; }
         .glass-hide-up    { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }

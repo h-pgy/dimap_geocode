@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}DIMAP GeoCoder{% endblock %}
 
@@ -30,15 +31,16 @@
           />
         </div>
       </div>
-      {# Enter comita a busca: aciona o melhor match (equivale à 1ª sugestão) via search:comitar.  #}
-      {# hx-indicator acende a 1ª sugestão (item 5 da SPEC) enquanto a requisição de commit roda.   #}
+      {# Enter comita a busca: aciona o melhor match (equivale à 1ª sugestão) via search:comitar. #}
+      {# O feedback visual (1ª sugestão acesa + dismissão da lista) é do JS de busca              #}
+      {# busca/feedback_selecao.js (SPEC design/002) — cobre também o Enter antes de a lista      #}
+      {# renderizar, coisa que o antigo hx-indicator não alcançava.                               #}
       <span
         hx-post="{% url 'search:comitar' %}"
         hx-trigger="keyup[key=='Enter'] from:#input_search"
         hx-include="#input_search"
         hx-target="#resultado-busca"
         hx-swap="innerHTML"
-        hx-indicator="#sugestao-top .suggestion-item:first-child"
         class="hidden"></span>
       <div class="flex justify-between px-2 pt-1 items-center">
         <span class="text-overline">
@@ -57,4 +59,9 @@
     <div id="resultado-busca" class="pointer-events-auto w-11/12 max-w-2xl mt-3"></div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+  {# Feedback visual do Enter (SPEC design/002) — só existe onde existe a barra de busca #}
+  <script type="module" src="{% static 'js/busca/feedback_selecao.js' %}"></script>
 {% endblock %}
