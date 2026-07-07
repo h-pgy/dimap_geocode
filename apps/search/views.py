@@ -13,15 +13,16 @@ from apps.address_geocoder.views import (
 from apps.logradouro_geocoder.views import geocodificar_codlog
 from apps.logradouro_matcher.views import secao_codlog, secao_logradouro
 from apps.lote_geocoder.views import geocodificar_lote
-from apps.lote_matcher.views import _resolver_codlogs, secao_contribuinte, secao_endereco_lote
+from apps.lote_matcher.secoes import (
+    orquestrador_endereco_lote,
+    secao_contribuinte,
+)
 from apps.mapping.context import contexto_aviso
 from apps.search.secoes import SecaoResultado
 from services.domain.codlog_match import CodlogMatchInput, match_codlog
 from services.domain.contribuinte_match import (
     ContribuinteMatchInput,
-    EnderecoFiscalMatchInput,
     match_contribuinte,
-    match_endereco_fiscal,
 )
 from services.domain.logradouros_match import ResolucaoLogradouroQuery, resolver_logradouro
 from services.domain.roteamento_busca import (
@@ -43,7 +44,7 @@ MSG_SEM_RESULTADO_COMMIT = "Não foi possível localizar um resultado para essa 
 
 REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
     TipoEntrada.CONTRIBUINTE: secao_contribuinte,
-    TipoEntrada.ENDERECO_LOTE: secao_endereco_lote,
+    TipoEntrada.ENDERECO_LOTE: orquestrador_endereco_lote.secao,
     TipoEntrada.ENDERECO_CODLOG: secao_endereco_codlog,
     TipoEntrada.ENDERECO: secao_endereco,
     TipoEntrada.CODLOG: secao_codlog,
@@ -108,14 +109,10 @@ def _acionar_candidato(request: HttpRequest, candidato: Candidato) -> HttpRespon
         )
 
     if isinstance(candidato, EnderecoLoteParse):
-        codlogs = _resolver_codlogs(candidato)
-        if not codlogs:
+        sugestao = orquestrador_endereco_lote.melhor_sugestao(candidato)  # resolve fuzzy + ordena
+        if sugestao is None:
             return None
-        fiscal = _primeiro(match_endereco_fiscal(EnderecoFiscalMatchInput(
-            codlogs=codlogs, numero_padronizado=candidato.numero_padronizado,
-        )))
-        if fiscal is None:
-            return None
+        fiscal = sugestao.resultado
         return geocodificar_lote(
             request, fiscal.setor, fiscal.quadra, fiscal.lote, fiscal.tipo_lote,
             fiscal.cd_condominio if fiscal.is_condominio else None,

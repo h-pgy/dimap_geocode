@@ -1,7 +1,8 @@
 {# templates/lote_matcher/partials/resultados_endereco_lote.html — fragmento HTMX, sem extends #}
-{# Recebe: resultados (list[ContribuinteMatchOutput]) — nunca vazia: seção omitida a montante  #}
+{# Recebe: sugestoes (list[EnderecoLoteSugestao]) — nunca vazia: seção omitida a montante      #}
 <ul class="flex flex-col gap-0.5">
-  {% for r in resultados %}
+  {% for s in sugestoes %}
+    {% with r=s.resultado %}
     <li class="suggestion-item items-baseline gap-4"
         hx-post="{% url 'lote_geocoder:geocodificar' %}"
         hx-vals='{"setor": "{{ r.setor }}", "quadra": "{{ r.quadra }}", "lote": "{{ r.lote }}", "tipo_lote": "{{ r.tipo_lote }}", "cd_condominio": "{{ r.cd_condominio }}", "is_condominio": "{{ r.is_condominio }}"}'
@@ -16,10 +17,16 @@
       <span class="text-code text-sm shrink-0">
         {{ r.setor }}.{{ r.quadra }}.{{ r.lote }}{% if r.digito %}-{{ r.digito }}{% endif %}
       </span>
-      <span class="badge badge-poligono badge-sm shrink-0">{{ r.tipo_lote }}</span>
-      {% if r.is_condominio %}
-        <span class="badge badge-info badge-soft badge-sm shrink-0">Cond. {{ r.cd_condominio }}</span>
-      {% endif %}
+      <span class="ml-auto flex items-center gap-2 shrink-0">
+        {% if s.veio_de_fuzzy %}
+          <span class="badge badge-info badge-soft badge-sm" title="Grau de certeza">≈ {{ s.score|floatformat:0 }}%</span>
+        {% endif %}
+        <span class="badge badge-poligono badge-sm">{{ r.tipo_lote }}</span>
+        {% if r.is_condominio %}
+          <span class="badge badge-info badge-soft badge-sm">Cond. {{ r.cd_condominio }}</span>
+        {% endif %}
+      </span>
     </li>
+    {% endwith %}
   {% endfor %}
 </ul>
