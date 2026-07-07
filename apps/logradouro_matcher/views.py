@@ -6,10 +6,11 @@ from django.views.decorators.http import require_POST
 from apps.logradouro_matcher.schemas import LogradouroSelection
 from apps.search.secoes import SecaoResultado
 from services.domain.codlog_match import CodlogMatchInput, match_codlog
-from services.domain.logradouros_match import LiteralLogradouroQuery, match_logradouro_literal
+from services.domain.logradouros_match import ResolucaoLogradouroQuery, resolver_logradouro
 from services.domain.roteamento_busca import CodlogParse, LogradouroParse
 
 TITULO_LOGRADOURO_NOME = "Logradouro (por nome)"
+TITULO_LOGRADOURO_NOME_APROXIMADO = "Logradouro (por nome, aproximado)"
 
 
 def secao_codlog(candidato: CodlogParse) -> SecaoResultado | None:
@@ -28,18 +29,20 @@ def secao_codlog(candidato: CodlogParse) -> SecaoResultado | None:
 
 
 def secao_logradouro(candidato: LogradouroParse) -> SecaoResultado | None:
-    dto = LiteralLogradouroQuery(
+    dto = ResolucaoLogradouroQuery(
         nome=candidato.nome,
         tipo=candidato.tipo_logradouro or None,
+        modo="sugestao",
     )
-    resultado = match_logradouro_literal(dto)
-    if not resultado.logradouros:
+    resultado = resolver_logradouro(dto)
+    if not resultado.itens:
         return None  # seção OMITIDA: sem match não polui a UX
     html = render_to_string(
         "logradouro_matcher/partials/resultados_logradouro.html",
         {"resultado": resultado},
     )
-    return SecaoResultado(titulo=TITULO_LOGRADOURO_NOME, html=html)
+    titulo = TITULO_LOGRADOURO_NOME_APROXIMADO if resultado.usou_fuzzy else TITULO_LOGRADOURO_NOME
+    return SecaoResultado(titulo=titulo, html=html)
 
 
 @require_POST

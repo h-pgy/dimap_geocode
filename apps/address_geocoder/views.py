@@ -16,13 +16,14 @@ from services.domain.address_geocod import (
 from services.domain.codlog_match import CodlogMatchInput, match_codlog
 from services.domain.geometry import to_geojson_feature_collection
 from services.domain.logradouro_geocod import LogradouroGeocoder
-from services.domain.logradouros_match import LiteralLogradouroQuery, match_logradouro_literal
+from services.domain.logradouros_match import ResolucaoLogradouroQuery, resolver_logradouro
 from services.domain.roteamento_busca import EnderecoCodlogParse, EnderecoParse
 from services.integrations.wfs import build_fetcher
 from services.domain.geometry.models import GeoJsonProperties
 
 TITULO_ENDERECO_CODLOG = "Endereço (por codlog)"
 TITULO_ENDERECO_NOME = "Endereço (por nome)"
+TITULO_ENDERECO_NOME_APROXIMADO = "Endereço (por nome, aproximado)"
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
@@ -49,18 +50,20 @@ def secao_endereco_codlog(candidato: EnderecoCodlogParse) -> SecaoResultado | No
 
 
 def secao_endereco(candidato: EnderecoParse) -> SecaoResultado | None:
-    dto = LiteralLogradouroQuery(
+    dto = ResolucaoLogradouroQuery(
         nome=candidato.logradouro.nome,
         tipo=candidato.logradouro.tipo_logradouro or None,
+        modo="sugestao",
     )
-    resultado = match_logradouro_literal(dto)
-    if not resultado.logradouros:
+    resultado = resolver_logradouro(dto)
+    if not resultado.itens:
         return None  # seção OMITIDA: sem match não polui a UX
     html = render_to_string(
         "address_geocoder/partials/resultados_endereco_nome.html",
         {"resultado": resultado, "numero": candidato.numero},
     )
-    return SecaoResultado(titulo=TITULO_ENDERECO_NOME, html=html)
+    titulo = TITULO_ENDERECO_NOME_APROXIMADO if resultado.usou_fuzzy else TITULO_ENDERECO_NOME
+    return SecaoResultado(titulo=titulo, html=html)
 
 
 def _properties(f: EnderecoFeature) -> GeoJsonProperties:

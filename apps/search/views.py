@@ -23,7 +23,7 @@ from services.domain.contribuinte_match import (
     match_contribuinte,
     match_endereco_fiscal,
 )
-from services.domain.logradouros_match import LiteralLogradouroQuery, match_logradouro_literal
+from services.domain.logradouros_match import ResolucaoLogradouroQuery, resolver_logradouro
 from services.domain.roteamento_busca import (
     Candidato,
     CodlogParse,
@@ -85,10 +85,13 @@ def _acionar_candidato(request: HttpRequest, candidato: Candidato) -> HttpRespon
         return None if cod is None else geocodificar_codlog(request, f"{cod.codlog}{cod.dv}")
 
     if isinstance(candidato, LogradouroParse):
-        logr = _primeiro(match_logradouro_literal(LiteralLogradouroQuery(
-            nome=candidato.nome, tipo=candidato.tipo_logradouro or None,
-        )).logradouros)
-        return None if logr is None else geocodificar_codlog(request, f"{logr.codlog}{logr.dv}")
+        item = _primeiro(resolver_logradouro(ResolucaoLogradouroQuery(
+            nome=candidato.nome, tipo=candidato.tipo_logradouro or None, modo="commit",
+        )).itens)
+        if item is None:
+            return None
+        logr = item.logradouro
+        return geocodificar_codlog(request, f"{logr.codlog}{logr.dv}")
 
     if isinstance(candidato, ContribuinteParse):
         contrib = _primeiro(match_contribuinte(ContribuinteMatchInput(
@@ -129,13 +132,15 @@ def _acionar_candidato(request: HttpRequest, candidato: Candidato) -> HttpRespon
         )
 
     if isinstance(candidato, EnderecoParse):
-        logr_end = _primeiro(match_logradouro_literal(LiteralLogradouroQuery(
-            nome=candidato.logradouro.nome, tipo=candidato.logradouro.tipo_logradouro or None,
-        )).logradouros)
-        return (
-            None if logr_end is None
-            else geocodificar_endereco(request, f"{logr_end.codlog}{logr_end.dv}", candidato.numero)
-        )
+        item_end = _primeiro(resolver_logradouro(ResolucaoLogradouroQuery(
+            nome=candidato.logradouro.nome,
+            tipo=candidato.logradouro.tipo_logradouro or None,
+            modo="commit",
+        )).itens)
+        if item_end is None:
+            return None
+        logr_end = item_end.logradouro
+        return geocodificar_endereco(request, f"{logr_end.codlog}{logr_end.dv}", candidato.numero)
 
     return None
 
