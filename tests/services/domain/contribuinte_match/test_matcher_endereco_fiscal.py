@@ -30,6 +30,7 @@ _DADOS_FAKE: dict[str, list[object]] = {
     "tx_complemento_endereco": [None,          "APTO 1",      None,          None,     None],
     "cd_tipo_quadra":          ["U",           "U",           "U",           "U",      "U"],
     "cd_tipo_lote":            ["F",           "F",           "F",           "F",      "F"],
+    "cd_condominio":           ["00",          "07",          "00",          "00",     "00"],
 }
 
 
@@ -70,6 +71,20 @@ class TestColunasDoCatalog:
         # a coluna original é preservada (a chave é ACRESCENTADA, não sobrescreve)
         df = catalog.enderecos_fiscais_com_chave
         assert df.loc[df["cd_identificador"] == "ID003", "cd_numero_porta"].iloc[0] == "SEM NÚMERO"
+
+    def test_is_condominio_true_sse_cd_condominio_diferente_de_zero(
+        self, catalog: ContribuinteCatalog
+    ) -> None:
+        # cd_condominio = ["00", "07", "00", "00", "00"]  →  só ID002 é condomínio
+        df = catalog.enderecos_fiscais
+        assert list(df["is_condominio"]) == [False, True, False, False, False]
+
+    def test_is_condominio_propagada_para_df_com_chave(
+        self, catalog: ContribuinteCatalog
+    ) -> None:
+        # enderecos_fiscais_com_chave é um .copy() — herda a coluna is_condominio
+        df = catalog.enderecos_fiscais_com_chave
+        assert df.loc[df["cd_identificador"] == "ID002", "is_condominio"].iloc[0]
 
 
 # ---------------------------------------------------------------------------

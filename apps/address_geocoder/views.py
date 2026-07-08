@@ -1,5 +1,3 @@
-from typing import Any
-
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
@@ -18,13 +16,14 @@ from services.domain.address_geocod import (
 from services.domain.codlog_match import CodlogMatchInput, match_codlog
 from services.domain.geometry import to_geojson_feature_collection
 from services.domain.logradouro_geocod import LogradouroGeocoder
-from services.domain.logradouros_match import LiteralLogradouroQuery, match_logradouro_literal
+from services.domain.logradouros_match import ResolucaoLogradouroQuery, resolver_logradouro
 from services.domain.roteamento_busca import EnderecoCodlogParse, EnderecoParse
 from services.integrations.wfs import build_fetcher
 from services.domain.geometry.models import GeoJsonProperties
 
 TITULO_ENDERECO_CODLOG = "Endereço (por codlog)"
 TITULO_ENDERECO_NOME = "Endereço (por nome)"
+TITULO_ENDERECO_NOME_APROXIMADO = "Endereço (por nome, aproximado)"
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
@@ -51,18 +50,20 @@ def secao_endereco_codlog(candidato: EnderecoCodlogParse) -> SecaoResultado | No
 
 
 def secao_endereco(candidato: EnderecoParse) -> SecaoResultado | None:
-    dto = LiteralLogradouroQuery(
+    dto = ResolucaoLogradouroQuery(
         nome=candidato.logradouro.nome,
         tipo=candidato.logradouro.tipo_logradouro or None,
+        modo="sugestao",
     )
-    resultado = match_logradouro_literal(dto)
-    if not resultado.logradouros:
+    resultado = resolver_logradouro(dto)
+    if not resultado.itens:
         return None  # seção OMITIDA: sem match não polui a UX
     html = render_to_string(
         "address_geocoder/partials/resultados_endereco_nome.html",
         {"resultado": resultado, "numero": candidato.numero},
     )
-    return SecaoResultado(titulo=TITULO_ENDERECO_NOME, html=html)
+    titulo = TITULO_ENDERECO_NOME_APROXIMADO if resultado.usou_fuzzy else TITULO_ENDERECO_NOME
+    return SecaoResultado(titulo=titulo, html=html)
 
 
 def _properties(f: EnderecoFeature) -> GeoJsonProperties:
@@ -76,11 +77,12 @@ def _properties(f: EnderecoFeature) -> GeoJsonProperties:
     )
 
 
-@require_POST
-def selecionar(request: HttpRequest) -> HttpResponse:
+def geocodificar_endereco(request: HttpRequest, codlog: str, numero: object) -> HttpResponse:
+    """Geocodifica endereço (codlog 6 dígitos + número) → ponto. Reutilizável pela view e pela
+    busca comitada. `numero` chega como str (POST) ou int (candidato) — o Pydantic coage."""
     entrada = AddressGeocodInput.model_validate({
-        "codlog": request.POST.get("codlog", ""),
-        "numero": request.POST.get("numero", ""),   # Pydantic coage "123" → 123 (Field(gt=0))
+        "codlog": codlog,
+        "numero": numero,                            # Pydantic coage "123" → 123 (Field(gt=0))
         "layer_name": WFS_LAYER_LOGRADOUROS,
         "interpolation_crs": MAP_INTERPOLATION_CRS,
         "output_crs": MAP_OUTPUT_CRS,
@@ -94,3 +96,10 @@ def selecionar(request: HttpRequest) -> HttpResponse:
         return render(request, "mapping/_aviso.html", contexto_aviso(MSG_SEM_NUMERACAO))
     geojson = to_geojson_feature_collection([feature], _properties)
     return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_PONTO))
+
+
+@require_POST
+def selecionar(request: HttpRequest) -> HttpResponse:
+    return geocodificar_endereco(
+        request, request.POST.get("codlog", ""), request.POST.get("numero", "")
+    )

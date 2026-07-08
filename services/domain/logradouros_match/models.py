@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, computed_field
 
 from services.utils.fuzzy_matcher import FuzzyMatchResult
@@ -53,3 +55,21 @@ class LiteralLogradouroQuery(BaseModel):
 class LiteralLogradouroResult(BaseModel):
     logradouros: list[LogradouroMatchOutput]
     ignorou_filtro_tipo: bool
+
+
+class ResolucaoLogradouroQuery(BaseModel):
+    nome: str
+    tipo: str | None = None
+    limite: int = 5
+    modo: Literal["sugestao", "commit"] = "commit"
+
+
+class ResolucaoLogradouroItem(BaseModel):
+    logradouro: LogradouroMatchOutput
+    score: float | None = None  # None = veio do literal; preenchido = grau de certeza fuzzy
+
+
+class ResolucaoLogradouroResult(BaseModel):
+    itens: list[ResolucaoLogradouroItem]
+    usou_fuzzy: bool
+    ignorou_filtro_tipo: bool = False

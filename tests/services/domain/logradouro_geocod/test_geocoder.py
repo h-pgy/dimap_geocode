@@ -11,14 +11,13 @@ from services.domain.logradouro_geocod import (
 from services.domain.geometry import LineGeometry
 
 # ---------------------------------------------------------------------------
-# LogradouroGeocodInput — validação e campo calculado
+# LogradouroGeocodInput — validação
 # ---------------------------------------------------------------------------
 
 
 def test_input_aceita_6_digitos() -> None:
     e = LogradouroGeocodInput(codlog="156566", layer_name="l", output_crs=4326)
     assert e.codlog == "156566"
-    assert e.codlog_int == 156566
 
 
 def test_input_rejeita_5_digitos() -> None:
@@ -263,10 +262,9 @@ def test_request_usa_cql_eq_com_codlog() -> None:
     assert hasattr(req, "cql_filter")
     assert req.cql_filter is not None
     cql = req.cql_filter.to_cql()
-    assert "156566" in cql
     assert "codlog" in cql
-    # codlog é inteiro no GeoSampa → sem aspas no CQL
-    assert "'156566'" not in cql
+    # codlog é texto no GeoSampa (zero à esquerda: "059447") → consultado como string, com aspas
+    assert "'156566'" in cql
 
 
 def test_request_srs_name_derivado_do_output_crs() -> None:

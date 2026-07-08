@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIMAP GeoCoder — Design System "Onsen de Inverno" v2</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server / python -m
+       http.server) — aberto via file:// o fetch é bloqueado e o tema não carrega. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css n\u00e3o carregou \u2014 sirva a RAIZ do projeto (Live Server), n\u00e3o abra via file://.</p>"));
+  </script>
+
+  <!-- CSS específico deste mock -->
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+<body class="text-base-content">
+
+  <!-- Mapa real de fundo: o design system é validado na condição de uso -->
+  <div id="map" class="fixed inset-0 z-0 pointer-events-none saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+  <!-- Tinta de água límpida (multiply com ciano claro) -->
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <!-- Lente (efeito globo LEVE): vinheta ciana nas bordas + desfoque de borda + luz fria no centro -->
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">DIMAP GeoCoder</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Design System — Onsen de Inverno <span class="text-code text-2xl align-middle">v2</span></h1>
+      <p class="mt-4 max-w-2xl text-base-content/80 leading-relaxed">
+        Gelo fosco flutuando sobre <strong class="text-agua-700">água límpida ciano</strong>, sob a luz fria
+        de um dia de inverno. Esta página valida os tokens em condição real: tudo abaixo flutua sobre o
+        mapa vivo. Regra de ouro de leitura: <strong class="text-base-content">tinta escura sobre vidro
+        claro</strong> — títulos quentes em madeira (<span class="text-madeira-700 font-bold">700</span>),
+        corpo em rocha-950, ciano como energia (<span class="text-code font-medium">agua-600/700</span> em texto).
+      </p>
+    </header>
+
+    <!-- ============ 1. TOKENS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Design Tokens</h2>
+
+      <!-- 1.1 Paleta -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · Paleta com progressão tonal</h3>
+          <p class="text-sm text-base-content/70 mt-1">Quatro escalas próprias + papéis semânticos do daisyUI. Nada de cores soltas: todo tom novo entra numa escala.</p>
+        </div>
+
+        <!-- Escala Água -->
+        <div>
+          <p class="text-overline mb-2">Água <span class="normal-case tracking-normal">(primária — energia, luz, ações, geometria de ponto)</span></p>
+          <div class="grid grid-cols-9 gap-1.5">
+            <div><div class="h-12 rounded-lg bg-agua-100"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">100<br>CAF0F8</p></div>
+            <div><div class="h-12 rounded-lg bg-agua-200"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">200<br>ADE8F4</p></div>
+            <div><div class="h-12 rounded-lg bg-agua-300"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">300<br>90E0EF</p></div>
+            <div><div class="h-12 rounded-lg bg-agua-400 ring-2 ring-rocha-950/30"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">400 ★<br>48CAE4</p></div>
+            <div><div class="h-12 rounded-lg bg-agua-500"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">500<br>00B4D8</p></div>
+            <div><div class="h-12 rounded-lg bg-agua-600 ring-2 ring-rocha-950/30"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">600 ✦<br>0096C7</p></div>
+            <div><div class="h-12 rounded-lg bg-agua-700"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">700<br>0077B6</p></div>
+            <div><div class="h-12 rounded-lg bg-agua-800"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">800<br>023E8A</p></div>
+            <div><div class="h-12 rounded-lg bg-agua-900"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">900<br>03045E</p></div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">★ tom de marca (preenchimentos, brilhos, gradientes). ✦ ciano de texto/ação sobre vidro claro: <span class="text-code">agua-600</span> ou <span class="text-code">agua-700</span>. Os tons 300–400 são luz, nunca texto sobre fundo claro.</p>
+        </div>
+
+        <!-- Escala Rocha -->
+        <div>
+          <p class="text-overline mb-2">Rocha <span class="normal-case tracking-normal">(neutra — tinta, superfícies, profundidade)</span></p>
+          <div class="grid grid-cols-10 gap-1.5">
+            <div><div class="h-12 rounded-lg bg-rocha-100"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">100<br>E0E1DD</p></div>
+            <div><div class="h-12 rounded-lg bg-rocha-200"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">200<br>C5CCD3</p></div>
+            <div><div class="h-12 rounded-lg bg-rocha-300"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">300<br>A9BCD0</p></div>
+            <div><div class="h-12 rounded-lg bg-rocha-400"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">400<br>8FA3BB</p></div>
+            <div><div class="h-12 rounded-lg bg-rocha-500"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">500<br>778DA9</p></div>
+            <div><div class="h-12 rounded-lg bg-rocha-600"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">600<br>5B7290</p></div>
+            <div><div class="h-12 rounded-lg bg-rocha-700 ring-2 ring-rocha-950/30"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">700 ✦<br>415A77</p></div>
+            <div><div class="h-12 rounded-lg bg-rocha-800"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">800<br>2E4560</p></div>
+            <div><div class="h-12 rounded-lg bg-rocha-900"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">900<br>1B263B</p></div>
+            <div><div class="h-12 rounded-lg bg-rocha-950 ring-2 ring-rocha-950/30"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">950 ★<br>0D1B2A</p></div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">★ tinta padrão do corpo de texto (<span class="text-code">base-content</span>). ✦ rótulos secundários e overlines: <span class="text-code">rocha-700</span>.</p>
+        </div>
+
+        <!-- Escala Madeira -->
+        <div>
+          <p class="text-overline mb-2">Madeira <span class="normal-case tracking-normal">(quente — tinta de títulos, acentos orgânicos)</span></p>
+          <div class="grid grid-cols-9 gap-1.5">
+            <div><div class="h-12 rounded-lg bg-madeira-100"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">100<br>EDE0D4</p></div>
+            <div><div class="h-12 rounded-lg bg-madeira-200"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">200<br>E6CCB2</p></div>
+            <div><div class="h-12 rounded-lg bg-madeira-300"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">300<br>DDB892</p></div>
+            <div><div class="h-12 rounded-lg bg-madeira-400"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">400<br>B08968</p></div>
+            <div><div class="h-12 rounded-lg bg-madeira-500"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">500<br>9C6644</p></div>
+            <div><div class="h-12 rounded-lg bg-madeira-600"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">600<br>7F5539</p></div>
+            <div><div class="h-12 rounded-lg bg-madeira-700 ring-2 ring-rocha-950/30"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">700 ★<br>5E412F</p></div>
+            <div><div class="h-12 rounded-lg bg-madeira-800"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">800<br>46301F</p></div>
+            <div><div class="h-12 rounded-lg bg-madeira-900"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">900<br>2E1F16</p></div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">★ a tinta quente dos títulos sobre o gelo fosco (o marrom do moodboard). Os tons claros (200–300) só aparecem sobre o vidro profundo escuro.</p>
+        </div>
+
+        <!-- Escala Sakura -->
+        <div>
+          <p class="text-overline mb-2">Sakura <span class="normal-case tracking-normal">(rosa/magenta — geometria de polígono, destaque sobre a ortofoto)</span></p>
+          <div class="grid grid-cols-9 gap-1.5">
+            <div><div class="h-12 rounded-lg bg-sakura-100"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">100<br>FBE3E9</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-200"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">200<br>F6C4D2</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-300"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">300<br>EFA0B8</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-400"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">400<br>E5749B</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-500 ring-2 ring-rocha-950/30"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">500 ★<br>D84F7F</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-600 ring-2 ring-rocha-950/30"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">600 ✦<br>BC3A67</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-700"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">700<br>97294F</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-800"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">800<br>6E1C3A</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-900"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">900<br>471226</p></div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O rubor dos macacos no onsen (referência 3). ★ traço da geometria de <strong>polígono</strong> (lote), com preenchimento na mesma cor a ~35%; variante condominial em <span class="text-code">sakura-700</span>. O rosa não tem contraparte na ortofoto (verdes/cinzas/marrons) e devolve a leitura que a madeira perdia ali. ✦ texto/ação sobre vidro claro: <span class="text-code">sakura-600</span> ou <span class="text-code">sakura-700</span>. Os tons 100–300 são luz, nunca texto sobre fundo claro.</p>
+        </div>
+
+        <!-- Papéis daisyUI -->
+        <div>
+          <p class="text-overline mb-2">Papéis do tema (daisyUI)</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div class="rounded-xl bg-primary text-primary-content p-3 text-sm font-bold">primary<br><span class="font-mono text-xs font-normal">#0096C7</span></div>
+            <div class="rounded-xl bg-secondary text-secondary-content p-3 text-sm font-bold">secondary<br><span class="font-mono text-xs font-normal">#5E412F</span></div>
+            <div class="rounded-xl bg-accent text-accent-content p-3 text-sm font-bold">accent<br><span class="font-mono text-xs font-normal">#0F766E</span></div>
+            <div class="rounded-xl bg-neutral text-neutral-content p-3 text-sm font-bold">neutral<br><span class="font-mono text-xs font-normal">#1B263B</span></div>
+          </div>
+        </div>
+
+        <!-- Semânticas -->
+        <div>
+          <p class="text-overline mb-2">Cores semânticas (estado do sistema — Nielsen #1)</p>
+          <div class="flex flex-wrap gap-2 mb-4">
+            <span class="badge badge-info badge-soft font-medium">info · #0284C7</span>
+            <span class="badge badge-success badge-soft font-medium">success · #059669</span>
+            <span class="badge badge-warning badge-soft font-medium">warning · #B45309</span>
+            <span class="badge badge-error badge-soft font-medium">error · #DC2626</span>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div role="alert" class="alert alert-success alert-soft">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>Item salvo no layer <strong>Lotes da Quadra A</strong>.</span>
+            </div>
+            <div role="alert" class="alert alert-error alert-soft">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>Endereço não encontrado na base fiscal.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Geometrias -->
+        <div>
+          <p class="text-overline mb-2">Cores default por tipo de geometria (camadas do mapa)</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="badge badge-ponto badge-lg"><span class="w-2 h-2 rounded-full bg-agua-500 mr-1.5"></span>Ponto · endereço geocodificado</span>
+            <span class="badge badge-linha badge-lg"><span class="w-2 h-2 rounded-full bg-accent mr-1.5"></span>Linha · logradouro</span>
+            <span class="badge badge-poligono badge-lg"><span class="w-2 h-2 rounded-full bg-sakura-500 mr-1.5"></span>Polígono · lote fiscal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.2 Tipografia -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.2 · Tipografia</h3>
+          <p class="text-sm text-base-content/70 mt-1"><strong>Roboto</strong> (UI e texto) + <strong>Roboto Mono</strong> (códigos: SQL, codlog, coordenadas). Hierarquia por peso e tamanho; títulos de destaque na tinta quente madeira-700.</p>
+        </div>
+        <div class="flex flex-col divide-y divide-rocha-950/10">
+          <div class="py-4 flex flex-col sm:flex-row sm:items-baseline gap-2">
+            <p class="grow text-3xl font-black tracking-tight text-madeira-700">Display — DIMAP GeoCoder</p>
+            <p class="font-mono text-xs text-base-content/60 shrink-0">Roboto 900 · 30px · madeira-700</p>
+          </div>
+          <div class="py-4 flex flex-col sm:flex-row sm:items-baseline gap-2">
+            <p class="grow text-2xl font-bold tracking-tight text-madeira-700">Título de painel — Imóvel Fiscal</p>
+            <p class="font-mono text-xs text-base-content/60 shrink-0">Roboto 700 · 24px · madeira-700</p>
+          </div>
+          <div class="py-4 flex flex-col sm:flex-row sm:items-baseline gap-2">
+            <p class="grow text-lg font-bold">Subtítulo — Zoneamento (LPUOS)</p>
+            <p class="font-mono text-xs text-base-content/60 shrink-0">Roboto 700 · 18px · rocha-950</p>
+          </div>
+          <div class="py-4 flex flex-col sm:flex-row sm:items-baseline gap-2">
+            <p class="grow text-[15px] leading-relaxed text-base-content/90">Corpo — Avenida Paulista, 1578 · Bela Vista, São Paulo. O texto de leitura contínua usa rocha-950 a 90% sobre o gelo fosco.</p>
+            <p class="font-mono text-xs text-base-content/60 shrink-0">Roboto 400 · 15px</p>
+          </div>
+          <div class="py-4 flex flex-col sm:flex-row sm:items-baseline gap-2">
+            <p class="grow text-[13px] text-base-content/70">Legenda — metadados, contadores e descrições auxiliares.</p>
+            <p class="font-mono text-xs text-base-content/60 shrink-0">Roboto 400 · 13px · 70%</p>
+          </div>
+          <div class="py-4 flex flex-col sm:flex-row sm:items-baseline gap-2">
+            <p class="grow text-overline">Overline — Endereço Principal</p>
+            <p class="font-mono text-xs text-base-content/60 shrink-0">Roboto 500 · 11px · caps · rocha-700</p>
+          </div>
+          <div class="py-4 flex flex-col sm:flex-row sm:items-baseline gap-2">
+            <p class="grow text-code text-base font-medium">Código — SQL 098.112.0034-1 · codlog 12345-6</p>
+            <p class="font-mono text-xs text-base-content/60 shrink-0">Roboto Mono 500 · agua-700</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.3 Materiais -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.3 · Materiais de vidro</h3>
+          <p class="text-sm text-base-content/70 mt-1">Receita do gelo: blur 10px + gradiente branco translúcido + aresta <span class="text-code">white/60</span> + sombra em camadas (azul-fria para separação, ciana para o brilho). Tokens: <span class="text-code">.glass-blur .glass-bg .glass-edge .glass-shadow .glass-glow</span>.</p>
+        </div>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="glass-panel p-5">
+            <p class="text-overline text-agua-700">.glass-panel</p>
+            <p class="font-bold mt-2 text-madeira-700">Gelo fosco</p>
+            <p class="text-sm text-base-content/80 mt-1">Painéis flutuantes. Tinta escura, água límpida visível atrás. Material padrão da UI.</p>
+          </div>
+          <div class="glass-panel-deep p-5">
+            <p class="text-[11px] font-medium uppercase tracking-[0.14em] text-agua-300">.glass-panel-deep</p>
+            <p class="font-bold mt-2">Vidro profundo</p>
+            <p class="text-sm text-rocha-100/80 mt-1">Variante escura pontual: tooltips e momentos de contraste invertido.</p>
+          </div>
+          <div class="card-well p-5">
+            <p class="text-overline text-agua-700">.card-well</p>
+            <p class="font-bold mt-2">Poço rebaixado</p>
+            <p class="text-sm text-base-content/80 mt-1">Sub-cards afundados dentro de um painel (stats, metadados).</p>
+          </div>
+        </div>
+        <div class="card-well p-4">
+          <p class="text-overline mb-2">Regras do material</p>
+          <ul class="text-sm text-base-content/80 flex flex-col gap-1 list-disc list-inside">
+            <li>Blur do gelo: <span class="text-code">10px</span> (gaveta densa: 12px). Blur fraco não separa figura do fundo.</li>
+            <li>Sombra em duas camadas: azul-fria <span class="text-code">rgba(7,58,84,.25)</span> dá a separação; ciana <span class="text-code">rgba(72,202,228,.25)</span> dá a vida.</li>
+            <li>Aresta superior iluminada via <span class="text-code">inset 0 1px 0 white/80</span> — o brilho de gelo na quina.</li>
+            <li>Foco de tela: <span class="text-code">.cinematic-blur-layer</span> (desfoque), jamais overlay preto.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2. ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Átomos</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+
+        <div>
+          <p class="text-overline mb-3">Botões</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <button class="btn btn-onsen">Buscar</button>
+            <button class="btn btn-onsen btn-sm">Salvar no Projeto</button>
+            <button class="btn btn-ghost btn-glass">Cancelar</button>
+            <button class="btn btn-ghost btn-glass btn-circle" aria-label="Camadas">
+              <svg class="w-5 h-5 icon-glow" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l9 5-9 5-9-5 9-5zm-9 10l9 5 9-5"/></svg>
+            </button>
+            <button class="btn btn-onsen btn-disabled" tabindex="-1" role="button" aria-disabled="true">Indisponível</button>
+            <button class="btn btn-ghost text-base-content/70 hover:bg-rocha-950/10">Ação terciária</button>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Inputs</p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <input type="text" placeholder="Busque por endereço, lote ou logradouro..." class="input input-glass" />
+            <div>
+              <input type="text" value="Rua Inexistemte, 99999" class="input input-glass border-error/60 focus:border-error" aria-invalid="true" />
+              <p class="text-error text-xs mt-1.5 font-medium">Logradouro não encontrado — verifique a grafia.</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Badges e chips</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="badge bg-primary text-primary-content border-none font-bold shadow-[0_2px_12px_rgba(0,150,199,0.35)]">ZCOR-2</span>
+            <span class="badge badge-warning badge-soft font-bold">Tombado</span>
+            <span class="badge badge-ponto">Ponto</span>
+            <span class="badge badge-linha">Linha</span>
+            <span class="badge badge-poligono">Polígono</span>
+            <span class="badge badge-info badge-soft">geocodificado</span>
+            <span class="badge badge-success badge-soft">match exato</span>
+            <span class="badge badge-error badge-soft">sem match</span>
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div>
+            <p class="text-overline mb-3">Teclas</p>
+            <span class="text-overline">
+              Pressione <kbd class="kbd kbd-sm bg-rocha-950/8 border-rocha-950/20 text-base-content">Ctrl</kbd> + <kbd class="kbd kbd-sm bg-rocha-950/8 border-rocha-950/20 text-base-content">K</kbd>
+            </span>
+          </div>
+          <div>
+            <p class="text-overline mb-3">Loading</p>
+            <div class="flex items-center gap-4">
+              <span class="loading loading-spinner text-primary"></span>
+              <span class="loading loading-dots text-accent"></span>
+            </div>
+          </div>
+          <div>
+            <p class="text-overline mb-3">Status</p>
+            <div class="flex items-center gap-3 text-sm">
+              <span class="status status-success status-md"></span> online
+              <span class="status status-warning status-md"></span> parcial
+              <span class="status status-error status-md"></span> fora
+            </div>
+          </div>
+          <div>
+            <p class="text-overline mb-3">Toggle</p>
+            <input type="checkbox" checked class="toggle toggle-primary" aria-label="Visibilidade do layer" />
+          </div>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Tooltip (vidro profundo)</p>
+          <div class="tooltip tooltip-open tooltip-right" data-tip="Detalhes do Imóvel">
+            <button class="btn btn-ghost btn-glass btn-circle" aria-label="Detalhes do Imóvel">
+              <svg class="w-5 h-5 icon-glow" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3. MOLÉCULAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">3 · Moléculas</h2>
+      <div class="grid lg:grid-cols-2 gap-6">
+
+        <!-- Grupo de busca -->
+        <div class="glass-panel p-6 flex flex-col gap-4">
+          <p class="text-overline">Grupo de busca</p>
+          <div class="flex gap-2">
+            <div class="relative w-full flex items-center">
+              <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input type="text" placeholder="Av. Paulista, 1578" class="input input-glass pl-11" />
+            </div>
+            <button class="btn btn-onsen">Buscar</button>
+          </div>
+        </div>
+
+        <!-- Stat tiles -->
+        <div class="glass-panel p-6 flex flex-col gap-4">
+          <p class="text-overline">Stat tiles (poços)</p>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Área do Terreno</p>
+              <p class="text-xl font-bold">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+            </div>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Área Construída</p>
+              <p class="text-xl font-bold">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sugestões -->
+        <div class="glass-panel p-4 flex flex-col gap-1">
+          <p class="text-overline px-4 pt-2 pb-1">Lista de sugestões (keyup)</p>
+          <div class="suggestion-item">
+            <div class="icon-bubble bg-accent/10 border-accent/30 text-accent">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4M9 7l6-3"/></svg>
+            </div>
+            <div class="grow min-w-0">
+              <p class="font-bold truncate">Avenida <mark class="bg-agua-400/40 text-base-content rounded px-0.5">Paulis</mark>ta</p>
+              <p class="text-xs text-code">codlog 08040-0</p>
+            </div>
+            <span class="badge badge-linha badge-sm shrink-0">Logradouro</span>
+          </div>
+          <div class="suggestion-item">
+            <div class="icon-bubble bg-agua-500/15 border-agua-600/30 text-agua-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+            <div class="grow min-w-0">
+              <p class="font-bold truncate">Av. <mark class="bg-agua-400/40 text-base-content rounded px-0.5">Paulis</mark>ta, 1578</p>
+              <p class="text-xs text-base-content/60">Bela Vista · São Paulo</p>
+            </div>
+            <span class="badge badge-ponto badge-sm shrink-0">Endereço</span>
+          </div>
+          <div class="suggestion-item">
+            <div class="icon-bubble bg-madeira-400/15 border-madeira-500/30 text-madeira-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h16v16H4z"/></svg>
+            </div>
+            <div class="grow min-w-0">
+              <p class="font-bold truncate text-code">098.112.0034-1</p>
+              <p class="text-xs text-base-content/60">Contribuinte · lote fiscal</p>
+            </div>
+            <span class="badge badge-poligono badge-sm shrink-0">Lote</span>
+          </div>
+        </div>
+
+        <!-- Painel de sugestões: altura máxima + rolagem independente por seção -->
+        <div class="glass-panel suggestion-panel">
+          <p class="text-overline px-4 pt-1">Painel de sugestões (altura máxima + scroll por seção; 1º item no estado de confirmação .htmx-request)</p>
+          <section class="min-h-0 flex flex-col">
+            <h3 class="text-overline px-2 mb-1 shrink-0">Endereço (por codlog)</h3>
+            <div class="suggestion-section-scroll flex flex-col gap-0.5">
+              <!-- .htmx-request: estado de confirmação ao comitar (clique/Enter) — pulso ciano -->
+              <div class="suggestion-item htmx-request">
+                <span class="text-code text-sm w-16 shrink-0">08040-0</span>
+                <span class="font-medium">Av. Paulista, 1578</span>
+                <span class="badge badge-ponto badge-sm shrink-0 ml-auto">Endereço</span>
+              </div>
+              <div class="suggestion-item">
+                <span class="text-code text-sm w-16 shrink-0">08040-1</span>
+                <span class="font-medium">Av. Paulistânia, 1578</span>
+                <span class="badge badge-ponto badge-sm shrink-0 ml-auto">Endereço</span>
+              </div>
+            </div>
+          </section>
+          <section class="min-h-0 flex flex-col">
+            <h3 class="text-overline px-2 mb-1 shrink-0">Logradouro</h3>
+            <div class="suggestion-section-scroll flex flex-col gap-0.5">
+              <div class="suggestion-item">
+                <span class="text-code text-sm w-16 shrink-0">08040-0</span>
+                <span class="font-medium">Avenida Paulista</span>
+                <span class="badge badge-linha badge-sm shrink-0 ml-auto">Logradouro</span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Item de layer -->
+        <div class="glass-panel p-6 flex flex-col gap-3">
+          <p class="text-overline">Item de layer (projetos)</p>
+          <div class="card-well p-3 flex items-center gap-3">
+            <span class="w-3.5 h-3.5 rounded-full bg-madeira-500 ring-2 ring-white/70 shrink-0"></span>
+            <div class="grow min-w-0">
+              <p class="font-bold text-sm truncate">Lotes da Quadra A</p>
+              <p class="text-xs text-base-content/60">12 itens</p>
+            </div>
+            <span class="badge badge-poligono badge-sm shrink-0">Polígono</span>
+            <input type="checkbox" checked class="toggle toggle-primary toggle-sm shrink-0" aria-label="Visibilidade" />
+            <button class="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-error hover:bg-error/10 shrink-0" aria-label="Remover layer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </div>
+          <div class="card-well p-3 flex items-center gap-3">
+            <span class="w-3.5 h-3.5 rounded-full bg-accent ring-2 ring-white/70 shrink-0"></span>
+            <div class="grow min-w-0">
+              <p class="font-bold text-sm truncate">Eixos viários</p>
+              <p class="text-xs text-base-content/60">4 itens</p>
+            </div>
+            <span class="badge badge-linha badge-sm shrink-0">Linha</span>
+            <input type="checkbox" class="toggle toggle-primary toggle-sm shrink-0" aria-label="Visibilidade" />
+            <button class="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-error hover:bg-error/10 shrink-0" aria-label="Remover layer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 4. ORGANISMOS ============ -->
+    <section class="flex flex-col gap-8 pb-10">
+      <h2 class="section-title px-2">4 · Organismos</h2>
+
+      <!-- Painel de busca completo -->
+      <div class="flex flex-col gap-2">
+        <p class="text-overline px-2">Painel de busca (barra única)</p>
+        <div class="glass-panel w-full max-w-2xl mx-auto p-4 flex flex-col gap-2">
+          <div class="flex gap-2">
+            <div class="relative w-full flex items-center">
+              <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input type="text" placeholder="Busque por endereço, lote ou logradouro..." class="input input-glass pl-11" />
+            </div>
+            <button class="btn btn-onsen">Buscar</button>
+          </div>
+          <div class="flex justify-between px-2 pt-1 items-center">
+            <span class="text-overline">
+              Pressione <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">Ctrl</kbd> + <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">K</kbd>
+            </span>
+            <div class="flex flex-wrap gap-2">
+              <span class="badge badge-poligono badge-sm">Lotes Fiscais</span>
+              <span class="badge badge-linha badge-sm">Logradouros</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-[420px_1fr] gap-6 items-start">
+        <!-- Gaveta -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline px-2">Gaveta de detalhes (glide-in da esquerda)</p>
+          <div class="glass-drawer-panel rounded-r-3xl rounded-l-xl p-6 flex flex-col gap-5">
+            <div class="flex justify-between items-start">
+              <div>
+                <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700">Imóvel Fiscal</h2>
+                <p class="text-code text-sm font-medium mt-2">SQL 098.112.0034-1</p>
+              </div>
+              <button class="btn btn-sm btn-circle btn-ghost text-base-content/60 hover:text-base-content hover:bg-rocha-950/10" aria-label="Fechar">✕</button>
+            </div>
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <div>
+                <p class="text-overline mb-0.5">Endereço Principal</p>
+                <p class="font-bold leading-tight">Av. Paulista, 1578</p>
+                <p class="text-xs text-base-content/70">Bela Vista, São Paulo - SP</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="card-well p-4">
+                <p class="text-overline mb-1">Área do Terreno</p>
+                <p class="text-xl font-bold">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+              </div>
+              <div class="card-well p-4">
+                <p class="text-overline mb-1">Área Construída</p>
+                <p class="text-xl font-bold">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+              </div>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-4">
+              <div>
+                <p class="text-overline mb-2">Zoneamento (LPUOS)</p>
+                <div class="flex items-center gap-3">
+                  <span class="badge bg-primary text-primary-content border-none font-bold px-3 py-3 shadow-[0_2px_12px_rgba(0,150,199,0.35)]">ZCOR-2</span>
+                  <span class="text-sm font-medium">Zona Corredor Comercial</span>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div>
+                <p class="text-overline mb-2">Restrições Históricas</p>
+                <div class="flex items-center gap-3">
+                  <span class="badge badge-warning badge-soft font-bold px-3 py-3">Tombado</span>
+                  <span class="text-sm font-medium">CONPRESP (Res. 14/2012)</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-onsen w-full h-12 text-base">Salvar no Projeto</button>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-6">
+          <!-- Widget usuário -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline px-2">Widget de usuário (canto sup. direito)</p>
+            <div class="glass-panel rounded-full! p-1.5 flex items-center gap-3 w-fit cursor-pointer transition-glass hover:bg-white/60">
+              <div class="w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+                <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+              </div>
+              <div class="pr-4">
+                <p class="text-sm font-bold leading-tight">Projetos</p>
+                <p class="text-[10px] uppercase tracking-wide font-medium leading-tight mt-0.5 text-madeira-600">Área do Usuário</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Painel de camadas -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline px-2">Painel de camadas do projeto (glide-in da direita)</p>
+            <div class="glass-panel p-5 flex flex-col gap-3 max-w-md">
+              <div class="flex justify-between items-center">
+                <div>
+                  <h3 class="font-bold text-lg leading-tight text-madeira-700">Projeto Centro</h3>
+                  <p class="text-xs text-base-content/60">3 layers · atualizado hoje</p>
+                </div>
+                <button class="btn btn-ghost btn-glass btn-sm btn-circle" aria-label="Novo layer">
+                  <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                </button>
+              </div>
+              <div class="card-well p-3 flex items-center gap-3">
+                <span class="w-3.5 h-3.5 rounded-full bg-madeira-500 ring-2 ring-white/70 shrink-0"></span>
+                <p class="grow font-bold text-sm truncate">Lotes da Quadra A</p>
+                <span class="badge badge-poligono badge-sm shrink-0">Polígono</span>
+                <input type="checkbox" checked class="toggle toggle-primary toggle-sm shrink-0" aria-label="Visibilidade" />
+              </div>
+              <div class="card-well p-3 flex items-center gap-3">
+                <span class="w-3.5 h-3.5 rounded-full bg-accent ring-2 ring-white/70 shrink-0"></span>
+                <p class="grow font-bold text-sm truncate">Eixos viários</p>
+                <span class="badge badge-linha badge-sm shrink-0">Linha</span>
+                <input type="checkbox" checked class="toggle toggle-primary toggle-sm shrink-0" aria-label="Visibilidade" />
+              </div>
+              <div class="card-well p-3 flex items-center gap-3">
+                <span class="w-3.5 h-3.5 rounded-full bg-agua-500 ring-2 ring-white/70 shrink-0"></span>
+                <p class="grow font-bold text-sm truncate">Endereços geocodificados</p>
+                <span class="badge badge-ponto badge-sm shrink-0">Ponto</span>
+                <input type="checkbox" class="toggle toggle-primary toggle-sm shrink-0" aria-label="Visibilidade" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs text-base-content/60 pb-8 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+      Onsen de Inverno v2 · validar visualmente e portar para a SKILL <span class="text-code">componentes-frontend</span>
+    </footer>
+  </main>
+
+  <script>
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-23.5505, -46.6333], 14);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(map);
+  </script>
+</body>
+</html>

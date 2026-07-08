@@ -6,4 +6,5 @@ app_name = "search"
 
 urlpatterns = [
     path("buscar/", views.rotear_busca, name="rotear_busca"),
+    path("comitar/", views.comitar, name="comitar"),
 ]

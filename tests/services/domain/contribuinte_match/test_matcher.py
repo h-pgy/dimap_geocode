@@ -20,6 +20,7 @@ _DADOS_FAKE: dict[str, list[object]] = {
     "tx_complemento_endereco": [None,      "APTO 1",   None,      None],
     "cd_tipo_quadra":          ["U",       "U",        "U",       "U"],
     "cd_tipo_lote":            ["F",       "F",        "F",       "F"],
+    "cd_condominio":           ["00",      "01",       "00",      "00"],
 }
 
 

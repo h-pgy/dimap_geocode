@@ -16,6 +16,6 @@ export function adicionarBaseWms(map, wms) {
     baseMaps[b.nome] = layer;
     if (i === 0) layer.addTo(map);
   });
-  L.control.layers(baseMaps).addTo(map);
+  L.control.layers(baseMaps, null, { position: "bottomright" }).addTo(map);
   return baseMaps;
 }

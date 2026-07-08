@@ -6,12 +6,21 @@ constantes UPPER_CASE locais (CLAUDE.md §10.3 / §11). O resto do módulo
 referencia as constantes, não o objeto de settings.
 """
 
+import json
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Paleta do design system "Onsen de Inverno" — espelho de
+# .claude/skills/componentes-frontend/references/paleta.json (fonte da verdade dos valores).
+# Falha alto no boot se o JSON estiver ausente ou malformado (nunca silenciosamente).
+_PALETA_DS: dict[str, Any] = json.loads((BASE_DIR / "config" / "paleta_ds.json").read_text())
+_GEOMETRIAS: dict[str, str] = _PALETA_DS["geometrias"]
+_ESCALAS: dict[str, dict[str, str]] = _PALETA_DS["escalas"]
 
 
 class _Settings(BaseSettings):
@@ -38,6 +47,7 @@ class _Settings(BaseSettings):
     wfs_version: str = Field(default="1.0.0", alias="WFS_VERSION")
     wfs_layer_logradouros: str = Field(default="segmento_logradouro", alias="WFS_LAYER_LOGRADOUROS")
     wfs_layer_lote_cidadao: str = Field(default="lote_cidadao", alias="WFS_LAYER_LOTE_CIDADAO")
+    wfs_verbose: bool = Field(default=True, alias="WFS_VERBOSE")
     wfs_request_timeout_seconds: float = Field(default=30.0, alias="WFS_REQUEST_TIMEOUT_SECONDS")
     wfs_max_retries: int = Field(default=3, alias="WFS_MAX_RETRIES")
     wfs_retry_wait_min_seconds: float = Field(default=1.0, alias="WFS_RETRY_WAIT_MIN_SECONDS")
@@ -56,9 +66,12 @@ class _Settings(BaseSettings):
     wms_layer_mapa_base: str = Field(
         default="geoportal:MapaBase_Politico", alias="WMS_LAYER_MAPA_BASE"
     )
-    map_cor_linha: str = Field(default="#3b82f6", alias="MAP_COR_LINHA")
-    map_cor_poligono: str = Field(default="#f97316", alias="MAP_COR_POLIGONO")
-    map_cor_ponto: str = Field(default="#ef4444", alias="MAP_COR_PONTO")
+    map_cor_linha: str = Field(default=_GEOMETRIAS["linha"], alias="MAP_COR_LINHA")
+    map_cor_poligono: str = Field(default=_GEOMETRIAS["poligono"], alias="MAP_COR_POLIGONO")
+    map_cor_ponto: str = Field(default=_GEOMETRIAS["ponto"], alias="MAP_COR_PONTO")
+    map_cor_poligono_condominio: str = Field(
+        default=_ESCALAS["sakura"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
+    )
 
 
 _env = _Settings()
@@ -76,6 +89,9 @@ WFS_SERVICE = _env.wfs_service
 WFS_VERSION = _env.wfs_version
 WFS_LAYER_LOGRADOUROS = _env.wfs_layer_logradouros
 WFS_LAYER_LOTE_CIDADAO = _env.wfs_layer_lote_cidadao
+# Liga o log da requisição WFS (URL + params) em todos os geocoders — diagnóstico
+# do GeoSampa. O WfsFetcher imprime cada GET quando verbose; build_fetcher lê daqui.
+WFS_VERBOSE = _env.wfs_verbose
 WFS_REQUEST_TIMEOUT_SECONDS = _env.wfs_request_timeout_seconds
 WFS_MAX_RETRIES = _env.wfs_max_retries
 WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds
@@ -103,10 +119,13 @@ MAP_OUTPUT_CRS = 4326
 # 31983 = SIRGAS 2000 / UTM 23S, nativo do GeoSampa.
 MAP_INTERPOLATION_CRS = 31983
 MAP_CENTRO_DEFAULT: list[float] = [-23.55, -46.63]
-MAP_ZOOM_DEFAULT = 12
+# 14 preenche a viewport com a ortofoto sem mostrar os limites do município (em 12/13 sobra "vazio").
+MAP_ZOOM_DEFAULT = 14
 MAP_COR_LINHA = _env.map_cor_linha
 MAP_COR_POLIGONO = _env.map_cor_poligono
 MAP_COR_PONTO = _env.map_cor_ponto
+# Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (sakura-700).
+MAP_COR_POLIGONO_CONDOMINIO = _env.map_cor_poligono_condominio
 
 
 # Application definition
@@ -145,7 +164,10 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        # static/src entra SÓ para o {% include "tema-dimap.dev.css" %} do base.html: o tema
+        # dev (fonte única do design system, SPEC design/004) é incluído server-side dentro do
+        # <style type="text/tailwindcss">.
+        "DIRS": [BASE_DIR / "templates", BASE_DIR / "static" / "src"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

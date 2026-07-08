@@ -1,4 +1,6 @@
-{# templates/mapping/_mapa.html — partial agnóstico de domínio: só container + dados (sem <script>) #}
-<div id="map" class="h-[70vh] w-full rounded-lg"></div>
-{{ wms|json_script:"mapa-wms" }}
+{# templates/mapping/_mapa.html — partial agnóstico de domínio: só o payload do resultado.       #}
+{# O mapa é singleton da home (mapping/_mapa_fullscreen.html); este partial nunca recria o mapa,  #}
+{# só entrega geometria + cor para o init.js trocar a camada de resultado (sem <script> aqui).    #}
 {{ payload|json_script:"mapa-payload" }}
+{# comitar uma busca fecha a lista de sugestões (OOB) — clique numa sugestão ou Enter #}
+<div id="sugestoes-busca" hx-swap-oob="innerHTML"></div>

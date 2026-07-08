@@ -16,6 +16,7 @@ class WfsSettingsLike(Protocol):
     WFS_NAMESPACE: str
     WFS_SERVICE: str
     WFS_VERSION: str
+    WFS_VERBOSE: bool
     WFS_REQUEST_TIMEOUT_SECONDS: float
     WFS_MAX_RETRIES: int
     WFS_RETRY_WAIT_MIN_SECONDS: float
@@ -41,10 +42,13 @@ def build_retry_policy(source: WfsSettingsLike) -> WfsRetryPolicy:
     )
 
 
-def build_fetcher(source: WfsSettingsLike, *, verbose: bool = False) -> WfsFetcher:
-    """Monta o `WfsFetcher` (cliente WFS) a partir de um objeto settings-like injetado."""
+def build_fetcher(source: WfsSettingsLike, *, verbose: bool | None = None) -> WfsFetcher:
+    """Monta o `WfsFetcher` (cliente WFS) a partir de um objeto settings-like injetado.
+
+    `verbose=None` (default) herda `source.WFS_VERBOSE`; passar True/False força o valor
+    (usado pelos scripts, que controlam o log por conta própria)."""
     return WfsFetcher(
         build_connection_config(source),
         retry_policy=build_retry_policy(source),
-        verbose=verbose,
+        verbose=source.WFS_VERBOSE if verbose is None else verbose,
     )

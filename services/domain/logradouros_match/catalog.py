@@ -1,5 +1,5 @@
 import time
-from typing import cast
+from typing import ClassVar, cast
 
 from services.utils.cache import ttl_cached_property
 from services.utils.io import read_parquet_from_data
@@ -12,6 +12,21 @@ DATA_TTL_SECONDS = 24 * 60 * 60
 
 
 class LogradouroCatalog:
+    _instancia: ClassVar["LogradouroCatalog | None"] = None
+
+    def __new__(cls, *args: object, **kwargs: object) -> "LogradouroCatalog":
+        # singleton só na classe exata: subclasses (fakes de teste) constroem normalmente
+        if cls is not LogradouroCatalog:
+            return super().__new__(cls)
+        if cls._instancia is None:
+            cls._instancia = super().__new__(cls)
+        return cls._instancia
+
+    @classmethod
+    def resetar_instancia(cls) -> None:
+        # isolamento de testes: a próxima construção nasce fria
+        cls._instancia = None
+
     @ttl_cached_property(ttl_seconds=DATA_TTL_SECONDS)
     def _variacoes(self) -> dict[str, str]:
         cols = read_parquet_from_data(TIPOS_CACHE_FILE)

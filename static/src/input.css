@@ -1,4 +1,8 @@
+/* Esqueleto de BUILD (prod, quando houver — CLAUDE.md §2): o design system em si vive em
+   tema-dimap.dev.css (fonte única, SPEC design/004), compartilhado com o base.html (include
+   server-side) e com os mocks da skill componentes-frontend (fetch via Live Server). */
 @import "tailwindcss";
+@import "./tema-dimap.dev.css";
 @plugin "daisyui";
 
 /* Tailwind 4 descobre os templates exclusivamente via @source (CLAUDE.md §2).
