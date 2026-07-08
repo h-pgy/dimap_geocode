@@ -133,7 +133,7 @@
   /* Badges por tipo de geometria — no HTML: class="badge badge-ponto" etc. */
   .badge-ponto    { @apply border border-agua-600/40 bg-agua-500/15 text-agua-700 font-medium; }
   .badge-linha    { @apply border border-accent/40 bg-accent/10 text-accent font-medium; }
-  .badge-poligono { @apply border border-madeira-500/50 bg-madeira-400/15 text-madeira-700 font-medium; }
+  .badge-poligono { @apply border border-sakura-500/50 bg-sakura-400/15 text-sakura-700 font-medium; }
 
   /* ==================== MOLÉCULAS ==================== */
   .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }

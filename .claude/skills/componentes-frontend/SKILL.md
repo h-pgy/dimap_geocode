@@ -100,7 +100,7 @@ de usuário, o painel de camadas do projeto. **Organismo = partial Django/HTMX**
 
 ## 3. Paleta
 
-Três escalas próprias (utilities `bg-agua-400`, `text-madeira-700`, etc.) + papéis daisyUI.
+Quatro escalas próprias (utilities `bg-agua-400`, `text-madeira-700`, `bg-sakura-500`, etc.) + papéis daisyUI.
 Fonte da verdade dos valores: `references/paleta.json`.
 
 ### 3.1 Escalas
@@ -111,9 +111,16 @@ Fonte da verdade dos valores: `references/paleta.json`.
 - **Rocha** (neutra — tinta, superfícies, profundidade):
   `100 #E0E1DD · 200 #C5CCD3 · 300 #A9BCD0 · 400 #8FA3BB · 500 #778DA9 · 600 #5B7290 · 700 #415A77 ✦ · 800 #2E4560 · 900 #1B263B · 950 #0D1B2A ★`
   ★ tinta padrão do corpo (`base-content`). ✦ rótulos secundários/overlines.
-- **Madeira** (quente — tinta de títulos, acentos orgânicos, geometria de *polígono*):
+- **Madeira** (quente — tinta de títulos, acentos orgânicos):
   `100 #EDE0D4 · 200 #E6CCB2 · 300 #DDB892 · 400 #B08968 · 500 #9C6644 · 600 #7F5539 · 700 #5E412F ★ · 800 #46301F · 900 #2E1F16`
   ★ a tinta quente dos títulos sobre o gelo. Tons claros (200–300) só sobre `glass-panel-deep`.
+- **Sakura** (rosa/magenta — o rubor dos macacos no onsen; **geometria de *polígono*** e destaque
+  sobre a ortofoto, ref. `referencia_original_ui_3.jpg`):
+  `100 #FBE3E9 · 200 #F6C4D2 · 300 #EFA0B8 · 400 #E5749B · 500 #D84F7F ★ · 600 #BC3A67 ✦ · 700 #97294F · 800 #6E1C3A · 900 #471226`
+  ★ traço da geometria de polígono (lote), preenchimento na mesma cor a ~35%; variante condominial
+  `sakura-700`. O rosa não tem contraparte na ortofoto (verdes/cinzas/marrons) e devolve a leitura
+  que a madeira perdia ali. ✦ **texto/ação** sobre vidro claro (`sakura-600`/`sakura-700`). Os tons
+  100–300 são luz, **nunca texto sobre fundo claro**.
 
 ### 3.2 Papéis do tema daisyUI (tema `dimap`, claro)
 ```
@@ -127,8 +134,10 @@ radius: selector 1rem · field 0.5rem · box 1rem
 erro de busca, avisos (ex.: "Tombado" = `badge-warning badge-soft`). Nunca improvise verde/vermelho.
 
 ### 3.3 Cores por geometria (default das camadas do mapa)
-Ponto = `agua-500` · Linha = `accent #0F766E` · Polígono = `madeira-500`. Badges correspondentes:
-`.badge-ponto`, `.badge-linha`, `.badge-poligono`.
+Ponto = `agua-500` · Linha = `accent #0F766E` · Polígono = `sakura-500` (lote condominial =
+`sakura-700`). Badges correspondentes: `.badge-ponto`, `.badge-linha`, `.badge-poligono`.
+Se ponto/linha também perderem leitura sobre a **ortofoto**, o caminho de destaque é a mesma
+escala **sakura** (§3.1) — nunca uma cor solta.
 
 ## 4. Tipografia
 
@@ -225,4 +234,6 @@ Cuidados que já quebraram build/render:
 4. **Paleta:** `references/paleta.json` — escalas e papéis em JSON (fonte da verdade dos valores).
 5. **Referências visuais:** `references/onsen_inverno_moodboard.jpg`,
    `references/referencia_original_ui_1.jpg`, `references/referencia_original_ui_2.jpg` — a água
-   límpida ciano, a luz fria e o nível de polimento esperado do vidro.
+   límpida ciano, a luz fria e o nível de polimento esperado do vidro;
+   `references/referencia_original_ui_3.jpg` — os macacos no onsen, origem do rosa da escala
+   **sakura** (§3.1).

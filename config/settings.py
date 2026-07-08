@@ -67,12 +67,10 @@ class _Settings(BaseSettings):
         default="geoportal:MapaBase_Politico", alias="WMS_LAYER_MAPA_BASE"
     )
     map_cor_linha: str = Field(default=_GEOMETRIAS["linha"], alias="MAP_COR_LINHA")
-    # Polígono no mapa lê madeira-400 (mais clara) e não geometrias.poligono (madeira-500): o
-    # contexto ortofoto exige mais contraste que o badge sobre vidro. Ver SPEC design/001 patch 001.
-    map_cor_poligono: str = Field(default=_ESCALAS["madeira"]["400"], alias="MAP_COR_POLIGONO")
+    map_cor_poligono: str = Field(default=_GEOMETRIAS["poligono"], alias="MAP_COR_POLIGONO")
     map_cor_ponto: str = Field(default=_GEOMETRIAS["ponto"], alias="MAP_COR_PONTO")
     map_cor_poligono_condominio: str = Field(
-        default=_ESCALAS["madeira"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
+        default=_ESCALAS["sakura"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
     )
 
 
@@ -126,7 +124,7 @@ MAP_ZOOM_DEFAULT = 14
 MAP_COR_LINHA = _env.map_cor_linha
 MAP_COR_POLIGONO = _env.map_cor_poligono
 MAP_COR_PONTO = _env.map_cor_ponto
-# Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (madeira-700).
+# Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (sakura-700).
 MAP_COR_POLIGONO_CONDOMINIO = _env.map_cor_poligono_condominio
 
 

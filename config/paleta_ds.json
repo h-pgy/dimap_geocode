@@ -28,7 +28,7 @@
       "950": "#0D1B2A"
     },
     "madeira": {
-      "descricao": "Quente — tinta de títulos (700), acentos orgânicos, geometria de polígono. Tons claros (200-300) só sobre o vidro profundo escuro.",
+      "descricao": "Quente — tinta de títulos (700), acentos orgânicos. Tons claros (200-300) só sobre o vidro profundo escuro.",
       "100": "#EDE0D4",
       "200": "#E6CCB2",
       "300": "#DDB892",
@@ -38,6 +38,18 @@
       "700": "#5E412F",
       "800": "#46301F",
       "900": "#2E1F16"
+    },
+    "sakura": {
+      "descricao": "Rosa/magenta — o rubor dos macacos no onsen (referencia_original_ui_3.jpg). Cor da geometria de polígono (lote): 500 = traço ★ (fill a ~35%), 700 = variante condominial; lê sobre a ortofoto, onde a madeira some. 600/700 = texto/ação sobre vidro claro ✦. 100-300 são luz, nunca texto sobre fundo claro.",
+      "100": "#FBE3E9",
+      "200": "#F6C4D2",
+      "300": "#EFA0B8",
+      "400": "#E5749B",
+      "500": "#D84F7F",
+      "600": "#BC3A67",
+      "700": "#97294F",
+      "800": "#6E1C3A",
+      "900": "#471226"
     }
   },
   "tema_daisyui": {
@@ -71,7 +83,7 @@
     "descricao": "Cores default por tipo de geometria das camadas do mapa.",
     "ponto": "#00B4D8",
     "linha": "#0F766E",
-    "poligono": "#9C6644"
+    "poligono": "#D84F7F"
   },
   "fontes": {
     "sans": "Roboto (400/500/700/900)",

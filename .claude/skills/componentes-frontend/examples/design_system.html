@@ -89,6 +89,17 @@
       --color-madeira-800: #46301f;
       --color-madeira-900: #2e1f16;
 
+      /* SAKURA — rosa/magenta (rubor dos macacos no onsen; destaque de geometria sobre a ortofoto) */
+      --color-sakura-100: #fbe3e9;
+      --color-sakura-200: #f6c4d2;
+      --color-sakura-300: #efa0b8;
+      --color-sakura-400: #e5749b;
+      --color-sakura-500: #d84f7f;
+      --color-sakura-600: #bc3a67;
+      --color-sakura-700: #97294f;
+      --color-sakura-800: #6e1c3a;
+      --color-sakura-900: #471226;
+
       /* Papéis semânticos daisyUI (duplicados para compilar as utilities) */
       --color-primary: #0096c7;
       --color-primary-content: #f2fbff;
@@ -156,7 +167,7 @@
       /* Badges por tipo de geometria (cores default de camadas) */
       .badge-ponto    { @apply border border-agua-600/40 bg-agua-500/15 text-agua-700 font-medium; }
       .badge-linha    { @apply border border-accent/40 bg-accent/10 text-accent font-medium; }
-      .badge-poligono { @apply border border-madeira-500/50 bg-madeira-400/15 text-madeira-700 font-medium; }
+      .badge-poligono { @apply border border-sakura-500/50 bg-sakura-400/15 text-sakura-700 font-medium; }
 
       /* ==================== MOLÉCULAS ==================== */
       .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }
@@ -228,7 +239,7 @@
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
         <div>
           <h3 class="text-lg font-bold">1.1 · Paleta com progressão tonal</h3>
-          <p class="text-sm text-base-content/70 mt-1">Três escalas próprias + papéis semânticos do daisyUI. Nada de cores soltas: todo tom novo entra numa escala.</p>
+          <p class="text-sm text-base-content/70 mt-1">Quatro escalas próprias + papéis semânticos do daisyUI. Nada de cores soltas: todo tom novo entra numa escala.</p>
         </div>
 
         <!-- Escala Água -->
@@ -268,7 +279,7 @@
 
         <!-- Escala Madeira -->
         <div>
-          <p class="text-overline mb-2">Madeira <span class="normal-case tracking-normal">(quente — tinta de títulos, acentos orgânicos, geometria de polígono)</span></p>
+          <p class="text-overline mb-2">Madeira <span class="normal-case tracking-normal">(quente — tinta de títulos, acentos orgânicos)</span></p>
           <div class="grid grid-cols-9 gap-1.5">
             <div><div class="h-12 rounded-lg bg-madeira-100"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">100<br>EDE0D4</p></div>
             <div><div class="h-12 rounded-lg bg-madeira-200"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">200<br>E6CCB2</p></div>
@@ -281,6 +292,23 @@
             <div><div class="h-12 rounded-lg bg-madeira-900"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">900<br>2E1F16</p></div>
           </div>
           <p class="text-xs text-base-content/60 mt-2">★ a tinta quente dos títulos sobre o gelo fosco (o marrom do moodboard). Os tons claros (200–300) só aparecem sobre o vidro profundo escuro.</p>
+        </div>
+
+        <!-- Escala Sakura -->
+        <div>
+          <p class="text-overline mb-2">Sakura <span class="normal-case tracking-normal">(rosa/magenta — geometria de polígono, destaque sobre a ortofoto)</span></p>
+          <div class="grid grid-cols-9 gap-1.5">
+            <div><div class="h-12 rounded-lg bg-sakura-100"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">100<br>FBE3E9</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-200"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">200<br>F6C4D2</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-300"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">300<br>EFA0B8</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-400"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">400<br>E5749B</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-500 ring-2 ring-rocha-950/30"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">500 ★<br>D84F7F</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-600 ring-2 ring-rocha-950/30"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">600 ✦<br>BC3A67</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-700"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">700<br>97294F</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-800"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">800<br>6E1C3A</p></div>
+            <div><div class="h-12 rounded-lg bg-sakura-900"></div><p class="text-[10px] font-mono text-center mt-1 text-base-content/60">900<br>471226</p></div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O rubor dos macacos no onsen (referência 3). ★ traço da geometria de <strong>polígono</strong> (lote), com preenchimento na mesma cor a ~35%; variante condominial em <span class="text-code">sakura-700</span>. O rosa não tem contraparte na ortofoto (verdes/cinzas/marrons) e devolve a leitura que a madeira perdia ali. ✦ texto/ação sobre vidro claro: <span class="text-code">sakura-600</span> ou <span class="text-code">sakura-700</span>. Os tons 100–300 são luz, nunca texto sobre fundo claro.</p>
         </div>
 
         <!-- Papéis daisyUI -->
@@ -321,7 +349,7 @@
           <div class="flex flex-wrap gap-2">
             <span class="badge badge-ponto badge-lg"><span class="w-2 h-2 rounded-full bg-agua-500 mr-1.5"></span>Ponto · endereço geocodificado</span>
             <span class="badge badge-linha badge-lg"><span class="w-2 h-2 rounded-full bg-accent mr-1.5"></span>Linha · logradouro</span>
-            <span class="badge badge-poligono badge-lg"><span class="w-2 h-2 rounded-full bg-madeira-500 mr-1.5"></span>Polígono · lote fiscal</span>
+            <span class="badge badge-poligono badge-lg"><span class="w-2 h-2 rounded-full bg-sakura-500 mr-1.5"></span>Polígono · lote fiscal</span>
           </div>
         </div>
       </div>
