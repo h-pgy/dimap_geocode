@@ -1,4 +1,5 @@
 import time
+from typing import ClassVar
 
 import pandas as pd
 
@@ -11,8 +12,25 @@ DATA_TTL_SECONDS = 3600
 
 
 class ContribuinteCatalog:
+    _instancia: ClassVar["ContribuinteCatalog | None"] = None
+
+    def __new__(cls, *args: object, **kwargs: object) -> "ContribuinteCatalog":
+        # singleton só na classe exata: subclasses (fakes de teste) constroem normalmente
+        if cls is not ContribuinteCatalog:
+            return super().__new__(cls)
+        if cls._instancia is None:
+            cls._instancia = super().__new__(cls)
+        return cls._instancia
+
+    @classmethod
+    def resetar_instancia(cls) -> None:
+        # isolamento de testes: a próxima construção nasce fria
+        cls._instancia = None
+
     def __init__(self, nome_arquivo: str = NOME_ARQUIVO_PADRAO) -> None:
-        self._nome_arquivo = nome_arquivo
+        # __init__ roda a cada "construção" do singleton — só a primeira grava o arquivo
+        if not hasattr(self, "_nome_arquivo"):
+            self._nome_arquivo = nome_arquivo
 
     @ttl_cached_property(ttl_seconds=DATA_TTL_SECONDS)
     def enderecos_fiscais(self) -> pd.DataFrame:

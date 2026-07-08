@@ -14,3 +14,9 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 application = get_wsgi_application()
+
+# Warmup dos catálogos de lookup: aqui (e não em AppConfig.ready) para rodar somente em
+# processos que servem requests — nunca no pai do autoreloader nem em management commands.
+from services.domain import aquecer_catalogos  # noqa: E402
+
+aquecer_catalogos()
