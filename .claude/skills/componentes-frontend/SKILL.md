@@ -199,6 +199,13 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
 - **UI concorrente se recolhe**: quando a gaveta abre, a barra de busca sai de cena via CSS de estado
   (`#lote-drawer:checked ~ .drawer-content #search-bar-container { opacity-0 -translate-y-5 scale-95
   pointer-events-none }`) — sem JavaScript imperativo.
+- **Navbar compacta em tela estreita (< lg, SPEC design/005)**: com resultado no DOM, a barra de
+  busca recolhida vira um pill de 3rem alinhado em `top-6` entre o chip da marca (monograma "D",
+  `w-12 h-12`) e o widget de usuário (avatar `w-9 h-9`) — três placas de gelo independentes, nada
+  de barra opaca. Tokens `.search-panel` (dono de largura/padding do painel — utility no markup
+  venceria a regra de componente) e `.search-hints` (linha de dicas, some no compacto) +
+  `@media (width < 64rem)` no `tema-dimap.dev.css`. Mesmo gatilho HATEOAS da `.search-hero`.
+  Abaixo de lg os chips são sempre compactos, em `left-4`/`right-4`.
 - **Todo interativo reage** a `hover:`/`focus:`/`active:`; transições `duration-300`–`500`.
 - **HTMX é a SPA**: sem full page reload após a carga do mapa. Swaps com `.htmx-indicator` +
   `.loading` do daisyUI (a UI de vidro nunca bloqueia sem feedback). Use `.htmx-added`/`.htmx-swapping`

@@ -48,10 +48,21 @@
       @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
     }
 
+    /* A gaveta nasce da esquerda por cima da marca — o chip sai de cena em qualquer tamanho */
+    #lote-drawer:checked ~ .drawer-content #brand-chip {
+      @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
+    }
+
     @media (max-width: 639px) {
       #lote-drawer:checked ~ .drawer-content #user-widget {
         @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
       }
+    }
+
+    /* Só do mock: o botão Buscar não existe na app (Enter comita); na navbar compacta ele
+       não cabe no pill e sai de cena. Mesmo corte da navbar (lg). */
+    @media (width < 64rem) {
+      .search-hero:has(#resultado-busca:not(:empty)) #botao-buscar { @apply hidden; }
     }
   </style>
 </head>
@@ -76,31 +87,41 @@
       <!-- Camada de foco dinâmico: só liga quando a gaveta abre (blur dinâmico) -->
       <div id="blur-layer" class="cinematic-blur-layer z-[2]!"></div>
 
-      <!-- UI Flutuante sobre o Mapa -->
-      <div id="ui-layer" class="absolute inset-0 z-10 pointer-events-none flex flex-col items-center pt-[15vh]">
+      <!-- UI Flutuante sobre o Mapa. .search-hero: nasce em destaque (pt-[15vh]) e recolhe para
+           o topo quando #resultado-busca tem conteúdo — no mobile isso liga a navbar compacta
+           (tokens .search-panel/.search-hints em tema-dimap.dev.css). -->
+      <div id="ui-layer" class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">
 
-        <!-- Botão Flutuante Esquerdo para Abrir a Gaveta -->
-        <div id="drawer-open-btn" class="pointer-events-auto absolute left-6 top-6 transition-glass">
+        <!-- Chip da marca (base.html): pill com texto no desktop (lg+), monograma w-12 h-12 em
+             tela estreita (mesmo corte da navbar compacta: o painel max-w-2xl colide até tablet) -->
+        <a href="#" id="brand-chip"
+           class="pointer-events-auto absolute top-6 left-4 lg:left-6 glass-panel rounded-full! flex items-center justify-center w-12 h-12 lg:w-auto lg:h-auto lg:px-5 lg:py-2.5 transition-glass hover:bg-white/60">
+          <span class="hidden lg:inline text-lg font-black tracking-tight text-madeira-700">DIMAP GeoCoder</span>
+          <span class="lg:hidden text-xl font-black tracking-tight text-madeira-700">D</span>
+        </a>
+
+        <!-- Botão Flutuante para Abrir a Gaveta (movido para baixo: o topo esquerdo é da marca) -->
+        <div id="drawer-open-btn" class="pointer-events-auto absolute left-6 bottom-6 transition-glass">
           <label for="lote-drawer" class="btn btn-ghost btn-glass btn-circle w-14 h-14 tooltip tooltip-right flex items-center justify-center" data-tip="Detalhes do Imóvel">
             <svg class="w-8 h-8 translate-x-0.5 icon-glow" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5.5l9.5 6.5-9.5 6.5z"></path></svg>
           </label>
         </div>
 
-        <!-- Barra flutuante principal -->
-        <div id="search-bar-container" class="pointer-events-auto transition-glass w-11/12 max-w-2xl glass-panel p-4 flex flex-col gap-2">
+        <!-- Barra flutuante principal (largura/padding vêm do token .search-panel) -->
+        <div id="search-bar-container" class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
 
           <div class="flex gap-2 relative">
             <div class="relative w-full flex items-center">
               <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
 
-              <input type="text" placeholder="Busque por endereço, lote ou logradouro..."
+              <input type="text" id="input-busca-mock" placeholder="Busque por endereço, lote ou logradouro..."
                      class="input input-glass pl-11" />
             </div>
 
-            <button class="btn btn-onsen">Buscar</button>
+            <button id="botao-buscar" class="btn btn-onsen">Buscar</button>
           </div>
 
-          <div class="flex justify-between px-2 pt-1 items-center">
+          <div class="search-hints flex justify-between px-2 pt-1 items-center">
             <span class="text-overline">
               Pressione <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">Ctrl</kbd> + <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">K</kbd>
             </span>
@@ -111,17 +132,41 @@
           </div>
         </div>
 
-        <!-- Widget de Usuário -->
-        <div id="user-widget" class="pointer-events-auto absolute top-6 right-6 glass-panel rounded-full! p-1.5 flex items-center sm:gap-3 cursor-pointer transition-glass hover:bg-white/60">
-          <div class="w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+        <!-- Resultado mockado (na app é o alvo do swap HTMX). Manter SEM whitespace interno:
+             o gatilho da coreografia é :not(:empty). -->
+        <div id="resultado-busca" class="pointer-events-auto w-11/12 max-w-2xl mt-3"></div>
+
+        <!-- Widget de Usuário: em tela estreita (< lg) o avatar encolhe para w-9 h-9 e o texto
+             sai (altura total 3rem, alinhada à navbar compacta) -->
+        <div id="user-widget" class="pointer-events-auto absolute top-6 right-4 lg:right-6 glass-panel rounded-full! p-1.5 flex items-center lg:gap-3 cursor-pointer transition-glass hover:bg-white/60">
+          <div class="w-9 h-9 lg:w-11 lg:h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
             <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
           </div>
-          <div class="hidden sm:block pr-4">
+          <div class="hidden lg:block pr-4">
             <p class="text-sm font-bold m-0 leading-tight">Projetos</p>
             <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">Área do Usuário</p>
           </div>
         </div>
       </div>
+
+      <!-- Card de resultado fake: injetado em #resultado-busca para acionar a coreografia real -->
+      <template id="template-resultado">
+        <div class="glass-panel p-4 flex items-center gap-4">
+          <!-- Ícone canônico de logradouro (mapa dobrado), o mesmo da molécula de sugestão no
+               design_system.html — padronizado: logradouro tem UM ícone no sistema inteiro. -->
+          <div class="icon-bubble w-12 h-12 shrink-0 bg-accent/10 border-accent/30 text-accent">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4M9 7l6-3"/></svg>
+          </div>
+          <div class="grow min-w-0">
+            <p class="text-overline mb-0.5">Logradouro encontrado</p>
+            <p class="font-bold leading-tight truncate">Avenida Paulista</p>
+            <p class="text-code text-xs mt-0.5">codlog 12704-8</p>
+          </div>
+          <span class="badge badge-linha badge-sm shrink-0">Linha</span>
+          <button class="btn btn-sm btn-circle btn-ghost shrink-0 text-base-content/60 hover:text-base-content hover:bg-rocha-950/10"
+                  onclick="document.getElementById('resultado-busca').replaceChildren()" aria-label="Fechar">✕</button>
+        </div>
+      </template>
     </div>
 
     <!-- Gaveta Lateral Esquerda -->
@@ -197,6 +242,18 @@
       subdomains: 'abcd',
       maxZoom: 20
     }).addTo(map);
+
+    // Mock do fluxo de busca: injeta o resultado fake em #resultado-busca — mesmo efeito do
+    // swap HTMX da app — para acionar a coreografia real (.search-hero compacta + navbar mobile).
+    const resultadoBusca = document.getElementById('resultado-busca');
+    const templateResultado = document.getElementById('template-resultado');
+    function mostrarResultadoMock() {
+      resultadoBusca.replaceChildren(templateResultado.content.cloneNode(true));
+    }
+    document.getElementById('botao-buscar').addEventListener('click', mostrarResultadoMock);
+    document.getElementById('input-busca-mock').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') mostrarResultadoMock();
+    });
   </script>
 </body>
 </html>

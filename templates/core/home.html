@@ -10,7 +10,9 @@
   {# UI flutuante sobre o mapa (skill componentes-frontend §6/mock_ui): sem pointer-events no #}
   {# layer, cada painel reabre a interação em pointer-events-auto. #}
   <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">
-    <div class="pointer-events-auto w-11/12 max-w-2xl glass-panel p-4 flex flex-col gap-2">
+    {# .search-panel (SPEC design/005): largura/padding vêm do token — no mobile/tablet o painel #}
+    {# compacto vira o pill central da navbar entre os chips de marca e usuário.                 #}
+    <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
       <div class="flex gap-2 relative">
         <div class="relative w-full flex items-center">
           <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +44,7 @@
         hx-target="#resultado-busca"
         hx-swap="innerHTML"
         class="hidden"></span>
-      <div class="flex justify-between px-2 pt-1 items-center">
+      <div class="search-hints flex justify-between px-2 pt-1 items-center">
         <span class="text-overline">
           Pressione <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">Ctrl</kbd> + <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">K</kbd>
         </span>
