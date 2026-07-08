@@ -64,4 +64,6 @@
 {% block scripts %}
   {# Feedback visual do Enter (SPEC design/002) — só existe onde existe a barra de busca #}
   <script type="module" src="{% static 'js/busca/feedback_selecao.js' %}"></script>
+  {# Atalho Ctrl+K prometido pela dica sob a barra: foca o input de busca #}
+  <script type="module" src="{% static 'js/busca/atalho_foco_busca.js' %}"></script>
 {% endblock %}
