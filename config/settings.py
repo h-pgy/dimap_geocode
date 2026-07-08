@@ -33,6 +33,10 @@ class _Settings(BaseSettings):
     )
     debug: bool = Field(default=True, alias="DJANGO_DEBUG")
     allowed_hosts: str = Field(default="*", alias="DJANGO_ALLOWED_HOSTS")
+    csrf_trusted_origins: str = Field(
+        default="https://*.ngrok-free.app,https://*.ngrok.app",
+        alias="DJANGO_CSRF_TRUSTED_ORIGINS",
+    )
 
     postgres_db: str = Field(default="dimap_geocode", alias="POSTGRES_DB")
     postgres_user: str = Field(default="dimap", alias="POSTGRES_USER")
@@ -79,6 +83,9 @@ _env = _Settings()
 SECRET_KEY = _env.secret_key
 DEBUG = _env.debug
 ALLOWED_HOSTS = [host.strip() for host in _env.allowed_hosts.split(",") if host.strip()]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in _env.csrf_trusted_origins.split(",") if origin.strip()
+]
 
 # WFS (GeoSampa → MDSF). A orquestração lê essas constantes e monta
 # WfsConnectionConfig para injetar no WfsFetcher (nunca o domínio lê daqui).
