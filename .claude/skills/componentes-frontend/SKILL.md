@@ -205,23 +205,36 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
   para amarrar animações de entrada/saída dos partials.
 - **JS restrito** (regra do projeto): callbacks de eventos HTMX e utilitários do Leaflet, nada mais.
 
-## 8. Setup técnico (produção, Tailwind 4 + daisyUI 5)
+## 8. Setup técnico (Tailwind 4 + daisyUI 5)
 
-No CSS de entrada (`static/src/input.css`):
-```css
-@import "tailwindcss";
-@plugin "daisyui" { themes: dimap --default; }
-@plugin "daisyui/theme" { name: "dimap"; /* papéis do §3.2 */ }
-@source "../../templates/**/*.html";  /* toda nova pasta de template entra aqui */
-@theme  { /* fontes + escalas agua/rocha/madeira do §3.1 */ }
-@layer components { /* tokens/átomos/moléculas de references/design_system.css */ }
-```
+**`static/src/tema-dimap.dev.css` é a FONTE ÚNICA do design system** (SPEC design/004): tema
+daisyUI como variáveis planas em `html[data-theme="dimap"]`, `@theme` (escalas do §3.1 + papéis
+do §3.2) e `@layer components` (tokens/átomos/moléculas). Editar o design system = editar esse
+arquivo. Três consumidores:
+
+1. **Aplicação (dev/CDN):** `base.html` inclui o arquivo server-side —
+   `<style type="text/tailwindcss">{% include "tema-dimap.dev.css" %}</style>`
+   (`static/src` está nos `DIRS` do template engine só para isso).
+2. **Mocks desta skill** (`examples/*.html`): loader JS faz fetch do arquivo e injeta o
+   `<style>`. **Exigem servidor com root na raiz do projeto** (ex.: Live Server) — não abrem
+   mais via `file://`.
+3. **Build de prod (futuro):** `static/src/input.css` é só o esqueleto
+   (`@import "tailwindcss"; @import "./tema-dimap.dev.css"; @plugin "daisyui"; @source ...`).
+
 Cuidados que já quebraram build/render:
 - `@apply` **só de utilities** (nunca classes daisyUI) — ver §2.1.
 - `shadow-inner` não existe no Tailwind 4; use `shadow-[inset_...]` arbitrária.
 - Sintaxe de important no Tailwind 4 é sufixo: `bg-transparent!` (não `!bg-transparent`).
-- Nos mocks (CDN `@tailwindcss/browser` + `daisyui@5`), o tema é forçado via variáveis em
-  `html[data-theme="dimap"]` **e** duplicado no `@theme` — ver cabeçalho dos exemplos.
+- O CDN `@tailwindcss/browser` só processa `<style type="text/tailwindcss">` **inline** (não
+  suporta `<link>`) — por isso o include (aplicação) e o fetch+inject (mocks). CSS de mock que
+  use `@apply` precisa estar num bloco com esse `type`.
+- **A string `@import` é PROIBIDA em qualquer bloco `text/tailwindcss` — inclusive dentro de
+  comentário.** O CDN concatena todos os blocos e decide injetar o core do Tailwind com um
+  `css.includes("@import")` ingênuo: se a string aparecer em qualquer lugar, ele assume que você
+  importou tudo manualmente, pula a injeção e **todo** `@apply` falha com
+  `Cannot apply unknown utility class` (o CSS inteiro cai). Já derrubou o tema em 2026-07-08:
+  um comentário no cabeçalho do `tema-dimap.dev.css` mencionava "@import". Diagnóstico rápido:
+  esse erro no console + tema morto ⇒ `grep '@import'` no `tema-dimap.dev.css` e nos mocks.
 
 ## 9. Arquivos de referência (ordem de consulta)
 

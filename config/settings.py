@@ -164,7 +164,10 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        # static/src entra SÓ para o {% include "tema-dimap.dev.css" %} do base.html: o tema
+        # dev (fonte única do design system, SPEC design/004) é incluído server-side dentro do
+        # <style type="text/tailwindcss">.
+        "DIRS": [BASE_DIR / "templates", BASE_DIR / "static" / "src"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

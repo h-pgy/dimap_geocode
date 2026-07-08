@@ -15,191 +15,24 @@
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
-  <!-- Tema DIMAP (inverno claro): sobrepõe as variáveis dos temas builtin do daisyUI (CDN) -->
-  <style>
-    html[data-theme="dimap"] {
-      color-scheme: light;
-      --color-base-100: #f2f8fb;
-      --color-base-200: #e3eff5;
-      --color-base-300: #cfe2eb;
-      --color-base-content: #0d1b2a;
-      --color-primary: #0096c7;
-      --color-primary-content: #f2fbff;
-      --color-secondary: #5e412f;
-      --color-secondary-content: #f6eee6;
-      --color-accent: #0f766e;
-      --color-accent-content: #ecfdf9;
-      --color-neutral: #1b263b;
-      --color-neutral-content: #e0e1dd;
-      --color-info: #0284c7;
-      --color-info-content: #f0f9ff;
-      --color-success: #059669;
-      --color-success-content: #ecfdf5;
-      --color-warning: #b45309;
-      --color-warning-content: #fef3c7;
-      --color-error: #dc2626;
-      --color-error-content: #fef2f2;
-      --radius-selector: 1rem;
-      --radius-field: 0.5rem;
-      --radius-box: 1rem;
-      --size-selector: 0.25rem;
-      --size-field: 0.25rem;
-      --border: 1px;
-      --depth: 1;
-      --noise: 0;
-    }
-  </style>
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server / python -m
+       http.server) — aberto via file:// o fetch é bloqueado e o tema não carrega. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css n\u00e3o carregou \u2014 sirva a RAIZ do projeto (Live Server), n\u00e3o abra via file://.</p>"));
+  </script>
 
-  <style type="text/tailwindcss">
-    @theme {
-      --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
-      --font-mono: "Roboto Mono", ui-monospace, "SFMono-Regular", monospace;
-
-      /* ÁGUA — escala da cor primária (energia, luz fria, geocodificação) */
-      --color-agua-100: #caf0f8;
-      --color-agua-200: #ade8f4;
-      --color-agua-300: #90e0ef;
-      --color-agua-400: #48cae4;
-      --color-agua-500: #00b4d8;
-      --color-agua-600: #0096c7;
-      --color-agua-700: #0077b6;
-      --color-agua-800: #023e8a;
-      --color-agua-900: #03045e;
-
-      /* ROCHA — escala neutra (tinta, superfícies, profundidade) */
-      --color-rocha-100: #e0e1dd;
-      --color-rocha-200: #c5ccd3;
-      --color-rocha-300: #a9bcd0;
-      --color-rocha-400: #8fa3bb;
-      --color-rocha-500: #778da9;
-      --color-rocha-600: #5b7290;
-      --color-rocha-700: #415a77;
-      --color-rocha-800: #2e4560;
-      --color-rocha-900: #1b263b;
-      --color-rocha-950: #0d1b2a;
-
-      /* MADEIRA — escala quente (tinta de títulos, geometria de polígono) */
-      --color-madeira-100: #ede0d4;
-      --color-madeira-200: #e6ccb2;
-      --color-madeira-300: #ddb892;
-      --color-madeira-400: #b08968;
-      --color-madeira-500: #9c6644;
-      --color-madeira-600: #7f5539;
-      --color-madeira-700: #5e412f;
-      --color-madeira-800: #46301f;
-      --color-madeira-900: #2e1f16;
-
-      /* SAKURA — rosa/magenta (rubor dos macacos no onsen; destaque de geometria sobre a ortofoto) */
-      --color-sakura-100: #fbe3e9;
-      --color-sakura-200: #f6c4d2;
-      --color-sakura-300: #efa0b8;
-      --color-sakura-400: #e5749b;
-      --color-sakura-500: #d84f7f;
-      --color-sakura-600: #bc3a67;
-      --color-sakura-700: #97294f;
-      --color-sakura-800: #6e1c3a;
-      --color-sakura-900: #471226;
-
-      /* Papéis semânticos daisyUI (duplicados para compilar as utilities) */
-      --color-primary: #0096c7;
-      --color-primary-content: #f2fbff;
-      --color-secondary: #5e412f;
-      --color-secondary-content: #f6eee6;
-      --color-accent: #0f766e;
-      --color-accent-content: #ecfdf9;
-      --color-neutral: #1b263b;
-      --color-neutral-content: #e0e1dd;
-      --color-base-100: #f2f8fb;
-      --color-base-200: #e3eff5;
-      --color-base-300: #cfe2eb;
-      --color-base-content: #0d1b2a;
-      --color-info: #0284c7;
-      --color-info-content: #f0f9ff;
-      --color-success: #059669;
-      --color-success-content: #ecfdf5;
-      --color-warning: #b45309;
-      --color-warning-content: #fef3c7;
-      --color-error: #dc2626;
-      --color-error-content: #fef2f2;
-    }
-
-    @layer components {
-      /* ==================== TOKENS DE MATERIAL (gelo/vidro) ==================== */
-      .glass-blur   { @apply backdrop-blur-[10px]; }
-      .glass-bg     { @apply bg-gradient-to-br from-white/65 via-white/45 to-white/30; }
-      .glass-bg-deep { @apply bg-gradient-to-br from-rocha-950/80 to-rocha-900/70; }
-      .glass-edge   { @apply border border-white/60; }
-      .glass-shadow { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)]; }
-      .glass-glow   { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_32px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.5)]; }
-
-      /* ==================== MATERIAIS COMPOSTOS ==================== */
-      /* Gelo fosco: painel padrão, tinta ESCURA sobre vidro claro */
-      .glass-panel {
-        @apply rounded-2xl backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
-      }
-      /* Vidro profundo: variante escura pontual (tooltips, contrastes) — tinta CLARA */
-      .glass-panel-deep {
-        @apply rounded-2xl backdrop-blur-[8px] bg-gradient-to-br from-rocha-950/80 to-rocha-900/70 border border-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(7,58,84,0.35),0_0_24px_rgba(72,202,228,0.25)] text-rocha-100;
-      }
-      /* Gaveta lateral: gelo mais denso (texto longo) */
-      .glass-drawer-panel {
-        @apply backdrop-blur-[12px] bg-gradient-to-l from-white/80 via-white/65 to-white/55 border-r border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),12px_0_40px_rgba(7,58,84,0.3),0_0_40px_rgba(72,202,228,0.25)];
-      }
-      /* Poço rebaixado: sub-cards dentro de painéis */
-      .card-well {
-        @apply rounded-2xl bg-white/30 border border-white/45 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
-      }
-
-      /* ==================== ÁTOMOS ==================== */
-      .btn-onsen {
-        @apply border-none rounded-xl font-bold text-rocha-950 bg-gradient-to-br from-agua-300 to-agua-500 shadow-[0_4px_20px_rgba(0,150,199,0.4)] transition-all duration-300 hover:brightness-105 hover:shadow-[0_4px_28px_rgba(0,150,199,0.55)];
-      }
-      .btn-glass {
-        @apply rounded-full backdrop-blur-[10px] bg-white/50 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(7,58,84,0.2)] transition-all duration-300 hover:bg-white/70 hover:shadow-[0_4px_20px_rgba(72,202,228,0.4)];
-      }
-      .input-glass {
-        @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/60 focus:border-agua-500 focus:outline-none focus:shadow-[0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
-      }
-      .icon-glow    { @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)]; }
-      .text-overline { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
-      .text-code    { @apply font-mono text-agua-700; }
-
-      /* Badges por tipo de geometria (cores default de camadas) */
-      .badge-ponto    { @apply border border-agua-600/40 bg-agua-500/15 text-agua-700 font-medium; }
-      .badge-linha    { @apply border border-accent/40 bg-accent/10 text-accent font-medium; }
-      .badge-poligono { @apply border border-sakura-500/50 bg-sakura-400/15 text-sakura-700 font-medium; }
-
-      /* ==================== MOLÉCULAS ==================== */
-      .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }
-      .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.15)]; }
-
-      .suggestion-panel          { @apply p-3 space-y-3 max-h-[45vh] overflow-hidden flex flex-col; }
-      .suggestion-section-scroll { @apply overflow-y-auto max-h-40; }
-      .suggestion-item.htmx-request { @apply bg-agua-400/30 scale-[0.99]; animation: onsen-confirm 0.5s ease-out both; }
-
-      /* ==================== COREOGRAFIA ==================== */
-      .transition-glass { @apply transition-all duration-500 ease-in-out; }
-      .glass-hide-up    { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }
-      .search-hero { @apply pt-[15vh] transition-all duration-500 ease-in-out; }
-      .search-hero:has(#resultado-busca:not(:empty)) { @apply pt-6; }
-      .cinematic-blur-layer { @apply absolute inset-0 z-10 pointer-events-none opacity-0 backdrop-blur-sm transition-opacity duration-500; }
-      .cinematic-blur-layer.active { @apply opacity-100 pointer-events-auto; }
-
-      /* Tooltip: vidro profundo (contraste invertido proposital) */
-      .tooltip::before { @apply bg-rocha-950/85! backdrop-blur-md! text-rocha-100! rounded-xl! border! border-white/15! shadow-lg! font-medium! px-4! py-2!; }
-      .tooltip::after  { @apply hidden!; }
-
-      /* Título de seção flutuando direto sobre o mapa: halo frio para leitura */
-      .section-title { @apply text-2xl font-bold tracking-tight text-rocha-950 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]; }
-    }
-
-    /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */
-    @keyframes onsen-confirm {
-      0%   { box-shadow: inset 0 0 0 1.5px rgba(72, 202, 228, 0.6), 0 0 0 rgba(72, 202, 228, 0); }
-      55%  { box-shadow: inset 0 0 0 1.5px rgba(72, 202, 228, 0.95), 0 0 22px rgba(72, 202, 228, 0.6); }
-      100% { box-shadow: inset 0 0 0 1.5px rgba(72, 202, 228, 0.6), 0 0 12px rgba(72, 202, 228, 0.4); }
-    }
-
+  <!-- CSS específico deste mock -->
   <style>
     html, body { margin: 0; padding: 0; }
     body { font-family: "Roboto", sans-serif; background: #e3eff5; }
