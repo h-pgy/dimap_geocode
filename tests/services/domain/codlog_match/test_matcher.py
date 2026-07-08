@@ -1,10 +1,9 @@
-from collections.abc import Generator
-
+import pandas as pd
 import pytest
 from pydantic import ValidationError
-from unittest.mock import patch
 
 from services.domain.codlog_match import CodlogMatcher, CodlogMatchInput
+from services.domain.codlog_match.catalog import CodlogCatalog
 
 # ---------------------------------------------------------------------------
 # Dados de teste
@@ -17,13 +16,23 @@ _DADOS_FAKE: dict[str, list[object]] = {
 }
 
 
+class FakeCatalog(CodlogCatalog):
+    """Catálogo em memória para testes — ignora parquets. Como é subclasse,
+    escapa do singleton (o bypass do __new__ vale só para a classe exata)."""
+
+    def __init__(self, dados: dict[str, list[object]]) -> None:
+        self._dados = dados
+
+    @property
+    def logradouros(self) -> pd.DataFrame:
+        df = pd.DataFrame(self._dados)
+        df["_codlog5"] = df["codlog"].str[:5]
+        return df
+
+
 @pytest.fixture
-def matcher() -> Generator[CodlogMatcher, None, None]:
-    with patch(
-        "services.domain.codlog_match.matcher.read_parquet_from_data",
-        return_value=_DADOS_FAKE,
-    ):
-        yield CodlogMatcher()
+def matcher() -> CodlogMatcher:
+    return CodlogMatcher(catalog=FakeCatalog(_DADOS_FAKE))
 
 
 # ---------------------------------------------------------------------------

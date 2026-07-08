@@ -32,25 +32,27 @@ central `services/utils/cache.py` de catálogos — esse arquivo só tem o mecan
 |---|---|---|---|
 | `LogradouroCatalog` | `services/domain/logradouros_match/catalog.py` | `tipos_logradouro_cache.parquet` (variações de tipo → código) + `nomes_logradouros.parquet` (codlog/tipo/nome) | `variacoes_tipo`, `codigo_da_variacao(variacao)`, `linhas_do_tipo(codigo)`, `todas_as_linhas()`, `linhas_por_nome(nome, codigo)` |
 | `ContribuinteCatalog` | `services/domain/contribuinte_match/catalog.py` | `enderecos_fiscais.parquet` (lotes + endereço fiscal por contribuinte) | `enderecos_fiscais` (DataFrame, prefixo setor/quadra/lote), `enderecos_fiscais_com_chave` (idem + `chave_numero_porta` e `codlog5` prontos para lookup de endereço fiscal exato) |
+| `CodlogCatalog` | `services/domain/codlog_match/catalog.py` | `nomes_logradouros.parquet` (o mesmo do `LogradouroCatalog`, mas lido de forma independente — cada domínio tem o seu) | `logradouros` (DataFrame com coluna `_codlog5` pré-calculada; o `CodlogMatcher` monta o filtro de prefixo/igualdade) |
 
-Não há catálogo próprio para **lotes via WFS** (`lote_geocod` consulta o GeoServer ao vivo por
-`CqlFilter`, sem parquet) nem para **codlog** isolado: `CodlogMatcher`
-(`services/domain/codlog_match/matcher.py`) ainda lê `nomes_logradouros.parquet` na própria
-`ttl_cached_property`, **sem** seguir o padrão `Catalog` e **sem** warmup — é dívida conhecida,
-fora de escopo da SPEC que introduziu esse padrão (`SPECS/infraestrutura/003-catalog-eager-warmup.md`).
-Se for tocar nesse matcher, não assuma que ele já é um `Catalog` singleton.
+`CodlogCatalog` e `LogradouroCatalog` leem o **mesmo** `nomes_logradouros.parquet` de propósito:
+são domínios distintos (`codlog_match` vs. `logradouros_match`) e a duplicação em memória é aceita
+para preservar a fronteira de módulo — `codlog_match` não depende de `logradouros_match`. Não tente
+"unificar" a leitura.
+
+Não há catálogo próprio para **lotes via WFS**: `lote_geocod` consulta o GeoServer ao vivo por
+`CqlFilter`, sem parquet.
 
 ## Ciclo de vida
 
 - **Onde aquece:** `services/domain/warmup.py::aquecer_catalogos()` chama
-  `logradouro_catalog.aquecer()` e `contribuinte_catalog.aquecer()`. É chamada **só** em
-  `config/wsgi.py` e `config/asgi.py`, logo após `application = get_wsgi/asgi_application()` —
-  **não** em `AppConfig.ready()`. Isso garante que só processos que servem requests pagam o
-  aquecimento: o pai do autoreloader do `runserver` e qualquer management command
-  (`migrate`, `shell`, comandos do pipeline) não tocam nisso.
+  `logradouro_catalog.aquecer()`, `contribuinte_catalog.aquecer()` e `codlog_catalog.aquecer()`.
+  É chamada **só** em `config/wsgi.py` e `config/asgi.py`, logo após
+  `application = get_wsgi/asgi_application()` — **não** em `AppConfig.ready()`. Isso garante que só
+  processos que servem requests pagam o aquecimento: o pai do autoreloader do `runserver` e qualquer
+  management command (`migrate`, `shell`, comandos do pipeline) não tocam nisso.
 - **TTL:** cada `Catalog` usa `ttl_cached_property` com TTL próprio —
-  `LogradouroCatalog` 24h (`DATA_TTL_SECONDS = 24*60*60`), `ContribuinteCatalog` 1h
-  (`DATA_TTL_SECONDS = 3600`). Passado o TTL, o próximo acesso relê o parquet **dentro** do ciclo
+  `LogradouroCatalog` e `CodlogCatalog` 24h (`DATA_TTL_SECONDS = 24*60*60`), `ContribuinteCatalog`
+  1h (`DATA_TTL_SECONDS = 3600`). Passado o TTL, o próximo acesso relê o parquet **dentro** do ciclo
   de request (lazy) — não há refresh assíncrono.
 - **Forçar refresh após rodar o pipeline de dados:** não existe management command dedicado.
   O jeito real é **reiniciar o processo web** (reimporta `config/wsgi.py`/`asgi.py`, que chama
