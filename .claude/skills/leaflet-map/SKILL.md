@@ -21,14 +21,15 @@ Esta skill cobre **só** três coisas:
 **Fora do escopo (skill futura):** capturar eventos do mapa (`map.on('click'…)`, desenho, etc.).
 Não escreva handlers de evento usando esta skill.
 
-## Regras de fronteira (§11 do CLAUDE.md — não violar)
+## Regras de fronteira (CLAUDE.md, "Estilo e Convenções: JavaScript restrito" — não violar)
 
 - **JS é só cola para o Leaflet.** Sem regra de negócio, sem estado, sem montar UI a partir de
   JSON. O JS recebe **geometria + config já prontos do servidor** e os entrega ao Leaflet.
 - **Nada hardcoded no JS.** URL do WMS, nome das camadas WMS, centro, zoom e **cor da camada**
   vêm do **backend** (settings/contexto Django), nunca cravados no script. O Django injeta via
   `json_script` (ver "Passando dados do servidor").
-- **Saída sempre em EPSG:4326.** O domínio reprojeta para 4326 antes de mandar (§7.3). O JS
+- **Saída sempre em EPSG:4326.** O domínio reprojeta para 4326 antes de mandar (CLAUDE.md:
+  reprojeção centralizada no domínio; CRS vindos da orquestração). O JS
   **nunca** reprojeta. A geometria chega como **GeoJSON** (coordenadas `[lng, lat]`).
 - **GeoJSON pelo `L.geoJSON`.** Não faça parsing manual de coordenadas — `L.geoJSON` lê o GeoJSON
   direto e cuida da ordem `[lng, lat] → [lat, lng]`.
@@ -130,8 +131,8 @@ A geometria chega como **GeoJSON 4326**. Use `L.geoJSON(geojson, opções)` — 
   para controlar cor use `L.circleMarker`).
 - **`onEachFeature(feature, layer)`** → **popup e tooltip** (roda para cada feature).
 
-A **cor** é do layer (cada layer do projeto tem `cor` de display — §1 do CLAUDE.md) e chega do
-servidor; o JS só a aplica.
+A **cor** chega **pronta do servidor** — hoje das settings `MAP_COR_*` (linha, polígono, ponto),
+injetadas no contexto pelo app `mapping`. O JS só a aplica, nunca a escolhe.
 
 ```javascript
 // COR vem do servidor (ex.: data.cor). borda e preenchimento derivam dela.
@@ -205,7 +206,7 @@ layer.bindTooltip("Rua Direita", {
 - **Popup** = informação detalhada sob demanda (clique). O HTML vem pronto do backend.
 - **Tooltip** = rótulo leve no hover (ou fixo com `permanent: true`).
 - Não monte o HTML do popup no JS a partir de campos soltos — o **servidor** entrega o
-  `popup_html` já renderizado (§11: JS não monta UI).
+  `popup_html` já renderizado (CLAUDE.md: JS não monta UI).
 
 ---
 

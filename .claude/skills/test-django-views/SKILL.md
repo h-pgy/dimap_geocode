@@ -1,15 +1,16 @@
 ---
 name: test-django-views
-description: Pipeline para smoke test manual de views Django/HTMX do DIMAP GeoCoder (o "validar a implementação" do fluxo de SPEC, CLAUDE.md §13 — não é escrever testes automatizados). Use sempre que acabar de implementar ou alterar uma view e precisar confirmar o comportamento real (status code, HTML do partial, caminhos de erro) antes de reportar a tarefa como concluída, sem depender de browser.
+description: Pipeline para smoke test manual de views Django/HTMX do DIMAP GeoCoder — o passo de validação funcional que complementa a suíte de testes definida na SPEC (política de testes/TDD do CLAUDE.md); não substitui nem dispensa os testes automatizados. Use sempre que acabar de implementar ou alterar uma view e precisar confirmar o comportamento real (status code, HTML do partial, caminhos de erro) antes de reportar a tarefa como concluída, sem depender de browser.
 ---
 
 # Smoke test de views Django — `django.test.Client` via `manage.py shell -c`
 
 ## Quando usar
 
-Depois de implementar/alterar uma view (§13 do CLAUDE.md: "validar a implementação — smoke test
-manual" vem **antes** de qualquer teste automatizado, que só é escrito sob pedido explícito). Serve
-para:
+Depois de implementar/alterar uma view. O projeto é **TDD** (política de testes do CLAUDE.md): a
+validação principal é a suíte que a SPEC definiu e que foi **escrita antes** do código. Este smoke
+test é o **passo complementar**, para o que o teste automatizado cobre mal — o HTML do partial
+renderizado e o comportamento real da interface. Serve para:
 
 - Confirmar que a view responde o **status code** e o **partial HTML** esperados no caminho feliz.
 - Percorrer os **caminhos de erro** (exceções de domínio → aviso semântico, `ValidationError` do
@@ -94,5 +95,6 @@ com `curl` cru); esse caso vai ser resolvido melhor numa iteração futura desta
 
 - Não tente montar token CSRF manualmente por `curl` para simular um POST — use `Client()` (que já
   ignora CSRF) para esse tipo de verificação de view.
-- Não confunda este smoke test com os testes automatizados de `pytest` — este pipeline é manual,
-  sob demanda, e não fica versionado como suíte de testes (CLAUDE.md §13).
+- Não confunda este smoke test com os testes automatizados de `pytest` — este pipeline é manual e
+  não fica versionado como suíte. Ele **não dispensa** os testes da SPEC, que no TDD vêm antes do
+  código (política de testes do CLAUDE.md).

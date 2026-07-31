@@ -91,14 +91,19 @@ libera o uso da seção `Patches`.
 - Toda nova funcionalidade começa por escrever (ou receber) uma SPEC no padrão abaixo.
 - A SPEC é a **fonte de verdade da iteração**: a implementação segue o que está nela.
 - Snippets de código na SPEC são **direção sugerida**, não dogma — divergir exige razão
-  explícita, e a divergência deve respeitar os princípios de arquitetura (§3 do CLAUDE.md)
-  e o estilo (§10 do CLAUDE.md).
+  explícita, e a divergência deve respeitar os "Princípios de Arquitetura" e o "Estilo e
+  Convenções de Código" do CLAUDE.md.
 - **A SPEC não lista arquivos.** Ela não diz quais arquivos serão criados ou alterados —
   isso é decisão de implementação. O que a SPEC traz é uma lista de **peças já existentes**
   que devem ser **compostas**, deixando explícito o que já temos pronto.
-- **Testes unitários não fazem parte da SPEC.** A seção "Notas de teste" é um guia para
-  *quando os testes forem pedidos explicitamente pelo desenvolvedor*, não uma ordem para
-  criá-los junto da implementação.
+- **A SPEC propõe os testes — o desenvolvimento é TDD.** A seção "Testes (TDD)" lista os testes
+  que vão guiar a implementação: eles são **aprovados junto com a SPEC** e **escritos antes** do
+  código. É isso que faz a validação humana acontecer antes da implementação, e não depois.
+- **Poucos testes, bem escolhidos — não exagere.** A lista fixa o **comportamento observável** dos
+  critérios de aceite, mais os casos de borda que realmente quebram. Nada de getter, DTO trivial ou
+  variação que só repete outro caso; **cobertura não é meta**. Regra prática: uma SPEC com 3
+  critérios de aceite pede algo como **3 a 6 testes**, não 20. Lista inflada engessa refactor e
+  queima ciclo de revisão — o oposto do que o TDD deveria comprar.
 
 ---
 
@@ -128,8 +133,8 @@ Como <persona>, quero <objetivo>, para <valor/razão>.
 - [ ] <condição observável de pronto>
 
 ## Contexto e decisões de arquitetura
-<Em que camadas mexe (interface / domínio / persistência), quais princípios de §3 do
-CLAUDE.md se aplicam, por que esta abordagem. Fluxo resumido da funcionalidade.>
+<Em que camadas mexe (interface / domínio / persistência), quais dos "Princípios de
+Arquitetura" do CLAUDE.md se aplicam, por que esta abordagem. Fluxo resumido da funcionalidade.>
 
 ## Peças de referência a compor
 <Funcionalidades JÁ existentes que esta SPEC deve reutilizar por composição — não recriar.>
@@ -138,15 +143,22 @@ CLAUDE.md se aplicam, por que esta abordagem. Fluxo resumido da funcionalidade.>
 
 ## Snippets sugeridos
 ```python
-# direção de implementação — adaptar conforme necessário, sem violar §3 nem §10
+# direção de implementação — adaptar conforme necessário, sem violar os princípios de
+# arquitetura nem o estilo de código do CLAUDE.md
 ```
 
 ## Fora de escopo
 <O que esta SPEC explicitamente NÃO faz, para evitar avanço além da iteração.>
 
-## Notas de teste
-<O que precisaria de teste e casos de borda relevantes — só para referência futura,
-não para implementar agora.>
+## Testes (TDD)
+<Os testes que guiam a implementação — escritos ANTES do código. Um por critério de aceite
+observável, mais os casos de borda que realmente quebram. POUCOS E ESSENCIAIS: ~3 a 6 numa
+SPEC típica. Não listar getter, DTO trivial nem variação que só repete outro caso.
+Uma linha por teste: nome + o comportamento que ele fixa. Alvo natural é `services/`;
+view só quando o que se fixa é o contrato HTTP/partial.>
+
+- `test_<comportamento>` — <o comportamento observável que este teste fixa>
+- `test_<caso_de_borda>` — <a borda que ele protege>
 
 ## Patches
 <SÓ existe depois que a SPEC foi implementada (check `Implementada` marcado). Correções, bugfixes e
@@ -179,6 +191,7 @@ Antes de apresentar a SPEC ao usuário, verifique:
 - [ ] Contexto explica em quais camadas a SPEC mexe e por quê essa abordagem.
 - [ ] Peças de referência listam apenas o que **já existe** e deve ser reutilizado.
 - [ ] Fora de escopo define explicitamente o que **não** entra nesta iteração.
-- [ ] Nenhum teste unitário foi escrito ou comprometido — apenas "Notas de teste".
+- [ ] Seção "Testes (TDD)" presente, com os testes derivados dos critérios de aceite — **poucos e
+      essenciais** (~3 a 6), sem inflar a lista nem perseguir cobertura.
 - [ ] A SPEC não lista arquivos a criar/alterar (isso é decisão de implementação).
 - [ ] Se a SPEC tocou funcionalidades demais, ela foi quebrada em duas.
