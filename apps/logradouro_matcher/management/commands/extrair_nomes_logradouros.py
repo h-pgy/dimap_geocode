@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -19,7 +18,6 @@ class Command(BaseCommand):
         retry_policy = build_retry_policy(settings)
         request = NomesLogradourosRequest(
             layer_name=settings.WFS_LAYER_LOGRADOUROS,
-            data_folder=Path(settings.BASE_DIR) / "data",
         )
         result = run(config, request, retry_policy=retry_policy, verbose=bool(options["verbose"]))
         self.stdout.write(

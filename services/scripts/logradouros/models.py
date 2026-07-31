@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 class NomesLogradourosRequest(BaseModel):
     layer_name: str
-    data_folder: Path
 
 
 class LogradouroNome(BaseModel):

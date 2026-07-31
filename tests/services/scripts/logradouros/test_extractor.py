@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from services.integrations.wfs import WfsFeatureCollection
 from services.scripts.logradouros.extractor import NomesLogradourosExtractor
 from services.scripts.logradouros.models import NomesLogradourosRequest
@@ -14,7 +12,7 @@ def _page(props_list: list[dict[str, object]]) -> WfsFeatureCollection:
 
 
 def _req() -> NomesLogradourosRequest:
-    return NomesLogradourosRequest(layer_name="v_logradouro_segmento", data_folder=Path("."))
+    return NomesLogradourosRequest(layer_name="v_logradouro_segmento")
 
 
 def test_dedups_triples_across_pages() -> None:
