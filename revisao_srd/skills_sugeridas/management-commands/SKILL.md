@@ -1,61 +1,127 @@
 ---
 name: management-commands
-description: Padrão de management commands e do pipeline de dados do DIMAP GeoCoder. Use ao criar/alterar um comando do manage.py ou ao rodar o pipeline de cargas (bases oficiais → variações → cache) — o comando é sempre fino (parsing + chamada ao script de services/scripts + feedback) e a lógica vive no script.
+description: Padrão de management commands e do pipeline de dados do DIMAP GeoCoder. Use ao criar/alterar um comando do manage.py ou ao rodar o pipeline de cargas (bases oficiais → variações/cache → restart do web) — o comando é sempre fino (parsing + leitura de settings + chamada ao script de services/scripts + feedback) e a lógica vive no script.
 ---
 
-> **RASCUNHO — validar contra o código antes de promover a `.claude/skills/`.**
-> Este conteúdo absorve o §8 do CLAUDE.md atual. Fontes: `apps/*/management/commands/` e
-> `services/scripts/`.
+> **VALIDADA contra o código** (`apps/*/management/commands/`, `services/scripts/`,
+> `services/integrations/wfs/utils/`) — pronta para promover a `.claude/skills/`.
+> Absorve o §8 do CLAUDE.md. Scripts antigos que ainda não seguem o padrão descrito aqui estão
+> listados em "Ajustes pendentes no código" — a skill descreve o padrão, não o legado.
 
 # Management commands — comando fino, lógica no script
 
-## A regra (inegociável, do CLAUDE.md)
+## A regra (inegociável, CLAUDE.md §6.4)
 
-O comando **só** faz três coisas: parsing de argumentos, chamada ao script em
-`services/scripts/`, feedback no stdout. Nenhuma regra de negócio no comando. Scripts nunca
-rodam durante request/response.
+O comando é a **fronteira entre o Django e o domínio**, e faz só o que essa fronteira exige:
 
-## Padrão
+- **parsing de argumentos** (`add_arguments`);
+- **leitura de `settings`**, traduzida nos DTOs de configuração que o script pede;
+- **chamada ao `run()`** do script em `services/scripts/`;
+- **feedback no stdout**, formatando o DTO de resultado.
+
+Nenhuma regra de negócio, nenhum IO, nenhum cálculo no comando — se você precisou de um `if` sobre
+o dado, ele é do script. O comando é o **único** lugar do pipeline que conhece Django; scripts
+**nunca** rodam durante request/response.
+
+## O padrão
+
+Exemplo real (`apps/address_geocoder/management/commands/extrair_segmentos_logradouros.py`):
 
 ```python
+from argparse import ArgumentParser
+
+from django.conf import settings
 from django.core.management.base import BaseCommand
-from services.scripts import load_logradouros
+
+from services.integrations.wfs import build_connection_config, build_retry_policy
+from services.scripts.segmentos_logradouros import SegmentosLogradourosRequest, run
 
 
 class Command(BaseCommand):
-    help = "Carrega os logradouros oficiais da PMSP a partir do GeoSampa."
+    help = "Extrai ... do WFS para data/segmentos_logradouros.parquet."
 
-    def add_arguments(self, parser) -> None:
-        parser.add_argument("--source", type=str, default="geosampa")
+    def add_arguments(self, parser: ArgumentParser) -> None:
+        parser.add_argument("--verbose", action="store_true")
 
     def handle(self, *args: object, **options: object) -> None:
-        total = load_logradouros.run(source=options["source"])
-        self.stdout.write(self.style.SUCCESS(f"{total} logradouros carregados."))
+        config = build_connection_config(settings)
+        retry_policy = build_retry_policy(settings)
+        request = SegmentosLogradourosRequest(layer_name=settings.WFS_LAYER_LOGRADOUROS)
+        result = run(config, request, retry_policy=retry_policy, verbose=bool(options["verbose"]))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Concluído. {result.total_segments} segmentos salvos em {result.output_path}"
+            )
+        )
 ```
 
-Quando o script consome integrações (WFS/WMS), **é o comando que lê o `settings`** e injeta os
-DTOs de config no script — o domínio nunca lê settings (ver skill `wfs-fetcher`, seção
-"Orquestração", que traz o padrão real de `extrair_nomes_logradouros`).
+Nem todo comando tem essa cara — há comandos sem `settings`, sem argumentos, sem rede, e haverá
+comandos que não extraem nada. O que **não** varia:
 
-## O pipeline de dados (ordem importa)
+- **Quem lê `settings` é o comando** (§3.3). O que o script precisa de configuração — camada, CRS,
+  caminho — entra como campo do `...Request`.
+- **Use os factories da integração** quando houver (`build_connection_config`,
+  `build_retry_policy` de `services.integrations.wfs`); não remonte DTOs de config campo a campo.
+- **Tipagem integral** (§7.2): `parser: ArgumentParser`, `*args: object, **options: object`,
+  `-> None`. `mypy` e `ruff` limpos.
+- **`run()` devolve um DTO Pydantic**; o comando **formata**, não recalcula. Se o script tem algo a
+  dizer (contagens, itens não mapeados, avisos), isso vai no DTO de resultado — **o script não
+  escreve em stdout**, quem decide o que vira `SUCCESS`/`WARNING` na tela é o comando.
+- **Rotina longa expõe `--verbose`** e repassa ao script; extrações do GeoSampa levam minutos e sem
+  isso não há sinal de progresso.
 
-```
-1. cargas das bases oficiais   (logradouros, endereços fiscais, lotes → data/*.parquet)
-2. geração de variações        (sobre logradouros e endereços fiscais; nunca sobre lotes)
-3. refresh do cache de lookup  (o que os catálogos em memória consomem — skill catalogos-lookup)
-```
+## Anatomia do script (`services/scripts/<nome>/`)
 
-TODO: tabela com os comandos reais existentes (nome do comando → script → artefato em `data/`):
+| Arquivo | Conteúdo |
+|---|---|
+| `models.py` | DTOs Pydantic: `...Request` (input) e `...Result` (output). §7.1: DTO nas duas pontas. |
+| `extractor.py` | A lógica: **classe callable**, recebendo suas dependências **por composição** no `__init__` e tipadas como `Callable` — não como a classe concreta. É o que torna o teste barato. |
+| `constants.py` | Constantes do script, quando houver. |
+| `runner.py` | `run()`: a fachada do script — monta as dependências, chama o extractor, persiste e devolve o `...Result`. |
+| `__init__.py` | **Só reexporta** (`run`, `OUTPUT_FILENAME`, símbolos públicos em `__all__`) — **nunca implementa** (§7.2). |
 
-| Comando | Script | Produz |
-|---|---|---|
-| `extrair_nomes_logradouros` (TODO: confirmar) | `services/scripts/logradouros` | `data/nomes_logradouros.parquet` |
-| TODO | `services/scripts/segmentos_logradouros` | `data/segmentos_logradouros.parquet` |
-| TODO | `services/scripts/enderecos_fiscais` | `data/enderecos_fiscais.parquet` |
-| TODO | `services/scripts/augment_tipos_logradouro` | `data/tipos_logradouro_aumentado.json` / `_cache.parquet` |
+A escrita usa os helpers de `services.utils.io` (`write_parquet_to_data`, `write_json_to_data`), que
+já resolvem `data/` — não monte `Path` para `data/` nem no script nem no comando, e não passe a
+pasta de destino pelo `...Request`.
 
-## Onde criar
+## Depois de rodar (§6.4: cargas → variações → cache)
 
-Em `management/commands/` do **app de domínio mais próximo do dado** (ex.: extração de
-logradouros vive em `apps/logradouro_matcher`). Execução sempre via `uv run python manage.py
-<comando>`.
+Os comandos formam um **pipeline encadeado** — os que geram variações e caches consomem os parquets
+das cargas. Antes de rodar um, veja de que artefato de `data/` ele depende (está no `...Request` ou
+nas constantes do script): rodar fora de ordem não costuma quebrar, produz cache a partir de dado
+velho, que é pior.
+
+**Nenhum comando faz refresh de cache em runtime, e não deve fazer.** Os catálogos são singletons
+aquecidos na subida do processo web; para o site enxergar o parquet novo, **reinicie o processo** —
+sem isso a releitura só acontece quando o TTL expira. Ver skill `catalogos-lookup`.
+
+Execução sempre via `uv run python manage.py <comando>` (§8).
+
+## Testes (§9)
+
+O alvo é o **script**, não o comando: `tests/services/scripts/<nome>/test_extractor.py`, exercitando
+o extractor com um **fake** no lugar da dependência injetada (uma função que devolve fixtures).
+Como o extractor depende de um `Callable`, o teste não precisa de rede, de Django nem de banco.
+Comando fino não se testa — não há comportamento próprio nele para fixar.
+
+## Erros comuns
+
+- Instanciar cliente de integração ou ler `data/` **direto no comando** — a lógica migra pro comando
+  e deixa de ser testável sem Django.
+- Ler `settings` **dentro** de `services/` — quebra §3.3.
+- Hardcodar nome de camada, CRS ou caminho de `data/` no script.
+- Fazer o script imprimir em stdout.
+- Criar um comando de "refresh de cache" ou disparar aquecimento a partir de um comando.
+
+## Ajustes pendentes no código
+
+Os scripts abaixo são anteriores à consolidação deste padrão e ainda não o seguem. **Não os copie
+como referência** — o padrão é o descrito acima. Se você for mexer num deles, aproveite e corrija.
+
+1. **`run()` dentro do `__init__.py`.** Os quatro scripts definem `run()` e `_to_columns()` no
+   próprio `__init__.py`, que deveria só reexportar (§7.2). Mover para `runner.py` e deixar o
+   `__init__.py` com imports apenas.
+2. **`logradouros` não usa o utilitário de IO.** Recebe `data_folder` via
+   `settings.BASE_DIR / "data"` no `NomesLogradourosRequest` e chama `write_parquet` com a pasta;
+   deveria usar `write_parquet_to_data` como os outros dois, e o campo `data_folder` deveria sumir
+   do `...Request` (junto com a leitura de `settings.BASE_DIR` no comando).
