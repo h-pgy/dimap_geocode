@@ -2,7 +2,7 @@
 Django settings — DIMAP GeoCoder.
 
 A configuração de ambiente é lida via Pydantic Settings e reextraída para
-constantes UPPER_CASE locais (CLAUDE.md §10.3 / §11). O resto do módulo
+constantes UPPER_CASE locais (CLAUDE.md, "Estilo e Convenções de Código"). O resto do módulo
 referencia as constantes, não o objeto de settings.
 """
 
@@ -190,7 +190,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 
-# Database — PostGIS desde a fase inicial (CLAUDE.md §2).
+# Database — PostGIS desde a fase inicial (CLAUDE.md, "Stack").
 
 DATABASES = {
     "default": {
@@ -222,7 +222,7 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files — saída do build do Tailwind/DaisyUI (CLAUDE.md §5).
+# Static files — saída do build do Tailwind/DaisyUI (CLAUDE.md, "Estrutura do Projeto").
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static" / "dist", BASE_DIR / "static" / "src"]

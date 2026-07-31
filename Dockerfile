@@ -4,7 +4,7 @@
 # do GeoDjango que NÃO podem ser instaladas via uv/pip.
 FROM python:3.14-slim-trixie
 
-# Bibliotecas de sistema exigidas pelo GeoDjango (ver CLAUDE.md §2).
+# Bibliotecas de sistema exigidas pelo GeoDjango (ver CLAUDE.md, "Stack").
 #   gdal-bin / libgdal-dev -> GDAL   |   libgeos-dev -> GEOS   |   libproj-dev -> PROJ
 RUN apt-get update && apt-get install -y --no-install-recommends \
         binutils \

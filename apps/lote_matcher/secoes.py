@@ -3,7 +3,8 @@
 Consolida a cola cross-domínio dos branches de busca de lote: a resolução do logradouro
 (literal → fuzzy, motor da SPEC 013) e o lookup EXATO na base fiscal por codlog + número.
 Essa composição cruza dois domínios (logradouros_match + contribuinte_match) e por isso vive
-na orquestração do app, nunca em services/ (CLAUDE.md §3.3, §10.1). Nada aqui conhece `request`
+na orquestração do app, nunca em services/ (CLAUDE.md, "Isolamento rigoroso entre camadas" e
+"Estilo e Convenções de Código"). Nada aqui conhece `request`
 nem devolve `HttpResponse`.
 """
 
