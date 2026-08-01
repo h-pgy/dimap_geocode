@@ -59,6 +59,8 @@ automatizado (SPEC 007) sem que cada script novo reintroduza a mesma classe de e
 - [ ] O temporário é **removido** quando a escrita falha — `data/` não acumula sobras — e
       `data/*.tmp` está no `.gitignore`, para que uma sobra de processo morto (`kill -9`, que não
       roda `finally`) não apareça como arquivo novo no `git status` nem entre num commit.
+- [ ] O nome do temporário é **próprio de cada processo** (sufixo de PID). Dois processos escrevendo
+      o mesmo artefato ao mesmo tempo não compartilham temporário — cada um promove o seu, inteiro.
 - [ ] **Só o `.tmp` é ignorado.** Parquets e JSON **continuam versionados** (§5: `data/` é dado
       versionado) — `git pull` seguido de `runserver` tem que funcionar sem reextrair nada do
       GeoSampa.
@@ -71,10 +73,14 @@ automatizado (SPEC 007) sem que cada script novo reintroduza a mesma classe de e
 - [ ] **Nenhum teste escreve na `data/` real.** `uv run pytest` roda inteiro sem alterar um byte de
       `data/` — o diretório de dados é resolvido **na hora da chamada** (não amarrado no import),
       e um fixture `autouse` aponta os testes para um diretório temporário.
+- [ ] O redirecionamento **alcança de fato os escritores**: redirecionar o diretório passa a valer
+      para o próximo `write_parquet_to_data`/`read_parquet_from_data` **sem que cada módulo de IO
+      precise ser patchado um a um**. Redirecionamento que não alcança o chamador falharia em
+      silêncio — a suíte seguiria escrevendo na `data/` real e passando.
 - [ ] O redirecionamento **não vale para os testes marcados `integration`**, que leem os parquets
       reais por definição: `uv run pytest -m integration` continua passando, lendo `data/` de
-      verdade. A exceção é **por marker**, não por lista de arquivos — hoje são 8 testes em 6
-      módulos, e a regra tem que valer para o 9º sem ninguém editar nada.
+      verdade. A exceção é **por marker**, não por lista de arquivos — hoje são 8 testes, em 8
+      arquivos sobre 6 pacotes de domínio, e a regra tem que valer para o 9º sem ninguém editar nada.
 - [ ] O teste do `augment` deixa de depender dos artefatos reais: monta seus próprios insumos
       sintéticos no diretório temporário e afirma sobre eles. Hoje ele chama `run()` sem argumentos,
       lê o `nomes_logradouros.parquet` real e **reescreve o `tipos_logradouro_cache.parquet`
@@ -167,6 +173,14 @@ rename atômico — um `/tmp` do sistema não serve, seria cópia entre volumes)
 `os.replace`, que no POSIX é atômico e sobrescreve o destino. Em caso de erro, o temporário é
 removido. Quem lê enxerga sempre um arquivo inteiro: o velho ou o novo.
 
+**O temporário tem que ser por processo, ou a atomicidade se desfaz na SPEC 007.** Um nome fixo
+(`enderecos_fiscais.parquet.tmp`) basta enquanto só existe execução manual, mas o daemon da 007 pode
+estar reextraindo a mesma camada quando alguém dispara o comando na mão: os dois abrem o **mesmo**
+temporário, um trunca o do outro, e o primeiro a terminar promove com `os.replace` um arquivo que o
+outro ainda está escrevendo — a corrupção que esta SPEC existe para eliminar, reintroduzida pela
+porta de trás. Sufixar o temporário com o PID resolve, continua casando com `data/*.tmp` no
+`.gitignore` e não custa nada. É barato agora e caro de descobrir depois.
+
 Isso mora **nos helpers de `services/utils/io`** — `write_parquet_to_data` e `write_json_to_data`
 passam a escrever assim, e **nenhum runner muda por causa disso**. É a mesma razão de sempre: se
 cada script resolvesse a atomicidade, o próximo nasceria sem ela. O `write_json_to_data` entra
@@ -199,14 +213,24 @@ um fixture `autouse` no `conftest.py` aponta a suíte para um diretório tempor�
 afirma sobre eles, em vez de sobre 1 MB de dado real. Ele fica rápido, determinístico e para de
 depender de a base de produção conter "Avenida".
 
+**Resolver na chamada não basta: o ponto de indireção tem que ser alcançável de fora.** Se
+`parquet.py` e `json.py` fizerem `from .config import data_dir`, cada um passa a ter sua **própria**
+ligação para a função, e um `monkeypatch.setattr(config, "data_dir", ...)` troca o nome dentro de
+`config` sem alcançar nenhum dos dois — o fixture não faria efeito, a suíte continuaria escrevendo
+na `data/` real e **passaria**, que é o pior desfecho possível para um conserto de isolamento. Os
+escritores importam o **módulo** (`from . import config`) e chamam `config.data_dir()`: aí existe um
+único ponto de resolução, e patchá-lo vale para todos os chamadores de uma vez. É esse
+comportamento — e não o monkeypatch — que o `test_diretorio_de_dados_resolvido_na_chamada` fixa.
+
 Consertar isso **antes** da SPEC 007 não é ordem arbitrária: com o registro de metadados dentro dos
 runners, o estrago cresceria — a suíte passaria a gravar também no JSON de metadados versionado,
 com entradas originadas de teste, metadado mentindo sobre quando o dado foi extraído. Que é
 justamente o que a 007 existe para tornar confiável.
 
 **Com uma exceção obrigatória: os testes `integration`.** São **8 testes marcados
-`@pytest.mark.integration`, em 6 módulos** (`logradouros_match` ×3, `address_geocod`,
-`lote_geocod`, `logradouro_geocod`, `contribuinte_match`, `codlog_match`), e a razão de existir
+`@pytest.mark.integration`, em 8 arquivos sobre 6 pacotes de domínio** (`logradouros_match` ×3
+arquivos, `address_geocod`, `lote_geocod`, `logradouro_geocod`, `contribuinte_match`,
+`codlog_match`), e a razão de existir
 deles é justamente rodar **contra os parquets reais de `data/`** — redirecionar o diretório para
 eles esvaziaria o teste e o faria falhar por arquivo inexistente. O fixture consulta o **marker** do
 teste e não redireciona quando ele é `integration`; é por marker, e não por lista de módulos,
@@ -236,7 +260,9 @@ válido de nada, e é o único ignorado.
   `add_arguments`; ganha `--verbose` e o `Request`, permanecendo fino.
 - `@services/utils/io` → `write_parquet_to_data` / `write_json_to_data` / `read_parquet_from_data` /
   `read_json_from_data`: já resolvem `data/`. Aqui deixam de ser `partial` congelada no import e a
-  escrita atômica entra num helper compartilhado pelos dois escritores.
+  escrita atômica entra num helper compartilhado pelos dois escritores. A ordem dos argumentos de
+  cada um **é preservada** (os `partial` de JSON são posicionais e os de parquet são por keyword):
+  nenhum chamador de hoje muda.
 - `@tests/conftest.py` → já tem o fixture `autouse` que reseta os catálogos singleton; é onde entra,
   no mesmo molde, o redirecionamento do diretório de dados para um temporário.
 - `@.gitignore` → ganha `data/*.tmp` (sobra de escrita atômica interrompida por `kill -9`).
@@ -296,7 +322,10 @@ class AugmentStats(BaseModel):
 
 # services/utils/io/ — atomicidade num lugar só; parquet e JSON passam por aqui
 def escrever_atomico(path: Path, escrever: Callable[[Path], None]) -> Path:
-    tmp = path.with_name(f"{path.name}.tmp")   # MESMA pasta: rename atômico exige mesmo filesystem
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # MESMA pasta (rename atômico exige mesmo filesystem) e PID no nome: o daemon da SPEC 007 e um
+    # comando manual podem escrever o mesmo artefato ao mesmo tempo sem compartilhar temporário.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         escrever(tmp)
         os.replace(tmp, path)                  # POSIX: atômico e sobrescreve o destino
@@ -307,9 +336,13 @@ def escrever_atomico(path: Path, escrever: Callable[[Path], None]) -> Path:
 
 
 # services/utils/io/ — o diretório é resolvido NA CHAMADA, não congelado no import.
-# É isso que permite ao conftest redirecionar a suíte para um tmp_path.
+# Importa-se o MÓDULO, não o nome: `from .config import data_dir` criaria uma ligação própria aqui
+# e o monkeypatch do conftest não alcançaria este chamador (falharia em silêncio).
+from . import config
+
+
 def write_parquet_to_data(columns: Columns, filename: str) -> Path:
-    return write_parquet(columns, filename, folder=data_dir())
+    return write_parquet(columns, filename, folder=config.data_dir())
 
 
 # tests/conftest.py — redireciona a data/, MENOS para os testes marcados `integration`
@@ -321,6 +354,7 @@ def _isolar_diretorio_de_dados(
     # redirecioná-los esvaziaria o teste. A exceção é pelo marker, nunca por lista de módulos.
     if request.node.get_closest_marker("integration"):
         return
+    # Alcança todos os escritores porque eles chamam `config.data_dir()` pelo módulo.
     monkeypatch.setattr(io_config, "data_dir", lambda: tmp_path)
 
 
@@ -370,8 +404,10 @@ result = run(request, verbose=bool(options["verbose"]))
 - `test_escrita_interrompida_preserva_arquivo_anterior` — com um escritor que levanta no meio, o
   arquivo que já existia continua íntegro, a exceção propaga e nenhum `.tmp` fica para trás.
 - `test_diretorio_de_dados_resolvido_na_chamada` — redirecionar o diretório de dados **depois** do
-  import passa a valer para o próximo `write_parquet_to_data`/`read_parquet_from_data`. É o
-  comportamento que sustenta o fixture `autouse`, e o que hoje o `partial` impede.
+  import passa a valer para o próximo `write_parquet_to_data`/`read_parquet_from_data`, **sem
+  patchar módulo de IO nenhum além do ponto único de resolução**. É o comportamento que sustenta o
+  fixture `autouse` — o que o `partial` impede hoje, e o que um `from .config import data_dir`
+  voltaria a impedir em silêncio.
 - `test_run_normaliza_chaves` *(refeito)* — sobre insumos sintéticos no diretório temporário: as
   chaves do dicionário de tipos saem normalizadas no parquet de saída. Mesma asserção de hoje, sem
   tocar a `data/` real nem depender de a base conter "Avenida".
