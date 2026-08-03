@@ -16,3 +16,4 @@ QWERTY_ABNT2_NEIGHBORS: dict[str, str] = {
 
 TIPOS_LOGRADOURO_AUMENTADO_MANUAL = "tipos_logradouro_aumentado.json"
 PARQUET_NOMES_LOGRADOURO_BASE_ORIGINAL = "nomes_logradouros.parquet"
+OUTPUT_PARQUET_NAME = "tipos_logradouro_cache.parquet"

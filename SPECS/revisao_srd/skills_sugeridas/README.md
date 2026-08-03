@@ -12,6 +12,7 @@ precisam ser **confirmados contra o código** antes de promover qualquer rascunh
 
 | # | Skill | Por quê agora |
 |---|---|---|
+| 0 | **`geo-crs`** | **Pronta para promover** (escrita lendo o código, não esqueleto). Absorve a subseção de projeção removida do CLAUDE.md no enxugamento de 2026-07-31 — hoje esse conhecimento não tem nenhum outro lugar. |
 | 1 | `wms-fetcher` | Integração existe (`services/integrations/wms`), já causou bug real em produção de dev (commit sobre a ortofoto barrando) e não tem documentação de uso. O irmão WFS tem skill. |
 | 2 | `catalogos-lookup` | Todo fluxo de busca consome os catálogos cacheados; a interface de lookup é o ponto de troca futura para Redis — acoplar fora dela é o erro estrutural mais provável de um agente novo. |
 | 3 | `fluxo-busca` | O padrão "filtro regex → roteador → seção de sugestão → partial" foi iterado em 14 SPECs; cada extensão nova re-deriva o padrão lendo SPECs antigas. |

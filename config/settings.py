@@ -2,11 +2,12 @@
 Django settings — DIMAP GeoCoder.
 
 A configuração de ambiente é lida via Pydantic Settings e reextraída para
-constantes UPPER_CASE locais (CLAUDE.md §10.3 / §11). O resto do módulo
+constantes UPPER_CASE locais (CLAUDE.md, "Estilo e Convenções de Código"). O resto do módulo
 referencia as constantes, não o objeto de settings.
 """
 
 import json
+from datetime import time
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,10 @@ class _Settings(BaseSettings):
     )
     debug: bool = Field(default=True, alias="DJANGO_DEBUG")
     allowed_hosts: str = Field(default="*", alias="DJANGO_ALLOWED_HOSTS")
+    csrf_trusted_origins: str = Field(
+        default="https://*.ngrok-free.app,https://*.ngrok.app",
+        alias="DJANGO_CSRF_TRUSTED_ORIGINS",
+    )
 
     postgres_db: str = Field(default="dimap_geocode", alias="POSTGRES_DB")
     postgres_user: str = Field(default="dimap", alias="POSTGRES_USER")
@@ -73,12 +78,22 @@ class _Settings(BaseSettings):
         default=_ESCALAS["sakura"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
     )
 
+    # Tipado como `time` para o Pydantic coagir o "HH:MM" do env: a aritmética da agenda
+    # recebe um `time`, nunca uma string para parsear.
+    dtime_atualizacao_arquivos: time = Field(
+        default=time(3, 0),
+        alias="DTIME_ATUALIZACAO_ARQUIVOS",
+    )
+
 
 _env = _Settings()
 
 SECRET_KEY = _env.secret_key
 DEBUG = _env.debug
 ALLOWED_HOSTS = [host.strip() for host in _env.allowed_hosts.split(",") if host.strip()]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in _env.csrf_trusted_origins.split(",") if origin.strip()
+]
 
 # WFS (GeoSampa → MDSF). A orquestração lê essas constantes e monta
 # WfsConnectionConfig para injetar no WfsFetcher (nunca o domínio lê daqui).
@@ -126,6 +141,9 @@ MAP_COR_POLIGONO = _env.map_cor_poligono
 MAP_COR_PONTO = _env.map_cor_ponto
 # Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (sakura-700).
 MAP_COR_POLIGONO_CONDOMINIO = _env.map_cor_poligono_condominio
+
+# Horário do dia (fuso de TIME_ZONE) em que o daemon reextrai os parquets de data/.
+DTIME_ATUALIZACAO_ARQUIVOS = _env.dtime_atualizacao_arquivos
 
 
 # Application definition
@@ -183,7 +201,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 
-# Database — PostGIS desde a fase inicial (CLAUDE.md §2).
+# Database — PostGIS desde a fase inicial (CLAUDE.md, "Stack").
 
 DATABASES = {
     "default": {
@@ -215,7 +233,7 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files — saída do build do Tailwind/DaisyUI (CLAUDE.md §5).
+# Static files — saída do build do Tailwind/DaisyUI (CLAUDE.md, "Estrutura do Projeto").
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static" / "dist", BASE_DIR / "static" / "src"]

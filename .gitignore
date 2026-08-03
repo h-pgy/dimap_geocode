@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Escrita atômica de data/ (SPEC ingestao_dados/006): sobra de processo morto (kill -9)
+data/*.tmp

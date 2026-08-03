@@ -4,7 +4,7 @@ from services.integrations import wfs
 from services.integrations.wfs import WfsFeatureCollection, WfsFeatureRequest
 
 from .constants import ATRIBUTOS_ALVO
-from .models import EnderecoFiscal, EnderecosFiscaisRequest
+from .models import EnderecoFiscal, EnderecosFiscaisConfig
 
 PAGE_SIZE: int = 10_000
 
@@ -15,7 +15,7 @@ class EnderecosFiscaisExtractor:
     def __init__(self, fetcher: WfsBatches) -> None:
         self.fetcher = fetcher
 
-    def __call__(self, request: EnderecosFiscaisRequest) -> list[EnderecoFiscal]:
+    def __call__(self, request: EnderecosFiscaisConfig) -> list[EnderecoFiscal]:
         wfs_request = WfsFeatureRequest(
             nome_camada=request.layer_name,
             property_names=ATRIBUTOS_ALVO,

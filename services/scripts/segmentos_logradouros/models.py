@@ -2,9 +2,13 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from services.integrations.wfs import WfsConnectionConfig, WfsRetryPolicy
 
-class SegmentosLogradourosRequest(BaseModel):
+
+class SegmentosLogradourosConfig(BaseModel):
     layer_name: str
+    conexao: WfsConnectionConfig
+    retry: WfsRetryPolicy
 
 
 class SegmentoLogradouro(BaseModel):

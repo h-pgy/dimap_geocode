@@ -1,5 +1,12 @@
 # Diagnóstico do CLAUDE.md — DIMAP GeoCoder
 
+> **STATUS (2026-07-31): implementado e encerrado.** As recomendações deste diagnóstico foram
+> aplicadas — com as reversões e ajustes decididos pelo desenvolvedor, registrados no §8.1.1 e nas
+> respostas em conversa. O CLAUDE.md novo **já está em vigor** na raiz do projeto e é a única fonte
+> de verdade. Este arquivo fica **apenas como registro histórico** do raciocínio: não é para ser
+> mantido em dia, corrigido ou consultado como norma. Onde ele divergir do CLAUDE.md, vale o
+> CLAUDE.md.
+
 Data: 2026-07-07. Base da análise: `CLAUDE.md` (584 linhas), as 10 skills de `.claude/skills/`,
 a estrutura real de arquivos do projeto, `config/settings.py` e `pyproject.toml` (checagens
 pontuais para confirmar divergências).
@@ -38,8 +45,10 @@ Problemas concretos:
 - Roadmap orienta **o que construir a seguir**, decisão do desenvolvedor — não é regra que o
   agente precise carregar em toda sessão.
 
-**Recomendação:** mover para `SPECS/ROADMAP.md` (perto de quem o consome) e deixar no CLAUDE.md
-apenas um ponteiro de uma linha.
+**Recomendação:** ~~mover para `SPECS/ROADMAP.md`~~ → **decisão de 2026-07-31: descartar.** O
+roadmap já estava desatualizado e foi integralmente superado pelo escopo de plataforma (ver §8.1).
+Não vale migrar um artefato velho: o que existe é rastreado pelo front-matter `implementado:` das
+SPECs, e o que virá é decidido SPEC a SPEC.
 
 ### 1.3 §8 — exemplo de código completo de management command
 
@@ -190,12 +199,9 @@ contra o código antes de promover cada rascunho para `.claude/skills/`.
 3. Typos: "imóvle" (§1), "logradoro" (§1), "estamso" (§10.5).
 4. §10.5 ("não use `from __future__`") é regra válida mas está redigida como desabafo — cabe uma
    linha nas convenções.
-5. **Atenção ao migrar:** algumas skills citam parágrafos do CLAUDE.md atual pelo número
-   (`leaflet-map` cita "§11", `test-django-views` cita "§13", `specs` cita "§3 e §10",
-   `wfs-fetcher` cita "§3.3"). Na versão proposta, §3 permanece §3, mas §10/§11 viram §7,
-   §13 vira §10. Ao adotar o novo CLAUDE.md, ajustar essas quatro skills — ou, melhor,
-   trocar as citações numéricas por nome da seção ("princípios de arquitetura", "política de
-   testes"), que sobrevivem a renumerações futuras.
+5. **Atenção ao migrar:** algumas skills citam parágrafos do CLAUDE.md atual pelo número, e a
+   renumeração quebra essas citações. **Levantamento linha a linha no §8**, com a redação
+   sugerida para cada ocorrência.
 
 ---
 
@@ -230,3 +236,135 @@ versão proposta (§1 e §6.3) já registra a decisão:
 - **O que continua valendo:** todo consumo passa pela interface dos catálogos (nunca ler
   `data/*.parquet` direto em view/domínio) — é isso que mantém qualquer migração futura barata.
   O rascunho `skills_sugeridas/catalogos-lookup/` foi atualizado para refletir a decisão.
+
+---
+
+## 8. Adendo (2026-07-31) — escopo maduro e impacto nas skills
+
+Revisão feita depois que o escopo real do projeto foi explicitado. O diagnóstico original
+(2026-07-07) tratou o sistema como um geocodificador; ele é outra coisa, e isso muda o CLAUDE.md
+mais do que qualquer enxugamento.
+
+### 8.1 O que mudou no entendimento do sistema
+
+O DIMAP GeoCoder é uma **plataforma de uso interno que modela processos de trabalho da DIMAP cujo
+input inicial é uma localização no território urbano**. A geocodificação é a porta de entrada, não
+o produto. O fluxo: **localização → entidade territorial tipada (com sua ontologia) → gaveta**, e a
+gaveta oferece **Informações** (dado público, sem login) e **Ações** (Atos Administrativos, com
+login, autorização por perfil e auditoria). Cada processo da DIMAP vira uma ação nova.
+
+Decisões confirmadas com o usuário nesta data, registradas no CLAUDE.md proposto (§3.4–§3.6):
+
+- **Uma ação = um app Django próprio**, com submódulos próprios em `services/domain/` (relação
+  N:N). **A busca não pode ser contaminada:** dependência de mão única, contato só via contrato.
+- **Rotas de ação são deny by default**; rota aberta só por declaração explícita na SPEC.
+- **Informação ≠ Ação:** ação exige login porque é ato administrativo e precisa de imputação —
+  daí a exigência de **registro de toda execução** (quem, com qual perfil, sobre o quê, quando).
+- **A gaveta filtra, a rota decide** — a UI esconder o botão não é autorização.
+- **Perfil é model próprio** herdando de `contrib.auth`, com models de cargo e unidade; há um
+  **perfil padrão** (autorização universal, autenticação ainda obrigatória).
+- **Mapeamento perfil → ação é código**, no contrato da ação, decidido pelo desenvolvedor — nunca
+  configurável em runtime.
+- **Roteador de ações:** rota que recebe perfil + tipo de entidade e devolve as ações disponíveis.
+- **Ações são síncronas por padrão**; fila só se a SPEC de uma ação específica justificar.
+
+Somam-se a elas, na mesma data: **rigor de design system + Atomic Design** como princípio de
+arquitetura (nenhum componente de UI fora do design system; cada nível composto pelo nível
+imediatamente inferior; átomo novo nasce no design system, nunca como marcação solta); **DuckDB**
+na stack, para consulta analítica sobre os parquets de `data/`; e **LIDAR / nuvens de pontos 3D**
+como escopo futuro, com ferramental a ser definido em SPEC própria — o CLAUDE.md registra a
+intenção justamente para que ninguém improvise a escolha de biblioteca antes disso.
+
+E a mudança de maior impacto no fluxo de trabalho: **o projeto adotou TDD**. A política anterior
+("testes só sob demanda explícita, nunca junto da SPEC") está **revogada**. O ciclo passa a ser
+SPEC *com testes* aprovada → testes escritos e falhando → implementação até passarem → validação.
+O argumento que sustentava a política antiga se inverte: ele dizia que gerar teste antes da
+validação humana desperdiça ciclo — mas com os testes **dentro da SPEC**, a validação humana
+acontece justamente ali, antes do código. A restrição que permanece é de **volume**: poucos testes
+e bem escolhidos (~3 a 6 numa SPEC típica), fixando comportamento observável, sem perseguir
+cobertura.
+
+### 8.1.1 Recomendações deste diagnóstico que foram revertidas
+
+Três recomendações dos §§1–3 **não valem mais**, por decisão do usuário em 2026-07-31:
+
+- **§3.1 ("índice de skills é a lacuna mais importante") — revertida.** As `description` das skills
+  já entram no contexto do agente em toda sessão; um índice no CLAUDE.md é duplicação de token sem
+  ganho de descoberta. O que fica no CLAUDE.md é a **regra** ("nunca chamar rapidfuzz direto",
+  "nunca ler parquet direto", "nenhum componente fora do design system") — a skill certa é achada
+  pela própria descrição. O índice só volta se existir uma skill *sobre criar skills* que exija
+  registro central e tenha dono.
+- **§3.2 ("a tabela de apps diverge do código real") — resolvida por remoção, não por correção.**
+  A tabela app a app sai do CLAUDE.md: ela muda com frequência e vai divergir de novo.
+  `INSTALLED_APPS` é a fonte de verdade. O que fica documentado são os **padrões de organização**
+  (matcher × geocoder, um app por ação) e, sobretudo, a fronteira `apps/` × `services/` — que é o
+  que de fato precisa ser sabido em toda sessão.
+- **§1.4 ("comprimir a visão geral") — cumprida de outro jeito.** A visão geral não encolheu: foi
+  *reescrita* para descrever a plataforma em vez do geocodificador.
+
+Correção de conteúdo na mesma leva: um endereço que bate **exatamente** com um endereço fiscal
+resolve para **polígono** (o imóvel cadastrado no IPTU). A descrição anterior — pop-up oferecendo
+ponto *ou* polígono — está errada e foi removida da proposta.
+
+### 8.2 Skills que citam o CLAUDE.md por número — ajustes ao adotar
+
+A renumeração quebra as citações abaixo. Levantamento por `grep` no código real das skills:
+
+| Skill | Linha | Citação atual | Ajuste |
+|---|---|---|---|
+| `specs` | 94–95 | "princípios de arquitetura (§3)… e o estilo (§10)" | §3 permanece; **§10 → §7** |
+| `specs` | 131–132 | "quais princípios de §3 do CLAUDE.md se aplicam" | §3 permanece — sem ajuste |
+| `specs` | 141 | "sem violar §3 nem §10" | **§10 → §7** |
+| `leaflet-map` | 24 | "Regras de fronteira (§11 do CLAUDE.md…)" | **§11 → §7.2** |
+| `leaflet-map` | 31 | "O domínio reprojeta para 4326 antes de mandar (§7.3)" | **§7.3 → §6.3** |
+| `leaflet-map` | 208 | "(§11: JS não monta UI)" | **§11 → §7.2** |
+| `test-django-views` | 3 *(front-matter `description`)* | "CLAUDE.md §13" | **§13 → §9** |
+| `test-django-views` | 10 | "§13 do CLAUDE.md: 'validar a implementação…'" | **§13 → §9** |
+| `test-django-views` | 98 | "(CLAUDE.md §13)" | **§13 → §9** |
+| `wfs-fetcher` | 16 | "Ver §3.3 do CLAUDE.md" | **inalterado** (§3.3 segue sendo o isolamento de camadas) |
+
+Atenção a dois falsos positivos: os `§` de `componentes-frontend` e o `§3` da linha 64 de
+`leaflet-map` são referências **internas à própria skill**, não ao CLAUDE.md — não mexer.
+
+**Recomendação preferível a corrigir o número:** trocar a citação numérica pelo **nome da seção**
+("princípios de arquitetura", "política de testes", "estilo e convenções"). Nomes sobrevivem à
+próxima renumeração; números não. O ajuste da linha 3 de `test-django-views` é o mais sensível —
+está no front-matter, que é o que o agente lê para decidir ativar a skill.
+
+### 8.3 Skills com divergência de conteúdo (não só de número)
+
+**`leaflet-map`, linha 133** — afirma que "cada layer do projeto tem `cor` de display — §1 do
+CLAUDE.md", tratando projetos/layers como algo existente. **Não existem** — são escopo futuro, e o
+CLAUDE.md proposto **deixou de mencioná-los** (a seção "Entradas futuras" foi removida por decisão
+do usuário: escopo futuro é assunto de SPEC, não de contexto carregado toda sessão). A citação da
+skill fica, portanto, **apontando para o vazio** — precisa ser reescrita como referência a escopo
+futuro, autocontida na própria skill, ou a cor será procurada num model que não está lá.
+
+**`test-django-views`** — a skill se apresenta como "o *validar a implementação* do fluxo de SPEC"
+e afirma que o smoke test "não fica versionado como suíte de testes". Com o TDD, o smoke test
+deixa de ser *a* validação e passa a ser **um passo complementar**: a validação principal é a suíte
+que a SPEC definiu e que foi escrita antes do código; o smoke test continua útil para o que o
+teste automatizado não cobre bem (HTML do partial renderizado, caminhos de erro na interface).
+Ajustar o enquadramento — nas linhas 3, 10 e 98 — junto com a renumeração §13 → §9.
+
+**`specs`** — já foi **atualizada em 2026-07-31** (não é pendência): a seção "Notas de teste" virou
+"**Testes (TDD)**", com instrução explícita de listar poucos testes essenciais (~3 a 6), e o item
+de checklist "nenhum teste unitário foi escrito ou comprometido" foi substituído. Restam nela
+apenas as citações numéricas do §8.2.
+
+### 8.4 Skills que o novo escopo sugere (fora do escopo desta revisão)
+
+**Prioridade alta — `geo-crs` (lacuna aberta pelo enxugamento).** Ao tirar do CLAUDE.md a subseção
+de projeção (nível de abstração baixo demais para contexto sempre carregado), estes detalhes
+ficaram **sem nenhum lugar**: SIRGAS 2000/UTM 23S (EPSG:31983) do GeoSampa × WGS84 (EPSG:4326) do
+Leaflet, as settings `MAP_INTERPOLATION_CRS`/`MAP_OUTPUT_CRS` e como elas chegam ao domínio via
+DTO, o uso de `Transform` e dos objetos GEOS/GDAL, e a definição do CRS canônico de armazenamento
+quando a persistência de geometria entrar. `leaflet-map` cobre só a renderização. O CLAUDE.md
+mantém a **regra** (§7.2), mas o *como* precisa desta skill — é a única perda real do enxugamento.
+
+Registro para quando a plataforma de ações começar — **não são para criar agora**: uma skill do
+**contrato de ação** (como declarar perfil autorizado, como registrar a execução auditada, como o
+app se apresenta ao roteador) será tão obrigatória quanto `normalize-text` é hoje, porque é o ponto
+onde a regra de mão única (§3.4 do CLAUDE.md) ou se sustenta, ou vaza. As propostas do §4 deste
+diagnóstico (`wms-fetcher`, `catalogos-lookup` — **já promovida** —, `fluxo-busca`,
+`management-commands`, `leaflet-eventos`) seguem válidas.

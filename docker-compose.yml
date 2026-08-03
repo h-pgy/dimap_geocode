@@ -18,11 +18,13 @@ services:
       retries: 10
 
   web:
-    build: .
+    build:
+      context: .                      # contexto na raiz: dá acesso a pyproject.toml, uv.lock e ao código
+      dockerfile: docker/Dockerfile.web
     # Sem `command`: usa o CMD do Dockerfile (runserver). A migração é feita
     # pelo entrypoint.sh, compartilhado entre dev e prod.
     environment:
-      # Consumidos pelo config/settings.py (via Pydantic Settings, ver CLAUDE.md §10.3).
+      # Consumidos pelo config/settings.py (via Pydantic Settings, ver CLAUDE.md, "Stack").
       DJANGO_AUTO_MIGRATE: ${DJANGO_AUTO_MIGRATE:-1}
       POSTGRES_DB: ${POSTGRES_DB:-dimap_geocode}
       POSTGRES_USER: ${POSTGRES_USER:-dimap}
@@ -40,6 +42,24 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  daemon:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.daemon
+    # Flag de subida: serviço só existe sob o profile `atualizacao`.
+    #   docker compose up                          → db + web (sem atualização automática)
+    #   docker compose --profile atualizacao up    → db + web + daemon
+    profiles: ["atualizacao"]
+    environment:
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings}
+      DTIME_ATUALIZACAO_ARQUIVOS: ${DTIME_ATUALIZACAO_ARQUIVOS:-03:00}
+      # Sem DJANGO_AUTO_MIGRATE (não há entrypoint) e sem variáveis de banco:
+      # o pipeline vai do WFS ao parquet e não consulta o Postgres.
+    volumes:
+      # Mesmo bind mount do web: é ele que faz os parquets caírem no data/ do host.
+      - .:/app
+    # Sem `depends_on`, sem `ports`: não fala com o banco e não serve HTTP.
 
 volumes:
   pgdata:

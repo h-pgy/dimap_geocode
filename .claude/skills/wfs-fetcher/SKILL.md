@@ -13,7 +13,7 @@ de qualquer camada de um GeoServer (GeoSampa hoje, MDSF depois) e devolve um
 
 - **O domínio nunca lê settings.** `WfsFetcher` não importa Django. A configuração de conexão e a
   política de retry chegam por **DTOs injetados** no construtor. Quem lê `settings` é a
-  **orquestração** (management command / view). Ver §3.3 do CLAUDE.md.
+  **orquestração** (management command / view). Ver "isolamento entre camadas" no CLAUDE.md.
 - **Importe sempre pelo nível superior** `services.integrations.wfs` — nunca alcance submódulos
   internos (`.fetcher`, `.models`). Tudo que você precisa está exposto no `__init__.py`.
 - **Não monte URLs nem params à mão.** Use os DTOs (`WfsFeatureRequest`, `CqlFilter`).

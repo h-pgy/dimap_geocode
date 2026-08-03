@@ -192,6 +192,26 @@ html[data-theme="dimap"] {
      é descendente deste container e só é substituído (nunca esvaziado ao digitar) → estado pegajoso. */
   .search-hero { @apply pt-[15vh] transition-all duration-500 ease-in-out; }
   .search-hero:has(#resultado-busca:not(:empty)) { @apply pt-6; }
+
+  /* Painel da barra de busca: largura/padding moram AQUI, não como utilities no markup — a
+     navbar mobile abaixo precisa vencê-los, e utility no HTML ganharia da regra de componente
+     (layer utilities acima de layer components). Markup: class="glass-panel search-panel ...". */
+  .search-panel { @apply w-11/12 max-w-2xl p-4 transition-all duration-500 ease-in-out; }
+
+  /* Navbar compacta (busca recolhida em tela estreita): abaixo de lg (64rem) a barra recolhida
+     dividia o topo com os chips fixos (marca à esquerda, usuário à direita) e ficava coberta por
+     eles — o painel tem max-w-2xl (42rem), então até tablets colidem. Solução: os três se
+     alinham numa fileira única de 3rem em top-6 — chips de 3rem nas pontas (left-4/right-4
+     abaixo de lg; a marca vira monograma w-12 h-12, o avatar encolhe para w-9 h-9 dentro de
+     p-1.5) e a busca no centro como pill — cada peça segue uma placa de gelo independente (nada
+     de barra opaca sobre o mapa). Mesmo gatilho HATEOAS da .search-hero: o CSS reage ao
+     #resultado-busca não vazio. A linha de dicas/badges (.search-hints) sai de cena no estado
+     compacto; sugestões e resultado seguem w-11/12, abaixo da fileira. */
+  @media (width < 64rem) {
+    .search-hero:has(#resultado-busca:not(:empty)) .search-panel { @apply w-[calc(100vw-9.5rem)] p-1.5 rounded-full; }
+    .search-hero:has(#resultado-busca:not(:empty)) .search-panel .input { @apply h-9 rounded-full; }
+    .search-hero:has(#resultado-busca:not(:empty)) .search-hints { @apply hidden; }
+  }
   .cinematic-blur-layer { @apply absolute inset-0 z-10 pointer-events-none opacity-0 backdrop-blur-sm transition-opacity duration-500; }
   .cinematic-blur-layer.active { @apply opacity-100 pointer-events-auto; }
 

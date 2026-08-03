@@ -1,9 +1,9 @@
 import json
-from functools import partial
 from pathlib import Path
 from typing import Any
 
-from .config import _DATA_DIR
+from . import config
+from .atomic import escrever_atomico
 
 
 def read_json_from_folder(folder: Path, filename: str) -> dict[str, Any]:
@@ -12,11 +12,18 @@ def read_json_from_folder(folder: Path, filename: str) -> dict[str, Any]:
 
 
 def write_json_to_folder(
-    folder: Path, filename: str, data: dict[str, Any]
+    folder: Path,
+    filename: str,
+    data: dict[str, Any],
 ) -> None:
-    with open(folder / filename, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    path = folder / filename
+    conteudo = json.dumps(data, ensure_ascii=False, indent=2)
+    escrever_atomico(path, lambda destino: destino.write_text(conteudo, encoding="utf-8"))
 
 
-read_json_from_data: Any = partial(read_json_from_folder, _DATA_DIR)
-write_json_to_data: Any = partial(write_json_to_folder, _DATA_DIR)
+def read_json_from_data(filename: str) -> dict[str, Any]:
+    return read_json_from_folder(config.data_dir(), filename)
+
+
+def write_json_to_data(filename: str, data: dict[str, Any]) -> None:
+    write_json_to_folder(config.data_dir(), filename, data)
