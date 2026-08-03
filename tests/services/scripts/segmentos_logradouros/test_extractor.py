@@ -1,6 +1,6 @@
-from services.integrations.wfs import WfsFeatureCollection
+from services.integrations.wfs import WfsConnectionConfig, WfsFeatureCollection, WfsRetryPolicy
 from services.scripts.segmentos_logradouros.extractor import SegmentosLogradourosExtractor
-from services.scripts.segmentos_logradouros.models import SegmentosLogradourosRequest
+from services.scripts.segmentos_logradouros.models import SegmentosLogradourosConfig
 
 
 def _page(props_list: list[dict[str, object]]) -> WfsFeatureCollection:
@@ -11,8 +11,16 @@ def _page(props_list: list[dict[str, object]]) -> WfsFeatureCollection:
     })
 
 
-def _req() -> SegmentosLogradourosRequest:
-    return SegmentosLogradourosRequest(layer_name="v_logradouro_segmento")
+def _req() -> SegmentosLogradourosConfig:
+    return SegmentosLogradourosConfig(
+        layer_name="v_logradouro_segmento",
+        conexao=WfsConnectionConfig(
+            domain="geosampa.prefeitura.sp.gov.br",
+            endpoint="geoserver/ows",
+            namespace="geoportal",
+        ),
+        retry=WfsRetryPolicy(),
+    )
 
 
 def test_extracts_segments_and_keeps_nulls() -> None:

@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterable
 
 from services.integrations.wfs import WfsFeatureCollection, WfsFeatureRequest
 
-from .models import LogradouroNome, NomesLogradourosRequest
+from .models import LogradouroNome, NomesLogradourosConfig
 
 PROPERTY_NAMES: list[str] = ["codlog", "cd_tipo_logradouro", "nm_logradouro"]
 PAGE_SIZE: int = 10_000
@@ -18,7 +18,7 @@ class NomesLogradourosExtractor:
     def __init__(self, fetcher: WfsBatches) -> None:
         self.fetcher = fetcher
 
-    def __call__(self, request: NomesLogradourosRequest) -> list[LogradouroNome]:
+    def __call__(self, request: NomesLogradourosConfig) -> list[LogradouroNome]:
         wfs_request = WfsFeatureRequest(
             nome_camada=request.layer_name,
             property_names=PROPERTY_NAMES,

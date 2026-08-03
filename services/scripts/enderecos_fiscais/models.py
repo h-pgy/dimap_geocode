@@ -2,9 +2,13 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from services.integrations.wfs import WfsConnectionConfig, WfsRetryPolicy
 
-class EnderecosFiscaisRequest(BaseModel):
+
+class EnderecosFiscaisConfig(BaseModel):
     layer_name: str
+    conexao: WfsConnectionConfig
+    retry: WfsRetryPolicy
 
 
 class EnderecoFiscal(BaseModel):

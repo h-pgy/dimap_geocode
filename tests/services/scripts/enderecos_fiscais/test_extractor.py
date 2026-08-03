@@ -1,6 +1,6 @@
-from services.integrations.wfs import WfsFeatureCollection
+from services.integrations.wfs import WfsConnectionConfig, WfsFeatureCollection, WfsRetryPolicy
 from services.scripts.enderecos_fiscais.extractor import EnderecosFiscaisExtractor
-from services.scripts.enderecos_fiscais.models import EnderecosFiscaisRequest
+from services.scripts.enderecos_fiscais.models import EnderecosFiscaisConfig
 
 
 def _page(props_list: list[dict[str, object]]) -> WfsFeatureCollection:
@@ -11,8 +11,16 @@ def _page(props_list: list[dict[str, object]]) -> WfsFeatureCollection:
     })
 
 
-def _req() -> EnderecosFiscaisRequest:
-    return EnderecosFiscaisRequest(layer_name="lote_cidadao")
+def _req() -> EnderecosFiscaisConfig:
+    return EnderecosFiscaisConfig(
+        layer_name="lote_cidadao",
+        conexao=WfsConnectionConfig(
+            domain="geosampa.prefeitura.sp.gov.br",
+            endpoint="geoserver/ows",
+            namespace="geoportal",
+        ),
+        retry=WfsRetryPolicy(),
+    )
 
 
 def test_extracts_addresses_and_keeps_nulls() -> None:

@@ -29,7 +29,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from services.integrations.wfs import build_connection_config, build_retry_policy
-from services.scripts.segmentos_logradouros import SegmentosLogradourosRequest, run
+from services.scripts.segmentos_logradouros import SegmentosLogradourosConfig, run
 
 
 class Command(BaseCommand):
@@ -39,10 +39,12 @@ class Command(BaseCommand):
         parser.add_argument("--verbose", action="store_true")
 
     def handle(self, *args: object, **options: object) -> None:
-        config = build_connection_config(settings)
-        retry_policy = build_retry_policy(settings)
-        request = SegmentosLogradourosRequest(layer_name=settings.WFS_LAYER_LOGRADOUROS)
-        result = run(config, request, retry_policy=retry_policy, verbose=bool(options["verbose"]))
+        config = SegmentosLogradourosConfig(
+            layer_name=settings.WFS_LAYER_LOGRADOUROS,
+            conexao=build_connection_config(settings),
+            retry=build_retry_policy(settings),
+        )
+        result = run(config, verbose=bool(options["verbose"]))
         self.stdout.write(
             self.style.SUCCESS(
                 f"Concluído. {result.total_segments} segmentos salvos em {result.output_path}"
@@ -54,7 +56,7 @@ Nem todo comando tem essa cara — há comandos sem `settings`, sem argumentos, 
 comandos que não extraem nada. O que **não** varia:
 
 - **Quem lê `settings` é o comando** (§3.3). O que o script precisa de configuração — camada, CRS,
-  caminho — entra como campo do `...Request`.
+  conexão, política de retry — entra como campo do `...Config`, montado **inteiro** pelo comando.
 - **Use os factories da integração** quando houver (`build_connection_config`,
   `build_retry_policy` de `services.integrations.wfs`); não remonte DTOs de config campo a campo.
 - **Tipagem integral** (§7.2): `parser: ArgumentParser`, `*args: object, **options: object`,
@@ -62,22 +64,53 @@ comandos que não extraem nada. O que **não** varia:
 - **`run()` devolve um DTO Pydantic**; o comando **formata**, não recalcula. Se o script tem algo a
   dizer (contagens, itens não mapeados, avisos), isso vai no DTO de resultado — **o script não
   escreve em stdout**, quem decide o que vira `SUCCESS`/`WARNING` na tela é o comando.
-- **Rotina longa expõe `--verbose`** e repassa ao script; extrações do GeoSampa levam minutos e sem
-  isso não há sinal de progresso.
+- **Todo comando do pipeline expõe `--verbose`** e repassa ao `run()` (SPEC ingestao_dados/006) —
+  extrações do GeoSampa levam minutos e sem isso não há sinal de progresso. Verbose não é
+  "imprimir mais": é o script **apurar e devolver mais** no DTO de resultado (ex.: contagem de
+  variações por tipo do `augment`); quem imprime continua sendo o comando.
+
+## O contrato `ScriptRunner` (SPEC ingestao_dados/006)
+
+**Todo `run()` de script de carga entra por uma assinatura só**, declarada como `Protocol` genérico
+em `services/scripts/contrato.py`:
+
+```python
+def run(config: XConfig, *, verbose: bool = False) -> XResult: ...
+```
+
+- **`config` é o único parâmetro posicional** e é um DTO Pydantic — o que hoje entraria solto por
+  parâmetro (conexão WFS, política de retry, nomes de arquivo) é **campo do `Config`**: sem default
+  o que o comando lê de `settings`; **com** default o que é constante do próprio script (assim o
+  comando não precisa importar constante do script só para devolvê-la).
+- **`verbose` é sempre keyword-only, com default `False`.**
+- Cada `runner.py` declara aderência ao protocolo, e o `mypy` confere:
+  ```python
+  _contrato: ScriptRunner[XConfig, XResult] = run
+  ```
+- **Um teste varre `services/scripts/` por descoberta** (`tests/services/scripts/test_contrato.py`)
+  e falha se algum `run()` divergir — pega o caso que o `mypy` não pega: um `runner.py` que
+  simplesmente esqueceu de se declarar aderente ao `Protocol`. A regra é **estrutural**: todo
+  **subpacote** de `services/scripts/` é script de carga e expõe `run()`; **módulo solto** no topo
+  (`contrato.py`, e o que vier depois) é infraestrutura do pipeline e não é varrido — não é lista
+  de exceção, é a estrutura de diretórios.
+
+Escrever um runner novo é **compor** este contrato — nunca inventar uma assinatura diferente
+"porque este script é diferente"; o que varia entre scripts é o `Config`, nunca a forma do `run()`.
 
 ## Anatomia do script (`services/scripts/<nome>/`)
 
 | Arquivo | Conteúdo |
 |---|---|
-| `models.py` | DTOs Pydantic: `...Request` (input) e `...Result` (output). §7.1: DTO nas duas pontas. |
+| `models.py` | DTOs Pydantic: `...Config` (input, aderente ao `ScriptRunner`) e `...Result` (output). §7.1: DTO nas duas pontas. |
 | `extractor.py` | A lógica: **classe callable**, recebendo suas dependências **por composição** no `__init__` e tipadas como `Callable` — não como a classe concreta. É o que torna o teste barato. |
 | `constants.py` | Constantes do script, quando houver. |
-| `runner.py` | `run()`: a fachada do script — monta as dependências, chama o extractor, persiste e devolve o `...Result`. |
+| `runner.py` | `run()`: a fachada do script — monta as dependências, chama o extractor, persiste e devolve o `...Result`. Aqui mora a declaração `_contrato: ScriptRunner[...] = run`. |
 | `__init__.py` | **Só reexporta** (`run`, `OUTPUT_FILENAME`, símbolos públicos em `__all__`) — **nunca implementa** (§7.2). |
 
 A escrita usa os helpers de `services.utils.io` (`write_parquet_to_data`, `write_json_to_data`), que
-já resolvem `data/` — não monte `Path` para `data/` nem no script nem no comando, e não passe a
-pasta de destino pelo `...Request`.
+já resolvem `data/` **e escrevem atomicamente** (temporário próprio do processo, promovido por
+`os.replace` — quem lê nunca vê um arquivo pela metade). Não monte `Path` para `data/` nem no
+script nem no comando, e não passe a pasta de destino pelo `...Config`.
 
 ## Depois de rodar (§6.4: cargas → variações → cache)
 
@@ -98,6 +131,13 @@ O alvo é o **script**, não o comando: `tests/services/scripts/<nome>/test_extr
 o extractor com um **fake** no lugar da dependência injetada (uma função que devolve fixtures).
 Como o extractor depende de um `Callable`, o teste não precisa de rede, de Django nem de banco.
 Comando fino não se testa — não há comportamento próprio nele para fixar.
+
+**Nenhum teste escreve na `data/` real** (SPEC ingestao_dados/006): um fixture `autouse` em
+`tests/conftest.py` redireciona `write_parquet_to_data`/`write_json_to_data`/`read_parquet_from_data`
+para um diretório temporário, exceto para testes marcados `@pytest.mark.integration` (que leem os
+parquets reais por definição e nunca escrevem). Teste de `run()` monta seus próprios insumos
+sintéticos com os mesmos helpers de `services.utils.io` — nunca lê nem reescreve o parquet/JSON
+versionado de produção.
 
 ## Erros comuns
 

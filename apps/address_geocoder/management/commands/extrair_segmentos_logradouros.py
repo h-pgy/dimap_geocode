@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from services.integrations.wfs import build_connection_config, build_retry_policy
-from services.scripts.segmentos_logradouros import SegmentosLogradourosRequest, run
+from services.scripts.segmentos_logradouros import SegmentosLogradourosConfig, run
 
 
 class Command(BaseCommand):
@@ -14,12 +14,12 @@ class Command(BaseCommand):
         parser.add_argument("--verbose", action="store_true")
 
     def handle(self, *args: object, **options: object) -> None:
-        config = build_connection_config(settings)
-        retry_policy = build_retry_policy(settings)
-        request = SegmentosLogradourosRequest(
+        config = SegmentosLogradourosConfig(
             layer_name=settings.WFS_LAYER_LOGRADOUROS,
+            conexao=build_connection_config(settings),
+            retry=build_retry_policy(settings),
         )
-        result = run(config, request, retry_policy=retry_policy, verbose=bool(options["verbose"]))
+        result = run(config, verbose=bool(options["verbose"]))
         self.stdout.write(
             self.style.SUCCESS(
                 f"Concluído. {result.total_segments} segmentos salvos em {result.output_path}"

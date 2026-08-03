@@ -1,9 +1,10 @@
-from services.integrations.wfs import WfsConnectionConfig, WfsFetcher, WfsRetryPolicy
+from services.integrations.wfs import WfsFetcher
+from services.scripts.contrato import ScriptRunner
 from services.utils.io import write_parquet_to_data
 
 from .constants import ATRIBUTOS_ALVO
 from .extractor import EnderecosFiscaisExtractor
-from .models import EnderecoFiscal, EnderecosFiscaisRequest, EnderecosFiscaisResult
+from .models import EnderecoFiscal, EnderecosFiscaisConfig, EnderecosFiscaisResult
 
 OUTPUT_FILENAME: str = "enderecos_fiscais.parquet"
 
@@ -16,14 +17,9 @@ def _to_columns(rows: list[EnderecoFiscal]) -> dict[str, list[str | None]]:
     return cols
 
 
-def run(
-    config: WfsConnectionConfig,
-    request: EnderecosFiscaisRequest,
-    retry_policy: WfsRetryPolicy | None = None,
-    verbose: bool = False,
-) -> EnderecosFiscaisResult:
-    fetcher = WfsFetcher(config, retry_policy=retry_policy, verbose=verbose)
-    rows = EnderecosFiscaisExtractor(fetcher)(request)
+def run(config: EnderecosFiscaisConfig, *, verbose: bool = False) -> EnderecosFiscaisResult:
+    fetcher = WfsFetcher(config.conexao, retry_policy=config.retry, verbose=verbose)
+    rows = EnderecosFiscaisExtractor(fetcher)(config)
 
     output_path = write_parquet_to_data(_to_columns(rows), OUTPUT_FILENAME)
 
@@ -31,3 +27,6 @@ def run(
         total_records=len(rows),
         output_path=output_path,
     )
+
+
+_contrato: ScriptRunner[EnderecosFiscaisConfig, EnderecosFiscaisResult] = run

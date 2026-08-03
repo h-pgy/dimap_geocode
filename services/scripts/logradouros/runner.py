@@ -1,8 +1,9 @@
-from services.integrations.wfs import WfsConnectionConfig, WfsFetcher, WfsRetryPolicy
+from services.integrations.wfs import WfsFetcher
+from services.scripts.contrato import ScriptRunner
 from services.utils.io import write_parquet_to_data
 
 from .extractor import NomesLogradourosExtractor
-from .models import LogradouroNome, NomesLogradourosRequest, NomesLogradourosResult
+from .models import LogradouroNome, NomesLogradourosConfig, NomesLogradourosResult
 
 OUTPUT_FILENAME: str = "nomes_logradouros.parquet"
 
@@ -15,14 +16,9 @@ def _to_columns(rows: list[LogradouroNome]) -> dict[str, list[str]]:
     }
 
 
-def run(
-    config: WfsConnectionConfig,
-    request: NomesLogradourosRequest,
-    retry_policy: WfsRetryPolicy | None = None,
-    verbose: bool = False,
-) -> NomesLogradourosResult:
-    fetcher = WfsFetcher(config, retry_policy=retry_policy, verbose=verbose)
-    rows = NomesLogradourosExtractor(fetcher)(request)
+def run(config: NomesLogradourosConfig, *, verbose: bool = False) -> NomesLogradourosResult:
+    fetcher = WfsFetcher(config.conexao, retry_policy=config.retry, verbose=verbose)
+    rows = NomesLogradourosExtractor(fetcher)(config)
 
     output_path = write_parquet_to_data(_to_columns(rows), OUTPUT_FILENAME)
 
@@ -30,3 +26,6 @@ def run(
         total_unique=len(rows),
         output_path=output_path,
     )
+
+
+_contrato: ScriptRunner[NomesLogradourosConfig, NomesLogradourosResult] = run

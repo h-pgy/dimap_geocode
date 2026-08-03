@@ -1,15 +1,15 @@
 ---
 spec: ingestao_dados/006
 versao: v1
-atualizado_em: 2026-07-31
-implementado: false
+atualizado_em: 2026-08-03
+implementado: true
 changelog:
   - v1: versão inicial
 ---
 
 # SPEC ingestao_dados/006 — Contrato de runners, escrita atômica e isolamento da `data/` nos testes
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada**
 
 ## User story
 Como desenvolvedor do pipeline de dados, quero que **todo script de carga entre por uma assinatura
