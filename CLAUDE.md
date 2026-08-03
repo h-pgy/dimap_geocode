@@ -290,6 +290,13 @@ request/response.**
   WKT/coordenadas.
 - **Imports pelo `__init__.py` exposto** de `services.integrations` / `services.domain`;
   **`__init__.py` só reexporta — nunca implementa.**
+- **Uma declaração por linha.** Nunca empacotar vários nomes numa linha só — nem `x = 1; y = 2`
+  nem `x, y, z = 1, 2, 3` para declarar variáveis independentes, nem vários parâmetros na mesma
+  linha quando a assinatura precisa quebrar (aí é **um parâmetro por linha, com trailing comma**
+  no último — a vírgula é o que impede o `ruff format` de recolapsar). Desempacotar **um** valor
+  (`x, y = ponto`, `for k, v in d.items()`) não é isso e segue normal.
+  *Por quê:* cada nome na sua linha faz a mudança aparecer no diff como uma linha alterada, em vez
+  de uma linha inteira reescrita. Vale também para os **snippets das SPECs**.
 - **JavaScript restrito:** só JS puro, em dois casos — callbacks de eventos HTMX e utilitários do
   Leaflet. Sem regra de negócio, sem estado, sem montar UI a partir de JSON. Validação e
   persistência sempre no servidor.

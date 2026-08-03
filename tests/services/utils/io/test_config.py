@@ -6,7 +6,8 @@ from services.utils.io import config, read_parquet_from_data, write_parquet_to_d
 
 
 def test_diretorio_de_dados_resolvido_na_chamada(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     destino = tmp_path / "outro_data"
     # Patch APENAS no ponto único de resolução, depois do import: se parquet.py e json.py

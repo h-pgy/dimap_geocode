@@ -26,7 +26,7 @@ def test_todo_runner_de_script_segue_o_contrato() -> None:
         assert run is not None, f"{pacote}: subpacote de scripts sem run() exposto"
 
         params = signature(run).parameters
-        assert list(params)[0] == "request", f"{pacote}: 1º parâmetro do run() não é 'request'"
+        assert list(params)[0] == "config", f"{pacote}: 1º parâmetro do run() não é 'config'"
 
         verbose = params.get("verbose")
         assert verbose is not None, f"{pacote}: run() não recebe 'verbose'"

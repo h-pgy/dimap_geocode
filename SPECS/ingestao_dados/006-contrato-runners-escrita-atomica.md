@@ -23,10 +23,10 @@ automatizado (SPEC 007) sem que cada script novo reintroduza a mesma classe de e
 ### Contrato de runner
 
 - [ ] **Todo runner de script tem a mesma assinatura**, declarada como contrato em código:
-      `run(request, *, verbose=False) -> Result`. O que hoje entra solto por parâmetro (config de
-      conexão, política de retry, nomes de arquivo) passa a ser **campo do `Request`** — DTO nas
+      `run(config, *, verbose=False) -> Result`. O que hoje entra solto por parâmetro (config de
+      conexão, política de retry, nomes de arquivo) passa a ser **campo do `Config`** — DTO nas
       duas pontas, uma porta só.
-- [ ] O contrato é um **`Protocol` genérico** (`ScriptRunner[Request, Result]`) e cada `runner.py`
+- [ ] O contrato é um **`Protocol` genérico** (`ScriptRunner[Config, Result]`) e cada `runner.py`
       se declara aderente a ele, de modo que **o `mypy` confere** — quem escrever um runner com
       assinatura diferente não passa no `uv run mypy .`.
 - [ ] **Um teste varre `services/scripts/` e falha se algum `run()` divergir do contrato.** A
@@ -36,7 +36,7 @@ automatizado (SPEC 007) sem que cada script novo reintroduza a mesma classe de e
       `services/scripts/` é um script de carga e expõe um `run()` aderente**; **módulo solto no topo
       de `services/scripts/` é infraestrutura do pipeline** (o próprio `contrato.py`, e o que a SPEC
       007 acrescentar) e não é varrido. Subpacote sem `run()` reprova.
-- [ ] O `augment_tipos_logradouro` ganha o `Request` que hoje não tem, com os nomes de arquivo como
+- [ ] O `augment_tipos_logradouro` ganha o `Config` que hoje não tem, com os nomes de arquivo como
       **campos com default** — o comando **não** importa constante do script só para devolvê-la.
 
 ### Verbose em todo o pipeline
@@ -89,7 +89,7 @@ automatizado (SPEC 007) sem que cada script novo reintroduza a mesma classe de e
 ### Documentação
 
 - [ ] A skill `management-commands` documenta as duas regras novas: **todo `run()` segue o contrato
-      `ScriptRunner`** (`Request` + `verbose`, com a declaração que o `mypy` confere) e **todo
+      `ScriptRunner`** (`Config` + `verbose`, com a declaração que o `mypy` confere) e **todo
       comando do pipeline expõe `--verbose`**, repassando-o ao `run()`. Sem isso as regras
       existiriam só neste arquivo e o próximo script do pipeline nasceria sem elas.
 
@@ -111,10 +111,10 @@ implementações forem **todas compatíveis com a mesma forma** — compatibilid
 a implementação aceite tudo o que o protocolo promete, então protocolo nenhum descreve "qualquer
 parâmetro, desde que tenha `verbose`". A saída é convergir: `config` e `retry_policy` (hoje soltos
 nos três runners de WFS) e os nomes de arquivo (hoje soltos no `augment`) viram **campos do
-`Request`**, que já é um DTO Pydantic. Sobra uma porta única:
+`Config`**, que já é um DTO Pydantic. Sobra uma porta única:
 
 ```python
-def run(request: XRequest, *, verbose: bool = False) -> XResult
+def run(config: XConfig, *, verbose: bool = False) -> XResult
 ```
 
 Isso é exatamente o §7.1 (DTO nas duas pontas) aplicado ao pipeline, e é o que faz o `Protocol`
@@ -126,10 +126,10 @@ convenção — a checagem é da ferramenta.
 > de metadados. A extensão é aditiva e mora lá porque `manual` não tem significado nenhum sem o
 > registro: entregá-la aqui seria um parâmetro morto na assinatura e uma flag morta na CLI.
 
-**O `augment` precisa de um `Request` que não existe.** Ao contrário dos outros três, o
+**O `augment` precisa de um `Config` que não existe.** Ao contrário dos outros três, o
 `services/scripts/augment_tipos_logradouro/models.py` só tem o `AugmentStats` (o resultado) —
-não há `AugmentRequest`. Ele é **criado** aqui, com os três nomes de arquivo como campos. E com
-**default no campo**: se o `Request` os exigisse, o comando teria que importar
+não há `AugmentConfig`. Ele é **criado** aqui, com os três nomes de arquivo como campos. E com
+**default no campo**: se o `Config` os exigisse, o comando teria que importar
 `TIPOS_LOGRADOURO_AUMENTADO_MANUAL` e `PARQUET_NOMES_LOGRADOURO_BASE_ORIGINAL` do pacote do script
 apenas para devolvê-los ao `run()` — constante de script vazando para a camada de orquestração, o
 oposto do que a skill `management-commands` pede. Nos três runners de WFS a distinção é natural: o
@@ -245,24 +245,30 @@ válido de nada, e é o único ignorado.
 ## Peças de referência a compor
 
 - `@services/scripts/*/runner.py` → os quatro `run()`: adotam a assinatura do `ScriptRunner`
-  (`Request` + `verbose`). A lógica de extração — extractors, `_to_columns`, `pipeline` do augment —
+  (`Config` + `verbose`). A lógica de extração — extractors, `_to_columns`, `pipeline` do augment —
   **não muda**.
-- `@services/scripts/*/models.py` → os `...Request` dos três scripts de WFS recebem os campos que
-  hoje andam soltos na assinatura do `run()` (`WfsConnectionConfig`, `WfsRetryPolicy`). Ambos já são
-  `BaseModel`, então entram como campo sem adaptação. O `augment_tipos_logradouro` **não tem
-  `Request`** — o dele é criado aqui.
+- `@services/scripts/*/models.py` → os três scripts de WFS já têm a classe, mas com o nome antigo:
+  `EnderecosFiscaisRequest`, `SegmentosLogradourosRequest` e `NomesLogradourosRequest` **são
+  renomeadas** para `EnderecosFiscaisConfig`, `SegmentosLogradourosConfig` e
+  `NomesLogradourosConfig` — não é criação, é rename. Cada uma ganha os campos que hoje andam
+  soltos na assinatura do `run()` (`WfsConnectionConfig`, `WfsRetryPolicy`); ambos já são
+  `BaseModel`, então entram como campo sem adaptação. O `augment_tipos_logradouro` é o caso
+  diferente: **não existe** classe nenhuma hoje (só há `AugmentStats`, o resultado) — o
+  `AugmentConfig` não é rename, é **criado do zero** aqui.
 - `@apps/logradouro_matcher/management/commands/extrair_nomes_logradouros.py`,
   `@apps/address_geocoder/management/commands/extrair_segmentos_logradouros.py`,
   `@apps/address_geocoder/management/commands/extrair_enderecos_fiscais.py` → os três já expõem
-  `--verbose` e já usam `build_connection_config`/`build_retry_policy`; passam a montar o `Request`
+  `--verbose` e já usam `build_connection_config`/`build_retry_policy`; passam a montar o `Config`
   completo com o que hoje entregam solto.
 - `@apps/logradouro_matcher/management/commands/augment_logradouro_types.py` → o único sem
-  `add_arguments`; ganha `--verbose` e o `Request`, permanecendo fino.
+  `add_arguments`; ganha `--verbose` e o `Config`, permanecendo fino.
 - `@services/utils/io` → `write_parquet_to_data` / `write_json_to_data` / `read_parquet_from_data` /
   `read_json_from_data`: já resolvem `data/`. Aqui deixam de ser `partial` congelada no import e a
   escrita atômica entra num helper compartilhado pelos dois escritores. A ordem dos argumentos de
   cada um **é preservada** (os `partial` de JSON são posicionais e os de parquet são por keyword):
-  nenhum chamador de hoje muda.
+  nenhum chamador de hoje muda. De passagem, a assinatura de `write_json_to_folder` (hoje com os
+  três parâmetros agrupados numa linha) é reformatada para **um parâmetro por linha**, conforme
+  §7.2 do CLAUDE.md — o arquivo já é tocado por esta SPEC.
 - `@tests/conftest.py` → já tem o fixture `autouse` que reseta os catálogos singleton; é onde entra,
   no mesmo molde, o redirecionamento do diretório de dados para um temporário.
 - `@.gitignore` → ganha `data/*.tmp` (sobra de escrita atômica interrompida por `kill -9`).
@@ -274,38 +280,38 @@ válido de nada, e é o único ignorado.
 
 ```python
 # services/scripts/contrato.py — módulo solto no topo: infraestrutura, não é varrido
-Req = TypeVar("Req", bound=BaseModel, contravariant=True)
+Cfg = TypeVar("Cfg", bound=BaseModel, contravariant=True)
 Res = TypeVar("Res", bound=BaseModel, covariant=True)
 
 
-class ScriptRunner(Protocol[Req, Res]):
-    """Todo script de carga entra por aqui: um Request e a chave do pipeline."""
+class ScriptRunner(Protocol[Cfg, Res]):
+    """Todo script de carga entra por aqui: um Config e a chave do pipeline."""
 
-    def __call__(self, request: Req, *, verbose: bool = False) -> Res: ...
+    def __call__(self, config: Cfg, *, verbose: bool = False) -> Res: ...
 
 
 # services/scripts/<nome>/runner.py — assinatura do contrato
-def run(request: EnderecosFiscaisRequest, *, verbose: bool = False) -> EnderecosFiscaisResult:
-    fetcher = WfsFetcher(request.conexao, retry_policy=request.retry, verbose=verbose)
-    rows = EnderecosFiscaisExtractor(fetcher)(request)
+def run(config: EnderecosFiscaisConfig, *, verbose: bool = False) -> EnderecosFiscaisResult:
+    fetcher = WfsFetcher(config.conexao, retry_policy=config.retry, verbose=verbose)
+    rows = EnderecosFiscaisExtractor(fetcher)(config)
     output_path = write_parquet_to_data(_to_columns(rows), OUTPUT_FILENAME)
     return EnderecosFiscaisResult(total_records=len(rows), output_path=output_path)
 
 
 # contrato verificado pelo mypy — assinatura divergente não passa no `uv run mypy .`
-_contrato: ScriptRunner[EnderecosFiscaisRequest, EnderecosFiscaisResult] = run
+_contrato: ScriptRunner[EnderecosFiscaisConfig, EnderecosFiscaisResult] = run
 
 
-# services/scripts/<nome>/models.py — o que era parâmetro solto vira campo do Request.
+# services/scripts/<nome>/models.py — o que era parâmetro solto vira campo do Config.
 # Sem default o que o comando lê de settings; COM default o que é constante do script.
-class EnderecosFiscaisRequest(BaseModel):
+class EnderecosFiscaisConfig(BaseModel):
     layer_name: str
     conexao: WfsConnectionConfig       # antes: 1º parâmetro posicional de run()
     retry: WfsRetryPolicy              # antes: kwarg de run()
 
 
-# services/scripts/augment_tipos_logradouro/models.py — Request NOVO (hoje só existe AugmentStats)
-class AugmentRequest(BaseModel):
+# services/scripts/augment_tipos_logradouro/models.py — Config NOVO (hoje só existe AugmentStats)
+class AugmentConfig(BaseModel):
     input_json_name: str = TIPOS_LOGRADOURO_AUMENTADO_MANUAL
     input_parquet_name: str = PARQUET_NOMES_LOGRADOURO_BASE_ORIGINAL
     output_parquet_name: str = OUTPUT_PARQUET_NAME
@@ -348,7 +354,9 @@ def write_parquet_to_data(columns: Columns, filename: str) -> Path:
 # tests/conftest.py — redireciona a data/, MENOS para os testes marcados `integration`
 @pytest.fixture(autouse=True)
 def _isolar_diretorio_de_dados(
-    request: pytest.FixtureRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    request: pytest.FixtureRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Testes `integration` leem os parquets reais por definição (e nunca escrevem):
     # redirecioná-los esvaziaria o teste. A exceção é pelo marker, nunca por lista de módulos.
@@ -366,18 +374,18 @@ def test_todo_runner_de_script_segue_o_contrato() -> None:
         run = getattr(import_module(f"services.scripts.{pacote}"), "run", None)
         assert run is not None, f"{pacote}: subpacote de scripts sem run() exposto"
         params = signature(run).parameters
-        assert list(params)[0] == "request"
+        assert list(params)[0] == "config"
         assert params["verbose"].kind is Parameter.KEYWORD_ONLY
         assert params["verbose"].default is False
 
 
-# apps/*/management/commands/<etapa>.py — o comando monta o Request completo
-request = EnderecosFiscaisRequest(
+# apps/*/management/commands/<etapa>.py — o comando monta o Config completo
+config = EnderecosFiscaisConfig(
     layer_name=settings.WFS_LAYER_LOTE_CIDADAO,
     conexao=build_connection_config(settings),   # antes ia solto no run()
     retry=build_retry_policy(settings),          # idem
 )
-result = run(request, verbose=bool(options["verbose"]))
+result = run(config, verbose=bool(options["verbose"]))
 ```
 
 ## Fora de escopo
@@ -397,7 +405,7 @@ result = run(request, verbose=bool(options["verbose"]))
 ## Testes (TDD)
 
 - `test_todo_runner_de_script_segue_o_contrato` — varrendo `services/scripts/` por descoberta, todo
-  **subpacote** expõe um `run()` com a assinatura do `ScriptRunner` (`request` + `verbose`
+  **subpacote** expõe um `run()` com a assinatura do `ScriptRunner` (`config` + `verbose`
   keyword-only com default `False`); subpacote sem `run()` reprova, e módulo solto no topo não é
   varrido. Script novo que não se declarou aderente ao `Protocol` — caso cego para o `mypy` —
   quebra a suíte aqui.

@@ -10,7 +10,9 @@ from services.utils.io import config as io_config
 
 @pytest.fixture(autouse=True)
 def _isolar_diretorio_de_dados(
-    request: pytest.FixtureRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    request: pytest.FixtureRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Testes `integration` leem os parquets reais de data/ por definição (e nunca escrevem):
     # redirecionar o diretório esvaziaria o teste. A exceção é pelo marker, nunca por lista
