@@ -1,0 +1,42 @@
+{
+  "segmentos_logradouros.parquet": {
+    "arquivo": "segmentos_logradouros.parquet",
+    "status": "sucesso",
+    "last_run": "03-08-2026 12:27:13",
+    "manual": false,
+    "erro": null,
+    "traceback": null,
+    "last_successful_run": "03-08-2026 12:27:13",
+    "registros": 192077
+  },
+  "nomes_logradouros.parquet": {
+    "arquivo": "nomes_logradouros.parquet",
+    "status": "sucesso",
+    "last_run": "03-08-2026 12:27:24",
+    "manual": false,
+    "erro": null,
+    "traceback": null,
+    "last_successful_run": "03-08-2026 12:27:24",
+    "registros": 50690
+  },
+  "enderecos_fiscais.parquet": {
+    "arquivo": "enderecos_fiscais.parquet",
+    "status": "sucesso",
+    "last_run": "03-08-2026 13:02:31",
+    "manual": false,
+    "erro": null,
+    "traceback": null,
+    "last_successful_run": "03-08-2026 13:02:31",
+    "registros": 1683496
+  },
+  "tipos_logradouro_cache.parquet": {
+    "arquivo": "tipos_logradouro_cache.parquet",
+    "status": "sucesso",
+    "last_run": "03-08-2026 13:02:32",
+    "manual": false,
+    "erro": null,
+    "traceback": null,
+    "last_successful_run": "03-08-2026 13:02:32",
+    "registros": 6251
+  }
+}
