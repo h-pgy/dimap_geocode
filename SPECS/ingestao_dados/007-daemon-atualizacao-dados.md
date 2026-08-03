@@ -1,11 +1,21 @@
 ---
 spec: ingestao_dados/007
-versao: v1
-atualizado_em: 2026-07-31
+versao: v5
+atualizado_em: 2026-08-03
 implementado: false
 depende_de: ingestao_dados/006
 changelog:
   - v1: versão inicial
+  - v2: daemon ganha imagem própria (estágio dedicado do mesmo Dockerfile), sem o entrypoint
+    de migração do web e sem dependência do banco
+  - v3: um Dockerfile por serviço, em `docker/` na raiz, referenciados pelo compose via
+    `build.dockerfile` (no lugar dos estágios do Dockerfile único)
+  - v4: explicitado que o compartilhamento de `data/` entre web e daemon vem do bind mount da
+    raiz (não do COPY da imagem); deploy sem bind mount vai para Fora de escopo
+  - v5: a agenda sai de `services/scripts/agenda.py` e vira o subpacote `services/utils/tempo/` —
+    é aritmética de data/hora sem domínio nem vínculo com o pipeline, o mesmo escopo de `io/` e
+    `normalization/`; a configuração do horário passa a se chamar `DTIME_ATUALIZACAO_ARQUIVOS`; as
+    cargas rodam com `extrair_segmentos_logradouros` na frente de `extrair_nomes_logradouros`
 ---
 
 # SPEC ingestao_dados/007 — Daemon de atualização dos dados + metadados de `data/`
@@ -39,16 +49,23 @@ velho e passe a ter como saber se o dado em disco mudou.
 ### Daemon
 
 - [ ] Existe um comando **daemon**, que roda como processo próprio, dorme até o **horário do dia**
-      configurado em variável de ambiente (`DATA_UPDATE_TIME`, formato `HH:MM`, no fuso do
+      configurado em variável de ambiente (`DTIME_ATUALIZACAO_ARQUIVOS`, formato `HH:MM`, no fuso do
       projeto) e então dispara o pipeline one-shot; ao terminar, volta a dormir até a próxima
       ocorrência. **Roda indefinidamente.**
 - [ ] A variável é lida pelo `_Settings` **já tipada como `datetime.time`** e reextraída para a
-      constante `DATA_UPDATE_TIME` — a aritmética do domínio recebe um `time`, nunca uma string
-      para parsear.
+      constante `DTIME_ATUALIZACAO_ARQUIVOS` — a aritmética do domínio recebe um `time`, nunca
+      uma string para parsear.
 - [ ] Uma falha do pipeline **não derruba o daemon**: ele reporta o erro e segue agendado para o
       dia seguinte.
-- [ ] O daemon sobe como **serviço próprio do `docker compose`**, paralelo ao `web`, usando a
-      mesma imagem — o processo web não é onerado pela extração.
+- [ ] O daemon sobe como **serviço próprio do `docker compose`**, paralelo ao `web`, com **imagem
+      própria** — não a do `web`. **Cada serviço tem o seu Dockerfile**, os dois numa pasta
+      `docker/` na raiz, e o compose aponta para eles por `build.dockerfile` mantendo o **contexto
+      na raiz** (é o contexto que dá acesso a `pyproject.toml`, `uv.lock` e ao código). O daemon
+      não herda o entrypoint de migração, o `EXPOSE` nem o `runserver`, e reconstruir ou reiniciar
+      um dos serviços não mexe no outro.
+- [ ] O serviço do daemon **não depende do banco**: o pipeline vai do WFS ao parquet e não toca o
+      Postgres. Sem `depends_on: db` e sem migração na subida — ele sobe e roda com o `db` fora do
+      ar.
 - [ ] O daemon é **opcional por flag do compose**: `docker compose up` sobe `db` + `web` **sem**
       atualização automática; `docker compose --profile atualizacao up` sobe os três. A escolha é
       feita **na hora de subir**, sem editar arquivo e sem container ocioso rodando à toa.
@@ -114,10 +131,11 @@ em disco** o que a ponta da frente vai precisar depois para decidir se vale rele
 
 **Três peças, em camadas distintas:**
 
-1. **Agenda (domínio puro, `services/`).** A aritmética "dado o horário configurado e o instante
-   atual, quantos segundos até a próxima ocorrência" é uma função pura — é o único pedaço do
-   daemon com regra própria, e é onde moram as bordas (horário já passou hoje → amanhã; horário
-   exatamente agora → **próximo dia**, nunca zero, para não disparar duas vezes).
+1. **Agenda (utilitário puro, `services/utils/tempo/`).** A aritmética "dado o horário
+   configurado e o instante atual, quantos segundos até a próxima ocorrência" é uma função pura —
+   é o único pedaço do daemon com regra própria, e é onde moram as bordas (horário já passou hoje
+   → amanhã; horário exatamente agora → **próximo dia**, nunca zero, para não disparar duas
+   vezes).
 2. **Pipeline (domínio puro, `services/`).** A execução ordenada com parada na primeira falha é
    uma classe callable que recebe o executor **por composição, tipado como `Callable[[str], None]`**
    (§7.1) e devolve um `...Result` Pydantic. Ela **não sabe o que é um management command** — recebe
@@ -125,17 +143,31 @@ em disco** o que a ponta da frente vai precisar depois para decidir se vale rele
 3. **Comandos (orquestração, `apps/core`).** Quem sabe que "executar uma etapa" é
    `call_command(nome)` e quem conhece a **ordem** das etapas é o Django — logo, vive no comando.
    O comando one-shot passa a lista ordenada no `...Request` e injeta `call_command` como executor;
-   o comando daemon lê `settings.DATA_UPDATE_TIME`, chama a agenda, dorme e dispara o one-shot.
+   o comando daemon lê `settings.DTIME_ATUALIZACAO_ARQUIVOS`, chama a agenda, dorme e dispara o
+   one-shot.
    O daemon mora em `apps/core` (não em `address_geocoder` nem em `logradouro_matcher`) porque
    atravessa os dois domínios — §7.1: módulo não cruza domínios, e infraestrutura transversal é do
    `core`.
 
-**Agenda e pipeline são módulos soltos em `services/scripts/`, não um subpacote.** Eles são
-infraestrutura do pipeline, não scripts de carga: não têm `run()`, não recebem `Request` de
-extração e não escrevem artefato em `data/`. A SPEC 006 fixou a regra topológica que separa as duas
-coisas — **subpacote de `services/scripts/` é script de carga e tem que expor um `run()` aderente ao
-contrato; módulo solto no topo é infraestrutura e não é varrido** — justamente para que estes dois
-possam morar ali sem reprovar o teste de contrato e sem precisar de lista de exceções. É a mesma
+**A agenda mora em `services/utils/`, não em `services/scripts/`.** O que ela faz é aritmética de
+data e hora: dado um `time` e um `datetime`, quantos segundos faltam para a próxima ocorrência. Não
+sabe o que é pipeline, etapa, parquet ou daemon — troque o daemon por qualquer outro processo
+periódico e a função é a mesma. Isso é exatamente o escopo do `services/utils/` (§6.1: "escopo
+geral, sem domínio", a mesma prateleira de `cache.py` e `io/`), e deixá-la em `services/scripts/`
+seria dar a ela um vínculo com o pipeline que ela não tem — o próximo lugar do projeto que precisar
+esperar até um horário do dia teria que importar da camada de scripts para conseguir.
+
+Ela é um **subpacote**, `services/utils/tempo/`, no padrão de `io/` e `normalization/`: a função
+mora num módulo próprio (`tempo_ate.py`) e é reexportada no `__init__.py` — a próxima utilidade de
+data/hora entra como módulo vizinho, não empilhada num arquivo só. O nome é `tempo`, não
+`datetime`, para não sombrear o módulo homônimo da stdlib que este código importa (`ruff A005`).
+
+**O pipeline continua sendo um módulo solto em `services/scripts/`, não um subpacote.** Ele é
+infraestrutura do pipeline, não script de carga: não tem `run()`, não recebe `Request` de extração
+e não escreve artefato em `data/`. A SPEC 006 fixou a regra topológica que separa as duas coisas —
+**subpacote de `services/scripts/` é script de carga e tem que expor um `run()` aderente ao
+contrato; módulo solto no topo é infraestrutura e não é varrido** — justamente para que ele possa
+morar ali sem reprovar o teste de contrato e sem precisar de lista de exceções. É a mesma
 prateleira do `contrato.py`.
 
 **Verbose obrigatório.** O daemon roda sem plateia: se uma extração do GeoSampa trava por 40
@@ -245,6 +277,36 @@ varredura.
 quem vai consultar isso na fase 2 é o `Catalog`, e o que ele conhece é o arquivo que lê. Um script
 por parquet, então a distinção é sem diferença hoje — mas a chave certa é a do consumidor.
 
+**Imagem própria para o daemon, e um `Dockerfile` por serviço em `docker/`.** Compartilhar imagem
+não faria os dois containers competirem por nada — imagem é conjunto de camadas read-only, e o
+isolamento de processo já vem de ser um serviço separado. O que a imagem compartilhada traz de fato
+é acoplamento de **conteúdo e de ciclo de build**: o daemon herdaria o `ENTRYPOINT` que roda
+`migrate`, o `EXPOSE 8000` e o `CMD` de `runserver` — três coisas que ele não usa —, e passaria a
+ser reconstruído por qualquer mudança que só interessa ao web. A separação é feita da forma mais
+legível possível: **um arquivo por serviço**, `docker/Dockerfile.web` e `docker/Dockerfile.daemon`,
+com o `entrypoint.sh` (que é só do web) junto deles. Quem abre um arquivo lê **a receita inteira
+daquela imagem**, de cima a baixo, sem rastrear qual estágio herda o quê — e mexer no web é mexer
+num arquivo que o daemon não usa.
+
+O preço é a **duplicação da base**: o bloco de libs de sistema (GEOS/GDAL/PROJ), o `uv` pinado, o
+`UV_PROJECT_ENVIRONMENT=/opt/venv` e o `uv sync --frozen --no-dev` aparecem nos dois arquivos. Isso
+custa build, não runtime — o cache do BuildKit é por arquivo, então uma dependência de sistema nova
+recompila as duas imagens em vez de uma. E é a mesma duplicação que a organização compra: **os dois
+blocos precisam ser mantidos idênticos**, e divergência entre eles é bug (o daemon rodando com GDAL
+diferente do web produziria parquet que o web lê torto). A regra prática: mexeu na base de um,
+mexeu na do outro, no mesmo commit.
+
+O **contexto de build continua sendo a raiz** (`context: .`), só o `dockerfile:` aponta para
+`docker/`. É o contexto que dá aos dois arquivos acesso a `pyproject.toml`, `uv.lock` e ao código —
+e é por isso que o `.dockerignore` permanece na raiz, onde o Docker o procura.
+
+**E o daemon não fala com o banco.** O pipeline vai do WFS ao parquet em `data/`; nenhuma das quatro
+etapas toca o Postgres. Então o serviço não declara `depends_on: db` e não roda migração —
+`DJANGO_AUTO_MIGRATE` deixa de ser assunto, porque não há entrypoint para lê-la. O Django é
+carregado só pelo `call_command` e pelo `settings` (cujos campos têm default, inclusive os de
+banco), e a conexão só existiria se alguém consultasse o ORM. O ganho não é performance: é que o
+daemon fica com uma superfície de falha menor que a do web e sobe sozinho.
+
 **O daemon torna o `git status` permanentemente sujo, e isso é aceito.** O serviço monta o código do
 host em `/app`, então ele escreve nos parquets e no JSON **versionados** — depois de cada ciclo
 noturno, `git diff` acusa os quatro artefatos. É consequência direta de manter `data/` versionado
@@ -253,17 +315,32 @@ ignorar os parquets — custaria minutos de GeoSampa a cada clone. Quem sobe o p
 está assumindo que vai commitar ou descartar a carga do dia; o JSON de metadados, versionado junto,
 é o que diz **de quando** é o dado que veio no clone.
 
+**Quem compartilha `data/` entre web e daemon é o bind mount da raiz, não a imagem.** Os dois
+serviços declaram `- .:/app`, então `data/` não é um volume próprio: ele entra de carona no mount do
+projeto inteiro, e o que os dois containers veem em `/app/data` é **a mesma pasta do host**. É daí
+que vem tudo o que esta SPEC assume: o parquet que o daemon grava é visível ao web no mesmo
+instante, sem cópia e sem restart do container, e o `os.replace` do helper atômico é de fato atômico
+porque origem e destino caem no mesmo filesystem — o do host — para os dois processos. O `COPY . .`
+do Dockerfile também põe uma cópia dos parquets na imagem, mas **enquanto o mount existe ele esconde
+essa cópia**; ela só serviria a uma imagem rodada sem bind mount. Um volume nomeado para `data/`
+seria o desenho oposto e está descartado: esconderia os artefatos dentro do Docker, fora do editor e
+do `git status`, contra a decisão da SPEC 006 de manter `data/` versionado.
+
+Que o web só **enxergue** o dado novo na próxima expiração do TTL é outra questão, e é a fase 2 (ver
+Fora de escopo): no disco o arquivo já mudou; o que ainda não mudou é o que o processo tem em
+memória.
+
 **Fluxo:**
 
 ```
 docker compose: serviço `daemon` (profile `atualizacao`)
   └→ manage.py daemon_atualizar_dados            (orquestração)
-       ├→ agenda: segundos até HH:MM             (services — puro)
+       ├→ agenda: segundos até HH:MM             (services/utils — puro)
        ├→ dorme
        └→ call_command("atualizar_dados", automatico=True)   (orquestração)
             └→ PipelineAtualizacao(executor)     (services — puro)
-                 ├→ extrair_nomes_logradouros    ──┐
-                 ├→ extrair_segmentos_logradouros  │ cargas  (executor = call_command
+                 ├→ extrair_segmentos_logradouros ─┐
+                 ├→ extrair_nomes_logradouros      │ cargas  (executor = call_command
                  ├→ extrair_enderecos_fiscais    ──┘          com verbose/automatico fixos)
                  └→ augment_logradouro_types       variações (consome nomes_logradouros)
                       └→ cada runner: registrar_execucao(...) envolvendo
@@ -279,6 +356,8 @@ docker compose: serviço `daemon` (profile `atualizacao`)
   **não muda**, e nenhum deles conhece o formato do JSON de metadados.
 - `@services/utils/io` → o helper de escrita atômica entregue pela SPEC 006: o módulo de metadados o
   **usa**, não reimplementa `os.replace` nem monta `Path` para `data/`.
+- `@services/utils/normalization` → o formato que `tempo/` segue: subpacote com um módulo por
+  utilidade e `__init__.py` só reexportando (§7.2).
 - `@apps/*/management/commands/extrair_*.py`, `@apps/logradouro_matcher/management/commands/augment_logradouro_types.py`
   → as quatro etapas do pipeline, **reaproveitadas como etapas** (o one-shot as executa via
   `call_command`, não reimplementa nenhuma extração). Cada uma passa a expor `--automatico` e
@@ -288,9 +367,19 @@ docker compose: serviço `daemon` (profile `atualizacao`)
   "America/Sao_Paulo"` e `USE_TZ = True` já definem o fuso.
 - `@apps/core` → o app transversal onde os dois comandos novos moram; hoje ele não tem diretório
   `management/`.
-- `@docker-compose.yml` + `@Dockerfile` + `@entrypoint.sh` → o serviço `daemon` reusa a mesma
-  imagem e o mesmo entrypoint do `web` (que já faz `exec "$@"` e respeita `DJANGO_AUTO_MIGRATE`),
-  trocando só o `command`.
+- `@Dockerfile` → **vira `docker/Dockerfile.web`**, sem mudança de conteúdo: libs de sistema, `uv`
+  pinado, `UV_PROJECT_ENVIRONMENT=/opt/venv`, `uv sync --frozen --no-dev`, `COPY . .`, entrypoint,
+  `EXPOSE`, `runserver`. É dele que se copia o bloco de base para o `docker/Dockerfile.daemon`, que
+  então troca as três últimas instruções pelo `CMD` do loop.
+- `@entrypoint.sh` → **vai para `docker/`** e continua **exclusivo do web**: ele existe para rodar
+  `migrate` antes do `exec "$@"`, e o daemon não migra nada. O `COPY` passa a ser
+  `COPY docker/entrypoint.sh /entrypoint.sh` — o contexto é a raiz, não a pasta.
+- `@.dockerignore` → **fica onde está**, na raiz: é lá que o Docker o procura, e ele vale para os
+  dois builds.
+- `@docker-compose.yml` → o `web` ganha `build.dockerfile` explícito (o `build: .` de hoje só
+  funciona porque o `Dockerfile` está na raiz), e o serviço novo entra sob `profiles`, apontando
+  para o outro arquivo, com o mesmo bind mount `.:/app` do web — é ele que faz os parquets caírem
+  no `data/` do host.
 - `@.env.example` → onde a nova variável é documentada.
 - `@tests/conftest.py` → o fixture `autouse` que a SPEC 006 aponta para um diretório temporário: é o
   que faz os testes de metadados não tocarem o JSON versionado.
@@ -300,7 +389,7 @@ docker compose: serviço `daemon` (profile `atualizacao`)
 ## Snippets sugeridos
 
 ```python
-# services/scripts/agenda.py — módulo solto no topo: infraestrutura, não é varrido pelo contrato
+# services/utils/tempo/tempo_ate.py — exposta no __init__.py do subpacote
 def segundos_ate_proximo(horario: time, agora: datetime) -> float:
     alvo = agora.replace(hour=horario.hour, minute=horario.minute, second=0, microsecond=0)
     if alvo <= agora:                      # já passou hoje (ou é exatamente agora) → amanhã
@@ -376,10 +465,13 @@ def registrar_execucao(arquivo: str, *, manual: bool) -> Iterator[Registro]:
 
 # config/settings.py — tipado como `time` para o Pydantic coagir o "HH:MM" do env
 class _Settings(BaseSettings):
-    data_update_time: time = Field(default=time(3, 0), alias="DATA_UPDATE_TIME")
+    dtime_atualizacao_arquivos: time = Field(
+        default=time(3, 0),
+        alias="DTIME_ATUALIZACAO_ARQUIVOS",
+    )
 
 
-DATA_UPDATE_TIME = _env.data_update_time
+DTIME_ATUALIZACAO_ARQUIVOS = _env.dtime_atualizacao_arquivos
 
 
 # apps/*/management/commands/<etapa>.py — a flag do daemon e a única negação da cadeia
@@ -399,8 +491,8 @@ result = run(
 # apps/core/management/commands/atualizar_dados.py — verbose é do contrato, não opção do usuário;
 # `automatico` é repassado: o one-shot rodado na mão marca as etapas como manuais.
 ETAPAS: tuple[str, ...] = (
-    "extrair_nomes_logradouros",
     "extrair_segmentos_logradouros",
+    "extrair_nomes_logradouros",
     "extrair_enderecos_fiscais",
     "augment_logradouro_types",     # variações: consome nomes_logradouros.parquet
 )
@@ -416,7 +508,7 @@ if resultado.falhou_em is not None:
 # apps/core/management/commands/daemon_atualizar_dados.py — o loop, e a marca de "automático"
 while True:
     espera = segundos_ate_proximo(
-        settings.DATA_UPDATE_TIME, datetime.now(ZoneInfo(settings.TIME_ZONE))
+        settings.DTIME_ATUALIZACAO_ARQUIVOS, datetime.now(ZoneInfo(settings.TIME_ZONE))
     )
     self.stdout.write(f"[daemon] próxima atualização em {espera / 3600:.1f}h")
     sleep(espera)
@@ -426,24 +518,78 @@ while True:
         self.stderr.write(f"[daemon] atualização falhou: {exc}")
 ```
 
+```
+docker/
+├── Dockerfile.web        # o Dockerfile de hoje, movido; conteúdo inalterado
+├── Dockerfile.daemon     # mesma base, outro fim: só o CMD do loop
+└── entrypoint.sh         # movido; roda `migrate` — é do web, e só dele
+```
+
+```dockerfile
+# docker/Dockerfile.daemon — o build roda com o contexto na RAIZ (ver compose).
+# syntax=docker/dockerfile:1
+FROM python:3.14-slim-trixie
+
+# --- Base: IDÊNTICA à do docker/Dockerfile.web. Mexeu aqui, mexeu lá, no mesmo commit. ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        binutils \
+        gdal-bin \
+        libgdal-dev \
+        libgeos-dev \
+        libproj-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /uvx /bin/
+
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+
+COPY . .
+# --- Fim da base comum. Daqui pra baixo é só do daemon. ---
+
+# Sem ENTRYPOINT (não migra) e sem EXPOSE (não serve HTTP): só o loop.
+CMD ["python", "manage.py", "daemon_atualizar_dados"]
+```
+
+```dockerfile
+# docker/Dockerfile.web — o arquivo de hoje, movido. Única mudança: o caminho do entrypoint,
+# que agora mora em docker/ (o contexto de build continua sendo a raiz).
+COPY docker/entrypoint.sh /entrypoint.sh
+```
+
 ```yaml
-# docker-compose.yml — processo paralelo, mesma imagem, sem porta exposta
+# docker-compose.yml — um dockerfile por serviço; o daemon sem porta e sem banco
+  web:
+    build:
+      context: .                      # contexto na raiz: dá acesso a uv.lock e ao código
+      dockerfile: docker/Dockerfile.web
+    # ...resto inalterado
+
   daemon:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.daemon
     # Flag de subida: serviço só existe sob o profile `atualizacao`.
     #   docker compose up                          → db + web (sem atualização automática)
     #   docker compose --profile atualizacao up    → db + web + daemon
     profiles: ["atualizacao"]
-    command: python manage.py daemon_atualizar_dados
     environment:
-      DJANGO_AUTO_MIGRATE: "0"        # quem migra é o web
-      DATA_UPDATE_TIME: ${DATA_UPDATE_TIME:-03:00}
-      # + as mesmas variáveis de banco/Django do serviço web
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings}
+      DTIME_ATUALIZACAO_ARQUIVOS: ${DTIME_ATUALIZACAO_ARQUIVOS:-03:00}
+      # Sem DJANGO_AUTO_MIGRATE (não há entrypoint) e sem variáveis de banco:
+      # o pipeline vai do WFS ao parquet e não consulta o Postgres.
     volumes:
       - .:/app                        # grava os parquets no data/ do host
-    depends_on:
-      db:
-        condition: service_healthy
+    # Sem `depends_on`, sem `ports`: não fala com o banco e não serve HTTP.
 ```
 
 **Por que `profiles` e não uma variável tipo `DATA_UPDATE_ENABLED=0`:** com a variável, o container
@@ -467,6 +613,10 @@ diz a verdade sobre o que está rodando.
   tem o stdout do container — o JSON é estado, igual aos parquets.
 - Lock de arquivo ou qualquer coordenação entre um daemon e um comando rodado na mão ao mesmo
   tempo: a última escrita ganha.
+- **Compartilhar `data/` sem bind mount.** O desenho aqui pressupõe o `- .:/app` dos dois serviços
+  (desenvolvimento). Num deploy que rode as imagens sem montar o código do host, cada container
+  escreveria na própria camada gravável e o web nunca veria o parquet do daemon — resolver isso
+  exige um volume dedicado a `data/`, e é decisão da iteração que tratar de deploy, não desta.
 - Alerta/notificação em cima do `status: falha` (e-mail, webhook, painel). O dado passa a existir
   aqui; agir sobre ele é outra iteração.
 - Fila/worker (Celery, RQ), cron do sistema, healthcheck ou métricas do daemon — §1: dezenas de

@@ -107,6 +107,26 @@ libera o uso da seção `Patches`.
 
 ---
 
+## Concisão: escreva o "por quê" curto
+
+**Não seja verboso.** Vale para o "Contexto e decisões de arquitetura", para os comentários dos
+snippets e para qualquer justificativa na SPEC. A SPEC é lida antes de cada implementação e relida a
+cada revisão — texto inflado não a torna mais rigorosa, só faz a decisão que importa se perder no
+meio da prosa.
+
+- **Uma decisão, um parágrafo curto.** Diga a decisão, a razão dela e o custo aceito. Ponto.
+- **Não repita a mesma justificativa** em seções diferentes, nem parafraseie o critério de aceite
+  que a decisão atende — remeta a ele.
+- **Não escreva a alternativa descartada em detalhe.** Uma oração basta ("volume nomeado esconderia
+  os artefatos do `git status` — descartado"). Comparativo longo entre opções é discussão de
+  proposta, não de especificação.
+- **Comentário de snippet é uma linha.** Ele diz *por que* aquela linha existe, não o que ela faz —
+  a mesma regra do §7 do CLAUDE.md. Snippet que precisa de três linhas de comentário está
+  escondendo uma decisão que devia estar no "Contexto".
+- **Não use ênfase para compensar tamanho.** Negrito em tudo é o mesmo que negrito em nada.
+
+---
+
 ## Template do arquivo de SPEC
 
 Ao redigir uma SPEC, use exatamente este template (substitua os campos `<…>`):
@@ -189,6 +209,8 @@ Antes de apresentar a SPEC ao usuário, verifique:
 - [ ] User story com persona, objetivo e valor claros.
 - [ ] Critérios de aceite são **condições observáveis** (não tarefas técnicas).
 - [ ] Contexto explica em quais camadas a SPEC mexe e por quê essa abordagem.
+- [ ] O "por quê" está **curto**: uma decisão por parágrafo, sem repetição, sem alternativa
+      descartada em detalhe, e comentário de snippet em uma linha.
 - [ ] Peças de referência listam apenas o que **já existe** e deve ser reutilizado.
 - [ ] Fora de escopo define explicitamente o que **não** entra nesta iteração.
 - [ ] Seção "Testes (TDD)" presente, com os testes derivados dos critérios de aceite — **poucos e

@@ -282,6 +282,14 @@ request/response.**
 
 ### 7.2 Convenções
 - **Tipagem integral** em todo Python; `mypy` e `ruff` limpos.
+- **Comentário explica o *porquê*, nunca o *quê*.** O código já diz o que faz — quem lê tem a linha
+  na frente. O comentário existe só para o que a linha não consegue mostrar: a razão da decisão, a
+  borda que ela protege, a restrição externa que a obriga. Comentário que parafraseia a linha
+  (`# incrementa o contador`) é ruído que envelhece e passa a mentir.
+  **Objetividade é regra:** uma linha, no imperativo ou na afirmativa direta, sem preâmbulo, sem
+  repetir o que já está na SPEC ou na docstring, sem narrar o histórico da decisão. Se o porquê não
+  cabe em uma ou duas linhas, ele é decisão de arquitetura e o lugar dele é a SPEC — não um bloco de
+  comentário no meio do código.
 - **Pydantic nas fronteiras:** DTOs de domínio e contratos de integração.
 - **Validação de entrada nas views:** construir o DTO e deixar o `PydanticValidationMiddleware`
   interceptar o `ValidationError` — **nunca `try/except` na view**.
