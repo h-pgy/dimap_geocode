@@ -219,3 +219,7 @@ __marimo__/
 
 # Escrita atômica de data/ (SPEC ingestao_dados/006): sobra de processo morto (kill -9)
 data/*.tmp
+
+# Insumo reconstruível do scraper de ITBI (SPEC ingestao_dados/008): o dado é o parquet consolidado
+data/itbi_originais/
+data/itbi_parseados/

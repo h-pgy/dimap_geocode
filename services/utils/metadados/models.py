@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_serializer, field_validator
 
@@ -19,6 +19,9 @@ class MetadadoArquivo(BaseModel):
     # Última ESCRITA bem-sucedida: devolvidas intactas quando a tentativa falha.
     last_successful_run: datetime | None = None
     registros: int | None = None
+    # O que só o script sabe sobre a carga (ex.: o que falhou por ano). Chega pronto para JSON:
+    # o módulo não conhece o DTO de resultado de script nenhum.
+    detalhes: dict[str, Any] | None = None
 
     @field_validator("last_run", "last_successful_run", mode="before")
     @classmethod

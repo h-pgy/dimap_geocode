@@ -15,9 +15,11 @@ class Registro:
 
     def __init__(self) -> None:
         self.registros: int | None = None
+        self.detalhes: dict[str, Any] | None = None
 
-    def sucesso(self, *, registros: int) -> None:
+    def sucesso(self, *, registros: int, detalhes: dict[str, Any] | None = None) -> None:
         self.registros = registros
+        self.detalhes = detalhes
 
 
 def _ler_bruto() -> dict[str, Any]:
@@ -76,5 +78,6 @@ def registrar_execucao(arquivo: str, *, manual: bool) -> Iterator[Registro]:
             manual=manual,
             last_successful_run=agora,
             registros=registro.registros,
+            detalhes=registro.detalhes,
         )
     )
