@@ -13,10 +13,19 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument("--verbose", action="store_true")
+        parser.add_argument(
+            "--automatico",
+            action="store_true",
+            help="uso interno do daemon: marca a execução como automática nos metadados.",
+        )
 
     def handle(self, *args: object, **options: object) -> None:
         config = AugmentConfig()
-        stats: AugmentStats = run(config, verbose=bool(options["verbose"]))
+        stats: AugmentStats = run(
+            config,
+            verbose=bool(options["verbose"]),
+            manual=not options["automatico"],
+        )
 
         for tipo in stats.tipos_nao_mapeados:
             self.stdout.write(

@@ -7,6 +7,7 @@ referencia as constantes, não o objeto de settings.
 """
 
 import json
+from datetime import time
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +78,13 @@ class _Settings(BaseSettings):
         default=_ESCALAS["sakura"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
     )
 
+    # Tipado como `time` para o Pydantic coagir o "HH:MM" do env: a aritmética da agenda
+    # recebe um `time`, nunca uma string para parsear.
+    dtime_atualizacao_arquivos: time = Field(
+        default=time(3, 0),
+        alias="DTIME_ATUALIZACAO_ARQUIVOS",
+    )
+
 
 _env = _Settings()
 
@@ -133,6 +141,9 @@ MAP_COR_POLIGONO = _env.map_cor_poligono
 MAP_COR_PONTO = _env.map_cor_ponto
 # Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (sakura-700).
 MAP_COR_POLIGONO_CONDOMINIO = _env.map_cor_poligono_condominio
+
+# Horário do dia (fuso de TIME_ZONE) em que o daemon reextrai os parquets de data/.
+DTIME_ATUALIZACAO_ARQUIVOS = _env.dtime_atualizacao_arquivos
 
 
 # Application definition

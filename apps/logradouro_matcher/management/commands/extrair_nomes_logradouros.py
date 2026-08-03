@@ -12,6 +12,11 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument("--verbose", action="store_true")
+        parser.add_argument(
+            "--automatico",
+            action="store_true",
+            help="uso interno do daemon: marca a execução como automática nos metadados.",
+        )
 
     def handle(self, *args: object, **options: object) -> None:
         config = NomesLogradourosConfig(
@@ -19,7 +24,11 @@ class Command(BaseCommand):
             conexao=build_connection_config(settings),
             retry=build_retry_policy(settings),
         )
-        result = run(config, verbose=bool(options["verbose"]))
+        result = run(
+            config,
+            verbose=bool(options["verbose"]),
+            manual=not options["automatico"],
+        )
         self.stdout.write(
             self.style.SUCCESS(
                 f"{result.total_unique} logradouros únicos salvos em {result.output_path}"

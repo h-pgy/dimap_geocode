@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1
+# O build roda com o contexto na RAIZ (ver docker-compose.yml).
 
 # Debian (trixie) pina as versões de GEOS, GDAL e PROJ — dependências de sistema
 # do GeoDjango que NÃO podem ser instaladas via uv/pip.
 FROM python:3.14-slim-trixie
+
+# --- Base: IDÊNTICA à do docker/Dockerfile.daemon. Mexeu aqui, mexeu lá, no mesmo commit. ---
 
 # Bibliotecas de sistema exigidas pelo GeoDjango (ver CLAUDE.md, "Stack").
 #   gdal-bin / libgdal-dev -> GDAL   |   libgeos-dev -> GEOS   |   libproj-dev -> PROJ
@@ -32,13 +35,14 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-# Entrypoint: roda migrações e repassa o controle ao CMD/command (fica em /
-# para não ser escondido pelo bind mount do código em /app).
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 # Código da aplicação (em dev é sobreposto pelo bind mount do compose).
 COPY . .
+# --- Fim da base comum. Daqui pra baixo é só do web. ---
+
+# Entrypoint: roda migrações e repassa o controle ao CMD/command (fica em /
+# para não ser escondido pelo bind mount do código em /app).
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000
 

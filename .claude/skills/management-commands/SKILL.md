@@ -68,6 +68,25 @@ comandos que não extraem nada. O que **não** varia:
   extrações do GeoSampa levam minutos e sem isso não há sinal de progresso. Verbose não é
   "imprimir mais": é o script **apurar e devolver mais** no DTO de resultado (ex.: contagem de
   variações por tipo do `augment`); quem imprime continua sendo o comando.
+- **Todo comando do pipeline expõe `--automatico`** e o traduz para `manual` (SPEC
+  ingestao_dados/007). A flag é **uso interno do daemon**; quem digita o comando no terminal grava
+  `manual: true` sem saber que ela existe:
+  ```python
+  parser.add_argument(
+      "--automatico",
+      action="store_true",
+      help="uso interno do daemon: marca a execução como automática nos metadados.",
+  )
+
+  result = run(
+      config,
+      verbose=bool(options["verbose"]),
+      manual=not options["automatico"],
+  )
+  ```
+  **A negação mora aqui e só aqui** — do `run()` para baixo a chave é `manual`. O default
+  conservador protege comando novo que esqueça de repassá-la: no pior caso uma execução automática
+  aparece rotulada como manual, nunca o contrário.
 
 ## O contrato `ScriptRunner` (SPEC ingestao_dados/006)
 
@@ -75,7 +94,7 @@ comandos que não extraem nada. O que **não** varia:
 em `services/scripts/contrato.py`:
 
 ```python
-def run(config: XConfig, *, verbose: bool = False) -> XResult: ...
+def run(config: XConfig, *, verbose: bool = False, manual: bool = True) -> XResult: ...
 ```
 
 - **`config` é o único parâmetro posicional** e é um DTO Pydantic — o que hoje entraria solto por
@@ -83,6 +102,9 @@ def run(config: XConfig, *, verbose: bool = False) -> XResult: ...
   o que o comando lê de `settings`; **com** default o que é constante do próprio script (assim o
   comando não precisa importar constante do script só para devolvê-la).
 - **`verbose` é sempre keyword-only, com default `False`.**
+- **`manual` é sempre keyword-only, com default `True`** (SPEC ingestao_dados/007): o `run()` não
+  tem como descobrir quem o chamou, então a informação desce pela cadeia. Só o daemon a marca como
+  `False`.
 - Cada `runner.py` declara aderência ao protocolo, e o `mypy` confere:
   ```python
   _contrato: ScriptRunner[XConfig, XResult] = run
@@ -112,12 +134,44 @@ já resolvem `data/` **e escrevem atomicamente** (temporário próprio do proces
 `os.replace` — quem lê nunca vê um arquivo pela metade). Não monte `Path` para `data/` nem no
 script nem no comando, e não passe a pasta de destino pelo `...Config`.
 
+### Registro de metadados (SPEC ingestao_dados/007)
+
+**Todo `runner.py` que escreve um artefato em `data/` registra a execução nos metadados**, via o
+helper compartilhado de `services.utils.metadados`, **envolvendo** o trabalho:
+
+```python
+def run(config: XConfig, *, verbose: bool = False, manual: bool = True) -> XResult:
+    with registrar_execucao(OUTPUT_FILENAME, manual=manual) as registro:
+        rows = XExtractor(fetcher)(config)
+        output_path = write_parquet_to_data(_to_columns(rows), OUTPUT_FILENAME)
+        registro.sucesso(registros=len(rows))
+    return XResult(total_records=len(rows), output_path=output_path)
+```
+
+- É **gerenciador de contexto, não função chamada depois**: uma função depois da escrita nunca roda
+  quando a escrita explode — e é aí que o registro importa. Saindo limpo grava `sucesso`; saindo por
+  exceção grava `falha` com erro e traceback **e deixa a exceção seguir**. Isto é observabilidade,
+  **não `try/except` disfarçado**: nenhum runner ganha `try/except`.
+- **O runner passa só o que ele sabe**: nome do arquivo e contagem gravada. Timestamp, formato de
+  data, captura de traceback, merge com os registros dos outros arquivos e escrita atômica são do
+  módulo de metadados — um ponto único no projeto que sabe escrever esse JSON. Não serialize DTO,
+  não monte `Path`, não escreva `strftime`/`strptime` fora dele (mesmo raciocínio do §6.1:
+  o formato é lido depois, em outro processo).
+- **A chave é o nome do arquivo parquet**, não o nome do script: quem consulta o registro conhece o
+  arquivo que lê.
+
 ## Depois de rodar (§6.4: cargas → variações → cache)
 
 Os comandos formam um **pipeline encadeado** — os que geram variações e caches consomem os parquets
-das cargas. Antes de rodar um, veja de que artefato de `data/` ele depende (está no `...Request` ou
+das cargas. Antes de rodar um, veja de que artefato de `data/` ele depende (está no `...Config` ou
 nas constantes do script): rodar fora de ordem não costuma quebrar, produz cache a partir de dado
 velho, que é pior.
+
+`manage.py atualizar_dados` roda o pipeline inteiro na ordem correta, em modo verboso, parando na
+primeira etapa que falhar; `manage.py daemon_atualizar_dados` é o loop que o dispara todo dia no
+horário de `DTIME_ATUALIZACAO_ARQUIVOS` (serviço `daemon` do compose, sob o profile `atualizacao`).
+A ordem canônica das etapas vive na constante `ETAPAS` do one-shot — script novo do pipeline entra
+lá.
 
 **Nenhum comando faz refresh de cache em runtime, e não deve fazer.** Os catálogos são singletons
 aquecidos na subida do processo web; para o site enxergar o parquet novo, **reinicie o processo** —

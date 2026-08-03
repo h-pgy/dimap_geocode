@@ -2,7 +2,8 @@
 spec: ingestao_dados/007
 versao: v6
 atualizado_em: 2026-08-03
-implementado: false
+testes_tdd: true
+implementado: true
 depende_de: ingestao_dados/006
 changelog:
   - v1: versão inicial
@@ -23,7 +24,8 @@ changelog:
 
 # SPEC ingestao_dados/007 — Daemon de atualização dos dados + metadados de `data/`
 
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 > **Depende da SPEC 006** (contrato `ScriptRunner`, escrita atômica em `services/utils/io`,
 > isolamento da `data/` real nos testes). Sem ela, o pipeline quebra na 4ª etapa por falta de

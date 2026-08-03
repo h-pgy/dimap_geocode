@@ -7,6 +7,6 @@ Res = TypeVar("Res", bound=BaseModel, covariant=True)
 
 
 class ScriptRunner(Protocol[Cfg, Res]):
-    """Todo script de carga entra por aqui: um Config e a chave do pipeline."""
+    """Todo script de carga entra por aqui: um Config, e as duas chaves do pipeline."""
 
-    def __call__(self, config: Cfg, *, verbose: bool = False) -> Res: ...
+    def __call__(self, config: Cfg, *, verbose: bool = False, manual: bool = True) -> Res: ...

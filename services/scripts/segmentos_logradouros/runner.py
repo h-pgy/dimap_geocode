@@ -1,6 +1,7 @@
 from services.integrations.wfs import WfsFetcher
 from services.scripts.contrato import ScriptRunner
 from services.utils.io import write_parquet_to_data
+from services.utils.metadados import registrar_execucao
 
 from .extractor import SegmentosLogradourosExtractor
 from .models import SegmentoLogradouro, SegmentosLogradourosConfig, SegmentosLogradourosResult
@@ -20,12 +21,17 @@ def _to_columns(rows: list[SegmentoLogradouro]) -> dict[str, list[str | None]]:
 
 
 def run(
-    config: SegmentosLogradourosConfig, *, verbose: bool = False
+    config: SegmentosLogradourosConfig,
+    *,
+    verbose: bool = False,
+    manual: bool = True,
 ) -> SegmentosLogradourosResult:
-    fetcher = WfsFetcher(config.conexao, retry_policy=config.retry, verbose=verbose)
-    rows = SegmentosLogradourosExtractor(fetcher)(config)
+    with registrar_execucao(OUTPUT_FILENAME, manual=manual) as registro:
+        fetcher = WfsFetcher(config.conexao, retry_policy=config.retry, verbose=verbose)
+        rows = SegmentosLogradourosExtractor(fetcher)(config)
 
-    output_path = write_parquet_to_data(_to_columns(rows), OUTPUT_FILENAME)
+        output_path = write_parquet_to_data(_to_columns(rows), OUTPUT_FILENAME)
+        registro.sucesso(registros=len(rows))
 
     return SegmentosLogradourosResult(
         total_segments=len(rows),

@@ -70,19 +70,35 @@ tanto uma revisão de critério quanto um bugfix incrementam a versão. A difere
 > desalinha o histórico. O snippet dentro da entrada de patch é onde o novo código aparece, se
 > necessário.
 
-### Flag de implementação
+### Flags de estado
 
-Toda SPEC declara se já foi implementada, em **dois lugares que andam juntos**:
+Toda SPEC declara seu estado em **dois flags**, cada um em **dois lugares que andam juntos** —
+front-matter e check logo após o título:
 
-1. No front-matter: `implementado: false` (vira `true` quando o código da SPEC é entregue).
-2. Logo após o título, um **check** `- [ ] **Implementada**` (vira `- [x] **Implementada**`).
+| Flag | Front-matter | Check | Vira `true`/`[x]` quando |
+|---|---|---|---|
+| Testes TDD escritos | `testes_tdd: false` | `- [ ] **Testes (TDD) escritos**` | os testes da seção "Testes (TDD)" foram escritos e estão falhando |
+| Implementada | `implementado: false` | `- [ ] **Implementada**` | o código da SPEC foi entregue e os testes passam |
+
+**Assim que terminar de escrever os testes da seção "Testes (TDD)", marque o check
+`- [x] **Testes (TDD) escritos**` e ponha `testes_tdd: true` no front-matter** — na mesma
+entrega em que os testes são commitados, não depois.
 
 **Sempre que a SPEC for implementada, marque o check e ponha `implementado: true`** — é o que
 libera o uso da seção `Patches`.
 
-> **Marcar como implementada NÃO incrementa a versão.** Virar o flag `implementado: false → true`
+> **Gate de implementação:** `testes_tdd: true` é **pré-condição para escrever o código da SPEC**.
+> Com `testes_tdd: false`, a única coisa permitida é escrever os testes. Não se implementa código de
+> produção de uma SPEC cujos testes ainda não foram escritos e não estão falhando — e, portanto,
+> `implementado: true` nunca aparece sem `testes_tdd: true`.
+
+> **SPECs anteriores a este flag não têm o campo `testes_tdd` — e é assim que devem ficar.** Elas
+> foram escritas antes de o projeto adotar TDD; não faça backfill. A ausência do campo significa
+> "SPEC do regime antigo", não `false`.
+
+> **Marcar os flags NÃO incrementa a versão.** Virar `testes_tdd` ou `implementado` de `false → true`
 > e o check `[ ] → [x]` é um estado administrativo, não uma mudança de conteúdo. A versão e o
-> `changelog` ficam intocados; nada é acrescentado ao `changelog` só por causa desta marcação.
+> `changelog` ficam intocados; nada é acrescentado ao `changelog` só por causa destas marcações.
 
 ---
 
@@ -99,6 +115,10 @@ libera o uso da seção `Patches`.
 - **A SPEC propõe os testes — o desenvolvimento é TDD.** A seção "Testes (TDD)" lista os testes
   que vão guiar a implementação: eles são **aprovados junto com a SPEC** e **escritos antes** do
   código. É isso que faz a validação humana acontecer antes da implementação, e não depois.
+- **Ordem obrigatória: testes → flag → código.** Escreva os testes da SPEC, veja-os falhar, marque
+  `testes_tdd: true` + `- [x] **Testes (TDD) escritos**`, e só então implemente. **É proibido
+  escrever código de produção de uma SPEC com `testes_tdd: false`** — se o flag está em `false`, o
+  trabalho da vez é escrever os testes.
 - **Poucos testes, bem escolhidos — não exagere.** A lista fixa o **comportamento observável** dos
   critérios de aceite, mais os casos de borda que realmente quebram. Nada de getter, DTO trivial ou
   variação que só repete outro caso; **cobertura não é meta**. Regra prática: uma SPEC com 3
@@ -136,6 +156,7 @@ Ao redigir uma SPEC, use exatamente este template (substitua os campos `<…>`):
 spec: <epico>/<nº>
 versao: v1
 atualizado_em: <AAAA-MM-DD>
+testes_tdd: false
 implementado: false
 changelog:
   - v1: versão inicial
@@ -143,6 +164,7 @@ changelog:
 
 # SPEC <épico>/<nº> — <título curto>
 
+- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
 - [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
@@ -175,7 +197,8 @@ Arquitetura" do CLAUDE.md se aplicam, por que esta abordagem. Fluxo resumido da 
 observável, mais os casos de borda que realmente quebram. POUCOS E ESSENCIAIS: ~3 a 6 numa
 SPEC típica. Não listar getter, DTO trivial nem variação que só repete outro caso.
 Uma linha por teste: nome + o comportamento que ele fixa. Alvo natural é `services/`;
-view só quando o que se fixa é o contrato HTTP/partial.>
+view só quando o que se fixa é o contrato HTTP/partial.
+Ao escrevê-los, marque `testes_tdd: true` + o check no topo — é o que libera a implementação.>
 
 - `test_<comportamento>` — <o comportamento observável que este teste fixa>
 - `test_<caso_de_borda>` — <a borda que ele protege>
@@ -196,11 +219,14 @@ _Nenhum patch registrado até o momento._
 
 Antes de apresentar a SPEC ao usuário, verifique:
 
-- [ ] Front-matter completo: `spec`, `versao`, `atualizado_em`, `implementado`, `changelog`.
-- [ ] Check `- [ ] **Implementada**` presente logo após o título, coerente com `implementado:`
-      no front-matter (ambos só viram `true`/`[x]` quando o código é entregue).
-- [ ] Marcar a SPEC como implementada (`implementado: true` + `[x]`) **não incrementa a versão**
-      nem adiciona entrada no `changelog` — é só um estado administrativo.
+- [ ] Front-matter completo: `spec`, `versao`, `atualizado_em`, `testes_tdd`, `implementado`,
+      `changelog`.
+- [ ] Checks `- [ ] **Testes (TDD) escritos**` e `- [ ] **Implementada**` presentes logo após o
+      título, cada um coerente com seu flag no front-matter.
+- [ ] `implementado: true` só existe se `testes_tdd: true` — código de produção não começa antes
+      dos testes.
+- [ ] Marcar os flags (`testes_tdd`/`implementado` + `[x]`) **não incrementa a versão** nem
+      adiciona entrada no `changelog` — é só estado administrativo.
 - [ ] Se a SPEC **ainda não foi implementada**, a seção `Patches` está vazia ("Nenhum patch
       registrado até o momento.") e toda mudança foi registrada no `changelog`, não em `Patches`.
 - [ ] Se a mudança é um **patch** (SPEC já implementada), ela foi **apenas acrescentada ao final** da
