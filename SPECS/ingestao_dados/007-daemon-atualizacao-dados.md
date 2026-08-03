@@ -1,6 +1,6 @@
 ---
 spec: ingestao_dados/007
-versao: v5
+versao: v6
 atualizado_em: 2026-08-03
 implementado: false
 depende_de: ingestao_dados/006
@@ -16,6 +16,9 @@ changelog:
     é aritmética de data/hora sem domínio nem vínculo com o pipeline, o mesmo escopo de `io/` e
     `normalization/`; a configuração do horário passa a se chamar `DTIME_ATUALIZACAO_ARQUIVOS`; as
     cargas rodam com `extrair_segmentos_logradouros` na frente de `extrair_nomes_logradouros`
+  - v6: os DTOs de entrada passam a se chamar `Config`, não `Request` — a SPEC 006 já fixou essa
+    terminologia nos runners (`run(config, ...)`, `ScriptRunner[Cfg, Res]`) e o pipeline segue a
+    mesma: `AtualizacaoConfig`
 ---
 
 # SPEC ingestao_dados/007 — Daemon de atualização dos dados + metadados de `data/`
@@ -73,7 +76,7 @@ velho e passe a ter como saber se o dado em disco mudou.
 ### Contrato: a chave `manual`
 
 - [ ] O contrato `ScriptRunner` da SPEC 006 é **estendido** com uma segunda chave:
-      `run(request, *, verbose=False, manual=True) -> Result`. O `Protocol`, os quatro runners e o
+      `run(config, *, verbose=False, manual=True) -> Result`. O `Protocol`, os quatro runners e o
       teste de varredura acompanham — a extensão é aditiva e continua verificada pelo `mypy`.
 - [ ] `manual` é **verdadeiro por padrão** e só vira falso quando a execução vem do daemon: rodar
       qualquer comando do pipeline na mão produz `manual: true`, sem flag nenhuma. Quem marca a
@@ -142,7 +145,7 @@ em disco** o que a ponta da frente vai precisar depois para decidir se vale rele
    uma lista de nomes e um executor. É isso que a torna testável sem Django, sem rede e sem banco.
 3. **Comandos (orquestração, `apps/core`).** Quem sabe que "executar uma etapa" é
    `call_command(nome)` e quem conhece a **ordem** das etapas é o Django — logo, vive no comando.
-   O comando one-shot passa a lista ordenada no `...Request` e injeta `call_command` como executor;
+   O comando one-shot passa a lista ordenada no `...Config` e injeta `call_command` como executor;
    o comando daemon lê `settings.DTIME_ATUALIZACAO_ARQUIVOS`, chama a agenda, dorme e dispara o
    one-shot.
    O daemon mora em `apps/core` (não em `address_geocoder` nem em `logradouro_matcher`) porque
@@ -163,7 +166,7 @@ data/hora entra como módulo vizinho, não empilhada num arquivo só. O nome é 
 `datetime`, para não sombrear o módulo homônimo da stdlib que este código importa (`ruff A005`).
 
 **O pipeline continua sendo um módulo solto em `services/scripts/`, não um subpacote.** Ele é
-infraestrutura do pipeline, não script de carga: não tem `run()`, não recebe `Request` de extração
+infraestrutura do pipeline, não script de carga: não tem `run()`, não recebe `Config` de extração
 e não escreve artefato em `data/`. A SPEC 006 fixou a regra topológica que separa as duas coisas —
 **subpacote de `services/scripts/` é script de carga e tem que expor um `run()` aderente ao
 contrato; módulo solto no topo é infraestrutura e não é varrido** — justamente para que ele possa
@@ -402,9 +405,9 @@ class PipelineAtualizacao:
     def __init__(self, executar: Callable[[str], None]) -> None:
         self._executar = executar
 
-    def __call__(self, request: AtualizacaoRequest) -> AtualizacaoResult:
+    def __call__(self, config: AtualizacaoConfig) -> AtualizacaoResult:
         executadas: list[str] = []
-        for etapa in request.etapas:
+        for etapa in config.etapas:
             try:
                 self._executar(etapa)
             except Exception as exc:       # etapa seguinte consome o artefato desta → aborta
@@ -414,19 +417,19 @@ class PipelineAtualizacao:
 
 
 # services/scripts/contrato.py — a chave `manual` entra aqui (SPEC 006 entregou só `verbose`)
-class ScriptRunner(Protocol[Req, Res]):
-    """Todo script de carga entra por aqui: um Request, e as duas chaves do pipeline."""
+class ScriptRunner(Protocol[Cfg, Res]):
+    """Todo script de carga entra por aqui: um Config, e as duas chaves do pipeline."""
 
-    def __call__(self, request: Req, *, verbose: bool = False, manual: bool = True) -> Res: ...
+    def __call__(self, config: Cfg, *, verbose: bool = False, manual: bool = True) -> Res: ...
 
 
 # services/scripts/<nome>/runner.py — registro envolvendo o trabalho
 def run(
-    request: EnderecosFiscaisRequest, *, verbose: bool = False, manual: bool = True
+    config: EnderecosFiscaisConfig, *, verbose: bool = False, manual: bool = True
 ) -> EnderecosFiscaisResult:
     with registrar_execucao(OUTPUT_FILENAME, manual=manual) as registro:
-        fetcher = WfsFetcher(request.conexao, retry_policy=request.retry, verbose=verbose)
-        rows = EnderecosFiscaisExtractor(fetcher)(request)
+        fetcher = WfsFetcher(config.conexao, retry_policy=config.retry, verbose=verbose)
+        rows = EnderecosFiscaisExtractor(fetcher)(config)
         output_path = write_parquet_to_data(_to_columns(rows), OUTPUT_FILENAME)
         registro.sucesso(registros=len(rows))
     return EnderecosFiscaisResult(total_records=len(rows), output_path=output_path)
@@ -482,7 +485,7 @@ parser.add_argument(
 )
 
 result = run(
-    request,
+    config,
     verbose=bool(options["verbose"]),
     manual=not options["automatico"],            # a única negação, e é aqui
 )
@@ -500,7 +503,7 @@ ETAPAS: tuple[str, ...] = (
 automatico = bool(options["automatico"])
 resultado = PipelineAtualizacao(
     lambda etapa: call_command(etapa, verbose=True, automatico=automatico)
-)(AtualizacaoRequest(etapas=ETAPAS))
+)(AtualizacaoConfig(etapas=ETAPAS))
 if resultado.falhou_em is not None:
     raise CommandError(f"pipeline abortou em {resultado.falhou_em}: {resultado.erro}")
 

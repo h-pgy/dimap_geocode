@@ -32,3 +32,10 @@ def test_todo_runner_de_script_segue_o_contrato() -> None:
         assert verbose is not None, f"{pacote}: run() não recebe 'verbose'"
         assert verbose.kind is Parameter.KEYWORD_ONLY, f"{pacote}: 'verbose' não é keyword-only"
         assert verbose.default is False, f"{pacote}: 'verbose' sem default False"
+
+        # SPEC ingestao_dados/007: default True — quem marca a execução como automática é o
+        # daemon, então rodar o comando na mão grava `manual: true` sem flag nenhuma.
+        manual = params.get("manual")
+        assert manual is not None, f"{pacote}: run() não recebe 'manual'"
+        assert manual.kind is Parameter.KEYWORD_ONLY, f"{pacote}: 'manual' não é keyword-only"
+        assert manual.default is True, f"{pacote}: 'manual' sem default True"
