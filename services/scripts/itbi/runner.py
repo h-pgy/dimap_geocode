@@ -24,11 +24,14 @@ def run(config: ItbiConfig, *, verbose: bool = False, manual: bool = True) -> It
 
     with registrar_execucao(OUTPUT_FILENAME, manual=manual) as registro:
         coleta = coletor(config, originais)
-        parse = ItbiParser()(originais, parseados)
+        parse = ItbiParser()(originais, parseados, config.escopo)
+        # A consolidação NUNCA filtra: é a projeção da pasta inteira, e é o que faz uma carga
+        # `recente` continuar entregando o parquet com todos os anos.
         consolidacao = ItbiConsolidador()(parseados)
         output_path = write_dataframe_to_data(consolidacao.dados, OUTPUT_FILENAME)
 
         resultado = ItbiResult(
+            escopo=config.escopo,
             coleta=coleta.stats,
             parse=parse.stats,
             consolidacao=consolidacao.stats,

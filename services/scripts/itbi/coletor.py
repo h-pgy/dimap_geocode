@@ -4,6 +4,7 @@ from pathlib import Path
 from services.integrations.itbi import ItbiIntegrationError, ItbiPortalConfig, PlanilhaItbi
 
 from .constants import NOME_XLSX
+from .disco import anos_do_escopo
 from .models import ColetaItbi, ColetaStats, ItbiConfig
 
 
@@ -26,11 +27,15 @@ class ItbiColetor:
 
     def pipeline(self, config: ItbiConfig, originais: Path) -> ColetaItbi:
         planilhas = self._scraper(config.portal)
+        # O escopo se aplica ao que o PORTAL publica, que é o input desta etapa.
+        alvo = anos_do_escopo((planilha.ano for planilha in planilhas), config.escopo)
         for planilha in planilhas:
-            self._baixar(planilha, originais)
+            if planilha.ano in alvo:
+                self._baixar(planilha, originais)
         return ColetaItbi(
             stats=ColetaStats(
                 anos_publicados=sorted(planilha.ano for planilha in planilhas),
+                anos_alvo=sorted(alvo),
                 anos_baixados=sorted(self._baixados),
                 falhas_por_ano=self._falhas,
             )

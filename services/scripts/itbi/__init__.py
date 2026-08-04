@@ -14,6 +14,7 @@ from .exceptions import ItbiCargaVaziaError
 from .models import (
     ColetaStats,
     ConsolidacaoStats,
+    EscopoCarga,
     ItbiConfig,
     ItbiResult,
     ParseStats,
@@ -37,6 +38,7 @@ __all__ = [
     "ItbiConsolidador",
     "ItbiConfig",
     "ItbiResult",
+    "EscopoCarga",
     "ColetaStats",
     "ParseStats",
     "ConsolidacaoStats",

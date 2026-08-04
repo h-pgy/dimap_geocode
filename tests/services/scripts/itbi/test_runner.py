@@ -9,6 +9,7 @@ from services.scripts.itbi import (
     OUTPUT_FILENAME,
     PASTA_ORIGINAIS,
     PASTA_PARSEADOS,
+    EscopoCarga,
     ItbiCargaVaziaError,
     ItbiConfig,
     NOME_PARQUET,
@@ -161,7 +162,7 @@ def test_ano_despublicado_ou_nao_baixado_continua_no_parquet(
     )
     _instalar(monkeypatch, _portal(tmp_path, publicados=[2025]))
 
-    despublicado = run(ItbiConfig())
+    despublicado = run(ItbiConfig(escopo=EscopoCarga.COMPLETO))
 
     assert despublicado.coleta.anos_baixados == [2025]
     assert despublicado.consolidacao.anos_no_parquet == [2024, 2025]
@@ -174,7 +175,7 @@ def test_ano_despublicado_ou_nao_baixado_continua_no_parquet(
     # Mesmo desfecho quando o portal publica o ano mas o download falha.
     _instalar(monkeypatch, _portal(tmp_path, publicados=[2024, 2025], falham=[2024]))
 
-    sem_download = run(ItbiConfig())
+    sem_download = run(ItbiConfig(escopo=EscopoCarga.COMPLETO))
 
     assert 2024 in sem_download.coleta.falhas_por_ano
     assert sem_download.consolidacao.anos_no_parquet == [2024, 2025]
@@ -198,10 +199,10 @@ def test_carga_sem_nenhum_ano_parseado_levanta(
 def test_run_sobrescreve_sem_acumular(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _instalar(monkeypatch, _portal(tmp_path, publicados=[2024, 2025]))
 
-    primeiro = run(ItbiConfig())
+    primeiro = run(ItbiConfig(escopo=EscopoCarga.COMPLETO))
     quadro_primeiro = pd.read_parquet(primeiro.output_path)
 
-    segundo = run(ItbiConfig(), verbose=True)
+    segundo = run(ItbiConfig(escopo=EscopoCarga.COMPLETO), verbose=True)
 
     assert pd.read_parquet(segundo.output_path).equals(quadro_primeiro)
     assert sorted(caminho.name for caminho in (tmp_path / PASTA_ORIGINAIS).iterdir()) == [
@@ -227,9 +228,65 @@ def test_ano_publicado_e_nao_baixado_sai_em_anos_ausentes(
     # parquet, e é justamente esse caso que `anos_desatualizados` não enxerga.
     _instalar(monkeypatch, _portal(tmp_path, publicados=[2024, 2025], falham=[2024]))
 
-    resultado = run(ItbiConfig())
+    resultado = run(ItbiConfig(escopo=EscopoCarga.COMPLETO))
 
     assert resultado.coleta.anos_publicados == [2024, 2025]
     assert resultado.consolidacao.anos_no_parquet == [2025]
     assert resultado.anos_ausentes == [2024]
     assert resultado.anos_desatualizados == []
+
+
+def test_carga_padrao_e_o_escopo_recente() -> None:
+    # É este default que o daemon roda: o one-shot não passa flag por etapa.
+    assert ItbiConfig().escopo is EscopoCarga.RECENTE
+
+
+def test_escopo_recente_atualiza_so_o_ano_mais_recente_e_preserva_os_demais(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar(monkeypatch, _portal(tmp_path, publicados=[2024, 2025]))
+    run(ItbiConfig(escopo=EscopoCarga.COMPLETO))
+
+    parquet_de_2024 = tmp_path / PASTA_PARSEADOS / NOME_PARQUET.format(ano=2024)
+    intocado = parquet_de_2024.read_bytes()
+
+    # O portal republica os DOIS anos com mais linhas: só o mais recente pode entrar.
+    republicados = {ano: {f"JAN-{ano}": aba_completa(linhas=3)} for ano in (2024, 2025)}
+    _instalar(monkeypatch, _portal(tmp_path, publicados=[2024, 2025], abas=republicados))
+
+    recente = run(ItbiConfig(escopo=EscopoCarga.RECENTE), verbose=True)
+
+    assert recente.coleta.anos_alvo == [2025]
+    assert recente.coleta.anos_baixados == [2025]
+    assert recente.parse.anos_parseados == [2025]
+    assert parquet_de_2024.read_bytes() == intocado
+    # A consolidação não filtra: o parquet final continua com os dois anos.
+    assert recente.consolidacao.anos_no_parquet == [2024, 2025]
+    assert recente.linhas_por_ano == {2024: 2, 2025: 3}
+
+    detalhes = ler_metadados()[OUTPUT_FILENAME].detalhes
+    assert detalhes is not None
+    assert detalhes["escopo"] == EscopoCarga.RECENTE.value
+
+
+def test_escopo_recente_nao_reporta_os_anos_fora_do_escopo_como_desatualizados(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar(monkeypatch, _portal(tmp_path, publicados=[2024, 2025]))
+    run(ItbiConfig(escopo=EscopoCarga.COMPLETO))
+
+    recente = run(ItbiConfig(escopo=EscopoCarga.RECENTE))
+
+    # 2024 está no parquet e não atualizou agora — mas não devia mesmo: acusá-lo toda noite
+    # faria o relatório do daemon deixar de ser lido.
+    assert recente.consolidacao.anos_no_parquet == [2024, 2025]
+    assert recente.anos_desatualizados == []
+
+    _instalar(monkeypatch, _portal(tmp_path, publicados=[2024, 2025], falham=[2024]))
+
+    completo = run(ItbiConfig(escopo=EscopoCarga.COMPLETO))
+
+    # Sob o escopo completo, o critério da 008 continua valendo.
+    assert completo.anos_desatualizados == [2024]

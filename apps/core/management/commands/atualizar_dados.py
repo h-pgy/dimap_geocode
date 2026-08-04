@@ -12,6 +12,8 @@ ETAPAS: tuple[str, ...] = (
     "extrair_nomes_logradouros",
     "extrair_enderecos_fiscais",
     "augment_logradouro_types",
+    # Última: o pipeline aborta na primeira falha, e nenhuma etapa consome o parquet do ITBI.
+    "extrair_guias_itbi",
 )
 
 

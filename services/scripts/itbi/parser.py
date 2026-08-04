@@ -23,8 +23,15 @@ from .constants import (
     PADRAO_NOME_XLSX,
     TETO_LINHAS_DESCARTADAS,
 )
-from .disco import anos_em_disco
-from .models import DescarteLinhas, DivergenciasEsquema, ParseItbi, ParseStats, RelatorioAno
+from .disco import anos_do_escopo, anos_em_disco
+from .models import (
+    DescarteLinhas,
+    DivergenciasEsquema,
+    EscopoCarga,
+    ParseItbi,
+    ParseStats,
+    RelatorioAno,
+)
 from .patchers import PATCHERS_ITBI, ItbiPatcher, patch_all
 
 # Os dois lados do casamento passam pela normalização única (§6.1) — a fonte tem acento,
@@ -50,11 +57,21 @@ class ItbiParser:
         self._descartadas: dict[int, int] = {}
         self._descartes: dict[int, list[str]] = {}
 
-    def __call__(self, originais: Path, parseados: Path) -> ParseItbi:
-        return self.pipeline(originais, parseados)
+    def __call__(
+        self,
+        originais: Path,
+        parseados: Path,
+        escopo: EscopoCarga = EscopoCarga.COMPLETO,
+    ) -> ParseItbi:
+        return self.pipeline(originais, parseados, escopo)
 
-    def pipeline(self, originais: Path, parseados: Path) -> ParseItbi:
-        self._parsear(originais, parseados)
+    def pipeline(
+        self,
+        originais: Path,
+        parseados: Path,
+        escopo: EscopoCarga = EscopoCarga.COMPLETO,
+    ) -> ParseItbi:
+        self._parsear(originais, parseados, escopo)
         return ParseItbi(
             stats=ParseStats(
                 anos_parseados=sorted(self._parseados),
@@ -66,8 +83,12 @@ class ItbiParser:
             )
         )
 
-    def _parsear(self, originais: Path, parseados: Path) -> None:
-        for ano, xlsx in sorted(anos_em_disco(originais, PADRAO_NOME_XLSX).items()):
+    def _parsear(self, originais: Path, parseados: Path, escopo: EscopoCarga) -> None:
+        em_disco = anos_em_disco(originais, PADRAO_NOME_XLSX)
+        # O escopo se aplica ao que está em DISCO, que é o input desta etapa: o parse não recebe
+        # a lista da coleta, e é isso que mantém a pasta como única interface entre as duas.
+        alvo = anos_do_escopo(em_disco, escopo)
+        for ano, xlsx in sorted((ano, em_disco[ano]) for ano in alvo):
             relatorio = RelatorioAno()
             try:
                 quadro = self._ler_planilha(xlsx, ano, relatorio)

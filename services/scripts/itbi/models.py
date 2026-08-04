@@ -1,3 +1,4 @@
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -9,14 +10,23 @@ from services.integrations.itbi import ItbiPortalConfig
 from .constants import LIMITE_DESCARTES_REPORTADOS, TETO_LINHAS_DESCARTADAS
 
 
+class EscopoCarga(StrEnum):
+    RECENTE = "recente"
+    COMPLETO = "completo"
+
+
 class ItbiConfig(BaseModel):
     portal: ItbiPortalConfig = Field(default_factory=ItbiPortalConfig)
+    # O default é o que o daemon roda: o one-shot não tem como passar flag por etapa.
+    escopo: EscopoCarga = EscopoCarga.RECENTE
 
 
 class ColetaStats(BaseModel):
     # O que o PORTAL ofereceu — sem isto, ano que o scraper não devolve não aparece em relatório
     # nenhum, e foi assim que 2026 ficou fora da base sem aviso.
     anos_publicados: list[int] = Field(default_factory=list)
+    # O recorte do escopo sobre os publicados: é o que a carga se propôs a atualizar.
+    anos_alvo: list[int] = Field(default_factory=list)
     anos_baixados: list[int] = Field(default_factory=list)
     falhas_por_ano: dict[int, str] = Field(default_factory=dict)
 
@@ -96,6 +106,7 @@ class ConsolidacaoItbi(BaseModel):
 
 
 class ItbiResult(BaseModel):
+    escopo: EscopoCarga
     coleta: ColetaStats
     parse: ParseStats
     consolidacao: ConsolidacaoStats
@@ -106,7 +117,11 @@ class ItbiResult(BaseModel):
     def anos_desatualizados(self) -> list[int]:
         """No parquet com dado de uma carga anterior: não baixou OU não parseou agora."""
         atualizados = set(self.coleta.anos_baixados) & set(self.parse.anos_parseados)
-        return sorted(set(self.consolidacao.anos_no_parquet) - atualizados)
+        candidatos = set(self.consolidacao.anos_no_parquet)
+        if self.escopo is EscopoCarga.RECENTE:
+            # Fora do escopo, não atualizar é a intenção — acusar isso toda noite cala o relatório.
+            candidatos &= set(self.coleta.anos_alvo)
+        return sorted(candidatos - atualizados)
 
     @property
     def anos_ausentes(self) -> list[int]:
@@ -116,6 +131,8 @@ class ItbiResult(BaseModel):
     def para_metadados(self) -> dict[str, Any]:
         """O que sobrevive ao terminal: é daqui que sai o log do daemon dias depois."""
         return {
+            # Meses depois, é o escopo que distingue "só um ano atualizou" de "só um ano foi pedido".
+            "escopo": self.escopo.value,
             "coleta": self.coleta.model_dump(mode="json"),
             "parse": self.parse.model_dump(mode="json"),
             "consolidacao": self.consolidacao.model_dump(mode="json"),
