@@ -192,6 +192,14 @@ do usuário**. Nunca começar a codar com a SPEC não apresentada ou não aprova
 - **A fonte de verdade sobre o que já existe é o front-matter `implementado:` das SPECs.** Consulte
   antes de assumir que algo está ou não implementado.
 
+**Versionamento é do usuário, não do agente.** O agente **nunca** roda `git commit`, `git push`,
+`git merge`, `git rebase` nem abre PR — mesmo que o trabalho esteja pronto e mesmo que pareça o
+próximo passo óbvio. Ao terminar, ele para e relata o que mudou; **quem versiona é o usuário,
+manualmente**. Comandos git de leitura (`status`, `diff`, `log`, `show`) seguem liberados.
+
+*Por quê:* o commit é o ponto em que a mudança passa a valer para o resto do time. Essa decisão —
+o que entra, quando entra e sob qual mensagem — é do usuário, e ele quer revisar o diff antes.
+
 ---
 
 ## 5. Estrutura do Projeto
