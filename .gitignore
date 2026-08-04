@@ -220,11 +220,9 @@ __marimo__/
 # Escrita atômica de data/ (SPEC ingestao_dados/006): sobra de processo morto (kill -9)
 data/*.tmp
 
-# Artefato de carga (SPEC ingestao_dados/006, Patch 001): o que um script regenera é estado
-# local, não histórico. Insumo mantido à mão (tipos_logradouro_aumentado.json,
-# traducao_codigos_tipos_logradouro.json) continua versionado — §5: dicionário é dado.
-data/*.parquet
-data/metadados_dados.json
+#descomentar se nao quiser ficar mandando pro repo
+#data/*.parquet
+#data/metadados_dados.json
 
 # Insumo reconstruível do scraper de ITBI (SPEC ingestao_dados/008): o dado é o parquet consolidado
 data/itbi_originais/
