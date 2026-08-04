@@ -6,7 +6,9 @@ URL_PAGINA_ITBI: str = "https://prefeitura.sp.gov.br/web/fazenda/w/acesso_a_info
 # tem a mesma cara. Sem `id` nem HTML semântico, é o único âncora que o CMS oferece.
 SELETOR_SECAO: str = "section.psp-agencies-content"
 
-SUFIXO_PLANILHA: str = ".xlsx"
+# O link é reconhecido pelo RÓTULO, não pela extensão: o portal publica o ano corrente como
+# documento do CMS, sem extensão no href, e só o texto do link separa a planilha do `.ods`.
+MARCADORES_PLANILHA: tuple[str, ...] = ("XLSX", "EXCEL")
 
 # A política é da ITBI (valores); o laço que a obedece é de services/utils/http.
 RETRY_ITBI: HttpRetryPolicy = HttpRetryPolicy(

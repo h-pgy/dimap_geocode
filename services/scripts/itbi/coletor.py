@@ -25,10 +25,12 @@ class ItbiColetor:
         return self.pipeline(config, originais)
 
     def pipeline(self, config: ItbiConfig, originais: Path) -> ColetaItbi:
-        for planilha in self._scraper(config.portal):
+        planilhas = self._scraper(config.portal)
+        for planilha in planilhas:
             self._baixar(planilha, originais)
         return ColetaItbi(
             stats=ColetaStats(
+                anos_publicados=sorted(planilha.ano for planilha in planilhas),
                 anos_baixados=sorted(self._baixados),
                 falhas_por_ano=self._falhas,
             )

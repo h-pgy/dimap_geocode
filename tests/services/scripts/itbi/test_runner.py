@@ -217,3 +217,19 @@ def test_run_sobrescreve_sem_acumular(tmp_path: Path, monkeypatch: pytest.Monkey
     # --verbose apura e devolve mais: a contagem por ano só existe quando pedida.
     assert primeiro.linhas_por_ano is None
     assert segundo.linhas_por_ano == {2024: 2, 2025: 2}
+
+
+def test_ano_publicado_e_nao_baixado_sai_em_anos_ausentes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 2024 é publicado, o download falha e não há arquivo anterior em disco: ele nunca chega ao
+    # parquet, e é justamente esse caso que `anos_desatualizados` não enxerga.
+    _instalar(monkeypatch, _portal(tmp_path, publicados=[2024, 2025], falham=[2024]))
+
+    resultado = run(ItbiConfig())
+
+    assert resultado.coleta.anos_publicados == [2024, 2025]
+    assert resultado.consolidacao.anos_no_parquet == [2025]
+    assert resultado.anos_ausentes == [2024]
+    assert resultado.anos_desatualizados == []

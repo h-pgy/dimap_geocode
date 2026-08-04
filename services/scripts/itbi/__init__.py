@@ -19,6 +19,14 @@ from .models import (
     ParseStats,
 )
 from .parser import ItbiParser
+from .patchers import (
+    PATCHERS_ITBI,
+    ItbiPatcher,
+    PatcherCabecalhoNoRodape,
+    PatcherCabecalhoAcc,
+    PatcherTypoPardao,
+    patch_all,
+)
 from .runner import run
 
 __all__ = [
@@ -33,6 +41,12 @@ __all__ = [
     "ParseStats",
     "ConsolidacaoStats",
     "ItbiCargaVaziaError",
+    "ItbiPatcher",
+    "PatcherCabecalhoAcc",
+    "PatcherCabecalhoNoRodape",
+    "PatcherTypoPardao",
+    "PATCHERS_ITBI",
+    "patch_all",
     "MAPA_COLUNAS",
     "COLUNAS_NUMERICAS",
     "COLUNAS_DATA",

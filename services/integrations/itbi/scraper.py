@@ -6,8 +6,9 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup, Tag
 
 from services.utils.http import HttpFetchError
+from services.utils.normalization import normalize_text
 
-from .constants import SELETOR_SECAO, SUFIXO_PLANILHA
+from .constants import MARCADORES_PLANILHA, SELETOR_SECAO
 from .exceptions import ItbiEstruturaInesperadaError, ItbiPaginaError
 from .models import ItbiPortalConfig, PlanilhaItbi
 
@@ -29,7 +30,7 @@ class ItbiPortalScraper:
         planilhas = self._planilhas(secao, config.url_pagina)
         if not planilhas:
             raise ItbiEstruturaInesperadaError(
-                f"{config.url_pagina}: nenhuma planilha {SUFIXO_PLANILHA} em {SELETOR_SECAO}"
+                f"{config.url_pagina}: nenhum link de planilha em {SELETOR_SECAO}"
             )
         return planilhas
 
@@ -75,9 +76,14 @@ class ItbiPortalScraper:
 
     def _url_planilha(self, item: Tag, url_pagina: str) -> str | None:
         for link in item.select("a[href]"):
+            if not self._e_planilha(link):
+                continue
             # urljoin em TODO link: absoluto passa intacto, relativo resolve contra a página —
             # e o portal já inverteu qual dos dois usa.
-            url = urljoin(url_pagina, str(link["href"]))
-            if url.lower().endswith(SUFIXO_PLANILHA):
-                return url
+            return urljoin(url_pagina, str(link["href"]))
         return None
+
+    def _e_planilha(self, link: Tag) -> bool:
+        """Pelo rótulo: a extensão do href some no ano corrente, o texto do link não."""
+        rotulo = normalize_text(link.get_text())
+        return any(marcador in rotulo for marcador in MARCADORES_PLANILHA)

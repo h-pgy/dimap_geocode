@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -18,11 +18,14 @@ from .constants import (
     MAPA_COLUNAS,
     MESES,
     NOME_PARQUET,
+    OFFSET_LINHA_EXCEL,
     PADRAO_ABA,
     PADRAO_NOME_XLSX,
+    TETO_LINHAS_DESCARTADAS,
 )
 from .disco import anos_em_disco
-from .models import DivergenciasEsquema, ParseItbi, ParseStats
+from .models import DescarteLinhas, DivergenciasEsquema, ParseItbi, ParseStats, RelatorioAno
+from .patchers import PATCHERS_ITBI, ItbiPatcher, patch_all
 
 # Os dois lados do casamento passam pela normalização única (§6.1) — a fonte tem acento,
 # parênteses e caixa instável entre anos.
@@ -38,11 +41,14 @@ class ItbiParser:
     NÃO conhece o portal nem a coleta: parseia o que estiver em disco.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, patchers: Sequence[ItbiPatcher] = PATCHERS_ITBI) -> None:
+        self._patchers = patchers
         self._parseados: list[int] = []
         self._falhas: dict[int, str] = {}
         self._desconhecidas: dict[int, list[str]] = {}
         self._ausentes: dict[int, list[str]] = {}
+        self._descartadas: dict[int, int] = {}
+        self._descartes: dict[int, list[str]] = {}
 
     def __call__(self, originais: Path, parseados: Path) -> ParseItbi:
         return self.pipeline(originais, parseados)
@@ -55,14 +61,16 @@ class ItbiParser:
                 falhas_por_ano=self._falhas,
                 colunas_desconhecidas_por_ano=self._desconhecidas,
                 colunas_ausentes_por_ano=self._ausentes,
+                linhas_descartadas_por_ano=self._descartadas,
+                descartes_por_ano=self._descartes,
             )
         )
 
     def _parsear(self, originais: Path, parseados: Path) -> None:
         for ano, xlsx in sorted(anos_em_disco(originais, PADRAO_NOME_XLSX).items()):
-            divergencias = DivergenciasEsquema()
+            relatorio = RelatorioAno()
             try:
-                quadro = self._ler_planilha(xlsx, ano, divergencias)
+                quadro = self._ler_planilha(xlsx, ano, relatorio)
             except Exception as exc:
                 # O parquet do ano NÃO é tocado: a carga anterior continua valendo, e é ela
                 # que a consolidação vai usar. Vinte anos de planilha manual — abortar porque
@@ -72,29 +80,37 @@ class ItbiParser:
             # Só chega aqui o ano que parseou INTEIRO: a escrita é a última operação.
             write_dataframe(quadro, NOME_PARQUET.format(ano=ano), folder=parseados)
             self._parseados.append(ano)
-            self._registrar_divergencias(ano, divergencias)
+            self._registrar(ano, relatorio)
 
-    def _registrar_divergencias(self, ano: int, divergencias: DivergenciasEsquema) -> None:
-        if divergencias.desconhecidas:
-            self._desconhecidas[ano] = divergencias.desconhecidas
-        if divergencias.ausentes:
-            self._ausentes[ano] = divergencias.ausentes
+    def _registrar(self, ano: int, relatorio: RelatorioAno) -> None:
+        if relatorio.divergencias.desconhecidas:
+            self._desconhecidas[ano] = relatorio.divergencias.desconhecidas
+        if relatorio.divergencias.ausentes:
+            self._ausentes[ano] = relatorio.divergencias.ausentes
+        if relatorio.descarte.descartadas:
+            self._descartadas[ano] = relatorio.descarte.descartadas
+            self._descartes[ano] = relatorio.descarte.localizacoes
 
-    def _ler_planilha(
-        self,
-        xlsx: Path,
-        ano: int,
-        divergencias: DivergenciasEsquema,
-    ) -> pd.DataFrame:
+    def _ler_planilha(self, xlsx: Path, ano: int, relatorio: RelatorioAno) -> pd.DataFrame:
         abas = pd.read_excel(xlsx, sheet_name=None, dtype=object)
         quadros = [
-            self._aba_para_quadro(aba, ano, mes, divergencias)
+            self._aba_para_quadro(aba, nome, ano, mes, relatorio)
             for nome, aba in abas.items()
             if (mes := self._mes_da_aba(nome)) is not None
         ]
         if not quadros:
             raise ValueError(f"{xlsx.name}: nenhuma aba no padrão MÊS-ANO")
+        self._checar_teto(xlsx, relatorio.descarte)
         return pd.concat(quadros, ignore_index=True)
+
+    def _checar_teto(self, xlsx: Path, descarte: DescarteLinhas) -> None:
+        """Perder muita linha não é linha ruim, é esquema que mudou — aí o ano cai inteiro."""
+        if not descarte.excede_teto():
+            return
+        raise ValueError(
+            f"{xlsx.name}: {descarte.descartadas} de {descarte.lidas} linhas não convertem "
+            f"({descarte.fracao:.1%}) — acima do teto de {TETO_LINHAS_DESCARTADAS:.0%}"
+        )
 
     def _mes_da_aba(self, nome: str) -> int | None:
         """Aba fora do padrão (resumo, notas, planilha vazia) é ignorada em silêncio."""
@@ -106,13 +122,41 @@ class ItbiParser:
     def _aba_para_quadro(
         self,
         aba: pd.DataFrame,
+        nome: str,
         ano: int,
         mes: int,
-        divergencias: DivergenciasEsquema,
+        relatorio: RelatorioAno,
     ) -> pd.DataFrame:
-        quadro = self._renomear(aba, divergencias)
+        # Os consertos vêm ANTES do casamento: o que a fonte estraga é o cabeçalho.
+        aba = patch_all(aba, ano, self._patchers)
+        quadro = self._renomear(aba, relatorio.divergencias)
+        quadro = self._descartar_invalidas(quadro, nome, relatorio.descarte)
         quadro = self._converter_tipos(quadro)
         return self._derivar(quadro, ano, mes)
+
+    def _descartar_invalidas(
+        self,
+        quadro: pd.DataFrame,
+        nome: str,
+        descarte: DescarteLinhas,
+    ) -> pd.DataFrame:
+        """Linha digitada com célula a mais empurra texto para coluna numérica: ela sai inteira."""
+        invalidas = pd.Series(False, index=quadro.index)
+        for coluna in COLUNAS_NUMERICAS:
+            invalidas |= self._nao_converte(quadro[coluna], pd.to_numeric)
+        for coluna in COLUNAS_DATA:
+            invalidas |= self._nao_converte(quadro[coluna], pd.to_datetime)
+        descarte.registrar(
+            nome,
+            [int(indice) + OFFSET_LINHA_EXCEL for indice in quadro.index[invalidas]],
+            len(quadro),
+        )
+        return quadro[~invalidas].copy()
+
+    def _nao_converte(self, serie: pd.Series, conversao: Callable[..., Any]) -> pd.Series:
+        # O coerce entra só para LOCALIZAR a linha ruim: nulo de parser não chega ao parquet,
+        # porque a linha inteira sai. Célula vazia continua distinguível de valor não entendido.
+        return conversao(serie, errors="coerce").isna() & serie.notna()
 
     def _renomear(self, aba: pd.DataFrame, divergencias: DivergenciasEsquema) -> pd.DataFrame:
         mapa: dict[str, str] = {}

@@ -1,6 +1,6 @@
 ---
 spec: ingestao_dados/008
-versao: v10
+versao: v16
 atualizado_em: 2026-08-03
 testes_tdd: true
 implementado: true
@@ -38,6 +38,23 @@ changelog:
     a `Session`; a integração ITBI declara o seu User-Agent
   - v10: explicitada a montagem das peças — a integração expõe um `build_fetcher` (como o do WFS) e
     o `run()` injeta **o mesmo** fetcher no scraper e no downloader
+  - v11: Patch 001 — a linha que não converte cai, não o ano (teto de 5%), com contagem e
+    localização nos metadados; `MAPA_COLUNAS` corrige "Cartório de Regsitro" para a grafia
+    da fonte
+  - v12: Patch 002 — consertos de fonte por composição: `ItbiParser` recebe uma sequência de
+    `ItbiPatcher` (ABC com `admite`/`aplicar`, percorrida por `patch_all`), e entra o primeiro
+    deles, para o cabeçalho `ACC (IPTU)` duplicado de 2019–2024
+  - v13: Patch 003 — patcher para aba com a linha de cabeçalho no rodapé (JAN/OUT-2024), que o teto do
+    Patch 001 não pega porque o defeito produz coluna nula, não linha inválida; corrige a
+    afirmação do Patch 002 sobre esses dois meses
+  - v14: Patch 004 — o link de planilha passa a ser reconhecido pelo rótulo (`Excel/xlsx`), não
+    pela extensão do href: o portal publica o ano corrente como documento do CMS sem extensão,
+    e 2026 estava sendo perdido em silêncio
+  - v15: Patch 005 — patcher para o typo `Descrição do pardão (IPTU)` em parte das abas de 2026,
+    que deixava `padrao_construtivo_desc` nula em 15.363 linhas
+  - v16: Patch 006 — o bloco de coleta ganha `anos_publicados` e o resultado deriva
+    `anos_ausentes` (publicado e fora do parquet), o relatório que faltava para denunciar ano
+    que nunca entrou na base
 ---
 
 # SPEC ingestao_dados/008 — Scraper das guias de ITBI pagas (portal da Fazenda → Parquet)
@@ -722,4 +739,218 @@ class ItbiConsolidador:
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v11) — a linha que não converte cai, não o ano (com teto)
+
+**O que mudou.** O critério original derruba o ano inteiro quando um valor não converte. Passa a
+derrubar **a linha**, contada e localizada nos metadados — e o ano só cai quando a fração de linhas
+descartadas ultrapassa **5%**.
+
+**Por quê.** Na primeira carga real, 2025 caiu inteiro por **7 linhas de 230.525** (0,003%): linhas
+digitadas com célula a mais, que empurram a razão social para a coluna de valor. O deslocamento não
+é único (25, 26 e 27 colunas preenchidas contra 28, em pontos diferentes da linha), então
+"des-deslocar" seria chute por linha — descartado. O teto preserva o que a regra estrita comprava:
+planilha que mudar de esquema de verdade continua derrubando o ano, em vez de perder metade das
+linhas em silêncio.
+
+**A proibição de conversão silenciosa continua valendo.** O `coerce` entra só para **localizar** a
+linha ruim; nenhum nulo de parser chega ao parquet, porque a linha inteira sai. Célula vazia segue
+distinguível de valor que o parser não entendeu.
+
+**Observabilidade.** O bloco `parse` do resultado ganha, por ano, **quantas** linhas foram
+descartadas e **onde** estavam (`<aba>:<linha do Excel>`), esta última limitada às primeiras
+`LIMITE_DESCARTES_REPORTADOS` — a contagem é a resposta de "perdi dado?", a localização é para
+abrir o Excel. Ano que estoura o teto continua em `falhas_por_ano`, com a fração na mensagem.
+
+**Correção de coluna, no mesmo patch.** `MAPA_COLUNAS` trazia `"Cartório de Regsitro"`; a fonte
+grafa `"Cartório de Registro"` em 2006, 2015 e 2025 — com o typo, `cartorio` sairia nulo em toda a
+base. Grafia divergente em algum ano aparece sozinha em `colunas_desconhecidas_por_ano`.
+
+```python
+# services/scripts/itbi/constants.py
+# Acima disto o ano cai inteiro: perder muita linha não é linha ruim, é esquema que mudou.
+TETO_LINHAS_DESCARTADAS: float = 0.05
+LIMITE_DESCARTES_REPORTADOS: int = 20
+```
+
+```python
+# services/scripts/itbi/parser.py — coerce só LOCALIZA a linha; o nulo do parser nunca
+# chega ao parquet, porque a linha inteira sai.
+def _nao_converte(self, serie: pd.Series, conversao: Callable[..., Any]) -> pd.Series:
+    return conversao(serie, errors="coerce").isna() & serie.notna()
+```
+
+**Testes do patch**
+
+- `test_linha_que_nao_converte_e_descartada_e_o_ano_entra` — aba com uma linha cujo valor não
+  converte: o parquet do ano sai sem ela e com as demais, o ano entra em `anos_parseados`, e a
+  contagem e a localização chegam aos metadados.
+- `test_descarte_acima_do_teto_derruba_o_ano` — aba em que a maioria não converte: o ano volta a
+  cair inteiro, com a fração na mensagem de `falhas_por_ano`, e o parquet daquele ano não é tocado.
+
+### Patch 002 (v12) — consertos de fonte por composição: `ItbiPatcher` injetado no parser
+
+**O que mudou.** O `ItbiParser` passa a receber, por composição, uma sequência de **patchers**:
+classes callable que aderem a um ABC comum e consertam um defeito conhecido da planilha
+**antes** do casamento de cabeçalhos. Cada patcher declara **os anos em que o defeito ocorre**
+(`admite`), aplica o conserto (`aplicar`) e é neutro fora deles; um `patch_all` percorre a
+sequência e aplica os que admitem o ano. O contrato é único e fechado: **recebe DataFrame,
+devolve DataFrame** — nenhum patcher lê arquivo, conhece o portal ou escreve estado.
+
+**Por quê.** A primeira carga completa mostrou que os defeitos da fonte não são de valor, e sim de
+**cabeçalho** — e por isso escapam do teto do Patch 001, que só vê linha. `MAPA_COLUNAS` casa por
+nome e não tem como desempatar dois cabeçalhos iguais. Sem uma porta para conserto, cada defeito
+novo viraria um `if` dentro do parser, que passaria a acumular exceção por ano — exatamente o
+apodrecimento que o §3.5 evita no núcleo de busca. Com o ABC, **defeito novo é classe nova**, o
+parser não muda, e o teste de um conserto é um DataFrame de entrada e um de saída.
+
+**A restrição por ano é o que torna o conserto seguro.** Um patcher que rodasse em todos os anos
+mascararia mudança de esquema legítima; restrito aos anos em que o defeito foi observado, ele é
+uma correção declarada, revisável em code review e datada. Ano fora da lista continua caindo pelo
+teto — que é o comportamento certo para defeito ainda não diagnosticado.
+
+**Primeiro patcher: cabeçalho `ACC (IPTU)` duplicado.** Em **2019–2024** a fonte grafa
+`Descrição do padrão (IPTU)` como `ACC (IPTU)`, duplicando o nome da coluna seguinte (o pandas
+entrega a segunda como `ACC (IPTU).1`). O efeito é a descrição do padrão — texto — caindo na
+coluna numérica `ano_construcao_corrigido`, reprovando **100% das linhas** das abas atingidas:
+2019, 2020, 2021 e 2022 inteiros, mais NOV/DEZ-2023 e FEV/MAI/SET-2024. O patcher renomeia a
+primeira ocorrência para o nome correto e promove a segunda, e só dispara quando encontra a
+assinatura — aba sã do mesmo ano passa intacta.
+
+```python
+# services/scripts/itbi/patchers/base.py — o contrato: recebe DataFrame, devolve DataFrame.
+class ItbiPatcher(ABC):
+    anos: ClassVar[tuple[int, ...]]
+
+    def __call__(self, aba: pd.DataFrame, ano: int) -> pd.DataFrame:
+        if not self.admite(ano):
+            return aba
+        return self.aplicar(aba)
+
+    def admite(self, ano: int) -> bool:
+        return ano in self.anos
+
+    @abstractmethod
+    def aplicar(self, aba: pd.DataFrame) -> pd.DataFrame: ...
+```
+
+**Fora do escopo deste patch.** As abas **sem linha de cabeçalho** (JAN-2024 e OUT-2024, em que a
+primeira transação virou o cabeçalho) não são consertadas aqui: o conserto é posicional, não de
+nome, e merece patcher próprio. Esses dois meses continuam derrubando 2024 pelo teto.
+
+**Testes do patch**
+
+- `test_patcher_do_acc_recupera_a_descricao_do_padrao` — aba de um ano da lista com o cabeçalho
+  duplicado: o ano parseia, `padrao_construtivo_desc` sai com o texto e `ano_construcao_corrigido`
+  com o número.
+- `test_patcher_nao_se_aplica_a_ano_fora_da_lista` — a mesma aba defeituosa num ano não declarado
+  continua derrubando o ano pelo teto: o conserto é datado, não universal.
+
+### Patch 003 (v13) — patcher para aba com a linha de cabeçalho no rodapé
+
+**Correção do Patch 002.** A frase "esses dois meses continuam derrubando 2024 pelo teto" está
+errada. O teto do Patch 001 só enxerga **linha que não converte**; a aba cujo cabeçalho não está no
+topo não produz isso — produz **coluna nula**. Enquanto o defeito do `ACC` derrubava 2024, a proteção existia por
+acidente; consertado o `ACC`, 2024 passaria a entrar com as **33.180 linhas** de JAN-2024 e
+OUT-2024 inteiramente nulas. É o que este patch impede.
+
+**O defeito.** JAN-2024 e OUT-2024 foram publicadas com a linha de título **no fim da aba** (última
+linha em JAN, antepenúltima em OUT). A leitura promove a primeira transação a cabeçalho, e a linha
+de título fica no corpo.
+
+**O conserto.** Segundo `ItbiPatcher`, restrito a **2024**: quando **nenhum** cabeçalho da aba casa
+com o `MAPA_COLUNAS`, o título não está no topo — e as colunas recebem, por posição, os nomes da
+ordem canônica da planilha do portal. A linha de título que sobrou no corpo é descartada pelo teto
+sem regra nova, porque texto não converte nas colunas numéricas, e sai reportada em
+`descartes_por_ano`. Aba sã do mesmo ano tem cabeçalho que casa e passa intacta,
+então a assinatura é o que restringe o conserto, não a confiança no ano.
+
+**A ordem canônica é constante própria, não derivada do `MAPA_COLUNAS`.** São coisas diferentes: a
+ordem descreve o **layout da planilha** (28 colunas, `Bairro` inclusive), e o dicionário descreve o
+**mapeamento de saída** (27, sem `Bairro`). Derivar uma da outra amarraria o layout da fonte a uma
+decisão nossa sobre o que publicar.
+
+**A aba mais estreita que o canônico recebe o prefixo da ordem.** JAN-2024 e OUT-2024 têm as 28
+colunas, então o caso não ocorre hoje — mas uma aba com este defeito **e** sem as últimas colunas
+casaria pelas posições iniciais, e as que faltassem sairiam nulas e reportadas em
+`colunas_ausentes_por_ano`, que é o caminho que a SPEC já previa. Largura **maior** que a canônica
+não é o defeito conhecido: a aba passa intacta e o teto decide.
+
+**Uma linha por aba é perda definitiva, e é do portal.** A transação promovida a cabeçalho chega ao
+patcher já destruída pela leitura — célula vazia virou `Unnamed: N` e valor repetido ganhou sufixo
+(`0.1`, `0.2`). Reconstruí-la seria adivinhar. São 2 linhas de 33.180 (0,006%), e o patcher entrega
+as 33.178 restantes; recuperar aquelas duas exigiria reler o arquivo, o que quebraria o contrato
+`DataFrame` entra / `DataFrame` sai que faz o patcher ser testável sem disco.
+
+**Testes do patch**
+
+- `test_patcher_recupera_aba_com_cabecalho_no_rodape` — xlsx de um ano admitido com duas abas, uma
+  com o título no rodapé e uma sã: as duas entram com as colunas nomeadas corretamente, a linha de
+  título não vira dado, e a aba defeituosa entra sem a transação que o portal consumiu.
+
+### Patch 004 (v14) — o link de planilha é reconhecido pelo rótulo, não pela extensão
+
+**O defeito.** O scraper identificava o xlsx pelo sufixo `.xlsx` do `href`, e com isso **perdia o ano
+corrente**. O portal publica os anos fechados como arquivo (`...GUIAS-DE-ITBI-PAGAS-2024.xlsx`) e o
+ano em andamento como documento do CMS, **sem extensão**
+(`/documents/d/fazenda/guias-de-itbi-pagas-4-xlsx`). Em 2026-08-03, 2026 estava publicado na página
+e não entrava na carga — sem erro, sem aviso: o `<li>` simplesmente não produzia planilha.
+
+**O conserto.** O link é reconhecido pelo **rótulo**: nos 21 itens da página o texto é `Excel/xlsx`
+para a planilha e `ODS` para o outro formato, invariante que atravessa as três gerações de URL que
+convivem ali. O casamento usa a normalização única (§6.1) e aceita `XLSX` ou `EXCEL` no texto — o
+`.ods` continua fora porque o rótulo dele não contém nenhum dos dois. A extensão do `href` deixa de
+ser critério, e continua valendo `urljoin` para todo link.
+
+**Por que o rótulo e não os dois critérios.** Aceitar "sufixo `.xlsx` **ou** rótulo" seriam duas
+regras a manter em sincronia, e é a mesma armadilha do `if href.startswith("http")` que a SPEC já
+descarta: o formato da URL é do CMS e muda sozinho, o rótulo é o que o publicador escreve para um
+humano ler.
+
+**Testes do patch**
+
+- `test_scraper_reconhece_planilha_sem_extensao_no_href` — `<li>` cujo link de Excel aponta para um
+  documento sem extensão e cujo `.ods` também não a tem: a planilha entra, o `.ods` não.
+
+### Patch 005 (v15) — patcher para o typo `pardão` no cabeçalho de 2026
+
+**O defeito.** Em parte das abas de **2026** a fonte grafa `Descrição do padrão (IPTU)` como
+`Descrição do pardão (IPTU)`. Como o casamento é por nome, a coluna cai fora do `MAPA_COLUNAS` e
+`padrao_construtivo_desc` sai **nula** — 15.363 das 91.041 linhas do ano na carga de 2026-08-03. Não
+derruba nada e não passa em silêncio: a grafia errada aparece em `colunas_desconhecidas_por_ano` e a
+coluna vazia em `colunas_ausentes_por_ano`, que foi como o defeito apareceu.
+
+**O conserto.** Terceiro `ItbiPatcher`, restrito a 2026: renomeia a grafia errada para a correta
+antes do casamento, e é neutro na aba que já grafa certo — a maioria, no mesmo ano. Nenhuma linha do
+parser muda, que é o ponto do Patch 002.
+
+**Por que não uma segunda chave no `MAPA_COLUNAS`.** Duas chaves apontando para a mesma saída
+produziriam coluna duplicada na aba que trouxesse as duas grafias, e quebrariam a premissa de que o
+dicionário é a fonte única do nome de saída de **cada** coluna. Grafia errada é defeito datado de
+uma fonte, não sinônimo permanente — o lugar dela é um patcher.
+
+**Testes do patch**
+
+- `test_patcher_corrige_o_typo_pardao` — aba de 2026 com a grafia errada: `padrao_construtivo_desc`
+  sai preenchida e o cabeçalho não aparece como coluna desconhecida.
+
+### Patch 006 (v16) — `anos_publicados` na coleta, e `anos_ausentes` derivado
+
+**O buraco.** Nenhum bloco do resultado sabia o que o **portal** tem. `anos_desatualizados` só
+enxerga o que já está no parquet, então ano que o scraper não devolve não aparece em lugar nenhum —
+foi assim que 2026 ficou fora da base sem que o relatório dissesse nada (Patch 004). O mesmo valeria
+para um ano que o portal passasse a publicar e a nossa regra de reconhecimento deixasse de casar.
+
+**O conserto.** O bloco de coleta ganha **`anos_publicados`** — os anos que o portal ofereceu nesta
+carga, antes de qualquer download. Dele e da consolidação sai **`anos_ausentes`**: publicados e fora
+do parquet. É a pergunta que o operador faz — *o portal tem N, eu tenho M, onde está a diferença* —
+e ela chega pronta, como já acontece com `anos_desatualizados`.
+
+**Os dois campos respondem coisas diferentes e por isso convivem.** `anos_desatualizados` é "está no
+parquet, com dado de uma carga anterior"; `anos_ausentes` é "não está no parquet". Um cobre carga
+que envelheceu, o outro cobre ano que nunca entrou — e só o segundo teria denunciado 2026.
+
+**Testes do patch**
+
+- `test_ano_publicado_e_nao_baixado_sai_em_anos_ausentes` — o portal publica um ano cujo download
+  falha e que não tem arquivo anterior em disco: ele sai em `coleta.anos_publicados` e em
+  `anos_ausentes`, e não em `anos_desatualizados`.

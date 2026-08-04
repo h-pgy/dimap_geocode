@@ -67,3 +67,28 @@ def test_scraper_sem_secao_esperada_levanta_erro_proprio() -> None:
     secao_sem_xlsx = '<html><body><section class="psp-agencies-content"></section></body></html>'
     with pytest.raises(ItbiEstruturaInesperadaError):
         ItbiPortalScraper(_fetcher(secao_sem_xlsx))(config)
+
+
+# O ano corrente é publicado como documento do CMS, sem extensão no href — os dois links do <li>
+# terminam em "-xlsx"/"-ods" sem ponto, e só o rótulo os distingue.
+PAGINA_SEM_EXTENSAO = """
+<html><body>
+  <section class="psp-agencies-content">
+    <ul><li>
+      <strong>2026 (Excel/xlsx) (ODS)</strong>
+      <a href="/documents/d/fazenda/guias-de-itbi-pagas-4-xlsx">Excel/xlsx</a>
+      <a href="/documents/d/fazenda/guias-de-itbi-pagas-2026-ods-2-ods">ODS</a>
+    </li></ul>
+  </section>
+</body></html>
+"""
+
+
+def test_scraper_reconhece_planilha_sem_extensao_no_href() -> None:
+    planilhas = ItbiPortalScraper(_fetcher(PAGINA_SEM_EXTENSAO))(
+        ItbiPortalConfig(url_pagina=URL_PAGINA)
+    )
+
+    assert [(p.ano, p.url) for p in planilhas] == [
+        (2026, "https://portal.test/documents/d/fazenda/guias-de-itbi-pagas-4-xlsx")
+    ]

@@ -61,6 +61,12 @@ COLUNAS_TEXTO: tuple[str, ...] = tuple(
     if saida not in COLUNAS_NUMERICAS and saida not in COLUNAS_DATA
 )
 
+# Acima disto o ano cai inteiro: perder muita linha não é linha ruim, é esquema que mudou.
+TETO_LINHAS_DESCARTADAS: float = 0.05
+LIMITE_DESCARTES_REPORTADOS: int = 20
+# O índice do pandas conta a partir de 0 e o cabeçalho ocupa a linha 1 da planilha.
+OFFSET_LINHA_EXCEL: int = 2
+
 COLUNA_ANO: str = "ano"
 COLUNA_MES: str = "mes"
 COLUNA_FINANCIAMENTO_TIPO: str = "financiamento_tipo"

@@ -1,6 +1,6 @@
 """Planilhas sintéticas do ITBI — o insumo dos testes das etapas 2 e 3."""
 
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from pathlib import Path
 
 import pandas as pd
@@ -12,7 +12,8 @@ def _valor(saida: str, linha: int) -> object:
     if saida in COLUNAS_NUMERICAS:
         return float(linha + 1)
     if saida in COLUNAS_DATA:
-        return f"2026-01-{linha + 10:02d}"
+        # Dia dentro do mês para qualquer número de linhas — data inválida derrubaria a aba.
+        return f"2026-01-{linha % 28 + 1:02d}"
     return f"{saida}-{linha}"
 
 
@@ -26,9 +27,26 @@ def aba_completa(linhas: int = 2) -> pd.DataFrame:
     )
 
 
-def escrever_xlsx(destino: Path, abas: Mapping[str, pd.DataFrame]) -> Path:
+def _com_titulo_no_fim(quadro: pd.DataFrame) -> pd.DataFrame:
+    titulo = pd.DataFrame([list(quadro.columns)], columns=quadro.columns)
+    return pd.concat([quadro, titulo], ignore_index=True)
+
+
+def escrever_xlsx(
+    destino: Path,
+    abas: Mapping[str, pd.DataFrame],
+    cabecalho_no_rodape: Collection[str] = (),
+) -> Path:
+    """`cabecalho_no_rodape` reproduz as abas em que o portal pôs a linha de título no fim."""
     destino.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(destino, engine="openpyxl") as writer:
         for nome, quadro in abas.items():
-            quadro.to_excel(writer, sheet_name=nome, index=False)
+            if nome in cabecalho_no_rodape:
+                quadro = _com_titulo_no_fim(quadro)
+            quadro.to_excel(
+                writer,
+                sheet_name=nome,
+                index=False,
+                header=nome not in cabecalho_no_rodape,
+            )
     return destino
