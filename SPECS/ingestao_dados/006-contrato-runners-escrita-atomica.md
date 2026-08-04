@@ -1,10 +1,12 @@
 ---
 spec: ingestao_dados/006
-versao: v1
+versao: v2
 atualizado_em: 2026-08-03
 implementado: true
 changelog:
   - v1: versão inicial
+  - v2: Patch 001 — artefato de carga (`data/*.parquet`, `data/metadados_dados.json`) sai do
+    versionamento; insumo mantido à mão continua versionado
 ---
 
 # SPEC ingestao_dados/006 — Contrato de runners, escrita atômica e isolamento da `data/` nos testes
@@ -427,4 +429,31 @@ result = run(config, verbose=bool(options["verbose"]))
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v2) — artefato de carga sai do versionamento
+
+**O que mudou.** O critério "só o `.tmp` é ignorado; parquets e JSON continuam versionados" cai. Vão
+para o `.gitignore` os **artefatos de carga**: `data/*.parquet` e `data/metadados_dados.json`.
+Continuam versionados os **insumos mantidos à mão** — `tipos_logradouro_aumentado.json`, que é input
+do augment, e `traducao_codigos_tipos_logradouro.json` (§5: dicionário é dado, não artefato).
+
+**Por quê.** O critério original vinha de artefatos de dezenas de MB, em que versionar custava pouco
+e comprava `git pull` seguido de `runserver`. O parquet do ITBI (SPEC 008) tem **149 MB** e é
+recarregado a cada publicação mensal do ano corrente — cada carga acrescentaria 149 MB permanentes
+ao histórico, para dado que só cresce nas bordas. Git LFS moveria o peso, não o custo: a cota
+gratuita da conta são 1 GB de armazenamento e 1 GB de banda por mês, que essa carga esgota em
+poucas execuções.
+
+**O critério que a `data/` passa a obedecer é o mesmo das pastas de insumo do ITBI:** o que um script
+regenera é estado local, não histórico. O que ninguém regenera — dicionário mantido à mão — é dado, e
+fica.
+
+**O custo, declarado.** Checkout limpo não sobe o site: é preciso rodar o pipeline antes, e a carga
+completa do ITBI leva dezenas de minutos. Em troca, o repositório para de crescer com dado
+reconstruível. A pasta sobrevive ao clone pelo `.gitkeep` que já existe.
+
+**O `.gitattributes` do LFS fica.** A regra de `data/itbi_guias_pagas.parquet` deixa de ter efeito
+enquanto o arquivo estiver ignorado, e custa nada mantê-la — se algum artefato voltar a ser
+versionado, ele já nasce como ponteiro em vez de blob.
+
+_Sem teste: o que este patch muda é o que o git rastreia, não comportamento de código._
+
