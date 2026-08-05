@@ -1,7 +1,8 @@
 """
 Unidade da DIMAP (SPEC user_admin/001) e sua hierarquia (SPEC user_admin/003): o tipo carrega o
 nível de subordinação, as vedas nominais de tipo-filho e a marca de tipo-raiz; a unidade referencia
-o tipo e, opcionalmente, uma unidade superior.
+o tipo e, opcionalmente, uma unidade superior. Também carrega a cor de identidade visual (SPEC
+user_admin/005).
 """
 
 from django.core.exceptions import ValidationError
@@ -11,6 +12,19 @@ from django.db.models import F, Q
 ERRO_NIVEL_NAO_SUBORDINA = "A unidade pai precisa ser de um tipo de nível superior."
 ERRO_TIPO_FILHO_VEDADO = "A unidade pai não admite filhas deste tipo."
 ERRO_TIPO_EXIGE_PAI = "Unidades deste tipo precisam ter uma unidade superior."
+
+
+class CorUnidade(models.TextChoices):
+    # Tons a partir daqui passam o piso de contraste 4,5:1 contra a tinta base-100 (#F2F8FB) —
+    # ver SPEC user_admin/005. A resolução slug → hex mora na borda do app, não no domínio.
+    AGUA_700 = "agua-700", "Água 700"
+    AGUA_800 = "agua-800", "Água 800"
+    ROCHA_700 = "rocha-700", "Rocha 700"
+    ROCHA_900 = "rocha-900", "Rocha 900"
+    MADEIRA_600 = "madeira-600", "Madeira 600"
+    MADEIRA_700 = "madeira-700", "Madeira 700"
+    SAKURA_600 = "sakura-600", "Sakura 600"
+    SAKURA_700 = "sakura-700", "Sakura 700"
 
 
 class TipoUnidade(models.Model):
@@ -59,6 +73,12 @@ class Unidade(models.Model):
         null=True,
         blank=True,
     )
+    # Repetir cor entre unidades é aceito: a cor é pista de identidade, não chave.
+    cor = models.CharField(
+        max_length=20,
+        choices=CorUnidade,
+        default=CorUnidade.AGUA_700,
+    )
 
     class Meta:
         verbose_name = "Unidade"
@@ -87,3 +107,8 @@ class Unidade(models.Model):
             raise ValidationError({"pai": ERRO_NIVEL_NAO_SUBORDINA})
         if tipo_pai.tipos_filhos_vedados.filter(pk=self.tipo.pk).exists():
             raise ValidationError({"pai": ERRO_TIPO_FILHO_VEDADO})
+
+    # Valor inicial oferecido ao formulário de cadastro; a unidade grava a cor que escolher.
+    @property
+    def cor_sugerida(self) -> str:
+        return self.pai.cor if self.pai else CorUnidade.AGUA_700

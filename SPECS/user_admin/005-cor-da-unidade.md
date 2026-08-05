@@ -3,7 +3,7 @@ spec: user_admin/005
 versao: v2
 atualizado_em: 2026-08-05
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial — desmembrada da SPEC user_admin/004, que ficou só com o gerador de SVG
@@ -14,7 +14,7 @@ changelog:
 # SPEC user_admin/005 — Cor da unidade
 
 - [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 
@@ -23,9 +23,9 @@ cada servidor no sistema também diga de qual unidade ele vem.
 
 ## Critérios de aceite
 
-- [ ] A unidade tem uma **cor**, escolhida entre os tons de tinta do design system, com um valor
+- [x] A unidade tem uma **cor**, escolhida entre os tons de tinta do design system, com um valor
       **padrão**; cor fora da paleta é recusada. Cores podem se repetir entre unidades.
-- [ ] A unidade expõe a **cor sugerida** para o cadastro: a cor da unidade-pai, ou o padrão global
+- [x] A unidade expõe a **cor sugerida** para o cadastro: a cor da unidade-pai, ou o padrão global
       quando ela é raiz.
 
 ## Contexto e decisões de arquitetura
