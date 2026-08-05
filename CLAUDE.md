@@ -200,6 +200,17 @@ manualmente**. Comandos git de leitura (`status`, `diff`, `log`, `show`) seguem 
 *Por quê:* o commit é o ponto em que a mudança passa a valer para o resto do time. Essa decisão —
 o que entra, quando entra e sob qual mensagem — é do usuário, e ele quer revisar o diff antes.
 
+**Migração de banco é do usuário, não do agente.** O agente pode **gerar** migrações
+(`makemigrations`) — é código versionado, revisável como qualquer outro arquivo —, mas **nunca
+aplica** (`migrate`) nem manipula o banco diretamente (`dbshell`, `flush`, `docker compose down -v`
+e similares), mesmo que pareça o próximo passo óbvio e mesmo que a aplicação já tenha sido feita
+antes na conversa. Ao terminar, ele para e relata o que falta aplicar; **quem aplica é o usuário,
+manualmente**, e só quando ele decide.
+
+*Por quê:* aplicar migração muda o schema de um banco com estado real — efeito imediato e às vezes
+irreversível (`down -v` apaga o volume). É a mesma natureza de decisão que o commit: quando entra e
+sobre qual banco é escolha do usuário, não passo automático do agente.
+
 ---
 
 ## 5. Estrutura do Projeto
