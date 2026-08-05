@@ -1,32 +1,28 @@
 ---
 spec: user_admin/005
-versao: v1
+versao: v2
 atualizado_em: 2026-08-05
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial — desmembrada da SPEC user_admin/004, que ficou só com o gerador de SVG
+  - v2: escopo reduzido à cor da unidade; a foto do perfil e a separação nome/sobrenome saem
+    para a SPEC user_admin/006
 ---
 
-# SPEC user_admin/005 — Foto do perfil e cor da unidade
+# SPEC user_admin/005 — Cor da unidade
 
 - [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
 - [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 
-Como servidor da DIMAP, quero poder subir uma foto para o meu perfil e ter meu nome e sobrenome
-guardados separadamente, e como administrador quero dar uma cor a cada unidade, para que o sistema
-tenha o que precisa para me identificar visualmente — com a foto quando ela existe, com o avatar de
-iniciais quando não.
+Como administrador da DIMAP, quero dar uma cor a cada unidade, para que a identificação visual de
+cada servidor no sistema também diga de qual unidade ele vem.
 
 ## Critérios de aceite
 
-- [ ] O perfil tem uma **foto opcional**: salvar perfil sem foto é aceito, e o campo aceita imagem
-      enviada por upload.
-- [ ] O perfil tem **nome e sobrenome** em campos separados, ambos obrigatórios, e o perfil já
-      cadastrado sobrevive à migração com o nome repartido.
 - [ ] A unidade tem uma **cor**, escolhida entre os tons de tinta do design system, com um valor
       **padrão**; cor fora da paleta é recusada. Cores podem se repetir entre unidades.
 - [ ] A unidade expõe a **cor sugerida** para o cadastro: a cor da unidade-pai, ou o padrão global
@@ -34,13 +30,12 @@ iniciais quando não.
 
 ## Contexto e decisões de arquitetura
 
-Iteração de **persistência**, sobre os models das SPECs `user_admin/001` e `003`: dois campos novos
-em `Perfil` (mais a troca de semântica do `nome`), um campo novo em `Unidade` e a propriedade que
-sugere a cor no cadastro. Nenhum model novo.
+Iteração de **persistência**, sobre o model `Unidade` das SPECs `user_admin/001` e `003`: um campo
+novo e a propriedade que sugere a cor no cadastro. Nenhum model novo.
 
-O gerador de SVG que consome esses dados é a SPEC `user_admin/004`, e as duas **não se cruzam em
-código** — ele recebe nome, sobrenome e cores já resolvidas por DTO. A ordem entre elas é
-indiferente; o encontro acontece na view, que é a SPEC de front-end do épico.
+O gerador de SVG que pinta o avatar com essa cor é a SPEC `user_admin/004`, e as duas **não se
+cruzam em código** — ele recebe as cores já resolvidas por DTO. O encontro acontece na view, que é a
+SPEC de front-end do épico.
 
 **A cor é um `choices` de tokens, não hex livre.** A skill `componentes-frontend` veda hex solto:
 cor nova entra numa escala existente ou não entra. O banco guarda o **slug do token** (`agua-700`),
@@ -65,27 +60,10 @@ custaria travessia da cadeia e propagação em ramo para uma pista visual, e nad
 de a cor ser coerente com o organograma. Custo aceito: trocar a cor de uma unidade não repinta as
 filhas já cadastradas.
 
-**Nome e sobrenome separados porque a inicial exige a separação.** Extrair sobrenome de um campo
-único por heurística de espaços funcionaria hoje e quebraria no primeiro nome composto; o modelo
-passa a guardar a informação que a regra consome.
-
-**Consequência operacional:** `sobrenome` é obrigatório e a tabela de perfis já tem carga, então a
-migração precisa de um passo de dados que quebre o `nome` atual no primeiro espaço (primeiro termo →
-`nome`, resto → `sobrenome`) — mesmo padrão da migração custom da SPEC `003`. Como `nome` também
-encolhe de 200 para 100 caracteres, a ordem das operações importa: acrescentar `sobrenome`,
-repartir os dados e só então alterar a coluna. A assinatura de `create_user`/`REQUIRED_FIELDS`
-acompanha, e os testes que hoje criam perfil avulso também.
-
-**Duas dependências de infraestrutura entram junto:** `Pillow` (exigido pelo `ImageField`, que é o
-que valida que o arquivo enviado é imagem de verdade — `FileField` aceitaria qualquer coisa) e
-`MEDIA_ROOT`/`MEDIA_URL` nas settings. Servir o arquivo por rota é front-end e fica de fora.
-
 ## Peças de referência a compor
 
-- `@SPECS/user_admin/001` → `Perfil`, `PerfilManager` e `Unidade`: os campos novos entram nos models
-  existentes, não em models novos.
-- `@SPECS/user_admin/003` → `Unidade.pai`, de onde sai a cor sugerida; o marker `banco`; e o padrão
-  de migração custom para tabela com carga pré-existente.
+- `@SPECS/user_admin/001` → `Unidade`: o campo novo entra no model existente, não em model novo.
+- `@SPECS/user_admin/003` → `Unidade.pai`, de onde sai a cor sugerida; e o marker `banco`.
 - `@SPECS/user_admin/004` → `AvatarIniciaisInput`: é o DTO que recebe o hex resolvido a partir do
   token gravado aqui.
 - `@.claude/skills/componentes-frontend` → `references/paleta.json`: fonte da verdade dos valores das
@@ -140,43 +118,25 @@ cor = models.CharField(
 @property
 def cor_sugerida(self) -> str:
     return self.pai.cor if self.pai else CorUnidade.AGUA_700
-
-
-# ── campos NOVOS no Perfil que já existe (SPEC 001) ───────────────────────────────────
-
-# `nome` troca de semântica (nome completo -> primeiro nome) e por isso encolhe o max_length.
-nome = models.CharField(max_length=100)
-sobrenome = models.CharField(max_length=150)
-foto = models.ImageField(
-    upload_to="perfis/fotos/",
-    null=True,
-    blank=True,
-)
-
-REQUIRED_FIELDS = ["nome", "sobrenome"]
 ```
 
 ## Fora de escopo
 
+- A foto do perfil e a separação nome/sobrenome — SPEC `user_admin/006`.
 - O gerador de SVG e a extração das iniciais — SPEC `user_admin/004`.
-- Escolher entre foto e avatar na resposta, rota que serve o arquivo de mídia, e o formulário de
-  cadastro de unidade que consome `cor_sugerida` como valor inicial.
-- Redimensionar, recortar ou limitar o tamanho da foto enviada.
+- O formulário de cadastro de unidade que consome `cor_sugerida` como valor inicial.
 - Cor por perfil, por cargo ou derivada de hash do nome — a cor é da unidade.
 - Propagar cor para as unidades filhas já cadastradas.
 - Seed das cores das unidades da DIMAP — vai junto com o seed do épico.
 
 ## Testes (TDD)
 
-Todos levam o marker `banco`: validam `choices`, default, obrigatoriedade e travessia de FK contra o
-Postgres real.
+Ambos levam o marker `banco`: validam `choices`, default e travessia de FK contra o Postgres real.
 
 - `test_unidade_recusa_cor_fora_da_paleta_e_nasce_com_a_padrao` — unidade salva sem cor fica com o
   token padrão, e um valor fora do `choices` é recusado no `full_clean`.
 - `test_cor_sugerida_vem_do_pai_e_cai_no_padrao_na_raiz` — a filha sugere a cor do pai mesmo quando
   a sua própria já é outra; a unidade raiz sugere o token padrão.
-- `test_perfil_exige_sobrenome_e_admite_foto_nula` — perfil sem foto é salvo, e perfil com sobrenome
-  vazio é recusado no `full_clean`.
 
 ## Patches
 
