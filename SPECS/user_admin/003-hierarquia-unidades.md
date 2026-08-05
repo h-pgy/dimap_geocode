@@ -3,7 +3,7 @@ spec: user_admin/003
 versao: v3
 atualizado_em: 2026-08-05
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -15,7 +15,7 @@ changelog:
 # SPEC user_admin/003 — Hierarquia das unidades
 
 - [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 

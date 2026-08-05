@@ -1,6 +1,6 @@
 from .cargos import CargoBase, CargoComissao
 from .impedimentos import Impedimento, TipoImpedimento
-from .unidade import Unidade
+from .unidade import TipoUnidade, Unidade
 from .user import Perfil, PerfilManager
 
 __all__ = [
@@ -10,5 +10,6 @@ __all__ = [
     "Perfil",
     "PerfilManager",
     "TipoImpedimento",
+    "TipoUnidade",
     "Unidade",
 ]
