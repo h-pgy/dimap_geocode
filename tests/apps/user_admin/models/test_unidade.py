@@ -2,7 +2,8 @@
 Testes de TipoUnidade e da hierarquia de Unidade (SPEC user_admin/003): nível do tipo como regra
 geral de subordinação, veda nominal de tipos-filho como exceção, exigência de pai para tipo que não
 encabeça árvore, convivência de raízes paralelas e a constraint de que uma unidade não é pai de si
-mesma.
+mesma. Inclui também a cor da unidade (SPEC user_admin/005): choices/default e a sugestão de cor a
+partir do pai.
 
 Todos levam o marker `banco`: a veda é M2M e a constraint é do Postgres — nenhum dos dois se
 verifica sobre objeto não persistido.
@@ -13,7 +14,7 @@ from django.db import IntegrityError
 
 import pytest
 
-from apps.user_admin.models import TipoUnidade, Unidade
+from apps.user_admin.models import CorUnidade, TipoUnidade, Unidade
 
 banco = pytest.mark.banco
 
@@ -153,3 +154,45 @@ def test_filhas_lista_as_unidades_subordinadas() -> None:
 
     assert set(departamento.filhas.all()) == {divisao_1, divisao_2}
     assert outra_raiz.filhas.count() == 0
+
+
+@banco
+@pytest.mark.django_db
+def test_unidade_recusa_cor_fora_da_paleta_e_nasce_com_a_padrao() -> None:
+    sem_cor = _unidade(nome="Sem Cor", sigla="SCOR")
+    assert sem_cor.cor == CorUnidade.AGUA_700
+
+    tipo = _tipo(nome="Departamento Cor Invalida", nivel=20)
+    cor_invalida = Unidade(
+        nome="Cor Invalida",
+        sigla="CINV",
+        tipo=tipo,
+        cor="hex-livre-nao-existe",
+    )
+    with pytest.raises(ValidationError):
+        cor_invalida.full_clean()
+
+
+@banco
+@pytest.mark.django_db
+def test_cor_sugerida_vem_do_pai_e_cai_no_padrao_na_raiz() -> None:
+    tipo_departamento = _tipo(nome="Departamento Sugestao", nivel=20)
+    tipo_divisao = _tipo(nome="Divisao Sugestao", nivel=10)
+    pai = _unidade(
+        nome="Departamento Sugestao",
+        sigla="DSUG",
+        tipo=tipo_departamento,
+        cor=CorUnidade.SAKURA_600,
+    )
+    filha = Unidade(
+        nome="Divisao Sugestao",
+        sigla="DIVS",
+        tipo=tipo_divisao,
+        pai=pai,
+        cor=CorUnidade.ROCHA_700,
+    )
+    filha.full_clean()
+    filha.save()
+
+    assert filha.cor_sugerida == CorUnidade.SAKURA_600
+    assert pai.cor_sugerida == CorUnidade.AGUA_700
