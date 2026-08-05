@@ -100,6 +100,33 @@ libera o uso da seção `Patches`.
 > e o check `[ ] → [x]` é um estado administrativo, não uma mudança de conteúdo. A versão e o
 > `changelog` ficam intocados; nada é acrescentado ao `changelog` só por causa destas marcações.
 
+### Markers obrigatórios
+
+Nem todo teste roda na suíte padrão. O `addopts` do `pyproject.toml` exclui markers (`integration`
+e outros que venham a existir) para que `uv run pytest` continue rápido e sem dependência de
+serviço externo — banco, rede, dados reais. Um teste atrás de marker é um teste que **não roda a
+menos que alguém peça**.
+
+Quando a SPEC tem testes assim, ela declara no front-matter quais markers precisam rodar **verdes**
+antes de `implementado: true`:
+
+```yaml
+markers_obrigatorios: [banco]
+```
+
+- O campo é **opcional**: SPEC cujos testes todos rodam na suíte padrão simplesmente não o tem.
+- Ele é **parte do gate de implementação**: com `markers_obrigatorios` declarado, `uv run pytest`
+  sozinho não basta para marcar a SPEC como implementada — cada marker listado precisa ter rodado
+  (`uv run pytest -m <marker>`) e passado.
+- A seção "Testes (TDD)" diz **quais** testes carregam o marker, para que a divisão fique explícita
+  na leitura.
+- Declarar o campo **não incrementa a versão** se for junto da redação da SPEC; passar a exigir um
+  marker novo depois é mudança de conteúdo e segue a regra normal de versionamento.
+
+*Por quê:* o §9 do CLAUDE.md faz o teste ser o que guia a implementação. Teste escondido atrás de
+marker que ninguém roda não guia nada — o campo é o que transforma "existe um comando para rodar"
+em "a SPEC não fica pronta sem rodar".
+
 ---
 
 ## Como usar uma SPEC (instruções para o implementador)
@@ -158,6 +185,7 @@ versao: v1
 atualizado_em: <AAAA-MM-DD>
 testes_tdd: false
 implementado: false
+markers_obrigatorios: []  # opcional — markers que precisam rodar verdes antes de implementado: true
 changelog:
   - v1: versão inicial
 ---
@@ -198,6 +226,8 @@ observável, mais os casos de borda que realmente quebram. POUCOS E ESSENCIAIS: 
 SPEC típica. Não listar getter, DTO trivial nem variação que só repete outro caso.
 Uma linha por teste: nome + o comportamento que ele fixa. Alvo natural é `services/`;
 view só quando o que se fixa é o contrato HTTP/partial.
+Se algum teste carrega marker (banco, integration, …), diga quais — e liste o marker em
+`markers_obrigatorios` no front-matter.
 Ao escrevê-los, marque `testes_tdd: true` + o check no topo — é o que libera a implementação.>
 
 - `test_<comportamento>` — <o comportamento observável que este teste fixa>
@@ -225,6 +255,9 @@ Antes de apresentar a SPEC ao usuário, verifique:
       título, cada um coerente com seu flag no front-matter.
 - [ ] `implementado: true` só existe se `testes_tdd: true` — código de produção não começa antes
       dos testes.
+- [ ] Se algum teste da SPEC roda atrás de marker, o marker está em `markers_obrigatorios` e a
+      seção "Testes (TDD)" diz quais testes o carregam — e ele rodou verde antes de
+      `implementado: true`.
 - [ ] Marcar os flags (`testes_tdd`/`implementado` + `[x]`) **não incrementa a versão** nem
       adiciona entrada no `changelog` — é só estado administrativo.
 - [ ] Se a SPEC **ainda não foi implementada**, a seção `Patches` está vazia ("Nenhum patch
