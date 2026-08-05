@@ -1,0 +1,10 @@
+{# templates/mapping/_mapa_admin.html — fundo da área administrativa (SPEC user_admin/007):      #}
+{# tiles públicos em P&B (nenhuma chamada ao GeoSampa) à deriva lenta, sob a MESMA lente do mapa  #}
+{# principal — a identidade visual do produto não muda de seção para seção.                       #}
+<div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+<div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+<div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+<div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+<div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+{{ tiles_publicos|json_script:"mapa-admin-tiles" }}
+{{ config_fundo|json_script:"mapa-admin-config" }}

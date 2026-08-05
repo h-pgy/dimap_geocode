@@ -7,6 +7,11 @@ WMS_VERSION: str = settings.WMS_VERSION
 WMS_BASES: list[dict[str, str]] = settings.WMS_BASES
 MAP_CENTRO_DEFAULT: list[float] = settings.MAP_CENTRO_DEFAULT
 MAP_ZOOM_DEFAULT: int = settings.MAP_ZOOM_DEFAULT
+MAP_TILES_PUBLICOS_URL: str = settings.MAP_TILES_PUBLICOS_URL
+MAP_TILES_PUBLICOS_SUBDOMINIOS: str = settings.MAP_TILES_PUBLICOS_SUBDOMINIOS
+MAP_TILES_PUBLICOS_ATRIBUICAO: str = settings.MAP_TILES_PUBLICOS_ATRIBUICAO
+MAP_TILES_PUBLICOS_ZOOM_MAXIMO: int = settings.MAP_TILES_PUBLICOS_ZOOM_MAXIMO
+MAP_ZOOM_FUNDO_ADMIN: int = settings.MAP_ZOOM_FUNDO_ADMIN
 
 
 def contexto_mapa_base() -> dict[str, Any]:
@@ -15,6 +20,23 @@ def contexto_mapa_base() -> dict[str, Any]:
     return {
         "wms": {"url": WMS_URL, "version": WMS_VERSION, "bases": WMS_BASES},
         "config": {"centro": MAP_CENTRO_DEFAULT, "zoom": MAP_ZOOM_DEFAULT},
+    }
+
+
+def contexto_fundo_admin() -> dict[str, Any]:
+    """Contexto do fundo à deriva da área administrativa: tiles públicos + centro/zoom, sem WMS.
+    Ali não há território a mostrar, então nenhuma chamada ao GeoSampa (SPEC user_admin/007)."""
+    return {
+        "tiles_publicos": {
+            "url": MAP_TILES_PUBLICOS_URL,
+            "subdominios": MAP_TILES_PUBLICOS_SUBDOMINIOS,
+            "atribuicao": MAP_TILES_PUBLICOS_ATRIBUICAO,
+            "zoom_maximo": MAP_TILES_PUBLICOS_ZOOM_MAXIMO,
+        },
+        "config_fundo": {
+            "centro": MAP_CENTRO_DEFAULT,
+            "zoom": MAP_ZOOM_FUNDO_ADMIN,
+        },
     }
 
 

@@ -77,6 +77,17 @@ class _Settings(BaseSettings):
     map_cor_poligono_condominio: str = Field(
         default=_ESCALAS["sakura"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
     )
+    map_tiles_publicos_url: str = Field(
+        default="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        alias="MAP_TILES_PUBLICOS_URL",
+    )
+    map_tiles_publicos_subdominios: str = Field(
+        default="abcd", alias="MAP_TILES_PUBLICOS_SUBDOMINIOS"
+    )
+    map_tiles_publicos_atribuicao: str = Field(
+        default="&copy; OpenStreetMap &copy; CARTO",
+        alias="MAP_TILES_PUBLICOS_ATRIBUICAO",
+    )
 
     # Tipado como `time` para o Pydantic coagir o "HH:MM" do env: a aritmética da agenda
     # recebe um `time`, nunca uma string para parsear.
@@ -141,6 +152,16 @@ MAP_COR_POLIGONO = _env.map_cor_poligono
 MAP_COR_PONTO = _env.map_cor_ponto
 # Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (sakura-700).
 MAP_COR_POLIGONO_CONDOMINIO = _env.map_cor_poligono_condominio
+
+# Tiles públicos do fundo da área administrativa (SPEC user_admin/007): ali não há território a
+# mostrar, então o fundo não gasta requisição no GeoSampa nem sugere semântica territorial.
+MAP_TILES_PUBLICOS_URL = _env.map_tiles_publicos_url
+MAP_TILES_PUBLICOS_SUBDOMINIOS = _env.map_tiles_publicos_subdominios
+MAP_TILES_PUBLICOS_ATRIBUICAO = _env.map_tiles_publicos_atribuicao
+MAP_TILES_PUBLICOS_ZOOM_MAXIMO = 20
+# Mais fechado que o default do produto: a malha viária precisa de textura para a deriva ser
+# percebida, e o recorte nunca alcança a borda do município.
+MAP_ZOOM_FUNDO_ADMIN = 15
 
 # Horário do dia (fuso de TIME_ZONE) em que o daemon reextrai os parquets de data/.
 DTIME_ATUALIZACAO_ARQUIVOS = _env.dtime_atualizacao_arquivos

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if perfil %}Editar servidor{% else %}Novo servidor{% endif %} · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  {# .admin-shell: o fundo fica parado e o conteúdo rola aqui dentro — a viewport travada do #}
+  {# base.html existe porque a página do produto é o mapa, e não se aplica a formulário.     #}
+  <div class="admin-shell">
+    <div class="max-w-3xl mx-auto px-4 py-24">
+      {# Gravar servidor é ato administrativo e entra com autenticação, autorização e registro na #}
+      {# SPEC seguinte (§3.5): aqui o formulário só renderiza, e o submit não tem destino.        #}
+      <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        {% if perfil %}
+          {% include "user_admin/partials/_identidade_perfil.html" %}
+        {% else %}
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Novo servidor</h1>
+            <p class="text-sm text-base-content/70 mt-1">O cadastro registra a competência administrativa: cargo e unidade definem o que a pessoa poderá praticar.</p>
+          </div>
+        {% endif %}
+
+        {% include "user_admin/partials/_secao_identificacao.html" %}
+        {% include "user_admin/partials/_secao_lotacao.html" %}
+        {% include "user_admin/partials/_campo_upload_foto.html" %}
+
+        <div class="flex justify-end gap-3 pt-1">
+          <a href="{% url 'core:home' %}" class="btn btn-ghost btn-glass">Cancelar</a>
+          <button type="submit" class="btn btn-onsen">{% if perfil %}Salvar alterações{% else %}Salvar servidor{% endif %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {# Fundo à deriva — só existe onde existe o canvas administrativo #}
+  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,15 @@
+{# Molécula: cabeçalho de identidade do servidor — a imagem grande à esquerda do nome (edição). #}
+<div class="flex items-center gap-5">
+  {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-28 h-28" %}
+  <div class="min-w-0">
+    <h1 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">{{ perfil.nome }} {{ perfil.sobrenome }}</h1>
+    <p class="text-code text-sm mt-1">RF {{ perfil.rf }}</p>
+    <div class="flex flex-wrap gap-2 mt-2">
+      <span class="badge badge-info badge-soft">{{ perfil.unidade.sigla }}</span>
+      <span class="badge badge-ponto badge-sm">{{ perfil.cargo_base.nome }}</span>
+      {% if perfil.cargo_comissao %}
+        <span class="badge badge-poligono badge-sm">{{ perfil.cargo_comissao.padrao }} · {{ perfil.cargo_comissao.natureza }}</span>
+      {% endif %}
+    </div>
+  </div>
+</div>

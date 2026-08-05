@@ -145,6 +145,32 @@ html[data-theme="dimap"] {
     @apply rounded-2xl bg-white/30 border border-white/45 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
   }
 
+  /* Casca da área administrativa (SPEC user_admin/007): o fundo à deriva fica parado atrás e o
+     conteúdo rola aqui dentro — a viewport travada do base.html existe porque a página do produto
+     é o mapa, e não se aplica a formulário. */
+  .admin-shell { @apply absolute inset-0 z-10 overflow-y-auto overscroll-contain; }
+
+  /* Poço de upload: o card-well com aresta tracejada. Acende no hover/foco, nunca muda de cor. */
+  .upload-well {
+    @apply rounded-2xl bg-white/30 border border-dashed border-white/60 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)] flex flex-col items-center gap-3 p-6 text-center transition-all duration-300;
+  }
+  .upload-well:hover,
+  .upload-well:focus-within {
+    @apply bg-white/45 border-agua-500/60 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15),0_0_22px_rgba(72,202,228,0.35)];
+  }
+
+  /* Moldura da imagem de perfil. O anel é a cor da unidade em --cor-unidade: o hex é resolvido na
+     borda do app, porque classe montada no template (ring-{{ cor }}) o Tailwind não enxerga no
+     @source e some no build de produção. */
+  .avatar-glass {
+    @apply rounded-full overflow-hidden bg-white/40 border-2 border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_28px_rgba(7,58,84,0.28),0_0_22px_rgba(72,202,228,0.25)];
+    outline: 3px solid var(--cor-unidade);
+    outline-offset: 3px;
+  }
+  /* O SVG do avatar é markup do domínio (services/domain/avatar) e não carrega classe alguma:
+     quem o dimensiona é a moldura. */
+  .avatar-glass > svg { @apply w-full h-full; }
+
   /* ==================== ÁTOMOS ==================== */
   .btn-onsen {
     @apply border-none rounded-xl font-bold text-rocha-950 bg-gradient-to-br from-agua-300 to-agua-500 shadow-[0_4px_20px_rgba(0,150,199,0.4)] transition-all duration-300 hover:brightness-105 hover:shadow-[0_4px_28px_rgba(0,150,199,0.55)];
@@ -155,6 +181,27 @@ html[data-theme="dimap"] {
   .input-glass {
     @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/60 focus:border-agua-500 focus:outline-none focus:shadow-[0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
   }
+  /* Controles de vidro que faltavam: mesma receita do .input-glass, aplicada a select e file. */
+  .select-glass {
+    @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content backdrop-blur-[10px] transition-all duration-300 focus:bg-white/60 focus:border-agua-500 focus:outline-none focus:shadow-[0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
+  }
+  .file-input-glass {
+    @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content backdrop-blur-[10px] transition-all duration-300 focus:outline-none focus:border-agua-500;
+  }
+
+  /* Cavidade de tinta: a tinta "molhada" vem em --tinta (hex resolvido na borda do app). */
+  .paint-well {
+    @apply w-9 h-9 rounded-full border border-white/70 shadow-[inset_0_2px_5px_rgba(7,58,84,0.45),0_1px_0_rgba(255,255,255,0.6)] cursor-pointer transition-all duration-300 hover:scale-110;
+    background-color: var(--tinta);
+  }
+  .paint-well:has(input:checked) {
+    @apply scale-110 ring-2 ring-white/90 shadow-[inset_0_2px_5px_rgba(7,58,84,0.45),0_0_18px_rgba(72,202,228,0.85)];
+  }
+  .paint-well-atual {
+    @apply w-14 h-14 rounded-full border-2 border-white/80 shadow-[inset_0_3px_8px_rgba(7,58,84,0.5)];
+    background-color: var(--tinta);
+  }
+
   .icon-glow     { @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)]; }
   .text-overline { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
   .text-code     { @apply font-mono text-agua-700; }
@@ -164,6 +211,32 @@ html[data-theme="dimap"] {
   .badge-poligono { @apply border border-sakura-500/50 bg-sakura-400/15 text-sakura-700 font-medium; }
 
   /* ==================== MOLÉCULAS ==================== */
+  /* Campo de formulário: rótulo overline + controle + linha de ajuda. */
+  .form-field      { @apply flex flex-col gap-1.5; }
+  .form-field-hint { @apply text-xs text-base-content/60; }
+
+  /* Disco de vidro da paleta: as cavidades se distribuem pelo ângulo --a escrito no markup, então
+     a molécula não depende de quantas cores a paleta oferece. */
+  .palette-disc {
+    @apply relative w-56 h-56 rounded-full backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
+  }
+  .palette-disc .paint-well {
+    @apply absolute top-1/2 left-1/2;
+    transform: translate(-50%, -50%) rotate(var(--a)) translate(4.75rem) rotate(calc(-1 * var(--a)));
+  }
+
+  /* Uma regra por tom de CorUnidade: o poço central e o swatch do gatilho espelham o radio marcado.
+     A paleta é fechada (oito tons), então o espelhamento custa oito linhas de CSS e dispensa o
+     estado de UI em JavaScript que o §7.2 não admite. */
+  .palette-field:has(input[value="agua-700"]:checked)    .paint-well-atual { background-color: #0077b6; }
+  .palette-field:has(input[value="agua-800"]:checked)    .paint-well-atual { background-color: #023e8a; }
+  .palette-field:has(input[value="rocha-700"]:checked)   .paint-well-atual { background-color: #415a77; }
+  .palette-field:has(input[value="rocha-900"]:checked)   .paint-well-atual { background-color: #1b263b; }
+  .palette-field:has(input[value="madeira-600"]:checked) .paint-well-atual { background-color: #7f5539; }
+  .palette-field:has(input[value="madeira-700"]:checked) .paint-well-atual { background-color: #5e412f; }
+  .palette-field:has(input[value="sakura-600"]:checked)  .paint-well-atual { background-color: #bc3a67; }
+  .palette-field:has(input[value="sakura-700"]:checked)  .paint-well-atual { background-color: #97294f; }
+
   .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }
   .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.15)]; }
 

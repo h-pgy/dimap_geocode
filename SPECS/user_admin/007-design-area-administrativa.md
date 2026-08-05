@@ -1,18 +1,21 @@
 ---
 spec: user_admin/007
-versao: v1
+versao: v2
 atualizado_em: 2026-08-05
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: registra que os quatro testes levam o marker `banco`, não dois — a página de criar já monta
+    os selects de unidade e cargos a partir das tabelas, então nem ela renderiza sem Postgres
+    (ver Patch 001)
 ---
 
 # SPEC user_admin/007 — Área administrativa: peças de formulário e fundo à deriva
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 
@@ -331,4 +334,28 @@ marker `banco`, declarado no front-matter.
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v2) — os quatro testes levam o marker `banco`
+
+- [x] **Aplicado**
+
+**Sintoma.** A SPEC previa dois testes na suíte padrão (`test_pagina_criar_perfil_renderiza_o_formulario`
+e `test_pagina_admin_nao_carrega_o_wms_do_geosampa`) e dois com o marker `banco`. Os dois primeiros
+não rodam sem Postgres: ambos fazem `GET` na página de **criar** servidor, e ela monta os selects de
+unidade, cargo base e cargo em comissão a partir das tabelas — o template itera os querysets e o
+`pytest-django` bloqueia o acesso ao banco em teste sem `django_db`.
+
+**Correção.** Os quatro testes levam `banco`. A alternativa — testar as duas primeiras asserções
+por `render_to_string` com contexto sintético — trocaria o contrato HTTP que a SPEC quer fixar
+("GET devolve 200") por um contrato de template, e deixaria a rota e a view fora do teste.
+
+O `markers_obrigatorios` do front-matter não muda: já era `[banco]`.
+
+### Patch 002 (v2) — a rota de mídia em dev entra aqui
+
+- [x] **Aplicado**
+
+A SPEC `user_admin/006` deixou "a rota que serve o arquivo de mídia" para o front-end do épico, que
+é esta SPEC: sem ela o `<img>` da foto gravada aponta para uma URL que devolve 404 e o critério de
+aceite da imagem de perfil não se verifica na tela. `config/urls.py` passa a servir `MEDIA_URL` pelo
+`django.conf.urls.static.static` **apenas com `DEBUG`** — em produção o arquivo de mídia é do
+servidor web, não do Django.

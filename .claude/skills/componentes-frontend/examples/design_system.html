@@ -258,6 +258,39 @@
           </ul>
         </div>
       </div>
+
+      <!-- 1.4 Materiais da área administrativa -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.4 · Materiais da área administrativa</h3>
+          <p class="text-sm text-base-content/70 mt-1">SPEC <span class="text-code">user_admin/007</span>. Todos compõem o vocabulário existente (poço rebaixado, aresta translúcida, sombra em duas camadas): nenhum inaugura escala, sombra ou blur novos.</p>
+        </div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.upload-well</p>
+            <div class="upload-well h-32 justify-center">
+              <span class="text-xs text-base-content/60">poço rebaixado, aresta tracejada; acende no hover/foco</span>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.avatar-glass</p>
+            <div class="card-well h-32 flex items-center justify-center">
+              <div class="avatar-glass w-16 h-16" style="--cor-unidade: #0077b6">
+                <svg viewBox="0 0 100 100" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.admin-shell</p>
+            <div class="card-well h-32 p-4 flex items-center">
+              <p class="text-xs text-base-content/70">Casca da área administrativa: o fundo à deriva fica fixo e o conteúdo rola aqui dentro. A viewport travada do <span class="text-code">base.html</span> existe porque a página do produto é o mapa — em formulário, não se aplica.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 2. ÁTOMOS ============ -->
@@ -287,6 +320,30 @@
               <input type="text" value="Rua Inexistemte, 99999" class="input input-glass border-error/60 focus:border-error" aria-invalid="true" />
               <p class="text-error text-xs mt-1.5 font-medium">Logradouro não encontrado — verifique a grafia.</p>
             </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Select e file (vidro) — mesma receita do .input-glass</p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <select class="select select-glass">
+              <option>DIMAP-1 · Divisão de Avaliação</option>
+              <option>DIMAP-2 · Divisão de Cadastro</option>
+            </select>
+            <input type="file" class="file-input file-input-glass" aria-label="Arquivo" />
+          </div>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Cavidade de tinta (.paint-well / .paint-well-atual)</p>
+          <div class="flex flex-wrap items-center gap-5">
+            <span class="paint-well" style="--tinta: #0077b6"></span>
+            <span class="paint-well" style="--tinta: #415a77"></span>
+            <span class="paint-well" style="--tinta: #7f5539"></span>
+            <span class="paint-well" style="--tinta: #bc3a67"></span>
+            <label class="paint-well" style="--tinta: #023e8a"><input type="radio" name="atomo-cor" class="sr-only" checked aria-label="Água 800"></label>
+            <span class="paint-well-atual" style="--tinta: #97294f"></span>
+            <span class="text-xs text-base-content/60">a cor vem em <span class="text-code">--tinta</span>; selecionado = anel branco + brilho ciano</span>
           </div>
         </div>
 
@@ -470,6 +527,118 @@
           </div>
         </div>
       </div>
+
+      <!-- Campo de upload em poço rebaixado -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Campo de upload (poço rebaixado)</p>
+        <p class="text-sm text-base-content/70">O nome do arquivo é escrito pelo próprio navegador (<span class="text-code">file-input</span> nativo) e soltar arquivo sobre o poço funciona por comportamento nativo — prévia local e realce de arraste exigiriam JS de estado. Na edição, a prévia é a imagem já gravada.</p>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="form-field">
+            <span class="text-overline">Sem foto (criação)</span>
+            <label class="upload-well cursor-pointer">
+              <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L8 8m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+              </span>
+              <span class="text-sm font-medium">Arraste a foto ou clique para escolher</span>
+              <input type="file" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs" aria-label="Foto do servidor" />
+              <span class="form-field-hint">JPG ou PNG, até 2 MB</span>
+            </label>
+          </div>
+          <div class="form-field">
+            <span class="text-overline">Com imagem gravada (edição)</span>
+            <label class="upload-well cursor-pointer">
+              <span class="avatar-glass w-16 h-16 shrink-0" style="--cor-unidade: #7f5539">
+                <svg viewBox="0 0 100 100" role="img" aria-label="MS">
+                  <circle cx="50" cy="50" r="50" fill="#7f5539"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">MS</text>
+                </svg>
+              </span>
+              <span class="text-sm font-medium">Substituir a foto atual</span>
+              <input type="file" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs" aria-label="Substituir a foto" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seletor de cor: paleta de aquarela em disco -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Seletor de cor (paleta de aquarela em disco)</p>
+        <p class="text-sm text-base-content/70">Os oito tons de <span class="text-code">CorUnidade</span> em cavidades rebaixadas, dispostas em círculo pelo ângulo <span class="text-code">--a</span> do markup, em torno do poço que espelha a escolha. A seleção é um <span class="text-code">radio</span> nativo e o espelhamento é <span class="text-code">:has()</span> — zero JavaScript.</p>
+        <div class="grid lg:grid-cols-2 gap-8 items-start">
+          <div class="palette-field dropdown dropdown-bottom form-field">
+            <span class="text-overline">Fechado (clique para abrir)</span>
+            <div tabindex="0" role="button" class="btn btn-ghost btn-glass w-fit gap-3 px-3 h-12">
+              <span class="paint-well-atual w-8 h-8 pointer-events-none" style="--tinta: #0077b6"></span>
+              <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </div>
+            <div tabindex="0" class="dropdown-content z-30 mt-2">
+              <div class="palette-disc">
+                <span class="paint-well-atual absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="--tinta: #0077b6"></span>
+                <label class="paint-well" style="--a: 0deg;   --tinta: #0077b6" title="Água 700"><input type="radio" name="cor-a" value="agua-700" class="sr-only" checked></label>
+                <label class="paint-well" style="--a: 45deg;  --tinta: #023e8a" title="Água 800"><input type="radio" name="cor-a" value="agua-800" class="sr-only"></label>
+                <label class="paint-well" style="--a: 90deg;  --tinta: #415a77" title="Rocha 700"><input type="radio" name="cor-a" value="rocha-700" class="sr-only"></label>
+                <label class="paint-well" style="--a: 135deg; --tinta: #1b263b" title="Rocha 900"><input type="radio" name="cor-a" value="rocha-900" class="sr-only"></label>
+                <label class="paint-well" style="--a: 180deg; --tinta: #7f5539" title="Madeira 600"><input type="radio" name="cor-a" value="madeira-600" class="sr-only"></label>
+                <label class="paint-well" style="--a: 225deg; --tinta: #5e412f" title="Madeira 700"><input type="radio" name="cor-a" value="madeira-700" class="sr-only"></label>
+                <label class="paint-well" style="--a: 270deg; --tinta: #bc3a67" title="Sakura 600"><input type="radio" name="cor-a" value="sakura-600" class="sr-only"></label>
+                <label class="paint-well" style="--a: 315deg; --tinta: #97294f" title="Sakura 700"><input type="radio" name="cor-a" value="sakura-700" class="sr-only"></label>
+              </div>
+            </div>
+          </div>
+          <div class="palette-field form-field items-start">
+            <span class="text-overline">Aberto (clique nas cavidades)</span>
+            <div class="palette-disc">
+              <span class="paint-well-atual absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="--tinta: #bc3a67"></span>
+              <label class="paint-well" style="--a: 0deg;   --tinta: #0077b6" title="Água 700"><input type="radio" name="cor-b" value="agua-700" class="sr-only"></label>
+              <label class="paint-well" style="--a: 45deg;  --tinta: #023e8a" title="Água 800"><input type="radio" name="cor-b" value="agua-800" class="sr-only"></label>
+              <label class="paint-well" style="--a: 90deg;  --tinta: #415a77" title="Rocha 700"><input type="radio" name="cor-b" value="rocha-700" class="sr-only"></label>
+              <label class="paint-well" style="--a: 135deg; --tinta: #1b263b" title="Rocha 900"><input type="radio" name="cor-b" value="rocha-900" class="sr-only"></label>
+              <label class="paint-well" style="--a: 180deg; --tinta: #7f5539" title="Madeira 600"><input type="radio" name="cor-b" value="madeira-600" class="sr-only"></label>
+              <label class="paint-well" style="--a: 225deg; --tinta: #5e412f" title="Madeira 700"><input type="radio" name="cor-b" value="madeira-700" class="sr-only"></label>
+              <label class="paint-well" style="--a: 270deg; --tinta: #bc3a67" title="Sakura 600"><input type="radio" name="cor-b" value="sakura-600" class="sr-only" checked></label>
+              <label class="paint-well" style="--a: 315deg; --tinta: #97294f" title="Sakura 700"><input type="radio" name="cor-b" value="sakura-700" class="sr-only"></label>
+            </div>
+            <p class="form-field-hint max-w-xs">A cavidade escolhida ganha anel branco e brilho ciano; o poço central assume a tinta.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Imagem de perfil em versão grande -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Imagem de perfil grande (à esquerda do nome)</p>
+        <p class="text-sm text-base-content/70">Foto ou avatar de iniciais — o que <span class="text-code">resolver_imagem_perfil</span> devolver; a molécula é a mesma nos dois ramos. O anel é a cor da unidade, entregue em <span class="text-code">--cor-unidade</span> (hex resolvido na borda do app, nunca classe montada no template).</p>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="card-well p-5 flex items-center gap-5">
+            <div class="avatar-glass w-28 h-28 shrink-0" style="--cor-unidade: #0077b6">
+              <svg viewBox="0 0 100 100" role="img" aria-label="HP">
+                <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Henrique Pougy</h3>
+              <p class="text-code text-sm mt-1">RF 812.345-6</p>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <span class="badge badge-info badge-soft">DIMAP-1</span>
+                <span class="badge badge-ponto badge-sm">Analista de Ordenamento Territorial</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-well p-5 flex items-center gap-5">
+            <div class="avatar-glass w-28 h-28 shrink-0" style="--cor-unidade: #bc3a67">
+              <img src="https://picsum.photos/seed/dimap/200" alt="Foto de Marina Salles" class="w-full h-full object-cover" />
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Marina Salles</h3>
+              <p class="text-code text-sm mt-1">RF 799.001-2</p>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <span class="badge badge-info badge-soft">DIMAP-2</span>
+                <span class="badge badge-poligono badge-sm">Diretora de Divisão</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 4. ORGANISMOS ============ -->
@@ -631,6 +800,103 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+      <!-- Formulário do servidor (área administrativa) -->
+      <div class="flex flex-col gap-2">
+        <p class="text-overline px-2">Formulário do servidor — criar e editar compartilham o esqueleto</p>
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6 max-w-3xl mx-auto w-full">
+          <!-- Cabeçalho de identidade: só na edição (na criação ainda não há perfil) -->
+          <div class="flex items-center gap-5">
+            <div class="avatar-glass w-28 h-28 shrink-0" style="--cor-unidade: #0077b6">
+              <svg viewBox="0 0 100 100" role="img" aria-label="HP">
+                <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Henrique Pougy</h3>
+              <p class="text-code text-sm mt-1">RF 812.345-6</p>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <span class="badge badge-info badge-soft">DIMAP-1</span>
+                <span class="badge badge-ponto badge-sm">Analista de Ordenamento Territorial</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Identificação</p>
+            <div class="grid sm:grid-cols-3 gap-4">
+              <label class="form-field">
+                <span class="text-overline">RF</span>
+                <input type="text" value="812.345-6" class="input input-glass" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Nome</span>
+                <input type="text" value="Henrique" class="input input-glass" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Sobrenome</span>
+                <input type="text" value="Pougy" class="input input-glass" />
+              </label>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Lotação</p>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass">
+                  <option>DIMAP-1 · Divisão de Avaliação</option>
+                  <option>DIMAP-2 · Divisão de Cadastro</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Cargo base</span>
+                <select class="select select-glass">
+                  <option>Analista de Ordenamento Territorial</option>
+                  <option>Assistente de Gestão de Políticas Públicas</option>
+                </select>
+              </label>
+              <label class="form-field sm:col-span-2">
+                <span class="text-overline">Cargo em comissão</span>
+                <select class="select select-glass">
+                  <option>— sem cargo em comissão —</option>
+                  <option>CDA-II · Diretor de Divisão</option>
+                </select>
+                <span class="form-field-hint">Opcional. A chefia é o que abre as ações privativas da unidade.</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Foto</p>
+            <label class="upload-well cursor-pointer">
+              <span class="avatar-glass w-16 h-16 shrink-0" style="--cor-unidade: #0077b6">
+                <svg viewBox="0 0 100 100" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                </svg>
+              </span>
+              <span class="text-sm font-medium">Substituir a foto atual</span>
+              <input type="file" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs" aria-label="Substituir a foto" />
+            </label>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-1">
+            <button class="btn btn-ghost btn-glass">Cancelar</button>
+            <button class="btn btn-onsen">Salvar alterações</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fundo da área administrativa -->
+      <div class="flex flex-col gap-2">
+        <p class="text-overline px-2">Fundo da área administrativa</p>
+        <div class="glass-panel p-6 flex flex-col gap-3">
+          <p class="text-sm text-base-content/80">O partial <span class="text-code">mapping/_mapa_admin.html</span> repete as quatro camadas da lente do §6 sob um canvas de <strong>tiles públicos em preto e branco</strong> — nenhuma chamada ao GeoSampa, porque ali não há território a mostrar. O canvas fica em <span class="text-code">pointer-events-none</span> e deriva devagar (<span class="text-code">js/mapa/deriva.js</span>), parando com a aba oculta e com <span class="text-code">prefers-reduced-motion: reduce</span>.</p>
+          <p class="form-field-hint">A identidade visual não muda de seção para seção: a lente é a mesma do mapa do produto, só o que está sob ela é outro.</p>
         </div>
       </div>
     </section>
