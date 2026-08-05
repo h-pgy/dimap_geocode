@@ -6,6 +6,8 @@ com cargo base e unidade obrigatórios e cargo em comissão opcional.
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
+from django.db.models import Q
+from django.utils import timezone
 
 from .cargos import CargoBase, CargoComissao
 from .unidade import Unidade
@@ -79,3 +81,11 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return f"{self.rf} — {self.nome}"
+
+    @property
+    def esta_impedido(self) -> bool:
+        hoje = timezone.localdate()
+        return self.impedimentos.filter(
+            Q(data_fim__isnull=True) | Q(data_fim__gte=hoje),
+            data_inicio__lte=hoje,
+        ).exists()
