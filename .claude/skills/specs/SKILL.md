@@ -154,6 +154,73 @@ em "a SPEC não fica pronta sem rodar".
 
 ---
 
+## SPEC de design vem com mock — sem ele não há aprovação
+
+**Toda SPEC cujo entregável é interface** (componente novo do design system, tela nova, mudança de
+coreografia ou de layout) **é apresentada junto com um mock HTML navegável**. Prosa não é aprovável
+em design: descrever "poço rebaixado com aresta tracejada que acende no foco" não permite julgar
+nada — ver na tela permite.
+
+- **Onde mora:** ao lado da SPEC, mesmo prefixo — `SPECS/<epico>/NNN-mock-<slug>.html`.
+- **O que ele mostra:** cada peça nova **nos seus estados** (vazio × preenchido, fechado × aberto,
+  criar × editar), na condição real de uso — sobre o mapa vivo, não sobre fundo chapado.
+- **Como carrega o tema:** o mock **não** duplica o design system. Ele faz `fetch` de
+  `static/src/tema-dimap.dev.css` (fonte única, SPEC design/004) e injeta num `<style
+  type="text/tailwindcss">`, como os exemplos da skill `componentes-frontend`. Exige servidor com
+  root na raiz do projeto (Live Server) — via `file://` o fetch é bloqueado.
+- **Tokens ainda não existentes** vão no mock em `script[type="text/css"]` inerte, **concatenados ao
+  tema pelo loader dentro do MESMO bloco `text/tailwindcss`**. Bloco separado é processado sem o
+  `@theme` do tema, as escalas `agua/rocha/madeira/sakura` viram "unknown utility class" no `@apply`
+  e a folha inteira cai.
+- **A SPEC referencia o mock** numa seção "Mock de validação" e num critério de aceite: o design foi
+  aprovado no mock antes de qualquer código de aplicação.
+
+### O mock implementa Atomic Design — não é rascunho de tela
+
+**Mock não é wireframe nem "tela desenhada em HTML".** Ele é o design system em exercício, e por isso
+**obedece ao Atomic Design da skill `componentes-frontend` (§2 dela) desde o primeiro rascunho** —
+não "depois, na hora de implementar":
+
+- **Organizado nas quatro camadas, nessa ordem, em seções visíveis na página:** tokens → átomos →
+  moléculas → organismos. A página mostra cada camada separadamente **antes** de mostrar a tela
+  montada, porque o que se aprova é a peça reutilizável, não o arranjo dela numa tela.
+- **Cada nível é composição do nível imediatamente inferior.** Organismo que contém marcação solta
+  em vez de moléculas já existentes está errado, mesmo que a tela pareça certa.
+- **Nada de CSS ad hoc.** Toda pele nova é classe no `@layer components` com `@apply` **só de
+  utilities**, aderente às escalas e materiais existentes. Cor, sombra, blur, espaçamento ou
+  tipografia fora dos tokens reprova o mock, por mais bonita que esteja a tela.
+- **Peça que já existe é reutilizada, não redesenhada.** Antes de criar, confira o styleguide.
+
+### Aprovado o mock, o porte é obrigatório — em dois lugares
+
+Aprovação do mock **não** é licença para copiar o HTML dele para dentro dos templates. O que foi
+aprovado vira patrimônio do design system, e isso são **dois destinos obrigatórios**, ambos na mesma
+entrega da implementação:
+
+1. **CSS base do design system — `static/src/tema-dimap.dev.css`.** Os blocos de token do mock
+   migram para lá **tal e qual**, na seção da camada a que pertencem. É a fonte única (SPEC
+   design/004): enquanto o token viver só no mock, ele não existe para a aplicação.
+2. **Styleguide — `.claude/skills/componentes-frontend/examples/design_system.html`.** Cada peça
+   nova é renderizada lá, na seção da sua camada (2 · Átomos, 3 · Moléculas, 4 · Organismos). É o
+   **contrato visual do projeto**: componente que não está no styleguide não é encontrável e será
+   reinventado — que é exatamente o que o Atomic Design existe para impedir.
+
+Só depois disso os templates da aplicação usam as classes. **A SPEC de design não está implementada
+enquanto os dois portes não tiverem sido feitos** — o critério de aceite do styleguide cobre isso, e
+o do CSS base é pressuposto de qualquer template que use as classes novas.
+
+O mock **permanece** no `SPECS/` como o artefato aprovado da iteração: não é descartado nem editado
+para "refletir o novo estado". Quem quiser saber o que foi aprovado ali abre o mock; quem quiser usar
+a peça vai ao styleguide.
+
+*Por quê:* o mesmo motivo do TDD (§9 do CLAUDE.md), aplicado ao que teste automatizado não alcança.
+O teste torna a regra verificável antes do código; o mock torna o **design** verificável antes do
+código. E o porte obrigatório é o que impede o efeito colateral clássico: cada SPEC de interface
+inventando seu próprio HTML, com a coerência visual dependendo de disciplina individual em vez de
+peça compartilhada (§3.4 do CLAUDE.md).
+
+---
+
 ## Concisão: escreva o "por quê" curto
 
 **Não seja verboso.** Vale para o "Contexto e decisões de arquitetura", para os comentários dos
@@ -274,5 +341,13 @@ Antes de apresentar a SPEC ao usuário, verifique:
 - [ ] Fora de escopo define explicitamente o que **não** entra nesta iteração.
 - [ ] Seção "Testes (TDD)" presente, com os testes derivados dos critérios de aceite — **poucos e
       essenciais** (~3 a 6), sem inflar a lista nem perseguir cobertura.
+- [ ] Se o entregável é **interface**, o **mock HTML** acompanha a SPEC (`NNN-mock-<slug>.html`),
+      carrega o tema por fetch da fonte única, mostra cada peça nos seus estados, e está citado numa
+      seção "Mock de validação" e num critério de aceite.
+- [ ] O mock está **organizado em Atomic Design** (tokens → átomos → moléculas → organismos, em
+      seções visíveis), cada nível composto pelo inferior, sem CSS ad hoc.
+- [ ] A SPEC declara o **porte obrigatório** pós-aprovação nos dois destinos: tokens para
+      `static/src/tema-dimap.dev.css` e peças renderizadas em
+      `.claude/skills/componentes-frontend/examples/design_system.html`.
 - [ ] A SPEC não lista arquivos a criar/alterar (isso é decisão de implementação).
 - [ ] Se a SPEC tocou funcionalidades demais, ela foi quebrada em duas.
