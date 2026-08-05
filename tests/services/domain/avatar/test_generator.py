@@ -1,6 +1,6 @@
 from xml.etree import ElementTree
 
-from services.domain.avatar_iniciais import (
+from services.domain.avatar import (
     AvatarIniciaisInput,
     AvatarIniciaisOutput,
     AvatarIniciaisSvg,

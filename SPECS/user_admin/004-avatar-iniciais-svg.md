@@ -1,6 +1,6 @@
 ---
 spec: user_admin/004
-versao: v5
+versao: v6
 atualizado_em: 2026-08-05
 testes_tdd: true
 implementado: true
@@ -15,6 +15,8 @@ changelog:
     termo aproveitável
   - v5: `services/domain/__init__.py` não precisa reexportar o gerador — o reexport de
     `aquecer_catalogos` é conveniência pontual, não convenção do pacote
+  - v6: patch — módulo renomeado de `services/domain/avatar_iniciais` para `services/domain/avatar`
+    (SPEC user_admin/006, que acrescenta `resolver_imagem_perfil` ao mesmo módulo)
 ---
 
 # SPEC user_admin/004 — Avatar de iniciais em SVG
@@ -189,3 +191,11 @@ Domínio puro, sem Django e sem banco: todos rodam na suíte padrão.
   falhava por causa da cor recebida, não do nome descartado. Corrigido restringindo a asserção ao
   `<text>` e ao `aria-label` (via `ElementTree`), que é a parte do markup onde o dígito não pode
   vazar — as cores continuam livres para conter qualquer caractere, por serem entrada do domínio.
+
+### Patch 001 (v6) — módulo renomeado para `services/domain/avatar`
+
+`services/domain/avatar_iniciais` vira `services/domain/avatar`: a SPEC `user_admin/006` acrescenta
+`resolver_imagem_perfil` (escolha entre foto e avatar) ao mesmo módulo, que deixa de ser só o gerador
+de iniciais e passa a cobrir o domínio de imagem de avatar como um todo. Rename mecânico — nenhum
+comportamento do gerador muda; `AvatarIniciaisSvg`/`AvatarIniciaisInput`/`AvatarIniciaisOutput`
+seguem com os mesmos nomes, só o caminho de import muda.
