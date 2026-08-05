@@ -1,19 +1,20 @@
 ---
 spec: user_admin/003
-versao: v2
+versao: v3
 atualizado_em: 2026-08-05
-testes_tdd: false
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
   - v2: a raiz deixa de ser única (árvores paralelas para unidades externas) e o tipo ganha
     veto de tipos-filho, que recorta exceções à regra de nível
+  - v3: o tipo ganha `pode_ser_raiz`, e unidade de tipo não-raiz passa a exigir unidade superior
 ---
 
 # SPEC user_admin/003 — Hierarquia das unidades
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
+- [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
 - [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
@@ -36,8 +37,10 @@ também pela cadeia de subordinação.
 - [ ] Um tipo pode **vedar tipos de filha**: marcada a veda de divisão em coordenadoria, nenhuma
       coordenadoria aceita divisão como filha, mesmo o nível permitindo. A lista é **opcional** e
       vazia por padrão.
-- [ ] **Unidade sem pai é admitida** e é raiz da sua própria árvore — mais de uma árvore convive
-      (uma unidade de outra secretaria não fica travada).
+- [ ] Um tipo pode ser marcado como **tipo-raiz**. Só unidade de tipo-raiz fica sem pai; unidade de
+      tipo não-raiz sem unidade superior é recusada. A marca vem **desligada por padrão**.
+- [ ] **Unidade de tipo-raiz sem pai é admitida** e é raiz da sua própria árvore — mais de uma
+      árvore convive (uma unidade de outra secretaria não fica travada).
 - [ ] Nenhuma unidade é pai de si mesma.
 - [ ] Apagar um tipo em uso, ou uma unidade que tem filhas, é recusado.
 
@@ -61,13 +64,20 @@ seed, sem migração — e é no tipo que a regra fica presa, via `nivel`.
 **Nível não é único.** Dois tipos no mesmo nível apenas não se subordinam entre si; exigir
 unicidade transformaria o organograma numa fila e obrigaria a inventar posição para cada tipo novo.
 
-**Nível e veda vivem no `clean()`; do banco sai só o que é de linha única.** Ambas cruzam tabela — o
-nível e a lista de vedas estão no tipo, não na unidade —, então nenhuma `CheckConstraint` as
-alcança. No banco fica apenas a `CheckConstraint` de que a unidade não é pai de si mesma.
+**Nível, veda e exigência de pai vivem no `clean()`; do banco sai só o que é de linha única.** As
+três cruzam tabela — nível, vedas e marca de raiz estão no tipo, não na unidade —, então nenhuma
+`CheckConstraint` as alcança. No banco fica apenas a `CheckConstraint` de que a unidade não é pai de
+si mesma.
 
 **Raiz não é única.** Travar em uma só impediria cadastrar servidor de outra secretaria, cuja
 unidade não pende do organograma da nossa. Cada unidade sem pai é raiz da sua árvore, e árvores
 paralelas convivem.
+
+**Ser raiz é propriedade do tipo.** O nível sozinho só limita para cima: uma divisão pendurada em
+nada passaria. `pode_ser_raiz`, desligado por padrão, obriga a declarar no seed quem encabeça
+árvore, e mantém a regra onde já estão o nível e as vedas — presa à unidade, ela teria que ser
+repetida a cada cadastro. Custo aceito: a unidade externa de tipo não-raiz exige cadastrar sua
+cadeia superior, e em troca o organograma externo fica registrado em vez de virar unidade órfã.
 
 **Ciclo não precisa de verificação.** Descendo a árvore, o nível é estritamente decrescente; uma
 cadeia que voltasse a si mesma exigiria um nível menor que ele próprio. A aciclicidade é corolário
@@ -98,6 +108,7 @@ passa a exigir tipo, os testes que hoje criam unidade avulsa acompanham.
 
 ERRO_NIVEL_NAO_SUBORDINA = "A unidade pai precisa ser de um tipo de nível superior."
 ERRO_TIPO_FILHO_VEDADO = "A unidade pai não admite filhas deste tipo."
+ERRO_TIPO_EXIGE_PAI = "Unidades deste tipo precisam ter uma unidade superior."
 
 
 class TipoUnidade(models.Model):
@@ -107,6 +118,8 @@ class TipoUnidade(models.Model):
     )
     # Nível maior = mais abrangente; empate significa que nenhum dos dois contém o outro.
     nivel = models.PositiveSmallIntegerField()
+    # Desligado por padrão: encabeçar árvore é exceção declarada no seed, não default silencioso.
+    pode_ser_raiz = models.BooleanField(default=False)
     # Exceção ao nível: coordenadoria segue superior à divisão, mas pode recusá-la como filha.
     tipos_filhos_vedados = models.ManyToManyField(
         "self",
@@ -139,8 +152,12 @@ class Unidade(models.Model):
     )
 
     def clean(self) -> None:
-        # Sem pai não há o que comparar; sem tipo, quem acusa é o clean_fields.
-        if self.pai is None or not hasattr(self, "tipo"):
+        # Sem tipo não há regra a aplicar; quem acusa a ausência é o clean_fields.
+        if not hasattr(self, "tipo"):
+            return
+        if self.pai is None:
+            if not self.tipo.pode_ser_raiz:
+                raise ValidationError({"pai": ERRO_TIPO_EXIGE_PAI})
             return
         # Nível e vedas vivem no tipo: as regras cruzam tabela e nenhuma CheckConstraint as alcança.
         tipo_pai = self.pai.tipo
@@ -176,7 +193,10 @@ verifica sobre objeto não persistido.
   maior que o do pai são recusados.
 - `test_tipo_pai_recusa_filha_de_tipo_vedado` — com divisão vedada em coordenadoria, a divisão é
   recusada sob a coordenadoria mesmo com nível inferior, e segue aceita sob o departamento.
-- `test_unidades_sem_pai_convivem` — duas raízes são salvas sem erro, cada uma com sua árvore.
+- `test_tipo_nao_raiz_exige_pai` — unidade de tipo não marcado como raiz é recusada sem pai, e
+  aceita sob um pai válido.
+- `test_unidades_sem_pai_convivem` — duas unidades de tipo-raiz são salvas sem pai, cada uma com sua
+  árvore.
 - `test_unidade_nao_pode_ser_pai_de_si_mesma` — apontar o próprio registro como pai é recusado pelo
   banco.
 - `test_filhas_lista_as_unidades_subordinadas` — a relação reversa devolve as filhas diretas da

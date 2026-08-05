@@ -20,6 +20,7 @@ from apps.user_admin.models import (
     Impedimento,
     Perfil,
     TipoImpedimento,
+    TipoUnidade,
     Unidade,
 )
 
@@ -28,7 +29,16 @@ banco = pytest.mark.banco
 
 def _perfil(**overrides: object) -> Perfil:
     cargo_base = CargoBase.objects.create(nome="Cargo Teste", sigla="CT")
-    unidade = Unidade.objects.create(nome="Unidade Teste", sigla="UT")
+    tipo_unidade = TipoUnidade.objects.create(
+        nome="Departamento",
+        nivel=10,
+        pode_ser_raiz=True,
+    )
+    unidade = Unidade.objects.create(
+        nome="Unidade Teste",
+        sigla="UT",
+        tipo=tipo_unidade,
+    )
     dados: dict[str, object] = {
         "rf": "123456",
         "nome": "Fulano de Tal",
