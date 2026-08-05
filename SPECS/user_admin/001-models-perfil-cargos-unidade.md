@@ -2,8 +2,8 @@
 spec: user_admin/001
 versao: v6
 atualizado_em: 2026-08-05
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: padrão do cargo em comissão deixa de ser texto livre e passa a ser sigla + nível
@@ -20,8 +20,8 @@ changelog:
 
 # SPEC user_admin/001 — Perfil, cargos e unidade: os models de identidade
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 

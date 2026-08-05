@@ -157,6 +157,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "apps.core",
+    "apps.user_admin",
     "apps.search",
     "apps.logradouro_matcher",
     "apps.lote_matcher",
@@ -177,6 +178,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.PydanticValidationMiddleware",
 ]
+
+# Perfil (apps.user_admin) concentra RF, cargo e unidade — o Perfil do CLAUDE.md §3.5.
+AUTH_USER_MODEL = "user_admin.Perfil"
 
 ROOT_URLCONF = "config.urls"
 

@@ -25,12 +25,15 @@ dev = [
     "mypy>=1.15",
     "django-stubs>=6.0.5",
     "pandas-stubs>=2.2",
+    "pytest-django>=4.12.0",
 ]
 
 [tool.pytest.ini_options]
-addopts = "-m 'not integration'"
+DJANGO_SETTINGS_MODULE = "config.settings"
+addopts = "-m 'not integration and not banco'"
 markers = [
     "integration: testes de integração com dados reais (rode com: pytest -m integration)",
+    "banco: testes que exigem banco PostGIS de pé (rode com: pytest -m banco)",
 ]
 
 [tool.mypy]
