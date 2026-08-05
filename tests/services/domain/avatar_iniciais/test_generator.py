@@ -45,10 +45,13 @@ def test_particula_elidida_nao_vira_inicial() -> None:
 
 
 def test_iniciais_descartam_termos_nao_alfabeticos() -> None:
-    # nome sem termo aproveitável: nenhum dígito vaza para o markup, sobra só o sobrenome.
+    # nome sem termo aproveitável: nenhum dígito vaza para as iniciais, sobra só o sobrenome.
+    # A checagem é só no texto/aria-label (as cores recebidas podem ter dígitos legitimamente).
     resultado = _gerar("3", "Silva")
     assert resultado.iniciais == "S"
-    assert "3" not in resultado.svg
+    raiz = ElementTree.fromstring(resultado.svg)
+    assert raiz.get("aria-label") == "S"
+    assert raiz.find("svg:text", _SVG_NS).text == "S"  # type: ignore[union-attr]
 
     # sobrenome sem termo alfabético: avatar sai com uma inicial só, não duas.
     resultado = _gerar("Maria", "123")

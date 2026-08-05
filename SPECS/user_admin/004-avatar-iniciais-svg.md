@@ -2,8 +2,8 @@
 spec: user_admin/004
 versao: v5
 atualizado_em: 2026-08-05
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: a unidade passa a expor `cor_sugerida` (a cor do pai, ou o padrão global na raiz) como
@@ -19,8 +19,8 @@ changelog:
 
 # SPEC user_admin/004 — Avatar de iniciais em SVG
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 
@@ -30,17 +30,17 @@ alguma.
 
 ## Critérios de aceite
 
-- [ ] A partir de nome, sobrenome e duas cores, o domínio devolve um **SVG** e as **iniciais**
+- [x] A partir de nome, sobrenome e duas cores, o domínio devolve um **SVG** e as **iniciais**
       usadas.
-- [ ] As iniciais são a **primeira letra do primeiro nome** + a **primeira letra do último
+- [x] As iniciais são a **primeira letra do primeiro nome** + a **primeira letra do último
       sobrenome** — **duas letras, sempre em caixa alta e sem acento**.
-- [ ] **Partículas elididas não viram inicial:** `d'Angelo` produz `A`, não `D`; o mesmo vale no
+- [x] **Partículas elididas não viram inicial:** `d'Angelo` produz `A`, não `D`; o mesmo vale no
       primeiro nome (`D'Artagnan` → `A`).
-- [ ] Termos sem letra (partículas com pontuação, dígitos, símbolos) são **descartados**: nenhum
+- [x] Termos sem letra (partículas com pontuação, dígitos, símbolos) são **descartados**: nenhum
       caractere fora do alfabeto chega ao markup.
-- [ ] O SVG é **redondo por construção** — círculo preenchendo um `viewBox` quadrado —, não depende
+- [x] O SVG é **redondo por construção** — círculo preenchendo um `viewBox` quadrado —, não depende
       de recorte do CSS para ser circular.
-- [ ] As cores do círculo e da letra são as **recebidas na entrada**; o domínio não conhece paleta.
+- [x] As cores do círculo e da letra são as **recebidas na entrada**; o domínio não conhece paleta.
 
 ## Contexto e decisões de arquitetura
 
@@ -183,4 +183,9 @@ Domínio puro, sem Django e sem banco: todos rodam na suíte padrão.
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+- 2026-08-05: implementação em `services/domain/avatar_iniciais/`. Durante a implementação,
+  `test_iniciais_descartam_termos_nao_alfabeticos` acusou falso positivo: o default
+  `cor_fundo="#123456"` do fixture `_gerar` contém o dígito `3`, então `"3" not in resultado.svg`
+  falhava por causa da cor recebida, não do nome descartado. Corrigido restringindo a asserção ao
+  `<text>` e ao `aria-label` (via `ElementTree`), que é a parte do markup onde o dígito não pode
+  vazar — as cores continuam livres para conter qualquer caractere, por serem entrada do domínio.
