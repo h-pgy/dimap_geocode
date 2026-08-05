@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -11,3 +13,8 @@ class AvatarIniciaisInput(BaseModel):
 class AvatarIniciaisOutput(BaseModel):
     iniciais: str
     svg: str
+
+
+class ImagemPerfilOutput(BaseModel):
+    tipo: Literal["foto", "avatar"]
+    valor: str  # URL da foto, ou markup do SVG do avatar

@@ -41,7 +41,8 @@ def _perfil(**overrides: object) -> Perfil:
     )
     dados: dict[str, object] = {
         "rf": "123456",
-        "nome": "Fulano de Tal",
+        "nome": "Fulano",
+        "sobrenome": "de Tal",
         "cargo_base": cargo_base,
         "unidade": unidade,
     }

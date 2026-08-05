@@ -227,3 +227,6 @@ data/*.tmp
 # Insumo reconstruível do scraper de ITBI (SPEC ingestao_dados/008): o dado é o parquet consolidado
 data/itbi_originais/
 data/itbi_parseados/
+
+# Mídia enviada por upload (SPEC user_admin/006): conteúdo de usuário, não artefato versionado.
+/media/

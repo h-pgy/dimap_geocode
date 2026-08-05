@@ -243,4 +243,9 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static" / "dist", BASE_DIR / "static" / "src"]
 
+# Mídia enviada por upload (hoje só a foto de perfil, SPEC user_admin/006). Servir o
+# arquivo por rota é front-end e fica fora desta SPEC.
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

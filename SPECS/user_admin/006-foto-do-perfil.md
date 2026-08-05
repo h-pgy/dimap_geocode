@@ -3,7 +3,7 @@ spec: user_admin/006
 versao: v4
 atualizado_em: 2026-08-05
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial — desmembrada da SPEC user_admin/005, que ficou só com a cor da unidade
@@ -19,7 +19,7 @@ changelog:
 # SPEC user_admin/006 — Foto do perfil
 
 - [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 
@@ -29,13 +29,13 @@ iniciais.
 
 ## Critérios de aceite
 
-- [ ] O perfil tem uma **foto opcional**: salvar perfil sem foto é aceito, e o campo aceita imagem
+- [x] O perfil tem uma **foto opcional**: salvar perfil sem foto é aceito, e o campo aceita imagem
       enviada por upload.
-- [ ] O perfil tem **nome e sobrenome** em campos separados, ambos obrigatórios, e o perfil já
+- [x] O perfil tem **nome e sobrenome** em campos separados, ambos obrigatórios, e o perfil já
       cadastrado sobrevive à migração com o nome repartido.
-- [ ] O perfil expõe um campo calculado **`cor_unidade`**, que devolve a cor cadastrada na unidade a
+- [x] O perfil expõe um campo calculado **`cor_unidade`**, que devolve a cor cadastrada na unidade a
       que o perfil está vinculado.
-- [ ] Existe uma função de **domínio**, sem qualquer dependência de Django ou do model, que decide
+- [x] Existe uma função de **domínio**, sem qualquer dependência de Django ou do model, que decide
       entre foto e avatar: dados nome, sobrenome, as cores já resolvidas e a URL da foto (quando
       houver), devolve qual das duas usar — reusável em qualquer ponto do sistema que precise
       exibir a imagem do perfil.

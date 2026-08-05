@@ -23,7 +23,8 @@ banco = pytest.mark.banco
 def _perfil(**overrides: object) -> Perfil:
     dados: dict[str, object] = {
         "rf": "123456",
-        "nome": "Fulano de Tal",
+        "nome": "Fulano",
+        "sobrenome": "de Tal",
     }
     dados.update(overrides)
     perfil = Perfil(**dados)  # type: ignore[arg-type]
@@ -34,17 +35,16 @@ def _perfil(**overrides: object) -> Perfil:
 
 
 def _perfil_completo(**overrides: object) -> Perfil:
-    # cargo_base/unidade precisam de linha real: full_clean/create_user validam a FK contra o banco.
-    cargo_base = CargoBase.objects.create(nome="Cargo Teste", sigla="CT")
-    tipo_unidade = TipoUnidade.objects.create(
+    # cargo_base/unidade precisam de linha real: full_clean/create_user validam a FK contra o
+    # banco. get_or_create porque alguns testes chamam este helper mais de uma vez.
+    cargo_base, _ = CargoBase.objects.get_or_create(nome="Cargo Teste", sigla="CT")
+    tipo_unidade, _ = TipoUnidade.objects.get_or_create(
         nome="Departamento",
-        nivel=10,
-        pode_ser_raiz=True,
+        defaults={"nivel": 10, "pode_ser_raiz": True},
     )
-    unidade = Unidade.objects.create(
+    unidade, _ = Unidade.objects.get_or_create(
         nome="Unidade Teste",
-        sigla="UT",
-        tipo=tipo_unidade,
+        defaults={"sigla": "UT", "tipo": tipo_unidade},
     )
     dados: dict[str, object] = {
         "rf": "123456",
