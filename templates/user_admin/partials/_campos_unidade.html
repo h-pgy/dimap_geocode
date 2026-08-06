@@ -1,0 +1,52 @@
+{# Campos da unidade: as três seções em poço compartilhadas pela página própria e pelo modal        #}
+{# (SPEC user_admin/012). O <form>, o título e o rodapé são de quem inclui — o "cancelar" da página #}
+{# é navegação e o do modal é fechar a placa.                                                       #}
+<div class="card-well p-5 flex flex-col gap-4">
+  <p class="text-overline">Identificação</p>
+  <div class="grid sm:grid-cols-3 gap-4">
+    <label class="form-field sm:col-span-2">
+      <span class="text-overline">Nome</span>
+      <input type="text" name="nome" class="input input-glass" placeholder="Divisão de Avaliação Imobiliária" />
+    </label>
+    <label class="form-field">
+      <span class="text-overline">Sigla</span>
+      <input type="text" name="sigla" class="input input-glass" placeholder="DIMAP-1" />
+    </label>
+  </div>
+</div>
+
+<div class="card-well p-5 flex flex-col gap-4">
+  <p class="text-overline">Hierarquia</p>
+  <div class="grid sm:grid-cols-2 gap-4">
+    <div class="form-field">
+      <span class="text-overline">Tipo</span>
+      <select name="tipo" class="select select-glass" data-select-onsen>
+        {% for tipo in tipos_unidade %}
+          <option value="{{ tipo.pk }}">{{ tipo.nome }}</option>
+        {% endfor %}
+      </select>
+      <span class="form-field-hint">O tipo carrega o nível: é ele que diz o que pode subordinar o quê.</span>
+    </div>
+    <div class="form-field">
+      {# A cor nasce da unidade superior: quem sabe a regra é o servidor (Unidade.cor_sugerida). #}
+      {# O HTMX ouve o próprio select: a casca da SPEC 011 escreve nele e dispara change.        #}
+      <span class="text-overline">Unidade superior</span>
+      <select name="pai" class="select select-glass" data-select-onsen
+              hx-get="{% url 'user_admin:cor_sugerida_unidade' %}"
+              hx-trigger="change"
+              hx-target="#campo-cor-unidade"
+              hx-swap="outerHTML">
+        <option value="">— sem unidade superior (raiz) —</option>
+        {% for unidade in unidades %}
+          <option value="{{ unidade.pk }}">{{ unidade.sigla }} · {{ unidade.nome }}</option>
+        {% endfor %}
+      </select>
+      <span class="form-field-hint">Só tipo marcado como raiz dispensa unidade superior. Trocar aqui sugere a cor.</span>
+    </div>
+  </div>
+</div>
+
+<div class="card-well p-5 flex flex-col gap-4">
+  <p class="text-overline">Identidade visual</p>
+  {% include "user_admin/partials/_campo_cor_unidade.html" %}
+</div>

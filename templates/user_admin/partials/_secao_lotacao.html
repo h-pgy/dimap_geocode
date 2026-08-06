@@ -4,14 +4,24 @@
 <div class="card-well p-5 flex flex-col gap-4">
   <p class="text-overline">Lotação</p>
   <div class="grid sm:grid-cols-2 gap-4">
-    <label class="form-field">
+    {# O rótulo aqui é <span>, não <label for>: o botão de criação já é um <label> e rótulo dentro #}
+    {# de rótulo confundiria o clique — quem abre o modal é ele (SPEC user_admin/012).            #}
+    <div class="form-field">
       <span class="text-overline">Unidade</span>
-      <select name="unidade" class="select select-glass" data-select-onsen>
-        {% for unidade in unidades %}
-          <option value="{{ unidade.pk }}" {% if unidade.pk == perfil.unidade_id %}selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
-        {% endfor %}
-      </select>
-    </label>
+      <div class="form-field-inline-action">
+        <select name="unidade" class="select select-glass" data-select-onsen>
+          {% for unidade in unidades %}
+            <option value="{{ unidade.pk }}" {% if unidade.pk == perfil.unidade_id %}selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
+          {% endfor %}
+        </select>
+        <label for="modal-nova-unidade"
+               class="btn btn-circle btn-criar-inline tooltip tooltip-left"
+               data-tip="Cadastrar unidade que falta">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+        </label>
+      </div>
+      <span class="form-field-hint">Não achou a unidade? Cadastre sem sair desta tela.</span>
+    </div>
     <label class="form-field">
       <span class="text-overline">Cargo base</span>
       <select name="cargo_base" class="select select-glass" data-select-onsen>

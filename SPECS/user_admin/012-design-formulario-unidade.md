@@ -2,8 +2,8 @@
 spec: user_admin/012
 versao: v1
 atualizado_em: 2026-08-06
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -11,8 +11,8 @@ changelog:
 
 # SPEC user_admin/012 — Formulário de unidade: página própria e modal reaproveitável
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 
@@ -22,37 +22,37 @@ cadastro de uma pessoa, que a unidade dela ainda não existe no sistema.
 
 ## Critérios de aceite
 
-- [ ] Existe o **átomo botão de criação inline**: círculo de vidro com o sinal `+` em tinta ciana,
+- [x] Existe o **átomo botão de criação inline**: círculo de vidro com o sinal `+` em tinta ciana,
       altura casada com a do campo ao lado, que acende no hover. É o **mesmo** botão para qualquer
       "criar agora o que falta no catálogo" (unidade hoje; cargo, tipo de unidade, o que vier).
-- [ ] Existe a **molécula campo com criação inline**: rótulo overline + controle de vidro ocupando a
+- [x] Existe a **molécula campo com criação inline**: rótulo overline + controle de vidro ocupando a
       linha + o botão acima, alinhados. Ela substitui o campo de unidade na lotação do servidor.
-- [ ] Existe o **modal de vidro**: a caixa é placa de **gelo espesso** (atrás dela há um formulário
+- [x] Existe o **modal de vidro**: a caixa é placa de **gelo espesso** (atrás dela há um formulário
       com tinta escura, não a água do mapa), e o fundo **embaça em vez de escurecer** — nenhum véu
       preto. Abre e fecha por `checkbox` nativo, pelo backdrop e pelo botão de cancelar, **sem
       JavaScript**.
-- [ ] Os campos de seleção deste formulário usam o **campo de seleção de vidro** da SPEC 011 —
+- [x] Os campos de seleção deste formulário usam o **campo de seleção de vidro** da SPEC 011 —
       inclusive dentro do modal, e com a **página nova carregando o módulo** como a de servidor já
       faz — e a escolha da unidade superior dispara o `change` que busca a cor sugerida.
-- [ ] O **formulário de unidade** é um organismo com três seções em poço — identificação (nome,
+- [x] O **formulário de unidade** é um organismo com três seções em poço — identificação (nome,
       sigla), hierarquia (tipo, unidade superior) e identidade visual (a cor, no **disco de paleta
       que já existe**) — e os **mesmos campos** aparecem na página própria e dentro do modal, do
       mesmo partial.
-- [ ] A **página de criar unidade** renderiza esse organismo sobre o fundo administrativo, no mesmo
+- [x] A **página de criar unidade** renderiza esse organismo sobre o fundo administrativo, no mesmo
       esqueleto da página de servidor.
-- [ ] A **página de criar servidor** traz o botão de criação ao lado do campo de unidade e o modal
+- [x] A **página de criar servidor** traz o botão de criação ao lado do campo de unidade e o modal
       com o formulário de unidade — e o modal fica **fora** do formulário do servidor: formulário
       dentro de formulário é HTML inválido.
-- [ ] Escolher a **unidade superior** traz a **cor sugerida**: o campo de cor é trocado por HTMX com
+- [x] Escolher a **unidade superior** traz a **cor sugerida**: o campo de cor é trocado por HTMX com
       o tom do pai já marcado; sem pai, volta a `agua-700`.
-- [ ] O design foi **aprovado no mock** que acompanha esta SPEC antes de qualquer código de
+- [x] O design foi **aprovado no mock** que acompanha esta SPEC antes de qualquer código de
       aplicação.
-- [ ] Aprovado o mock, cada peça nova está nos **dois destinos obrigatórios** — tokens em
+- [x] Aprovado o mock, cada peça nova está nos **dois destinos obrigatórios** — tokens em
       `static/src/tema-dimap.dev.css` (fonte única) e componentes renderizados no styleguide
       `.claude/skills/componentes-frontend/examples/design_system.html`, cada um na seção da sua
       camada — **e os templates da aplicação usam essas classes**, sem marcação de utilities soltas
       resolvendo pele.
-- [ ] As **rotas de GET existem e renderizam na aplicação**: a página de unidade, a página de
+- [x] As **rotas de GET existem e renderizam na aplicação**: a página de unidade, a página de
       servidor com o modal e a troca do campo de cor são navegáveis no `runserver`.
 
 ## Contexto e decisões de arquitetura

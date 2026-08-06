@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Nova unidade · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  {# Mesmo esqueleto da página de servidor: o fundo fica parado e o conteúdo rola na .admin-shell. #}
+  <div class="admin-shell">
+    <div class="max-w-3xl mx-auto px-4 py-24">
+      {# Gravar unidade é ato administrativo e entra com autenticação, autorização e registro na #}
+      {# SPEC seguinte (§3.5): aqui o formulário só renderiza, e o submit não tem destino.       #}
+      <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Nova unidade</h1>
+          <p class="text-sm text-base-content/70 mt-1">A unidade é o eixo da competência administrativa: é ela que, com o cargo, define o que cada servidor pode praticar.</p>
+        </div>
+
+        {% include "user_admin/partials/_campos_unidade.html" %}
+
+        <div class="flex justify-end gap-3 pt-1">
+          <a href="{% url 'core:home' %}" class="btn btn-ghost btn-glass">Cancelar</a>
+          <button type="submit" class="btn btn-onsen">Salvar unidade</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {# Fundo à deriva — só existe onde existe o canvas administrativo #}
+  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+  {# Sem este módulo os selects da hierarquia seguem nativos: marcar o campo não carrega o componente #}
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+{% endblock %}

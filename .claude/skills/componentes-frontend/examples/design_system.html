@@ -321,6 +321,31 @@
           </div>
         </div>
       </div>
+
+      <!-- 1.5 Modal de vidro -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.5 · Modal de vidro</h3>
+          <p class="text-sm text-base-content/70 mt-1">SPEC <span class="text-code">user_admin/012</span>. Duas classes: <span class="text-code">.modal-glass</span> (a cena — <strong>embaça</strong> o que está atrás e não põe véu escuro) e <span class="text-code">.modal-box-glass</span> (a caixa — o <span class="text-code">.glass-panel-thick</span> composto no HTML, com altura máxima e rolagem interna). Atrás do modal há interface, não o mapa: por isso o espesso.</p>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-6 items-start">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.modal-box-glass (a caixa, fora da cena)</p>
+            <div class="glass-panel-thick modal-box-glass p-6 flex flex-col gap-3">
+              <p class="text-sm font-bold text-madeira-700">Placa de gelo em medida de modal</p>
+              <p class="text-xs text-base-content/70">Aresta translúcida, brilho na quina, sombra em duas camadas. A tinta continua escura sobre vidro claro.</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.modal-glass (a cena)</p>
+            <div class="card-well p-5 flex flex-col gap-3">
+              <p class="text-xs text-base-content/70">O foco vem do <strong>desfoque</strong>, na mesma língua da <span class="text-code">.cinematic-blur-layer</span>. Abrir e fechar é <span class="text-code">checkbox</span> nativo — sem JavaScript, sem estado no navegador.</p>
+              <label for="modal-styleguide" class="btn btn-onsen w-fit">Abrir o modal</label>
+              <p class="form-field-hint">Fecha pelo backdrop e pelo Cancelar. Não fecha com <span class="text-code">Esc</span> — isso exigiria <span class="text-code">&lt;dialog&gt;</span> e JS de estado.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 2. ÁTOMOS ============ -->
@@ -363,6 +388,21 @@
             <input type="file" class="file-input file-input-glass" aria-label="Arquivo" />
           </div>
           <p class="form-field-hint mt-2">Este select é o <strong>átomo</strong> (a pele do controle) e abre a lista do sistema operacional. Em formulário, use a molécula <span class="text-code">.select-onsen</span> da seção 3: mesma pele no gatilho, lista dentro do design system.</p>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Botão de criação inline (.btn-criar-inline)</p>
+          <div class="flex flex-wrap items-center gap-5">
+            <button type="button" class="btn btn-circle btn-criar-inline" aria-label="Cadastrar">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <span class="tooltip tooltip-right" data-tip="Cadastrar unidade que falta">
+              <button type="button" class="btn btn-circle btn-criar-inline" aria-label="Cadastrar unidade que falta">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </span>
+            <span class="text-xs text-base-content/60">o gesto "não achei — cadastra agora": gelo do <span class="text-code">.btn-glass</span> em tinta ciana, altura casada com o controle ao lado; no hover o gelo acende, sem mudar de cor</span>
+          </div>
         </div>
 
         <div>
@@ -683,6 +723,45 @@
         </div>
       </div>
 
+      <!-- Campo com criação inline (SPEC user_admin/012) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Campo com criação inline (.form-field-inline-action)</p>
+        <p class="text-sm text-base-content/70">
+          O <span class="text-code">.form-field</span> de sempre, com o controle e o botão de criação numa linha: o controle
+          estica, o botão não. O gatilho é um <span class="text-code">&lt;label for&gt;</span> — é por isso que ele alcança um
+          modal que vive <strong>fora</strong> do formulário (formulário aninhado é HTML inválido). Serve a qualquer catálogo
+          que possa faltar na hora do cadastro.
+        </p>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="form-field">
+            <span class="text-overline">Unidade</span>
+            <div class="form-field-inline-action">
+              <select class="select select-glass" data-select-onsen>
+                <option>DIMAP-1 · Divisão de Avaliação Imobiliária</option>
+                <option>DIMAP-2 · Divisão de Cadastro</option>
+              </select>
+              <label for="modal-styleguide" class="btn btn-circle btn-criar-inline tooltip tooltip-left" data-tip="Cadastrar unidade que falta">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+              </label>
+            </div>
+            <span class="form-field-hint">Não achou a unidade? Cadastre sem sair desta tela.</span>
+          </div>
+          <div class="form-field">
+            <span class="text-overline">Cargo em comissão · o mesmo padrão, outro catálogo</span>
+            <div class="form-field-inline-action">
+              <select class="select select-glass" data-select-onsen>
+                <option>— sem cargo em comissão —</option>
+                <option>CDA-II · Diretor de Divisão</option>
+              </select>
+              <button type="button" class="btn btn-circle btn-criar-inline tooltip tooltip-left" data-tip="SPEC futura" aria-label="Cadastrar cargo">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <span class="form-field-hint">A molécula é do design system: quem vier depois monta, não inventa.</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Imagem de perfil em versão grande -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Imagem de perfil grande (à esquerda do nome)</p>
@@ -991,6 +1070,50 @@
       Onsen de Inverno v2 · validar visualmente e portar para a SKILL <span class="text-code">componentes-frontend</span>
     </footer>
   </main>
+
+  <!-- ORGANISMO · Modal de vidro (SPEC user_admin/012). Vive FORA de qualquer formulário: o
+       <label for> o alcança de qualquer lugar do documento, e formulário aninhado é inválido. -->
+  <input type="checkbox" id="modal-styleguide" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Nova unidade</h2>
+          <p class="text-sm text-base-content/70 mt-1">O fundo embaça; nada escurece. A caixa é gelo espesso porque atrás dela há interface, não o mapa.</p>
+        </div>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identificação</p>
+          <div class="grid sm:grid-cols-3 gap-4">
+            <label class="form-field sm:col-span-2">
+              <span class="text-overline">Nome</span>
+              <input type="text" class="input input-glass" placeholder="Divisão de Avaliação Imobiliária" />
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Sigla</span>
+              <input type="text" class="input input-glass" placeholder="DIMAP-1" />
+            </label>
+          </div>
+        </div>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Hierarquia</p>
+          <div class="form-field">
+            <span class="text-overline">Unidade superior</span>
+            <select class="select select-glass" data-select-onsen>
+              <option value="">— sem unidade superior (raiz) —</option>
+              <option>SUREM · Subsecretaria da Receita Municipal</option>
+              <option>DIMAP · Divisão de Mapeamento</option>
+            </select>
+            <span class="form-field-hint">A lista de vidro abre na top layer: a placa, que rola e cria contexto de empilhamento próprio, não a corta.</span>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-1">
+          <label for="modal-styleguide" class="btn btn-ghost btn-glass">Cancelar</label>
+          <button type="submit" class="btn btn-onsen">Salvar unidade</button>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-styleguide">Fechar</label>
+  </div>
 
   <script>
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-23.5505, -46.6333], 14);

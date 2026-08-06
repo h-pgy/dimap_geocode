@@ -64,6 +64,7 @@ O menor elemento com identidade própria: botão, input, badge, kbd, ícone, too
 |---|---|---|
 | Botão de energia (CTA) | `.btn-onsen` | gradiente `agua-300→500`, tinta escura, glow ciano |
 | Botão de vidro | `.btn-glass` | gelo fosco circular/pill; ações secundárias e ícones |
+| Botão de criação inline | `.btn-criar-inline` | círculo de gelo com `+` em tinta ciana ao lado de um campo: "criar agora o que falta no catálogo" |
 | Input de vidro | `.input-glass` | fundo `white/45`, foco com anel ciano |
 | Badges de geometria | `.badge-ponto` `.badge-linha` `.badge-poligono` | tipo do resultado/camada |
 | Badges semânticos | `badge-{info,success,warning,error} badge-soft` | estado do sistema (daisyUI puro) |
@@ -87,6 +88,11 @@ com utilities de layout no HTML.
 (`.select-onsen-trigger`, o `.select-glass` de hoje) e a lista (`.select-onsen-panel`, gelo espesso
 na top layer via `popover`). Carregue o módulo na página que usa o marcador — marcar o campo não
 basta. Filtro por texto a partir de seis opções.
+
+**Campo com criação inline** (`.form-field-inline-action`, SPEC user_admin/012): o `.form-field`
+com o controle e o `.btn-criar-inline` na mesma linha — o controle estica, o botão não. O gatilho é
+um `<label for>` do modal, e o modal fica **fora** do formulário (formulário aninhado é HTML
+inválido).
 
 ### 2.4 Organismos (seções de domínio)
 Seções autônomas da interface: o painel de busca completo, a gaveta de detalhes do imóvel, o widget
@@ -175,6 +181,7 @@ brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `references/des
 | `.glass-drawer-panel` | gaveta lateral (texto denso; blur 12px, mais opaco) | escura |
 | `.card-well` | poço rebaixado: sub-cards dentro de painéis (stats, metadados) | escura |
 | `.glass-panel-deep` | variante escura **pontual**: tooltips, contraste invertido | clara (`rocha-100`, acentos `agua-300`/`madeira-300`) |
+| `.modal-glass` + `.modal-box-glass` | modal: a cena **embaça** o fundo (nunca escurece) e a caixa compõe `.glass-panel-thick`. Abre/fecha por `checkbox` nativo | escura |
 
 Regras:
 - Blur fraco (2px) é proibido: não separa figura do fundo. O mapa continua legível com 10px.

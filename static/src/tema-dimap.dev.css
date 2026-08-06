@@ -154,6 +154,14 @@ html[data-theme="dimap"] {
     @apply rounded-2xl bg-white/30 border border-white/45 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
   }
 
+  /* Modal de vidro (SPEC user_admin/012): o fundo EMBAÇA, nunca escurece (§6 do design system) —
+     a mesma língua da .cinematic-blur-layer. O bg-transparent! derruba o véu escuro que o daisyUI
+     põe em .modal e o base-100 opaco de .modal-box; important é sufixo no Tailwind 4. */
+  .modal-glass { @apply bg-transparent! backdrop-blur-[6px]; }
+  /* A placa é o .glass-panel-thick, composto no HTML: atrás dela há formulário, não mapa. Aqui fica
+     só o que é do modal — recopiar a receita faria a espessura divergir da SPEC que a define. */
+  .modal-box-glass { @apply bg-transparent! max-h-[85vh] overflow-y-auto; }
+
   /* Casca da área administrativa (SPEC user_admin/007): o fundo à deriva fica parado atrás e o
      conteúdo rola aqui dentro — a viewport travada do base.html existe porque a página do produto
      é o mapa, e não se aplica a formulário. */
@@ -187,6 +195,16 @@ html[data-theme="dimap"] {
   .btn-glass {
     @apply rounded-full backdrop-blur-[10px] bg-white/50 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(7,58,84,0.2)] transition-all duration-300 hover:bg-white/70 hover:shadow-[0_4px_20px_rgba(72,202,228,0.4)];
   }
+  /* Botão de criação inline (SPEC user_admin/012): o gesto "não achei — cadastra agora". Mesma
+     receita de gelo do .btn-glass, em tinta ciana (água = ação) e no tamanho que casa com a altura
+     do controle ao lado. É o mesmo átomo para qualquer catálogo — unidade hoje, cargo depois. */
+  .btn-criar-inline {
+    @apply w-10 h-10 shrink-0 p-0 rounded-full backdrop-blur-[10px] bg-white/50 border border-white/60 text-agua-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(7,58,84,0.2)] transition-all duration-300;
+  }
+  .btn-criar-inline:hover {
+    @apply bg-white/70 text-agua-600 shadow-[0_4px_20px_rgba(72,202,228,0.4)];
+  }
+
   .input-glass {
     @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/60 focus:border-agua-500 focus:outline-none focus:shadow-[0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
   }
@@ -223,6 +241,12 @@ html[data-theme="dimap"] {
   /* Campo de formulário: rótulo overline + controle + linha de ajuda. */
   .form-field      { @apply flex flex-col gap-1.5; }
   .form-field-hint { @apply text-xs text-base-content/60; }
+
+  /* Campo com criação inline (SPEC user_admin/012): o controle estica, o botão não. O .select-onsen
+     entra na conta porque, aprimorado o campo, quem ocupa a linha é a casca da SPEC 011 — o
+     <select> fica hidden e sairia do fluxo. */
+  .form-field-inline-action { @apply flex items-center gap-2; }
+  .form-field-inline-action > :where(select, input, .select-onsen) { @apply flex-1 min-w-0; }
 
   /* Campo de seleção de vidro (SPEC user_admin/011): a lista nativa é desenhada pelo SO e não
      aceita token nenhum. Aqui o select continua sendo o campo — fonte da verdade, envio, change
