@@ -17,7 +17,14 @@ from django.urls import reverse
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
-from apps.user_admin.models import CargoBase, CorUnidade, Perfil, TipoUnidade, Unidade
+from apps.user_admin.models import (
+    CargoBase,
+    CargoComissao,
+    CorUnidade,
+    Perfil,
+    TipoUnidade,
+    Unidade,
+)
 from apps.user_admin.paleta import HEX_POR_COR
 
 banco = pytest.mark.banco
@@ -112,3 +119,50 @@ def test_editar_perfil_com_foto_mostra_a_foto(
 
     assert perfil.foto.url in html
     assert ">FT<" not in html
+
+
+# ---------------------------------------------------------------------------
+# Campo de seleção de vidro (SPEC user_admin/011). O comportamento de navegador — abrir, filtrar,
+# andar com as setas — se valida no mock; o que pode regredir sem ninguém ver é o contrato do
+# servidor: um <select> de verdade, marcado para o componente, com o módulo carregado na página.
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_selects_da_lotacao_usam_o_componente_de_vidro(client: Client) -> None:
+    _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=False)
+    CargoComissao.objects.create(
+        nome="Diretor de Divisão",
+        sigla="CDA",
+        nivel=2,
+        e_chefia=True,
+    )
+
+    html = client.get(reverse("user_admin:criar_perfil")).content.decode()
+
+    for campo in ("unidade", "cargo_base", "cargo_comissao"):
+        assert (
+            f'<select name="{campo}" class="select select-glass" data-select-onsen>'
+            in html
+        )
+    assert "DIMAP-1 · Divisão de Avaliação" in html
+    assert "Analista de Ordenamento Territorial" in html
+    assert "CDA-II · Diretor de Divisão" in html
+    assert "js/ui/select_onsen.js" in html
+
+
+@banco
+@pytest.mark.django_db
+def test_select_de_unidade_mantem_a_opcao_selecionada_na_edicao(client: Client) -> None:
+    perfil = _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=False)
+
+    html = client.get(
+        reverse("user_admin:editar_perfil", kwargs={"pk": perfil.pk})
+    ).content.decode()
+
+    # É da <option selected> que a casca lê o rótulo inicial do gatilho.
+    assert (
+        f'<option value="{perfil.unidade_id}" selected>DIMAP-1 · Divisão de Avaliação</option>'
+        in html
+    )

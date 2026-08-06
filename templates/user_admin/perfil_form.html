@@ -38,4 +38,6 @@
 {% block scripts %}
   {# Fundo à deriva — só existe onde existe o canvas administrativo #}
   <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+  {# Sem este módulo os selects da lotação seguem nativos: marcar o campo não carrega o componente #}
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
 {% endblock %}

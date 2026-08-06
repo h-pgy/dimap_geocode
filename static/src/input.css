@@ -9,3 +9,6 @@
    Toda nova pasta de templates precisa ser declarada aqui. */
 @source "../../templates";
 @source "../../apps";
+/* O JS de UI (select_onsen) monta classes em código: sem esta fonte, a casca de vidro sairia sem
+   pele no build de produção. */
+@source "./js";

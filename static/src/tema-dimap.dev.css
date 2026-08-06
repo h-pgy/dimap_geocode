@@ -131,9 +131,18 @@ html[data-theme="dimap"] {
   .glass-shadow  { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)]; }
   .glass-glow    { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_32px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.5)]; }
 
+  /* Segunda espessura (SPEC user_admin/011): a espessura do gelo depende do que está ATRÁS. Sobre o
+     mapa (água clara) o fino de 10px separa figura do fundo; sobre interface — formulário com tinta
+     escura, campos, poços — ele deixa passar demais e a leitura sofre. Mesma receita, outro grau. */
+  .glass-blur-thick { @apply backdrop-blur-[20px]; }
+  .glass-bg-thick   { @apply bg-gradient-to-br from-white/85 via-white/75 to-white/65; }
+
   /* ==================== MATERIAIS COMPOSTOS ==================== */
   .glass-panel {
     @apply rounded-2xl backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
+  }
+  .glass-panel-thick {
+    @apply rounded-2xl backdrop-blur-[20px] bg-gradient-to-br from-white/85 via-white/75 to-white/65 border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_40px_rgba(7,58,84,0.3),0_0_28px_rgba(72,202,228,0.28)];
   }
   .glass-panel-deep {
     @apply rounded-2xl backdrop-blur-[8px] bg-gradient-to-br from-rocha-950/80 to-rocha-900/70 border border-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(7,58,84,0.35),0_0_24px_rgba(72,202,228,0.25)] text-rocha-100;
@@ -214,6 +223,43 @@ html[data-theme="dimap"] {
   /* Campo de formulário: rótulo overline + controle + linha de ajuda. */
   .form-field      { @apply flex flex-col gap-1.5; }
   .form-field-hint { @apply text-xs text-base-content/60; }
+
+  /* Campo de seleção de vidro (SPEC user_admin/011): a lista nativa é desenhada pelo SO e não
+     aceita token nenhum. Aqui o select continua sendo o campo — fonte da verdade, envio, change
+     para o HTMX — e ganha uma casca de vidro montada por static/src/js/ui/select_onsen.js. */
+  .select-onsen { @apply w-full; }
+  /* flex! porque o .select do daisyUI define o próprio display e as duas regras empatam. */
+  .select-onsen-trigger { @apply flex! w-full items-center justify-between text-left font-normal; }
+  /* A lista é popover: vive na TOP LAYER, então nenhum overflow a corta e nenhum contexto de
+     empilhamento a soterra — dentro de painel de vidro (todo backdrop-filter cria contexto próprio)
+     e de caixa com rolagem, painel absoluto não tem chance, e z-index não resolve. Posição, largura
+     e altura máxima vêm do gatilho, escritas pelo JS; o inset: auto derruba o inset: 0 que o
+     navegador dá a todo popover. */
+  .select-onsen-panel {
+    @apply fixed m-0 p-2 overflow-hidden rounded-2xl backdrop-blur-[20px] bg-transparent bg-gradient-to-br from-white/85 via-white/75 to-white/65 border border-white/70 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_40px_rgba(7,58,84,0.3),0_0_28px_rgba(72,202,228,0.28)];
+    inset: auto;
+  }
+  .select-onsen-panel:popover-open { @apply flex flex-col gap-2; }
+  .select-onsen-busca { @apply h-9 text-sm shrink-0; }
+  .select-onsen-list  { @apply flex flex-col gap-1 min-h-0 max-h-60 overflow-y-auto overscroll-contain; }
+  .select-onsen-option {
+    @apply flex items-center gap-2 w-full text-left px-3 py-2 rounded-xl text-sm cursor-pointer transition-all duration-200 text-base-content;
+  }
+  /* A marca da escolha é tinta de água, como todo estado de seleção do sistema. A coluna existe em
+     todo item, marcado ou não: sem ela o rótulo dança de linha para linha. */
+  .select-onsen-option::before {
+    @apply w-4 shrink-0 text-center text-agua-700 font-bold opacity-0;
+    content: "✓";
+  }
+  .select-onsen-option[aria-selected="true"] { @apply font-medium text-agua-800; }
+  .select-onsen-option[aria-selected="true"]::before { @apply opacity-100; }
+  /* Realce do cursor: UM só marcador, movido pelo hover E pela seta. Não é :focus-visible porque o
+     navegador não o acende em foco programático depois de clique — a seta andava e a tela não
+     mudava. E não é branco porque sobre gelo espesso branco não aparece: quem acende é a água. */
+  .select-onsen-option[data-ativo="true"] {
+    @apply bg-agua-400/45 text-rocha-950 outline-none shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+  }
+  .select-onsen-vazio { @apply px-3 py-2 text-xs text-base-content/60; }
 
   /* Disco de vidro da paleta: as cavidades se distribuem pelo ângulo --a escrito no markup, então
      a molécula não depende de quantas cores a paleta oferece. */

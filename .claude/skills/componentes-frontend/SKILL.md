@@ -81,6 +81,13 @@ o item de layer (cor + nome + badge + toggle + lixeira). Moléculas ganham class
 têm layout interno recorrente** (`.suggestion-item`); caso contrário são apenas composição de átomos
 com utilities de layout no HTML.
 
+**Campo de seleção de vidro** (`.select-onsen`, SPEC user_admin/011): opt-in por
+`data-select-onsen` no `<select>` renderizado pelo servidor. O `<select>` continua sendo o campo
+(valor, envio, `change` nativo); `static/src/js/ui/select_onsen.js` monta o gatilho
+(`.select-onsen-trigger`, o `.select-glass` de hoje) e a lista (`.select-onsen-panel`, gelo espesso
+na top layer via `popover`). Carregue o módulo na página que usa o marcador — marcar o campo não
+basta. Filtro por texto a partir de seis opções.
+
 ### 2.4 Organismos (seções de domínio)
 Seções autônomas da interface: o painel de busca completo, a gaveta de detalhes do imóvel, o widget
 de usuário, o painel de camadas do projeto. **Organismo = partial Django/HTMX** (`_gaveta_lote.html`,
@@ -163,7 +170,8 @@ brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `references/des
 
 | Material | Uso | Tinta |
 |---|---|---|
-| `.glass-panel` | painel flutuante padrão | escura |
+| `.glass-panel` | painel flutuante padrão (fino, 10px — **sobre o mapa**) | escura |
+| `.glass-panel-thick` | segunda espessura (blur 20px, gelo mais leitoso) — **vidro sobre interface**, onde o fino deixa passar demais. Primitivos `.glass-blur-thick` / `.glass-bg-thick` | escura |
 | `.glass-drawer-panel` | gaveta lateral (texto denso; blur 12px, mais opaco) | escura |
 | `.card-well` | poço rebaixado: sub-cards dentro de painéis (stats, metadados) | escura |
 | `.glass-panel-deep` | variante escura **pontual**: tooltips, contraste invertido | clara (`rocha-100`, acentos `agua-300`/`madeira-300`) |

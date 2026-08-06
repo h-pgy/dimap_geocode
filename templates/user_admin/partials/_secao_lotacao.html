@@ -1,10 +1,12 @@
-{# Seção de lotação: é a combinação cargo × unidade que define a competência administrativa. #}
+{# Seção de lotação: é a combinação cargo × unidade que define a competência administrativa.     #}
+{# data-select-onsen: o campo continua sendo o select — o componente de vidro (SPEC 011) é opt-in #}
+{# por atributo e depende do módulo carregado no bloco de scripts da página.                     #}
 <div class="card-well p-5 flex flex-col gap-4">
   <p class="text-overline">Lotação</p>
   <div class="grid sm:grid-cols-2 gap-4">
     <label class="form-field">
       <span class="text-overline">Unidade</span>
-      <select name="unidade" class="select select-glass">
+      <select name="unidade" class="select select-glass" data-select-onsen>
         {% for unidade in unidades %}
           <option value="{{ unidade.pk }}" {% if unidade.pk == perfil.unidade_id %}selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
         {% endfor %}
@@ -12,7 +14,7 @@
     </label>
     <label class="form-field">
       <span class="text-overline">Cargo base</span>
-      <select name="cargo_base" class="select select-glass">
+      <select name="cargo_base" class="select select-glass" data-select-onsen>
         {% for cargo in cargos_base %}
           <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_base_id %}selected{% endif %}>{{ cargo.nome }}</option>
         {% endfor %}
@@ -20,7 +22,7 @@
     </label>
     <label class="form-field sm:col-span-2">
       <span class="text-overline">Cargo em comissão</span>
-      <select name="cargo_comissao" class="select select-glass">
+      <select name="cargo_comissao" class="select select-glass" data-select-onsen>
         <option value="">— sem cargo em comissão —</option>
         {% for cargo in cargos_comissao %}
           <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_comissao_id %}selected{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>

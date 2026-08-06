@@ -248,10 +248,40 @@
             <p class="text-sm text-base-content/80 mt-1">Sub-cards afundados dentro de um painel (stats, metadados).</p>
           </div>
         </div>
+        <div class="grid sm:grid-cols-2 gap-5">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.glass-panel · blur 10px (sobre o mapa)</p>
+            <div class="relative h-40 rounded-2xl overflow-hidden border border-white/45">
+              <div class="absolute inset-0 flex">
+                <div class="flex-1 bg-agua-500"></div>
+                <div class="flex-1 bg-sakura-500"></div>
+                <div class="flex-1 bg-madeira-600"></div>
+              </div>
+              <div class="glass-panel absolute inset-6 flex items-center justify-center px-4 text-center">
+                <p class="text-sm font-bold text-madeira-700">Sobre cor forte, o fino perde leitura</p>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.glass-panel-thick · blur 20px (sobre interface)</p>
+            <div class="relative h-40 rounded-2xl overflow-hidden border border-white/45">
+              <div class="absolute inset-0 flex">
+                <div class="flex-1 bg-agua-500"></div>
+                <div class="flex-1 bg-sakura-500"></div>
+                <div class="flex-1 bg-madeira-600"></div>
+              </div>
+              <div class="glass-panel-thick absolute inset-6 flex items-center justify-center px-4 text-center">
+                <p class="text-sm font-bold text-madeira-700">O espesso devolve a tinta escura sobre gelo claro</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card-well p-4">
           <p class="text-overline mb-2">Regras do material</p>
           <ul class="text-sm text-base-content/80 flex flex-col gap-1 list-disc list-inside">
             <li>Blur do gelo: <span class="text-code">10px</span> (gaveta densa: 12px). Blur fraco não separa figura do fundo.</li>
+            <li><strong>Duas espessuras</strong> (SPEC <span class="text-code">user_admin/011</span>): fino sobre o mapa, <strong>espesso sobre interface</strong> — <span class="text-code">.glass-blur-thick .glass-bg-thick .glass-panel-thick</span> (blur 20px, gelo mais leitoso, sombra mais funda). Mesma receita em outro grau, não material novo.</li>
             <li>Sombra em duas camadas: azul-fria <span class="text-code">rgba(7,58,84,.25)</span> dá a separação; ciana <span class="text-code">rgba(72,202,228,.25)</span> dá a vida.</li>
             <li>Aresta superior iluminada via <span class="text-code">inset 0 1px 0 white/80</span> — o brilho de gelo na quina.</li>
             <li>Foco de tela: <span class="text-code">.cinematic-blur-layer</span> (desfoque), jamais overlay preto.</li>
@@ -332,6 +362,7 @@
             </select>
             <input type="file" class="file-input file-input-glass" aria-label="Arquivo" />
           </div>
+          <p class="form-field-hint mt-2">Este select é o <strong>átomo</strong> (a pele do controle) e abre a lista do sistema operacional. Em formulário, use a molécula <span class="text-code">.select-onsen</span> da seção 3: mesma pele no gatilho, lista dentro do design system.</p>
         </div>
 
         <div>
@@ -603,6 +634,55 @@
         </div>
       </div>
 
+      <!-- Campo de seleção de vidro (SPEC user_admin/011) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Campo de seleção de vidro (.select-onsen)</p>
+        <p class="text-sm text-base-content/70">
+          A lista que o campo abre era desenhada pelo sistema operacional — imune a qualquer token. Aqui ela é gelo
+          espesso: o <span class="text-code">&lt;select&gt;</span> do servidor <strong>continua sendo o campo</strong>
+          (valor, envio e <span class="text-code">change</span> nativo) e o utilitário
+          <span class="text-code">static/src/js/ui/select_onsen.js</span> monta a casca — pele, geometria e teclado.
+          Opt-in por <span class="text-code">data-select-onsen</span>. A lista abre como
+          <span class="text-code">popover</span>, na top layer: nenhum <span class="text-code">overflow</span> a corta e
+          nenhum contexto de empilhamento a soterra. Filtro por texto a partir de seis opções.
+        </p>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="card-well p-5 flex flex-col gap-3">
+            <span class="text-overline">Catálogo grande · com filtro</span>
+            <select class="select select-glass" data-select-onsen>
+              <option>DIMAP-1 · Divisão de Avaliação Imobiliária</option>
+              <option selected>DIMAP-2 · Divisão de Cadastro</option>
+              <option>DIMAP-3 · Divisão de Geoprocessamento</option>
+              <option>SUREM · Subsecretaria da Receita Municipal</option>
+              <option>SF · Secretaria Municipal da Fazenda</option>
+              <option>DEPTRIB · Departamento de Tributação e Julgamento</option>
+              <option>ASSJUR · Assessoria Jurídica</option>
+            </select>
+            <span class="form-field-hint">Setas andam com o realce (dão a volta nas pontas), Home/End vão às pontas, Enter escolhe o realçado, Esc e clique fora fecham.</span>
+          </div>
+          <div class="card-well p-5 flex flex-col gap-3">
+            <span class="text-overline">Catálogo pequeno · sem filtro</span>
+            <select class="select select-glass" data-select-onsen>
+              <option value="">— sem cargo em comissão —</option>
+              <option>CDA-II · Diretor de Divisão</option>
+              <option>CDA-I · Assessor I</option>
+            </select>
+            <span class="form-field-hint">Com poucas opções o campo de filtro não aparece: seria ruído.</span>
+          </div>
+        </div>
+        <div class="card-well p-4 flex flex-col gap-2">
+          <p class="text-overline">Os quatro estados do item (.select-onsen-option)</p>
+          <div class="glass-panel-thick p-2 flex flex-col gap-1">
+            <button type="button" class="select-onsen-option" tabindex="-1">DIMAP-1 · Divisão de Avaliação Imobiliária <span class="ml-auto text-[10px] uppercase tracking-wider text-base-content/45">repouso</span></button>
+            <button type="button" class="select-onsen-option" tabindex="-1" aria-selected="true">DIMAP-2 · Divisão de Cadastro <span class="ml-auto text-[10px] uppercase tracking-wider text-base-content/45">escolhido</span></button>
+            <button type="button" class="select-onsen-option" tabindex="-1" data-ativo="true">DIMAP-3 · Divisão de Geoprocessamento <span class="ml-auto text-[10px] uppercase tracking-wider text-rocha-950/50">cursor</span></button>
+            <button type="button" class="select-onsen-option" tabindex="-1" aria-selected="true" data-ativo="true">SUREM · Subsecretaria da Receita Municipal <span class="ml-auto text-[10px] uppercase tracking-wider text-rocha-950/50">cursor + escolhido</span></button>
+            <p class="select-onsen-vazio">Nada encontrado. (estado vazio após o filtro)</p>
+          </div>
+          <p class="form-field-hint">A escolha atual é marca ✓ e tinta de água, permanente; o realce do cursor é <span class="text-code">[data-ativo]</span>, um só, movido pelo mouse E pelas setas. Branco não serve de realce sobre gelo espesso.</p>
+        </div>
+      </div>
+
       <!-- Imagem de perfil em versão grande -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Imagem de perfil grande (à esquerda do nome)</p>
@@ -847,23 +927,29 @@
             <div class="grid sm:grid-cols-2 gap-4">
               <label class="form-field">
                 <span class="text-overline">Unidade</span>
-                <select class="select select-glass">
-                  <option>DIMAP-1 · Divisão de Avaliação</option>
-                  <option>DIMAP-2 · Divisão de Cadastro</option>
+                <select class="select select-glass" data-select-onsen>
+                  <option>DIMAP-1 · Divisão de Avaliação Imobiliária</option>
+                  <option selected>DIMAP-2 · Divisão de Cadastro</option>
+                  <option>DIMAP-3 · Divisão de Geoprocessamento</option>
+                  <option>SUREM · Subsecretaria da Receita Municipal</option>
+                  <option>SF · Secretaria Municipal da Fazenda</option>
+                  <option>DEPTRIB · Departamento de Tributação e Julgamento</option>
                 </select>
               </label>
               <label class="form-field">
                 <span class="text-overline">Cargo base</span>
-                <select class="select select-glass">
-                  <option>Analista de Ordenamento Territorial</option>
+                <select class="select select-glass" data-select-onsen>
+                  <option selected>Analista de Ordenamento Territorial</option>
                   <option>Assistente de Gestão de Políticas Públicas</option>
+                  <option>Auditor Fiscal</option>
                 </select>
               </label>
               <label class="form-field sm:col-span-2">
                 <span class="text-overline">Cargo em comissão</span>
-                <select class="select select-glass">
-                  <option>— sem cargo em comissão —</option>
+                <select class="select select-glass" data-select-onsen>
+                  <option value="" selected>— sem cargo em comissão —</option>
                   <option>CDA-II · Diretor de Divisão</option>
+                  <option>CDA-I · Assessor I</option>
                 </select>
                 <span class="form-field-hint">Opcional. A chefia é o que abre as ações privativas da unidade.</span>
               </label>
@@ -913,5 +999,8 @@
       maxZoom: 20
     }).addTo(map);
   </script>
+
+  <!-- O utilitário de UI do projeto, tal e qual (exige o Live Server na raiz, como o tema). -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
 </body>
 </html>
