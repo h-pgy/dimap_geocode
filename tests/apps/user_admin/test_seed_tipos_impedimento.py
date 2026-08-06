@@ -14,7 +14,7 @@ from django.core.exceptions import ValidationError
 import pytest
 
 from apps.user_admin.models import TipoImpedimento
-from apps.user_admin.seed_tipos_impedimento import carregar_seed_tipos_impedimento
+from apps.user_admin.seeds import carregar_seed_tipos_impedimento
 from services.utils.io import subpasta_de_data, write_json_to_folder
 
 banco = pytest.mark.banco

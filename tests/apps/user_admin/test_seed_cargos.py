@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError
 import pytest
 
 from apps.user_admin.models import CargoBase, CargoComissao
-from apps.user_admin.seed_cargos import carregar_seed_cargos
+from apps.user_admin.seeds import carregar_seed_cargos
 from services.utils.io import subpasta_de_data, write_json_to_folder
 
 banco = pytest.mark.banco

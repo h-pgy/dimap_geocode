@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.user_admin.seed_tipos_impedimento import carregar_seed_tipos_impedimento
+from apps.user_admin.seeds import carregar_seed_tipos_impedimento
 
 
 class Command(BaseCommand):

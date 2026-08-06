@@ -14,7 +14,7 @@ from django.core.exceptions import ValidationError
 import pytest
 
 from apps.user_admin.models import CorUnidade, TipoUnidade, Unidade
-from apps.user_admin.seed_unidades import carregar_seed_unidades
+from apps.user_admin.seeds import carregar_seed_unidades
 from services.utils.io import subpasta_de_data, write_json_to_folder
 
 banco = pytest.mark.banco
