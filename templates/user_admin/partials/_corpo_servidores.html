@@ -1,0 +1,40 @@
+{# Corpo da tabela de servidores (SPEC user_admin/013) — ÚNICO alvo do swap do HTMX: trocar o    #}
+{# cabeçalho junto destruiria, a cada tecla, o campo em que se está digitando.                    #}
+<tbody id="corpo-servidores">
+  {% for linha in linhas %}
+    <tr>
+      <td class="font-medium text-madeira-700">
+        <a href="{% url 'user_admin:editar_perfil' linha.pk %}" class="hover:text-agua-700 transition-colors">{{ linha.nome }}</a>
+      </td>
+      <td><span class="text-code">{{ linha.rf }}</span></td>
+      <td>
+        {# O hex chega resolvido da borda do app: classe montada no template o Tailwind não vê. #}
+        <span class="inline-flex items-center gap-2">
+          <span class="dot-unidade" style="--cor-unidade: {{ linha.cor_unidade }}"></span>
+          <span class="text-code">{{ linha.unidade }}</span>
+        </span>
+      </td>
+      <td class="text-base-content/80">{{ linha.cargo }}</td>
+      <td class="text-base-content/60">{{ linha.comissao }}</td>
+      <td>
+        {% if linha.impedido %}
+          <span class="badge badge-warning badge-soft badge-sm">Impedido</span>
+        {% else %}
+          <span class="badge badge-success badge-soft badge-sm">Ativo</span>
+        {% endif %}
+      </td>
+      <td class="text-right">
+        <a href="{% url 'user_admin:editar_perfil' linha.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar servidor">
+          <span class="etched icon-etched">✎</span>
+        </a>
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="7" class="table-onsen-vazio">
+        <span class="etched text-3xl block mb-2">⌕</span>
+        Nenhum servidor corresponde aos filtros.
+      </td>
+    </tr>
+  {% endfor %}
+</tbody>

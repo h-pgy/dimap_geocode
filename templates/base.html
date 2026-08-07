@@ -45,6 +45,9 @@
   <body class="h-screen w-screen overflow-hidden bg-base-100 text-base-content font-sans"
         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
+    {# Ativo do token .etched: sem estes defs no documento, filter: url(#etched-onsen) não desenha. #}
+    {% include "partials/_filtros_gravacao.html" %}
+
     {# Marca — chip de vidro flutuante. A navbar opaca de topo não existe mais: nada cobre o mapa. #}
     {# Abaixo de lg vira monograma w-12 h-12 (SPEC design/005): ponta esquerda da navbar compacta  #}
     {# quando a busca recolhe para o topo em tela estreita.                                        #}

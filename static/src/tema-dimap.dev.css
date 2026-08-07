@@ -137,6 +137,37 @@ html[data-theme="dimap"] {
   .glass-blur-thick { @apply backdrop-blur-[20px]; }
   .glass-bg-thick   { @apply bg-gradient-to-br from-white/85 via-white/75 to-white/65; }
 
+  /* Gravação no gelo (SPEC user_admin/013): o registro oposto ao .icon-glow — onde ele acende, este
+     escava. O relevo vem de filtro SVG porque box-shadow: inset só existe em caixa retangular e aqui
+     a sombra precisa seguir a silhueta do próprio glifo; os dois filter estão em
+     templates/partials/_filtros_gravacao.html, incluídos no base.html — sem eles a classe não
+     desenha nada. A tinta é quase transparente de propósito: quem desenha a forma é a luz, e por
+     isso a gravação NUNCA carrega informação, só afordância. Só vale sobre vidro claro. */
+  .etched {
+    filter: url(#etched-onsen);
+    color: rgba(13, 27, 42, 0.14);
+    @apply transition-all duration-300;
+  }
+  /* Os deslocamentos do filtro são px absolutos e não escalam com o font-size: acima de ~32px o
+     sulco de 1,4px vira um fio. São as duas únicas medidas. */
+  .etched-lg {
+    filter: url(#etched-onsen-lg);
+  }
+  /* O sulco enche de água quando o que ele marca fica ativo — o mesmo par repouso/entintado do
+     resto do sistema. */
+  .etched-inked {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .etched-deeper {
+    color: rgba(13, 27, 42, 0.3);
+  }
+  /* Gravação que NOMEIA: a tinta sobe até a legibilidade normal, e o relevo deixa de ser o único
+     portador da forma. */
+  .etched-rotulo {
+    color: rgba(13, 27, 42, 0.62);
+  }
+
   /* ==================== MATERIAIS COMPOSTOS ==================== */
   .glass-panel {
     @apply rounded-2xl backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
@@ -229,6 +260,48 @@ html[data-theme="dimap"] {
     background-color: var(--tinta);
   }
 
+  /* Seta de ordenação gravada (SPEC user_admin/013): alvo PRÓPRIO à direita da célula — dentro do
+     rótulo do filtro, clicar para ordenar afundaria a coluna. 15px porque abaixo de ~14px o
+     gradiente interno não tem pixels para graduar e a gravação parece chapada. */
+  .sort-etched {
+    @apply shrink-0 w-6 h-6 mt-0.5 flex items-center justify-center;
+    @apply text-[15px] leading-none cursor-pointer;
+  }
+  .sort-etched:hover { color: rgba(13, 27, 42, 0.3); }
+  /* Ordenando: a depressão enche. A semântica de verdade é o aria-sort do th — o relevo é
+     afordância, e afordância não carrega informação sozinha. */
+  .th-onsen[aria-sort] .sort-etched {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .th-onsen[aria-sort="descending"] .sort-etched { @apply rotate-180; }
+
+  /* Botão gravado: a mesma gravação em corpo maior (o "limpar filtros"). */
+  .btn-etched {
+    @apply inline-flex items-center gap-2 px-2 py-1 cursor-pointer;
+    @apply text-[15px] font-bold uppercase tracking-[0.12em];
+  }
+  .btn-etched:hover {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* Ícone gravado dentro de um botão de vidro: quem carrega a afordância é o botão, e o glifo só
+     diz qual gesto é — exatamente o registro do .etched. */
+  .icon-etched { @apply text-[15px] leading-none; }
+  .btn:hover .icon-etched {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* Ponto da unidade: o .paint-well em escala de marca. O hex chega em --cor-unidade, resolvido na
+     borda do app — classe montada no template o Tailwind não enxerga no @source. */
+  .dot-unidade {
+    @apply w-2.5 h-2.5 shrink-0 rounded-full border border-white/70;
+    @apply shadow-[inset_0_1px_2px_rgba(7,58,84,0.45),0_1px_0_rgba(255,255,255,0.6)];
+    background-color: var(--cor-unidade);
+  }
+
   .icon-glow     { @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)]; }
   .text-overline { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
   .text-code     { @apply font-mono text-agua-700; }
@@ -306,6 +379,185 @@ html[data-theme="dimap"] {
   .palette-field:has(input[value="madeira-700"]:checked) .paint-well-atual { background-color: #5e412f; }
   .palette-field:has(input[value="sakura-600"]:checked)  .paint-well-atual { background-color: #bc3a67; }
   .palette-field:has(input[value="sakura-700"]:checked)  .paint-well-atual { background-color: #97294f; }
+
+  /* ---------- Tabela de vidro (SPEC user_admin/013) ----------
+     A inversão dos materiais que já existem: o corpo é poço rebaixado (.card-well, composto no
+     HTML) e o cabeçalho é placa de gelo sobre ele. A caixa rola por conta própria — a viewport
+     nunca rola na horizontal — e o cabeçalho gruda nela.
+     A folga do poço é padding do .card-well, FORA do rolador: com padding aqui, o recorte do
+     overflow acontece na padding box e o cabeçalho grudento pararia a exata medida dele acima da
+     linha de corte, deixando aparecer uma faixa de linha nítida. */
+  .table-onsen-wrap {
+    @apply overflow-auto overscroll-contain max-h-[32rem] rounded-2xl;
+    /* A coluna da barra gravada: como é padding do rolador, a bandeja também para aqui. */
+    padding-right: 1.125rem;
+    scrollbar-width: none;
+  }
+  .table-onsen-wrap::-webkit-scrollbar { display: none; }
+  /* Âncora da barra — ela é irmã do rolador, não filha, senão rolaria com o conteúdo. */
+  .table-onsen-poco { @apply relative; }
+
+  /* Barra de rolagem gravada: o trilho é o SULCO e o polegar é a ÁGUA que o enche — o par
+     repouso/entintado do sistema aplicado a um controle. Serve a QUALQUER .card-well rolável.
+     É elemento, não ::-webkit-scrollbar: o pseudo não existe no Firefox, no Chrome troca a barra
+     flutuante por uma clássica sempre visível, e em ambos ocupa a altura inteira do rolador — ela
+     correria ao lado da bandeja. Par com static/src/js/ui/scroll_etched.js. */
+  .scroll-etched {
+    @apply absolute right-2 w-2.5 rounded-full pointer-events-none;
+    /* Começa onde a bandeja termina; quem a mede é o JS (altura de elemento não se lê em CSS). */
+    top: calc(0.5rem + var(--altura-cabecalho, 0px));
+    bottom: 0.5rem;
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 2px 5px rgba(7, 58, 84, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+    @apply transition-opacity duration-300;
+  }
+  /* Nada a rolar, nada a mostrar: sulco vazio é controle morto desenhado na tela. */
+  .scroll-etched-ociosa { @apply opacity-0; }
+  /* A borda transparente com background-clip afina o polegar DENTRO do sulco, em vez de desenhar
+     uma segunda barra por cima dele. Parado, ele é só gravação — a tinta de repouso do .etched. */
+  .scroll-etched-thumb {
+    @apply absolute inset-x-0 top-0 rounded-full cursor-grab pointer-events-auto;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    background-color: rgba(13, 27, 42, 0.14);
+    /* Longa só na volta: a água escorre do sulco, não é apagada. */
+    transition: background-color 700ms ease, box-shadow 700ms ease;
+  }
+  /* Entintado enquanto rola; quem conta o tempo é o JS, porque "parou de rolar" o CSS não enxerga. */
+  .scroll-etched-ativa .scroll-etched-thumb {
+    background-color: rgba(0, 150, 199, 0.5);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    transition-duration: 150ms;
+  }
+  .scroll-etched-thumb:hover,
+  .scroll-etched-thumb:active {
+    background-color: rgba(0, 119, 182, 0.75);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(72, 202, 228, 0.7);
+    transition-duration: 150ms;
+  }
+  .scroll-etched-thumb:active { @apply cursor-grabbing; }
+
+  /* Largura automática de propósito: as colunas se negociam com o conteúdo. */
+  .table-onsen {
+    @apply w-full text-sm;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  /* A bandeja é GELO, não papel: branco em cima, água pálida embaixo. É esse tom frio que faz a
+     peça ler como coisa POSTA sobre a superfície, e a coluna gravada ler como a superfície.
+     Duas formas do mesmo material: caixa inteira fora da tabela, segmentos dentro dela — não
+     existe elemento que envolva um <tr>, e como todo segmento repete o mesmo gradiente vertical na
+     mesma altura, as emendas somem. */
+  .th-onsen-bandeja,
+  .table-onsen thead th::before {
+    @apply backdrop-blur-[56px] bg-gradient-to-b from-white/74 to-agua-100/55 border-y border-white/55;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9)];
+    background-color: transparent;
+  }
+  .th-onsen-bandeja { @apply flex items-stretch gap-5 p-2.5 rounded-2xl border-x; }
+  /* O material vai num ::before que forra a célula, e não no próprio th: quem tem backdrop-filter
+     vira backdrop root para os descendentes, e a faixa de dissolução (::after) enxergaria só o que
+     a bandeja pinta — nunca as linhas. Irmã dela, volta a ver a tabela inteira. */
+  .table-onsen thead th::before {
+    content: "";
+    @apply pointer-events-none absolute inset-0;
+  }
+  .table-onsen thead th:first-child::before { @apply rounded-l-2xl border-l; }
+  .table-onsen thead th:last-child::before { @apply rounded-r-2xl border-r; }
+  /* A folga de 10px dá à sombra da peça espaço para morrer DENTRO da própria célula: cada th é
+     contexto de empilhamento próprio e o fundo de um corta em linha reta a sombra do vizinho. */
+  .table-onsen thead th { @apply sticky top-0 z-20 p-2.5 align-top; }
+
+  /* A borda de baixo da bandeja, em uma faixa só: sombra projetada no poço E dissolução do
+     desfoque — sem ela a linha que emerge passa de 56px de blur a nitidez total num pixel.
+     Faixa por célula, não box-shadow na bandeja: sombra de caixa vaza para os lados e, como cada
+     th empilha por conta própria, desenharia uma emenda escura a cada coluna. */
+  .table-onsen thead th::after {
+    content: "";
+    @apply pointer-events-none absolute left-0 right-0 top-full h-9;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    /* Paradas intermediárias porque sombra é queda gaussiana, não linear. */
+    background: linear-gradient(
+      to bottom,
+      rgba(7, 58, 84, 0.2) 0%,
+      rgba(7, 58, 84, 0.11) 26%,
+      rgba(7, 58, 84, 0.04) 55%,
+      rgba(7, 58, 84, 0) 85%
+    );
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  }
+  /* Nas pontas a faixa não pode terminar em esquadro sob o canto redondo da bandeja: a segunda
+     máscara a dissolve no comprimento do raio. intersect porque as duas valem ao mesmo tempo. */
+  .table-onsen thead th:first-child::after {
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%),
+                linear-gradient(to right, transparent 0, black 1.75rem);
+    mask-composite: intersect;
+  }
+  .table-onsen thead th:last-child::after {
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%),
+                linear-gradient(to left, transparent 0, black 1.75rem);
+    mask-composite: intersect;
+  }
+
+  /* Separador em LUZ, não em tinta: sobre gelo quem divide é a aresta branca. Sem zebra — alternar
+     opacidade sobre translúcido deixaria o mapa aparecer em faixas. */
+  .table-onsen tbody td {
+    @apply px-4 py-3 align-middle border-b border-white/45 transition-colors duration-200;
+  }
+  .table-onsen tbody tr:last-child td { @apply border-b-0; }
+  .table-onsen tbody tr:hover td { @apply bg-white/55; }
+  .table-onsen-vazio { @apply px-4 py-10 text-center text-sm text-base-content/60; }
+
+  /* Célula de cabeçalho: peça de gelo assentada na bandeja. As peças têm a mesma altura por
+     CONSTRUÇÃO — rótulo em uma linha e campo abrindo em todas ao mesmo tempo —, e é assim que o
+     cabeçalho cresce como uma peça só. Declarar altura aqui é o que travaria esse crescimento. */
+  .th-onsen {
+    @apply relative flex items-start gap-1.5 px-3 py-2 rounded-xl text-left whitespace-nowrap transition-all duration-300;
+    /* Em repouso a peça pode ser translúcida: quem esconde as linhas que rolam por baixo é a
+       BANDEJA, não ela. */
+    @apply backdrop-blur-[20px] bg-gradient-to-br from-white/68 via-white/56 to-white/46 border border-white/70;
+    /* Espalhamento negativo nas sombras de fora: recolhe o alcance lateral para dentro da folga da
+       célula, senão a sombra vaza para a coluna vizinha e morre cortada na emenda. */
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_-8px_rgba(7,58,84,0.32),0_0_14px_-6px_rgba(72,202,228,0.3)];
+  }
+  /* AFUNDADO = a coluna TEM FILTRO — não "alguém clicou". Estado é valor, não memória: o :has lê o
+     campo e o CSS desenha, sem estado de UI em JavaScript. O gelo segue opaco (só a direção da luz
+     inverte), senão as linhas apareceriam através do cabeçalho grudento. */
+  .th-onsen:focus-within,
+  .th-onsen:has(.th-onsen-input:not(:placeholder-shown)) {
+    @apply bg-none bg-agua-100/45 border-white/45 translate-y-px;
+    @apply shadow-[inset_0_3px_8px_rgba(7,58,84,0.28)];
+  }
+  /* O rótulo NÃO some quando a coluna afunda: o placeholder desaparece ao digitar e a coluna
+     ficaria anônima justamente enquanto se filtra. */
+  .th-onsen-campo { @apply flex-1 min-w-0 flex flex-col gap-0.5 cursor-pointer; }
+  /* O campo é nu: a moldura dele é a própria célula afundada. Em repouso ele existe no layout
+     (altura zero, invisível) para continuar focável — display:none tiraria o alvo do label. */
+  .th-onsen-input {
+    @apply w-full h-0 opacity-0 p-0 bg-transparent border-0 outline-none;
+    @apply text-sm font-normal normal-case tracking-normal text-base-content;
+    @apply placeholder:text-rocha-700/50 transition-all duration-300;
+  }
+  /* A RÉGUA ABRE INTEIRA: o campo de uma coluna abre o de todas as peças da mesma bandeja — é o
+     que mantém as alturas iguais e faz a tabela refluir uma vez, não a cada coluna. Afundar
+     continua sendo só de quem tem filtro: o campo é layout, o relevo é estado. */
+  :is(.table-onsen thead tr, .th-onsen-bandeja):has(.th-onsen-input:focus) .th-onsen-input,
+  :is(.table-onsen thead tr, .th-onsen-bandeja):has(.th-onsen-input:not(:placeholder-shown)) .th-onsen-input {
+    @apply h-6 opacity-100;
+  }
+  /* Coluna que não responde (situação, ações): NÃO HÁ PEÇA — o rótulo é gravado direto na bandeja.
+     A peça passa a significar uma coisa só, "esta coluna responde", e a ausência dela é a mensagem,
+     sem cinza de desabilitado nem cursor proibido. A geometria continua a mesma; sai só o material.
+     O -webkit-backdrop-filter vai junto porque o utility escreve as duas propriedades. */
+  .th-onsen-gravado {
+    background-image: none;
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 
   .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }
   .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.15)]; }

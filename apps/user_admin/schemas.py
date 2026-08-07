@@ -1,11 +1,18 @@
 """
-DTOs das páginas administrativas (SPEC user_admin/012). A view constrói o DTO e deixa o
+DTOs das páginas administrativas (SPEC user_admin/012 e 013). A view constrói o DTO e deixa o
 PydanticValidationMiddleware interceptar o ValidationError — nunca try/except na view (§7.2).
 """
 
+from collections.abc import Mapping
 from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator
+
+from services.domain.servidores_listagem import (
+    ColunaServidor,
+    ConsultaServidores,
+    FiltroColuna,
+)
 
 
 def _vazio_para_nulo(valor: object) -> object:
@@ -15,6 +22,28 @@ def _vazio_para_nulo(valor: object) -> object:
 
 PaiOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
 
+PARAMETRO_ORDENAR_POR = "ordenar_por"
+PARAMETRO_DESCENDENTE = "descendente"
+
 
 class SelecaoUnidadePai(BaseModel):
     pai: PaiOpcional = None
+
+
+def consulta_de_servidores(parametros: Mapping[str, str]) -> ConsultaServidores:
+    """Traduz a query string da listagem no DTO do domínio: um filtro por coluna que respondeu."""
+    filtros = [
+        FiltroColuna(coluna=coluna, termo=parametros[coluna])
+        for coluna in ColunaServidor
+        if parametros.get(coluna, "").strip()
+    ]
+    # model_validate porque os valores chegam como texto: coluna inválida vira ValidationError e o
+    # PydanticValidationMiddleware responde por ela.
+    return ConsultaServidores.model_validate(
+        {
+            "filtros": filtros,
+            # Cabeçalho em repouso manda campo vazio; para o domínio, é ausência de ordenação.
+            "ordenar_por": parametros.get(PARAMETRO_ORDENAR_POR) or None,
+            "descendente": parametros.get(PARAMETRO_DESCENDENTE) or False,
+        }
+    )

@@ -1,0 +1,51 @@
+{# Filtros da gravação no gelo (SPEC user_admin/013) — o ativo não-CSS do token .etched.          #}
+{# box-shadow: inset só existe em CAIXA; para o relevo seguir a silhueta do próprio glifo, a       #}
+{# sombra interna vem de filtro SVG, aplicado a elemento HTML por filter: url(#…) — a seta continua #}
+{# sendo um caractere, não um desenho. Duas passadas sobre o alfa da forma: desloca para baixo e   #}
+{# borra (a banda de cima recebe tinta escura — a sombra que entra pela borda superior, como no    #}
+{# .card-well) e desloca para cima (a banda de baixo recebe branco — o lábio de luz do poço).      #}
+{# Os deslocamentos são px absolutos e não escalam com o font-size: daí as duas medidas.           #}
+{# Sem estes defs no documento a classe .etched existe e não desenha nada.                          #}
+<svg width="0" height="0" class="absolute" aria-hidden="true">
+  <defs>
+    <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+      <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+      <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+      <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+      <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+      <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+      <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+      <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+      <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+      <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="sombraInterna"/>
+        <feMergeNode in="luzInterna"/>
+      </feMerge>
+    </filter>
+
+    <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+      <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+      <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+      <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+      <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+      <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+      <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+      <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+      <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+      <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="sombraInterna"/>
+        <feMergeNode in="luzInterna"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

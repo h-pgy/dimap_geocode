@@ -39,6 +39,13 @@ Valores e materiais compartilhados, definidos **uma única vez** no CSS de entra
 - **Materiais de vidro**: classes `@apply` que agrupam utilities — `.glass-blur`, `.glass-bg`,
   `.glass-bg-deep`, `.glass-edge`, `.glass-shadow`, `.glass-glow` — e os **materiais compostos**
   `.glass-panel`, `.glass-panel-deep`, `.glass-drawer-panel`, `.card-well` (§5).
+- **Gravação no gelo** (`.etched`, `.etched-lg`, `.etched-inked`, `.etched-deeper`,
+  `.etched-rotulo`, SPEC user_admin/013): o registro **oposto** ao `.icon-glow` — onde ele acende,
+  este **escava**. O relevo segue a silhueta da própria forma, via **filtro SVG**
+  (`templates/partials/_filtros_gravacao.html`, incluído no `base.html`) — sem os `defs` no
+  documento a classe existe e não desenha nada. Três restrições andam com ele: **nunca carrega
+  informação**, só afordância; **só vale sobre vidro claro**; e quando o sulco precisa *nomear*
+  algo, a tinta sobe (`.etched-rotulo`). Duas medidas só — acima de ~32px, `.etched-lg`.
 - **Coreografia**: `.transition-glass`, `.glass-hide-up`, `.cinematic-blur-layer` (§7).
 
 Regras dos tokens:
@@ -69,6 +76,10 @@ O menor elemento com identidade própria: botão, input, badge, kbd, ícone, too
 | Badges de geometria | `.badge-ponto` `.badge-linha` `.badge-poligono` | tipo do resultado/camada |
 | Badges semânticos | `badge-{info,success,warning,error} badge-soft` | estado do sistema (daisyUI puro) |
 | Ícone com brilho | `.icon-glow` | `agua-600` + drop-shadow ciano |
+| Seta de ordenação | `.sort-etched` | a gravação com alvo próprio, à direita da célula; enche de água em `aria-sort` e gira 180° em `descending` |
+| Botão gravado | `.btn-etched` | a gravação em corpo de botão (o "limpar filtros"); enche de água no hover |
+| Ícone gravado em botão de vidro | `.icon-etched` | o glifo dentro de um `.btn-glass`, onde quem carrega a afordância é o botão |
+| Ponto da unidade | `.dot-unidade` | o `.paint-well` em escala de marca; o hex chega em `--cor-unidade` |
 | Overline | `.text-overline` | rótulo 11px caps `rocha-700` |
 | Código | `.text-code` | Roboto Mono `agua-700` (SQL, codlog) |
 
@@ -93,6 +104,28 @@ basta. Filtro por texto a partir de seis opções.
 com o controle e o `.btn-criar-inline` na mesma linha — o controle estica, o botão não. O gatilho é
 um `<label for>` do modal, e o modal fica **fora** do formulário (formulário aninhado é HTML
 inválido).
+
+**Tabela de vidro** (`.table-onsen`, `.table-onsen-wrap`, `.table-onsen-poco`, SPEC
+user_admin/013): a **inversão dos materiais** — corpo em poço rebaixado (`.card-well`) e cabeçalho
+em placa de gelo sobre ele. A caixa rola por conta própria (a viewport nunca rola na horizontal) e o
+cabeçalho é grudento; a folga do poço é padding do `.card-well`, **fora** do rolador. Linhas
+separadas **em luz**, sem zebra, e hover que **acende** o gelo.
+
+**Bandeja e célula de cabeçalho** (`.th-onsen-bandeja`, `.th-onsen`, `.th-onsen-campo`,
+`.th-onsen-input`, `.th-onsen-gravado`): o cabeçalho é **uma superfície** e cada coluna é uma peça
+assentada sobre ela — clicar a faz **afundar** e virar campo, porque campo aqui é sempre coisa
+rebaixada. **Afundado = a coluna tem filtro**, não "alguém clicou": o CSS lê o valor com
+`:has(input:not(:placeholder-shown))`, sem estado de UI em JavaScript. A régua **abre inteira** (o
+campo de uma coluna abre o de todas). Coluna que não responde **não tem peça**: o rótulo é gravado
+direto na bandeja — a ausência da peça é a mensagem, sem cinza de desabilitado.
+
+**Barra de rolagem gravada** (`.scroll-etched`, `.scroll-etched-thumb`, `.scroll-etched-ativa`,
+`.scroll-etched-ociosa`): trilho sulcado e polegar de água, para **qualquer** `.card-well` rolável.
+Opt-in por `data-scroll-etched` no poço, com `[data-rolador]`, `[data-barra]`, `[data-polegar]` e
+`[data-cabecalho]` (opcional) dentro dele; par com `static/src/js/ui/scroll_etched.js` — carregue o
+módulo na página, marcar o markup não basta. É **elemento**, não `::-webkit-scrollbar`: o pseudo não
+existe no Firefox, no Chrome troca a barra flutuante por uma clássica sempre visível, e em ambos
+ocupa a altura inteira do rolador (correria ao lado da bandeja). Rolar continua sendo do navegador.
 
 ### 2.4 Organismos (seções de domínio)
 Seções autônomas da interface: o painel de busca completo, a gaveta de detalhes do imóvel, o widget
@@ -264,11 +297,13 @@ Cuidados que já quebraram build/render:
    renderizados sobre o mapa real. **É o contrato visual**; componente novo é registrado aqui.
 2. **Aplicação mockada:** `examples/mock_ui.html` — o design system aplicado na UX completa
    (barra única, gaveta, coreografia de foco).
-3. **CSS dos tokens:** `references/design_system.css` — o bloco `@layer components` pronto para o
-   CSS de entrada da produção.
+3. **CSS dos tokens:** `static/src/tema-dimap.dev.css` — a **fonte única** (§8). O espelho
+   `references/design_system.css` está **aposentado** pela SPEC design/004: não portar peça nova
+   para lá.
 4. **Paleta:** `references/paleta.json` — escalas e papéis em JSON (fonte da verdade dos valores).
 5. **Referências visuais:** `references/onsen_inverno_moodboard.jpg`,
    `references/referencia_original_ui_1.jpg`, `references/referencia_original_ui_2.jpg` — a água
    límpida ciano, a luz fria e o nível de polimento esperado do vidro;
    `references/referencia_original_ui_3.jpg` — os macacos no onsen, origem do rosa da escala
-   **sakura** (§3.1).
+   **sakura** (§3.1); `references/referencia_etched_glass.jpg` — cristal gravado a ácido, onde o
+   traço tem gradação interna em vez de contorno: a leitura que o token `.etched` persegue (§2.1).

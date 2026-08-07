@@ -1,0 +1,56 @@
+{# Tabela de vidro (SPEC user_admin/013): corpo em poço rebaixado e cabeçalho em placa sobre ele. #}
+{# A folga é padding do poço, FORA do rolador — dentro dele o cabeçalho grudento não alcançaria a #}
+{# linha de corte e sobraria uma faixa de linha nítida acima da bandeja.                          #}
+<div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+  <div class="table-onsen-wrap" data-rolador>
+    {# Um só lugar declara o pedido: o evento input sobe das peças de coluna até a tabela, e a    #}
+    {# ordenação chega como evento próprio, disparado pelo tabela_onsen.js. Filtros e ordem       #}
+    {# viajam juntos (hx-include do cabeçalho) — um não pode apagar o outro.                      #}
+    <table id="tabela-servidores"
+           class="table table-onsen"
+           data-tabela-onsen
+           hx-get="{% url 'user_admin:corpo_servidores' %}"
+           hx-trigger="input delay:300ms, ordenacao"
+           hx-target="#corpo-servidores"
+           hx-swap="outerHTML"
+           hx-include="find thead">
+      <thead data-cabecalho>
+        <tr>
+          {% for coluna in colunas %}
+            <th>
+              {# Afundado = a coluna TEM filtro: o CSS lê o valor do campo, sem estado em JS. #}
+              <div class="th-onsen" data-coluna="{{ coluna.slug }}"{% if coluna.ordem %} aria-sort="{{ coluna.ordem }}"{% endif %}>
+                <label class="th-onsen-campo">
+                  <span class="text-overline">{{ coluna.rotulo }}</span>
+                  <input class="th-onsen-input" name="{{ coluna.slug }}" value="{{ coluna.termo }}" placeholder="filtrar…" autocomplete="off">
+                </label>
+                {# Alvo próprio: dentro do rótulo, clicar para ordenar afundaria a coluna. #}
+                <button type="button" class="sort-etched etched" aria-label="Ordenar por {{ coluna.rotulo }}">▲</button>
+              </div>
+              {% if forloop.first %}
+                {# Dentro de um <th>: fora de uma célula o parser expulsaria o campo da tabela. #}
+                <input type="hidden" name="ordenar_por" value="{{ ordenar_por }}" data-ordenar-por>
+                <input type="hidden" name="descendente" value="{{ descendente }}" data-descendente>
+              {% endif %}
+            </th>
+          {% endfor %}
+          {# Colunas que não respondem: sem peça, o rótulo é gravado direto na bandeja — a ausência #}
+          {# da peça é a mensagem, sem cinza de desabilitado nem cursor proibido.                   #}
+          <th class="w-28">
+            <div class="th-onsen th-onsen-gravado">
+              <span class="text-overline etched etched-rotulo">Situação</span>
+            </div>
+          </th>
+          <th class="w-16">
+            <div class="th-onsen th-onsen-gravado"></div>
+          </th>
+        </tr>
+      </thead>
+      {% include "user_admin/partials/_corpo_servidores.html" %}
+    </table>
+  </div>
+  {# Duplicata visual da rolagem nativa: para teclado e leitor de tela ela não existe. #}
+  <div class="scroll-etched" data-barra aria-hidden="true">
+    <div class="scroll-etched-thumb" data-polegar></div>
+  </div>
+</div>

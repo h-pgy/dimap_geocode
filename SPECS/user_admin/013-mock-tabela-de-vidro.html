@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/013 — Tabela de vidro (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server) —
+       aberto via file:// o fetch é bloqueado e o tema não carrega. -->
+  <script>
+    // Tema e tokens desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
+    // vêm do @theme do tema, e um bloco separado que as usa em @apply cai com "unknown utility".
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-013").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
+  </script>
+
+  <!-- TOKENS PROPOSTOS POR ESTA SPEC — ainda NÃO estão no tema-dimap.dev.css.
+       Guardados em script[type=text/css] (inerte) e concatenados ao tema pelo loader acima.
+       Ao implementar, estes blocos migram para lá tal e qual (fonte única, SPEC design/004). -->
+  <script type="text/css" id="tokens-spec-013">
+    @layer components {
+
+      /* ==================== TOKEN DE MATERIAL · GRAVAÇÃO NO GELO ====================
+         A contraparte do .icon-glow: onde ele ACENDE em água, este ESCAVA a superfície.
+         O efeito é da PRÓPRIA FORMA, não de uma caixa em volta dela: a sombra interna segue a
+         silhueta do glifo, via filtro SVG (defs no topo do body) — box-shadow: inset só existe em
+         caixa retangular.
+         A tinta do glifo é quase transparente de propósito: escavação não põe pigmento, só
+         escurece um respiro e deixa a superfície aparecer. Quem dá o relevo é a luz.
+         Só vale sobre vidro CLARO; em .glass-panel-deep a luz inverte e a escavação some.
+         Baixo contraste é da natureza da peça: NUNCA carrega informação, só afordância. */
+      .etched {
+        filter: url(#etched-onsen);
+        color: rgba(13, 27, 42, 0.14);
+        @apply transition-all duration-300;
+      }
+      /* Display (acima de ~32px): os deslocamentos do filtro são px absolutos e não escalam com o
+         font-size — no tamanho grande o sulco de 1,4px vira um fio e a forma volta a parecer chapada. */
+      .etched-lg {
+        filter: url(#etched-onsen-lg);
+      }
+      /* A escavação enche de água quando o que ela marca fica ativo — mesma gramática de estado do
+         resto do sistema (.select-onsen-option[aria-selected], realce da sugestão). O relevo
+         continua lá; o que muda é o que o preenche. */
+      .etched-inked {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      /* Hover aprofunda: mais tinta no sulco, mesma luz. Não é cor nova. */
+      .etched-deeper {
+        color: rgba(13, 27, 42, 0.3);
+      }
+      /* Gravação que NOMEIA. O pigmento do token é de decoração — quase nada, porque quem desenha a
+         forma é a luz. Quando o sulco carrega um rótulo, a tinta sobe até a legibilidade normal: o
+         relevo continua igual, o que ele deixa de ser é o único portador da forma. */
+      .etched-rotulo {
+        color: rgba(13, 27, 42, 0.62);
+      }
+
+      /* ==================== MOLÉCULA · O POÇO DA TABELA ====================
+         O corpo é poço rebaixado (.card-well, composto no HTML) e o cabeçalho é a bandeja sobre ele.
+         Aqui mora só o que é da rolagem: a caixa rola por conta própria — a viewport nunca rola
+         na horizontal — e o cabeçalho grudento se ancora nela.
+         A folga do poço fica FORA do rolador (é padding do .card-well no HTML), não dentro dele.
+         O recorte do overflow acontece na padding box e o cabeçalho grudento não pode sair da
+         própria tabela: com padding aqui, a bandeja parava a exata medida dele abaixo da linha de
+         corte, e a linha aparecia nítida nessa faixa antes de sumir de uma vez. Fora do rolador, a
+         bandeja encosta na linha de corte e continua respirando em relação à borda do poço.
+         O raio acompanha o do poço para o conteúdo não ser recortado em esquadro dentro dele. */
+      .table-onsen-wrap {
+        @apply overflow-auto overscroll-contain max-h-[32rem] rounded-2xl;
+        /* A coluna da barra: a largura dela mais o respiro. Como é padding do ROLADOR, a bandeja
+           grudenta também para aqui — a placa de gelo nunca encosta na água. */
+        padding-right: 1.125rem;
+        /* A barra nativa sai de cena inteira: quem desenha é .scroll-etched. */
+        scrollbar-width: none;
+      }
+      .table-onsen-wrap::-webkit-scrollbar { display: none; }
+      /* Âncora da barra — ela é irmã do rolador, não filha, senão rolaria junto com o conteúdo. */
+      .table-onsen-poco { @apply relative; }
+
+      /* ==================== MOLÉCULA · A BARRA DE ROLAGEM GRAVADA ====================
+         A mesma leitura de luz do .etched e do .card-well, agora em caixa: o trilho é o SULCO —
+         sombra entrando pela borda de cima, lábio de luz na de baixo — e o polegar é a ÁGUA que o
+         enche. É o par repouso/entintado que o sistema inteiro usa, aplicado ao controle.
+
+         É ELEMENTO, não ::-webkit-scrollbar, por três razões que o pseudo não resolve: ele só existe
+         no WebKit (no Firefox a peça simplesmente não aparecia); estilizá-lo troca a barra flutuante
+         do Chrome por uma clássica, presente mesmo parada; e a barra nativa ocupa a altura inteira
+         do rolador, então corria ao lado da bandeja. Elemento começa onde mandarmos.
+
+         O preço é JavaScript — e ele é o mínimo: medir a bandeja e mover o polegar (§ do mock).
+         A rolagem em si continua nativa: roda do mouse, teclado e toque não passam por aqui.
+         O relevo vem de inset box-shadow, a mesma receita do .card-well. */
+      .scroll-etched {
+        @apply absolute right-2 w-2.5 rounded-full pointer-events-none;
+        /* Começa onde a bandeja termina. Quem mede é o JS — a altura muda quando a régua abre. */
+        top: calc(0.5rem + var(--altura-cabecalho, 0px));
+        bottom: 0.5rem;
+        background: rgba(255, 255, 255, 0.16);
+        box-shadow: inset 0 2px 5px rgba(7, 58, 84, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+        @apply transition-opacity duration-300;
+      }
+      /* Nada a rolar, nada a mostrar — como a barra flutuante faria. O sulco vazio seria um controle
+         morto desenhado na tela. */
+      .scroll-etched-ociosa { @apply opacity-0; }
+      /* A borda transparente com background-clip é o que afina o polegar dentro do sulco: água
+         DENTRO da gravação, não uma segunda barra por cima dela.
+         Parada, a peça é só GRAVAÇÃO: a tinta de repouso do .etched, sem pigmento. É o mesmo par
+         repouso/entintado do token, agora no TEMPO — o que estava fora de uso não devia estar
+         acesso. */
+      .scroll-etched-thumb {
+        @apply absolute inset-x-0 top-0 rounded-full cursor-grab pointer-events-auto;
+        border: 2px solid transparent;
+        background-clip: content-box;
+        background-color: rgba(13, 27, 42, 0.14);
+        /* Longa só na volta: a água escorre do sulco, não é apagada. Acender é imediato (regra de
+           .scroll-etched-ativa abaixo), senão a barra chegaria atrasada ao gesto. */
+        transition: background-color 700ms ease, box-shadow 700ms ease;
+      }
+      /* Entintado enquanto rola. Quem conta o tempo é o JS: "parou de rolar" não é estado que o CSS
+         enxergue. */
+      .scroll-etched-ativa .scroll-etched-thumb {
+        background-color: rgba(0, 150, 199, 0.5);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        transition-duration: 150ms;
+      }
+      /* Hover e arrasto enchem mais o sulco e acendem, como todo estado ativo do sistema. */
+      .scroll-etched-thumb:hover,
+      .scroll-etched-thumb:active {
+        background-color: rgba(0, 119, 182, 0.75);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(72, 202, 228, 0.7);
+        transition-duration: 150ms;
+      }
+      .scroll-etched-thumb:active { @apply cursor-grabbing; }
+
+      /* Largura automática de propósito: as colunas se negociam com o conteúdo, que é o que mantém
+         a tabela legível em qualquer largura de tela. */
+      .table-onsen {
+        @apply w-full text-sm;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      /* ==================== MOLÉCULA · A BANDEJA DO CABEÇALHO ====================
+         O cabeçalho é UMA superfície de vidro; as peças de cada coluna são assentadas sobre ela e
+         têm todas a MESMA altura — a da bandeja.
+         A bandeja é pintada nos próprios <th>, porque não existe elemento que envolva um <tr>:
+         como todo segmento repete o mesmo gradiente VERTICAL na mesma altura, as emendas somem.
+         A célula NÃO declara altura: quem manda na altura da bandeja é a peça mais alta, e é assim
+         que o cabeçalho inteiro cresce quando o filtro abre. (Esticar o filho até a célula exigiria
+         altura definida nela — que é justamente o que travaria esse crescimento.) */
+      /* A bandeja é GELO, não papel: branco em cima, água pálida embaixo. Tinta, não transparência
+         — atrás dela vêm .glass-panel sobre .card-well sobre o mapa, uma pilha que já soma quase
+         branco, e sobre fundo branco baixar a opacidade não escurece nada. É esse tom frio que faz
+         a peça (branca de verdade) ler como coisa POSTA sobre a superfície, e a coluna gravada,
+         que não tem peça, ler como a superfície. */
+      .th-onsen-bandeja,
+      .table-onsen thead th::before {
+        @apply backdrop-blur-[56px] bg-gradient-to-b from-white/74 to-agua-100/55 border-y border-white/55;
+        @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9)];
+        background-color: transparent;
+      }
+      /* Mesmo material, duas formas: caixa inteira fora da tabela, segmentos dentro dela. */
+      .th-onsen-bandeja { @apply flex items-stretch gap-5 p-2.5 rounded-2xl border-x; }
+      /* Dentro da tabela o material vai num ::before que forra a célula, e NÃO no próprio th.
+         O motivo é de compositing, não de estilo: quem tem backdrop-filter vira backdrop root para
+         os próprios descendentes, e a faixa de dissolução (::after) enxergaria como fundo apenas o
+         que a bandeja pinta — nunca as linhas. Irmã da bandeja, ela volta a ver a tabela inteira. */
+      .table-onsen thead th::before {
+        content: "";
+        @apply pointer-events-none absolute inset-0;
+      }
+      .table-onsen thead th:first-child::before { @apply rounded-l-2xl border-l; }
+      .table-onsen thead th:last-child::before { @apply rounded-r-2xl border-r; }
+      /* A folga de 10px é o que dá à sombra da peça espaço para morrer DENTRO da própria célula
+         (ver .th-onsen): cada th é contexto de empilhamento próprio, pinta em ordem de DOM, e o
+         fundo de um corta em linha reta a sombra que o vizinho lançou sobre ele. */
+      .table-onsen thead th { @apply sticky top-0 z-20 p-2.5 align-top; }
+
+      /* A BORDA DE BAIXO DA BANDEJA, em uma faixa só: sombra projetada no poço E dissolução do
+         desfoque. Sem ela a linha que emerge passa de 56px de desfoque a nitidez total num pixel, e
+         o olho lê o degrau como um estalo.
+         A rampa é aproximada: a camada inteira está desfocada e o que cai é a OPACIDADE dela, não o
+         raio — rampa de raio pediria três camadas empilhadas, e há duas pseudo por célula.
+         Faixa por célula, e não box-shadow na bandeja: sombra de caixa vaza para os lados e, como
+         cada th é contexto de empilhamento próprio, a da célula seguinte cairia sobre a anterior e
+         desenharia uma emenda escura a cada coluna. */
+      .table-onsen thead th::after {
+        content: "";
+        @apply pointer-events-none absolute left-0 right-0 top-full h-9;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        /* Paradas intermediárias porque sombra é queda gaussiana, não linear: com dois pontos a
+           faixa desce em rampa reta e o olho lê como um traço, não como sombra. Alfas mais altos
+           que os de uma sombra solta porque a máscara abaixo também os derruba. */
+        background: linear-gradient(
+          to bottom,
+          rgba(7, 58, 84, 0.2) 0%,
+          rgba(7, 58, 84, 0.11) 26%,
+          rgba(7, 58, 84, 0.04) 55%,
+          rgba(7, 58, 84, 0) 85%
+        );
+        mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+      }
+      /* Nas pontas a faixa não pode terminar em esquadro: a bandeja é arredondada ali, e faixa reta
+         sob canto redondo entrega o truque. A segunda máscara a dissolve no comprimento do raio,
+         como a sombra de verdade faria ao contornar a curva; intersect porque as duas precisam
+         valer ao mesmo tempo — somadas, uma reabriria o que a outra fecha. */
+      .table-onsen thead th:first-child::after {
+        mask-image: linear-gradient(to bottom, black 0%, transparent 100%),
+                    linear-gradient(to right, transparent 0, black 1.75rem);
+        mask-composite: intersect;
+      }
+      .table-onsen thead th:last-child::after {
+        mask-image: linear-gradient(to bottom, black 0%, transparent 100%),
+                    linear-gradient(to left, transparent 0, black 1.75rem);
+        mask-composite: intersect;
+      }
+
+      /* Separador em LUZ, não em tinta: sobre gelo quem divide é a aresta branca (.glass-edge).
+         Traço escuro sobre vidro vira sujeira. Sem zebra — alternar opacidade sobre translúcido
+         deixa o mapa aparecer em faixas. */
+      .table-onsen tbody td {
+        @apply px-4 py-3 align-middle border-b border-white/45 transition-colors duration-200;
+      }
+      .table-onsen tbody tr:last-child td { @apply border-b-0; }
+      /* Hover ACENDE o gelo, nunca muda de cor (§5 do design system). */
+      .table-onsen tbody tr:hover td { @apply bg-white/55; }
+
+      .table-onsen-vazio {
+        @apply px-4 py-10 text-center text-sm text-base-content/60;
+      }
+
+      /* ==================== MOLÉCULA · CÉLULA DE CABEÇALHO ====================
+         Peça de gelo espesso assentada na bandeja: é o relevo que destaca o cabeçalho.
+         As peças têm a mesma altura por CONSTRUÇÃO, não por esticamento: rótulo sempre em uma
+         linha (whitespace-nowrap) e o vão do campo abrindo em TODAS ao mesmo tempo. Como nenhuma
+         das duas variáveis de altura sobra, a peça mais alta é do tamanho de qualquer outra — e a
+         bandeja acompanha sozinha, por ser a linha da tabela. */
+      .th-onsen {
+        @apply relative flex items-start gap-1.5 px-3 py-2 rounded-xl text-left whitespace-nowrap transition-all duration-300;
+        /* Vidro, não leite: em repouso a peça pode ser bem translúcida porque quem esconde as linhas
+           que rolam por baixo é a BANDEJA, não ela — a peça só precisa ler como coisa levantada, e
+           disso cuidam a borda, o lábio de luz e a sombra. */
+        @apply backdrop-blur-[20px] bg-gradient-to-br from-white/68 via-white/56 to-white/46 border border-white/70;
+        /* Espalhamento NEGATIVO nas duas sombras de fora: recolhe o alcance lateral para dentro da
+           folga da célula. Sem isso a sombra vaza para a coluna vizinha e morre cortada em linha
+           reta na emenda — o borrão de baixo continua, porque ali não há fronteira que o corte. */
+        @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_-8px_rgba(7,58,84,0.32),0_0_14px_-6px_rgba(72,202,228,0.3)];
+      }
+      /* AFUNDADO = a coluna tem filtro. Estado é valor, não memória: o :has lê o campo e o CSS
+         desenha — nada de estado de UI em JavaScript. O gelo continua opaco (só a direção da luz
+         inverte), senão as linhas apareceriam através do cabeçalho grudento. */
+      .th-onsen:focus-within,
+      .th-onsen:has(.th-onsen-input:not(:placeholder-shown)) {
+        @apply bg-none bg-agua-100/45 border-white/45 translate-y-px;
+        @apply shadow-[inset_0_3px_8px_rgba(7,58,84,0.28)];
+      }
+
+      /* O rótulo NÃO some quando a coluna afunda: placeholder desaparece ao digitar e a coluna
+         ficaria anônima justamente enquanto se filtra. */
+      .th-onsen-campo { @apply flex-1 min-w-0 flex flex-col gap-0.5 cursor-pointer; }
+
+      /* O campo é nu de propósito: a moldura dele é a própria célula afundada. Em repouso ele
+         existe no layout (altura zero, invisível) para continuar focável — display:none tiraria
+         o alvo do <label for> e a célula não abriria. */
+      .th-onsen-input {
+        @apply w-full h-0 opacity-0 p-0 bg-transparent border-0 outline-none;
+        @apply text-sm font-normal normal-case tracking-normal text-base-content;
+        @apply placeholder:text-rocha-700/50 transition-all duration-300;
+      }
+      /* A RÉGUA ABRE INTEIRA: clicar numa coluna não abre só o campo dela, abre o campo de TODAS as
+         peças da mesma bandeja. É isso que mantém as alturas iguais quando o filtro entra e faz o
+         cabeçalho crescer como uma peça só, em vez de uma coluna esticar sozinha — e de quebra a
+         tabela reflui uma vez, não a cada coluna que se abre.
+         Quem afunda continua sendo só a coluna que tem filtro: o campo é layout, o relevo é estado. */
+      :is(.table-onsen thead tr, .th-onsen-bandeja):has(.th-onsen-input:focus) .th-onsen-input,
+      :is(.table-onsen thead tr, .th-onsen-bandeja):has(.th-onsen-input:not(:placeholder-shown)) .th-onsen-input {
+        @apply h-6 opacity-100;
+      }
+
+      /* ==================== MOLÉCULA · COLUNA SEM AFORDÂNCIA ====================
+         Situação e ações não se filtram nem se ordenam. Em vez de uma peça idêntica às outras que
+         não faz nada quando clicada, aqui NÃO HÁ PEÇA: o rótulo é gravado na própria bandeja.
+         Com isso a peça passa a significar uma coisa só — "esta coluna responde" — e a ausência
+         dela é a mensagem, sem precisar de aviso, cursor proibido ou cinza de desabilitado.
+         A geometria continua sendo a da peça (mesmo padding, mesma borda em transparente) para o
+         rótulo nascer na mesma linha dos demais; o que sai é só o material. */
+      .th-onsen-gravado {
+        background-image: none;
+        background-color: transparent;
+        border-color: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+        /* O utilitário do Tailwind escreve as duas propriedades; zerar só a padrão deixaria o
+           desfoque da peça vivo no WebKit e a coluna gravada ficaria com um véu que as outras
+           justificam por serem peça, e ela não. */
+        -webkit-backdrop-filter: none;
+      }
+
+      /* ==================== ÁTOMO · SETA DE ORDENAÇÃO GRAVADA ====================
+         Alvo PRÓPRIO, à direita: se a seta ficasse dentro do <label> do filtro, clicar para
+         ordenar afundaria a coluna e clicar para filtrar ordenaria.
+         14px, não 11px: abaixo disso o gradiente interno não tem pixels para graduar e a gravação
+         volta a parecer chapada. */
+      .sort-etched {
+        @apply shrink-0 w-6 h-6 mt-0.5 flex items-center justify-center;
+        @apply text-[15px] leading-none cursor-pointer;
+      }
+      .sort-etched:hover { color: rgba(13, 27, 42, 0.3); }
+      /* Ativa: a depressão enche. A semântica de verdade é o aria-sort no <th> — o relevo é
+         afordância, e afordância não carrega informação sozinha. */
+      .th-onsen[aria-sort] .sort-etched {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      .th-onsen[aria-sort="descending"] .sort-etched { @apply rotate-180; }
+
+      /* ==================== ÁTOMO · BOTÃO GRAVADO ====================
+         O "limpar filtros": a mesma gravação da seta, em corpo maior. No hover o sulco enche de
+         água, como todo estado ativo do sistema. */
+      .btn-etched {
+        @apply inline-flex items-center gap-2 px-2 py-1 cursor-pointer;
+        @apply text-[15px] font-bold uppercase tracking-[0.12em];
+      }
+      .btn-etched:hover {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+
+      /* ==================== ÁTOMO · ÍCONE GRAVADO EM BOTÃO DE VIDRO ====================
+         O lápis do "editar" é gravado, não desenhado. Dentro de um botão de gelo quem carrega a
+         afordância é o botão; a forma só diz QUAL gesto é — e é exatamente esse o registro do
+         .etched, que nunca deve ser o portador da informação.
+         15px porque os deslocamentos do filtro são px absolutos: no tamanho de fonte do btn-xs eles
+         não teriam pixels para graduar e a gravação voltaria a parecer chapada. */
+      .icon-etched { @apply text-[15px] leading-none; }
+      .btn:hover .icon-etched {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+
+      /* ==================== ÁTOMO · PONTO DA UNIDADE ====================
+         A cor da unidade em miniatura — .paint-well em escala de marca, não de controle. O hex
+         vem em --cor-unidade, resolvido na borda do app (classe montada no template some no
+         build de produção porque o Tailwind não a enxerga no @source). */
+      .dot-unidade {
+        @apply w-2.5 h-2.5 shrink-0 rounded-full border border-white/70;
+        @apply shadow-[inset_0_1px_2px_rgba(7,58,84,0.45),0_1px_0_rgba(255,255,255,0.6)];
+        background-color: var(--cor-unidade);
+      }
+
+    }
+  </script>
+</head>
+
+<body class="text-base-content">
+
+  <!-- ============================================================
+       FILTROS DA GRAVAÇÃO (SPEC user_admin/013)
+       box-shadow: inset só existe em CAIXA. Para o efeito seguir a silhueta do próprio glifo, a
+       sombra interna vem de um filtro SVG — que se aplica a elemento HTML normal por
+       filter: url(#...), então a seta continua sendo um caractere, não um desenho.
+       Receita, em duas passadas sobre o alfa da forma:
+         1. desloca para BAIXO e borra; o que sobra da forma por fora disso é a banda de CIMA → tinta
+            escura: a sombra que entra pela borda de cima, igual à do .card-well;
+         2. desloca para CIMA; a banda de BAIXO recebe branco → o lábio de luz do poço.
+       Os deslocamentos são em px absolutos e NÃO escalam com o font-size: por isso duas medidas,
+       uma para o tamanho de interface e outra para display.
+       ============================================================ -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- ============================================================
+       Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual.
+       ============================================================ -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <main class="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC user_admin/013 · mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Tabela de vidro e a gravação no gelo</h1>
+      <p class="mt-4 max-w-3xl text-base-content/80 leading-relaxed">
+        A tabela inverte os materiais que já existem: o corpo é <strong class="text-base-content">poço
+        rebaixado</strong> e o cabeçalho é <strong class="text-base-content">placa de gelo sobre ele</strong>.
+        Daí sai o relevo — e a gramática do resto: clicar num cabeçalho o faz <strong class="text-agua-700">afundar
+        no poço</strong> e virar campo de filtro, porque campo, neste sistema, é sempre coisa rebaixada.
+        A ordenação entra por um token novo, a <strong class="text-agua-700">gravação no gelo</strong>: seta
+        sulcada, sem pigmento, que <em>enche de água</em> quando a coluna passa a ordenar.
+      </p>
+      <div class="flex flex-wrap gap-2 mt-5">
+        <span class="badge badge-ponto">token .etched</span>
+        <span class="badge badge-linha">tabela em poço</span>
+        <span class="badge badge-poligono">cabeçalho que afunda</span>
+        <span class="badge badge-info badge-soft">filtro por coluna</span>
+        <span class="badge badge-info badge-soft">seta gravada</span>
+      </div>
+    </header>
+
+    <!-- ============ 1 · TOKENS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Tokens de material</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-10">
+
+        <!-- 1.1 · Gravação -->
+        <div class="flex flex-col gap-4">
+          <div>
+            <h3 class="text-lg font-bold">1.1 · <span class="text-code">.etched</span> — a gravação no gelo</h3>
+            <p class="text-sm text-base-content/70 mt-1 max-w-3xl">
+              O design system só tinha um jeito de marcar um elemento: <span class="text-code">.icon-glow</span>,
+              acender em água. Faltava o registro oposto — presente, mas quieto. É a mesma lógica de luz do
+              <span class="text-code">.card-well</span>, só que seguindo a <strong>silhueta da própria
+              forma</strong>: sombra entrando pela borda de cima, lábio de luz na de baixo, e a forma quase
+              sem pigmento, porque escavação não pinta — escurece um respiro e deixa a superfície aparecer.
+            </p>
+          </div>
+
+          <div class="grid sm:grid-cols-3 gap-4">
+            <div class="card-well p-6 flex flex-col items-center gap-3">
+              <p class="text-overline">gravado (repouso)</p>
+              <span class="etched etched-lg text-7xl leading-none">▲</span>
+              <p class="text-xs text-base-content/60 text-center">Afordância disponível. Não grita, porque relevo não grita como tinta grita.</p>
+            </div>
+            <div class="card-well p-6 flex flex-col items-center gap-3">
+              <p class="text-overline">entintado (ativo)</p>
+              <span class="etched etched-lg etched-inked text-7xl leading-none">▲</span>
+              <p class="text-xs text-base-content/60 text-center">O sulco enche de água. Mesmo vocabulário de estado ativo do resto do sistema.</p>
+            </div>
+            <div class="card-well p-6 flex flex-col items-center gap-3">
+              <p class="text-overline">aprofundado (hover)</p>
+              <span class="etched etched-lg etched-deeper text-7xl leading-none">▲</span>
+              <p class="text-xs text-base-content/60 text-center">Mais tinta no sulco, mesma luz. O feedback é profundidade, não cor nova.</p>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-3">
+            <p class="text-overline text-madeira-600">Serve a qualquer forma — é filtro, não caixa</p>
+            <div class="flex items-center justify-around gap-5 flex-wrap">
+              <span class="etched etched-lg text-6xl leading-none">◆</span>
+              <span class="etched etched-lg text-6xl leading-none">✕</span>
+              <span class="etched etched-lg text-5xl font-black tracking-tight">DIMAP</span>
+              <span class="etched text-[15px] leading-none">▲ no tamanho da tabela</span>
+              <span class="text-overline etched etched-rotulo">Situação</span>
+            </div>
+            <p class="text-xs text-base-content/60">
+              Os deslocamentos do filtro são px absolutos e <strong>não escalam com o font-size</strong>:
+              acima de ~32px use <span class="text-code">.etched-lg</span>, senão o sulco vira um fio e a
+              forma volta a parecer chapada. São as duas únicas medidas.
+            </p>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-2">
+            <p class="text-overline text-madeira-600">Duas restrições que andam com o token</p>
+            <p class="text-sm text-base-content/75">
+              <strong>1.</strong> No pigmento de decoração, a gravação <strong>nunca carrega informação</strong>
+              — só afordância. A seta se qualifica porque o estado que significa alguma coisa é o entintado;
+              a semântica real vai no <span class="text-code">aria-sort</span>. Quando o sulco precisa
+              <em>nomear</em> algo, a tinta sobe (<span class="text-code">.etched-rotulo</span>) até a
+              legibilidade normal: o relevo continua o mesmo, mas deixa de ser o único portador da forma.
+            </p>
+            <p class="text-sm text-base-content/75">
+              <strong>2.</strong> Só vale sobre <strong>vidro claro</strong>. Em
+              <span class="text-code">.glass-panel-deep</span> a luz inverte e a escavação desaparece.
+            </p>
+          </div>
+        </div>
+
+        <!-- 1.2 · Poço e placa -->
+        <div class="flex flex-col gap-4">
+          <div>
+            <h3 class="text-lg font-bold">1.2 · A inversão: poço embaixo, placa em cima</h3>
+            <p class="text-sm text-base-content/70 mt-1 max-w-3xl">
+              Nenhum material novo. O corpo da tabela é o <span class="text-code">.card-well</span> que já
+              existe; o cabeçalho é a placa de gelo espesso da SPEC 011. O que é novo é a <strong>ordem</strong>
+              deles — e é ela que dá a profundidade e destaca o cabeçalho sem precisar de cor.
+            </p>
+          </div>
+          <div class="card-well p-6 flex flex-wrap items-center justify-center gap-6">
+            <div class="th-onsen w-52"><span class="text-overline">placa · em repouso</span></div>
+            <span class="etched text-2xl">→</span>
+            <div class="th-onsen th-afundado-demo w-52"><span class="text-overline">placa · afundada</span></div>
+          </div>
+          <p class="text-xs text-base-content/60 px-1">
+            A luz troca de lado e a placa desce um pixel. O gelo continua <strong>opaco</strong> nos dois
+            estados: o cabeçalho é grudento, e translúcido deixaria as linhas passarem por dentro dele ao rolar.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Átomos</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-10">
+
+        <div class="grid lg:grid-cols-3 gap-6">
+          <div class="flex flex-col gap-3">
+            <h3 class="text-lg font-bold">2.1 · Seta de ordenação</h3>
+            <p class="text-sm text-base-content/70">
+              Compõe <span class="text-code">.etched</span>: a seta mora numa depressão. Alvo próprio, à direita
+              da célula — dentro do rótulo, ela disputaria o clique com o filtro. <span class="text-code">desc</span> é a mesma seta
+              girando 180°: movimento, não troca de ícone.
+            </p>
+            <div class="card-well p-5 flex items-center justify-around">
+              <div class="flex flex-col items-center gap-2">
+                <button class="sort-etched etched">▲</button>
+                <span class="text-overline">sem ordem</span>
+              </div>
+              <div class="th-onsen th-onsen-gravado p-0 flex flex-col items-center gap-2" aria-sort="ascending">
+                <button class="sort-etched etched">▲</button>
+                <span class="text-overline">asc</span>
+              </div>
+              <div class="th-onsen th-onsen-gravado p-0 flex flex-col items-center gap-2" aria-sort="descending">
+                <button class="sort-etched etched">▲</button>
+                <span class="text-overline">desc</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <h3 class="text-lg font-bold">2.2 · Botão gravado</h3>
+            <p class="text-sm text-base-content/70">
+              O "limpar filtros" é a mesma gravação, em corpo maior. No hover a depressão aprofunda e a tinta
+              vai para água — a peça inteira usa um vocabulário só.
+            </p>
+            <div class="card-well p-5 flex items-center justify-center gap-4 min-h-[7.5rem]">
+              <button class="btn-etched etched">✕ limpar filtros</button>
+            </div>
+            <p class="text-xs text-base-content/60">Passe o mouse: o sulco enche.</p>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <h3 class="text-lg font-bold">2.3 · Ponto da unidade</h3>
+            <p class="text-sm text-base-content/70">
+              A cor da unidade (SPEC 005) em escala de marca — o <span class="text-code">.paint-well</span> em
+              miniatura. O hex chega em <span class="text-code">--cor-unidade</span>, resolvido na borda do app.
+            </p>
+            <div class="card-well p-5 flex flex-col items-center justify-center gap-3 min-h-[7.5rem]">
+              <span class="inline-flex items-center gap-2"><span class="dot-unidade" style="--cor-unidade:#0077b6"></span> <span class="text-code text-sm">DIMAP-1</span></span>
+              <span class="inline-flex items-center gap-2"><span class="dot-unidade" style="--cor-unidade:#7f5539"></span> <span class="text-code text-sm">DIMAP-2</span></span>
+              <span class="inline-flex items-center gap-2"><span class="dot-unidade" style="--cor-unidade:#bc3a67"></span> <span class="text-code text-sm">DIMAP-3</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · MOLÉCULAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">3 · Moléculas</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">3.1 · A bandeja e as peças de coluna</h3>
+          <p class="text-sm text-base-content/70 mt-1 max-w-3xl">
+            O cabeçalho é <strong>uma superfície só</strong> — a bandeja de vidro — e cada coluna é uma
+            <strong>peça assentada</strong> sobre ela. As peças têm <strong>sempre a mesma altura</strong>,
+            e não por esticarem até a bandeja: o rótulo nunca quebra em duas linhas e o campo
+            <strong>abre em todas ao mesmo tempo</strong> — a bandeja é que cresce junto, por ser a linha
+            da tabela.
+            A peça se parte em <strong>dois alvos</strong>: o rótulo, que é um
+            <span class="text-code">&lt;label for&gt;</span> e ocupa a largura, e a seta, fixa à direita.
+            O rótulo <strong>permanece</strong> na peça afundada — placeholder some ao digitar, e a coluna
+            ficaria anônima justamente enquanto se filtra.
+          </p>
+          <p class="text-sm text-base-content/70 mt-3 max-w-3xl">
+            E onde a coluna <strong>não responde</strong> — Situação, ações —, <strong>não há peça</strong>:
+            o rótulo é <strong>gravado direto na bandeja</strong>. A peça passa a significar uma coisa só,
+            "esta coluna responde", e a ausência dela diz o resto sem precisar de cinza de desabilitado
+            nem de cursor proibido.
+          </p>
+        </div>
+
+        <div class="card-well p-6 flex flex-col gap-6">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline text-madeira-600">bandeja em repouso</p>
+            <div class="th-onsen-bandeja">
+              <div class="th-onsen flex-1">
+                <label class="th-onsen-campo">
+                  <span class="text-overline">Nome</span>
+                  <input class="th-onsen-input" placeholder="filtrar…" tabindex="-1">
+                </label>
+                <button class="sort-etched etched" tabindex="-1">▲</button>
+              </div>
+              <div class="th-onsen flex-1">
+                <label class="th-onsen-campo">
+                  <span class="text-overline">Cargo em comissão</span>
+                  <input class="th-onsen-input" placeholder="filtrar…" tabindex="-1">
+                </label>
+                <button class="sort-etched etched" tabindex="-1">▲</button>
+              </div>
+              <div class="th-onsen th-onsen-gravado flex-1">
+                <span class="text-overline etched etched-rotulo">Situação</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <p class="text-overline text-madeira-600">bandeja filtrando — a régua abriu inteira, mas só a coluna com filtro afundou</p>
+            <div class="th-onsen-bandeja">
+              <div class="th-onsen flex-1">
+                <label class="th-onsen-campo">
+                  <span class="text-overline">Nome</span>
+                  <input class="th-onsen-input" placeholder="filtrar…" tabindex="-1">
+                </label>
+                <button class="sort-etched etched" tabindex="-1">▲</button>
+              </div>
+              <div class="th-onsen flex-1" aria-sort="ascending">
+                <label class="th-onsen-campo">
+                  <span class="text-overline">Cargo em comissão</span>
+                  <input class="th-onsen-input" placeholder="filtrar…" value="assessor" tabindex="-1">
+                </label>
+                <button class="sort-etched etched" tabindex="-1">▲</button>
+              </div>
+              <div class="th-onsen th-onsen-gravado flex-1">
+                <span class="text-overline etched etched-rotulo">Situação</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-xs text-base-content/60 px-1">
+            A terceira coluna é a gravada: sem peça para levantar, nada a clicar, e nenhuma altura a
+            acompanhar quando a régua abre — ela é a superfície, não uma peça sobre ela.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-bold">3.2 · A barra de rolagem gravada</h3>
+          <p class="text-sm text-base-content/70 mt-1 max-w-3xl">
+            O sulco e a água, agora num controle: o trilho é a <strong>gravação</strong> e o polegar é a
+            <strong>água que a enche</strong> — o mesmo par repouso/entintado do resto do sistema, só que
+            <strong>no tempo</strong>. Parada, a peça é gravação e nada mais: a tinta de repouso do
+            <span class="text-code">.etched</span>, sem pigmento. Ao rolar ela entinta na hora; quando o
+            gesto acaba, a água <strong>escorre de volta</strong> devagar em vez de apagar.
+            Ela é <strong>um elemento</strong>, não a barra do navegador. É o que permite começar
+            <strong>abaixo da bandeja</strong> em vez de correr ao lado dela, e é o que faz Firefox e
+            Chrome desenharem a mesma peça: <span class="text-code">::-webkit-scrollbar</span> não
+            existe no Firefox, e no Chrome estilizá-lo troca a barra flutuante por uma clássica,
+            presente mesmo quando ninguém está rolando.
+          </p>
+          <p class="text-sm text-base-content/70 mt-3 max-w-3xl">
+            <strong>Rolar continua sendo do navegador</strong> — roda, teclado e toque não passam pela
+            peça. O JavaScript faz duas contas e só: onde a barra começa (a bandeja muda de altura
+            quando a régua abre) e o tamanho e a posição do polegar. Some sozinha quando não há o que
+            rolar.
+          </p>
+        </div>
+
+        <div class="card-well p-2 table-onsen-poco" data-poco>
+          <div class="table-onsen-wrap max-h-40" data-rolador>
+            <div class="flex flex-col gap-2 p-3">
+              <p class="text-overline text-madeira-600">arraste o polegar, ou role com a roda</p>
+              <p class="text-sm text-base-content/75">A peça não sabe o que está rolando por dentro dela — tabela, lista de impedimentos, texto longo. O que ela conhece é a caixa.</p>
+              <p class="text-sm text-base-content/75">Por isso vale para qualquer poço rolável do sistema, e não só para a tabela desta SPEC.</p>
+              <p class="text-sm text-base-content/75">O polegar tem altura mínima: proporcional puro, num conteúdo muito longo, viraria um traço impossível de pegar.</p>
+              <p class="text-sm text-base-content/75">Quando o conteúdo cabe, o sulco desaparece — controle morto desenhado na tela é ruído.</p>
+              <p class="text-sm text-base-content/75">A água acende no hover e no arrasto, como todo estado ativo do design system.</p>
+            </div>
+          </div>
+          <div class="scroll-etched" data-barra aria-hidden="true">
+            <div class="scroll-etched-thumb" data-polegar></div>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-2">
+          <p class="text-overline text-madeira-600">A regra de estado</p>
+          <p class="text-sm text-base-content/75">
+            <strong>Afundado = a coluna tem filtro</strong> — não "alguém clicou". O CSS lê o valor do campo
+            com <span class="text-code">:has(input:not(:placeholder-shown))</span>, do mesmo jeito que a paleta
+            da SPEC 005 espelha a cor marcada. Estado é <em>valor</em>, não memória, e por isso a coluna
+            <strong>continua afundada depois que você sai dela</strong>: o relevo passa a ser o indicador de
+            "há filtro ativo aqui", que é a informação que mais importa numa tabela filtrada.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 4 · ORGANISMOS ============ -->
+    <section class="flex flex-col gap-8 pb-6">
+      <h2 class="section-title px-2">4 · Organismos</h2>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h3 class="text-2xl font-bold tracking-tight text-madeira-700">Servidores</h3>
+            <p class="text-sm text-base-content/70 mt-1">
+              <span id="contagem">9</span> servidores cadastrados. Clique num cabeçalho para filtrar; na seta, para ordenar.
+            </p>
+          </div>
+          <button class="btn-etched etched" id="limpar">✕ limpar filtros</button>
+        </div>
+
+        <!-- A folga é padding do poço, FORA do rolador: dentro dele o cabeçalho grudento não
+             alcançaria a linha de corte e sobraria uma faixa de linha nítida acima da bandeja. -->
+        <div class="card-well p-2 table-onsen-poco" data-poco>
+          <div class="table-onsen-wrap" data-rolador>
+            <table class="table table-onsen">
+              <thead>
+                <tr>
+                  <th>
+                    <div class="th-onsen" data-coluna="nome">
+                      <label class="th-onsen-campo">
+                        <span class="text-overline">Servidor</span>
+                        <input class="th-onsen-input" placeholder="filtrar…">
+                      </label>
+                      <button class="sort-etched etched" aria-label="Ordenar por servidor">▲</button>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="th-onsen" data-coluna="rf">
+                      <label class="th-onsen-campo">
+                        <span class="text-overline">RF</span>
+                        <input class="th-onsen-input" placeholder="filtrar…">
+                      </label>
+                      <button class="sort-etched etched" aria-label="Ordenar por RF">▲</button>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="th-onsen" data-coluna="unidade">
+                      <label class="th-onsen-campo">
+                        <span class="text-overline">Unidade</span>
+                        <input class="th-onsen-input" placeholder="filtrar…">
+                      </label>
+                      <button class="sort-etched etched" aria-label="Ordenar por unidade">▲</button>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="th-onsen" data-coluna="cargo">
+                      <label class="th-onsen-campo">
+                        <span class="text-overline">Cargo base</span>
+                        <input class="th-onsen-input" placeholder="filtrar…">
+                      </label>
+                      <button class="sort-etched etched" aria-label="Ordenar por cargo base">▲</button>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="th-onsen" data-coluna="comissao">
+                      <label class="th-onsen-campo">
+                        <span class="text-overline">Em comissão</span>
+                        <input class="th-onsen-input" placeholder="filtrar…">
+                      </label>
+                      <button class="sort-etched etched" aria-label="Ordenar por cargo em comissão">▲</button>
+                    </div>
+                  </th>
+                  <th class="w-28">
+                    <div class="th-onsen th-onsen-gravado">
+                      <span class="text-overline etched etched-rotulo">Situação</span>
+                    </div>
+                  </th>
+                  <!-- A coluna de ações não tem nem rótulo: nada a nomear, nada a acionar no cabeçalho. -->
+                  <th class="w-16">
+                    <div class="th-onsen th-onsen-gravado"></div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="corpo">
+                <!-- Na aplicação o corpo é o ÚNICO alvo do swap HTMX: trocar o cabeçalho junto
+                     destruiria o campo em que se está digitando a cada tecla. -->
+              </tbody>
+            </table>
+          </div>
+          <!-- Duplicata visual da rolagem nativa: para quem navega por teclado ou leitor de tela
+               ela não existe, e não deve existir. -->
+          <div class="scroll-etched" data-barra aria-hidden="true">
+            <div class="scroll-etched-thumb" data-polegar></div>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-2">
+          <p class="text-overline text-madeira-600">O que este mock simula e o que a aplicação faz</p>
+          <p class="text-sm text-base-content/75">
+            Aqui o filtro roda no navegador só para a peça ser exercitável sem servidor. <strong>Na aplicação
+            ele roda no servidor</strong>, por HTMX sobre o <span class="text-code">&lt;tbody&gt;</span>: o
+            casamento textual precisa passar pela normalização única do projeto
+            (<span class="text-code">services/utils/normalization</span>) — que é um pipeline feito para
+            crescer —, e uma cópia dessa regra em JavaScript diverge no dia em que entrar uma etapa nova.
+            O JavaScript da peça cuida só do que o CSS não alcança: alternar
+            <span class="text-code">asc ↔ desc</span> num alvo só, preservar o foco na troca do corpo e
+            desenhar a barra gravada (3.2) — que na aplicação se redesenha no
+            <span class="text-code">htmx:afterSwap</span>, pelo mesmo observador de tamanho usado aqui.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ====== Fundo à deriva (SPEC user_admin/007) — inline porque o mock não passa pelo Django ======
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      requestAnimationFrame(derivar);
+      if (document.hidden || reduzido.matches) return;
+      if (agora - ultimoFrame < INTERVALO_FRAME_MS) return;
+      ultimoFrame = agora;
+      const fase = ((agora % PERIODO_MS) / PERIODO_MS) * 2 * Math.PI;
+      const lat = CENTRO[0] + AMPLITUDE_GRAUS * Math.sin(fase);
+      const lng = CENTRO[1] + (AMPLITUDE_GRAUS * Math.sin(2 * fase)) / 2;
+      mapa.setView([lat, lng], ZOOM, { animate: false });
+    }
+    requestAnimationFrame(derivar);
+
+    // ====== A BARRA GRAVADA — o JavaScript da peça ======
+    // Duas coisas que o CSS não alcança, e só elas: onde a barra COMEÇA (a bandeja muda de altura
+    // quando a régua de filtros abre, e altura de elemento não se lê em CSS) e o tamanho e a
+    // posição do POLEGAR, que são scrollTop/scrollHeight. Rolar continua sendo do navegador.
+    const ALTURA_MINIMA_POLEGAR = 28;
+    // Quanto a água fica no sulco depois do último gesto. Curto demais e a barra pisca a cada
+    // roda do mouse; longo demais e ela deixa de ler como resposta ao gesto.
+    const REPOUSO_MS = 900;
+
+    function montarBarraGravada(poco) {
+      const rolador = poco.querySelector("[data-rolador]");
+      const barra = poco.querySelector("[data-barra]");
+      const polegar = poco.querySelector("[data-polegar]");
+      const bandeja = rolador.querySelector("thead");
+      const conteudo = rolador.firstElementChild;
+
+      function desenhar() {
+        const trilho = barra.clientHeight;
+        const rolavel = rolador.scrollHeight - rolador.clientHeight;
+        barra.classList.toggle("scroll-etched-ociosa", rolavel <= 0);
+        if (rolavel <= 0) return;
+        const altura = Math.max(
+          trilho * (rolador.clientHeight / rolador.scrollHeight),
+          ALTURA_MINIMA_POLEGAR);
+        polegar.style.height = `${altura}px`;
+        polegar.style.transform = `translateY(${(rolador.scrollTop / rolavel) * (trilho - altura)}px)`;
+      }
+
+      function medirBandeja() {
+        poco.style.setProperty("--altura-cabecalho", `${bandeja ? bandeja.offsetHeight : 0}px`);
+        desenhar();
+      }
+
+      // "Está rolando" só se sabe pela ausência do próximo evento — daí o relógio. Arrastar o
+      // polegar também move o scrollTop, então passa por aqui e mantém a água acesa.
+      let repouso;
+      function acender() {
+        barra.classList.add("scroll-etched-ativa");
+        clearTimeout(repouso);
+        repouso = setTimeout(() => barra.classList.remove("scroll-etched-ativa"), REPOUSO_MS);
+      }
+
+      rolador.addEventListener("scroll", () => {
+        acender();
+        desenhar();
+      });
+      // O conteúdo muda de altura sozinho — filtro no mock, swap do HTMX na aplicação. Observar a
+      // caixa evita acoplar a barra a quem troca as linhas.
+      const observador = new ResizeObserver(desenhar);
+      observador.observe(rolador);
+      observador.observe(conteudo);
+      if (bandeja) new ResizeObserver(medirBandeja).observe(bandeja);
+      medirBandeja();
+
+      polegar.addEventListener("pointerdown", (evento) => {
+        evento.preventDefault();
+        const partidaY = evento.clientY;
+        const partidaScroll = rolador.scrollTop;
+        // Converte pixel de trilho em pixel de conteúdo: o polegar percorre o vão, não a altura toda.
+        const razao =
+          (rolador.scrollHeight - rolador.clientHeight) /
+          (barra.clientHeight - polegar.offsetHeight);
+        const arrastar = (movimento) => {
+          rolador.scrollTop = partidaScroll + (movimento.clientY - partidaY) * razao;
+        };
+        polegar.setPointerCapture(evento.pointerId);
+        polegar.addEventListener("pointermove", arrastar);
+        polegar.addEventListener(
+          "pointerup",
+          () => polegar.removeEventListener("pointermove", arrastar),
+          { once: true });
+      });
+    }
+
+    document.querySelectorAll("[data-poco]").forEach(montarBarraGravada);
+
+    // ====== Demonstração da célula afundada (seção 1.2), sem foco ======
+    document.querySelectorAll(".th-afundado-demo").forEach((el) => {
+      el.style.background = "rgba(255,255,255,0.6)";
+      el.style.borderColor = "rgba(255,255,255,0.45)";
+      el.style.boxShadow = "inset 0 3px 8px rgba(7,58,84,0.28)";
+      el.style.transform = "translateY(1px)";
+    });
+
+    // ====== Dados e comportamento da tabela (SÓ NO MOCK — na aplicação isto é HTMX) ======
+    const SERVIDORES = [
+      { nome: "Henrique Pougy",      rf: "812.345-1", unidade: "DIMAP-1", cor: "#0077b6", cargo: "Analista de Ordenamento Territorial", comissao: "Diretor de Divisão", impedido: false },
+      { nome: "Marina Salles",       rf: "798.112-3", unidade: "DIMAP-1", cor: "#0077b6", cargo: "Assistente de Gestão de Políticas Públicas", comissao: "—", impedido: false },
+      { nome: "João Cavalcanti",     rf: "845.900-7", unidade: "DIMAP-2", cor: "#7f5539", cargo: "Analista de Ordenamento Territorial", comissao: "—", impedido: true },
+      { nome: "Antônia Nóbrega",     rf: "701.556-9", unidade: "DIMAP-2", cor: "#7f5539", cargo: "Arquiteto", comissao: "Chefe de Gabinete", impedido: false },
+      { nome: "Ricardo Aparício",    rf: "889.034-2", unidade: "DIMAP-3", cor: "#bc3a67", cargo: "Engenheiro", comissao: "—", impedido: false },
+      { nome: "Célia Gonçalves",     rf: "756.221-0", unidade: "DIMAP-3", cor: "#bc3a67", cargo: "Assistente de Gestão de Políticas Públicas", comissao: "Assessor Técnico", impedido: true },
+      { nome: "Paulo Assunção",      rf: "823.777-4", unidade: "DIMAP-1", cor: "#0077b6", cargo: "Arquiteto", comissao: "—", impedido: false },
+      { nome: "Íris Sant'Anna",      rf: "790.443-8", unidade: "DIMAP-4", cor: "#415a77", cargo: "Analista de Ordenamento Territorial", comissao: "—", impedido: false },
+      { nome: "Fernando Mendonça",   rf: "861.208-5", unidade: "DIMAP-4", cor: "#415a77", cargo: "Engenheiro", comissao: "Supervisor Técnico", impedido: false },
+    ];
+
+    const corpo = document.getElementById("corpo");
+    const contagem = document.getElementById("contagem");
+    const celulas = [...document.querySelectorAll(".th-onsen[data-coluna]")];
+    let ordem = null;
+
+    // Espelha as cinco etapas do normalizador do projeto SÓ para o mock funcionar offline. Na
+    // aplicação quem normaliza é o Python — é justamente esta duplicação que a SPEC evita.
+    const normalizar = (t) => t
+      .replace(/[^\w\s]/gu, " ")
+      .replace(/ç/g, "c").replace(/Ç/g, "C")
+      .normalize("NFD").replace(/\p{Diacritic}/gu, "")
+      .toUpperCase()
+      .replace(/\s+/g, " ").trim();
+
+    function filtros() {
+      return celulas
+        .map((c) => ({ coluna: c.dataset.coluna, termo: c.querySelector(".th-onsen-input").value }))
+        .filter((f) => f.termo.trim() !== "");
+    }
+
+    function linhas() {
+      let dados = SERVIDORES.filter((s) =>
+        filtros().every((f) => normalizar(String(s[f.coluna])).includes(normalizar(f.termo))));
+      if (ordem) {
+        const sinal = ordem.direcao === "descending" ? -1 : 1;
+        dados = [...dados].sort((a, b) =>
+          sinal * String(a[ordem.coluna]).localeCompare(String(b[ordem.coluna]), "pt-BR"));
+      }
+      return dados;
+    }
+
+    function render() {
+      const dados = linhas();
+      contagem.textContent = dados.length;
+      if (dados.length === 0) {
+        corpo.innerHTML = `<tr><td colspan="7" class="table-onsen-vazio">
+          <span class="etched text-3xl block mb-2">⌕</span>
+          Nenhum servidor corresponde aos filtros.
+        </td></tr>`;
+        return;
+      }
+      corpo.innerHTML = dados.map((s) => `
+        <tr>
+          <td class="font-medium text-madeira-700"><a href="#" class="hover:text-agua-700 transition-colors">${s.nome}</a></td>
+          <td><span class="text-code">${s.rf}</span></td>
+          <td><span class="inline-flex items-center gap-2"><span class="dot-unidade" style="--cor-unidade:${s.cor}"></span><span class="text-code">${s.unidade}</span></span></td>
+          <td class="text-base-content/80">${s.cargo}</td>
+          <td class="text-base-content/60">${s.comissao}</td>
+          <td>${s.impedido ? '<span class="badge badge-warning badge-soft badge-sm">Impedido</span>' : '<span class="badge badge-success badge-soft badge-sm">Ativo</span>'}</td>
+          <td class="text-right"><button class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><span class="etched icon-etched">✎</span></button></td>
+        </tr>`).join("");
+    }
+
+    // O filtro é estado do CAMPO — o afundamento sai no CSS por :has. Aqui só re-renderiza.
+    celulas.forEach((celula) => {
+      celula.querySelector(".th-onsen-input").addEventListener("input", render);
+
+      // O único trabalho que o CSS não faz: alternar asc → desc → sem ordem num alvo só.
+      celula.querySelector(".sort-etched").addEventListener("click", () => {
+        const coluna = celula.dataset.coluna;
+        const atual = ordem && ordem.coluna === coluna ? ordem.direcao : null;
+        const proxima = atual === null ? "ascending" : atual === "ascending" ? "descending" : null;
+        celulas.forEach((c) => c.removeAttribute("aria-sort"));
+        ordem = proxima ? { coluna, direcao: proxima } : null;
+        if (proxima) celula.setAttribute("aria-sort", proxima);
+        render();
+      });
+    });
+
+    document.getElementById("limpar").addEventListener("click", () => {
+      celulas.forEach((c) => (c.querySelector(".th-onsen-input").value = ""));
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
