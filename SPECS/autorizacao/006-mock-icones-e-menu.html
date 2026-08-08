@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC autorizacao/006 — Ícones das ações e menu (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server) —
+       aberto via file:// o fetch é bloqueado e o tema não carrega. -->
+  <script>
+    // Tema e classes desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
+    // vêm do @theme do tema, e um bloco separado que as usa em @apply cai com "unknown utility".
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-006").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
+  </script>
+
+  <!-- PEÇAS PROPOSTAS POR ESTA SPEC — ainda NÃO estão no tema-dimap.dev.css.
+       Guardadas em script[type=text/css] (inerte) e concatenadas ao tema pelo loader acima.
+       Ao implementar, estes blocos migram para lá tal e qual (fonte única, SPEC design/004). -->
+  <script type="text/css" id="tokens-spec-006">
+    @layer components {
+
+      /* ==================== ÁTOMO · ÍCONE DE AÇÃO ====================
+         A ação é dona do DESENHO; o design system é dono da RENDERIZAÇÃO.
+         Esta classe cuida da CAIXA; a cor vem sempre de fora — da pele empilhada (.icon-glow,
+         .icon-etched) ou do contexto. Quem amarra o traço a currentColor é o `stroke` do SVG
+         abaixo: se o átomo declarasse `color`, venceria por ordem de cascata a pele empilhada
+         (.icon-glow é `text-agua-600`) e o brilho sumiria sem erro nenhum.
+         Com <img src> nada disso funciona: o SVG externo não herda cor. */
+      .icone-acao {
+        @apply inline-flex items-center justify-center shrink-0;
+      }
+      .icone-acao svg {
+        @apply w-full h-full block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      /* Duas medidas só, como no .etched: o traço do glifo é desenhado para uma delas. */
+      .icone-acao-pequeno { @apply w-5 h-5; }
+      .icone-acao-grande  { @apply w-12 h-12; }
+      /* Glifo genérico do fallback: ação sem arquivo degrada em peça neutra, nunca em buraco. */
+      .icone-acao-generico { @apply opacity-45; }
+
+      /* Acender é GESTO, não repouso (§5 do DS: "hover de vidro acende o gelo"). Menu com todos os
+         ícones acesos não deixa nada para o hover fazer e vira parede de ciano — o .icon-glow
+         estático continua valendo para o ícone solitário, não para lista.
+         Em repouso o glifo herda a tinta do item; no hover recebe a água e o brilho.
+         O valor do brilho repete o do .icon-glow: no porte, os dois passam a ler um token único. */
+      .icone-acao-acende { @apply transition-all duration-200; }
+      /* No CARTÃO o repouso é GRAVADO: o .icon-etched sem o brilho dele (o brilho é do hover),
+         e com o filtro da medida GRANDE — o glifo tem 48px e o sulco de 1,4px do filtro pequeno
+         viraria um fio. A tinta é agua-700 a 85%, que é o mesmo rgba(0,119,182,.85) do tema,
+         escrito pela paleta em vez de valor solto.
+         O hover troca o `filter` inteiro (o utilitário de drop-shadow reescreve a propriedade),
+         então a gravação sai e o brilho entra — repouso escavado, hover aceso. */
+      .card-acao .icone-acao-acende {
+        filter: url(#etched-onsen-lg);
+        @apply text-agua-700/85;
+      }
+      :is(.item-menu, .card-acao-alvo):hover .icone-acao-acende,
+      .item-menu:focus-visible .icone-acao-acende {
+        @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)];
+      }
+
+      /* ==================== MOLÉCULA · ITEM DE MENU ====================
+         Ícone + rótulo + tooltip como uma unidade clicável. Layout interno recorrente, por isso
+         ganha classe (§2.3 da skill). Hover ACENDE o gelo — não muda de cor. */
+      .item-menu {
+        @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-[--radius-field]
+               text-left text-[15px] text-base-content/90
+               bg-white/25 border border-white/40
+               transition-all duration-200
+               hover:bg-white/60 hover:text-agua-700
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
+      }
+      .item-menu-rotulo { @apply flex-1 min-w-0 truncate font-medium; }
+      /* Nome curto sob o rótulo: é o que a ação diz de si quando o espaço aperta. */
+      .item-menu-apoio  { @apply block text-[13px] font-normal text-base-content/60 truncate; }
+
+      /* ==================== MOLÉCULA · CARTÃO DE AÇÃO ====================
+         A forma EXPLICATIVA do mesmo item: glifo grande, nome e o texto que no item compacto só
+         existe como tooltip. Serve o menu que tem espaço; o .item-menu serve o que não tem.
+         Material é .card-well, não vidro: o hover-3d aplica transform 3D, e backdrop-filter dentro
+         de elemento transformado reamostra o fundo errado — o blur "descola" da peça no tilt.
+         O daisyUI exige 9 filhos diretos no .hover-3d e conteúdo NÃO-interativo: por isso quem é
+         clicável é o <a> de fora, não um botão dentro. */
+      /* `relative` ancora o brilho que o hover-3d desenha no ::before do primeiro filho.
+         Transição só de COR: o transform e o scale são do daisyUI, com easing de mola próprio —
+         transition-all aqui atropelaria os dois e o tilt vira um movimento linear sem vida. */
+      .card-acao {
+        @apply relative flex flex-col gap-3 p-5 h-full text-left
+               transition-colors duration-300;
+      }
+      /* Madeira porque é TÍTULO: o conceito do DS reserva a madeira quente aos títulos — é o único
+         calor orgânico da cena. Rocha-950 é tinta de corpo, e titular em rocha lê como quase-preto. */
+      .card-acao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
+      .card-acao-descricao { @apply text-[13px] text-base-content/70 leading-relaxed; }
+      /* NUNCA declarar `display` aqui: o .hover-3d é `inline-grid` e posiciona as 8 zonas de
+         detecção por grid-area numa grade 3×3. Trocar o display derruba a grade e o tilt some,
+         sobrando só o scale do hover — o sintoma é o cartão "pular" para a frente sem inclinar. */
+      .card-acao-alvo { @apply h-full; }
+      .card-acao-alvo:hover .card-acao { @apply bg-white/55; }
+
+      /* ==================== ORGANISMO · MENU DE AÇÕES ====================
+         Painel de vidro com a lista resolvida pelo router (SPEC 005). Só composição: o organismo
+         não conhece autorização, só desenha o que recebeu. */
+      .menu-acoes {
+        @apply w-[22rem] max-w-[92vw] p-4 flex flex-col gap-3;
+      }
+      .menu-acoes-lista { @apply flex flex-col gap-1.5; }
+      /* Variante ampla: a forma de cartão precisa de largura, e o tilt precisa de respiro (p-2). */
+      .menu-acoes-amplo   { @apply w-[40rem]; }
+      .menu-acoes-cartoes {
+        @apply grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4 p-2;
+      }
+      /* Estado vazio é peça, não ausência de peça: menu sem item liberado precisa dizer isso. */
+      .menu-acoes-vazio {
+        @apply px-3 py-6 text-center text-[13px] text-base-content/60;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Água límpida: as peças precisam ser julgadas sobre o mapa vivo, não sobre fundo chapado. -->
+  <div id="map" class="fixed inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+
+  <!-- defs do filtro de gravação (SPEC user_admin/013): sem eles .icon-etched não desenha nada.
+       Na aplicação vêm de templates/partials/_filtros_gravacao.html, incluído no base.html. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <!-- Medida grande: os deslocamentos do filtro são px absolutos e não escalam com o tamanho.
+           No glifo de 48px do cartão o sulco de 1,4px vira um fio e a forma parece chapada. -->
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Glifos de exemplo. Na aplicação cada um destes é um arquivo em
+       static/acoes/<app>/<nome>/icones/<variante>.svg, inserido inline pelo resolvedor. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-certidao">
+        <path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+        <path d="M14 3v5h5"/><path d="M8 13h8"/><path d="M8 17h5"/>
+      </g>
+      <g id="glifo-amostragem">
+        <circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/><path d="M11 8v6"/><path d="M8 11h6"/>
+      </g>
+      <g id="glifo-competencia">
+        <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/>
+      </g>
+      <g id="glifo-generico">
+        <circle cx="12" cy="12" r="8"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 mx-auto max-w-5xl px-6 py-10 flex flex-col gap-10">
+
+    <header class="glass-panel p-6">
+      <p class="text-overline">SPEC autorizacao/006 · mock de validação</p>
+      <h1 class="text-[30px] font-black tracking-tight text-madeira-700">Ícones das ações e menu</h1>
+      <p class="mt-1 text-[15px] text-base-content/90">
+        As camadas aparecem separadas <strong>antes</strong> da tela montada: o que se aprova é a
+        peça reutilizável, não o arranjo dela.
+      </p>
+    </header>
+
+    <!-- ==================== 1 · TOKENS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700">1 · Tokens</h2>
+      <p class="text-[15px] text-base-content/90">
+        <strong>Nenhum token novo.</strong> As peças desta SPEC compõem escalas, materiais e
+        tipografia que já existem. Se o desenho pedisse cor ou sombra nova, o sinal seria de peça
+        errada — não de token faltando.
+      </p>
+      <div class="card-well p-4 flex flex-wrap gap-x-8 gap-y-2 text-[13px] text-base-content/80">
+        <span><code class="text-code">.glass-panel</code> painel</span>
+        <span><code class="text-code">.card-well</code> poço do item</span>
+        <span><code class="text-code">.icon-glow</code> pele acesa</span>
+        <span><code class="text-code">.icon-etched</code> pele gravada</span>
+        <span><code class="text-code">.text-overline</code> rótulo do painel</span>
+        <span><code class="text-code">agua-700</code> tinta de ação</span>
+      </div>
+    </section>
+
+    <!-- ==================== 2 · ÁTOMOS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-5">
+      <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
+      <p class="text-[15px] text-base-content/90">
+        <code class="text-code">.icone-acao</code> só normaliza caixa e cor: o SVG entra inline e
+        herda <code class="text-code">currentColor</code>. A pele vem empilhada.
+      </p>
+
+      <div class="card-well p-5 flex flex-wrap items-end gap-10">
+        <div class="flex flex-col items-center gap-2">
+          <span class="icone-acao icone-acao-pequeno icon-glow"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+          <span class="text-overline">pequeno · aceso</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <span class="icone-acao icone-acao-grande icon-glow"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+          <span class="text-overline">grande · aceso</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+          <span class="text-overline">pequeno · gravado</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <span class="icone-acao icone-acao-pequeno icone-acao-generico"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+          <span class="text-overline">fallback</span>
+        </div>
+        <div class="flex flex-col items-center gap-2 text-sakura-600">
+          <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+          <span class="text-overline">herda a tinta do contexto</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3 · MOLÉCULAS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-5">
+      <h2 class="text-[24px] font-bold text-madeira-700">3 · Moléculas</h2>
+      <p class="text-[15px] text-base-content/90">
+        Duas formas do <strong>mesmo</strong> item, e quem escolhe entre elas é o menu:
+        <code class="text-code">.item-menu</code> é a linha compacta, para menu estreito;
+        <code class="text-code">.card-acao</code> é o cartão explicativo, que traz para a superfície
+        o texto que na linha só existe como tooltip. As duas leem o mesmo contrato de ação.
+      </p>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">repouso</span>
+          <button class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+            <span class="item-menu-rotulo">Emitir certidão de lançamento</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">com nome curto de apoio</span>
+          <button class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+            <span class="item-menu-rotulo">
+              Amostragem de ofertas
+              <span class="item-menu-apoio">Ofertas próximas com características similares</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">com tooltip (passe o cursor)</span>
+          <!-- tooltip-top, não -right: o item é de largura cheia, e ancorar à direita joga a
+               bolha para fora do painel. -->
+          <div class="tooltip tooltip-top block" data-tip="Distribui as atribuições da unidade entre os cargos.">
+            <button class="item-menu">
+              <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+              <span class="item-menu-rotulo">Conceder competência</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">ícone ausente → fallback, nunca buraco</span>
+          <button class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-generico"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+            <span class="item-menu-rotulo">Ação sem glifo desenhado</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-3">
+        <span class="text-overline">cartão de ação · hover-3d (passe o cursor e mova)</span>
+        <p class="text-[13px] text-base-content/70">
+          O <code class="text-code">.hover-3d</code> do daisyUI exige 9 filhos diretos — o conteúdo
+          mais 8 zonas vazias — e conteúdo não-interativo. Por isso o clicável é o
+          <code class="text-code">&lt;a&gt;</code> de fora.
+        </p>
+        <div class="menu-acoes-cartoes">
+          <a href="#" class="hover-3d card-acao-alvo">
+            <div class="card-well card-acao">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <div>
+                <p class="card-acao-nome">Emitir certidão de lançamento</p>
+                <p class="card-acao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+              </div>
+            </div>
+            <div></div><div></div><div></div><div></div>
+            <div></div><div></div><div></div><div></div>
+          </a>
+
+          <a href="#" class="hover-3d card-acao-alvo">
+            <div class="card-well card-acao">
+              <span class="icone-acao icone-acao-grande icone-acao-generico"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+              <div>
+                <p class="card-acao-nome">Ação sem glifo desenhado</p>
+                <p class="card-acao-descricao">O fallback também vale na forma de cartão: peça neutra, nunca buraco.</p>
+              </div>
+            </div>
+            <div></div><div></div><div></div><div></div>
+            <div></div><div></div><div></div><div></div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 4 · ORGANISMOS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-5">
+      <h2 class="text-[24px] font-bold text-madeira-700">4 · Organismos</h2>
+      <p class="text-[15px] text-base-content/90">
+        O menu desenha o <code class="text-code">MenuResolvido</code> da SPEC 005 e nada mais — não
+        conhece perfil, cargo nem unidade.
+      </p>
+
+      <div class="flex flex-wrap gap-6 items-start">
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">menu com itens liberados</span>
+          <nav class="glass-panel menu-acoes">
+            <p class="text-overline">Ações</p>
+            <div class="menu-acoes-lista">
+              <button class="item-menu">
+                <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+                <span class="item-menu-rotulo">Conceder competência</span>
+              </button>
+              <button class="item-menu">
+                <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <span class="item-menu-rotulo">Emitir certidão de lançamento</span>
+              </button>
+              <button class="item-menu">
+                <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                <span class="item-menu-rotulo">Amostragem de ofertas</span>
+              </button>
+            </div>
+          </nav>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">menu sem nada liberado</span>
+          <nav class="glass-panel menu-acoes">
+            <p class="text-overline">Ações</p>
+            <div class="menu-acoes-vazio">
+              Nenhuma ação disponível para o seu cargo nesta unidade.
+            </div>
+          </nav>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <span class="text-overline">menu na forma de cartões · mesma lista, outra apresentação</span>
+        <nav class="glass-panel menu-acoes menu-acoes-amplo">
+          <p class="text-overline">Ações</p>
+          <div class="menu-acoes-cartoes">
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="card-well card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Conceder competência</p>
+                  <p class="card-acao-descricao">Distribui as atribuições da unidade entre os cargos.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="card-well card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Emitir certidão de lançamento</p>
+                  <p class="card-acao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="card-well card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Amostragem de ofertas</p>
+                  <p class="card-acao-descricao">Busca ofertas próximas com características similares para a avaliação.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+          </div>
+        </nav>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // Mapa só como cenário: as peças precisam ser julgadas sobre a água, não sobre fundo chapado.
+    const mapa = L.map("map", { zoomControl: false, attributionControl: false })
+      .setView([-23.5505, -46.6333], 15);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(mapa);
+  </script>
+</body>
+</html>
