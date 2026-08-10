@@ -2,7 +2,7 @@
 spec: autorizacao/001
 versao: v1
 atualizado_em: 2026-08-07
-testes_tdd: false
+testes_tdd: true
 implementado: false
 changelog:
   - v1: versão inicial
