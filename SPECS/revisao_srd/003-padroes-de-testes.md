@@ -1,9 +1,9 @@
 ---
 spec: revisao_srd/003
-versao: v6
+versao: v7
 atualizado_em: 2026-08-10
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: incorpora markers, conftest.py global e convenções de execução
@@ -11,12 +11,13 @@ changelog:
   - v4: esclarece extensibilidade de markers e exclusão obrigatória da suíte padrão
   - v5: esclarece propósito da seção 'Testes (TDD)' no processo desta SPEC
   - v6: corrige caminho de destino da skill para .claude/skills/ (fonte original)
+  - v7: patch 001 — vedação de efeitos colaterais de persistência (isolamento estrito de banco de testes e escrita em tmp_path com teardown)
 ---
 
 # SPEC revisao_srd/003 — Padrões da suíte de testes
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## Entregável
 
@@ -243,4 +244,19 @@ estiver redigida e disponibilizada no repositório.
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v7) — Vedação de efeitos colaterais de persistência (isolamento estrito de banco e disco)
+
+- [x] **Aplicado**
+
+**Motivação.** Nenhum teste automatizado pode gerar efeitos colaterais persistentes no ambiente local — seja no banco de dados, seja no sistema de arquivos. Testes que alteram dados reais ou gravam arquivos fora de diretórios temporários quebram o determinismo da suíte, causam poluição no repositório/banco de desenvolvimento e podem mascarar falhas entre execuções subsequentes.
+
+**Regras obrigatórias de isolamento:**
+
+1. **Banco de dados (PostGIS / ORM Django):**
+   - Testes com persistência (`@banco`) devem usar **obrigatoriamente o banco de testes do Django** fornecido pelo `pytest-django` via `@pytest.mark.django_db` (banco temporário/isolado, ex.: `test_dimap_geocode`). É estritamente vedada a conexão ou execução de testes diretamente sobre o banco de desenvolvimento ou produção real.
+   - Qualquer mutação de dados deve passar por **teardown completo** (gerenciado pelas transações/rollback automáticos do `django_db` ou fixtures com cleanup explícito), garantindo que cada teste execute a partir de um estado limpo e não deixe registros residuais.
+
+2. **Sistema de arquivos (Disco / I/O):**
+   - **Proibição de escrita permanente:** Nenhum teste (unitário, integração `@integration` ou qualquer outro) tem permissão de criar, modificar ou apagar arquivos na árvore permanente do projeto (`data/`, `static/`, raiz, etc.).
+   - **Escrita estritamente em diretório temporário:** Qualquer teste que precise gerar ou manipular arquivos (ex.: criação de parquets sintéticos, simulação de arquivos de carga em `data/seed/`) deve escrever **exclusivamente em diretórios temporários (`tmp_path` do pytest ou pastas temporárias gerenciadas)** e ser descartado automaticamente no teardown pós-teste.
+   - **Testes de integração (`@integration`):** A leitura de parquets reais em `data/` é permitida **estritamente em modo read-only**. Testes de integração nunca devem alterar, sobrescrever ou adicionar arquivos no diretório de dados oficial.
