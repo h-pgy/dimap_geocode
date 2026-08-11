@@ -1,10 +1,11 @@
-"""Testes de apps/competencias/declaracao.py (SPEC autorizacao/001).
+"""Testes de apps/competencias/schemas.py (SPEC autorizacao/001).
 
-Cobre: RegistroAcoes (todas/por_slug) e declarar_acao (composição aninhada).
+Cobre: RegistroAcoes (todas/por_slug).
 """
 
-from services.domain.autorizacao.contratos import Acao, VarianteIcone
-from apps.competencias.declaracao import AcaoImplementada, RegistroAcoes, declarar_acao
+from services.domain.autorizacao.contratos import VarianteIcone
+from apps.competencias.schemas import AcaoImplementada, RegistroAcoes
+from apps.competencias.utils import instanciar_acao
 
 
 # ---------------------------------------------------------------------------
@@ -20,7 +21,7 @@ def _acao_implementada(
     partial: str = "_exportar_csv.html",
     variantes_icone: frozenset[VarianteIcone] = frozenset(),
 ) -> AcaoImplementada:
-    return declarar_acao(
+    return instanciar_acao(
         slug=slug,
         nome=nome,
         tooltip=tooltip,
@@ -55,16 +56,3 @@ def test_registro_por_slug_devolve_none_para_slug_inexistente() -> None:
 def test_registro_vazio_enumera_zero_acoes() -> None:
     registro = RegistroAcoes(acoes=())
     assert registro.todas() == ()
-
-
-# ---------------------------------------------------------------------------
-# Declaração e composição aninhada
-# ---------------------------------------------------------------------------
-
-
-def test_declarar_acao_compoe_contrato_aninhado() -> None:
-    # declarar_acao achata a declaração no ponto de escrita; o contrato guarda aninhado.
-    impl = _acao_implementada()
-    assert isinstance(impl.acao, Acao)
-    assert impl.acao.slug == "search.exportar_csv"
-    assert impl.url_name == "search:exportar_csv"

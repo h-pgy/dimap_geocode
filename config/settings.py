@@ -179,6 +179,7 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "apps.core",
     "apps.user_admin",
+    "apps.competencias",
     "apps.search",
     "apps.logradouro_matcher",
     "apps.lote_matcher",

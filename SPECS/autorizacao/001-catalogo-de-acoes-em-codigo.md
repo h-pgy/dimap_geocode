@@ -1,17 +1,18 @@
 ---
 spec: autorizacao/001
-versao: v1
-atualizado_em: 2026-08-07
+versao: v2
+atualizado_em: 2026-08-11
 testes_tdd: true
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
+  - v2: declaracao.py dividido em schemas.py (contratos) e utils.py (instanciar_acao)
 ---
 
 # SPEC autorizacao/001 — Catálogo de ações em código
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como desenvolvedor da plataforma, quero declarar em código, num único lugar curado, quais rotinas
@@ -217,4 +218,17 @@ varia por caso (slug repetido, ícone ausente, rota inexistente).
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v2) — `declaracao.py` dividido em `schemas.py` + `utils.py`
+
+Rename mecânico, sem mudança de comportamento. `apps/competencias/declaracao.py` misturava os
+contratos Pydantic (`AcaoImplementada`, `RegistroAcoes`) com a função que os monta — separados por
+responsabilidade:
+
+- `apps/competencias/schemas.py` — só os contratos: `AcaoImplementada`, `RegistroAcoes`.
+- `apps/competencias/utils.py` — `instanciar_acao()` (era `declarar_acao()`), que importa de
+  `.schemas`.
+
+`registro.py` e `checks.py` passam a importar `RegistroAcoes` de `.schemas`. Nos testes,
+`test_declaracao.py` foi dividido do mesmo jeito — `test_schemas.py` (consulta/enumeração do
+registro) e `test_utils.py` (composição aninhada) — e `test_checks.py` importa de `.schemas`/
+`.utils`.

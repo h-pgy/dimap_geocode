@@ -2,7 +2,7 @@
 
 Cobre: validar_registro detecta slug duplicado, prefixo de app inexistente,
 variante de ícone sem arquivo e url_name que não resolve.
-Os patches em django.contrib.staticfiles.finders.find e django.urls.reverse
+Os patches em django.contrib.staticfiles.finders.find e apps.competencias.checks.reverse
 permitem rodar sem staticfiles real e sem rotas cadastradas.
 """
 
@@ -11,7 +11,8 @@ from unittest.mock import patch
 from django.urls import NoReverseMatch
 
 from services.domain.autorizacao.contratos import VarianteIcone
-from apps.competencias.declaracao import AcaoImplementada, RegistroAcoes, declarar_acao
+from apps.competencias.schemas import AcaoImplementada, RegistroAcoes
+from apps.competencias.utils import instanciar_acao
 from apps.competencias.checks import validar_registro
 
 
@@ -28,7 +29,7 @@ def _acao_implementada(
     partial: str = "_exportar_csv.html",
     variantes_icone: frozenset[VarianteIcone] = frozenset(),
 ) -> AcaoImplementada:
-    return declarar_acao(
+    return instanciar_acao(
         slug=slug,
         nome=nome,
         tooltip=tooltip,
@@ -53,7 +54,7 @@ def test_check_acusa_slug_duplicado() -> None:
 
     with (
         patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("django.urls.reverse", return_value="/fake/"),
+        patch("apps.competencias.checks.reverse", return_value="/fake/"),
     ):
         erros = validar_registro(registro)
 
@@ -73,7 +74,7 @@ def test_check_slugs_distintos_nao_geram_erro_de_duplicidade() -> None:
 
     with (
         patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("django.urls.reverse", return_value="/fake/"),
+        patch("apps.competencias.checks.reverse", return_value="/fake/"),
     ):
         erros = validar_registro(registro)
 
@@ -92,7 +93,7 @@ def test_check_acusa_prefixo_de_app_inexistente() -> None:
 
     with (
         patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("django.urls.reverse", return_value="/fake/"),
+        patch("apps.competencias.checks.reverse", return_value="/fake/"),
     ):
         erros = validar_registro(registro)
 
@@ -108,7 +109,7 @@ def test_check_prefixo_instalado_nao_gera_erro_de_app() -> None:
 
     with (
         patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("django.urls.reverse", return_value="/fake/"),
+        patch("apps.competencias.checks.reverse", return_value="/fake/"),
     ):
         erros = validar_registro(registro)
 
@@ -128,7 +129,7 @@ def test_check_acusa_variante_de_icone_sem_arquivo() -> None:
     # finders.find devolve None → SVG não encontrado.
     with (
         patch("django.contrib.staticfiles.finders.find", return_value=None),
-        patch("django.urls.reverse", return_value="/fake/"),
+        patch("apps.competencias.checks.reverse", return_value="/fake/"),
     ):
         erros = validar_registro(registro)
 
@@ -150,7 +151,7 @@ def test_check_variante_com_svg_presente_nao_gera_erro() -> None:
             "django.contrib.staticfiles.finders.find",
             return_value="/static/acoes/search/exportar_csv/icones/pequeno.svg",
         ),
-        patch("django.urls.reverse", return_value="/fake/"),
+        patch("apps.competencias.checks.reverse", return_value="/fake/"),
     ):
         erros = validar_registro(registro)
 
@@ -166,7 +167,7 @@ def test_check_variante_nao_declarada_nao_e_cobrada() -> None:
 
     with (
         patch("django.contrib.staticfiles.finders.find", return_value=None),
-        patch("django.urls.reverse", return_value="/fake/"),
+        patch("apps.competencias.checks.reverse", return_value="/fake/"),
     ):
         erros = validar_registro(registro)
 
@@ -190,7 +191,7 @@ def test_check_caminho_do_svg_segue_gabarito() -> None:
 
     with (
         patch("django.contrib.staticfiles.finders.find", side_effect=finder_espiao),
-        patch("django.urls.reverse", return_value="/fake/"),
+        patch("apps.competencias.checks.reverse", return_value="/fake/"),
     ):
         validar_registro(registro)
 
@@ -212,7 +213,7 @@ def test_check_acusa_url_name_que_nao_resolve() -> None:
 
     with (
         patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("django.urls.reverse", side_effect=NoReverseMatch("não resolve")),
+        patch("apps.competencias.checks.reverse", side_effect=NoReverseMatch("não resolve")),
     ):
         erros = validar_registro(registro)
 
@@ -228,7 +229,7 @@ def test_check_url_name_valido_nao_gera_erro() -> None:
 
     with (
         patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("django.urls.reverse", return_value="/search/exportar/"),
+        patch("apps.competencias.checks.reverse", return_value="/search/exportar/"),
     ):
         erros = validar_registro(registro)
 
