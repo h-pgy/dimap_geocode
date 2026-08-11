@@ -6,7 +6,14 @@ Cobre: Acao recusa slug fora do padrão <app>.<nome>, nome vazio e tooltip vazio
 import pytest
 from pydantic import ValidationError
 
-from services.domain.autorizacao.contratos import Acao, VarianteIcone
+from services.domain.autorizacao.contratos import (
+    LIMITE_NOME,
+    LIMITE_NOME_CURTO,
+    LIMITE_SLUG,
+    LIMITE_TOOLTIP,
+    Acao,
+    VarianteIcone,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -102,3 +109,40 @@ def test_acao_aceita_variantes_icone() -> None:
     )
     assert VarianteIcone.PEQUENO in acao.variantes_icone
     assert VarianteIcone.GRANDE in acao.variantes_icone
+
+
+def test_acao_estrutural_default_e_falso() -> None:
+    assert _acao().estrutural is False
+
+
+def test_acao_aceita_estrutural() -> None:
+    acao = Acao(
+        slug="competencias.conceder",
+        nome="Conceder competência",
+        tooltip="Concede competência ao cargo",
+        estrutural=True,
+    )
+    assert acao.estrutural is True
+
+
+# ---------------------------------------------------------------------------
+# Limites de tamanho (espelham a projeção da SPEC 002)
+# ---------------------------------------------------------------------------
+
+
+def test_acao_recusa_texto_alem_do_limite() -> None:
+    with pytest.raises(ValidationError) as exc:
+        _acao(slug="search." + "a" * LIMITE_SLUG)
+    assert any("slug" in err["loc"] for err in exc.value.errors())
+
+    with pytest.raises(ValidationError) as exc:
+        _acao(nome="a" * (LIMITE_NOME + 1))
+    assert any("nome" in err["loc"] for err in exc.value.errors())
+
+    with pytest.raises(ValidationError) as exc:
+        _acao(tooltip="a" * (LIMITE_TOOLTIP + 1))
+    assert any("tooltip" in err["loc"] for err in exc.value.errors())
+
+    with pytest.raises(ValidationError) as exc:
+        _acao(nome_curto="a" * (LIMITE_NOME_CURTO + 1))
+    assert any("nome_curto" in err["loc"] for err in exc.value.errors())

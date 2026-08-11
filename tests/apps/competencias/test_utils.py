@@ -19,3 +19,16 @@ def test_instanciar_acao_compoe_contrato_aninhado() -> None:
     assert isinstance(impl.acao, Acao)
     assert impl.acao.slug == "search.exportar_csv"
     assert impl.url_name == "search:exportar_csv"
+    assert impl.acao.estrutural is False
+
+
+def test_instanciar_acao_compoe_estrutural() -> None:
+    impl = instanciar_acao(
+        slug="competencias.conceder",
+        nome="Conceder competência",
+        tooltip="Concede competência ao cargo",
+        url_name="competencias:conceder",
+        partial="_conceder.html",
+        estrutural=True,
+    )
+    assert impl.acao.estrutural is True

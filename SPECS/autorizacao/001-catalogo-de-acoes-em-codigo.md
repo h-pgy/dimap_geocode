@@ -1,12 +1,14 @@
 ---
 spec: autorizacao/001
-versao: v2
+versao: v3
 atualizado_em: 2026-08-11
 testes_tdd: true
 implementado: true
 changelog:
   - v1: versão inicial
   - v2: declaracao.py dividido em schemas.py (contratos) e utils.py (instanciar_acao)
+  - v3: contrato da ação ganha `estrutural` (competência que decorre da titularidade, não de
+    concessão) e limites de tamanho alinhados à projeção da SPEC 002
 ---
 
 # SPEC autorizacao/001 — Catálogo de ações em código
@@ -232,3 +234,31 @@ responsabilidade:
 `test_declaracao.py` foi dividido do mesmo jeito — `test_schemas.py` (consulta/enumeração do
 registro) e `test_utils.py` (composição aninhada) — e `test_checks.py` importa de `.schemas`/
 `.utils`.
+
+### Patch 002 (v3) — `estrutural` no contrato e limites de tamanho
+
+**Ação estrutural.** O contrato conceitual ganha `estrutural: bool = False`. Ação estrutural é a
+que se exerce por **dirigir a unidade** (titularidade, SPEC `titularidade/001`), não por concessão
+recebida — hoje as duas ações de administração de competência, e nada mais. Fica no contrato
+conceitual, e não na camada de aplicação, porque é resposta de "o que a ação é": como sua
+competência é conferida. Quem lê isso é o avaliador (SPEC 003), e a projeção (SPEC 002) passa a
+levá-lo ao banco para que o catálogo oferecido em tela possa excluí-las — atribuir a uma unidade uma
+ação que ninguém concede é oferta sem efeito.
+
+`instanciar_acao()` ganha o parâmetro correspondente, com o mesmo default.
+
+**Limites de tamanho.** `slug`, `nome`, `nome_curto` e `tooltip` passam a declarar `max_length` no
+contrato, espelhando as colunas da projeção (SPEC 002): 120, 120, 60 e 255. Sem isso o texto longo
+demais passa no boot e só estoura no `sincronizar_acoes`, que é o lugar errado para descobrir o
+problema — o contrato é a primeira fronteira e é onde a recusa pertence.
+
+```python
+# services/domain/autorizacao/contratos.py
+class Acao(BaseModel):
+    slug: str = Field(pattern=PADRAO_SLUG, max_length=LIMITE_SLUG)
+    # Competência que decorre de dirigir a unidade; não passa por atribuição nem concessão.
+    estrutural: bool = False
+```
+
+Testes acrescentados: `test_acao_recusa_texto_alem_do_limite` (contrato recusa nome/tooltip acima do
+máximo) e a extensão de `test_utils` para a composição com `estrutural`.

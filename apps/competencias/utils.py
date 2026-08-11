@@ -11,6 +11,7 @@ def instanciar_acao(
     partial: str,
     nome_curto: str | None = None,
     variantes_icone: frozenset[VarianteIcone] = frozenset(),
+    estrutural: bool = False,
 ) -> AcaoImplementada:
     """Achata a composição no ponto de declaração: o app da ação escreve plano, o contrato guarda
     aninhado."""
@@ -21,6 +22,7 @@ def instanciar_acao(
             tooltip=tooltip,
             nome_curto=nome_curto,
             variantes_icone=variantes_icone,
+            estrutural=estrutural,
         ),
         url_name=url_name,
         partial=partial,
