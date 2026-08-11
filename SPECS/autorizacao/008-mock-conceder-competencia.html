@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SPEC autorizacao/007 — Conceder competência (mock de validação)</title>
+  <title>SPEC autorizacao/008 — Conceder competência (mock de validação)</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,7 @@
       .then((css) => {
         const s = document.createElement("style");
         s.type = "text/tailwindcss";
-        s.textContent = css + "\n" + document.getElementById("tokens-spec-007").textContent;
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-008").textContent;
         document.head.appendChild(s);
       })
       .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
@@ -37,7 +37,7 @@
   <!-- PEÇAS PROPOSTAS POR ESTA SPEC — ainda NÃO estão no tema-dimap.dev.css.
        Guardadas em script[type=text/css] (inerte) e concatenadas ao tema pelo loader acima.
        As classes .icone-acao* vêm da SPEC 006 e estão repetidas aqui só para o mock rodar sozinho. -->
-  <script type="text/css" id="tokens-spec-007">
+  <script type="text/css" id="tokens-spec-008">
     @layer components {
 
       /* ---- herdado da SPEC 006 (não reimplementar no porte) ---- */
@@ -126,7 +126,7 @@
       /* ==================== ORGANISMO · CARTÃO DA ATRIBUIÇÃO ====================
          Uma atribuição da unidade e quem a exerce. O poço rebaixado carrega os cargos porque
          campo e conteúdo editável aqui são sempre coisa rebaixada (mesma regra da tabela de vidro).
-         O cartão NÃO oferece criar atribuição: isso é do administrador do sistema.
+         O cartão NÃO oferece criar atribuição: isso é a ação da SPEC 007.
          Sem hover-3d aqui, ao contrário do cartão de ação da SPEC 006: este cartão contém botões,
          select e campo, e o componente exige conteúdo não-interativo.
          O glifo fica em tinta neutra: ele IDENTIFICA a atribuição, e três cartões empilhados com
@@ -194,7 +194,7 @@
   <div class="relative z-10 mx-auto max-w-4xl px-6 py-10 flex flex-col gap-10">
 
     <header class="glass-panel p-6">
-      <p class="text-overline">SPEC autorizacao/007 · mock de validação</p>
+      <p class="text-overline">SPEC autorizacao/008 · mock de validação</p>
       <h1 class="text-[30px] font-black tracking-tight text-madeira-700">Conceder competência</h1>
       <p class="mt-1 text-[15px] text-base-content/90">
         Camadas separadas antes da tela montada. Os átomos e o ícone vêm da SPEC 006 e do styleguide

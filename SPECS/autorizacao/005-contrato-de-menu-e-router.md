@@ -1,12 +1,15 @@
 ---
 spec: autorizacao/005
-versao: v1
-atualizado_em: 2026-08-07
+versao: v2
+atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: o item renderizável leva nome e nome curto (as duas formas da SPEC 006 nomeiam a ação de
+    jeitos diferentes); o item recusa variante de ícone que a ação não declara; o superusuário
+    recebe os slugs do registro em código
 ---
 
 # SPEC autorizacao/005 — Contrato de menu e router de ações
@@ -24,9 +27,11 @@ montar um menu novo seja compor peças existentes em vez de escrever autorizaç�
 - [ ] O router devolve **apenas os itens liberados** para o perfil, na **ordem declarada** pelo menu.
 - [ ] Menu sem nenhum item liberado devolve coleção **vazia**, sem erro — o menu decide o que fazer
       com isso.
-- [ ] **Superusuário** recebe todos os itens do menu.
+- [ ] **Superusuário** recebe todos os itens do menu — e nenhum de ação que saiu do código.
 - [ ] O item devolvido carrega o que a renderização precisa: caminho do partial, URL resolvida,
-      rótulo, tooltip e **a variante de ícone escolhida pelo menu**.
+      **nome e nome curto**, tooltip e **a variante de ícone escolhida pelo menu**.
+- [ ] Menu que escolhe uma variante de ícone que a ação **não declara** é recusado na construção do
+      contrato, não no render.
 - [ ] O router é **puro** e testável sem banco.
 
 ## Contexto e decisões de arquitetura
@@ -46,6 +51,15 @@ comportamento comum a extrair — só vocabulário.
 (SPEC 001); qual usar e em que forma é decisão de quem exibe. Ordem é a de declaração: campo de
 ordenação seria um segundo lugar para dizer a mesma coisa.
 
+A escolha da variante é **validada no contrato**: o item que pede um glifo que a ação não tem é erro
+de declaração, e o fallback da SPEC 006 existe para arquivo faltando em runtime, não para esconder
+isso. Como o item já compõe a ação, a checagem é local — não precisa de check de sistema.
+
+**O item leva nome e nome curto, e quem escolhe é a forma.** A linha compacta cabe um rótulo curto;
+o cartão nomeia a ação por extenso e traz o tooltip como descrição (SPEC 006). Um campo único de
+rótulo obrigaria uma das duas formas a exibir o texto errado. `nome_curto` é opcional na ação (SPEC
+001), então a forma compacta cai no `nome` quando ele não existe.
+
 **O router recebe o conjunto de slugs liberados, não o usuário.** Isso o mantém puro e testável sem
 banco: quem traduz usuário → conjunto é um resolvedor fino na borda, que consulta o backend da SPEC
 003 uma vez só. Passar o usuário para dentro do router acoplaria a montagem do menu ao ciclo de
@@ -56,9 +70,15 @@ para `has_perm`, não para "liste tudo que ele pode" — sem essa linha, o super
 vazio enquanto conseguiria executar tudo pela URL. É o tipo de divergência entre UX e autorização
 que o §3.5 manda evitar.
 
+Os slugs dele saem do **registro em código** (SPEC 001), não da tabela projetada: o registro é, por
+construção, só o que existe hoje — ação desativada saiu dele, e ler dali dispensa filtrar por
+`ativa` e não deixa o superusuário ver no menu o que a rota já não executa.
+
 ## Peças de referência a compor
-- `@apps/competencias/declaracao.py` (SPEC 001) → `AcaoImplementada` e `VarianteIcone`: o item
-  referencia a ação declarada, não a redescreve.
+- `@apps/competencias/schemas.py` (SPEC 001) → `AcaoImplementada`, e
+  `@services/domain/autorizacao` → `VarianteIcone`: o item referencia a ação declarada, não a
+  redescreve.
+- `@apps/competencias/registro.py` (SPEC 001) → `REGISTRO`: a enumeração do superusuário sai daqui.
 - `@apps/competencias/backends.py` (SPEC 003): o resolvedor pergunta ao backend, com o cache por
   instância de usuário que ele já mantém.
 - `@apps/search/views.py` → `REGISTRO_SECOES`: precedente de registro tipado por app; os menus
@@ -80,7 +100,8 @@ class ItemDeMenu(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     acao: AcaoImplementada
-    # Quem exibe escolhe o tamanho do glifo; a ação só declara os que possui.
+    # Quem exibe escolhe o tamanho do glifo, entre os que a ação declara possuir — pedir um que ela
+    # não tem é erro de declaração, recusado aqui.
     variante_icone: VarianteIcone
     # Linha compacta ou cartão explicativo (SPEC 006): também é escolha de quem exibe.
     forma: FormaItem
@@ -107,7 +128,9 @@ class ItemRenderizavel(BaseModel):
 
     partial: str
     url: str
-    rotulo: str
+    # A linha compacta usa o curto; o cartão nomeia por extenso e usa o tooltip como descrição.
+    nome: str
+    nome_curto: str
     tooltip: str
     slug: str
     variante_icone: VarianteIcone
@@ -126,7 +149,7 @@ class RoteadorMenu:
 ```python
 # apps/competencias/resolucao.py
 def slugs_liberados(usuario: AbstractBaseUser | AnonymousUser) -> frozenset[str]:
-    """Borda entre o request e o router. Superusuário recebe o catálogo inteiro: o atalho do
+    """Borda entre o request e o router. Superusuário recebe o registro inteiro: o atalho do
     PermissionsMixin cobre has_perm, não a enumeração."""
     ...
 ```
@@ -139,7 +162,7 @@ def slugs_liberados(usuario: AbstractBaseUser | AnonymousUser) -> frozenset[str]
   qual contrato usar quando existir.
 
 ## Testes (TDD)
-Os três primeiros são puros e rodam na suíte padrão. O último exercita o resolvedor com `Perfil`
+Os quatro primeiros são puros e rodam na suíte padrão. O último exercita o resolvedor com `Perfil`
 gravado e carrega o marker `banco`.
 
 - `test_router_devolve_apenas_liberados_na_ordem_declarada` — item sem slug liberado some; os que
@@ -148,6 +171,8 @@ gravado e carrega o marker `banco`.
   vazia, sem erro.
 - `test_item_carrega_a_variante_de_icone_do_menu` — dois menus com a mesma ação e variantes
   diferentes produzem itens diferentes: a apresentação é do menu, não da ação.
+- `test_item_recusa_variante_que_a_acao_nao_declara` — pedir um glifo que a ação não possui é
+  recusado ao construir o item.
 - `test_resolvedor_libera_o_catalogo_inteiro_para_superusuario` — superusuário recebe todos os slugs;
   anônimo recebe conjunto vazio. *(marker `banco`)*
 

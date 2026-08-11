@@ -1,12 +1,14 @@
 ---
 spec: autorizacao/003
-versao: v1
-atualizado_em: 2026-08-07
+versao: v2
+atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: segunda fonte de competência — ação estrutural liberada pela titularidade da unidade
+    (SPEC titularidade/001), sem passar por atribuição nem concessão
 ---
 
 # SPEC autorizacao/003 — Avaliador de competência e backend de autorização
@@ -24,6 +26,8 @@ inventar a sua checagem.
 - [ ] `perfil.has_perm("<app>.<nome>")` devolve `True` quando existe concessão daquela ação para um
       cargo do perfil **na unidade dele**, e `False` no resto.
 - [ ] Concessão da mesma ação **em outra unidade** — inclusive na unidade superior — não libera.
+- [ ] Ação **estrutural** (SPEC 001) é liberada a quem é **titular** da sua unidade, sem atribuição
+      nem concessão gravada; a quem não é titular, nem com concessão.
 - [ ] Ação **inativa** não libera ninguém, mesmo com concessão gravada.
 - [ ] Superusuário passa; usuário **anônimo** ou **inativo** não passa.
 - [ ] Perguntar por **N ações** do mesmo perfil custa **uma consulta só** ao banco.
@@ -44,9 +48,21 @@ autentica — passa a responder a partir das concessões da SPEC 002.
 grupo → permissão só expressa duplas: a unidade viraria grupo, obrigando a resincronizar filiação
 toda vez que alguém muda de lotação, com o dado já estando no `Perfil`.
 
+**Duas fontes de competência, um resultado.** A concessão (SPEC 002) responde pelas ações comuns; a
+**titularidade** (SPEC `titularidade/001`) responde pelas **estruturais** — as que se exercem por
+dirigir a unidade, e que por isso não têm atribuição nem concessão a consultar. O avaliador une os
+dois conjuntos; nada mais no sistema precisa saber que são dois.
+
+Estrutural não se acumula por concessão: conceder uma ação estrutural a um cargo não libera ninguém,
+porque a fonte dela é a titularidade. É o que impede a competência de ter duas portas com regras
+diferentes.
+
+O alcance sobre as unidades **abaixo** não é decidido aqui: `has_perm` responde pela unidade do
+perfil, e a subárvore é regra de domínio de cada ação que a use (SPEC 007).
+
 **O `ModelBackend` continua instalado.** Ele é quem serve as permissões de staff do admin do Django,
-usadas pelo nível 1 da SPEC 002. Os dois backends convivem: `has_perm` é verdadeiro se **qualquer**
-backend disser sim.
+que a SPEC 002 mantém como conveniência de inspeção. Os dois backends convivem: `has_perm` é
+verdadeiro se **qualquer** backend disser sim.
 
 **Atalho de superusuário sai de graça.** `PermissionsMixin.has_perm` responde `True` para
 superusuário ativo antes de consultar backend algum, e o `Perfil` já herda o mixin. Não se
@@ -54,7 +70,9 @@ reimplementa — e é ele que resolve o bootstrap enquanto não há concessão n
 
 **A regra fica no domínio; a query, na aplicação.** A consulta traz as concessões da unidade do
 perfil e nada mais; quem decide se o cargo bate e se a ação está ativa é o avaliador em
-`services/domain/autorizacao/`, sobre DTOs. Filtrar cargo no `.filter()` seria mais curto e
+`services/domain/autorizacao/`, sobre DTOs. Os slugs estruturais entram no DTO vindos do registro em
+memória (SPEC 001) — o domínio não importa o catálogo do app, recebe o conjunto pronto, como já
+recebe as concessões. Filtrar cargo no `.filter()` seria mais curto e
 esconderia a regra num queryset — com dezenas de usuários e poucas ações por unidade, o punhado de
 linhas a mais não paga esse preço, e é o que torna a regra testável sem banco (§3.3, §9).
 
@@ -70,6 +88,9 @@ aceito: concessão alterada só vale no request seguinte, o que é o comportamen
   carregadas.
 - `@apps/user_admin/models/user.py` → `Perfil`, que já herda `PermissionsMixin`: o protocolo
   `has_perm` e o atalho de superusuário vêm dele, não se reescrevem.
+- `@apps/user_admin/models/user.py` → `Perfil.e_titular` (SPEC `titularidade/001`): a segunda fonte
+  é uma leitura de campo, sem consulta nova.
+- `@apps/competencias/registro.py` → `REGISTRO` (SPEC 001): de onde saem os slugs estruturais.
 - `@config/settings.py` → `AUTHENTICATION_BACKENDS`: o backend novo entra **ao lado** do
   `ModelBackend`, que continua servindo o admin.
 
@@ -86,6 +107,7 @@ class PerfilCompetencia(BaseModel):
     unidade_id: int
     cargo_base_id: int
     cargo_comissao_id: int | None = None
+    e_titular: bool = False
 
 
 class ConcessaoVigente(BaseModel):
@@ -103,6 +125,8 @@ class AvaliacaoCompetencia(BaseModel):
 
     perfil: PerfilCompetencia
     concessoes: tuple[ConcessaoVigente, ...]
+    # Vêm do registro em código: o domínio não conhece o catálogo do app.
+    slugs_estruturais: frozenset[str] = frozenset()
 
 
 class CompetenciaResultado(BaseModel):
@@ -150,18 +174,22 @@ class CompetenciaBackend:
 - Contrato de menu e router (SPEC 005).
 - Autorização dependente do objeto: a assinatura recebe `obj` porque o Django a define assim, mas
   esta SPEC a ignora — competência aqui é do perfil, não do lote.
+- Alcance do titular sobre as unidades abaixo: é regra de domínio de cada ação (SPEC 007), não da
+  decisão de acesso.
 - Impedimento e substituição: perfil afastado continua autorizado até a SPEC que os trate.
 - Invalidação imediata de cache após alterar concessão.
 
 ## Testes (TDD)
-Os três primeiros são domínio puro e rodam na suíte padrão. Os dois últimos exercitam o backend com
-`Perfil` real e carregam o marker `banco`, declarado em `markers_obrigatorios`.
+Os quatro primeiros são domínio puro e rodam na suíte padrão. Os dois últimos exercitam o backend
+com `Perfil` real e carregam o marker `banco`, declarado em `markers_obrigatorios`.
 
 - `test_avaliador_libera_por_cargo_base_ou_comissao` — concessão que mira o cargo base **ou** o
   cargo em comissão do perfil libera a ação; cargo que não é nenhum dos dois não libera.
 - `test_avaliador_exige_unidade_exata` — concessão idêntica numa unidade diferente, inclusive na
   superior, não libera: não há herança pelo organograma.
 - `test_avaliador_ignora_acao_inativa` — concessão gravada de ação inativa não entra no resultado.
+- `test_avaliador_libera_estrutural_so_para_titular` — a ação estrutural sai liberada para o titular
+  sem concessão nenhuma, e não sai para o não-titular nem quando há concessão dela gravada.
 - `test_backend_responde_has_perm_e_consulta_uma_vez` — `has_perm` acerta o liberado e o negado, e
   perguntar por várias ações do mesmo perfil não multiplica consultas. *(marker `banco`)*
 - `test_backend_nega_anonimo_e_inativo_e_nao_autentica` — anônimo e perfil inativo não recebem nada,

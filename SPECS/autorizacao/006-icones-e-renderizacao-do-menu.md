@@ -65,6 +65,10 @@ declaração de cor no átomo venceria por ordem de cascata a pele empilhada —
 `text-agua-600` — e o brilho sumiria sem erro nenhum. A cor vem sempre de fora, seja da pele, seja
 do contexto.
 
+**O caminho do ícone já é convenção declarada — o resolvedor não a redeclara.** O gabarito vive em
+`apps/competencias/checks.py` desde a SPEC 001, e é o que o system check usa para cobrar o arquivo.
+Duas cópias divergiriam em silêncio: o check aprovaria um caminho e o resolvedor leria outro.
+
 **Nome de ação é título, e título é madeira.** O conceito do design system reserva a madeira quente
 aos títulos — é o único calor orgânico da cena, contra a rocha fria do corpo. Cartão e item nomeiam
 a ação, então o nome vai em `madeira-700`; `rocha-950` fica para corpo e subtítulo, como manda a
@@ -78,6 +82,9 @@ deixa herdar a tinta do item e o cartão o deixa **gravado no gelo** — a mesma
 gravação são px absolutos e no glifo de 48px o sulco da medida pequena vira um fio. O `.icon-glow`
 estático continua valendo para o ícone solitário; o que muda é que lista não é lugar de ícone
 permanentemente aceso.
+
+A pele do ícone dentro de item e cartão é, por isso, uma classe própria — `.icone-acao-acende` —, e
+não `.icon-glow` empilhado: quem acende é o hover do item, não o glifo.
 
 No cartão a gravação não contraria a regra de que ela nunca carrega informação: quem nomeia a ação é
 o título, e o glifo é identificação secundária que ganha legibilidade plena no hover.
@@ -105,7 +112,10 @@ mock pedir cor ou sombra nova, é sinal de que a peça está errada, não de que
 
 ## Peças de referência a compor
 - `@apps/competencias/menus.py` (SPEC 005) → `MenuResolvido` e `ItemRenderizavel`: o organismo
-  renderiza essa saída, sem recalcular autorização.
+  renderiza essa saída, sem recalcular autorização — a linha usa o nome curto, o cartão o nome e o
+  tooltip.
+- `@apps/competencias/checks.py` (SPEC 001) → `GABARITO_CAMINHO_ICONE`: a convenção de caminho já
+  existe e é reusada, não reescrita.
 - Skill `componentes-frontend` → `.glass-panel`, `.card-well`, `.icon-glow`, `.icon-etched`,
   `.text-overline`, `.btn-glass`: as peles do item e do painel saem daqui.
 - `@services/domain/warmup.py`: idioma de cache em memória aquecido no processo web.
@@ -118,10 +128,7 @@ mock pedir cor ou sombra nova, é sinal de que a peça está errada, não de que
 # direção de implementação — adaptar conforme necessário, sem violar os princípios de
 # arquitetura nem o estilo de código do CLAUDE.md
 
-# apps/competencias/icones.py
-GABARITO_CAMINHO_ICONE = "acoes/{app}/{nome}/icones/{variante}.svg"
-
-
+# apps/competencias/icones.py — o gabarito vem de checks.py (SPEC 001); aqui não se redeclara.
 class ResolvedorIcones:
     """Slug + variante → markup do SVG, cacheado por processo."""
 
@@ -133,8 +140,8 @@ class ResolvedorIcones:
 ```
 
 ```html
-<!-- átomo: normaliza tamanho e cor; a pele vem de .icon-glow / .icon-etched empilhados -->
-<span class="icone-acao icone-acao-pequeno icon-glow">{{ svg|safe }}</span>
+<!-- átomo: normaliza a caixa; quem acende é o hover do item, não o glifo em repouso -->
+<span class="icone-acao icone-acao-pequeno icone-acao-acende">{{ svg|safe }}</span>
 ```
 
 ## Fora de escopo

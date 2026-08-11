@@ -1,12 +1,18 @@
 ---
 spec: autorizacao/002
-versao: v1
-atualizado_em: 2026-08-07
+versao: v3
+atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: admin do Django deixa de ser o caminho do nível 1 — atribuir ação a unidade vira ação
+    própria (`competencias.definir_atribuicao`, SPEC 007), semeada para os cargos de chefia; aqui
+    o admin fica só como conveniência de inspeção
+  - v3: o bootstrap deixa de ser seed e passa a decorrer da titularidade (SPEC titularidade/001);
+    a projeção leva `estrutural`; unicidade da concessão passa a duas constraints parciais (FK
+    anulável não colide); referências de módulo corrigidas para `registro.py`/`schemas.py`
 ---
 
 # SPEC autorizacao/002 — Competência no banco: projeção da ação, atribuição da unidade e concessão ao cargo
@@ -15,10 +21,9 @@ changelog:
 - [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
-Como administrador do sistema, quero atribuir ações às unidades da DIMAP e ver essas atribuições
-persistidas, para que o organograma — que cresce em runtime — possa receber competências sem
-alteração de código, e para que os diretores possam depois distribuí-las entre os cargos da sua
-unidade.
+Como responsável pela DIMAP, quero que as ações atribuídas às unidades fiquem persistidas, para que
+o organograma — que cresce em runtime — possa receber competências sem alteração de código, e para
+que os diretores possam depois distribuí-las entre os cargos da sua unidade.
 
 ## Critérios de aceite
 - [ ] O catálogo de ações da SPEC 001 é **projetado no banco** por um comando do `manage.py`, e a
@@ -29,12 +34,16 @@ unidade.
       com suas atribuições e concessões intactas.
 - [ ] A projeção é **somente leitura** nas telas administrativas — a fonte de verdade continua sendo
       o código.
-- [ ] O administrador do sistema atribui uma ação a uma unidade pelo **admin do Django**, e a mesma
-      dupla unidade × ação não pode ser atribuída duas vezes.
+- [ ] A projeção distingue a ação **estrutural** (SPEC 001) da comum, para que as telas possam
+      deixar de oferecer o que ninguém atribui nem concede.
+- [ ] A mesma dupla unidade × ação não pode ser atribuída duas vezes.
+- [ ] `AtribuicaoUnidade` aparece no admin do Django **apenas como conveniência de inspeção** — o
+      caminho de criação é a ação `competencias.definir_atribuicao` (SPEC 007).
 - [ ] Uma concessão **só existe pendurada numa atribuição existente**: não há como liberar para um
       cargo uma ação que a unidade dele não possui, nem pelo admin nem por shell.
 - [ ] Cada concessão aponta para **exatamente um** cargo — base ou em comissão, nunca os dois nem
-      nenhum — e a mesma dupla atribuição × cargo não se repete.
+      nenhum — e a mesma dupla atribuição × cargo não se repete, **inclusive sendo um dos dois FKs
+      nulo**.
 - [ ] Retirar a atribuição de uma unidade **remove junto** as concessões que dependiam dela.
 
 ## Contexto e decisões de arquitetura
@@ -50,10 +59,15 @@ atribuição e nenhuma concessão é estado válido: é a unidade recém-criada 
 
 **A tabela `Acao` é projeção, não fonte.** Ela existe para dar FK de verdade à atribuição e para
 que as telas de concessão sejam querysets normais (listar, buscar, ordenar) em vez de casarem
-queryset com registro em memória a cada linha. Por isso projeta `slug`, `nome`, `nome_curto` e
-`tooltip` — o que se consulta no banco. As variantes de ícone ficam fora: nada as consulta em SQL, e
-a apresentação lê o registro em memória. O admin a exibe somente-leitura; editar ali seria editar um
-espelho.
+queryset com registro em memória a cada linha. Por isso projeta `slug`, `nome`, `nome_curto`,
+`tooltip` e `estrutural` — o que se consulta no banco. As variantes de ícone ficam fora: nada as
+consulta em SQL, e a apresentação lê o registro em memória. O admin a exibe somente-leitura; editar
+ali seria editar um espelho.
+
+**A ação estrutural é projetada, mas nunca atribuída.** Ela existe na tabela porque o registro de
+execução (SPEC 004) precisa de FK para ela como para qualquer outra. Mas competência estrutural
+decorre da titularidade (SPEC 001, SPEC `titularidade/001`) e não passa por estas duas tabelas — por
+isso a coluna, que é o que permite às telas da SPEC 007 não oferecerem o que não produz efeito.
 
 **Desativação em vez de exclusão.** Apagar a linha de uma ação removida do código cascatearia
 atribuições e concessões reais — perda de dado administrativo por um refactor. O sync faz upsert por
@@ -67,6 +81,11 @@ entra depois do `migrate`, e o `set -e` faz uma projeção que falhou derrubar a
 servir um catálogo pela metade. De quebra, os system checks da SPEC 001 rodam junto com o comando —
 registro quebrado não sobe.
 
+O sync entra **sob a mesma condição do `migrate`** (`DJANGO_AUTO_MIGRATE`), e não solto ao lado
+dela: quem desliga a migração automática em produção o faz para que a subida não toque o schema, e
+um sync rodando contra um banco que ainda não migrou derrubaria o serviço pelo `set -e` — o oposto
+do que o desligamento pede.
+
 A lógica vive no app, como as seeds de `user_admin`: mexe em persistência e orquestração, não em
 domínio. O comando é fino (chamada + feedback) e recebe o registro por argumento, para o teste não
 depender do global.
@@ -76,6 +95,12 @@ opcional, e a concessão pode mirar qualquer um dos dois. Um FK genérico escond
 campos com `CheckConstraint` garantindo exatamente um preenchido deixam explícito e barram o estado
 inválido no banco, como já se faz em `CargoComissao` e `Unidade`.
 
+**A unicidade da concessão são duas constraints parciais, não uma.** Um único
+`UniqueConstraint(atribuicao, cargo_base, cargo_comissao)` **não** impediria a duplicata: no
+Postgres nulos são distintos entre si, e um dos dois FKs é sempre nulo por causa do XOR — a segunda
+gravação idêntica passaria. Uma constraint por ramo, cada uma condicionada ao FK que importa, é o
+que faz o banco recusar de fato.
+
 **Unidade exata, sem herança.** A concessão vale para a unidade nomeada; ancestral não alcança
 descendente. É decisão de produto: competência é atribuição da unidade em si, e herdar pelo
 organograma daria a uma coordenadoria tudo das divisões abaixo sem ninguém ter decidido isso.
@@ -83,14 +108,20 @@ organograma daria a uma coordenadoria tudo das divisões abaixo sem ninguém ter
 **Quem concedeu fica registrado na linha.** `Concessao` carrega o perfil concedente e a data. Não é
 o log de execução de ato (SPEC 004) — é procedência: sem isso ninguém sabe quem liberou o quê.
 
-**Nível 1 no admin do Django, nível 2 depois.** Atribuir ação a unidade é ato do administrador do
-sistema, e o `django.contrib.admin` já resolve a tela e registra o histórico no `LogEntry`. A tela
-do diretor concedendo a cargos vem em SPEC própria; até lá, `Concessao` também aparece no admin,
-como bootstrap.
+**Os dois níveis saem do admin.** Atribuir ação a unidade **não** é ato de administrador de sistema
+pelo `django.contrib.admin`: é ato administrativo como qualquer outro, e vira a ação
+`competencias.definir_atribuicao` (SPEC 007), com tela própria, autorização na rota e execução
+registrada (SPEC 004). O nível 2 sai da SPEC 008. O admin sobre estas duas tabelas permanece como
+conveniência de inspeção, não como caminho de criação.
+
+**O primeiro estado do banco não é problema destas tabelas.** As duas ações que as administram são
+**estruturais** (SPEC 001): quem as exerce é o titular da unidade (SPEC `titularidade/001`), sem
+atribuição nem concessão gravada. Por isso as duas tabelas podem nascer vazias sem travar nada — não
+há ovo-e-galinha a quebrar, e nenhuma seed é necessária para isso.
 
 ## Peças de referência a compor
-- `@apps/competencias/acoes.py` → `RegistroAcoes` (SPEC 001): fonte única do sync; a projeção lê
-  dele, nunca o contrário.
+- `@apps/competencias/registro.py` → `REGISTRO` e `@apps/competencias/schemas.py` → `RegistroAcoes`
+  (SPEC 001): fonte única do sync; a projeção lê dele, nunca o contrário.
 - `@apps/user_admin/models` → `Unidade`, `CargoBase`, `CargoComissao`: alvos das FKs, sem alteração
   nesta SPEC.
 - `@apps/user_admin/seeds/` + `@apps/user_admin/management/commands/seed_cargos.py`: padrão de carga
@@ -100,7 +131,9 @@ como bootstrap.
   `migrate`, sob o mesmo `set -e`.
 - `@apps/user_admin/models/cargos.py` → `CargoComissao.Meta.constraints`: precedente de
   `CheckConstraint` espelhada no `clean()`; a XOR de cargo segue o mesmo padrão.
-- `django.contrib.admin`: telas do nível 1, em vez de UI própria.
+- `@apps/user_admin/models/impedimentos.py` → `TipoImpedimento.Meta.constraints`: precedente de
+  `UniqueConstraint` com `condition` — as duas constraints parciais da concessão têm a mesma forma.
+- `django.contrib.admin`: conveniência de inspeção sobre as duas tabelas; não é caminho de criação.
 
 ## Snippets sugeridos
 
@@ -124,6 +157,8 @@ class Acao(models.Model):
     tooltip = models.CharField(max_length=255)
     # Ação some do código sem levar junto atribuições e concessões já concedidas.
     ativa = models.BooleanField(default=True)
+    # Exercida por quem dirige a unidade: projetada para as telas a excluírem da oferta.
+    estrutural = models.BooleanField(default=False)
 ```
 
 ```python
@@ -169,6 +204,22 @@ class Concessao(models.Model):
         null=True,
     )
     concedida_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            # Uma por ramo do XOR: com constraint única, o FK nulo do outro ramo deixaria a
+            # duplicata passar (nulos não colidem no Postgres).
+            models.UniqueConstraint(
+                fields=["atribuicao", "cargo_base"],
+                condition=Q(cargo_base__isnull=False),
+                name="concessao_unica_por_cargo_base",
+            ),
+            models.UniqueConstraint(
+                fields=["atribuicao", "cargo_comissao"],
+                condition=Q(cargo_comissao__isnull=False),
+                name="concessao_unica_por_cargo_comissao",
+            ),
+        ]
 ```
 
 ```python
@@ -180,8 +231,9 @@ def sincronizar_acoes(registro: RegistroAcoes) -> ContagemSync:
 ```
 
 ```sh
-# docker/entrypoint.sh — depois do migrate, sob o mesmo set -e
-if [ -f manage.py ]; then
+# docker/entrypoint.sh — dentro do MESMO bloco do migrate: sync sem schema migrado derruba a subida.
+if [ -f manage.py ] && [ "${DJANGO_AUTO_MIGRATE:-1}" = "1" ]; then
+    python manage.py migrate --noinput
     echo "==> Sincronizando catálogo de ações..."
     python manage.py sincronizar_acoes
 fi
@@ -189,7 +241,10 @@ fi
 
 ## Fora de escopo
 - Decidir se um perfil pode executar uma ação — avaliador e backend são a SPEC 003.
-- Tela própria do diretor concedendo a cargos: até ela existir, `Concessao` sai pelo admin.
+- Tela do diretor concedendo a cargos: SPEC 008.
+- A ação `competencias.definir_atribuicao` — contrato, tela e autorização: SPEC 007. Aqui só se
+  persiste o que ela vai gravar.
+- Quem é titular de cada unidade: SPEC `titularidade/001`.
 - Registro de execução do ato administrativo (SPEC 004).
 - Concessão por natureza de cargo ("qualquer chefia") e concessão nominal a um servidor.
 - Impedimento e substituição.
@@ -200,15 +255,16 @@ fi
 Todos exigem banco e carregam o marker `banco` — declarado em `markers_obrigatorios`.
 
 - `test_sync_projeta_registro_e_e_idempotente` — rodar duas vezes não duplica linha, e nome alterado
-  no código chega na projeção.
+  no código chega na projeção, `estrutural` inclusive.
 - `test_sync_desativa_ausente_e_reativa_no_retorno` — ação fora do registro vira `ativa=False` sem
   perder atribuições e concessões; de volta ao registro, volta `ativa=True` com elas intactas.
 - `test_concessao_exige_exatamente_um_cargo` — nenhum cargo ou os dois preenchidos é recusado pelo
   banco.
 - `test_remover_atribuicao_remove_concessoes` — apagar a atribuição da unidade leva junto as
   concessões que dela dependiam.
-- `test_atribuicao_e_concessao_nao_se_duplicam` — a mesma dupla unidade × ação, e a mesma dupla
-  atribuição × cargo, são recusadas na segunda gravação.
+- `test_atribuicao_e_concessao_nao_se_duplicam` — a mesma dupla unidade × ação é recusada na segunda
+  gravação; e a mesma dupla atribuição × cargo também, **nos dois ramos do XOR** — é o caso que a
+  constraint única deixaria passar pelo FK nulo.
 
 ## Patches
 

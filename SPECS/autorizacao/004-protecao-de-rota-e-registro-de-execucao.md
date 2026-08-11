@@ -1,12 +1,14 @@
 ---
 spec: autorizacao/004
-versao: v1
-atualizado_em: 2026-08-07
+versao: v2
+atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: registro passa a identificar a operação praticada; grava toda negativa e as execuções que
+    alteram estado, não a leitura autorizada de tela; anônimo sai do critério de registro
 ---
 
 # SPEC autorizacao/004 — Proteção de rota e registro de execução do ato
@@ -22,9 +24,12 @@ tenha autor conhecido — e para que esconder o botão nunca seja a única barre
 ## Critérios de aceite
 - [ ] Rota de ação **nega com 403** o perfil autenticado sem competência, e manda o **anônimo para o
       login** pelo caminho padrão do Django.
-- [ ] Toda execução **autorizada** fica registrada: quem, com qual cargo e unidade **no momento do
-      ato**, qual ação, quando.
-- [ ] Toda tentativa **negada** também fica registrada — é o que permite responder se a pessoa podia.
+- [ ] Toda execução autorizada que **altera estado** fica registrada: quem, com qual cargo e unidade
+      **no momento do ato**, qual ação, **qual operação**, quando.
+- [ ] Toda tentativa **negada de perfil autenticado** fica registrada, inclusive a de leitura — é o
+      que permite responder se a pessoa podia.
+- [ ] Duas operações opostas da mesma ação — conceder e revogar, atribuir e remover — ficam
+      **distinguíveis** no registro.
 - [ ] A view pode acrescentar ao registro **sobre o que** o ato incidiu; esquecer de fazê-lo não
       impede o registro de existir.
 - [ ] A proteção é declarada com o **contrato da ação**, não com uma string solta.
@@ -45,11 +50,33 @@ combinação que o próprio Django recomenda (`login_required` + `permission_req
 a rota referencia o objeto. Typo vira erro de import, não negação silenciosa — que é o modo de falha
 ruim de autorização por string.
 
-**Registro garantido pelo decorator, enriquecido pela view.** O decorator grava sempre, autorizado ou
-não: é o que torna o rastro estrutural em vez de dependente de disciplina. Mas só a view sabe sobre
-qual entidade o ato incidiu, então ela acrescenta o alvo, e o registro existe mesmo se ela não
-acrescentar. Nada disso por signal: o CLAUDE.md (§3.2) recusa efeito colateral escondido do ponto de
-chamada justamente quando o efeito é ato auditável.
+**Registro garantido pelo decorator, enriquecido pela view.** O decorator grava sem depender de a
+view lembrar: é o que torna o rastro estrutural em vez de dependente de disciplina. Mas só a view
+sabe sobre qual entidade o ato incidiu, então ela acrescenta o alvo, e o registro existe mesmo se
+ela não acrescentar. Nada disso por signal: o CLAUDE.md (§3.2) recusa efeito colateral escondido do
+ponto de chamada justamente quando o efeito é ato auditável.
+
+**Grava-se a negativa sempre, e a execução quando ela altera estado.** Uma tela de ação é aberta por
+GET a cada navegação e a cada swap do HTMX; registrar tudo encheria o histórico de "atos" que são
+leitura, e o ato de verdade se perderia no meio. Então: **método não-seguro autorizado** vira
+registro; **qualquer método negado** vira registro, porque tentativa é o que se quer poder
+investigar. Ação cujo ato é uma leitura — emitir um documento, por exemplo — força o registro
+chamando o mesmo enriquecimento que a view já usa para o alvo.
+
+**Anônimo não gera registro.** Ele é redirecionado ao login antes de haver perfil, unidade e cargo —
+e são esses campos que dão sentido à linha. Registrar acesso anônimo é assunto de log de servidor,
+não de histórico de ato administrativo.
+
+**O registro diz qual operação foi praticada.** A ação é a competência ("definir atribuições"), não
+o que se fez com ela: a mesma rota atribui e remove, concede e revoga. Sem esse campo, o rastro
+responde "mexeu na competência" e não responde "tirou a competência de quem" — que é a pergunta que
+motiva o registro existir. Texto curto vindo da view, não enumeração central: quem sabe as operações
+de uma ação é ela.
+
+**O alvo é uma coisa só; par vira identificador composto.** Atribuir incide sobre unidade **e** ação;
+conceder, sobre ação **e** cargo. Em vez de multiplicar colunas de alvo por ação, o `alvo_tipo` diz o
+que é o par e o `alvo_identificador` o compõe — o alvo já é texto por natureza (abaixo), e um par
+cabe nele.
 
 **O alvo é texto, não relação.** Lote, logradouro e endereço não são models — vêm dos parquets e do
 WFS. `GenericForeignKey` não alcança isso; dois campos livres (tipo e identificador) alcançam, e são
@@ -63,7 +90,7 @@ texto para evitar isso.
 ## Peças de referência a compor
 - `@apps/competencias/backends.py` (SPEC 003): o decorator pergunta por `has_perm`, não reimplementa
   a decisão.
-- `@apps/competencias/declaracao.py` (SPEC 001) → `AcaoImplementada`: é o que o decorator recebe.
+- `@apps/competencias/schemas.py` (SPEC 001) → `AcaoImplementada`: é o que o decorator recebe.
 - `@apps/competencias/models` (SPEC 002) → `Acao`: alvo da FK do registro.
 - `django.contrib.auth.decorators` → `login_required`: o caminho do anônimo é o padrão, não se
   reescreve.
@@ -105,6 +132,11 @@ class ExecucaoAcao(models.Model):
         null=True,
     )
     autorizado = models.BooleanField()
+    # A ação é a competência; a operação é o que se fez com ela — atribuir não é remover.
+    operacao = models.CharField(
+        max_length=40,
+        blank=True,
+    )
     # Entidade territorial não é model: o alvo é texto livre, e ação de menu não tem alvo.
     alvo_tipo = models.CharField(
         max_length=40,
@@ -126,12 +158,14 @@ def acao_protegida(
     ...
 
 
-def registrar_alvo(
+def registrar_ato(
     request: HttpRequest,
-    tipo: str,
-    identificador: str,
+    operacao: str,
+    alvo_tipo: str = "",
+    alvo_identificador: str = "",
 ) -> None:
-    """Enriquece o registro que o decorator vai gravar; opcional por natureza."""
+    """Enriquece o registro que o decorator vai gravar — e força a gravação quando o ato é uma
+    leitura, que o decorator sozinho não registraria."""
     ...
 ```
 
@@ -148,9 +182,13 @@ Todos exercitam view real com `Perfil` gravado e carregam o marker `banco`.
 - `test_rota_nega_autenticado_sem_competencia_com_403` — perfil logado sem concessão recebe 403, não
   redirect.
 - `test_rota_manda_anonimo_para_o_login` — anônimo é redirecionado, não recebe 403.
-- `test_execucao_autorizada_fica_registrada_com_a_lotacao_do_momento` — o registro guarda unidade e
-  cargos vigentes no ato, e mudar a lotação do perfil depois não altera a linha gravada.
+- `test_execucao_autorizada_fica_registrada_com_a_lotacao_do_momento` — o POST autorizado guarda
+  unidade e cargos vigentes no ato, e mudar a lotação do perfil depois não altera a linha gravada.
 - `test_tentativa_negada_fica_registrada` — o 403 também deixa rastro, marcado como não autorizado.
+- `test_leitura_autorizada_nao_vira_registro` — o GET autorizado da tela não gera linha; o mesmo GET
+  negado gera.
+- `test_operacoes_opostas_ficam_distinguiveis` — duas operações da mesma ação geram registros que se
+  distinguem pela operação gravada.
 - `test_alvo_e_opcional_no_registro` — view que informa o alvo o grava; view que não informa gera
   registro mesmo assim.
 
