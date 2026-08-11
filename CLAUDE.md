@@ -309,6 +309,8 @@ request/response.**
   repetir o que já está na SPEC ou na docstring, sem narrar o histórico da decisão. Se o porquê não
   cabe em uma ou duas linhas, ele é decisão de arquitetura e o lugar dele é a SPEC — não um bloco de
   comentário no meio do código.
+  Vale também para **docstring de módulo**: a maioria dos arquivos não tem uma — não abra todo
+  arquivo novo com um resumo que só parafraseia a SPEC ou a docstring da classe/função abaixo.
 - **Pydantic nas fronteiras:** DTOs de domínio e contratos de integração.
 - **Validação de entrada nas views:** construir o DTO e deixar o `PydanticValidationMiddleware`
   interceptar o `ValidationError` — **nunca `try/except` na view**.
