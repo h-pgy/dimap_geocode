@@ -1,6 +1,6 @@
 ---
 spec: user_admin/015
-versao: v2
+versao: v3
 atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
@@ -10,6 +10,8 @@ changelog:
   - v2: a substituição passa a dizer o papel — enquanto vigora, o substituto responde pelo cargo do
         afastado e, se o afastado é o titular, dirige a unidade (SPEC 014), sem receber o vínculo de
         titularidade; a unicidade da titularidade deixa de depender da marca de exercício
+  - v3: o alarme de unidade sem direção passa a ganhar código na SPEC 016 (a interface da
+        titularidade), não na 014 — só o ponteiro muda
 ---
 
 # SPEC user_admin/015 — Exercício e substituição: quem está na cadeira e quem cobre
@@ -125,7 +127,7 @@ unidade sem direção. Esta SPEC grava exercício e substituição, e não sabe 
 `SPECS/user_admin/015-mock-exercicio-e-substituicao.html`, sobre o canvas administrativo vivo. A
 seção de exercício nos **sete** estados que precisa cobrir — em exercício; afastado sem substituto;
 **titular afastado sem substituto** (o alarme de unidade sem direção, que só ganha código com a SPEC
-014); afastado com substituto; retorno pendente; afastado sem cargo em comissão (onde o caminho de
+016); afastado com substituto; retorno pendente; afastado sem cargo em comissão (onde o caminho de
 designar **não tem peça**, em vez de botão desabilitado); e o outro lado, a página de quem substitui.
 Mais os **três** modais: registrar impedimento, designar substituto e retornar ao exercício — o
 último existe porque o ato tem um efeito que não está na tela, encerrar a substituição vigente.

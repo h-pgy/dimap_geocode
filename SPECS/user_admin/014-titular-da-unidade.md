@@ -1,6 +1,6 @@
 ---
 spec: user_admin/014
-versao: v6
+versao: v7
 atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
@@ -22,9 +22,15 @@ changelog:
         que a leitura da direção distingue do titular afastado sem substituto; a página da unidade
         ganha a seção de direção, com a bandeja de indicadores e o alarme em vermelho; definir,
         trocar e destituir titular viram modal, e o management command sai
+  - v7: a interface sai daqui e vira a SPEC 016 — a página da unidade não existia (a 012 deixou
+        editar unidade fora de escopo), e criá-la é iteração própria; esta SPEC fica com o dado, a
+        regra e os atos, e o mock passa a ser o da 016
 ---
 
 # SPEC user_admin/014 — Titular da unidade: um por unidade, com que cargo e quem dirige hoje
+
+> A interface que mostra tudo isto — a página da unidade, a seção de direção e os três modais — é a
+> **SPEC 016**, que vem depois desta. Aqui ficam o dado, a regra e os atos.
 
 - [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
 - [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
@@ -33,8 +39,8 @@ changelog:
 Como responsável pela DIMAP, quero que cada unidade tenha um titular inequívoco, com cargo
 compatível com o porte dela, para que "quem dirige a unidade hoje" seja um dado do sistema — mesmo
 quando o titular está afastado e quem responde é o substituto dele, e mesmo quando a unidade está
-sem titular nenhum, que é o que a tela precisa acusar — e para que a administração de competências
-decorra da direção em vez de uma lista nominal em código.
+sem titular nenhum, que é o que a tela da SPEC 016 acusa — e para que a administração de
+competências decorra da direção em vez de uma lista nominal em código.
 
 ## Critérios de aceite
 - [ ] Uma unidade tem **no máximo um titular**, e é o **banco** que recusa o segundo. O afastamento
@@ -59,24 +65,17 @@ decorra da direção em vez de uma lista nominal em código.
 - [ ] Rebaixar o titular, ou mudar a unidade para um tipo que ele não satisfaz, é **recusado na
       validação** — não fica titular inválido gravado.
 - [ ] O seed de unidades declara o mínimo de cada tipo, e os servidores fictícios nascem com
-      titulares marcados — e ao menos uma unidade fictícia nasce **sem titular**, para a tela ser
-      exercitável no estado que ela existe para acusar.
-- [ ] A **página da unidade** mostra quem dirige: titular e substituto **com avatar ou foto**,
-      quantos servidores são lotados ali, qual é a unidade superior e qual o cargo mínimo exigido
-      pelo tipo — e **acusa em vermelho**, em destaque, a unidade **sem titular** e a **sem
-      direção**.
-- [ ] **Definir, trocar e destituir titular** são atos por **modal** na página da unidade, com a
-      lista restrita a quem pode titularizar aquela unidade.
-- [ ] A seção de exercício do servidor **acusa a unidade sem direção** quando o titular está fora de
-      exercício e não há substituto em exercício — o desenho já está aprovado no mock da SPEC 015.
-- [ ] O design foi aprovado no **mock** antes de qualquer código de aplicação.
+      titulares marcados — e ao menos uma unidade fictícia nasce **sem titular**, para a tela da
+      SPEC 016 ser exercitável no estado que ela existe para acusar.
+- [ ] **Definir, trocar e destituir titular** são funções em transação, chamadas pela tela (SPEC
+      016) e pelos fictícios — não há segunda porta para a mesma escrita.
 
 ## Contexto e decisões de arquitetura
 
-Esta SPEC mexe em persistência (`user_admin`), em domínio (`services/domain/titularidade/`) e em
-interface (uma seção nova e três modais na página da unidade). Não decide autorização nenhuma: quem
-lê a titularidade e a transforma em competência é o épico `autorizacao` (SPEC 003) — e o que ele
-passa a ter para ler é **quem responde pela direção**, não a marca `e_titular` crua.
+Esta SPEC mexe em persistência (`user_admin`) e em domínio (`services/domain/titularidade/`) — a
+interface é a SPEC 016. Não decide autorização nenhuma: quem lê a titularidade e a transforma em
+competência é o épico `autorizacao` (SPEC 003) — e o que ele passa a ter para ler é **quem responde
+pela direção**, não a marca `e_titular` crua.
 
 **Titularidade não é o mesmo que cargo de chefia.** `CargoComissao.e_chefia` é atributo do catálogo
 de cargos: diz que o cargo é de natureza chefia, não que a pessoa dirige aquela unidade. Hoje uma
@@ -119,13 +118,11 @@ reconstruir a causa a partir das marcas cruas, que é justamente o que o domíni
 O predicado fica em `services/domain/titularidade/` sobre DTO, ao lado da adequação, e é o mesmo que
 a seção da SPEC 015 consulta para acender o alarme.
 
-**A vaga aparece na página da unidade, porque é a unidade que fica sem quem responda.** O alarme da SPEC
-015 mora na página do servidor e depende de haver um servidor afastado a quem ancorá-lo — na vaga
-não há ninguém. A página da unidade é o único lugar onde as quatro respostas cabem juntas, e é lá
-que a seção de direção entra: titular e substituto com rosto, mais o contexto que qualifica a
-leitura (quantos servidores são lotados ali, qual é a unidade superior que responde enquanto a vaga
-durar, e qual o cargo mínimo que o tipo exige de um titular). A `.linha-pessoa` e a
-`.tarja-vinculo-critica` são as peças da SPEC 015, reusadas: a mesma notícia, o mesmo vermelho.
+**Quem mostra as quatro respostas é a SPEC 016.** O alarme da SPEC 015 mora na página do servidor e
+depende de haver um servidor afastado a quem ancorá-lo — na vaga não há ninguém. A página da unidade
+é o único lugar onde as quatro respostas cabem juntas, e criá-la é iteração própria: a SPEC 012
+deixou editar unidade fora de escopo, e hoje só existe a tela de cadastro. Esta SPEC entrega a
+leitura; a 016, a tela que a consome.
 
 **O retorno do titular não esbarra em ninguém.** Com um titular só, reassumir o exercício (SPEC 015)
 é sempre aceito pela titularidade: encerra a substituição vigente e devolve a direção a quem nunca
@@ -139,9 +136,9 @@ mesma dos dois lados: `nivel` nulo em `CargoComissao` é "está acima da escala"
 
 O mínimo **não é derivável** do nível do tipo: Departamento e Coordenação são níveis diferentes com
 o mesmo mínimo (5), e Coordenadoria e Assessoria são o mesmo nível com mínimos diferentes (6 e 5,
-porque Chefe de Assessoria Técnica I é CDA-5). É dado do organograma, por isso é campo.
+porque Chefe de Assessoria Técnica I é CDA-V). É dado do organograma, por isso é campo.
 
-**Nível sem chefia não basta.** Assessor VI é CDA-6 e não é chefia — com regra só de nível, ele
+**Nível sem chefia não basta.** Assessor VI é CDA-VI e não é chefia — com regra só de nível, ele
 titularizaria uma Coordenadoria. A adequação é `e_chefia` **e** (`alta_administracao` **ou**
 `nivel >= mínimo do tipo`).
 
@@ -174,13 +171,11 @@ seed, praticamente imutável, e uma revalidação retroativa custaria mais do qu
 **Titular não herda para baixo.** Dirigir a coordenadoria não é dirigir as divisões dela. O alcance
 de um titular sobre a subárvore é regra do épico `autorizacao`, e alcançar não é titularizar.
 
-**O caminho para marcar titular é modal, e a rota nasce aberta pela mesma exceção da SPEC 015.** A
-015 já abre a gravação no `user_admin` — impedimento, substituição e a marca de exercício, que é
-campo de `Perfil` — e declara a rota aberta por exceção ao §3.5, com autenticação, autorização e
-registro entrando com o épico `autorizacao`. A titularidade é ato da mesma natureza e não tem por
-que seguir por outro caminho: um management command paralelo seria uma segunda porta para a mesma
-escrita, com a regra a manter nos dois lugares. Os titulares do primeiro boot vêm do
-`ficticios.py`, que já é o andaime da área administrativa.
+**O ato é função, e há um caminho só.** `definir_titular` e `destituir_titular` são chamadas pela
+tela (SPEC 016) e pelo `ficticios.py`, que já é o andaime da área administrativa. Um management
+command paralelo seria uma segunda porta para a mesma escrita, com a regra a manter nos dois lugares
+— descartado. A rota que as chama nasce aberta pela mesma exceção ao §3.5 declarada na SPEC 015,
+com autenticação, autorização e registro entrando com o épico `autorizacao`.
 
 ## Peças de referência a compor
 - `@apps/user_admin/models/user.py` → `Perfil`: `unidade` e `cargo_comissao` (anulável) já são a
@@ -191,50 +186,16 @@ escrita, com a regra a manter nos dois lugares. Os titulares do primeiro boot v�
   regra que cruza tabela e por isso não vira constraint.
 - `Perfil.em_exercicio` e a `Substituicao` (SPEC 015, **pré-requisito desta**): as duas marcas de
   que a leitura da direção é feita, e o ato de retorno que devolve a cadeira ao titular.
-- `.linha-pessoa` e `.tarja-vinculo` / `.tarja-vinculo-critica` (SPEC 015): a pessoa identificada em
-  uma linha e o alarme de unidade sem direção — a SPEC 015 já as desenhou prevendo esta.
-- `@templates/user_admin/unidade_form.html` e `@templates/user_admin/partials/_campos_unidade.html`:
-  a página da unidade existe e os campos são partial próprio; a seção de direção é mais uma seção
-  do mesmo organismo.
-- `@templates/user_admin/partials/_imagem_perfil.html`: foto ou iniciais já resolvidas (SPECs 004 e
-  006) — o rosto do titular e o do substituto saem daqui.
-- `@templates/user_admin/partials/_modal_nova_unidade.html`: modal por checkbox nativo, irmão do
-  formulário e nunca dentro dele (SPEC 012) — o padrão que os três modais novos repetem.
-- `@apps/user_admin/views.py` + `@apps/user_admin/context.py` + `@apps/user_admin/schemas.py`: view
-  fina, função de contexto e DTO construído na view, com o `PydanticValidationMiddleware`
-  respondendo pelo erro.
 - `@apps/user_admin/seeds/unidades.py` + `@data/seed/unidades.json`: os tipos ganham o mínimo, sem
   mudar a forma da carga; skill `seeds`.
 - `@apps/user_admin/ficticios.py`: o andaime que torna a área administrativa exercitável — passa a
   marcar titulares, e a deixar uma unidade vaga.
-- Skills `componentes-frontend` (Atomic Design e o styleguide), `daisyui` (o componente `stats`),
-  `escrever-testes` (marker `banco`) e `test-django-views`.
+- Skill `escrever-testes` (marker `banco`).
 
 ## Mock de validação
-`SPECS/user_admin/014-mock-titular-da-unidade.html`, sobre o canvas administrativo. A seção de
-direção nos **quatro** estados, que são as quatro respostas do selo — dirigida pela titular;
-dirigida pelo substituto; sem direção; **sem titular** —, mais a página da unidade com a seção no
-lugar dela e os **três** modais: definir titular (com o caso de **nenhum candidato**, que a lista
-vazia sozinha não explicaria), trocar titular (com o aviso de que o anterior é destituído no mesmo
-ato, inclusive afastado) e destituir (o ato que abre a vaga).
-
-**A escala semântica é a da SPEC 015, aplicada do lado da unidade:** verde é a unidade dirigida, por
-quem for; vermelho é a unidade sem quem responda por ela. O âmbar não aparece aqui — ele descreve a
-**pessoa** afastada, e esta seção fala da unidade, para a qual o afastamento só importa pelo que
-deixa em aberto.
-
-Uma molécula nasce: **`.stats-onsen`**, o `stats` do daisyUI vestido de placa. O componente dá a
-grade, os rótulos e a figura; o design system dá a pele — e a bandeja **é a `.tarja-vinculo` da SPEC
-015** composta no HTML com `p-0`, porque a seção já é um poço e o respiro é da célula. A classe nova
-cuida só do que é do componente: derrubar o fundo opaco do daisyUI e trocar o traço divisor por luz,
-como as linhas da tabela (SPEC 013). A variante `.stat-vaga` é a célula do titular quando não há
-titular: em vez de campo vazio — que se lê como "ainda não carregou" — a célula **é** a mensagem de
-erro. Nenhum token novo: raio, materiais e escalas são os existentes.
-
-Aprovado o mock, `.stats-onsen` migra para `static/src/tema-dimap.dev.css` na camada de moléculas e
-é renderizada no styleguide da skill `componentes-frontend`, antes de qualquer template da aplicação
-usá-la. O que o mock repete da SPEC 015 (o raio da placa, a linha de pessoa, a tarja) **não** se
-porta daqui: é porte daquela SPEC, que vem antes.
+Não há: esta SPEC não entrega interface. O desenho da seção de direção, da bandeja de indicadores e
+dos três modais está no mock da **SPEC 016** (`SPECS/user_admin/016-mock-pagina-da-unidade.html`), e
+é lá que ele é aprovado.
 
 ## Snippets sugeridos
 
@@ -339,10 +300,10 @@ def destituir_titular(unidade: Unidade) -> None:
 ```
 
 ## Fora de escopo
+- **A página da unidade, a seção de direção e os três modais** — SPEC 016, que vem depois desta.
+  Aqui a titularidade só é exercitável pelos fictícios e pelos testes.
 - Titularidade como ato administrativo **registrado**, e a proteção da rota: entram com o épico
   `autorizacao`, nos mesmos termos da exceção declarada na SPEC 015.
-- Gravar os demais campos da unidade pela página — o formulário da SPEC 012 segue sem destino; o que
-  grava aqui são os modais de titularidade.
 - Exercício, impedimento e substituição: são da SPEC 015, **pré-requisito desta**.
 - Titular interino e mandato com histórico — inclusive **desde quando** a unidade está vaga, que
   exigiria guardar a data da destituição.
@@ -376,9 +337,6 @@ declarado em `markers_obrigatorios`.
   para um tipo que ele não satisfaz, é recusado na validação. *(marker `banco`)*
 - `test_seed_e_ficticios_nascem_com_titularidade` — a carga grava o mínimo declarado em cada tipo, os
   servidores fictícios deixam titulares marcados e ao menos uma unidade fica vaga. *(marker `banco`)*
-- `test_paginas_acusam_a_unidade_sem_direcao` — a página da unidade traz o titular e acusa a vaga
-  quando não há nenhum; a seção do servidor acusa o titular afastado sem substituto; as duas param
-  de acusar quando há substituto em exercício. *(marker `banco`)*
 
 ## Patches
 

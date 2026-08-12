@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SPEC user_admin/014 — Titular da unidade (mock de validação)</title>
+  <title>SPEC user_admin/016 — A página da unidade (mock de validação)</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,7 @@
       .then((css) => {
         const s = document.createElement("style");
         s.type = "text/tailwindcss";
-        s.textContent = css + "\n" + document.getElementById("tokens-spec-014").textContent;
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-016").textContent;
         document.head.appendChild(s);
       })
       .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
@@ -37,7 +37,7 @@
   <!-- PEÇAS DESTA SPEC + as herdadas da SPEC 015, que ainda não estão no tema.
        Guardadas em script[type=text/css] (inerte) e concatenadas ao tema pelo loader acima.
        Ao implementar, só o bloco DESTA SPEC migra: o resto é porte da 015. -->
-  <script type="text/css" id="tokens-spec-014">
+  <script type="text/css" id="tokens-spec-016">
     /* ==================== HERDADO DA SPEC 015 ====================
        O raio da placa, a linha de pessoa e a tarja de vínculo são daquela SPEC — que vem antes
        desta. Estão repetidos aqui só para este mock renderizar sozinho; a fonte é o tema. */
@@ -60,8 +60,10 @@
 
       /* ==================== MOLÉCULA · BANDEJA DE INDICADORES ====================
          O `stats` do daisyUI vestido de placa — e a placa é a de FORA. A bandeja é uma placa de
-         gelo (.glass-panel-thick composto no HTML, como a caixa do modal na SPEC 012) e cada
-         indicador é um poço (.card-well, também no HTML). O limite de cada card vem do degrau
+         gelo FINA (.glass-panel composto no HTML) e cada indicador é um poço (.card-well, também no
+         HTML). Fina, e não espessa: o espesso existe para gelo sobre interface escura (SPEC 011), e
+         aqui a bandeja está entre dois brancos — o poço da seção embaixo e os poços das células em
+         cima. Empilhado, o espesso fechava a vista; o fino separa sem tapar. O limite de cada card vem do degrau
          placa/poço, que é a gramática do sistema, e não de um traço divisor — e a alternância
          poço (a seção) → placa (a bandeja) → poço (o card) é o que mantém o degrau legível a cada
          nível. Esta classe cuida só do que é do componente: o respiro entre os poços e a aresta do
@@ -85,6 +87,41 @@
       /* Vaga: a célula do titular vira a mensagem de erro. Só ela escala — as outras seguem
          informação, e vermelho em tudo é vermelho em nada. */
       .stat-vaga .stat-value { @apply text-error; }
+
+      /* ==================== MOLÉCULA · CAMPO QUE SE ABRE PARA EDIÇÃO ====================
+         O campo nasce LIDO: rótulo gravado e valor em texto, sem caixa. O lápis ao lado é a
+         afordância — gravado em repouso (.etched), entintado enquanto o campo está aberto, o mesmo
+         par repouso/entintado da seta de ordenação (SPEC 013). Aberto, o valor vira POÇO: neste
+         design system o rebaixado é que se lê como "escreve-se aqui" (§3.4 da SPEC 013), e é
+         justamente o que o .input-glass sozinho não estava dizendo.
+         Estado por checkbox + :has(), como o afundado da tabela e a paleta da SPEC 005 — nenhum
+         estado de interface em JavaScript. */
+      .campo-onsen { @apply flex flex-col gap-1.5; }
+      .campo-onsen-toggle { @apply sr-only; }
+      /* O botão fica ao lado do VALOR, não do rótulo: o que se edita é o valor. */
+      .campo-onsen-linha { @apply flex items-center gap-2 min-w-0; }
+      /* Valor lido: texto, sem caixa — quem não está editando não precisa de moldura. */
+      .campo-onsen-valor { @apply flex-1 min-w-0 text-[15px] text-base-content/90 py-1.5; }
+      /* O aviso de consequência mora DENTRO daqui: só existe enquanto o campo está aberto, e é o
+         aviso daquele campo — fixo no rodapé da seção, ele avisava sobre o que ninguém ia mudar. */
+      .campo-onsen-campo { @apply hidden flex-1 min-w-0; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-valor { @apply hidden; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-campo { @apply block; }
+      /* Aberto, o campo cresce (campo + aviso) e o botão sobe para a linha do campo: centrado, ele
+         flutuaria no meio da coluna. */
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-linha { @apply items-start; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis { @apply mt-1.5; }
+      /* Aberto, o sulco do lápis fica cheio — o botão de vidro já dá a afordância no repouso e o
+         glifo gravado só diz qual gesto é (.icon-etched, SPEC 013). */
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis .icon-etched {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      /* O poço do campo aberto é o mesmo do .card-well: mesma sombra que entra pela borda de cima,
+         mesmo lábio de luz embaixo. O .input-glass entra por composição e traz o foco. */
+      .campo-onsen-campo :where(input, select, .select-onsen-trigger) {
+        @apply bg-white/30! border-white/45! shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
+      }
     }
   </script>
 
@@ -125,16 +162,42 @@
         <path d="M12 7.4v4.2"/><path d="M5.5 16.6v-5h13v5"/>
       </g>
       <g id="glifo-degrau"><path d="M3 20h5.5v-4.5H14V11h5.5V6.5"/></g>
+      <g id="glifo-lapis">
+        <path d="M4 20.2h4L18.6 9.6a2.1 2.1 0 0 0-3-3L5 17.2v3z"/><path d="m14.4 7.8 3 3"/>
+      </g>
       <g id="glifo-alerta">
         <path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/>
       </g>
+
+      <!-- Filtro da gravação no gelo (SPEC 013) — repetido aqui só para o mock renderizar sozinho;
+           na aplicação ele vem de templates/partials/_filtros_gravacao.html, no base.html. Sem os
+           defs no documento a classe .etched existe e não desenha nada. -->
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
     </defs>
   </svg>
 
   <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
 
     <header class="glass-panel p-8 sm:p-10">
-      <p class="text-overline text-madeira-600">SPEC user_admin/014 · mock de validação</p>
+      <p class="text-overline text-madeira-600">SPEC user_admin/016 · mock de validação</p>
       <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Titular da unidade</h1>
       <p class="mt-4 max-w-2xl text-base-content/80 leading-relaxed">
         A página da unidade passa a responder <strong class="text-base-content">quem dirige aqui hoje</strong> —
@@ -170,10 +233,11 @@
         <span><code class="text-code">.btn-onsen</code> / <code class="text-code">.btn-glass</code></span>
         <span><code class="text-code">.modal-glass</code> / <code class="text-code">.modal-box-glass</code></span>
         <span><code class="text-code">.text-overline</code> / <code class="text-code">.text-code</code></span>
+        <span><code class="text-code">.etched</code> / <code class="text-code">.etched-rotulo</code> <span class="text-base-content/50">(SPEC 013)</span></span>
       </div>
       <p class="text-[13px] text-base-content/70">
-        A única peça que nasce aqui é uma <strong>molécula</strong>:
-        <code class="text-code">.stats-onsen</code>. A SPEC 015 previu que a
+        Nascem aqui duas <strong>moléculas</strong>: <code class="text-code">.stats-onsen</code> e
+        <code class="text-code">.campo-onsen</code>. A SPEC 015 previu que a
         <code class="text-code">.linha-pessoa</code> e a <code class="text-code">.tarja-vinculo</code> se
         repetiriam na titularidade — é exatamente o que acontece: o titular, o substituto e o alarme de
         unidade sem direção são as mesmas peças, lidas do lado da unidade.
@@ -191,7 +255,7 @@
       <div class="card-well p-5 flex flex-col gap-4">
         <p class="text-overline">2.1 · Selo de direção — as quatro respostas</p>
         <div class="flex flex-wrap items-center gap-3">
-          <span class="badge badge-success badge-soft">Dirigida pela titular</span>
+          <span class="badge badge-success badge-soft">Dirigida pelo titular</span>
           <span class="badge badge-success badge-soft">Dirigida pelo substituto</span>
           <span class="badge badge-error badge-soft">Sem direção</span>
           <span class="badge badge-error badge-soft">Sem titular</span>
@@ -208,6 +272,11 @@
           O âmbar continua sendo da <strong>pessoa</strong> (afastada, retorno pendente, SPEC 015). Esta
           seção fala da <strong>unidade</strong>, e para ela o afastamento só importa pelo que deixa em
           aberto.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          O rótulo <strong>não concorda em gênero</strong> com quem dirige: o perfil não guarda gênero
+          gramatical, e concordar exigiria um dado que o sistema não tem — errar o gênero de uma pessoa
+          real é pior do que a forma fixa.
         </p>
       </div>
 
@@ -248,7 +317,7 @@
 
       <div class="card-well p-5 flex flex-col gap-4">
         <p class="text-overline">3.1 · Bandeja de indicadores — <code class="text-code">.stats-onsen</code></p>
-        <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
+        <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
           <div class="stat card-well">
             <div class="stat-figure">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
@@ -273,20 +342,38 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
             </div>
             <div class="stat-title">Cargo mínimo do titular</div>
-            <div class="stat-value">CDA-4</div>
+            <div class="stat-value">CDA-IV</div>
             <div class="stat-desc">exigido do tipo Divisão</div>
           </div>
         </div>
+        <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
+            </div>
+            <div class="stat-title">Cargo mínimo do titular</div>
+            <div class="stat-value">Alta administração</div>
+            <div class="stat-desc">nenhum nível serve ao tipo Subsecretaria</div>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          O tipo cujo mínimo é <strong>nulo</strong> não tem célula em branco: nulo quer dizer que
+          <strong>nenhum nível da escala serve</strong> — só alta administração titulariza —, e é isso que a
+          placa diz. O valor não escala para vermelho: é exigência do organograma, não falta.
+        </p>
         <p class="text-[13px] text-base-content/70">
           O <code class="text-code">stats</code> do daisyUI dá a grade, os rótulos e a figura; o design
           system dá a pele — e a pele é o par <strong>placa/poço</strong>. A bandeja é uma
-          <strong>placa de gelo</strong> (<code class="text-code">.glass-panel-thick</code>, composta no
-          HTML como a caixa do modal na SPEC 012) e cada indicador é um <strong>poço</strong>
+          <strong>placa de gelo fina</strong> (<code class="text-code">.glass-panel</code>, composta no
+          HTML) e cada indicador é um <strong>poço</strong>
           (<code class="text-code">.card-well</code>): o limite de cada card vem do <strong>degrau</strong>,
           não de um traço. A seção continua sendo um poço, e é justamente por isso que a bandeja sobe —
           poço → placa → poço alterna o degrau a cada nível, e é a alternância que dá o contorno.
         </p>
         <p class="text-[13px] text-base-content/70">
+          A placa é a <strong>fina</strong>, não a espessa: o gelo espesso existe para separar figura de
+          fundo sobre interface escura (SPEC 011), e aqui a bandeja está entre dois brancos — o poço da
+          seção embaixo, os poços das células em cima. Empilhado, ele fechava a vista.
           O que a classe nova faz é o mínimo: tirar a tinta do componente de baixo do gelo, dar o respiro
           entre os poços e apagar a aresta tracejada do daisyUI, que só existia para dividir células sem
           caixa própria. Na vertical (telas estreitas) nada muda de gramática: o grid vira coluna e o
@@ -296,7 +383,7 @@
 
       <div class="card-well p-5 flex flex-col gap-4">
         <p class="text-overline">3.2 · A célula de pessoa — a <code class="text-code">.linha-pessoa</code> dentro da bandeja</p>
-        <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
+        <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
           <div class="stat card-well">
             <div class="stat-figure">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
@@ -307,10 +394,13 @@
                 <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
                   <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">HP</text></svg>
                 </div>
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <p class="linha-pessoa-nome">Helena Prado</p>
-                  <p class="linha-pessoa-meta">RF 999903 · CDA-4 · Diretora de Divisão</p>
+                  <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
                 </div>
+                <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                  <span class="etched icon-etched">↗</span>
+                </a>
               </div>
             </div>
             <div class="stat-desc"><span class="badge badge-success badge-soft badge-sm">Em exercício</span></div>
@@ -343,7 +433,7 @@
           <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
           <div class="min-w-0">
             <p class="text-[15px] font-medium text-base-content/90">A DIMAP-2 está sem titular</p>
-            <p class="text-[13px] text-base-content/60">Ninguém foi designado desde 12/07/2026. Enquanto durar, quem responde pela seção é a direção da unidade superior.</p>
+            <p class="text-[13px] text-base-content/60">Nenhum servidor titulariza esta unidade. Enquanto durar, quem responde por ela é a direção da unidade superior.</p>
           </div>
         </div>
         <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
@@ -360,6 +450,88 @@
           é sempre a mesma notícia para quem lê.
         </p>
       </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.4 · A placa de resumo — sem peça nova</p>
+        <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+          <div class="min-w-0">
+            <p class="text-overline">Nome</p>
+            <p class="text-[15px] text-base-content/90 mt-0.5">Divisão do Mapa de Valores</p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-overline">Sigla</p>
+            <p class="text-[15px] text-base-content/90 mt-0.5">DIMAP</p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-overline">Tipo de unidade</p>
+            <p class="text-[15px] text-base-content/90 mt-0.5">Divisão <span class="text-base-content/50">· nível 3</span></p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-overline">Cargo mínimo do titular</p>
+            <p class="text-[15px] text-base-content/90 mt-0.5">CDA-IV <span class="text-base-content/50">· chefia</span></p>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          O que a unidade <strong>é</strong> não são indicadores: são quatro respostas de texto, e por isso a
+          placa é uma grade de rótulo e valor — não a bandeja. Mesmo gelo fino da bandeja, porque as duas
+          moram no mesmo poço e uma espessura só é o que as faz ler como duas peças da mesma seção. A bandeja fica para o que se <strong>conta</strong>
+          ou se <strong>navega</strong> (servidores lotados, unidade superior), onde o número grande e o glifo
+          têm o que fazer. Mesma placa de gelo, dois conteúdos de natureza diferente.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.5 · Campo que se abre para edição — <code class="text-code">.campo-onsen</code></p>
+        <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+          <div class="campo-onsen">
+            <input type="checkbox" id="demo-campo-lido" class="campo-onsen-toggle" />
+            <span class="text-overline etched-rotulo">Nome</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">Divisão do Mapa de Valores</p>
+              <div class="campo-onsen-campo">
+                <input type="text" class="input input-glass" value="Divisão do Mapa de Valores" />
+              </div>
+              <label for="demo-campo-lido" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                <span class="etched icon-etched">✎</span>
+              </label>
+            </div>
+          </div>
+          <div class="campo-onsen">
+            <input type="checkbox" id="demo-campo-aberto" class="campo-onsen-toggle" checked />
+            <span class="text-overline etched-rotulo">Sigla</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">DIMAP</p>
+              <div class="campo-onsen-campo">
+                <input type="text" class="input input-glass" value="DIMAP" />
+              </div>
+              <label for="demo-campo-aberto" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a sigla">
+                <span class="etched icon-etched">✎</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          Os dois estados lado a lado: à esquerda, <strong>lido</strong> — rótulo gravado, valor em texto,
+          nenhuma moldura; à direita, <strong>aberto</strong> — o valor virou <strong>poço</strong>, e o lápis
+          encheu de água. Rebaixado é o que, neste design system, se lê como "escreve-se aqui" (SPEC 013):
+          era exatamente essa leitura que faltava quando o formulário aparecia inteiro em campos claros.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          O lápis é o <strong>botão redondo de vidro</strong> da listagem de servidores (SPEC 013), com o
+          mesmo glifo gravado por dentro: quem carrega a afordância é o botão, e a gravação só diz qual gesto
+          é. Ele fica <strong>ao lado do valor</strong>, não do rótulo — o que se edita é o valor —, e o sulco
+          enche de água enquanto o campo está aberto, o mesmo par repouso/entintado da seta de ordenação. O
+          estado é <code class="text-code">checkbox</code> + <code class="text-code">:has()</code>, como o
+          afundado da tabela: <strong>nenhum estado de interface em JavaScript</strong>.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          Abrir campo a campo tem um efeito que o formulário inteiro não tem: o que está aberto é o que se
+          pretende mudar. Quem abriu a sigla sabe que só a sigla está em jogo — e quem revisa a tela vê isso
+          sem ler os valores. É também o que dá lugar ao <strong>aviso</strong>: quando mudar aquele campo
+          tem consequência que a validação pode recusar, a tarja âmbar mora <strong>dentro</strong> dele e
+          aparece com ele. Fixa no rodapé da seção, ela avisava o tempo todo sobre o que ninguém ia mudar.
+        </p>
+      </div>
     </section>
 
     <!-- ==================== 4 · ORGANISMOS ==================== -->
@@ -374,14 +546,14 @@
 
       <!-- ESTADO 1 -->
       <div class="glass-panel p-6 flex flex-col gap-3">
-        <p class="text-overline text-madeira-600">Estado 1 · Dirigida pela titular</p>
+        <p class="text-overline text-madeira-600">Estado 1 · Dirigida pelo titular</p>
         <div class="card-well p-5 flex flex-col gap-4">
           <div class="flex items-center justify-between gap-4">
             <p class="text-overline">Direção</p>
-            <span class="badge badge-success badge-soft">Dirigida pela titular</span>
+            <span class="badge badge-success badge-soft">Dirigida pelo titular</span>
           </div>
 
-          <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
             <div class="stat card-well">
               <div class="stat-figure">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
@@ -392,10 +564,13 @@
                   <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
                     <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">HP</text></svg>
                   </div>
-                  <div class="min-w-0">
+                  <div class="min-w-0 flex-1">
                     <p class="linha-pessoa-nome">Helena Prado</p>
-                    <p class="linha-pessoa-meta">RF 999903 · CDA-4 · Diretora de Divisão</p>
+                    <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
                   </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
                 </div>
               </div>
               <div class="stat-desc"><span class="badge badge-success badge-soft badge-sm">Em exercício</span></div>
@@ -410,7 +585,7 @@
             </div>
           </div>
 
-          <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
             <div class="stat card-well">
               <div class="stat-figure">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
@@ -437,7 +612,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
               </div>
               <div class="stat-title">Cargo mínimo do titular</div>
-              <div class="stat-value">CDA-4</div>
+              <div class="stat-value">CDA-IV</div>
               <div class="stat-desc">exigido do tipo Divisão</div>
             </div>
           </div>
@@ -461,7 +636,7 @@
             <span class="badge badge-success badge-soft">Dirigida pelo substituto</span>
           </div>
 
-          <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
             <div class="stat card-well">
               <div class="stat-figure">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
@@ -472,10 +647,13 @@
                   <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
                     <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">HP</text></svg>
                   </div>
-                  <div class="min-w-0">
+                  <div class="min-w-0 flex-1">
                     <p class="linha-pessoa-nome">Helena Prado</p>
-                    <p class="linha-pessoa-meta">RF 999903 · CDA-4 · Diretora de Divisão</p>
+                    <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
                   </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
                 </div>
               </div>
               <div class="stat-desc"><span class="badge badge-warning badge-soft badge-sm">Afastada</span> férias até 24/08/2026</div>
@@ -490,10 +668,13 @@
                   <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
                     <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">RA</text></svg>
                   </div>
-                  <div class="min-w-0">
+                  <div class="min-w-0 flex-1">
                     <p class="linha-pessoa-nome">Rafael Andrade</p>
-                    <p class="linha-pessoa-meta">RF 999904 · CDA-3 · Chefe de Seção</p>
+                    <p class="linha-pessoa-meta">RF 999904 · CDA-III · Chefe de Seção</p>
                   </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Rafael Andrade">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
                 </div>
               </div>
               <div class="stat-desc">desde 05/08/2026 · designado na página da titular</div>
@@ -533,7 +714,7 @@
             </div>
           </div>
 
-          <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
             <div class="stat card-well">
               <div class="stat-figure">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
@@ -544,10 +725,13 @@
                   <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
                     <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">HP</text></svg>
                   </div>
-                  <div class="min-w-0">
+                  <div class="min-w-0 flex-1">
                     <p class="linha-pessoa-nome">Helena Prado</p>
-                    <p class="linha-pessoa-meta">RF 999903 · CDA-4 · Diretora de Divisão</p>
+                    <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
                   </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
                 </div>
               </div>
               <div class="stat-desc"><span class="badge badge-warning badge-soft badge-sm">Afastada</span> férias até 24/08/2026</div>
@@ -594,7 +778,7 @@
             </div>
           </div>
 
-          <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
             <div class="stat stat-vaga card-well">
               <div class="stat-figure text-error/70!">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
@@ -613,7 +797,7 @@
             </div>
           </div>
 
-          <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
             <div class="stat card-well">
               <div class="stat-figure">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
@@ -640,7 +824,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
               </div>
               <div class="stat-title">Cargo mínimo do titular</div>
-              <div class="stat-value">CDA-3</div>
+              <div class="stat-value">CDA-III</div>
               <div class="stat-desc">exigido do tipo Seção</div>
             </div>
           </div>
@@ -662,15 +846,16 @@
       </div>
     </section>
 
-    <!-- ==================== 5 · A SEÇÃO NO LUGAR DELA ==================== -->
+    <!-- ==================== 5 · A PÁGINA INTEIRA ==================== -->
     <section class="flex flex-col gap-4">
       <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
         5 · A página da unidade — visualizar a DIMAP
       </h2>
       <p class="text-[15px] text-base-content/90 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
-        Os campos são os mesmos do cadastro (SPEC 012), agora preenchidos; a seção de direção é a peça nova,
-        e vem <strong>primeiro</strong> — quem abre a página de uma unidade quer saber quem responde por ela
-        antes de conferir a sigla.
+        Duas seções de leitura, nesta ordem — <strong>Resumo</strong> (o que a unidade é e quanto ela tem)
+        e <strong>Direção</strong> (quem responde por ela hoje) —, e no fim um botão só:
+        <strong>Editar unidade</strong>, que abre o quarto modal. É a ordem da pergunta que traz alguém a
+        esta página, e corrigir a sigla nunca é a pergunta.
       </p>
 
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6 max-w-3xl mx-auto w-full">
@@ -687,44 +872,31 @@
           <span class="dot-unidade w-6 h-6 mt-1" style="--cor-unidade:#0077b6"></span>
         </div>
 
-        <!-- A seção nova -->
+        <!-- ==================== RESUMO ====================
+             O que a unidade É, em placa de texto; e o que ela TEM, na bandeja. -->
         <div class="card-well p-5 flex flex-col gap-4">
-          <div class="flex items-center justify-between gap-4">
-            <p class="text-overline">Direção</p>
-            <span class="badge badge-success badge-soft">Dirigida pela titular</span>
-          </div>
+          <p class="text-overline">Resumo</p>
 
-          <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
-            <div class="stat card-well">
-              <div class="stat-figure">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
-              </div>
-              <div class="stat-title">Titular</div>
-              <div class="stat-value">
-                <div class="linha-pessoa">
-                  <!-- Foto real: o mesmo _imagem_perfil.html que resolve foto OU iniciais (SPEC 006). -->
-                  <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
-                    <img src="https://i.pravatar.cc/160?img=47" alt="Foto de Helena Prado" class="w-full h-full object-cover" />
-                  </div>
-                  <div class="min-w-0">
-                    <p class="linha-pessoa-nome">Helena Prado</p>
-                    <p class="linha-pessoa-meta">RF 999903 · CDA-4 · Diretora de Divisão</p>
-                  </div>
-                </div>
-              </div>
-              <div class="stat-desc"><span class="badge badge-success badge-soft badge-sm">Em exercício</span></div>
+          <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="min-w-0">
+              <p class="text-overline">Nome</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">Divisão do Mapa de Valores</p>
             </div>
-            <div class="stat card-well">
-              <div class="stat-figure">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
-              </div>
-              <div class="stat-title">Substituto</div>
-              <div class="stat-value text-base-content/40!">—</div>
-              <div class="stat-desc">Não há substituição vigente.</div>
+            <div class="min-w-0">
+              <p class="text-overline">Sigla</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">DIMAP</p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Tipo de unidade</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">Divisão <span class="text-base-content/50">· nível 3</span></p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Cargo mínimo do titular</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">CDA-IV <span class="text-base-content/50">· de chefia</span></p>
             </div>
           </div>
 
-          <div class="glass-panel-thick stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
             <div class="stat card-well">
               <div class="stat-figure">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
@@ -746,13 +918,48 @@
               </div>
               <div class="stat-desc">Departamento de Cadastros</div>
             </div>
+          </div>
+        </div>
+
+        <!-- ==================== DIREÇÃO ====================
+             O alarme, quando há, entra AQUI — entre o selo e a bandeja, como nos estados 3 e 4:
+             a notícia vem antes de quem a explica. Nesta unidade não há o que acusar. -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Direção</p>
+            <span class="badge badge-success badge-soft">Dirigida pelo titular</span>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
             <div class="stat card-well">
               <div class="stat-figure">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
               </div>
-              <div class="stat-title">Cargo mínimo do titular</div>
-              <div class="stat-value">CDA-4</div>
-              <div class="stat-desc">exigido do tipo Divisão</div>
+              <div class="stat-title">Titular</div>
+              <div class="stat-value">
+                <div class="linha-pessoa">
+                  <!-- Foto real: o mesmo _imagem_perfil.html que resolve foto OU iniciais (SPEC 006). -->
+                  <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
+                    <img src="https://i.pravatar.cc/160?img=47" alt="Foto de Helena Prado" class="w-full h-full object-cover" />
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="linha-pessoa-nome">Helena Prado</p>
+                    <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
+                  </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
+                </div>
+              </div>
+              <div class="stat-desc"><span class="badge badge-success badge-soft badge-sm">Em exercício</span></div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              </div>
+              <div class="stat-title">Substituto</div>
+              <div class="stat-value text-base-content/40!">—</div>
+              <div class="stat-desc">Não há substituição vigente.</div>
             </div>
           </div>
 
@@ -765,72 +972,147 @@
           </div>
         </div>
 
-        <!-- Os campos de sempre (SPEC 012), preenchidos -->
-        <div class="card-well p-5 flex flex-col gap-4">
-          <p class="text-overline">Identificação</p>
-          <div class="grid sm:grid-cols-3 gap-4">
-            <label class="form-field sm:col-span-2">
-              <span class="text-overline">Nome</span>
-              <input type="text" class="input input-glass" value="Divisão do Mapa de Valores" />
-            </label>
-            <label class="form-field">
-              <span class="text-overline">Sigla</span>
-              <input type="text" class="input input-glass" value="DIMAP" />
-            </label>
-          </div>
-        </div>
-
-        <div class="card-well p-5 flex flex-col gap-4">
-          <p class="text-overline">Hierarquia</p>
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div class="form-field">
-              <span class="text-overline">Tipo</span>
-              <select class="select select-glass" data-select-onsen>
-                <option>Divisão</option>
-                <option>Seção</option>
-                <option>Departamento</option>
-                <option>Coordenação</option>
-              </select>
-              <span class="form-field-hint">O tipo carrega o nível — e o cargo mínimo exigido do titular.</span>
-            </div>
-            <div class="form-field">
-              <span class="text-overline">Unidade superior</span>
-              <select class="select select-glass" data-select-onsen>
-                <option>DECAD · Departamento de Cadastros</option>
-                <option>SUREM · Subsecretaria da Receita Municipal</option>
-                <option value="">— sem unidade superior (raiz) —</option>
-              </select>
-              <span class="form-field-hint">Mudar o tipo para um que a titular não satisfaça é recusado na validação.</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-1">
-          <a href="#" class="btn btn-ghost btn-glass">Voltar</a>
-          <button type="button" class="btn btn-onsen">Salvar alterações</button>
+        <!-- ==================== EDITAR ====================
+             A página inteira é leitura. Editar é ato, e ato aqui é modal — o mesmo caminho dos três da
+             titularidade. Um botão só, grande e centrado no fim: nada disputa com a Direção acima. -->
+        <div class="flex justify-center pt-2">
+          <label for="modal-editar-unidade" class="btn btn-onsen btn-lg gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+            Editar unidade
+          </label>
         </div>
       </div>
 
       <p class="text-[13px] text-base-content/70 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
-        A seção de direção não é campo do formulário: os atos dela gravam sozinhos, pelos modais — como a
-        seção de exercício na página do servidor (SPEC 015). O botão de salvar continua sendo o do cadastro
-        da unidade.
+        <strong>Nada na página é campo.</strong> A Direção grava pelos modais dela (como a seção de exercício
+        na página do servidor, SPEC 015) e o cadastro grava pelo modal de edição — a página em si só responde.
+        É o que dispensa o botão de salvar solto no rodapé, que numa tela de leitura nunca se sabe a que se
+        refere.
+      </p>
+      <p class="text-[13px] text-base-content/70 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
+        O <strong>tipo</strong> e o <strong>cargo mínimo</strong> aparecem no Resumo e de novo no modal, e de
+        propósito: no Resumo são <strong>o que a unidade é</strong>, em texto; no modal são <strong>o que se
+        pode mudar</strong>, em campo. Quem só lê nunca abre o modal para saber o porte da unidade.
       </p>
     </section>
 
     <footer class="glass-panel p-6">
       <p class="text-overline">Porte obrigatório após a aprovação</p>
       <p class="mt-1 text-[15px] text-base-content/90">
-        A classe <code class="text-code">.stats-onsen</code> (com <code class="text-code">.stat-vaga</code>)
-        migra para <code class="text-code">static/src/tema-dimap.dev.css</code> na camada de moléculas, e a
-        peça é renderizada no styleguide da skill
-        <code class="text-code">componentes-frontend</code> — antes de qualquer template da aplicação usá-la.
+        As classes <code class="text-code">.stats-onsen</code> (com <code class="text-code">.stat-vaga</code>)
+        e <code class="text-code">.campo-onsen</code> migram para
+        <code class="text-code">static/src/tema-dimap.dev.css</code> na camada de moléculas, e as duas peças
+        são renderizadas no styleguide da skill
+        <code class="text-code">componentes-frontend</code> — antes de qualquer template da aplicação usá-las.
         O raio da placa, a <code class="text-code">.linha-pessoa</code> e a
         <code class="text-code">.tarja-vinculo</code> repetidos neste mock <strong>não</strong> se portam
         daqui: são da SPEC 015, que vem antes.
       </p>
     </footer>
   </main>
+
+  <!-- ==================== MODAL · EDITAR UNIDADE ====================
+       Os campos de sempre (SPEC 012), agora preenchidos e LIDOS: cada um abre no lápis. Abrir campo a
+       campo é o que faz o modal dizer, sozinho, o que se pretende mudar — e é a leitura de "editável"
+       que faltava quando o formulário aparecia inteiro em campos claros. -->
+  <input type="checkbox" id="modal-editar-unidade" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar unidade</h2>
+          <p class="text-sm text-base-content/70 mt-1">DIMAP · Divisão do Mapa de Valores</p>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identificação</p>
+          <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-campo-nome" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">Nome</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">Divisão do Mapa de Valores</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="nome" class="input input-glass" value="Divisão do Mapa de Valores" />
+                </div>
+                <label for="editar-campo-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                  <span class="etched icon-etched">✎</span>
+                </label>
+              </div>
+            </div>
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-campo-sigla" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">Sigla</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">DIMAP</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="sigla" class="input input-glass" value="DIMAP" />
+                </div>
+                <label for="editar-campo-sigla" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a sigla">
+                  <span class="etched icon-etched">✎</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Hierarquia</p>
+          <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-campo-tipo" class="campo-onsen-toggle" checked />
+              <span class="text-overline etched-rotulo">Tipo</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">Divisão <span class="text-base-content/50">· nível 3</span></p>
+                <div class="campo-onsen-campo">
+                  <select name="tipo" class="select select-glass" data-select-onsen>
+                    <option>Divisão</option>
+                    <option>Seção</option>
+                    <option>Departamento</option>
+                    <option>Coordenação</option>
+                  </select>
+                  <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                    <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                    <p class="text-[13px] text-base-content/80">Mudar para um tipo que o titular não satisfaça é <strong>recusado na validação</strong>: a unidade não fica com titular inválido gravado.</p>
+                  </div>
+                </div>
+                <label for="editar-campo-tipo" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o tipo">
+                  <span class="etched icon-etched">✎</span>
+                </label>
+              </div>
+            </div>
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-campo-pai" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">Unidade superior</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">DECAD <span class="text-base-content/50">· Departamento de Cadastros</span></p>
+                <div class="campo-onsen-campo">
+                  <select name="pai" class="select select-glass" data-select-onsen>
+                    <option>DECAD · Departamento de Cadastros</option>
+                    <option>SUREM · Subsecretaria da Receita Municipal</option>
+                    <option value="">— sem unidade superior (raiz) —</option>
+                  </select>
+                  <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                    <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                    <p class="text-[13px] text-base-content/80">É <strong>recusado na validação</strong> quando o nível não subordina ou quando o tipo do pai veda este filho.</p>
+                  </div>
+                </div>
+                <label for="editar-campo-pai" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a unidade superior">
+                  <span class="etched icon-etched">✎</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-editar-unidade" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-editar-unidade" class="btn btn-onsen btn-sm">Salvar alterações</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-editar-unidade">Fechar</label>
+  </div>
 
   <!-- ==================== MODAL · DEFINIR TITULAR ====================
        Checkbox nativo, sem JavaScript, e SEMPRE fora de qualquer formulário (SPEC 012): formulário
@@ -847,13 +1129,13 @@
         <label class="form-field">
           <span class="text-overline">Servidores da DIMAP-2 que podem titularizar</span>
           <select name="titular" class="select select-glass" data-select-onsen>
-            <option value="999908">Rafael Andrade · RF 999904 · CDA-3 · Chefe de Seção</option>
-            <option value="999911">Camila Rocha · RF 999915 · CDA-3 · Chefe de Seção</option>
+            <option value="999908">Rafael Andrade · RF 999904 · CDA-III · Chefe de Seção</option>
+            <option value="999911">Camila Rocha · RF 999915 · CDA-III · Chefe de Seção</option>
             <option value="999917">Sérgio Vilela · RF 999917 · SUBSEC · Subsecretário</option>
           </select>
           <span class="form-field-hint">
             A lista traz só quem é <strong>lotado na DIMAP-2</strong> e tem cargo em comissão
-            <strong>de chefia</strong> que satisfaz o mínimo do tipo Seção (CDA-3). Alta administração
+            <strong>de chefia</strong> que satisfaz o mínimo do tipo Seção (CDA-III). Alta administração
             satisfaz qualquer tipo; quem não tem cargo em comissão nunca titulariza.
           </span>
         </label>
@@ -893,7 +1175,7 @@
           <div class="min-w-0">
             <p class="text-[15px] font-medium text-base-content/90">Nenhum servidor da DIMAP-2 pode titularizar</p>
             <p class="text-[13px] text-base-content/60 mt-1">
-              Titularizar exige cargo em comissão <strong>de chefia</strong> de nível <strong>CDA-3</strong>
+              Titularizar exige cargo em comissão <strong>de chefia</strong> de nível <strong>CDA-III</strong>
               ou superior — ou alta administração. Dos 6 servidores lotados aqui, nenhum tem.
             </p>
           </div>
@@ -930,9 +1212,10 @@
               <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
                 <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">HP</text></svg>
               </div>
-              <div class="min-w-0">
+              <!-- Sem atalho para sair: quem está no meio de um ato não é convidado a navegar. -->
+              <div class="min-w-0 flex-1">
                 <p class="linha-pessoa-nome">Helena Prado</p>
-                <p class="linha-pessoa-meta">RF 999903 · CDA-4 · Diretora de Divisão · afastada</p>
+                <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão · afastada</p>
               </div>
             </div>
           </div>
@@ -941,11 +1224,11 @@
         <label class="form-field">
           <span class="text-overline">Novo titular</span>
           <select name="titular" class="select select-glass" data-select-onsen>
-            <option value="999906">Adriana Melo · RF 999906 · CDA-4 · Diretora de Divisão</option>
-            <option value="999910">Paulo Ferraz · RF 999910 · CDA-5 · Diretor de Departamento</option>
+            <option value="999906">Adriana Melo · RF 999906 · CDA-IV · Diretora de Divisão</option>
+            <option value="999910">Paulo Ferraz · RF 999910 · CDA-V · Diretor de Departamento</option>
             <option value="999917">Sérgio Vilela · RF 999917 · SUBSEC · Subsecretário</option>
           </select>
-          <span class="form-field-hint">Mesma lista de sempre: lotado na DIMAP, chefia, e o mínimo do tipo Divisão (CDA-4).</span>
+          <span class="form-field-hint">Mesma lista de sempre: lotado na DIMAP, chefia, e o mínimo do tipo Divisão (CDA-IV).</span>
         </label>
 
         <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
