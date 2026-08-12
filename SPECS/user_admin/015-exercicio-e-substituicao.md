@@ -1,6 +1,6 @@
 ---
 spec: user_admin/015
-versao: v10
+versao: v11
 atualizado_em: 2026-08-12
 testes_tdd: false
 implementado: false
@@ -64,14 +64,18 @@ changelog:
          vira "**o ato** recusa". Duas correções de desenho vêm junto: o toggle de alcance **não
          ganha rota** — as duas listas nascem renderizadas, como no mock —, e os campos de data do
          diálogo **vêm preenchidos** com a primeira lacuna, não em branco
+  - v11: sem mudança de escopo — a prosa (abertura, "Contexto e decisões de arquitetura" e "Mock de
+         validação") foi reescrita como se fosse a primeira versão: cada decisão enunciada por si,
+         sem contrapor-se ao que versões anteriores diziam e sem repetir justificativa entre seções.
+         O histórico de como se chegou aqui fica só neste changelog
 ---
 
 # SPEC user_admin/015 — Exercício e substituição: quem está na cadeira e quem cobre
 
-> A **SPEC 014 já está implementada e não depende desta** (patch 002 dela): `e_titular`, os
-> avaliadores de domínio e os atos de titularidade existem e são puros. As duas marcas que faltavam
-> ao sistema — exercício e substituição — entram aqui, e quem as compõe com o titular para dizer
-> quem dirige a unidade é a **SPEC 016**.
+> Entram aqui as duas leituras que faltam ao sistema: **quem está exercendo o cargo hoje** e **quem
+> responde por ele enquanto está fora**. A titularidade (SPEC 014) já existe e não é tocada por
+> nenhum ato desta SPEC; quem compõe titular e substituto para dizer quem dirige a unidade é a
+> **SPEC 016**.
 
 - [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
 - [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
@@ -194,124 +198,97 @@ direção da unidade quando quem se afasta é o titular.
 ## Contexto e decisões de arquitetura
 
 Esta SPEC mexe em persistência (`user_admin`: o model de substituição e o predicado de vigência), em
-domínio (`services/domain/exercicio/`) e em interface (uma seção nova e três modais na página do
+domínio (`services/domain/exercicio/`) e em interface (uma seção nova e quatro modais na página do
 servidor). Ela não decide autorização: quem lê o exercício e o transforma em competência é o épico
 `autorizacao`.
 
-**Exercício é derivado, e derivado de exatamente duas causas.** Sair da cadeira tem dois motivos e
-não há terceiro: um **impedimento vigente** ou uma **exoneração**. Sendo assim, exercício não é um
-estado que o sistema guarda — é a resposta de `não impedido hoje e não exonerado`. Guardá-lo numa
-coluna criaria um terceiro valor, capaz de discordar dos dois que o produzem, e obrigaria a vigiar
-essa discordância: a checagem de consistência ("ninguém em exercício com impedimento vigente") vira
-desnecessária quando o estado que ela vigiaria não existe. Três consequências vêm de graça, e cada
-uma delas custaria código no desenho gravado: a pessoa **volta sozinha** quando o impedimento vence,
-sem rotina que reconcilie a marca com as datas vencidas; o impedimento de **início futuro** passa a
-tirar da cadeira na data certa, em vez de na hora do registro — que é o que permite designar o
-substituto das férias do mês que vem; e não existe janela entre o vencimento e a reconciliação em que
-o sistema esteja mentindo.
+**Exercício é derivado, e de exatamente duas causas.** Sair da cadeira tem dois motivos e não há
+terceiro: um **impedimento vigente** ou uma **exoneração**. Sendo assim, exercício não é estado
+guardado — é a resposta de `não impedido hoje e não exonerado`. Uma coluna própria seria um terceiro
+valor capaz de discordar dos dois que o produzem, e obrigaria a vigiar essa discordância. Derivado,
+três coisas vêm de graça: a pessoa **volta sozinha** quando o impedimento vence, sem rotina que
+reconcilie; o impedimento de **início futuro** tira da cadeira na data que ele declara, e não na hora
+do registro — que é o que permite designar hoje o substituto das férias do mês que vem; e não existe
+janela em que o sistema esteja mentindo. *Custo assumido:* o filtro que seria `WHERE em_exercicio`
+vira um `EXISTS` sobre impedimentos mais `is_active` — a dezenas de servidores, uma cláusula a mais
+numa consulta, e ela nasce num lugar só.
 
-*Custo assumido:* o filtro que seria `WHERE em_exercicio` passa a ser um `EXISTS` sobre impedimentos
-mais `is_active`. A dezenas de servidores isso não é decisão de desempenho, é uma cláusula a mais na
-consulta — e ela nasce num lugar só (ver o predicado único, abaixo).
-
-**A exoneração é o `is_active` que já existe.** O `contrib.auth` já traz o booleano de conta ativa, e
-ele não tem **nenhum** outro uso no projeto hoje. Exonerado é quem não é mais servidor da DIMAP, e
-isso implica exatamente o que `is_active=False` significa: não entra no sistema — de graça, porque o
-`ModelBackend` já recusa. Criar `exonerado` ao lado seria um segundo booleano que anda sempre junto
-do primeiro: o mesmo estado redundante que esta SPEC acabou de eliminar no exercício, reintroduzido
-uma linha abaixo. O `Perfil` expõe `exonerado` como **leitura**, porque a tela e o domínio falam de
-exoneração, não de conta ativa. *Se um dia existir "desativar sem exonerar"* — servidor cadastrado
-antes de tomar posse, conta suspensa —, os dois significados se separam e o campo próprio nasce ali,
-com a razão à vista.
-
-**A leitura mora ao lado da que já existe; a decisão continua no domínio.** `Perfil.esta_impedido`
-(SPEC 002) já é uma leitura derivada no model, e `Perfil.em_exercicio` é a composição dela com uma
-coluna da própria linha — não é regra de negócio, é a mesma natureza do que já está lá (§3.2). O que
-**é** regra de negócio — quem pode substituir quem — continua em `services/domain/exercicio/`, sobre
-DTO, sem Django.
+**A exoneração é o `is_active` que já existe.** O `contrib.auth` traz o booleano de conta ativa, e
+ele não tem nenhum outro uso no projeto. Exonerado é quem não é mais servidor da DIMAP, e isso
+implica exatamente o que `is_active=False` significa — inclusive não entrar no sistema, de graça,
+porque o `ModelBackend` já recusa. Um campo `exonerado` ao lado seria um segundo booleano andando
+sempre junto do primeiro. O `Perfil` expõe `exonerado` como **leitura**, porque a tela e o domínio
+falam de exoneração, não de conta ativa. *Se um dia existir "desativar sem exonerar"* — servidor
+cadastrado antes da posse, conta suspensa —, os dois significados se separam e o campo próprio nasce
+ali.
 
 **"Vigente hoje" é um predicado só.** Impedimento e substituição têm a **mesma convenção de
 período**: `data_inicio` obrigatória, `data_fim` nula significando indeterminado. A condição de
 vigência vira uma função em `models/periodo.py`, no mesmo lugar e pelo mesmo motivo que
 `cargo_titulariza` (SPEC 014) mora em `models/titularidade.py`: `esta_impedido`, o exercício, as duas
-leituras de substituição e o filtro de candidatos fazem **a mesma pergunta**, e ela escrita cinco
-vezes é a duplicação que envelhece pior — basta uma delas esquecer o `data_fim` nulo para o sistema
-responder duas coisas sobre a mesma pessoa.
+leituras de substituição e o filtro de candidatos fazem **a mesma pergunta** — basta uma delas
+esquecer o `data_fim` nulo para o sistema responder duas coisas sobre a mesma pessoa.
 
-**O impedimento tira; o vencimento devolve; voltar ao exercício é o retorno antecipado.** Criar
-impedimento não precisa arrastar escrita nenhuma: ele *é* a causa. O fim do prazo também não escreve
-— é uma data passando, e agora isso basta, porque a leitura olha a data. O que sobra como ato é
-**voltar antes do previsto**, e a forma honesta disso não é destravar um booleano: é dizer que o
-impedimento acabou hoje. O ato encerra **todos** os impedimentos vigentes — encerrar só um deixaria
-a pessoa fora da cadeira pelo outro, e o botão teria mentido.
+**A leitura mora ao lado da que já existe; a decisão continua no domínio.** `Perfil.esta_impedido`
+(SPEC 002) já é leitura derivada no model, e `Perfil.em_exercicio` é a composição dela com uma coluna
+da própria linha — mesma natureza, não é regra de negócio (§3.2). O que **é** regra de negócio — quem
+pode substituir quem — fica em `services/domain/exercicio/`, sobre DTO, sem Django.
 
-**A substituição é do impedimento, não da pessoa.** Substitui-se alguém *porque* há um impedimento, e
-a substituição não pode sobreviver à causa dela. Pendurada no substituído, ela precisaria que alguém
-escrevesse o término — exatamente o que o retorno automático deixou de ter, e o resultado seria
-substituto vigente com o substituído já de volta na cadeira. Pendurada no impedimento, ela nasce e
-morre com ele.
+**A substituição é do impedimento, não da pessoa, e são várias.** Substitui-se alguém *porque* há um
+impedimento, e a substituição não pode sobreviver à causa dela: pendurada no substituído, ela
+precisaria que alguém escrevesse o término — e o retorno é justamente o que não escreve nada —, e o
+resultado seria substituto vigente com o substituído já de volta na cadeira. Pendurada no
+impedimento, ela nasce e morre com ele. E um afastamento não tem *um* substituto: tem uma **agenda** — a pessoa A na
+primeira semana, a B na segunda, e um pedaço no meio sem ninguém, se for o caso. O que a regra proíbe
+é **sobreposição**, não pluralidade. Cada substituição guarda o próprio período, sempre contido no do
+impedimento — substituir quem está na cadeira não é substituir —, e daí caem três coisas sem custo:
+cobrir só um trecho do afastamento; ler a **vigência da substituição sozinha**, sem compor com a do
+impedimento a cada consulta, porque a contenção garante que uma vigente implica a outra; e ter o
+**histórico** de quem substituiu quando, que é a própria lista, sem tabela nova.
 
-**Mas são várias, e o que as separa é o tempo.** Um afastamento não tem um substituto, tem uma
-**agenda** de substituições: a pessoa A na primeira semana, a B na segunda, e um pedaço no meio sem
-ninguém, se for o caso. Cada uma guarda o próprio período, contido no do impedimento — nunca antes do
-início nem depois do fim, porque substituir quem está na cadeira não é substituir —, e o que a regra
-proíbe é **sobreposição**, não pluralidade: "duas pessoas não respondem pelas mesmas férias" sempre
-quis dizer *ao mesmo tempo*. Foi a leitura literal disso, na v6, que amarrou a substituição ao
-impedimento num-para-um e deixou a SPEC manca de três coisas ao mesmo tempo — a cobertura em
-sequência, o revogar e o histórico.
+**Por isso "tem substituto" não é pergunta que o sistema responda.** A pergunta que existe é "**há
+substituição vigente hoje**", e ela carrega a data sempre. `substituicoes.exists()` responderia "sim"
+para um afastamento cujo substituto sai amanhã, cuja cobertura acabou semana passada ou que só começa
+em setembro — e o erro aqui não é de tela: é dizer que a unidade tem quem responda por ela quando não
+tem. A leitura mora nas duas funções de `apps/user_admin/exercicio.py`, que compõem o predicado de
+vigência, e **nada além delas responde essa pergunta** — nem view, nem template, nem property de
+model.
 
-Três coisas caem dessa estrutura sem custo: dizer "de 10 a 15 das férias que vão de 5 a 24"; ler **a
-vigência da substituição sozinha**, sem compor com a do impedimento a cada consulta, porque a
-contenção garante que uma vigente implica a outra; e ter o **histórico** de quem substituiu quando,
-que é a própria lista, sem tabela nova.
+*Consequência aceita, e é ela que o desenho precisa acomodar:* entre o início do afastamento e o
+início da cobertura — ou depois que a cobertura termina — o afastado fica **sem substituto vigente**.
+Se ele é o titular, a **unidade fica sem direção** nesse intervalo, exatamente como se ninguém
+tivesse sido designado. A tela mostra isso; a leitura da direção (SPEC 016) o enxerga sem caso
+especial, porque para ela "não há substituição vigente" é uma resposta só.
 
-**Por isso "tem substituto" não é uma pergunta que o sistema saiba responder.** A pergunta que existe
-é "**há substituição vigente hoje**", e ela carrega a data sempre. Enquanto a substituição era uma só
-e cobria o afastamento inteiro, `substituicoes.exists()` acertava por coincidência; agora ele
-responde "sim" para um afastamento cujo substituto sai amanhã, cuja cobertura acabou semana passada
-ou que só começa em setembro — e a resposta errada aqui não é um detalhe de tela: é dizer que a
-unidade tem quem responda por ela quando não tem. A leitura mora nas duas funções de
-`apps/user_admin/exercicio.py`, que já compõem o predicado de vigência, e **nada além delas responde
-essa pergunta** — nem view, nem template, nem property de model. É a mesma disciplina do predicado
-único, aplicada do lado de quem consulta.
+**Voltar ao exercício é o único retorno antecipado, e acerta as substituições na mesma transação.**
+Criar impedimento não arrasta escrita nenhuma — ele *é* a causa —, e o fim do prazo também não, é uma
+data passando. O que sobra como ato é voltar antes do previsto, e a forma honesta disso é dizer que o
+impedimento acabou hoje. O ato encerra **todos** os vigentes: encerrar um só deixaria a pessoa fora
+pelo outro, e o botão teria mentido. Como a contenção é validada na designação, o retorno antecipado
+é o único evento que pode quebrá-la depois — então o mesmo ato trunca em hoje a substituição em curso
+e **apaga** as que não começaram, em vez de deixar toda leitura compor as duas vigências para
+descobrir que o registro está mentindo sobre quando a cobertura acabou.
 
-*Consequência aceita e exibida (é ela que o desenho precisa acomodar):* entre o início do afastamento
-e o início da cobertura — ou depois que a cobertura termina — o afastado fica **sem substituto
-vigente**. Se ele é o titular, a **unidade fica sem direção** nesse intervalo, exatamente como se
-ninguém tivesse sido designado. A tela mostra isso; a leitura da direção (SPEC 016) o enxerga sem
-nenhum caso especial, porque para ela "não há substituição vigente" é uma resposta só.
-
-**Voltar ao exercício acerta as substituições na mesma transação.** A contenção é validada na
-designação, e o único evento que pode quebrá-la depois é o retorno antecipado: o impedimento passa a
-terminar hoje, e as substituições dele ficariam com fim posterior ao dele. Como o ato já é uma
-escrita, ele acerta todas — trunca em hoje a que está em curso e **apaga** as que ainda não tinham
-começado. A alternativa — compor as duas vigências em toda leitura — deixaria o registro mentindo
-sobre quando a substituição de fato acabou, para poupar uma escrita num ato que já está escrevendo.
-
-**Encerrar é o ato; trocar são dois deles numa transação.** Tirar um substituto é dizer que a
-substituição dele acabou — em curso, ela **termina hoje**, e o que ele exerceu fica registrado; ainda
-não iniciada, é **apagada**, pelo mesmo critério do retorno antecipado (registro sem fato não é
-histórico). Trocar é isso mais uma designação: encerra a atual **na véspera** do dia em que a nova
-assume, e cria a nova. A véspera não é detalhe — é o que impede o dia com dois respondendo, que a
-não-sobreposição proibiria, e a lacuna de um dia, que deixaria a unidade sem direção por descuido de
-formulário. Se a que sai nunca chegou a valer um dia, ela é apagada em vez de encerrada em data
-anterior ao próprio início.
-
-E é a troca assim, e não sobrescrevendo, que **produz o histórico**: quem saiu continua na lista, com
-o período que de fato exerceu. Sobrescrever seria mais barato de escrever e apagaria a única
-informação que ninguém consegue reconstruir depois — sob a competência de quem o ato foi praticado
+**Encerrar é um ato; trocar são dois numa transação.** Tirar um substituto é dizer que a substituição
+dele acabou: em curso, ela **termina hoje** e o que ele exerceu fica registrado; ainda não iniciada,
+é **apagada**, porque registro sem fato não é histórico. Trocar é isso mais uma designação — encerra
+a atual **na véspera** do dia em que a nova assume e cria a nova. A véspera é o que impede ao mesmo
+tempo o dia com dois respondendo, que a não-sobreposição proíbe, e a lacuna de um dia, que deixaria a
+unidade sem direção por descuido de formulário. E é a troca assim, e não sobrescrevendo, que
+**produz o histórico**: quem saiu continua na lista, com o período que de fato exerceu — a única
+informação que ninguém consegue reconstruir depois é sob a competência de quem o ato foi praticado
 naquela semana.
 
 **A regra é uma só, e é não-sobreposição — dos dois lados.** Ninguém substitui duas pessoas ao mesmo
-tempo, e ninguém é substituído por duas ao mesmo tempo. Nos dois casos a razão é a mesma: o
+tempo, e ninguém é substituído por duas ao mesmo tempo. A razão é a mesma nos dois casos: o
 substituto responde *pelo cargo* do afastado, e duas substituições simultâneas deixariam sem resposta
-única a pergunta de sob qual competência o ato foi praticado. Enunciada assim, a regra cobre de uma
-vez o que antes eram três — duas do mesmo impedimento, duas de impedimentos sobrepostos, e o mesmo
-substituto em dois lugares. O que **não** é proibido é acumular: um titular pode substituir outro
-servidor e responder pelas duas unidades ao mesmo tempo, e o mesmo servidor pode substituir duas
-pessoas em meses diferentes.
+única a pergunta de sob qual competência o ato foi praticado. Enunciada assim, ela cobre de uma vez
+as duas do mesmo impedimento, as de impedimentos sobrepostos (a SPEC 002 permite a sobreposição) e o
+mesmo substituto em dois lugares. O que **não** é proibido é acumular: um titular pode substituir
+outro servidor e responder pelas duas unidades ao mesmo tempo, e o mesmo servidor pode substituir
+duas pessoas em meses diferentes.
 
-*Custo assumido, e é o principal desta versão:* nada disso é constraint. Índice parcial não expressa
+*Custo assumido, e é o principal desta SPEC:* nada disso é constraint. Índice parcial não expressa
 não-sobreposição, e a alternativa que expressaria — `ExclusionConstraint` com `daterange` — exigiria
 `btree_gist` e `django.contrib.postgres`, que o projeto não usa. A invariante fica em `services/`,
 barrada no `clean()`, e por isso **escrita concorrente ou por shell escapa**. A dezenas de usuários
@@ -319,89 +296,77 @@ internos, com uma tela só gravando, o risco é aceito em troca de não carregar
 recurso de banco a mais — e é revisável se a operação mostrar o contrário.
 
 **Sem cargo em comissão não há o que substituir; exonerado não se substitui.** Substituir é cobrir a
-competência de um cargo em comissão; de quem não tem, não há competência a cobrir. E a exoneração
-não abre cobertura de espécie alguma: a cadeira do exonerado não é coberta, é **preenchida** por
-outra pessoa — o que é lotação e titularidade, não substituição.
+competência de um cargo em comissão; de quem não tem, não há competência a cobrir. E a exoneração não
+abre cobertura de espécie alguma: a cadeira do exonerado não é coberta, é **preenchida** por outra
+pessoa — isso é lotação e titularidade, não substituição.
 
 **Quem substitui ocupa o papel, não recebe o vínculo.** Enquanto vigora, o substituto responde pelo
 que o cargo do afastado responde — e, quando o afastado é o titular, isso é dirigir a unidade (SPEC
-014). Nada é marcado no substituto: a titularidade é vínculo único por unidade e continua com quem
-se afastou, que é o que faz o retorno devolver a direção sem negociar com ninguém. Daí também que do
-**substituto** não se exija — nem se vede — cargo em comissão ou o mínimo do tipo da unidade: quem
-cobre tanto pode ser um subordinado sem cargo quanto o titular de outra cadeira, e exigir cargo
-esvaziaria a designação justamente nas unidades pequenas.
+014). Nada é marcado no substituto: a titularidade é vínculo único por unidade, continua com quem se
+afastou, e é isso que faz o retorno devolver a direção sem negociar com ninguém. Daí também que do
+**substituto** não se exija — nem se vede — cargo em comissão: quem cobre tanto pode ser um
+subordinado sem cargo quanto o titular de outra cadeira, e exigir cargo esvaziaria a designação
+justamente nas unidades pequenas.
 
 **A unidade não limita quem cobre — a tela é que ordena o comum.** A competência exercida é a do
-cargo do afastado, e ela não depende de onde o substituto está lotado: cobrir de outra unidade é
-legítimo e acontece. Mas é raro, e uma lista com todos os servidores da DIMAP faria o caso comum
-pagar pelo excepcional — daí a lista nascer na unidade do substituído, as demais entrarem por
-comando explícito e, quando entram, virem atrás da **unidade superior**, de onde a cobertura de fora
-costuma vir. É ordenação de UX, não regra: quem valida a designação não pergunta pela unidade.
+cargo do afastado, e não depende de onde o substituto está lotado: cobrir de outra unidade é legítimo
+e acontece. Mas é raro, e uma lista com todos os servidores da DIMAP faria o caso comum pagar pelo
+excepcional — daí a lista nascer na unidade do substituído, as demais entrarem por comando explícito
+e, quando entram, virem atrás da **unidade superior**, de onde a cobertura de fora costuma vir. É
+ordenação de UX, não regra: quem valida a designação não pergunta pela unidade.
 
-**A designação depende de estado de outras linhas, então vive no `clean()` — e a decisão, no
-domínio.** Ao banco sobra o que é condição da própria linha e não depende de nenhuma outra: **fim
-não anterior ao início**. Todo o resto cruza linha e tabela — contenção no período do impedimento,
-não-sobreposição dos dois lados, cargo em comissão do substituído, exoneração de qualquer das pontas,
-as duas pontas sendo a mesma pessoa (que deixou de caber numa `CheckConstraint` quando o substituído
-passou para o outro lado da relação). Vai tudo para o `clean()`, com a regra em
-`services/domain/exercicio/` sobre DTO, para ser testável sem banco (§3.3) — e é a mesma regra que a
-tela usa para montar a lista de candidatos. Detalhe que a troca obriga: ao validar uma substituição
-que já existe, **ela própria não entra** nas listas de períodos do DTO, senão conflitaria consigo
-mesma.
-
-**A tela desta SPEC é leitura, e a escrita por HTTP é do épico de ações.** A página do servidor já
-existe, aberta pela exceção que a SPEC 013 declarou, e o que entra nela é contexto — **nenhuma rota
-nasce aqui**. Os cinco atos são funções em transação, exercitadas pelo andaime e pelos testes;
-ligá-los a uma rota é o que exige autenticação, autorização por perfil e registro da execução (SPEC
-`autorizacao/004`) — as três coisas que ainda não existem. Fazer a rota agora seria abrir uma
-exceção de rota aberta para **escrita**, que é exatamente onde ela custa caro, e refazê-la protegida
-depois. A seção entra conferível: mostra o estado, os diálogos abrem com tudo calculado, e o submit
-não tem destino — o mesmo tratamento que o modal de nova unidade tem desde a SPEC 012.
-
-*Consequência aceita:* dá para ver e testar a página inteira, e não dá para mudar nada por ela. O
-que produz os estados da tela é o `ficticios.py`, que chama os atos pela mesma porta que a rota vai
-chamar.
-
-**A lista de candidatos e a lacuna proposta são calculadas no render da seção, e o toggle não tem
-rota.** As duas listas — a unidade do substituído e a ampliada — cabem numa consulta cada, são
-dezenas de servidores, e ambas filtram pelo **período padrão da designação**, que não muda enquanto o
-diálogo está aberto. Renderizadas juntas, o toggle só troca qual aparece, como no mock. Uma rota de
-alcance existiria para recalcular algo que não muda.
+**A designação depende do estado de outras linhas, então vive no `clean()` — e a decisão, no
+domínio.** Ao banco sobra o que é condição da própria linha: **fim não anterior ao início**. Todo o
+resto cruza linha e tabela — contenção no período do impedimento, não-sobreposição dos dois lados,
+cargo em comissão do substituído, exoneração de qualquer das pontas, as duas pontas sendo a mesma
+pessoa — e vai para o `clean()`, com a regra em `services/domain/exercicio/` sobre DTO, testável sem
+banco (§3.3). Detalhe que a troca obriga: ao validar uma substituição que já existe, **ela própria
+não entra** nas listas de períodos do DTO, senão conflita consigo mesma.
 
 **Montar os DTOs do domínio a partir do banco é uma peça só.** `AvaliadorDesignacao` recebe
 `Substituido` e `Substituto` já preenchidos, e quem os preenche são dois chamadores: o `clean()`, que
 valida uma designação, e a tela, que precisa saber quais candidatos passariam. Se cada um montar o
-seu, "a mesma regra no `clean` e na lista" deixa de ser verdade no dia em que uma das duas montagens
-esquecer um período. A montagem mora ao lado dos atos, em `apps/user_admin/exercicio.py`, e é ela que
-lê as tuplas de períodos das duas pontas.
+seu, "a mesma regra no `clean` e na lista" deixa de ser verdade no dia em que uma das montagens
+esquecer um período. A montagem mora ao lado dos atos, em `apps/user_admin/exercicio.py`.
 
-**A titularidade já entrou, e não depende disto para ser única.** A SPEC 014 garante um titular por
-unidade num índice que só olha para a marca de titular — nada que a substituição faça mexe nela.
-Esta SPEC grava substituição, e segue não sabendo o que é titular.
+**A tela desta SPEC é leitura; a escrita por HTTP é do épico de ações.** A página do servidor já
+existe, aberta pela exceção que a SPEC 013 declarou, e o que entra nela é **contexto — nenhuma rota
+nasce aqui**. Os cinco atos são funções em transação, exercitadas pelo andaime e pelos testes; ligá-los
+a uma rota é o que exige autenticação, autorização por perfil e registro da execução (SPEC
+`autorizacao/004`), que ainda não existem. Fazer a rota agora seria abrir exceção de rota aberta para
+**escrita** — onde ela custa caro — e refazê-la protegida depois. A seção entra conferível: mostra o
+estado, os diálogos abrem com tudo calculado, e o submit não tem destino, como o modal de nova
+unidade (SPEC 012). *Consequência aceita:* dá para ver e testar a página inteira, e não dá para mudar
+nada por ela — quem produz os estados é o `ficticios.py`, chamando os atos pela mesma porta que a
+rota vai chamar.
 
-**A montagem do `EstadoDaDirecao` não é daqui, e o que falta para ela é a leitura da substituição
-vigente.** A 014 entregou o DTO e o avaliador, mas deixou de fora a função que monta o estado a
-partir do banco: ela lê `Substituicao`, que não existia. Depois desta SPEC o dado existe — e mesmo
-assim a montagem fica para a **016**, que é a primeira a consumi-la, e que já tem o titular e o
-substituto carregados para a tela. Escrevê-la aqui seria função sem chamador, e lá ela custa uma
-linha sem repetir consulta. O que esta SPEC deve à 016 é a **leitura da substituição vigente**, que a
-página do servidor já usa para dizer quem cobre quem: a mesma função nos dois lugares, em vez de um
-predicado de vigência copiado por tela.
+**A lista de candidatos e a lacuna proposta são calculadas no render da seção, e o toggle não tem
+rota.** As duas listas — a da unidade do substituído e a ampliada — cabem numa consulta cada, são
+dezenas de servidores, e ambas filtram pelo **período padrão da designação**, que não muda enquanto o
+diálogo está aberto. Renderizadas juntas, o toggle só troca qual aparece; uma rota de alcance
+existiria para recalcular algo que não muda.
 
-**O andaime perde a porta própria de impedir.** O `ficticios.py` cria impedimento direto no model
-desde a SPEC 002. Com o exercício derivado isso não produz mais inconsistência — mas a porta única
-continua valendo pelo motivo que a 014 já aplicou aos atos de titularidade: quando a criação passar a
-validar ou registrar o ato (épico `autorizacao`), o andaime não pode ser o caminho que escapa. E,
-como a carga é repetível, a limpeza apaga os impedimentos fictícios — as substituições caem junto,
-pela relação — e reativa quem ela mesma exonerou.
+**O andaime usa a mesma porta da tela.** O `ficticios.py` cria impedimento chamando os atos desta
+SPEC, e não o model direto, pelo motivo que a SPEC 014 já aplicou aos atos de titularidade: quando a
+criação passar a validar ou registrar o ato (épico `autorizacao`), o andaime não pode ser o caminho
+que escapa. E, como a carga é repetível, a limpeza apaga os impedimentos fictícios — as substituições
+caem junto, pela relação — e reativa quem ela mesma exonerou.
+
+**O que esta SPEC deve à SPEC 016 é a leitura da substituição vigente.** A 014 entregou o
+`EstadoDaDirecao` e o avaliador, mas não a função que monta o estado a partir do banco — ela lê
+`Substituicao`, que só passa a existir aqui. A montagem fica para a 016, que é a primeira a
+consumi-la e já tem titular e substituto carregados para a tela; escrevê-la aqui seria função sem
+chamador. O que atravessa é a leitura da substituição vigente, a mesma que a página do servidor usa
+para dizer quem cobre quem — uma função nos dois lugares, em vez de um predicado de vigência copiado
+por tela.
 
 ## Peças de referência a compor
 - `@apps/user_admin/models/impedimentos.py` → `Impedimento` e `TipoImpedimento`: o impedimento já
   existe e não muda de forma; o que ganha aqui é o predicado de vigência compartilhado e um dono
   para a substituição.
 - `@apps/user_admin/models/user.py` → `Perfil.esta_impedido`: a leitura derivada que já existe e à
-  qual `em_exercicio` e `exonerado` se somam. E `Perfil.e_titular` (SPEC 014, **já implementada**): a
-  marca que a designação **não** toca. `is_active` já está no model desde a SPEC 001.
+  qual `em_exercicio` e `exonerado` se somam. E `Perfil.e_titular` (SPEC 014): a marca que a
+  designação **não** toca. `is_active` já está no model desde a SPEC 001.
 - `@apps/user_admin/models/titularidade.py` (SPEC 014) → `cargo_titulariza`: o precedente de regra
   morando ao lado dos models e usada por `Perfil.clean` — é onde o predicado de período se encaixa.
 - `@services/domain/titularidade/` (SPEC 014) → `EstadoDaDirecao` e `avaliar_direcao`: a leitura de
@@ -411,7 +376,7 @@ pela relação — e reativa quem ela mesma exonerou.
 - `@templates/user_admin/perfil_form.html` e os partials `_secao_identificacao.html` /
   `_secao_lotacao.html`: a seção nova é mais uma seção do mesmo organismo, não uma tela.
 - `@templates/user_admin/partials/_modal_nova_unidade.html`: modal por checkbox nativo, irmão do
-  formulário e nunca dentro dele (SPEC 012) — é o padrão que os três modais repetem.
+  formulário e nunca dentro dele (SPEC 012) — é o padrão que os modais desta SPEC repetem.
 - `@apps/user_admin/schemas.py`: DTO construído na view, com o `PydanticValidationMiddleware`
   respondendo pelo erro; nada de `try/except` na view.
 - `@apps/user_admin/views.py` → `editar_perfil` e `@apps/user_admin/context.py` →
@@ -429,26 +394,23 @@ pela relação — e reativa quem ela mesma exonerou.
 A seção de exercício nos **dez** estados que precisa cobrir:
 
 1. **Em exercício**, sem impedimento registrado.
-2. **Em exercício, com impedimento futuro** — e já com substituto designado: é o caso que a
-   designação antecipada abre, e a tela precisa dizer que a pessoa **está na cadeira** enquanto
-   mostra o afastamento que vem.
+2. **Em exercício, com impedimento futuro** — e já com substituto designado: a tela precisa dizer que
+   a pessoa **está na cadeira** enquanto mostra o afastamento que vem.
 3. **Afastado sem substituto.**
 4. **Titular afastado sem substituto** — o alarme de unidade sem direção, que só ganha código com a
    SPEC 016.
 5. **Afastado com um substituto só**, cobrindo o afastamento inteiro — o caso comum.
-6. **Afastamento com substitutos em sequência** — uma encerrada, uma vigente, uma por vir. É o
-   estado que carrega o **histórico**, e o que ele exige do desenho é uma **ordem cronológica
-   legível** e três presenças distinguíveis sem cor nova: o que passou recua (opacidade), o que vale
-   hoje está em foco, o que vem tem a data à frente. Só as duas últimas têm ações. É aqui e no
-   estado 7 que a **calha da cobertura** aparece, resumindo em trechos o que a lista detalha.
+6. **Afastamento com substitutos em sequência** — uma encerrada, uma vigente, uma por vir. É o estado
+   que carrega o **histórico**, e o que ele exige do desenho é **ordem cronológica legível** e três
+   presenças distinguíveis sem cor nova: o que passou recua (opacidade), o que vale hoje está em
+   foco, o que vem tem a data à frente. Só as duas últimas têm ações.
 7. **Afastado com a substituição fora do ar** — ela existe, mas começa depois ou já terminou: hoje
    ninguém responde pelo cargo, e se o afastado é o titular a unidade está sem direção do mesmo
-   jeito. É o estado que o período próprio cria, e o que ele exige do desenho é que **o cartão não
-   suma** — o vínculo existe, some só o presente dele —, que o período apareça, e que a ausência de
-   hoje seja legível sem ler datas: a **calha da cobertura** com o poço vazio à direita, uma
-   tarja âmbar dentro do próprio poço da substituição, e o alarme vermelho da unidade acima dos
-   cartões, idêntico ao do estado 4. O botão de designar aqui propõe **o buraco**, não o afastamento
-   inteiro — e a calha é o que mostra qual buraco é.
+   jeito. O desenho precisa de três coisas aqui: que o **cartão não suma** (o vínculo existe, some só
+   o presente dele), que o período apareça, e que a ausência de hoje seja legível sem ler datas — a
+   **calha da cobertura** com o poço vazio à direita, uma tarja âmbar dentro do próprio poço da
+   substituição, e o alarme vermelho da unidade acima dos cartões, idêntico ao do estado 4. O botão
+   de designar aqui propõe **o buraco**, não o afastamento inteiro — e a calha é o que mostra qual.
 8. **Exonerado.**
 9. **Afastado sem cargo em comissão** — onde o caminho de designar **não tem peça**, em vez de botão
    desabilitado.
@@ -456,31 +418,29 @@ A seção de exercício nos **dez** estados que precisa cobrir:
 
 Mais os **quatro** modais — o segundo em duas variantes:
 
-- **Registrar impedimento** — e o aviso muda de conteúdo: a saída da cadeira acontece na data de
-  início, e o retorno acontece sozinho no fim.
-- **Designar substituto** — que agora carrega duas coisas novas. Primeira: **de qual impedimento**,
-  numa placa fixa no topo do diálogo. Ela é fixa, e não um campo, porque **o botão que abre o modal
-  é de um impedimento** — mora dentro do cartão dele, e não no rodapé da seção —, então a pergunta
-  já vem respondida e não se reescolhe aqui o que foi escolhido lá. Segunda: o **período da
+- **Registrar impedimento** — o aviso diz que a saída da cadeira acontece na data de início e que o
+  retorno acontece sozinho no fim.
+- **Designar substituto** — com **de qual impedimento** numa placa fixa no topo do diálogo: é placa e
+  não campo porque o botão que abre o modal mora **dentro do cartão** de um impedimento, então a
+  pergunta já vem respondida e não se reescolhe aqui o que foi escolhido lá. E com o **período da
   substituição** (*Substitui a partir de* / *Substitui até*), dois campos de data **já preenchidos
-  com o primeiro pedaço descoberto** do afastamento — em branco obrigariam a ler a calha e digitar
-  de volta o que o servidor já calculou, e o caso comum passa a ser só confirmar. Editáveis, e a
-  dica diz que o período só pode ser mais estreito que o afastamento e o que acontece com o resto
-  dele se for; com afastamento indeterminado, *Substitui até* vem vazio, e vazio continua querendo
-  dizer indeterminado. Os **dois alcances continuam no mesmo diálogo**: o toggle de outras unidades
-  troca a lista sob um rótulo só, não abre outro modal, e a lista ampliada abre pela unidade
-  superior.
+  com o primeiro pedaço descoberto** do afastamento — em branco obrigariam a ler a calha e digitar de
+  volta o que o servidor já calculou, e o caso comum passa a ser só confirmar. Editáveis, e a dica
+  diz que o período só pode ser mais estreito que o afastamento e o que acontece com o resto dele se
+  for; com afastamento indeterminado, *Substitui até* vem vazio, e vazio continua querendo dizer
+  indeterminado. Os **dois alcances ficam no mesmo diálogo**: o toggle de outras unidades troca a
+  lista sob um rótulo só, e a ampliada abre pela unidade superior.
 - **Trocar substituto** — a **variante** do anterior, não outro diálogo: na aplicação é o mesmo
-  partial, com os trechos que dependem de já haver substituto. Muda o título, o verbo do botão, o
+  partial, com os trechos que dependem de já haver substituto. Muda o título, o verbo do botão e o
   preenchimento (o atual vem selecionado e as datas vêm gravadas, porque campo vazio aqui diria
-  "ocupa a lacuna" quando o período já existe) e ganha um campo que o de designar não tem: **a data
+  "ocupa a lacuna" quando o período já existe), e ganha um campo que o de designar não tem: **a data
   em que a nova assume**. É dela que sai a véspera em que a anterior é encerrada, e o diálogo diz as
-  duas coisas — quem sai, até quando fica registrado, e quem entra, a partir de quando.
-- **Encerrar substituição** — confirmação curta, e o que ela precisa dizer é o que acontece com o
-  registro: em curso, termina hoje e **continua na lista**; ainda não iniciada, **some**. Mais o
-  aviso de que o afastamento fica sem ninguém respondendo a partir daí.
+  duas coisas — quem sai e até quando fica registrado, quem entra e a partir de quando.
+- **Encerrar substituição** — confirmação curta, dizendo o que acontece com o registro: em curso,
+  termina hoje e **continua na lista**; ainda não iniciada, **some**. Mais o aviso de que o
+  afastamento fica sem ninguém respondendo a partir daí.
 - **Voltar ao exercício** — confirmação pura, porque o ato tem efeitos que não estão no seu
-  enunciado: encerra o impedimento vigente hoje e acerta as substituições dele.
+  enunciado: encerra os impedimentos vigentes hoje e acerta as substituições deles.
 
 **Dois átomos novos e uma molécula, e a divisão é a do Atomic Design (§3.4):**
 
@@ -494,58 +454,65 @@ por quanto é a molécula. E a molécula é **só composição e medida**: mater
 poço é o `.card-well`, os fios são os átomos, o âmbar é a cor semântica do tema.
 
 A bandeja **nunca se preenche**: o poço continua poço de ponta a ponta, e o que muda de estado é o
-fio no fundo dele. É um material só mudando ao longo do tempo, não duas peças disputando a leitura.
-Os nomes ficam nos **rótulos** abaixo de cada trecho — sem discos sobre a linha, que empilhariam peça
-sobre a mesma informação que o rótulo e a lista logo abaixo já dão. É a leitura que a v9 tornou
-obrigatória no backend, tornada visível.
+fio no fundo dele — um material só mudando ao longo do tempo, não duas peças disputando a leitura. Os
+nomes ficam nos **rótulos** abaixo de cada trecho, sem discos sobre a linha, que empilhariam peça
+sobre a informação que o rótulo e a lista logo abaixo já dão.
 
-*O esmaecimento das pontas não é enfeite:* quando dois trechos vizinhos têm estados diferentes, uma
-aresta viva entre eles leria como **duas peças encostadas**, e o que existe é **um fio só**. A
-transição faz a leitura ser "aqui a tinta acaba", não "aqui começa outra coisa". Ela ocupa **20% de
-cada ponta**, em **porcentagem e não em px**, para ser proporcional ao próprio trecho — um trecho
-curto esmaece na mesma medida que um longo, em vez de sumir sob uma ponta de tamanho fixo. E a queda
-não é uma rampa reta: interpolação linear deixa uma "quina de luz" no ponto em que começa, que é
-justamente a aresta que a peça existe para não ter.
+*O esmaecimento das pontas não é enfeite:* entre dois trechos vizinhos de estados diferentes, uma
+aresta viva leria como **duas peças encostadas**, e o que existe é **um fio só** — a transição faz a
+leitura ser "aqui a tinta acaba". Ela ocupa **20% de cada ponta**, em porcentagem e não em px, para
+ser proporcional ao trecho: um curto esmaece na mesma medida que um longo, em vez de sumir sob uma
+ponta de tamanho fixo. A queda não é rampa reta — interpolação linear deixa uma "quina de luz" no
+ponto em que começa, que é justamente a aresta que a peça existe para não ter.
 
 *E a ponta nunca chega ao transparente:* ela para num **tom claro da mesma tinta**. Indo até zero, o
-que aparece na borda é o **vidro branco por baixo**, e o trecho ganha uma auréola clara exatamente
-onde a tinta acaba — o oposto do que o esmaecimento existe para fazer. O fio sai de tinta clara para
-tinta cheia, nunca de branco. Duas consequências de implementação: o esmaecimento é do **próprio
-fundo**, em gradiente, e o brilho vem de `drop-shadow` (que segue o canal alfa, e por isso acompanha
-o tom), nunca de `box-shadow` (que ignoraria o gradiente e desenharia a sombra da caixa inteira).
+que aparece na borda é o vidro branco por baixo, e o trecho ganha uma auréola clara exatamente onde a
+tinta acaba. Duas consequências de implementação: o esmaecimento é do **próprio fundo**, em
+gradiente, e o brilho vem de `drop-shadow` (que segue o canal alfa e acompanha o tom), nunca de
+`box-shadow` (que ignoraria o gradiente e desenharia a sombra da caixa inteira).
 
-*Feita do zero em Tailwind, e não com o `steps` do daisyUI:* o steps é uma sequência de **etapas** —
-a métrica dele é a ordem, e o trilho entre dois nós tem sempre a mesma largura. Aqui a **largura é o
-que informa**: cada trecho ocupa a fração de dias que dura, e um buraco de três semanas precisa
-parecer três vezes maior que um de uma. Forçar o componente a isso seria lutar contra ele para
-chegar num lugar pior; do zero são cinco regras, todas compostas de material que já existe.
+*Feita do zero em Tailwind, e não com o `steps` do daisyUI:* o steps mede **ordem**, e o trilho entre
+dois nós tem sempre a mesma largura. Aqui a **largura é o que informa** — um buraco de três semanas
+precisa parecer três vezes maior que um de uma. Do zero são cinco regras, todas de material que já
+existe.
 
-*Sem cor semântica nos fios nem na calha:* a diferença entre tinta e sulco é de **estado do mesmo material**,
-contínua e comparável ao longo da linha — não é um glifo gravado tentando dizer sozinho um estado do
-sistema, que é o que o tema veda. Quem **nomeia** o buraco é o **rótulo em âmbar** abaixo dele, e é
+*Sem cor semântica nos fios nem na calha:* a diferença entre tinta e sulco é de **estado do mesmo
+material**, contínua e comparável ao longo da linha, não um glifo tentando dizer sozinho um estado do
+sistema — que é o que o tema veda. Quem **nomeia** o buraco é o **rótulo em âmbar** abaixo dele, e é
 ele que garante a leitura sem depender de perceber diferença de tom. O vermelho continua fora: é da
 unidade sem direção, não do trecho.
 
-*Prazo indeterminado:* a calha **não termina, se dissolve** — uma máscara que apaga a ponta direita.
-Desenhar um fim mentiria sobre um fim que não existe, que é a mesma razão pela qual `data_fim` é nulo
-em vez de uma data-sentinela.
+*Prazo indeterminado:* a calha **não termina, se dissolve** — uma máscara apaga a ponta direita.
+Desenhar um fim mentiria sobre um fim que não existe, pela mesma razão que `data_fim` é nulo em vez
+de uma data-sentinela.
 
 *Quando ela aparece:* só com **mais de um trecho**. Um substituto cobrindo o afastamento inteiro é
-uma calha cheia de ponta a ponta — não informa nada que a linha da pessoa já não diga, e vira
-enfeite.
+uma calha cheia de ponta a ponta — não informa nada que a linha da pessoa já não diga.
 
 *A escala é o que dá sentido à peça, e é regra, não acabamento:* `left` e `width` de cada trecho são
 a **fração de dias** que ele ocupa no afastamento — `left = (início do trecho − início do
-afastamento) / total` e `width = dias do trecho / total`, ambos **inclusivos das duas pontas**. Um
-buraco de três semanas tem que parecer três vezes maior que um de uma; sem isso a peça vira enfeite
-e mente. `trechos()` devolve os pedaços em ordem, com período e ocupante; a conversão para
-porcentagem é da **view** (`context.py`), não do domínio — é medida de renderização, não
-conhecimento sobre território ou processo.
+afastamento) / total` e `width = dias do trecho / total`, ambos **inclusivos das duas pontas**.
+`trechos()` devolve os pedaços em ordem, com período e ocupante; a conversão para porcentagem é da
+**view** (`context.py`), não do domínio — é medida de renderização, não conhecimento sobre território
+ou processo. Com impedimento indeterminado não há denominador: a régua vai até a **última data
+conhecida** e o resto dissolve, com a mesma máscara.
 
-*Quando o impedimento é indeterminado não há denominador:* a régua vai até a **última data
-conhecida** e o resto **dissolve**, com a mesma máscara que já apaga a ponta direita da calha.
+**A peça que estrutura a seção é um cartão, e ele não é classe nenhuma.** Cada impedimento em aberto
+é um `.glass-panel` **erguido** sobre o poço da seção, com dois `.card-well` **afundados** dentro: um
+para o afastamento, outro para **as substituições dele**. A alternância de material é o que diz
+**pertencimento** — o substituto não está *perto* do impedimento, está *dentro* dele —, e é isso que
+resolve o caso de dois afastamentos em aberto, onde recuo e proximidade resolveriam mal. O segundo
+poço é uma **lista**, porque um afastamento tem uma agenda e não um substituto; vazio, ele continua
+lá com o botão de designar dentro; sem cargo em comissão, ele **não existe**. Nada disso vira classe:
+é composição de materiais que já estão no tema.
 
-O toggle já era átomo proposto, e nenhuma outra peça nova entra.
+Duas moléculas nascem aqui: `.linha-pessoa` (pessoa identificada em uma linha, que se repete no
+substituto designado e em quem se substitui) e `.tarja-vinculo`, cujo papel é o de **placa de aviso
+assentada num poço** — o poço da seção, o do substituto dentro do cartão ou o painel espesso de um
+modal —, com duas variantes: `-pendente`, para o vínculo que existe mas **não está valendo hoje**, e
+`-critica`, para a unidade sem direção. **Escolher o substituto não inventa peça**: é o campo de
+seleção de vidro da SPEC 011 (`data-select-onsen`), o mesmo da lotação — lista fechada de uma pessoa
+é exatamente o que ele resolve, com filtro por texto, teclado e o `<select>` seguindo como o campo.
 
 **A escala semântica fica fixada aqui**, e vale para as duas SPECs: verde é estar na cadeira; âmbar é
 a pessoa fora dela, por impedimento ou por exoneração; **vermelho é só a unidade sem direção** — a
@@ -554,35 +521,18 @@ nunca fica vermelho; quem escala é a tarja, porque quem está errado é o estad
 afastamento. O selo diz **a causa** quando a pessoa está fora: afastado e exonerado são o mesmo âmbar
 e palavras diferentes.
 
-**A peça que estrutura a seção é um cartão, e ele não é classe nenhuma.** Cada impedimento em aberto
-é um `.glass-panel` **erguido** sobre o poço da seção, com dois `.card-well` **afundados** dentro: um
-para o afastamento, outro para **as substituições dele**. A alternância de material é o que diz
-**pertencimento** — o substituto não está *perto* do impedimento, está *dentro* dele —, e é isso que
-resolve o caso de dois afastamentos em aberto, onde recuo e proximidade resolveriam mal. O segundo
-poço é uma **lista**, porque um afastamento tem uma agenda de substituições e não uma só; vazio, ele
-continua lá com o botão de designar dentro; sem cargo em comissão, ele **não existe**. Nada disso
-vira classe: é composição de materiais que já estão no tema.
-
-Duas moléculas nascem aqui: `.linha-pessoa` (pessoa identificada em uma linha, que se repete no
-substituto designado e em quem se substitui) e `.tarja-vinculo`, cujo papel fica sendo o de **placa
-de aviso assentada num poço** — o poço da seção, o do substituto dentro do cartão ou o painel espesso
-de um modal. As variantes ficam sendo **duas**: `-pendente`, para o vínculo que existe mas **não está
-valendo hoje**, e `-critica`, para a unidade sem direção. **Escolher o substituto não inventa peça**:
-é o campo de seleção de vidro da SPEC 011 (`data-select-onsen`), o mesmo da lotação — lista fechada
-de uma pessoa é exatamente o que ele resolve, com filtro por texto, teclado e o `<select>` seguindo
-como o campo.
-
 O único token novo é de raio: **`--radius-placa` (0.625rem)**, entre `--radius-field` e
 `--radius-box`. A placa assentada dentro de um poço não é campo nem caixa — quer ficar retangular,
-mas quina viva não pertence a um material em que toda aresta é luz. Vira token, e não medida solta
-na molécula, porque a titularidade (SPEC 014) assenta placas no mesmo poço e elas precisam da mesma
-quina. Aprovado o mock, as moléculas migram para `static/src/tema-dimap.dev.css` na camada de
-moléculas — a calha entre elas —, **`.toggle-onsen`, `.etched-line` e `.etched-line-inked` para a
-camada de átomos**, o raio entra em `html[data-theme="dimap"]`
-junto dos outros, e as peças são renderizadas no styleguide da skill `componentes-frontend`, antes de
-qualquer template da aplicação usá-las. A calha **não** depende dos `defs` de `#etched-onsen`: a
-tinta dela é fundo e sombra, não filtro SVG. Quem depende é o toggle, cujo disco é gravação de
-verdade — sem os `defs`, ele continua lá, chapado.
+mas quina viva não pertence a um material em que toda aresta é luz. Vira token, e não medida solta na
+molécula, porque a titularidade (SPEC 014) assenta placas no mesmo poço e elas precisam da mesma
+quina.
+
+Aprovado o mock, as moléculas migram para `static/src/tema-dimap.dev.css` na camada de moléculas — a
+calha entre elas —, **`.toggle-onsen`, `.etched-line` e `.etched-line-inked` para a camada de
+átomos**, o raio entra em `html[data-theme="dimap"]` junto dos outros, e as peças são renderizadas no
+styleguide da skill `componentes-frontend`, antes de qualquer template da aplicação usá-las. A calha
+**não** depende dos `defs` de `#etched-onsen`: a tinta dela é fundo e sombra, não filtro SVG. Quem
+depende é o toggle, cujo disco é gravação de verdade — sem os `defs`, ele continua lá, chapado.
 
 > Consumo do raio: em Tailwind 4 é `border-radius: var(--radius-placa)` ou `rounded-(--radius-placa)`.
 > O `rounded-[--x]` da v3 emite `border-radius: --x`, inválido, e cai em **raio zero** — os mocks de
@@ -869,8 +819,8 @@ def _impedir(self, perfil: Perfil, tipo: TipoImpedimento) -> None:
   SPEC 016, que compõe a leitura desta com o titular da 014 (ver Contexto).
 - **O ato de exonerar** — SPEC própria. Aqui entram a leitura que depende do `is_active` e a
   renderização do estado; não entram o caminho na tela nem os efeitos sobre lotação e titularidade.
-- Titularidade e o efeito do exercício sobre ela — SPEC 014, **já implementada**; nada aqui altera
-  `e_titular` nem a unicidade dele.
+- Titularidade e o efeito do exercício sobre ela — SPEC 014; nada aqui altera `e_titular` nem a
+  unicidade dele.
 - Cadeia de substituição: substituto do substituto, e redesignação automática quando o substituto se
   impede. O substituto que se afasta durante a cobertura deixa o cargo sem quem responda — a leitura
   da direção (SPEC 016) enxerga isso e acende o alarme —, mas nada entra no lugar dele sozinho.
