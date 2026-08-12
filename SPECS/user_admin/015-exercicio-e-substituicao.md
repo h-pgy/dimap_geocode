@@ -1,6 +1,6 @@
 ---
 spec: user_admin/015
-versao: v9
+versao: v10
 atualizado_em: 2026-08-12
 testes_tdd: false
 implementado: false
@@ -53,6 +53,17 @@ changelog:
         **calha da cobertura**: o afastamento inteiro como uma bandeja funda, com o sulco
         **entintado** nos pedaços que têm substituto e o poço vazio nos que não têm — o que torna os
         buracos visíveis antes de qualquer data ser lida, na proporção dos dias que duram
+  - v10: a SPEC descrevia os atos e a regra e **não descrevia o que a tela recebe pronta** — a lista
+         de candidatos prometida em dois lugares e sem dono, `NovoImpedimento`/`NovaSubstituicao`
+         usados e nunca definidos, e a conversão dos trechos em medida atribuída ao `context.py` sem
+         critério. Entra a **orquestração de leitura**: o contexto da seção, os DTOs de entrada dos
+         atos e a montagem dos DTOs de domínio numa peça só, partilhada pelo `clean()` e pela lista.
+         **Nenhuma rota nova**, e a SPEC passa a dizer isso explicitamente: as escritas por HTTP
+         saem de escopo e ficam para o épico de ações, onde nascem protegidas — enquanto isso os
+         diálogos renderizam com o submit sem destino, como o modal da SPEC 012, e "a rota recusa"
+         vira "**o ato** recusa". Duas correções de desenho vêm junto: o toggle de alcance **não
+         ganha rota** — as duas listas nascem renderizadas, como no mock —, e os campos de data do
+         diálogo **vêm preenchidos** com a primeira lacuna, não em branco
 ---
 
 # SPEC user_admin/015 — Exercício e substituição: quem está na cadeira e quem cobre
@@ -85,7 +96,8 @@ direção da unidade quando quem se afasta é o titular.
 - [ ] **Exoneração não ganha campo novo:** é o `is_active` do `contrib.auth`, que hoje não tem
       nenhum outro uso no projeto. O `Perfil` expõe `exonerado` como leitura (`not is_active`) para
       o domínio falar a língua do domínio. **O ato de exonerar é de outra SPEC.**
-- [ ] **Voltar ao exercício** é ato explícito na página e é o único retorno antecipado: encerra
+- [ ] **Voltar ao exercício** é ato explícito — o botão está na tela, o ato existe, e ligá-los é do
+      épico de ações — e é o único retorno antecipado: encerra
       **todos** os impedimentos vigentes hoje (`data_fim = hoje`) e acerta as substituições deles na
       mesma transação.
 
@@ -103,7 +115,7 @@ direção da unidade quando quem se afasta é o titular.
       hoje**, porque a substituição ainda não começou ou já terminou. Se o afastado é o titular,
       isso deixa a **unidade sem direção** exatamente como se não houvesse substituto.
 - [ ] Só se designa substituto para quem **tem cargo em comissão** e **não está exonerado** — o
-      caminho não se oferece ao resto, e a rota recusa igual.
+      caminho não se oferece ao resto, e o **ato recusa igual**.
 - [ ] **Encerrar a substituição** é ato próprio: em curso, ela **termina hoje** e o vínculo fica
       registrado até aqui; ainda não iniciada, é **apagada**, porque cobertura que nunca vigorou não
       é histórico, é registro sem fato.
@@ -120,10 +132,11 @@ direção da unidade quando quem se afasta é o titular.
       sobreposição). É **uma regra só**, e ela vale para os dois casos.
 - [ ] A lista de candidatos traz **a unidade do substituído por padrão**; alcançar as demais é ato
       explícito na tela — um **toggle** que amplia a busca —, porque cobrir fora da unidade é raro.
-      Ampliada, a lista começa pela **unidade superior** do substituído. A **rota aceita** o
+      Ampliada, a lista começa pela **unidade superior** do substituído. O **ato aceita** o
       substituto de qualquer unidade, com ou sem o toggle.
-- [ ] A lista filtra pelo período **que a designação vai ocupar por padrão**, e a **rota valida pelo
-      período efetivo**. Filtrar é UX; recusar é da rota (§3.5).
+- [ ] A lista filtra pelo período **que a designação vai ocupar por padrão**, e o **ato valida pelo
+      período efetivo**. Filtrar é UX; recusar é do ato — e da rota que o chamar, quando ela
+      existir (§3.5).
 - [ ] Nenhuma dessas invariantes é constraint: **o banco só garante que o fim não antecede o
       início**. A não-sobreposição inteira — dos dois lados — é decidida no domínio e barrada no
       `clean()`, e a SPEC assume esse custo explicitamente.
@@ -161,6 +174,22 @@ direção da unidade quando quem se afasta é o titular.
       ainda não começou**, o **impedimento futuro já com substituto designado** e o **exonerado**.
       Rodar de novo devolve todos ao exercício, em vez de acumular afastamento.
 - [ ] O design foi aprovado no **mock** antes de qualquer código de aplicação.
+
+### A tela é leitura: nenhuma rota nova, nenhum submit com destino
+- [ ] **Esta SPEC não grava por HTTP.** A seção é renderizada pela rota que já existe — a página do
+      servidor (SPEC 007) —, e o que falta a ela é o **contexto**. Nenhuma rota nasce aqui.
+- [ ] **Os cinco atos existem como funções** e são exercitados pelo **andaime** e pelos testes; quem
+      os liga a um botão é o épico de ações, onde a rota nasce **protegida**. Enquanto isso, os
+      diálogos renderizam e o **submit não tem destino**, como o modal de nova unidade (SPEC 012).
+- [ ] Os diálogos nascem com **a lacuna proposta já nos campos de data** e com a **lista de
+      candidatos já filtrada** pelo período que a designação vai ocupar — o servidor calcula uma vez,
+      no render da seção, e é isso que torna a peça conferível na tela antes de existir escrita. O
+      **toggle de alcance não tem rota**: as duas listas vêm renderizadas e ele troca qual aparece.
+- [ ] A **medida da calha** (`left`/`width` de cada trecho) é calculada na orquestração a partir de
+      `trechos()`; o domínio devolve períodos, nunca porcentagem.
+- [ ] O contexto da seção sai de **uma passagem só** pelos impedimentos em aberto: os cartões, a
+      agenda de cada um, a calha, a lacuna e os candidatos. Nada na página pergunta duas vezes a
+      mesma coisa ao banco.
 
 ## Contexto e decisões de arquitetura
 
@@ -320,11 +349,31 @@ tela usa para montar a lista de candidatos. Detalhe que a troca obriga: ao valid
 que já existe, **ela própria não entra** nas listas de períodos do DTO, senão conflitaria consigo
 mesma.
 
-**Esta é a primeira tela do `user_admin` que grava, e a rota nasce aberta por exceção declarada.**
-§3.5 exige rota de ação protegida; autenticação ainda não existe no projeto, e a listagem de
-servidores (SPEC 013) já abriu essa exceção nos mesmos termos. Registrar a execução do ato depende do
-registro da SPEC `autorizacao/004`. As duas coisas entram com o épico `autorizacao` — até lá a
-exceção fica declarada aqui, num lugar só, e não espalhada em código.
+**A tela desta SPEC é leitura, e a escrita por HTTP é do épico de ações.** A página do servidor já
+existe, aberta pela exceção que a SPEC 013 declarou, e o que entra nela é contexto — **nenhuma rota
+nasce aqui**. Os cinco atos são funções em transação, exercitadas pelo andaime e pelos testes;
+ligá-los a uma rota é o que exige autenticação, autorização por perfil e registro da execução (SPEC
+`autorizacao/004`) — as três coisas que ainda não existem. Fazer a rota agora seria abrir uma
+exceção de rota aberta para **escrita**, que é exatamente onde ela custa caro, e refazê-la protegida
+depois. A seção entra conferível: mostra o estado, os diálogos abrem com tudo calculado, e o submit
+não tem destino — o mesmo tratamento que o modal de nova unidade tem desde a SPEC 012.
+
+*Consequência aceita:* dá para ver e testar a página inteira, e não dá para mudar nada por ela. O
+que produz os estados da tela é o `ficticios.py`, que chama os atos pela mesma porta que a rota vai
+chamar.
+
+**A lista de candidatos e a lacuna proposta são calculadas no render da seção, e o toggle não tem
+rota.** As duas listas — a unidade do substituído e a ampliada — cabem numa consulta cada, são
+dezenas de servidores, e ambas filtram pelo **período padrão da designação**, que não muda enquanto o
+diálogo está aberto. Renderizadas juntas, o toggle só troca qual aparece, como no mock. Uma rota de
+alcance existiria para recalcular algo que não muda.
+
+**Montar os DTOs do domínio a partir do banco é uma peça só.** `AvaliadorDesignacao` recebe
+`Substituido` e `Substituto` já preenchidos, e quem os preenche são dois chamadores: o `clean()`, que
+valida uma designação, e a tela, que precisa saber quais candidatos passariam. Se cada um montar o
+seu, "a mesma regra no `clean` e na lista" deixa de ser verdade no dia em que uma das duas montagens
+esquecer um período. A montagem mora ao lado dos atos, em `apps/user_admin/exercicio.py`, e é ela que
+lê as tuplas de períodos das duas pontas.
 
 **A titularidade já entrou, e não depende disto para ser única.** A SPEC 014 garante um titular por
 unidade num índice que só olha para a marca de titular — nada que a substituição faça mexe nela.
@@ -365,8 +414,9 @@ pela relação — e reativa quem ela mesma exonerou.
   formulário e nunca dentro dele (SPEC 012) — é o padrão que os três modais repetem.
 - `@apps/user_admin/schemas.py`: DTO construído na view, com o `PydanticValidationMiddleware`
   respondendo pelo erro; nada de `try/except` na view.
-- `@apps/user_admin/views.py` + `@apps/user_admin/context.py`: view fina e função de contexto — o
-  padrão do app.
+- `@apps/user_admin/views.py` → `editar_perfil` e `@apps/user_admin/context.py` →
+  `contexto_editar_perfil`: a rota que já renderiza a página do servidor e o contexto em que a seção
+  entra. Nenhuma rota nova nesta SPEC.
 - `@apps/user_admin/ficticios.py`: o andaime da área administrativa — `_impedir` e
   `_limpar_impedimentos` já existem e passam a chamar os atos desta SPEC; `_titularizar` (SPEC 014)
   é quem diz quais afastados são titulares.
@@ -412,11 +462,14 @@ Mais os **quatro** modais — o segundo em duas variantes:
   numa placa fixa no topo do diálogo. Ela é fixa, e não um campo, porque **o botão que abre o modal
   é de um impedimento** — mora dentro do cartão dele, e não no rodapé da seção —, então a pergunta
   já vem respondida e não se reescolhe aqui o que foi escolhido lá. Segunda: o **período da
-  substituição** (*Substitui a partir de* / *Substitui até*), dois campos de data em branco por
-  padrão, com a dica dizendo qual lacuna o branco vai ocupar, que o período só pode ser mais
-  estreito que o afastamento, e o que acontece com o resto dele se for. Os **dois alcances continuam
-  no mesmo diálogo**: o toggle de outras unidades troca a lista sob um rótulo só, não abre outro
-  modal, e a lista ampliada abre pela unidade superior.
+  substituição** (*Substitui a partir de* / *Substitui até*), dois campos de data **já preenchidos
+  com o primeiro pedaço descoberto** do afastamento — em branco obrigariam a ler a calha e digitar
+  de volta o que o servidor já calculou, e o caso comum passa a ser só confirmar. Editáveis, e a
+  dica diz que o período só pode ser mais estreito que o afastamento e o que acontece com o resto
+  dele se for; com afastamento indeterminado, *Substitui até* vem vazio, e vazio continua querendo
+  dizer indeterminado. Os **dois alcances continuam no mesmo diálogo**: o toggle de outras unidades
+  troca a lista sob um rótulo só, não abre outro modal, e a lista ampliada abre pela unidade
+  superior.
 - **Trocar substituto** — a **variante** do anterior, não outro diálogo: na aplicação é o mesmo
   partial, com os trechos que dependem de já haver substituto. Muda o título, o verbo do botão, o
   preenchimento (o atual vem selecionado e as datas vêm gravadas, porque campo vazio aqui diria
@@ -677,7 +730,7 @@ class Trecho(BaseModel):
     substituto_id: int | None
 
 
-def trechos(impedimento: Periodo, substituicoes: tuple[TrechoOcupado, ...]) -> tuple[Trecho, ...]:
+def trechos(impedimento: Periodo, ocupados: tuple[Trecho, ...]) -> tuple[Trecho, ...]:
     """O afastamento fatiado em ordem, cobertos e descobertos alternados. Existe para a linha da
     cobertura não ser montada intercalando duas listas no template (§3.1)."""
     ...
@@ -697,7 +750,7 @@ class AvaliadorDesignacao:
 # titularidade.py (SPEC 014).
 def registrar_impedimento(perfil: Perfil, dados: NovoImpedimento) -> Impedimento:
     """Grava o impedimento — que é, ele próprio, a saída do exercício, na data que ele declara."""
-    # DTO, e não Impedimento pronto: é o que faz a tela e o andaime usarem a mesma porta.
+    # DTO, e não Impedimento pronto: é o que faz o andaime e a rota futura usarem a mesma porta.
     ...
 
 
@@ -713,7 +766,7 @@ def encerrar_substituicao(substituicao: Substituicao) -> None:
     ...
 
 
-def trocar_substituto(atual: Substituicao, dados: NovaSubstituicao) -> Substituicao:
+def trocar_substituto(atual: Substituicao, dados: TrocaDeSubstituto) -> Substituicao:
     """Encerra a atual na VÉSPERA do dia em que a nova assume e designa a nova, na mesma transação.
     A véspera é o que evita tanto o dia com dois respondendo quanto a lacuna de um dia."""
     ...
@@ -746,6 +799,53 @@ def substituicoes_do_impedimento(impedimento: Impedimento) -> QuerySet[Substitui
     """A agenda do afastamento, em ordem — encerradas, vigente e futuras. É o histórico da tela, e
     ele não precisa de tabela nenhuma além desta."""
     return impedimento.substituicoes.order_by("data_inicio").select_related("substituto")
+
+
+def candidatos_a_substituto(impedimento: Impedimento, periodo: Periodo) -> list[Perfil]:
+    """Quem passaria no avaliador para este período. A mesma montagem de DTO que o clean usa — se a
+    tela montasse a sua, "a mesma regra nos dois lugares" viraria promessa."""
+    ...
+```
+
+```python
+# apps/user_admin/schemas.py — o DTO de entrada dos atos, hoje construído pelo andaime e amanhã pela
+# rota do épico de ações. A validação que depende de outras linhas é do clean, não daqui.
+class NovoImpedimento(BaseModel):
+    tipo: int
+    data_inicio: date
+    # Em branco = prazo indeterminado, a mesma convenção dos models.
+    data_fim: DataOpcional = None
+
+
+class NovaSubstituicao(BaseModel):
+    substituto: int
+    # A tela manda as datas já propostas; em branco continua valendo, porque é assim que o andaime
+    # designa sem repetir o cálculo da lacuna.
+    data_inicio: DataOpcional = None
+    data_fim: DataOpcional = None
+
+
+class TrocaDeSubstituto(BaseModel):
+    substituto: int
+    # "Assume em" — obrigatório, porque é a véspera dela que encerra a substituição que sai.
+    data_inicio: date
+    data_fim: DataOpcional = None
+```
+
+```python
+# apps/user_admin/context.py — a seção entra no contexto da página que já existe; nenhuma view nova.
+def contexto_editar_perfil(perfil: Perfil) -> dict[str, Any]:
+    return ... | contexto_exercicio(perfil)
+def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
+    """A seção e os diálogos dela: os cartões dos impedimentos em aberto, a agenda de cada um, a
+    lacuna que a designação propõe e os candidatos dos dois alcances."""
+    ...
+
+
+def _calha(impedimento: Impedimento) -> list[dict[str, Any]]:
+    # left/width em porcentagem: medida de renderização, não conhecimento de domínio — trechos()
+    # devolve períodos e a régua sai daqui.
+    ...
 ```
 
 ```python
@@ -783,6 +883,11 @@ def _impedir(self, perfil: Perfil, tipo: TipoImpedimento) -> None:
   `btree_gist`): decidido no domínio, com o risco de escrita concorrente assumido (ver Contexto).
 - Rotina que reconcilie exercício com impedimentos vencidos: não há o que reconciliar, porque não há
   marca gravada (ver Contexto).
+- **As rotas de escrita dos atos** (registrar impedimento, designar, trocar, encerrar, voltar ao
+  exercício) — épico de ações, onde nascem protegidas e com a execução registrada. Aqui os atos são
+  funções, exercitadas pelo andaime e pelos testes, e os diálogos renderizam com o **submit sem
+  destino**, como o modal de nova unidade (SPEC 012). Gravar o cadastro do servidor pela tela segue
+  igualmente sem destino.
 - Autenticação, autorização por perfil e registro da execução do ato — épico `autorizacao`.
 - Qualquer efeito de autorização decorrente do exercício ou da substituição — épico `autorizacao`.
 - Aplicar a migração: o agente gera, quem aplica é o usuário (CLAUDE.md §4).
@@ -838,6 +943,10 @@ antes uma constraint fixava agora só existe se estes testes existirem.
 - `test_secao_mostra_a_agenda_do_afastamento` — o cartão traz as substituições do impedimento em
   ordem, com a encerrada, a vigente e a futura distinguíveis; traz o impedimento futuro com o
   substituto já designado; e distingue afastado de exonerado. *(marker `banco`)*
+- `test_modal_de_designar_propoe_a_lacuna_e_os_candidatos` — o diálogo do impedimento vem com as
+  datas do primeiro pedaço descoberto (e *Substitui até* vazio quando o afastamento é
+  indeterminado), com a lista da unidade do substituído sem quem está impedido ou cobrindo alguém no
+  período, e com a lista ampliada abrindo pela unidade superior. *(marker `banco`)*
 - `test_ficticios_deixam_os_estados_de_exercicio_exercitaveis` — depois da carga há titular afastado
   com substituto, titular afastado sem substituto, afastamento com substitutos **em sequência**,
   afastado com a substituição fora do ar, impedimento futuro já designado e exonerado; e rodar duas

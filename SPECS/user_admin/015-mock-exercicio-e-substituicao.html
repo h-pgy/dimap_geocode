@@ -144,6 +144,9 @@
          semântica do tema.
          A bandeja NUNCA se preenche: o poço continua poço de ponta a ponta, e o que muda de estado
          é o fio no fundo dele.
+         A peça vive DENTRO do poço da substituição: sem cargo em comissão não há competência a
+         cobrir, o poço não é renderizado e a calha vai junto — restam o cartão do impedimento e o
+         selo de exercício.
          REGRA DA ESCALA, e é ela que dá sentido à peça: `left` e `width` de cada trecho são a
          fração de DIAS que ele ocupa no afastamento — left = (início do trecho − início do
          afastamento) / total, width = dias do trecho / total, ambos inclusivos das duas pontas. Um
@@ -628,6 +631,35 @@
         </div>
 
         <p class="text-[13px] text-base-content/70">
+          Os dois casos simples — um substituto cobrindo tudo, e ninguém cobrindo nada. É o par que
+          a peça mais vai desenhar na tela:
+        </p>
+        <div class="relative pb-12">
+          <div class="calha-cobertura">
+            <div class="calha-trilho etched-line">
+              <div class="calha-trecho etched-line-inked" style="left:0%;width:100%"></div>
+            </div>
+          </div>
+          <div class="calha-marcas">
+            <div class="calha-marca" style="left:50%">
+              <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+              <span class="text-[11px] text-base-content/60">05/08 → 24/08</span>
+            </div>
+          </div>
+        </div>
+        <div class="relative pb-12">
+          <div class="calha-cobertura">
+            <div class="calha-trilho etched-line"></div>
+          </div>
+          <div class="calha-marcas">
+            <div class="calha-marca calha-marca-vazia" style="left:50%">
+              <span class="text-[12px] font-medium">Sem substituto</span>
+              <span class="text-[11px] opacity-80">02/11 → 01/12</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-[13px] text-base-content/70">
           E o prazo indeterminado, em que a calha <strong>não termina — se dissolve</strong>:
         </p>
         <div class="relative pb-12">
@@ -682,9 +714,16 @@
           daqui: é da unidade sem direção, não do trecho.
         </p>
         <p class="text-[13px] text-base-content/70">
-          <strong>Quando a peça aparece:</strong> só quando há <strong>mais de um trecho</strong>.
-          Um substituto cobrindo o afastamento inteiro é uma calha cheia de ponta a ponta — não
-          informa nada que a linha da pessoa já não diga, e vira enfeite.
+          <strong>Quando a peça aparece:</strong> ela mora <strong>dentro do poço da
+          substituição</strong> — logo, só existe onde esse poço existe, isto é, quando a pessoa tem
+          <strong>cargo em comissão</strong>. Sem cargo não há competência a cobrir, não há poço e
+          não há calha: sobram o cartão do impedimento e o selo de exercício, e a ausência é a
+          mensagem (estado 9). Havendo cargo, ela aparece em <strong>todo cartão de
+          impedimento</strong> — com três substitutos, com um só, ou com nenhum. A calha é a leitura
+          da cobertura, e responde <em>coberto ou descoberto</em> antes de qualquer data ser lida:
+          cheia de ponta a ponta ou vazia de ponta a ponta, a resposta chega pelo desenho. Fazê-la
+          aparecer só no caso composto obrigaria a ler as datas justamente nos dois casos em que a
+          leitura é instantânea — e deixaria a peça oscilando de presença a cada troca de estado.
         </p>
       </div>
 
@@ -698,8 +737,23 @@
               <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
             </div>
           </div>
-          <div class="card-well p-4 flex flex-col gap-2">
+          <div class="card-well p-4 flex flex-col gap-3">
             <p class="text-overline">Substituída por</p>
+
+            <div class="relative pb-12">
+              <div class="calha-cobertura">
+                <div class="calha-trilho etched-line">
+                  <div class="calha-trecho etched-line-inked" style="left:0%;width:100%"></div>
+                </div>
+              </div>
+              <div class="calha-marcas">
+                <div class="calha-marca" style="left:50%">
+                  <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+                  <span class="text-[11px] text-base-content/60">05/08 → 24/08</span>
+                </div>
+              </div>
+            </div>
+
             <div class="flex items-center justify-between gap-3">
               <div class="linha-pessoa">
                 <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
@@ -789,8 +843,23 @@
                 <p class="text-[13px] text-base-content/60">02/09/2026 → 21/09/2026 · começa em 21 dias</p>
               </div>
             </div>
-            <div class="card-well p-4 flex flex-col gap-2">
+            <div class="card-well p-4 flex flex-col gap-3">
               <p class="text-overline">Substituído por</p>
+
+              <div class="relative pb-12">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line">
+                    <div class="calha-trecho etched-line-inked" style="left:0%;width:100%"></div>
+                  </div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca" style="left:50%">
+                    <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+                    <span class="text-[11px] text-base-content/60">02/09 → 21/09</span>
+                  </div>
+                </div>
+              </div>
+
               <div class="flex items-center justify-between gap-3">
                 <div class="linha-pessoa">
                   <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
@@ -844,10 +913,21 @@
               </div>
             </div>
             <!-- O poço da substituição existe mesmo vazio: é ele que carrega o botão, e é o que
-                 mantém a pergunta "substituto de quê?" respondida antes de o modal abrir. -->
-            <div class="card-well p-4 flex flex-wrap items-center justify-between gap-3">
-              <p class="text-[13px] text-base-content/60">Sem substituto designado</p>
-              <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2">
+                 mantém a pergunta "substituto de quê?" respondida antes de o modal abrir. A calha
+                 sem tinta nenhuma é o desenho do afastamento inteiro descoberto. -->
+            <div class="card-well p-4 flex flex-col gap-3">
+              <div class="relative pb-12">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line"></div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca calha-marca-vazia" style="left:50%">
+                    <span class="text-[12px] font-medium">Sem substituto</span>
+                    <span class="text-[11px] opacity-80">05/08 → 24/08</span>
+                  </div>
+                </div>
+              </div>
+              <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2 self-start">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
                 Designar substituto
               </label>
@@ -897,9 +977,19 @@
                 <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
               </div>
             </div>
-            <div class="card-well p-4 flex flex-wrap items-center justify-between gap-3">
-              <p class="text-[13px] text-base-content/60">Sem substituto designado</p>
-              <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2">
+            <div class="card-well p-4 flex flex-col gap-3">
+              <div class="relative pb-12">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line"></div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca calha-marca-vazia" style="left:50%">
+                    <span class="text-[12px] font-medium">Sem substituto</span>
+                    <span class="text-[11px] opacity-80">05/08 → 24/08</span>
+                  </div>
+                </div>
+              </div>
+              <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2 self-start">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
                 Designar substituto
               </label>
@@ -938,8 +1028,23 @@
                 <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
               </div>
             </div>
-            <div class="card-well p-4 flex flex-col gap-2">
+            <div class="card-well p-4 flex flex-col gap-3">
               <p class="text-overline">Substituído por</p>
+
+              <div class="relative pb-12">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line">
+                    <div class="calha-trecho etched-line-inked" style="left:0%;width:100%"></div>
+                  </div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca" style="left:50%">
+                    <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+                    <span class="text-[11px] text-base-content/60">05/08 → 24/08</span>
+                  </div>
+                </div>
+              </div>
+
               <div class="flex items-center justify-between gap-3">
                 <div class="linha-pessoa">
                   <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
@@ -992,7 +1097,7 @@
               <p class="text-overline">Substituições</p>
 
               <!-- A calha resume o que a lista detalha: dois meses inteiros entintados, sem
-                   buraco. Ela só aparece porque há mais de um trecho. -->
+                   buraco — e é aqui, com três trechos, que ela poupa mais leitura. -->
               <div class="relative pb-12">
                 <div class="calha-cobertura">
                   <div class="calha-trilho etched-line">
@@ -1114,7 +1219,7 @@
             <div class="card-well p-4 flex flex-col gap-3">
               <p class="text-overline">Substituída por</p>
 
-              <!-- Aqui a peça ganha o seu caso: o poço vazio à direita é visível antes de qualquer
+              <!-- O caso mais duro da peça: o poço vazio à direita é visível antes de qualquer
                    data ser lida, e é justamente esse pedaço que o botão abaixo se oferece para
                    preencher. -->
               <div class="relative pb-12">
@@ -1160,9 +1265,9 @@
                 </p>
               </div>
 
-              <!-- Há lacuna, então o botão está aqui: designar propõe justamente o pedaço
-                   descoberto (16/08 → 24/08), e não o afastamento inteiro. -->
-              <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2 self-start">
+              <!-- Há lacuna, então o botão está aqui: designar abre com o pedaço descoberto
+                   (16/08 → 24/08) já nos campos, e não com o afastamento inteiro. -->
+              <label for="modal-substituto-buraco" class="btn btn-onsen btn-sm gap-2 self-start">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
                 Designar para o período descoberto
               </label>
@@ -1221,7 +1326,8 @@
             <span class="badge badge-warning badge-soft">Afastado</span>
           </div>
           <!-- Cartão de um poço só: sem cargo em comissão não há substituição, e o poço dela
-               simplesmente não existe — a ausência é a mensagem. -->
+               simplesmente não existe — a ausência é a mensagem. Sem poço, sem calha: ela é a
+               leitura da cobertura de um cargo, e aqui não há cargo a cobrir. -->
           <div class="glass-panel p-4">
             <div class="card-well p-4 flex items-center gap-3">
               <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
@@ -1245,7 +1351,10 @@
         </div>
         <p class="text-[13px] text-base-content/70 px-1">
           O caminho de designar <strong>não tem peça</strong> — a ausência é a mensagem, como na
-          coluna que não filtra (SPEC 013). Nada de botão cinza desabilitado.
+          coluna que não filtra (SPEC 013). Nada de botão cinza desabilitado. E <strong>a calha não
+          aparece aqui</strong>: ela desenha a cobertura de um cargo em comissão, e sem cargo não há
+          o que cobrir nem período a medir. O que resta é o cartão do impedimento e o selo de
+          exercício — que já respondem tudo o que há para responder desta pessoa.
         </p>
       </div>
 
@@ -1344,8 +1453,24 @@
                 <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
               </div>
             </div>
-            <div class="card-well p-4 flex flex-col gap-2">
+            <div class="card-well p-4 flex flex-col gap-3">
               <p class="text-overline">Substituída por</p>
+
+              <!-- Cheia de ponta a ponta: a leitura de "coberto" chega antes das datas. -->
+              <div class="relative pb-12">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line">
+                    <div class="calha-trecho etched-line-inked" style="left:0%;width:100%"></div>
+                  </div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca" style="left:50%">
+                    <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+                    <span class="text-[11px] text-base-content/60">05/08 → 24/08</span>
+                  </div>
+                </div>
+              </div>
+
               <div class="flex items-center justify-between gap-3">
                 <div class="linha-pessoa">
                   <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
@@ -1372,9 +1497,22 @@
                 <p class="text-[13px] text-base-content/60">02/11/2026 → 01/12/2026 · começa em 82 dias</p>
               </div>
             </div>
-            <div class="card-well p-4 flex flex-wrap items-center justify-between gap-3">
-              <p class="text-[13px] text-base-content/60">Sem substituto designado</p>
-              <label for="modal-substituto" class="btn btn-glass btn-sm gap-2">
+            <div class="card-well p-4 flex flex-col gap-3">
+              <!-- Vazia de ponta a ponta: o mês inteiro sem tinta é o que o botão abaixo se oferece
+                   para preencher. O rótulo em âmbar dispensa a frase "sem substituto designado". -->
+              <div class="relative pb-12">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line"></div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca calha-marca-vazia" style="left:50%">
+                    <span class="text-[12px] font-medium">Sem substituto</span>
+                    <span class="text-[11px] opacity-80">02/11 → 01/12</span>
+                  </div>
+                </div>
+              </div>
+
+              <label for="modal-substituto" class="btn btn-glass btn-sm gap-2 self-start">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
                 Designar substituto
               </label>
@@ -1405,6 +1543,12 @@
         está respondida pelo cartão antes de o modal abrir. <strong>Voltar ao exercício</strong>, ao
         contrário, é um só e é da pessoa, não de um afastamento — por isso fica no rodapé da seção,
         fora dos cartões, e encerra o que está valendo hoje. A licença de novembro continua marcada.
+      </p>
+      <p class="text-[13px] text-base-content/70 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
+        As duas calhas, uma sob a outra, são a resposta mais rápida da tela: a de cima cheia de ponta
+        a ponta, a de baixo sem tinta nenhuma. <strong>Coberto e descoberto lado a lado</strong>, sem
+        ler uma data — que é exatamente o que se perderia se a peça só aparecesse quando há mais de
+        um trecho.
       </p>
     </section>
 
@@ -1509,8 +1653,9 @@
         </div>
 
         <!-- O alcance é estado do campo, não outro modal: um só diálogo, um só rótulo, e o que
-             troca é a lista. Aqui pelo toggle do design system; na aplicação, um hx-get que devolve
-             o campo. -->
+             troca é a lista. As duas nascem renderizadas, aqui e na aplicação: são dezenas de
+             servidores e ambas filtram pelo período proposto, que não muda com o diálogo aberto —
+             uma rota de alcance recalcularia o que não mudou. -->
         <div class="form-field group">
           <div class="flex items-center justify-between gap-3">
             <span class="text-overline">Servidor</span>
@@ -1559,26 +1704,30 @@
           </div>
         </div>
 
-        <!-- O período da cobertura: em branco é o caso comum (cobre o afastamento inteiro), e os
-             campos existem para o caso em que ela é mais estreita. Mais larga, nunca. -->
+        <!-- O período da cobertura JÁ VEM PREENCHIDO com o primeiro pedaço descoberto do
+             afastamento — aqui, ele inteiro. Campo em branco obrigaria a ler a calha e digitar de
+             volta o que o sistema já sabe; preenchido, o caso comum é só confirmar, e os campos
+             seguem editáveis para a cobertura mais estreita. Mais larga, nunca. -->
         <div class="grid sm:grid-cols-2 gap-4">
           <label class="form-field">
             <span class="text-overline">Substitui a partir de</span>
-            <input type="date" class="input input-glass" placeholder="05/08/2026" />
+            <input type="date" class="input input-glass" value="2026-08-05" />
           </label>
           <label class="form-field">
             <span class="text-overline">Substitui até</span>
-            <input type="date" class="input input-glass" />
+            <input type="date" class="input input-glass" value="2026-08-24" />
           </label>
         </div>
         <p class="form-field-hint -mt-4">
-          Em branco, a substituição ocupa <strong>o primeiro pedaço descoberto</strong> do
-          afastamento — aqui, ele inteiro: de 05/08 a 24/08, e indeterminado se o afastamento for.
-          Preenchidos, os campos só podem <strong>estreitar</strong>: nunca antes de 05/08, nunca
-          depois de 24/08 — substituir quem está na cadeira não é substituir —, e nunca por cima de
-          outra substituição já designada. Se terminar antes, o resto fica <strong>sem ninguém
-          respondendo</strong> até que outra pessoa seja designada para ele, e a seção passa a dizer
-          isso.
+          As datas vêm do <strong>primeiro pedaço descoberto</strong> do afastamento — aqui não há
+          nenhuma outra substituição, então ele é o afastamento inteiro. Havendo mais de um pedaço
+          descoberto, vem o <strong>primeiro</strong>; sendo o afastamento indeterminado,
+          <em>Substitui até</em> vem <strong>vazio</strong>, e vazio continua querendo dizer
+          indeterminado. Editáveis, os campos só podem <strong>estreitar</strong>: nunca antes de
+          05/08, nunca depois de 24/08 — substituir quem está na cadeira não é substituir —, e nunca
+          por cima de outra substituição já designada. Se terminar antes, o resto fica <strong>sem
+          ninguém respondendo</strong> até que outra pessoa seja designada para ele, e a seção passa
+          a dizer isso.
         </p>
 
         <div class="modal-action">
@@ -1588,6 +1737,76 @@
       </form>
     </div>
     <label class="modal-backdrop" for="modal-substituto">Fechar</label>
+  </div>
+
+  <!-- ==================== MODAL · DESIGNAR SUBSTITUTO (afastamento com buraco) ====================
+       O MESMO diálogo acima, aberto pelo botão do estado 7: o que muda é só o que o servidor
+       calculou, porque ali já há uma substituição encerrada e o descoberto é um pedaço do
+       afastamento, não ele inteiro. É este bloco que mostra o preenchimento fazendo trabalho — o
+       de cima, com o afastamento livre, não distingue "primeiro pedaço descoberto" de "afastamento
+       inteiro". Na aplicação é um partial só; aqui são dois porque o mock não tem servidor.
+       O campo de servidor e o toggle de alcance são idênticos e não se repetem aqui. -->
+  <input type="checkbox" id="modal-substituto-buraco" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            Quem responde pelo cargo de Helena Prado no pedaço do afastamento que está descoberto.
+          </p>
+        </div>
+
+        <div class="tarja-vinculo flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+            <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <span class="text-overline">Servidor</span>
+          <select class="select select-glass" data-select-onsen>
+            <option value="999901">Marina Castro · RF 999901 · Assistente de Gestão</option>
+            <option value="999904">Rafael Andrade · RF 999904 · CDA-3 · Chefe de Seção</option>
+            <option value="999907">Joana Teixeira · RF 999907 · Engenheira</option>
+            <option value="999912">Bruno Sales · RF 999912 · Analista de Planejamento</option>
+          </select>
+          <span class="form-field-hint">
+            A lista filtra pelo período <strong>que a designação vai ocupar</strong> — o descoberto,
+            não o afastamento inteiro. Rafael continua nela: ele cobriu até 15/08 e está livre a
+            partir de 16/08.
+          </span>
+        </div>
+
+        <!-- É aqui que o preenchimento se paga: 16/08 → 24/08 é o buraco que a calha do estado 7
+             desenha, e ninguém precisa lê-lo da tela para digitá-lo de volta. -->
+        <div class="grid sm:grid-cols-2 gap-4">
+          <label class="form-field">
+            <span class="text-overline">Substitui a partir de</span>
+            <input type="date" class="input input-glass" value="2026-08-16" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Substitui até</span>
+            <input type="date" class="input input-glass" value="2026-08-24" />
+          </label>
+        </div>
+        <p class="form-field-hint -mt-4">
+          As datas vêm do <strong>pedaço descoberto</strong> — de 16/08 a 24/08 —, e não do
+          afastamento, que começou em 05/08 e já tem substituto até 15/08. Fossem dois os pedaços
+          descobertos, viria o <strong>primeiro</strong>; para cobrir outro, basta trocar as datas.
+          Elas continuam podendo <strong>estreitar</strong>, nunca alargar por cima do que já está
+          designado — e o que sobrar segue <strong>sem ninguém respondendo</strong>.
+        </p>
+
+        <div class="modal-action">
+          <label for="modal-substituto-buraco" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-substituto-buraco" class="btn btn-onsen btn-sm">Designar</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-substituto-buraco">Fechar</label>
   </div>
 
   <!-- ==================== MODAL · TROCAR SUBSTITUTO ====================
