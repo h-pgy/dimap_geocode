@@ -3,7 +3,7 @@ spec: user_admin/014
 versao: v9
 atualizado_em: 2026-08-11
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -40,7 +40,7 @@ changelog:
 > **SPEC 016**, que vem depois desta. Aqui ficam o dado, a regra e os atos.
 
 - [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como responsável pela DIMAP, quero que cada unidade tenha um titular inequívoco, com cargo
@@ -50,31 +50,31 @@ sem titular nenhum, que é o que a tela da SPEC 016 acusa — e para que a admin
 competências decorra da direção em vez de uma lista nominal em código.
 
 ## Critérios de aceite
-- [ ] Uma unidade tem **no máximo um titular**, e é o **banco** que recusa o segundo. O afastamento
+- [x] Uma unidade tem **no máximo um titular**, e é o **banco** que recusa o segundo. O afastamento
       do titular **não abre vaga**: quem cobre é o **substituto** (SPEC 015), nunca um segundo
       titular marcado ao lado dele.
-- [ ] A unidade **pode ficar sem titular**, e isso é **atributo dela**: a unidade responde "não
+- [x] A unidade **pode ficar sem titular**, e isso é **atributo dela**: a unidade responde "não
       tenho titular" sem que nada no sistema impeça o estado — é o que acontece entre a exoneração
       de um titular e a nomeação do seguinte.
-- [ ] **Quem dirige a unidade hoje** tem **quatro** respostas: o titular em exercício; o substituto
+- [x] **Quem dirige a unidade hoje** tem **quatro** respostas: o titular em exercício; o substituto
       dele; **sem direção** (há titular, está fora e ninguém cobre); **sem titular** (a vaga).
       Leitura derivada das marcas, decidida em `services/` e **testável sem banco**.
-- [ ] Cada **tipo de unidade** declara o nível mínimo de cargo em comissão exigido do titular **ou**
+- [x] Cada **tipo de unidade** declara o nível mínimo de cargo em comissão exigido do titular **ou**
       declara que **só a alta administração serve** — são duas colunas, e uma exclui a outra.
-- [ ] Só titulariza quem tem cargo em comissão **de chefia** e satisfaz o mínimo do tipo da própria
+- [x] Só titulariza quem tem cargo em comissão **de chefia** e satisfaz o mínimo do tipo da própria
       unidade — alta administração satisfaz qualquer tipo. Perfil sem cargo em comissão nunca
       titulariza; do **substituto** nada disso se exige, porque ele ocupa o papel sem receber o
       vínculo. A regra é decidida em `services/` e é **testável sem banco**.
-- [ ] **Trocar o titular é uma operação só**: o titular anterior é destituído na mesma transação —
+- [x] **Trocar o titular é uma operação só**: o titular anterior é destituído na mesma transação —
       **inclusive afastado** —, nunca restando dois marcados nem uma janela sem nenhum.
-- [ ] **Destituir o titular é ato próprio**, e deixa a unidade sem titular — não se exige um
+- [x] **Destituir o titular é ato próprio**, e deixa a unidade sem titular — não se exige um
       substituído no ato para poder destituir.
-- [ ] Rebaixar o titular, ou mudar a unidade para um tipo que ele não satisfaz, é **recusado na
+- [x] Rebaixar o titular, ou mudar a unidade para um tipo que ele não satisfaz, é **recusado na
       validação** — não fica titular inválido gravado.
-- [ ] O seed de unidades declara o mínimo de cada tipo, e os servidores fictícios nascem com
+- [x] O seed de unidades declara o mínimo de cada tipo, e os servidores fictícios nascem com
       titulares marcados — e ao menos uma unidade fictícia nasce **sem titular**, para a tela da
       SPEC 016 ser exercitável no estado que ela existe para acusar.
-- [ ] **Definir, trocar e destituir titular** são funções em transação, chamadas pela tela (SPEC
+- [x] **Definir, trocar e destituir titular** são funções em transação, chamadas pela tela (SPEC
       016) e pelos fictícios — não há segunda porta para a mesma escrita.
 
 ## Contexto e decisões de arquitetura

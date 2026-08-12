@@ -33,6 +33,7 @@ def _perfil(**overrides: object) -> Perfil:
         nome="Departamento",
         nivel=10,
         pode_ser_raiz=True,
+        nivel_minimo_titular=1,
     )
     unidade = Unidade.objects.create(
         nome="Unidade Teste",

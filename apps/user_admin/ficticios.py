@@ -26,18 +26,23 @@ from apps.user_admin.models import (
     TipoImpedimento,
     Unidade,
 )
+from apps.user_admin.models.titularidade import cargo_titulariza
+from apps.user_admin.titularidade import definir_titular
 
 # Longe de qualquer RF real: seis dígitos altos que a Prefeitura não emite.
 RF_INICIAL_FICTICIO = 999900
 QUANTIDADE_FICTICIOS = 20
 FAIXA_RF_FICTICIA = [
-    str(rf) for rf in range(RF_INICIAL_FICTICIO, RF_INICIAL_FICTICIO + QUANTIDADE_FICTICIOS)
+    str(rf)
+    for rf in range(RF_INICIAL_FICTICIO, RF_INICIAL_FICTICIO + QUANTIDADE_FICTICIOS)
 ]
 # Um impedimento que começou ontem e não terminou: vigente hoje, sem depender do relógio do teste.
 DIAS_DESDE_O_INICIO = 1
 # Ritmos diferentes de propósito: as quatro combinações de situação × cargo em comissão aparecem.
 PASSO_IMPEDIMENTO = 2
 PASSO_COMISSAO = 3
+# Uma unidade elegível fica de fora: a vaga é o estado que a tela da SPEC 016 existe para acusar.
+UNIDADES_SEM_TITULAR = 1
 ERRO_SEM_CATALOGO = (
     "sem unidades, cargos ou tipos de impedimento cadastrados: rode as seeds antes "
     "(seed_unidades, seed_cargos, seed_tipos_impedimento)."
@@ -71,6 +76,7 @@ class ContagemFicticios(BaseModel):
     criados: int
     impedidos: int
     com_comissao: int
+    titulares: int
 
 
 class RemocaoFicticios(BaseModel):
@@ -88,12 +94,15 @@ class CriadorServidoresFicticios:
         cargos_base = list(CargoBase.objects.order_by("nome"))
         cargos_comissao = list(CargoComissao.objects.order_by("nome"))
         tipos_impedimento = list(TipoImpedimento.objects.order_by("nome"))
-        self._checar_catalogos(unidades, cargos_base, cargos_comissao, tipos_impedimento)
+        self._checar_catalogos(
+            unidades, cargos_base, cargos_comissao, tipos_impedimento
+        )
         # A carga anterior sai antes: sem isso, rodar de novo acumularia impedimentos em quem já os
         # tinha e o "sem impedimento" da vez passada continuaria impedido.
         self._limpar_impedimentos()
         impedidos = 0
         com_comissao = 0
+        perfis = []
         for indice, rf in enumerate(FAIXA_RF_FICTICIA):
             tem_comissao = indice % PASSO_COMISSAO == 0
             perfil = self._gravar_perfil(
@@ -102,17 +111,24 @@ class CriadorServidoresFicticios:
                 unidade=unidades[indice % len(unidades)],
                 cargo_base=cargos_base[indice % len(cargos_base)],
                 cargo_comissao=(
-                    cargos_comissao[indice % len(cargos_comissao)] if tem_comissao else None
+                    cargos_comissao[indice % len(cargos_comissao)]
+                    if tem_comissao
+                    else None
                 ),
             )
+            perfis.append(perfil)
             com_comissao += int(tem_comissao)
             if indice % PASSO_IMPEDIMENTO == 0:
-                self._impedir(perfil, tipos_impedimento[indice % len(tipos_impedimento)])
+                self._impedir(
+                    perfil, tipos_impedimento[indice % len(tipos_impedimento)]
+                )
                 impedidos += 1
+        titulares = self._titularizar(perfis, cargos_comissao)
         return ContagemFicticios(
             criados=len(FAIXA_RF_FICTICIA),
             impedidos=impedidos,
             com_comissao=com_comissao,
+            titulares=titulares,
         )
 
     def _checar_catalogos(
@@ -159,6 +175,50 @@ class CriadorServidoresFicticios:
             tipo=tipo,
             data_inicio=timezone.localdate() - timedelta(days=DIAS_DESDE_O_INICIO),
             data_fim=None,
+        )
+
+    def _titularizar(
+        self,
+        perfis: list[Perfil],
+        cargos_comissao: list[CargoComissao],
+    ) -> int:
+        # Uma unidade elegível fica de fora: a vaga é o estado que a tela da SPEC 016 acusa.
+        titulaveis = self._um_por_unidade(perfis)[:-UNIDADES_SEM_TITULAR]
+        titularizados = 0
+        for perfil in titulaveis:
+            cargo = self._cargo_que_titulariza(perfil.unidade, cargos_comissao)
+            if cargo is None:
+                continue
+            # O cargo vem do porte da unidade, não do rodízio: senão o clean recusaria a marca.
+            perfil.cargo_comissao = cargo
+            perfil.save(update_fields=["cargo_comissao"])
+            definir_titular(perfil)
+            titularizados += 1
+        return titularizados
+
+    def _um_por_unidade(self, perfis: list[Perfil]) -> list[Perfil]:
+        escolhidos: dict[int, Perfil] = {}
+        for perfil in perfis:
+            escolhidos.setdefault(perfil.unidade_id, perfil)
+        return list(escolhidos.values())
+
+    def _cargo_que_titulariza(
+        self,
+        unidade: Unidade,
+        cargos_comissao: list[CargoComissao],
+    ) -> CargoComissao | None:
+        tipo = unidade.tipo
+        return next(
+            (
+                cargo
+                for cargo in cargos_comissao
+                if cargo_titulariza(
+                    cargo,
+                    exige_alta_administracao=tipo.exige_alta_administracao,
+                    nivel_minimo=tipo.nivel_minimo_titular,
+                )
+            ),
+            None,
         )
 
 

@@ -32,6 +32,7 @@ def _catalogos_gravados() -> Unidade:
         nome="Divisão",
         nivel=10,
         pode_ser_raiz=True,
+        nivel_minimo_titular=2,
     )
     unidade = Unidade.objects.create(
         nome="Divisão de Mapeamento",

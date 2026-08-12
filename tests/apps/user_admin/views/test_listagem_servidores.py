@@ -20,7 +20,7 @@ banco = pytest.mark.banco
 def _perfil_gravado(nome: str, rf: str) -> Perfil:
     tipo, _ = TipoUnidade.objects.get_or_create(
         nome="Divisão",
-        defaults={"nivel": 10, "pode_ser_raiz": True},
+        defaults={"nivel": 10, "pode_ser_raiz": True, "nivel_minimo_titular": 1},
     )
     unidade, _ = Unidade.objects.get_or_create(
         sigla="DIMAP-1",

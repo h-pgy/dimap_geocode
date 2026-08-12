@@ -34,9 +34,19 @@ def _escrever_seed(tipos: list[dict[str, Any]], unidades: list[dict[str, Any]]) 
 def test_carga_cria_tipos_e_unidades_do_arquivo() -> None:
     _escrever_seed(
         tipos=[
-            {"nome": "Divisão", "nivel": 10},
-            {"nome": "Departamento", "nivel": 20, "tipos_filhos_vedados": ["Divisão"]},
-            {"nome": "Secretaria", "nivel": 30, "pode_ser_raiz": True},
+            {"nome": "Divisão", "nivel": 10, "nivel_minimo_titular": 1},
+            {
+                "nome": "Departamento",
+                "nivel": 20,
+                "tipos_filhos_vedados": ["Divisão"],
+                "nivel_minimo_titular": 1,
+            },
+            {
+                "nome": "Secretaria",
+                "nivel": 30,
+                "pode_ser_raiz": True,
+                "exige_alta_administracao": True,
+            },
         ],
         unidades=[
             {
@@ -83,8 +93,13 @@ def test_carga_cria_tipos_e_unidades_do_arquivo() -> None:
 @pytest.mark.django_db
 def test_carga_e_idempotente() -> None:
     tipos = [
-        {"nome": "Secretaria", "nivel": 30, "pode_ser_raiz": True},
-        {"nome": "Departamento", "nivel": 20},
+        {
+            "nome": "Secretaria",
+            "nivel": 30,
+            "pode_ser_raiz": True,
+            "exige_alta_administracao": True,
+        },
+        {"nome": "Departamento", "nivel": 20, "nivel_minimo_titular": 1},
     ]
     _escrever_seed(
         tipos=tipos,
@@ -126,8 +141,13 @@ def test_carga_e_idempotente() -> None:
 def test_ordem_do_arquivo_e_irrelevante() -> None:
     _escrever_seed(
         tipos=[
-            {"nome": "Secretaria", "nivel": 30, "pode_ser_raiz": True},
-            {"nome": "Departamento", "nivel": 20},
+            {
+                "nome": "Secretaria",
+                "nivel": 30,
+                "pode_ser_raiz": True,
+                "exige_alta_administracao": True,
+            },
+            {"nome": "Departamento", "nivel": 20, "nivel_minimo_titular": 1},
         ],
         unidades=[
             # Filha declarada antes da superior: a segunda passagem é quem liga o pai.
@@ -150,7 +170,7 @@ def test_ordem_do_arquivo_e_irrelevante() -> None:
 @pytest.mark.django_db
 def test_pai_inexistente_aborta_sem_gravar_nada() -> None:
     _escrever_seed(
-        tipos=[{"nome": "Departamento", "nivel": 20}],
+        tipos=[{"nome": "Departamento", "nivel": 20, "nivel_minimo_titular": 1}],
         unidades=[
             {
                 "nome": "Departamento",
@@ -174,8 +194,13 @@ def test_hierarquia_invalida_e_recusada() -> None:
     # Nível não superior: o departamento não subordina a secretaria, mesmo nomeado como pai.
     _escrever_seed(
         tipos=[
-            {"nome": "Secretaria", "nivel": 10, "pode_ser_raiz": True},
-            {"nome": "Departamento", "nivel": 20},
+            {
+                "nome": "Secretaria",
+                "nivel": 10,
+                "pode_ser_raiz": True,
+                "exige_alta_administracao": True,
+            },
+            {"nome": "Departamento", "nivel": 20, "nivel_minimo_titular": 1},
         ],
         unidades=[
             {"nome": "Secretaria", "sigla": "SEC", "tipo": "Secretaria"},
@@ -200,8 +225,9 @@ def test_hierarquia_invalida_e_recusada() -> None:
                 "nivel": 30,
                 "pode_ser_raiz": True,
                 "tipos_filhos_vedados": ["Divisão"],
+                "nivel_minimo_titular": 1,
             },
-            {"nome": "Divisão", "nivel": 10},
+            {"nome": "Divisão", "nivel": 10, "nivel_minimo_titular": 1},
         ],
         unidades=[
             {"nome": "Coordenadoria", "sigla": "COORD", "tipo": "Coordenadoria"},

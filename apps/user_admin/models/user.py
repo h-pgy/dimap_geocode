@@ -7,12 +7,16 @@ user_admin/006).
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
 from .cargos import CargoBase, CargoComissao
+from .titularidade import cargo_titulariza
 from .unidade import Unidade
+
+ERRO_TITULAR_SEM_CARGO_COMPATIVEL = "O titular precisa de cargo em comissão de chefia compatível com o porte da unidade."
 
 
 class PerfilManager(BaseUserManager["Perfil"]):
@@ -79,6 +83,7 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    e_titular = models.BooleanField(default=False)
 
     objects = PerfilManager()
 
@@ -88,9 +93,30 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
     class Meta:
         verbose_name = "Perfil"
         verbose_name_plural = "Perfis"
+        constraints = [
+            # A unicidade é do vínculo: um titular por unidade, exercendo ou não. Quem cobre o
+            # afastado é substituto (SPEC 015), não um segundo marcado.
+            models.UniqueConstraint(
+                fields=["unidade"],
+                condition=Q(e_titular=True),
+                name="unidade_tem_um_titular",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.rf} — {self.nome}"
+
+    def clean(self) -> None:
+        # Cruza perfil → cargo e perfil → unidade → tipo: nenhuma CheckConstraint alcança.
+        if not self.e_titular or not hasattr(self, "unidade"):
+            return
+        tipo = self.unidade.tipo
+        if not cargo_titulariza(
+            self.cargo_comissao,
+            exige_alta_administracao=tipo.exige_alta_administracao,
+            nivel_minimo=tipo.nivel_minimo_titular,
+        ):
+            raise ValidationError({"e_titular": ERRO_TITULAR_SEM_CARGO_COMPATIVEL})
 
     @property
     def esta_impedido(self) -> bool:

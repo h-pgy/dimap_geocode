@@ -23,6 +23,9 @@ class TipoUnidadeSeed(BaseModel):
     nivel: int
     pode_ser_raiz: bool = False
     tipos_filhos_vedados: list[str] = []
+    # Omitir os dois não é atalho para nada: a constraint recusa o par vazio na carga.
+    exige_alta_administracao: bool = False
+    nivel_minimo_titular: int | None = None
 
 
 class UnidadeSeed(BaseModel):
@@ -65,6 +68,8 @@ class AplicadorTipos:
                 defaults={
                     "nivel": tipo.nivel,
                     "pode_ser_raiz": tipo.pode_ser_raiz,
+                    "exige_alta_administracao": tipo.exige_alta_administracao,
+                    "nivel_minimo_titular": tipo.nivel_minimo_titular,
                 },
             )
 

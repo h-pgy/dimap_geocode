@@ -46,7 +46,8 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"{resultado.criados} servidores fictícios no banco: "
-                f"{resultado.impedidos} impedidos, {resultado.com_comissao} em comissão."
+                f"{resultado.impedidos} impedidos, {resultado.com_comissao} em comissão, "
+                f"{resultado.titulares} titulares."
             )
         )
 

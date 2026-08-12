@@ -2,49 +2,59 @@
   "tipos": [
     {
       "nome": "Equipe",
-      "nivel": 1
+      "nivel": 1,
+      "nivel_minimo_titular": 2
     },
     {
       "nome": "Seção",
-      "nivel": 2
+      "nivel": 2,
+      "nivel_minimo_titular": 3
     },
     {
       "nome": "Divisão",
-      "nivel": 3
+      "nivel": 3,
+      "nivel_minimo_titular": 4
     },
     {
       "nome": "Departamento",
-      "nivel": 4
+      "nivel": 4,
+      "nivel_minimo_titular": 5
     },
     {
       "nome": "Coordenação",
-      "nivel": 5
+      "nivel": 5,
+      "nivel_minimo_titular": 5
     },
     {
       "nome": "Coordenadoria",
       "nivel": 6,
-      "tipos_filhos_vedados": ["Divisão"]
+      "tipos_filhos_vedados": ["Divisão"],
+      "nivel_minimo_titular": 6
     },
     {
       "nome": "Assessoria",
       "nivel": 6,
-      "tipos_filhos_vedados": ["Divisão", "Departamento", "Coordenação"]
+      "tipos_filhos_vedados": ["Divisão", "Departamento", "Coordenação"],
+      "nivel_minimo_titular": 5
     },
     {
       "nome": "Subsecretaria",
       "nivel": 7,
-      "tipos_filhos_vedados": ["Divisão"]
+      "tipos_filhos_vedados": ["Divisão"],
+      "exige_alta_administracao": true
     },
     {
       "nome": "Secretaria Executiva",
       "nivel": 8,
-      "tipos_filhos_vedados": ["Divisão", "Departamento"]
+      "tipos_filhos_vedados": ["Divisão", "Departamento"],
+      "exige_alta_administracao": true
     },
     {
       "nome": "Gabinete da/do Secretária/o",
       "nivel": 9,
       "pode_ser_raiz": true,
-      "tipos_filhos_vedados": ["Divisão"]
+      "tipos_filhos_vedados": ["Divisão"],
+      "exige_alta_administracao": true
     }
   ],
   "unidades": [

@@ -40,6 +40,7 @@ def _perfil_gravado(cor: str, com_foto: bool) -> Perfil:
         nome="Divisão",
         nivel=10,
         pode_ser_raiz=True,
+        nivel_minimo_titular=1,
     )
     unidade = Unidade.objects.create(
         nome="Divisão de Avaliação",

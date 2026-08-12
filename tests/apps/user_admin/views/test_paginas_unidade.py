@@ -26,6 +26,7 @@ def _unidade_gravada(cor: str) -> Unidade:
         nome="Coordenadoria",
         nivel=20,
         pode_ser_raiz=True,
+        nivel_minimo_titular=1,
     )
     return Unidade.objects.create(
         nome="Coordenadoria de Gestão Territorial",

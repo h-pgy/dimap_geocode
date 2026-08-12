@@ -5,13 +5,31 @@ o tipo e, opcionalmente, uma unidade superior. Também carrega a cor de identida
 user_admin/005).
 """
 
+from typing import TYPE_CHECKING
+
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import F, Q
+
+from .cargos import NIVEL_MAXIMO, NIVEL_MINIMO
+from .titularidade import cargo_titulariza
+
+if TYPE_CHECKING:
+    from .user import Perfil
 
 ERRO_NIVEL_NAO_SUBORDINA = "A unidade pai precisa ser de um tipo de nível superior."
 ERRO_TIPO_FILHO_VEDADO = "A unidade pai não admite filhas deste tipo."
 ERRO_TIPO_EXIGE_PAI = "Unidades deste tipo precisam ter uma unidade superior."
+ERRO_ALTA_ADM_COM_MINIMO = (
+    "Tipo que exige alta administração não tem nível mínimo de titular."
+)
+ERRO_MINIMO_TITULAR_OBRIGATORIO = (
+    "Tipo fora da alta administração exige nível mínimo de titular."
+)
+ERRO_TIPO_INCOMPATIVEL_COM_TITULAR = (
+    "O titular atual não satisfaz o mínimo de cargo deste tipo."
+)
 
 
 class CorUnidade(models.TextChoices):
@@ -43,13 +61,49 @@ class TipoUnidade(models.Model):
         related_name="vedado_como_filho_em",
         blank=True,
     )
+    # A exigência é declarada; sem ela, o tipo novo herdaria calado a regra mais restritiva.
+    exige_alta_administracao = models.BooleanField(default=False)
+    nivel_minimo_titular = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(NIVEL_MINIMO),
+            MaxValueValidator(NIVEL_MAXIMO),
+        ],
+    )
 
     class Meta:
         verbose_name = "Tipo de unidade"
         verbose_name_plural = "Tipos de unidade"
+        constraints = [
+            # Uma coluna exclui a outra — o mesmo pareamento de alta_administracao × nivel em
+            # CargoComissao, e a mesma constraint espelhada no clean().
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        exige_alta_administracao=True,
+                        nivel_minimo_titular__isnull=True,
+                    )
+                    | Q(
+                        exige_alta_administracao=False,
+                        nivel_minimo_titular__gte=NIVEL_MINIMO,
+                        nivel_minimo_titular__lte=NIVEL_MAXIMO,
+                    )
+                ),
+                name="tipo_unidade_minimo_conforme_alta_administracao",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.nome
+
+    def clean(self) -> None:
+        if self.exige_alta_administracao and self.nivel_minimo_titular is not None:
+            raise ValidationError({"nivel_minimo_titular": ERRO_ALTA_ADM_COM_MINIMO})
+        if not self.exige_alta_administracao and self.nivel_minimo_titular is None:
+            raise ValidationError(
+                {"nivel_minimo_titular": ERRO_MINIMO_TITULAR_OBRIGATORIO}
+            )
 
 
 class Unidade(models.Model):
@@ -93,7 +147,31 @@ class Unidade(models.Model):
     def __str__(self) -> str:
         return self.sigla
 
+    # A vaga é a ausência do vínculo, e quem responde por ela é a unidade. Derivado, não coluna:
+    # gravar duplicaria as linhas de Perfil. Precedente: Perfil.esta_impedido.
+    @property
+    def titular(self) -> "Perfil | None":
+        return self.perfis.filter(e_titular=True).first()
+
     def clean(self) -> None:
+        self._checar_titular()
+        self._checar_hierarquia()
+
+    def _checar_titular(self) -> None:
+        # O outro lado da mesma adequação: mudar o tipo quebra o que o cargo do titular satisfazia.
+        if self.pk is None or not hasattr(self, "tipo"):
+            return
+        titular = self.titular
+        if titular is None:
+            return
+        if not cargo_titulariza(
+            titular.cargo_comissao,
+            exige_alta_administracao=self.tipo.exige_alta_administracao,
+            nivel_minimo=self.tipo.nivel_minimo_titular,
+        ):
+            raise ValidationError({"tipo": ERRO_TIPO_INCOMPATIVEL_COM_TITULAR})
+
+    def _checar_hierarquia(self) -> None:
         # Sem tipo não há regra a aplicar; quem acusa a ausência é o clean_fields.
         if not hasattr(self, "tipo"):
             return

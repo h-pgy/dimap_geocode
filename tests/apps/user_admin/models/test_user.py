@@ -48,7 +48,7 @@ def _perfil_completo(**overrides: object) -> Perfil:
     cargo_base, _ = CargoBase.objects.get_or_create(nome="Cargo Teste", sigla="CT")
     tipo_unidade, _ = TipoUnidade.objects.get_or_create(
         nome="Departamento",
-        defaults={"nivel": 10, "pode_ser_raiz": True},
+        defaults={"nivel": 10, "pode_ser_raiz": True, "nivel_minimo_titular": 1},
     )
     unidade, _ = Unidade.objects.get_or_create(
         nome="Unidade Teste",
@@ -118,6 +118,7 @@ def test_create_user_guarda_nome_e_sobrenome_separados() -> None:
         nome="Departamento Create User",
         nivel=10,
         pode_ser_raiz=True,
+        nivel_minimo_titular=1,
     )
     unidade = Unidade.objects.create(
         nome="Unidade Create User",

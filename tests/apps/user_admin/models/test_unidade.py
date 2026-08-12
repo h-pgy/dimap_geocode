@@ -26,6 +26,9 @@ def _tipo(**overrides: object) -> TipoUnidade:
         "nome": "Departamento",
         "nivel": 10,
         "pode_ser_raiz": True,
+        # A hierarquia é o que este módulo testa; o mínimo de titular só está aqui porque a
+        # constraint pareada (SPEC user_admin/014) exige o par preenchido em qualquer TipoUnidade.
+        "nivel_minimo_titular": 1,
     }
     dados.update(overrides)
     return TipoUnidade.objects.create(**dados)  # type: ignore[arg-type]
