@@ -1,6 +1,6 @@
 ---
 spec: autorizacao/002
-versao: v3
+versao: v4
 atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
@@ -13,6 +13,9 @@ changelog:
   - v3: o bootstrap deixa de ser seed e passa a decorrer da titularidade (SPEC titularidade/001);
     a projeção leva `estrutural`; unicidade da concessão passa a duas constraints parciais (FK
     anulável não colide); referências de módulo corrigidas para `registro.py`/`schemas.py`
+  - v4: a titularidade foi entregue como SPEC user_admin/014, não como épico próprio, e quem exerce
+    a estrutural é quem responde pela direção — titular em exercício ou substituto dele (SPEC
+    user_admin/015); referências corrigidas, sem mudança nas tabelas
 ---
 
 # SPEC autorizacao/002 — Competência no banco: projeção da ação, atribuição da unidade e concessão ao cargo
@@ -66,8 +69,8 @@ ali seria editar um espelho.
 
 **A ação estrutural é projetada, mas nunca atribuída.** Ela existe na tabela porque o registro de
 execução (SPEC 004) precisa de FK para ela como para qualquer outra. Mas competência estrutural
-decorre da titularidade (SPEC 001, SPEC `titularidade/001`) e não passa por estas duas tabelas — por
-isso a coluna, que é o que permite às telas da SPEC 007 não oferecerem o que não produz efeito.
+decorre de dirigir a unidade (SPEC 001, SPEC `user_admin/014`) e não passa por estas duas tabelas —
+por isso a coluna, que é o que permite às telas da SPEC 007 não oferecerem o que não produz efeito.
 
 **Desativação em vez de exclusão.** Apagar a linha de uma ação removida do código cascatearia
 atribuições e concessões reais — perda de dado administrativo por um refactor. O sync faz upsert por
@@ -115,9 +118,10 @@ registrada (SPEC 004). O nível 2 sai da SPEC 008. O admin sobre estas duas tabe
 conveniência de inspeção, não como caminho de criação.
 
 **O primeiro estado do banco não é problema destas tabelas.** As duas ações que as administram são
-**estruturais** (SPEC 001): quem as exerce é o titular da unidade (SPEC `titularidade/001`), sem
-atribuição nem concessão gravada. Por isso as duas tabelas podem nascer vazias sem travar nada — não
-há ovo-e-galinha a quebrar, e nenhuma seed é necessária para isso.
+**estruturais** (SPEC 001): quem as exerce é quem responde pela direção da unidade — o titular em
+exercício ou o substituto dele (SPECs `user_admin/014` e `015`) —, sem atribuição nem concessão
+gravada. Por isso as duas tabelas podem nascer vazias sem travar nada — não há ovo-e-galinha a
+quebrar, e nenhuma seed é necessária para isso.
 
 ## Peças de referência a compor
 - `@apps/competencias/registro.py` → `REGISTRO` e `@apps/competencias/schemas.py` → `RegistroAcoes`
@@ -244,7 +248,7 @@ fi
 - Tela do diretor concedendo a cargos: SPEC 008.
 - A ação `competencias.definir_atribuicao` — contrato, tela e autorização: SPEC 007. Aqui só se
   persiste o que ela vai gravar.
-- Quem é titular de cada unidade: SPEC `titularidade/001`.
+- Quem é titular de cada unidade e quem responde por ela hoje: SPECs `user_admin/014` e `015`.
 - Registro de execução do ato administrativo (SPEC 004).
 - Concessão por natureza de cargo ("qualquer chefia") e concessão nominal a um servidor.
 - Impedimento e substituição.

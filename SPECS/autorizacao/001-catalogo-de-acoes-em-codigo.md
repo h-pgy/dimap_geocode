@@ -1,6 +1,6 @@
 ---
 spec: autorizacao/001
-versao: v3
+versao: v4
 atualizado_em: 2026-08-11
 testes_tdd: true
 implementado: true
@@ -9,6 +9,8 @@ changelog:
   - v2: declaracao.py dividido em schemas.py (contratos) e utils.py (instanciar_acao)
   - v3: contrato da ação ganha `estrutural` (competência que decorre da titularidade, não de
     concessão) e limites de tamanho alinhados à projeção da SPEC 002
+  - v4: a titularidade foi entregue como SPEC user_admin/014, e a fonte da estrutural passa a ser
+    quem responde pela direção da unidade; sem mudança de código
 ---
 
 # SPEC autorizacao/001 — Catálogo de ações em código
@@ -262,3 +264,15 @@ class Acao(BaseModel):
 
 Testes acrescentados: `test_acao_recusa_texto_alem_do_limite` (contrato recusa nome/tooltip acima do
 máximo) e a extensão de `test_utils` para a composição com `estrutural`.
+
+### Patch 003 (v4) — a fonte da estrutural é a direção da unidade, e a SPEC referenciada mudou de nome
+
+**Nenhuma mudança de código.** O patch corrige para onde o corpo desta SPEC aponta: a titularidade
+não virou épico próprio (`titularidade/001`) — foi entregue como **SPEC `user_admin/014`**, com a
+substituição em **`user_admin/015`**.
+
+O que muda de sentido para quem lê `estrutural`: a competência estrutural **não** decorre da marca
+`e_titular` crua, e sim de **quem responde pela direção da unidade** — o titular em exercício ou o
+substituto vigente dele. O contrato aqui não sabe disso nem precisa saber: `estrutural` continua
+sendo só "esta ação não passa por atribuição nem concessão"; quem lê a direção e decide é a SPEC 003
+(v4).

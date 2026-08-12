@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/015 — Exercício e substituição (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server) —
+       aberto via file:// o fetch é bloqueado e o tema não carrega. -->
+  <script>
+    // Tema e peças desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
+    // vêm do @theme do tema, e um bloco separado que as usa em @apply cai com "unknown utility".
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-015").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
+  </script>
+
+  <!-- PEÇAS PROPOSTAS POR ESTA SPEC — ainda NÃO estão no tema-dimap.dev.css.
+       Guardadas em script[type=text/css] (inerte) e concatenadas ao tema pelo loader acima.
+       Ao implementar, estes blocos migram para lá tal e qual (fonte única, SPEC design/004). -->
+  <script type="text/css" id="tokens-spec-015">
+    /* ==================== TOKEN · RAIO DA PLACA ====================
+       Terceiro raio do tema, entre o campo (0.5rem) e a caixa (1rem). Existe porque a placa
+       assentada dentro de um poço não é nem campo nem caixa: quer ficar retangular — é uma placa,
+       não um cartão —, mas quina viva não pertence a este material, onde toda aresta é luz e luz
+       não faz canto de 90°. 0.625rem é o mínimo que arredonda sem virar cartão.
+       ATENÇÃO ao consumo: em Tailwind 4 a forma correta é border-radius: var(--x) ou rounded-(--x);
+       o rounded-[--x] da v3 emite "border-radius: --radius-placa", que é inválido e cai em ZERO —
+       é o que deixava todas as tarjas em quina viva. */
+    html[data-theme="dimap"] {
+      --radius-placa: 0.625rem;
+    }
+
+    @layer components {
+
+      /* ==================== MOLÉCULA · LINHA DE PESSOA ====================
+         Uma pessoa identificada em uma linha: moldura de avatar, nome, e a meta que a qualifica
+         naquele contexto (RF, cargo, desde quando). Ganha classe porque o layout se repete nesta
+         tela — o substituto designado e quem se está substituindo — e repetiria de novo na
+         titularidade (SPEC 014). Composição pura de átomos existentes: .avatar-glass entra pelo
+         HTML, como em _imagem_perfil.html. */
+      .linha-pessoa      { @apply flex items-center gap-3 min-w-0; }
+      .linha-pessoa-nome { @apply text-[15px] font-medium text-base-content/90 truncate; }
+      .linha-pessoa-meta { @apply text-[13px] text-base-content/60 truncate; }
+
+      /* ==================== MOLÉCULA · TARJA DE VÍNCULO ====================
+         O quadro rebaixado que emoldura um vínculo vigente (o impedimento, a substituição) dentro
+         da seção. Não é .card-well: a seção JÁ é um poço, e poço dentro de poço perde o degrau —
+         aqui a peça é uma placa clara assentada sobre ele, o inverso da tabela (SPEC 013). */
+      .tarja-vinculo {
+        @apply border border-white/60 bg-white/45 px-4 py-3
+               shadow-[inset_0_1px_0_rgba(255,255,255,0.8)];
+        border-radius: var(--radius-placa);
+      }
+      /* Pendência: mesma placa, com a aresta em âmbar. A cor semântica carrega o estado do sistema
+         (§3.2 do DS); o material não muda, porque o que mudou não é a natureza da peça. */
+      .tarja-vinculo-pendente {
+        @apply border-warning/50 bg-warning/10;
+      }
+      /* Crítica: a unidade está sem quem responda por ela. O vermelho é reservado a isto — não é
+         "resolva quando puder", é competência administrativa sem titular para exercê-la. Quem
+         escala não é o selo do exercício (a pessoa segue só afastada), é a consequência. */
+      .tarja-vinculo-critica {
+        @apply border-error/50 bg-error/10;
+      }
+    }
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+<body class="min-h-screen text-base-content">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) — as cinco camadas do
+       templates/mapping/_mapa_admin.html, reusadas tal e qual: tiles em P&B sob a MESMA lente do
+       mapa principal. Sem elas o mapa fica cru, sem a tinta de água e sem a vinheta. -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <!-- defs da gravação (SPEC user_admin/013): sem eles .etched existe e não desenha nada. Na
+       aplicação vêm de templates/partials/_filtros_gravacao.html, no base.html. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-impedimento">
+        <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+        <path d="M8 3v4"/><path d="M16 3v4"/><path d="M10 14v4"/><path d="M14 14v4"/>
+      </g>
+      <g id="glifo-retorno">
+        <path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4h4"/>
+      </g>
+      <g id="glifo-substituto">
+        <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+      </g>
+      <g id="glifo-alerta">
+        <path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/>
+      </g>
+      <g id="glifo-x"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 mx-auto max-w-4xl px-6 py-10 flex flex-col gap-10">
+
+    <header class="glass-panel p-6">
+      <p class="text-overline">SPEC user_admin/015 · mock de validação</p>
+      <h1 class="text-[30px] font-black tracking-tight text-madeira-700">Exercício e substituição</h1>
+      <p class="mt-1 text-[15px] text-base-content/90">
+        As camadas separadas antes da tela montada. A seção de exercício é a peça nova da página do
+        servidor; os modais repetem o padrão de checkbox nativo da SPEC 012.
+      </p>
+    </header>
+
+    <!-- ==================== 1 · TOKENS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700">1 · Tokens</h2>
+      <p class="text-[15px] text-base-content/90">
+        <strong>Um token novo, e é de raio.</strong> Materiais, escalas e tipografia são os que já
+        existem — e o estado do exercício é dito pelas <strong>cores semânticas</strong> do tema,
+        que são obrigatórias para estado do sistema (§3.2 do design system). Verde não é enfeite
+        aqui: é "está na cadeira".
+      </p>
+      <div class="card-well p-4 flex flex-col gap-3">
+        <p class="text-overline">1.1 · <code class="text-code">--radius-placa</code> · 0.625rem</p>
+        <div class="flex flex-wrap items-center gap-4">
+          <span class="tarja-vinculo text-[13px] text-base-content/80">placa · 0.625rem</span>
+          <span class="border border-white/60 bg-white/45 px-4 py-3 text-[13px] text-base-content/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] rounded-[0.5rem]">campo · 0.5rem</span>
+          <span class="border border-white/60 bg-white/45 px-4 py-3 text-[13px] text-base-content/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] rounded-2xl">caixa · 1rem</span>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          O terceiro raio do tema, entre o campo e a caixa. A placa assentada dentro de um poço não
+          é nem um nem outro: quer ficar <strong>retangular</strong> — é placa, não cartão —, mas
+          quina viva não pertence a este material, onde toda aresta é luz, e luz não faz canto de
+          90°. Nasce token, e não medida solta na molécula, porque a titularidade (SPEC 014) vai
+          assentar as próprias placas no mesmo poço e elas precisam ter a mesma quina.
+        </p>
+      </div>
+      <div class="card-well p-4 flex flex-wrap gap-x-8 gap-y-2 text-[13px] text-base-content/80">
+        <span><code class="text-code">.glass-panel</code></span>
+        <span><code class="text-code">.card-well</code></span>
+        <span><code class="text-code">.avatar-glass</code></span>
+        <span><code class="text-code">.form-field</code> / <code class="text-code">.form-field-hint</code></span>
+        <span><code class="text-code">.input-glass</code> / <code class="text-code">.select-glass</code></span>
+        <span><code class="text-code">.select-onsen</code> (<code class="text-code">data-select-onsen</code>)</span>
+        <span><code class="text-code">.btn-onsen</code> / <code class="text-code">.btn-glass</code></span>
+        <span><code class="text-code">.text-overline</code> / <code class="text-code">.text-code</code></span>
+        <span><code class="text-code">.modal-glass</code> / <code class="text-code">.modal-box-glass</code></span>
+        <span><code class="text-code">.icon-glow</code></span>
+      </div>
+      <p class="text-[13px] text-base-content/70">
+        Fora o raio, as peças que nascem aqui são <strong>moléculas</strong>:
+        <code class="text-code">.linha-pessoa</code> e <code class="text-code">.tarja-vinculo</code>.
+        Escolher o substituto <strong>não</strong> inventa peça: é o campo de seleção de vidro da
+        SPEC 011, o mesmo da lotação.
+      </p>
+    </section>
+
+    <!-- ==================== 2 · ÁTOMOS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-6">
+      <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
+      <p class="text-[15px] text-base-content/90">
+        Nenhum átomo novo. O selo de exercício é o <code class="text-code">badge</code> do daisyUI em
+        cor semântica — e é ele, sozinho, que responde "esta pessoa está na cadeira?".
+      </p>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">2.1 · Selo de exercício — o que o servidor pode estar</p>
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="badge badge-success badge-soft">Em exercício</span>
+          <span class="badge badge-warning badge-soft">Afastado</span>
+          <span class="badge badge-warning badge-soft">Retorno pendente</span>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          <strong>Retorno pendente</strong> é a divergência exposta: fora de exercício, mas sem
+          impedimento ativo hoje. Nada devolve ninguém à cadeira sozinho — o fim do impedimento é uma
+          data passando, e data que passa não escreve. Em vez de esconder, a tela cobra.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          Os dois estados de ausência dividem o âmbar de propósito: o selo diz respeito à
+          <strong>pessoa</strong>, e para a pessoa os dois são a mesma coisa — não está na cadeira.
+          O que os separa é o rótulo e a tarja abaixo dele. O <strong>vermelho não é do selo</strong>:
+          fica reservado à consequência para a unidade (§3.3), que é de outra ordem.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">2.2 · Ícones da seção — glifos novos, átomo existente</p>
+        <div class="flex flex-wrap items-center gap-8">
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            impedimento
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+            substituição
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+            retorno ao exercício
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-warning">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            pendência
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3 · MOLÉCULAS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-6">
+      <h2 class="text-[24px] font-bold text-madeira-700">3 · Moléculas</h2>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.1 · Linha de pessoa — <code class="text-code">.linha-pessoa</code></p>
+        <div class="tarja-vinculo">
+          <div class="linha-pessoa">
+            <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+              <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#0077B6"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">MC</text></svg>
+            </div>
+            <div class="min-w-0">
+              <p class="linha-pessoa-nome">Marina Castro</p>
+              <p class="linha-pessoa-meta">RF 999901 · Assistente de Gestão · desde 05/08/2026</p>
+            </div>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          O anel do avatar é a cor da unidade (SPEC 005), o mesmo hex que a página já resolve na
+          borda do app. A meta muda com o contexto; o layout, não — é o que justifica a classe.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.2 · Escolher uma pessoa — <code class="text-code">.select-onsen</code>, sem peça nova</p>
+        <label class="form-field">
+          <span class="text-overline">Substituto</span>
+          <select class="select select-glass" data-select-onsen>
+            <option>Rafael Andrade · RF 999904 · CDA-3 · Chefe de Seção</option>
+            <option>Marina Castro · RF 999901 · Assistente de Gestão</option>
+            <option>Joana Teixeira · RF 999907 · Engenheira</option>
+            <option>Bruno Sales · RF 999912 · Analista de Planejamento</option>
+            <option>Camila Rocha · RF 999915 · Arquiteta</option>
+            <option>Diego Nunes · RF 999918 · Assistente Técnico</option>
+            <option>Elisa Prado · RF 999921 · Engenheira</option>
+          </select>
+        </label>
+        <p class="text-[13px] text-base-content/70">
+          Escolher <strong>uma</strong> pessoa numa lista fechada já tem campo no sistema: o da SPEC
+          011, o mesmo da lotação. A lista de gelo abre na top layer, filtra por texto a partir de
+          seis opções e a escolha continua no <code class="text-code">&lt;select&gt;</code> — nome,
+          valor e <code class="text-code">change</code> nativos. Uma lista de rádios com avatar
+          mostraria o rosto de quem se escolhe, mas custaria um campo paralelo, com teclado, foco e
+          estado próprios, para resolver o que este já resolve. O rosto aparece <strong>depois</strong>,
+          na <code class="text-code">.tarja-vinculo</code> do substituto designado — que é onde ele
+          é informação, e não enfeite de opção.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.3 · Tarja de vínculo — <code class="text-code">.tarja-vinculo</code></p>
+        <div class="tarja-vinculo flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+            <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+          </div>
+        </div>
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">Impedimento encerrado em 24/08/2026</p>
+            <p class="text-[13px] text-base-content/60">O exercício não foi retomado, e a substituição segue vigente.</p>
+          </div>
+        </div>
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">A DIMAP-1 está sem quem responda por ela</p>
+            <p class="text-[13px] text-base-content/60">A titular está afastada e não há substituto designado.</p>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          A seção já é um poço — poço dentro de poço perderia o degrau. A tarja é placa clara
+          assentada sobre ele, e as variantes trocam só a aresta, porque o que mudou é o estado e não
+          a natureza da peça. Âmbar é <strong>pendência da pessoa</strong>; vermelho é
+          <strong>unidade sem direção</strong> — a única coisa nesta tela que trava competência
+          administrativa, e por isso a única em vermelho.
+        </p>
+      </div>
+    </section>
+
+    <!-- ==================== 4 · ORGANISMOS ==================== -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
+        4 · Organismos — a seção de exercício nos seus estados
+      </h2>
+      <p class="text-[15px] text-base-content/90 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
+        A seção entra na página do servidor como mais uma irmã de Identificação e Lotação — mesma
+        gramática, mesmo poço. Abaixo, os seis estados que ela precisa cobrir.
+      </p>
+
+      <!-- ESTADO 1 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 1 · Em exercício</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-success badge-soft">Em exercício</span>
+          </div>
+          <p class="text-[15px] text-base-content/90">Sem impedimento registrado.</p>
+          <div class="flex justify-end">
+            <label for="modal-impedimento" class="btn btn-glass btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              Registrar impedimento
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO 2 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 2 · Afastado, sem substituto</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Afastado</span>
+          </div>
+          <div class="tarja-vinculo flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+              <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+            </div>
+          </div>
+          <p class="text-[13px] text-base-content/70">
+            Ninguém responde pelo cargo enquanto o afastamento durar.
+          </p>
+          <div class="flex flex-wrap justify-end gap-3">
+            <label for="modal-retorno" class="btn btn-glass btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Retornar ao exercício
+            </label>
+            <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              Designar substituto
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO 3 — chega com a SPEC 014: é ela que sabe quem é titular. O desenho nasce aqui
+           para a peça entrar no styleguide junto com as irmãs, e não ser reinventada depois. -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 3 · Titular afastado sem substituto — a unidade fica sem direção <span class="text-error">(chega com a SPEC 014)</span></p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Afastada</span>
+          </div>
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">A DIMAP-1 está sem quem responda por ela</p>
+              <p class="text-[13px] text-base-content/60">Helena Prado é a titular da unidade, está afastada e não há substituto designado.</p>
+            </div>
+          </div>
+          <div class="tarja-vinculo flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+              <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap justify-end gap-3">
+            <label for="modal-retorno" class="btn btn-glass btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Retornar ao exercício
+            </label>
+            <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              Designar substituto
+            </label>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70 px-1">
+          O alarme sobe para o topo do poço — antes do impedimento, que aqui é só a causa. E ele fala
+          da <strong>unidade</strong>, não da pessoa: o selo dela continua "Afastada", porque o que
+          está errado não é o afastamento, é a vaga aberta que ele deixou.
+        </p>
+      </div>
+
+      <!-- ESTADO 4 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 4 · Afastado, com substituto designado</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Afastado</span>
+          </div>
+          <div class="tarja-vinculo flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+              <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">Substituído por</p>
+            <div class="tarja-vinculo flex items-center justify-between gap-3">
+              <div class="linha-pessoa">
+                <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                  <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="linha-pessoa-nome">Rafael Andrade</p>
+                  <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · desde 05/08/2026</p>
+                </div>
+              </div>
+              <label for="modal-substituto" class="btn btn-glass btn-xs shrink-0">Trocar</label>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Retornar ao exercício
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO 5 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 5 · Retorno pendente — o impedimento venceu e ninguém reassumiu</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Retorno pendente</span>
+          </div>
+          <div class="tarja-vinculo tarja-vinculo-pendente flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">Férias encerradas em 24/08/2026</p>
+              <p class="text-[13px] text-base-content/60">O exercício não foi retomado, e Rafael Andrade segue respondendo pelo cargo.</p>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Retornar ao exercício
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO 6 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 6 · Afastado, sem cargo em comissão — não há o que substituir</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Afastado</span>
+          </div>
+          <div class="tarja-vinculo flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">Licença médica</p>
+              <p class="text-[13px] text-base-content/60">01/08/2026 → prazo indeterminado</p>
+            </div>
+          </div>
+          <p class="text-[13px] text-base-content/70">
+            Substituição existe para cobrir a competência de um cargo em comissão — sem ele, não há o
+            que cobrir.
+          </p>
+          <div class="flex justify-end">
+            <label for="modal-retorno" class="btn btn-glass btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Retornar ao exercício
+            </label>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70 px-1">
+          O caminho de designar <strong>não tem peça</strong> — a ausência é a mensagem, como na
+          coluna que não filtra (SPEC 013). Nada de botão cinza desabilitado.
+        </p>
+      </div>
+
+      <!-- ESTADO 7 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 7 · O outro lado — a página de quem está substituindo</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-success badge-soft">Em exercício</span>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">Substituindo</p>
+            <div class="tarja-vinculo">
+              <div class="linha-pessoa">
+                <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                  <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">HP</text></svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="linha-pessoa-nome">Helena Prado</p>
+                  <p class="linha-pessoa-meta">CDA-4 · Diretora de Divisão · desde 05/08/2026</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-[13px] text-base-content/70">
+            Quem substitui vê de quem responde, na própria página — o vínculo é o mesmo registro,
+            lido do outro lado.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 5 · A SEÇÃO NA PÁGINA ==================== -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
+        5 · A seção no lugar dela — recorte da página do servidor
+      </h2>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div class="flex items-center gap-5">
+          <div class="avatar-glass shrink-0 w-28 h-28" style="--cor-unidade:#0077B6">
+            <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">HP</text></svg>
+          </div>
+          <div class="min-w-0">
+            <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Helena Prado</h3>
+            <p class="text-code text-sm mt-1">RF 999903</p>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <span class="badge badge-info badge-soft">DIMAP-1</span>
+              <span class="badge badge-ponto badge-sm">Analista de Planejamento</span>
+              <span class="badge badge-poligono badge-sm">CDA-4 · Chefia</span>
+              <span class="badge badge-warning badge-soft">Afastada</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Lotação</p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select class="select select-glass" data-select-onsen>
+                <option>DIMAP-1 · Divisão de Avaliação</option>
+                <option>DIMAP-2 · Divisão de Cadastro</option>
+                <option>DIMAP-3 · Divisão de Geoprocessamento</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Cargo em comissão</span>
+              <select class="select select-glass" data-select-onsen>
+                <option>CDA-4 · Diretor de Divisão</option>
+                <option>CDA-3 · Chefe de Seção</option>
+                <option value="">— sem cargo em comissão —</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Afastada</span>
+          </div>
+          <div class="tarja-vinculo flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+              <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">Substituída por</p>
+            <div class="tarja-vinculo flex items-center justify-between gap-3">
+              <div class="linha-pessoa">
+                <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                  <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="linha-pessoa-nome">Rafael Andrade</p>
+                  <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · desde 05/08/2026</p>
+                </div>
+              </div>
+              <label for="modal-substituto" class="btn btn-glass btn-xs shrink-0">Trocar</label>
+            </div>
+          </div>
+          <div class="flex flex-wrap justify-end gap-3">
+            <label for="modal-impedimento" class="btn btn-glass btn-sm">Registrar impedimento</label>
+            <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Retornar ao exercício
+            </label>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-1">
+          <a href="#" class="btn btn-ghost btn-glass">Cancelar</a>
+          <button type="button" class="btn btn-onsen">Salvar alterações</button>
+        </div>
+      </div>
+      <p class="text-[13px] text-base-content/70 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
+        A seção não é formulário do perfil: os atos dela gravam sozinhos, pelos modais. O botão de
+        salvar continua sendo o do cadastro, e segue sem destino até gravar perfil virar ação.
+      </p>
+    </section>
+
+    <footer class="glass-panel p-6">
+      <p class="text-overline">Porte obrigatório após a aprovação</p>
+      <p class="mt-1 text-[15px] text-base-content/90">
+        As classes <code class="text-code">.linha-pessoa*</code> e
+        <code class="text-code">.tarja-vinculo*</code> migram para
+        <code class="text-code">static/src/tema-dimap.dev.css</code> na camada de moléculas, e
+        <code class="text-code">--radius-placa</code> entra em
+        <code class="text-code">html[data-theme="dimap"]</code>, junto dos outros raios do tema. As
+        peças são renderizadas no styleguide da skill <code class="text-code">componentes-frontend</code>
+        — antes de qualquer template da aplicação usá-las.
+      </p>
+      <p class="mt-3 text-[13px] text-base-content/70">
+        No mesmo porte, corrigir o consumo do raio nos mocks que já usam
+        <code class="text-code">rounded-[--radius-field]</code> (autorizacao/006, 007 e 008): a
+        sintaxe é da v3 e no Tailwind 4 cai em raio zero — é por isso que aquelas peças estão de
+        quina viva.
+      </p>
+    </footer>
+  </div>
+
+  <!-- ==================== MODAL · REGISTRAR IMPEDIMENTO ====================
+       Checkbox nativo, sem JavaScript, e SEMPRE fora de qualquer formulário (SPEC 012): formulário
+       aninhado é HTML inválido e o navegador descarta o interno. -->
+  <input type="checkbox" id="modal-impedimento" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Registrar impedimento</h2>
+          <p class="text-sm text-base-content/70 mt-1">Helena Prado · DIMAP-1</p>
+        </div>
+
+        <label class="form-field">
+          <span class="text-overline">Tipo</span>
+          <select class="select select-glass" data-select-onsen>
+            <option>Férias</option>
+            <option>Licença médica</option>
+            <option>Afastamento</option>
+            <option>Licença-prêmio</option>
+          </select>
+        </label>
+
+        <div class="grid sm:grid-cols-2 gap-4">
+          <label class="form-field">
+            <span class="text-overline">Início</span>
+            <input type="date" class="input input-glass" value="2026-08-05" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Fim</span>
+            <input type="date" class="input input-glass" />
+            <span class="form-field-hint">Em branco, o prazo é indeterminado.</span>
+          </label>
+        </div>
+
+        <div class="tarja-vinculo flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            Registrar o impedimento <strong>tira Helena do exercício</strong> na mesma operação. O
+            retorno não é automático quando o prazo vencer: é ato, e é ele que encerra a substituição.
+          </p>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-impedimento" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-impedimento" class="btn btn-onsen btn-sm">Registrar</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-impedimento">Fechar</label>
+  </div>
+
+  <!-- ==================== MODAL · DESIGNAR SUBSTITUTO ==================== -->
+  <input type="checkbox" id="modal-substituto" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            Quem responde pelo cargo de Helena Prado enquanto ela estiver afastada.
+          </p>
+        </div>
+
+        <label class="form-field">
+          <span class="text-overline">Servidores da DIMAP-1</span>
+          <select name="substituto" class="select select-glass" data-select-onsen>
+            <option value="999904">Rafael Andrade · RF 999904 · CDA-3 · Chefe de Seção</option>
+            <option value="999901">Marina Castro · RF 999901 · Assistente de Gestão</option>
+            <option value="999907">Joana Teixeira · RF 999907 · Engenheira</option>
+            <option value="999912">Bruno Sales · RF 999912 · Analista de Planejamento</option>
+            <option value="999915">Camila Rocha · RF 999915 · Arquiteta</option>
+            <option value="999918">Diego Nunes · RF 999918 · Assistente Técnico</option>
+            <option value="999921">Elisa Prado · RF 999921 · Engenheira</option>
+          </select>
+          <span class="form-field-hint">
+            A lista traz só quem está lotado na DIMAP-1 e <strong>em exercício</strong> — quem está
+            afastado não aparece, porque designá-lo seria criar o vazio na origem. Cargo em comissão
+            não é exigido de quem cobre.
+          </span>
+        </label>
+
+        <div class="modal-action">
+          <label for="modal-substituto" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-substituto" class="btn btn-onsen btn-sm">Designar</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-substituto">Fechar</label>
+  </div>
+
+  <!-- ==================== MODAL · RETORNAR AO EXERCÍCIO ====================
+       Confirmação curta, porque o ato tem dois efeitos e um deles não está na tela: encerrar a
+       substituição vigente. -->
+  <input type="checkbox" id="modal-retorno" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
+      <div class="flex flex-col gap-5">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Retornar ao exercício</h2>
+          <p class="text-sm text-base-content/70 mt-1">Helena Prado volta a responder pelo cargo.</p>
+        </div>
+        <div class="tarja-vinculo flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            A substituição de <strong>Rafael Andrade</strong> é encerrada na mesma operação, com
+            término em 24/08/2026.
+          </p>
+        </div>
+        <div class="modal-action">
+          <label for="modal-retorno" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-retorno" class="btn btn-onsen btn-sm">Retornar</label>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-retorno">Fechar</label>
+  </div>
+
+  <script>
+    // Fundo à deriva — o mesmo utilitário de static/src/js/mapa/deriva.js (SPEC 007); aqui inline
+    // porque o mock não passa pelo Django e não recebe os json_script de config.
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      requestAnimationFrame(derivar);
+      if (document.hidden || reduzido.matches) return;
+      if (agora - ultimoFrame < INTERVALO_FRAME_MS) return;
+      ultimoFrame = agora;
+      const fase = ((agora % PERIODO_MS) / PERIODO_MS) * 2 * Math.PI;
+      const lat = CENTRO[0] + AMPLITUDE_GRAUS * Math.sin(fase);
+      const lng = CENTRO[1] + (AMPLITUDE_GRAUS * Math.sin(2 * fase)) / 2;
+      mapa.setView([lat, lng], ZOOM, { animate: false });
+    }
+
+    requestAnimationFrame(derivar);
+  </script>
+
+  <!-- Marcar o campo com data-select-onsen não basta: o módulo precisa ser carregado na página
+       (SPEC user_admin/011). Sem ele o campo degrada no .select-glass nativo. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+</body>
+</html>

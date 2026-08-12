@@ -1,6 +1,6 @@
 ---
 spec: autorizacao/004
-versao: v2
+versao: v3
 atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
@@ -9,6 +9,9 @@ changelog:
   - v1: versão inicial
   - v2: registro passa a identificar a operação praticada; grava toda negativa e as execuções que
     alteram estado, não a leitura autorizada de tela; anônimo sai do critério de registro
+  - v3: o registro passa a dizer por quem o autor respondia — com a substituição (SPEC
+    user_admin/015) o ato pode ser praticado pela competência do cargo de outra pessoa, e só o
+    cargo do autor descreveria o ato errado
 ---
 
 # SPEC autorizacao/004 — Proteção de rota e registro de execução do ato
@@ -26,6 +29,8 @@ tenha autor conhecido — e para que esconder o botão nunca seja a única barre
       login** pelo caminho padrão do Django.
 - [ ] Toda execução autorizada que **altera estado** fica registrada: quem, com qual cargo e unidade
       **no momento do ato**, qual ação, **qual operação**, quando.
+- [ ] Quando o autor pratica o ato **cobrindo alguém** (SPEC `user_admin/015`), o registro diz **por
+      quem ele respondia**; quando não, o campo fica vazio.
 - [ ] Toda tentativa **negada de perfil autenticado** fica registrada, inclusive a de leitura — é o
       que permite responder se a pessoa podia.
 - [ ] Duas operações opostas da mesma ação — conceder e revogar, atribuir e remover — ficam
@@ -87,9 +92,19 @@ para o perfil, a consulta de amanhã descreveria o ato de ontem com a lotação 
 aceito: renomear a sigla de uma unidade reescreve como o histórico se lê — não se guarda cópia do
 texto para evitar isso.
 
+**Quem cobre pratica pela competência de outro, e a linha precisa dizer isso.** O substituto exerce
+o cargo do afastado enquanto a substituição vigora (SPEC `user_admin/015`), e a competência que abre
+a rota pode ser a dele emprestada — inclusive a estrutural, quando quem se afastou é o titular.
+Gravar só o cargo do autor descreveria o ato pelo cargo errado: um subordinado sem chefia figuraria
+distribuindo competência sem nada explicar como. Um FK anulável para o substituído resolve, e é
+`SET_NULL` como o do autor. Não se grava a linha da `Substituicao`: ela é encerrada e reaberta ao
+longo do tempo, e o histórico não pode depender de um vínculo que muda depois do ato.
+
 ## Peças de referência a compor
 - `@apps/competencias/backends.py` (SPEC 003): o decorator pergunta por `has_perm`, não reimplementa
-  a decisão.
+  a decisão — e a substituição vigente já foi resolvida ali, na montagem da avaliação.
+- `@apps/user_admin/models/substituicao.py` → `Substituicao` (SPEC `user_admin/015`): de onde sai
+  quem o autor cobria; o registro guarda a pessoa, não a linha.
 - `@apps/competencias/schemas.py` (SPEC 001) → `AcaoImplementada`: é o que o decorator recebe.
 - `@apps/competencias/models` (SPEC 002) → `Acao`: alvo da FK do registro.
 - `django.contrib.auth.decorators` → `login_required`: o caminho do anônimo é o padrão, não se
@@ -130,6 +145,14 @@ class ExecucaoAcao(models.Model):
         on_delete=models.PROTECT,
         related_name="execucoes",
         null=True,
+    )
+    # Ato praticado cobrindo alguém: sem isso a linha descreveria o ato pelo cargo errado.
+    substituindo = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="execucoes_cobertas",
+        null=True,
+        blank=True,
     )
     autorizado = models.BooleanField()
     # A ação é a competência; a operação é o que se fez com ela — atribuir não é remover.
@@ -184,6 +207,8 @@ Todos exercitam view real com `Perfil` gravado e carregam o marker `banco`.
 - `test_rota_manda_anonimo_para_o_login` — anônimo é redirecionado, não recebe 403.
 - `test_execucao_autorizada_fica_registrada_com_a_lotacao_do_momento` — o POST autorizado guarda
   unidade e cargos vigentes no ato, e mudar a lotação do perfil depois não altera a linha gravada.
+- `test_ato_praticado_em_substituicao_diz_por_quem_responde` — o substituto que age pela competência
+  do afastado deixa gravado quem ele cobria; quem age por competência própria deixa o campo vazio.
 - `test_tentativa_negada_fica_registrada` — o 403 também deixa rastro, marcado como não autorizado.
 - `test_leitura_autorizada_nao_vira_registro` — o GET autorizado da tela não gera linha; o mesmo GET
   negado gera.

@@ -1,6 +1,6 @@
 ---
 spec: autorizacao/007
-versao: v2
+versao: v4
 atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
@@ -10,6 +10,12 @@ changelog:
   - v2: a ação vira estrutural — quem a exerce é o titular da unidade (SPEC titularidade/001), e a
     seed de bootstrap deixa de existir; o menu de administrador passa a ser declarado aqui; o
     catálogo oferecido exclui as ações estruturais
+  - v3: registrada a pendência de revisão de quem abre a tela — com um titular só por unidade
+    (SPEC user_admin/014 v5), quem exerce a estrutural é quem responde pela direção, incluindo o
+    substituto do titular afastado; a revisão fica para iteração própria
+  - v4: pendência resolvida — quem abre a tela é quem responde pela direção da unidade (titular em
+    exercício ou substituto dele, SPECs user_admin/014 e 015), e a unidade sem titular ou sem
+    direção é alcançada por quem dirige o nível acima
 ---
 
 # SPEC autorizacao/007 — Definir atribuição: a competência da unidade, e a primeira ação do registro
@@ -18,13 +24,14 @@ changelog:
 - [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
-Como titular de unidade da DIMAP, quero definir quais ações a minha unidade e as unidades abaixo
-dela exercem, para que uma competência nova entre em vigor sem ninguém mexer no banco — e para que
-os diretores tenham o que distribuir entre os cargos.
+Como quem responde pela direção de uma unidade da DIMAP, quero definir quais ações a minha unidade e
+as unidades abaixo dela exercem, para que uma competência nova entre em vigor sem ninguém mexer no
+banco — e para que os diretores tenham o que distribuir entre os cargos.
 
 ## Critérios de aceite
-- [ ] Quem abre a tela é **o titular da unidade** (SPEC `titularidade/001`), sem depender de
-      atribuição ou concessão gravada; quem não é titular recebe 403 mesmo com concessão da ação.
+- [ ] Quem abre a tela é **quem responde pela direção da unidade** (SPEC `user_admin/014`) — o
+      titular em exercício ou o substituto vigente dele —, sem depender de atribuição ou concessão
+      gravada; quem não dirige recebe 403 mesmo com concessão da ação.
 - [ ] A tela oferece como alvo **a unidade do perfil e as unidades abaixo dela** no organograma;
       unidade superior, irmã ou de outro ramo não aparece — e é recusada se vier no request.
 - [ ] O catálogo oferecido traz **apenas as ações ativas e não estruturais** que a unidade-alvo ainda
@@ -59,7 +66,7 @@ existente, e quem cria atribuição precisa vir antes.
 
 **Esta ação é estrutural, e é isso que dispensa qualquer seed.** Administrar a competência de uma
 unidade é atributo de quem a dirige, não algo que alguém precise conceder. Marcada `estrutural`
-(SPEC 001), ela é liberada pela titularidade (SPEC 003 + `titularidade/001`) sem atribuição nem
+(SPEC 001), ela é liberada pela direção da unidade (SPEC 003 + `user_admin/014`) sem atribuição nem
 concessão gravada — e some com isso o ovo-e-galinha que a versão anterior desta SPEC resolvia por
 seed: não há primeiro estado a instalar, porque a competência não mora no banco de competências.
 
@@ -67,21 +74,27 @@ O bootstrap do sistema passa a ser um só, e fica no `user_admin`: marcar os tit
 superusuário continua passando pelo atalho do `PermissionsMixin` (SPEC 003), agora como ferramenta
 de emergência e não como caminho de instalação.
 
+**Quem dirige não é sempre o titular.** Com ele fora de exercício, quem responde pela unidade é o
+**substituto** designado (SPECs `user_admin/014` e `015`), e é ele quem abre esta tela — sem receber
+o vínculo de titularidade, que continua com o afastado. Do lado desta SPEC nada disso é decidido: a
+pergunta é a mesma `has_perm` da SPEC 003, e é lá que a leitura da direção acontece.
+
 **O Secretário não é caso especial.** Ele é titular da unidade-raiz, e a subárvore da raiz é o
 organograma inteiro: o alcance máximo cai fora da mesma regra, sem exceção escrita para a alta
 administração.
 
 **Ação estrutural não se atribui.** Oferecê-la no catálogo criaria linha que não libera ninguém —
-quem a exerce é o titular. O catálogo filtra pela coluna `estrutural` projetada na SPEC 002, não por
-lista de slugs, para que a próxima ação estrutural não precise lembrar de se excluir.
+quem a exerce é quem dirige. O catálogo filtra pela coluna `estrutural` projetada na SPEC 002, não
+por lista de slugs, para que a próxima ação estrutural não precise lembrar de se excluir.
 
-**Unidade nova nasce com a competência, porque nasce com titular.** O organograma cresce em runtime e
-a titularidade acompanha, sem carga nenhuma. Enquanto a unidade nova não tem titular, quem a alcança
-é o titular do nível acima — é a razão prática de o alcance passar da própria unidade.
+**Unidade nova nasce com a competência, porque nasce com quem a dirige.** O organograma cresce em
+runtime e a titularidade acompanha, sem carga nenhuma. Enquanto a unidade nova está **sem titular**,
+ou o titular está afastado e ninguém cobre — as duas faltas da SPEC `user_admin/014` —, quem a
+alcança é quem dirige o nível acima. É a razão prática de o alcance passar da própria unidade.
 
 **`has_perm` abre a tela; a subárvore é regra do domínio.** A SPEC 003 responde competência na
 unidade **do perfil** e nada mais; alcançar as unidades abaixo não é pergunta de autorização, é regra
-desta ação. São duas barreiras distintas: o decorator da SPEC 004 barra quem não é titular, e o
+desta ação. São duas barreiras distintas: o decorator da SPEC 004 barra quem não dirige, e o
 domínio recusa unidade-alvo fora da subárvore — é a segunda que impede o POST forjado com unidade de
 outro ramo.
 
@@ -103,7 +116,7 @@ organograma é pequeno o bastante para que a consulta única seja mais barata qu
 **Alcançar não é herdar.** A subárvore diz sobre **quem pode editar**, não sobre quem exerce: atribuir
 uma ação à unidade-mãe não a dá às filhas — a SPEC 002 já decidiu unidade exata, sem herança.
 
-**Autoatribuição é aceita.** O titular atribui à própria unidade, inclusive ação que ele mesmo
+**Autoatribuição é aceita.** Quem dirige atribui à própria unidade, inclusive ação que ele mesmo
 passará a exercer. Quem dirige a unidade responde pelo que ela faz; o controle é o registro do ato
 (SPEC 004), não uma segunda aprovação.
 
@@ -126,8 +139,10 @@ primeiro a leva ao CSS base e ao styleguide; a outra confere e compõe.
   administrador é composto com esses tipos; a ação não se inscreve nele.
 - `@apps/user_admin/models` → `Unidade` (`pai`/`filhas`): a árvore que o alcance percorre, sem
   alteração.
-- `@apps/user_admin/models/user.py` → `Perfil.e_titular` (SPEC `titularidade/001`): é o que a SPEC
-  003 transforma em competência para esta ação.
+- `@apps/user_admin/models/user.py` → `Perfil.e_titular` e `Perfil.em_exercicio`, e
+  `@services/domain/titularidade/` → `AvaliadorDirecao` (SPECs `user_admin/014` e `015`): a direção
+  da unidade é o que a SPEC 003 transforma em competência para esta ação — aqui não se lê nenhum dos
+  dois.
 - `@templates/user_admin/servidores_list.html` → a área administrativa onde o organismo de menu é
   renderizado.
 - SPEC 006 → `.card-acao`, `.card-acao-nome`, `.card-acao-descricao`, `.icone-acao`: o cartão
@@ -153,7 +168,7 @@ ACAO_DEFINIR_ATRIBUICAO = instanciar_acao(
     url_name="competencias:definir_atribuicao",
     partial="competencias/partials/_item_menu_definir_atribuicao.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
-    # Quem a exerce é o titular da unidade: não passa por atribuição nem concessão.
+    # Quem a exerce é quem dirige a unidade: não passa por atribuição nem concessão.
     estrutural=True,
 )
 ```
@@ -205,9 +220,9 @@ def definir_atribuicao(request: HttpRequest) -> HttpResponse:
 - Distribuir a atribuição entre os cargos: é a SPEC 008.
 - Herança de competência pelo organograma — alcançar a unidade filha para editar não é exercer
   (SPEC 002).
-- Criar, mover ou renomear unidade, e **marcar quem é titular**: são do `user_admin` (SPEC
-  `titularidade/001`).
-- Concessão nominal a um servidor, concessão por natureza de cargo, impedimento e substituição.
+- Criar, mover ou renomear unidade, **marcar quem é titular** e **designar substituto**: são do
+  `user_admin` (SPECs `014` e `015`).
+- Concessão nominal a um servidor e concessão por natureza de cargo.
 - Tela de consulta do histórico de execuções.
 - Demais ações da plataforma: esta SPEC inscreve uma só.
 
@@ -224,8 +239,9 @@ Carregam o marker `banco`, menos o do alcance, que é domínio puro e roda na su
 
 - `test_alcance_cobre_a_subarvore_e_para_no_ramo` — a partir de uma unidade, devolve ela e todas as
   descendentes; nunca a superior, a irmã ou outro ramo. Sem banco.
-- `test_tela_abre_para_titular_e_nega_o_resto` — o titular entra sem concessão nenhuma gravada; o
-  não-titular da mesma unidade recebe 403 mesmo com concessão da ação.
+- `test_tela_abre_para_quem_dirige_e_nega_o_resto` — o titular em exercício entra sem concessão
+  nenhuma gravada, e o substituto dele entra enquanto ele está afastado; quem não dirige a unidade
+  recebe 403 mesmo com concessão da ação.
 - `test_catalogo_oferece_so_o_que_falta_e_nao_oferece_estrutural` — a ação já atribuída, a inativa e
   a estrutural ficam fora da oferta.
 - `test_atribuir_recusa_unidade_fora_do_alcance` — POST com unidade existente mas de outro ramo é
@@ -234,8 +250,8 @@ Carregam o marker `banco`, menos o do alcance, que é domínio puro e roda na su
   atribuição e as concessões dependentes somem juntas.
 - `test_atribuir_e_remover_ficam_registrados_com_alvo` — as duas operações geram execução registrada
   distinguível pela operação, identificando unidade e ação.
-- `test_menu_administrador_mostra_a_acao_so_para_quem_pode` — o item aparece para o titular e some
-  para quem não é.
+- `test_menu_administrador_mostra_a_acao_so_para_quem_pode` — o item aparece para quem dirige a
+  unidade e some para quem não dirige.
 
 ## Patches
 

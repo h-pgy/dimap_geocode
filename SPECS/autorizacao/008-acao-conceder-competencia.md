@@ -1,6 +1,6 @@
 ---
 spec: autorizacao/008
-versao: v3
+versao: v5
 atualizado_em: 2026-08-11
 testes_tdd: false
 implementado: false
@@ -11,6 +11,12 @@ changelog:
     que passa a ser a primeira ação inscrita e a origem do bootstrap; aqui sobra o nível 2
   - v3: a ação vira estrutural, exercida pelo titular (SPEC titularidade/001) — o bootstrap deixa
     de depender de seed; o alcance passa da própria unidade à subárvore, como na SPEC 007
+  - v4: registrada a pendência de revisão de quem abre a tela — com um titular só por unidade
+    (SPEC user_admin/014 v5), quem exerce a estrutural é quem responde pela direção, incluindo o
+    substituto do titular afastado; a revisão fica para iteração própria
+  - v5: pendência resolvida — quem abre a tela é quem responde pela direção da unidade (titular em
+    exercício ou substituto dele, SPECs user_admin/014 e 015), e a unidade sem titular ou sem
+    direção é alcançada por quem dirige o nível acima
 ---
 
 # SPEC autorizacao/008 — Conceder competência: distribuir entre os cargos o que a unidade tem
@@ -24,8 +30,9 @@ possui, para que um servidor recém-chegado — ou um cargo que a unidade passou
 trabalhar sem depender de alguém mexer em código ou no banco.
 
 ## Critérios de aceite
-- [ ] Quem abre a tela é **o titular da unidade** (SPEC `titularidade/001`), sem depender de
-      concessão gravada desta ação.
+- [ ] Quem abre a tela é **quem responde pela direção da unidade** (SPEC `user_admin/014`) — o
+      titular em exercício ou o substituto vigente dele —, sem depender de concessão gravada desta
+      ação.
 - [ ] A tela lista as atribuições **da unidade-alvo**, que é a do perfil ou uma **abaixo dela** no
       organograma; unidade fora da subárvore é recusada mesmo vindo no request.
 - [ ] Conceder e revogar acontecem **sem recarregar a página**, trocando só o trecho afetado.
@@ -54,17 +61,22 @@ backend (003), proteção e registro (004), router (005) e as peças visuais (00
 modelo da 002 — a 007 entrega o nível 1 e é quem põe atribuição no banco para esta tela distribuir.
 
 **Distribuir competência é atributo de quem dirige, então esta ação também é estrutural.** Marcada
-`estrutural` (SPEC 001), ela é liberada pela titularidade (SPEC 003) sem passar por atribuição nem
-concessão. Se fosse concedida como as demais, o épico voltaria a ter um primeiro estado impossível:
-conceder `competencias.conceder` a um cargo exigiria alguém que já a exercesse. Não há seed nem
-perfil especial cravado em código — há o titular.
+`estrutural` (SPEC 001), ela é liberada pela direção da unidade (SPEC 003) sem passar por atribuição
+nem concessão. Se fosse concedida como as demais, o épico voltaria a ter um primeiro estado
+impossível: conceder `competencias.conceder` a um cargo exigiria alguém que já a exercesse. Não há
+seed nem perfil especial cravado em código — há quem dirige.
+
+**Quem dirige não é sempre o titular.** Enquanto ele está afastado, quem responde pela unidade é o
+substituto designado (SPECs `user_admin/014` e `015`) — e distribuir competência é parte de
+responder pela unidade, não um ato reservado ao vínculo. Quem lê isso é a SPEC 003; aqui a pergunta
+continua sendo uma `has_perm` só.
 
 **O alcance é a subárvore, como na SPEC 007.** A versão anterior lia a unidade do perfil e ignorava o
-request; isso deixava a unidade **sem titular** com atribuições e ninguém para distribuí-las. Como o
-titular do nível acima já a alcança para atribuir, ele a alcança também para conceder — a alternativa
-seria a unidade órfã ficar inerte até alguém ser nomeado. A barreira muda de forma, não de força: a
-unidade-alvo é validada contra a subárvore do perfil pelo mesmo `AlcanceDeUnidades` da SPEC 007, e
-unidade de outro ramo é recusada com id válido.
+request; isso deixava a unidade **sem titular** — e a **sem direção** — com atribuições e ninguém
+para distribuí-las. Como quem dirige o nível acima já a alcança para atribuir, alcança também para
+conceder — a alternativa seria a unidade órfã ficar inerte até alguém ser nomeado ou voltar. A
+barreira muda de forma, não de força: a unidade-alvo é validada contra a subárvore do perfil pelo
+mesmo `AlcanceDeUnidades` da SPEC 007, e unidade de outro ramo é recusada com id válido.
 
 **Conceder o que a unidade não tem é impossível por estrutura.** A concessão pendura na linha de
 atribuição (SPEC 002); a interface só oferece as atribuições da unidade-alvo, e um request forjado
@@ -101,7 +113,8 @@ operações passam pelo mesmo decorator e deixam rastro, com o alvo dizendo qual
 **Escopo do diretor é a unidade, não o cargo.** Ele distribui para qualquer cargo do catálogo, desde
 que dentro de uma unidade que alcança — inclusive cargos que ele mesmo não ocupa e ações que ele
 mesmo não exerce. Foi decisão explícita: a competência é da unidade, e distribuí-la é a atribuição de
-quem a dirige.
+quem a dirige. Vale igual para o substituto: ele responde pela unidade enquanto cobre, sem que a
+concessão que ele faz caduque no retorno do titular — é da unidade, não dele.
 
 **Duas peças novas: o toggle e o chip.** Além do `.toggle-onsen`, a concessão já feita aparece como
 `.chip-concessao` com afordância de remoção — o cartão da atribuição precisa mostrar *quais* cargos
@@ -121,8 +134,9 @@ o cartão; no porte vale a versão da 006, que cobre as duas formas — a classe
 - `@apps/competencias/protecao.py` (SPEC 004) → `acao_protegida` e `registrar_ato`.
 - `@apps/competencias/menus.py` (SPEC 005) → `ItemDeMenu` e `ContratoMenu`: o menu de administrador
   pinça esta ação; ela não se inscreve nele.
-- `@apps/user_admin/models/user.py` → `Perfil.e_titular` (SPEC `titularidade/001`): a fonte da
-  competência desta ação.
+- `@apps/user_admin/models/user.py` → `Perfil.e_titular` e `Perfil.em_exercicio`, e
+  `@services/domain/titularidade/` → `AvaliadorDirecao` (SPECs `user_admin/014` e `015`): a direção
+  da unidade é a fonte da competência desta ação, lida pela SPEC 003 — não por esta tela.
 - Skill `componentes-frontend` → `.card-well`, `.select-onsen` (SPEC user_admin/011), `.btn-onsen`,
   `.btn-glass`, `.text-overline`, `.icon-etched`, badges semânticos.
 - `.modal-glass` + `.modal-box-glass`: o modal já existe no design system e abre por checkbox
@@ -149,7 +163,7 @@ ACAO_CONCEDER = instanciar_acao(
     url_name="competencias:conceder",
     partial="competencias/partials/_item_menu_conceder.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
-    # Distribuir é atributo de quem dirige: liberada pela titularidade, não por concessão.
+    # Distribuir é atributo de quem dirige: liberada pela direção da unidade, não por concessão.
     estrutural=True,
 )
 ```
@@ -173,7 +187,8 @@ def conceder(request: HttpRequest) -> HttpResponse:
 ## Fora de escopo
 - Criar atribuição de unidade: é a ação `competencias.definir_atribuicao` (SPEC 007).
 - Concessão nominal a um servidor e concessão por natureza de cargo.
-- Impedimento e substituição.
+- Registrar impedimento e designar substituto: são do `user_admin` (SPEC `015`); aqui a substituição
+  só é lida, pela SPEC 003.
 - Tela de consulta do histórico de execuções.
 - Demais ações da plataforma: esta SPEC inscreve uma só.
 - Aplicar a migração: o agente gera, quem aplica é o usuário (CLAUDE.md §4).
@@ -187,16 +202,17 @@ está implementada enquanto os dois portes não tiverem sido feitos.
 ## Testes (TDD)
 Todos exercitam a view com dados gravados e carregam o marker `banco`.
 
-- `test_tela_abre_para_titular_e_lista_a_subarvore` — o titular entra sem concessão gravada e vê as
-  atribuições da própria unidade e das de baixo; a da unidade superior não aparece.
+- `test_tela_abre_para_quem_dirige_e_lista_a_subarvore` — o titular em exercício entra sem concessão
+  gravada, e o substituto dele entra enquanto ele está afastado; os dois veem as atribuições da
+  própria unidade e das de baixo, e a da unidade superior não aparece.
 - `test_concessao_recusa_unidade_fora_do_alcance` — POST com unidade de outro ramo é recusado mesmo
   com id válido.
 - `test_concessao_recusa_atribuicao_de_outra_unidade` — atribuição existente mas de unidade não
   alcançada é recusada mesmo com id válido.
 - `test_conceder_e_revogar_ficam_registrados_com_alvo` — as duas operações geram execução registrada
   distinguível pela operação, identificando ação e cargo.
-- `test_menu_administrador_mostra_a_acao_so_para_quem_pode` — o item aparece para o titular e some
-  para quem não é.
+- `test_menu_administrador_mostra_a_acao_so_para_quem_pode` — o item aparece para quem dirige a
+  unidade e some para quem não dirige.
 
 ## Patches
 
