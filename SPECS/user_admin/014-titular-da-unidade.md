@@ -1,8 +1,8 @@
 ---
 spec: user_admin/014
-versao: v7
+versao: v9
 atualizado_em: 2026-08-11
-testes_tdd: false
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
@@ -25,6 +25,13 @@ changelog:
   - v7: a interface sai daqui e vira a SPEC 016 — a página da unidade não existia (a 012 deixou
         editar unidade fora de escopo), e criá-la é iteração própria; esta SPEC fica com o dado, a
         regra e os atos, e o mock passa a ser o da 016
+  - v8: snippets detalhados — os avaliadores ganham corpo, entra a ponte de model que os `clean()`
+        chamam, a leitura de estado da direção sobre a substituição da SPEC 015, o mínimo de cada
+        tipo no seed e a titularização dos fictícios; os DTOs passam a morar em `models.py`, como
+        nos demais submódulos de domínio
+  - v9: a exigência de alta administração vira coluna própria do tipo de unidade, em vez de ficar
+        implícita no mínimo nulo — duas colunas pareadas por constraint, na mesma forma que
+        `alta_administracao` × `nivel` em `CargoComissao`; o DTO e o avaliador leem a marca
 ---
 
 # SPEC user_admin/014 — Titular da unidade: um por unidade, com que cargo e quem dirige hoje
@@ -32,7 +39,7 @@ changelog:
 > A interface que mostra tudo isto — a página da unidade, a seção de direção e os três modais — é a
 > **SPEC 016**, que vem depois desta. Aqui ficam o dado, a regra e os atos.
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
+- [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
 - [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
@@ -52,8 +59,8 @@ competências decorra da direção em vez de uma lista nominal em código.
 - [ ] **Quem dirige a unidade hoje** tem **quatro** respostas: o titular em exercício; o substituto
       dele; **sem direção** (há titular, está fora e ninguém cobre); **sem titular** (a vaga).
       Leitura derivada das marcas, decidida em `services/` e **testável sem banco**.
-- [ ] Cada **tipo de unidade** declara o nível mínimo de cargo em comissão exigido do titular;
-      **ausência de mínimo significa que só a alta administração serve**.
+- [ ] Cada **tipo de unidade** declara o nível mínimo de cargo em comissão exigido do titular **ou**
+      declara que **só a alta administração serve** — são duas colunas, e uma exclui a outra.
 - [ ] Só titulariza quem tem cargo em comissão **de chefia** e satisfaz o mínimo do tipo da própria
       unidade — alta administração satisfaz qualquer tipo. Perfil sem cargo em comissão nunca
       titulariza; do **substituto** nada disso se exige, porque ele ocupa o papel sem receber o
@@ -128,11 +135,13 @@ leitura; a 016, a tela que a consome.
 é sempre aceito pela titularidade: encerra a substituição vigente e devolve a direção a quem nunca
 deixou de ser titular. Não há segundo titular no lugar para recusá-lo.
 
-**O mínimo mora no tipo de unidade, e é anulável.** A escala do cargo em comissão vai até 6, o
-organograma vai até o nível 9: para Subsecretaria, Secretaria Executiva e Gabinete **nenhum nível
-serve** — só alta administração. Anulável resolve isso sem inventar sentinela, e a leitura fica a
-mesma dos dois lados: `nivel` nulo em `CargoComissao` é "está acima da escala"; mínimo nulo em
-`TipoUnidade` é "exige estar acima dela".
+**O mínimo mora no tipo de unidade, e a exigência de alta administração é coluna própria.** A escala
+do cargo em comissão vai até 6, o organograma vai até o nível 9: para Subsecretaria, Secretaria
+Executiva e Gabinete **nenhum nível serve** — só alta administração. Dizer isso com mínimo nulo faria
+a *ausência* do dado significar a regra mais restritiva de todas, e um tipo novo sem mínimo
+preenchido a herdaria calado. Então são duas colunas pareadas por `CheckConstraint`,
+`exige_alta_administracao` e o mínimo — exatamente a forma que `CargoComissao` já tem para
+`alta_administracao` × `nivel`, e a leitura fica simétrica dos dois lados.
 
 O mínimo **não é derivável** do nível do tipo: Departamento e Coordenação são níveis diferentes com
 o mesmo mínimo (5), e Coordenadoria e Assessoria são o mesmo nível com mínimos diferentes (6 e 5,
@@ -140,7 +149,7 @@ porque Chefe de Assessoria Técnica I é CDA-V). É dado do organograma, por iss
 
 **Nível sem chefia não basta.** Assessor VI é CDA-VI e não é chefia — com regra só de nível, ele
 titularizaria uma Coordenadoria. A adequação é `e_chefia` **e** (`alta_administracao` **ou**
-`nivel >= mínimo do tipo`).
+(**não** `exige_alta_administracao` **e** `nivel >= mínimo do tipo`)).
 
 **A adequação cruza três tabelas, então vive no `clean()` — e a decisão, no domínio.** Perfil → cargo
 e perfil → unidade → tipo: nenhuma `CheckConstraint` alcança, o mesmo caso que `Unidade.clean()` já
@@ -203,38 +212,7 @@ dos três modais está no mock da **SPEC 016** (`SPECS/user_admin/016-mock-pagin
 # direção de implementação — adaptar conforme necessário, sem violar os princípios de
 # arquitetura nem o estilo de código do CLAUDE.md
 
-# apps/user_admin/models/unidade.py
-class TipoUnidade(models.Model):
-    # Nulo = nenhum nível serve: só alta administração titulariza este tipo.
-    nivel_minimo_titular = models.PositiveSmallIntegerField(
-        null=True,
-        blank=True,
-        validators=[
-            MinValueValidator(NIVEL_MINIMO),
-            MaxValueValidator(NIVEL_MAXIMO),
-        ],
-    )
-```
-
-```python
-# apps/user_admin/models/user.py
-class Perfil(AbstractBaseUser, PermissionsMixin):
-    e_titular = models.BooleanField(default=False)
-
-    class Meta:
-        constraints = [
-            # A unicidade é do vínculo: um titular por unidade, exercendo ou não. Quem cobre o
-            # afastado é substituto (SPEC 015), não um segundo marcado.
-            models.UniqueConstraint(
-                fields=["unidade"],
-                condition=Q(e_titular=True),
-                name="unidade_tem_um_titular",
-            ),
-        ]
-```
-
-```python
-# services/domain/titularidade/direcao.py
+# services/domain/titularidade/models.py
 class Direcao(StrEnum):
     TITULAR = "titular"
     SUBSTITUTO = "substituto"
@@ -253,50 +231,285 @@ class EstadoDaDirecao(BaseModel):
     substituto_do_titular_em_exercicio: bool
 
 
-class AvaliadorDirecao:
-    """Quem dirige a unidade hoje — e, quando ninguém dirige, qual das duas faltas é."""
-
-    def __call__(self, estado: EstadoDaDirecao) -> Direcao: ...
-```
-
-```python
-# apps/user_admin/models/unidade.py
-class Unidade(models.Model):
-    # A vaga é a ausência do vínculo, e quem responde por ela é a unidade. Derivado, não coluna:
-    # gravar duplicaria as linhas de Perfil. Precedente: Perfil.esta_impedido.
-    @property
-    def titular(self) -> "Perfil | None": ...
-```
-
-```python
-# services/domain/titularidade/requisito.py
 class RequisitoTitularidade(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     e_chefia: bool
     alta_administracao: bool
     nivel_cargo: int | None
+    # A exigência é declarada, não inferida da falta do mínimo — ver Contexto.
+    tipo_exige_alta_administracao: bool
     nivel_minimo_do_tipo: int | None
-
-
-class AvaliadorTitularidade:
-    """Cargo compatível com o porte da unidade. Sem Django: a regra é a mesma no clean, no
-    view e no teste."""
-
-    def __call__(self, requisito: RequisitoTitularidade) -> bool: ...
 ```
 
 ```python
-# apps/user_admin/titularidade.py
+# services/domain/titularidade/direcao.py
+class AvaliadorDirecao:
+    """Quem dirige a unidade hoje — e, quando ninguém dirige, qual das duas faltas é."""
+
+    def __call__(self, estado: EstadoDaDirecao) -> Direcao:
+        # A vaga responde antes de qualquer marca de exercício: não há de quem consultá-la.
+        if not estado.tem_titular:
+            return Direcao.SEM_TITULAR
+        if estado.titular_em_exercicio:
+            return Direcao.TITULAR
+        if estado.substituto_do_titular_em_exercicio:
+            return Direcao.SUBSTITUTO
+        return Direcao.SEM_DIRECAO
+
+
+def avaliar_direcao(estado: EstadoDaDirecao) -> Direcao:
+    return AvaliadorDirecao()(estado)
+```
+
+```python
+# services/domain/titularidade/requisito.py
+class AvaliadorTitularidade:
+    """Cargo compatível com o porte da unidade. Sem Django: a regra é a mesma no clean, na view
+    e no teste."""
+
+    def __call__(self, requisito: RequisitoTitularidade) -> bool:
+        # Nível sem chefia não basta: Assessor VI é CDA-VI e não dirige nada.
+        if not requisito.e_chefia:
+            return False
+        if requisito.alta_administracao:
+            return True
+        return self._satisfaz_o_minimo(requisito)
+
+    def _satisfaz_o_minimo(self, requisito: RequisitoTitularidade) -> bool:
+        # O tipo exige estar acima da escala, e quem chegou aqui está dentro dela.
+        if requisito.tipo_exige_alta_administracao:
+            return False
+        # Fora dessa exigência os dois níveis existem; o None só sobra por defesa de tipo.
+        if requisito.nivel_minimo_do_tipo is None or requisito.nivel_cargo is None:
+            return False
+        return requisito.nivel_cargo >= requisito.nivel_minimo_do_tipo
+
+
+def avaliar_titularidade(requisito: RequisitoTitularidade) -> bool:
+    return AvaliadorTitularidade()(requisito)
+```
+
+```python
+# apps/user_admin/models/unidade.py
+ERRO_ALTA_ADM_COM_MINIMO = "Tipo que exige alta administração não tem nível mínimo de titular."
+ERRO_MINIMO_TITULAR_OBRIGATORIO = "Tipo fora da alta administração exige nível mínimo de titular."
+
+
+class TipoUnidade(models.Model):
+    # A exigência é declarada; sem ela, o tipo novo herdaria calado a regra mais restritiva.
+    exige_alta_administracao = models.BooleanField(default=False)
+    nivel_minimo_titular = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(NIVEL_MINIMO),
+            MaxValueValidator(NIVEL_MAXIMO),
+        ],
+    )
+
+    class Meta:
+        constraints = [
+            # Uma coluna exclui a outra — o mesmo pareamento de alta_administracao × nivel
+            # em CargoComissao, e a mesma constraint espelhada no clean().
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        exige_alta_administracao=True,
+                        nivel_minimo_titular__isnull=True,
+                    )
+                    | Q(
+                        exige_alta_administracao=False,
+                        nivel_minimo_titular__gte=NIVEL_MINIMO,
+                        nivel_minimo_titular__lte=NIVEL_MAXIMO,
+                    )
+                ),
+                name="tipo_unidade_minimo_conforme_alta_administracao",
+            ),
+        ]
+
+    def clean(self) -> None:
+        if self.exige_alta_administracao and self.nivel_minimo_titular is not None:
+            raise ValidationError({"nivel_minimo_titular": ERRO_ALTA_ADM_COM_MINIMO})
+        if not self.exige_alta_administracao and self.nivel_minimo_titular is None:
+            raise ValidationError({"nivel_minimo_titular": ERRO_MINIMO_TITULAR_OBRIGATORIO})
+```
+
+```python
+# apps/user_admin/models/titularidade.py — a ponte que os dois clean() chamam; importa só o
+# catálogo de cargos, e por isso não fecha ciclo com user.py nem com unidade.py.
+def cargo_titulariza(
+    cargo: CargoComissao | None,
+    exige_alta_administracao: bool,
+    nivel_minimo: int | None,
+) -> bool:
+    # Sem cargo em comissão não há chefia, e o avaliador recusa na primeira guarda.
+    requisito = RequisitoTitularidade(
+        e_chefia=bool(cargo and cargo.e_chefia),
+        alta_administracao=bool(cargo and cargo.alta_administracao),
+        nivel_cargo=cargo.nivel if cargo else None,
+        tipo_exige_alta_administracao=exige_alta_administracao,
+        nivel_minimo_do_tipo=nivel_minimo,
+    )
+    return avaliar_titularidade(requisito)
+```
+
+```python
+# apps/user_admin/models/user.py
+ERRO_TITULAR_SEM_CARGO_COMPATIVEL = (
+    "O titular precisa de cargo em comissão de chefia compatível com o porte da unidade."
+)
+
+
+class Perfil(AbstractBaseUser, PermissionsMixin):
+    e_titular = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            # A unicidade é do vínculo: um titular por unidade, exercendo ou não. Quem cobre o
+            # afastado é substituto (SPEC 015), não um segundo marcado.
+            models.UniqueConstraint(
+                fields=["unidade"],
+                condition=Q(e_titular=True),
+                name="unidade_tem_um_titular",
+            ),
+        ]
+
+    def clean(self) -> None:
+        # Cruza perfil → cargo e perfil → unidade → tipo: nenhuma CheckConstraint alcança.
+        if not self.e_titular or not hasattr(self, "unidade"):
+            return
+        tipo = self.unidade.tipo
+        if not cargo_titulariza(
+            self.cargo_comissao,
+            exige_alta_administracao=tipo.exige_alta_administracao,
+            nivel_minimo=tipo.nivel_minimo_titular,
+        ):
+            raise ValidationError({"e_titular": ERRO_TITULAR_SEM_CARGO_COMPATIVEL})
+```
+
+```python
+# apps/user_admin/models/unidade.py
+ERRO_TIPO_INCOMPATIVEL_COM_TITULAR = "O titular atual não satisfaz o mínimo de cargo deste tipo."
+
+
+class Unidade(models.Model):
+    # A vaga é a ausência do vínculo, e quem responde por ela é a unidade. Derivado, não coluna:
+    # gravar duplicaria as linhas de Perfil. Precedente: Perfil.esta_impedido.
+    @property
+    def titular(self) -> "Perfil | None":
+        return self.perfis.filter(e_titular=True).first()
+
+    def clean(self) -> None:
+        self._checar_titular()
+        ...  # as regras de hierarquia da SPEC 003 seguem como estão, depois desta
+
+    def _checar_titular(self) -> None:
+        # O outro lado da mesma adequação: mudar o tipo quebra o que o cargo do titular satisfazia.
+        if self.pk is None or not hasattr(self, "tipo"):
+            return
+        titular = self.titular
+        if titular is None:
+            return
+        if not cargo_titulariza(
+            titular.cargo_comissao,
+            exige_alta_administracao=self.tipo.exige_alta_administracao,
+            nivel_minimo=self.tipo.nivel_minimo_titular,
+        ):
+            raise ValidationError({"tipo": ERRO_TIPO_INCOMPATIVEL_COM_TITULAR})
+```
+
+```python
+# apps/user_admin/titularidade.py — os atos e a montagem dos DTOs na borda; mexe em persistência
+# e orquestração, e por isso vive no app (mesmo lugar de ficticios.py e das seeds).
 def definir_titular(perfil: Perfil) -> None:
     """Destitui o titular anterior — afastado ou não — e marca o novo na mesma transação: o índice
     recusa os dois marcados, ainda que por um instante."""
-    ...
+    with transaction.atomic():
+        _destituir(perfil.unidade, exceto=perfil)
+        perfil.e_titular = True
+        # Depois da destituição: validate_constraints enxerga a transação e acusaria o anterior.
+        perfil.full_clean()
+        perfil.save(update_fields=["e_titular"])
 
 
 def destituir_titular(unidade: Unidade) -> None:
     """Abre a vaga: a unidade fica sem titular, e é a tela que cobra a nomeação."""
-    ...
+    with transaction.atomic():
+        _destituir(unidade)
+
+
+def _destituir(unidade: Unidade, exceto: Perfil | None = None) -> None:
+    # update() em massa fura a validação, mas desmarcar nunca produz titular inválido.
+    titulares = Perfil.objects.filter(unidade=unidade, e_titular=True)
+    if exceto is not None and exceto.pk is not None:
+        titulares = titulares.exclude(pk=exceto.pk)
+    titulares.update(e_titular=False)
+
+
+def estado_da_direcao(unidade: Unidade) -> EstadoDaDirecao:
+    """Junta as marcas da SPEC 015 no DTO que o domínio lê; é o que a SPEC 016 consome."""
+    titular = unidade.titular
+    if titular is None:
+        return EstadoDaDirecao(
+            tem_titular=False,
+            titular_em_exercicio=False,
+            substituto_do_titular_em_exercicio=False,
+        )
+    substituicao = titular.substituicoes_recebidas.filter(data_fim__isnull=True).first()
+    return EstadoDaDirecao(
+        tem_titular=True,
+        titular_em_exercicio=titular.em_exercicio,
+        # O substituto fora de exercício não cobre ninguém: a unidade fica sem direção.
+        substituto_do_titular_em_exercicio=bool(
+            substituicao and substituicao.substituto.em_exercicio
+        ),
+    )
+```
+
+```jsonc
+// data/seed/unidades.json — cada tipo declara um dos dois; o resto da entrada não muda.
+{ "nome": "Equipe",        "nivel_minimo_titular": 2 }
+{ "nome": "Seção",         "nivel_minimo_titular": 3 }
+{ "nome": "Divisão",       "nivel_minimo_titular": 4 }
+{ "nome": "Departamento",  "nivel_minimo_titular": 5 }
+{ "nome": "Coordenação",   "nivel_minimo_titular": 5 }
+{ "nome": "Coordenadoria", "nivel_minimo_titular": 6 }
+// Chefe de Assessoria Técnica I é CDA-V: mesmo nível da Coordenadoria, mínimo menor.
+{ "nome": "Assessoria",    "nivel_minimo_titular": 5 }
+// Acima da escala do cargo em comissão: nenhum nível serve.
+{ "nome": "Subsecretaria",               "exige_alta_administracao": true }
+{ "nome": "Secretaria Executiva",        "exige_alta_administracao": true }
+{ "nome": "Gabinete da/do Secretária/o", "exige_alta_administracao": true }
+```
+
+```python
+# apps/user_admin/seeds/unidades.py
+class TipoUnidadeSeed(BaseModel):
+    # Omitir os dois não é atalho para nada: a constraint recusa o par vazio na carga.
+    exige_alta_administracao: bool = False
+    nivel_minimo_titular: int | None = None
+```
+
+```python
+# apps/user_admin/ficticios.py
+# Uma unidade elegível fica de fora: a vaga é o estado que a tela da SPEC 016 existe para acusar.
+UNIDADES_SEM_TITULAR = 1
+
+
+class CriadorServidoresFicticios:
+    def _titularizar(
+        self,
+        perfis: list[Perfil],
+        cargos_comissao: list[CargoComissao],
+    ) -> int:
+        titulaveis = self._um_por_unidade(perfis)[:-UNIDADES_SEM_TITULAR]
+        for perfil in titulaveis:
+            # O cargo vem do porte da unidade, não do rodízio: senão o clean recusaria a marca.
+            perfil.cargo_comissao = self._cargo_que_titulariza(perfil.unidade, cargos_comissao)
+            perfil.save(update_fields=["cargo_comissao"])
+            definir_titular(perfil)
+        return len(titulaveis)
 ```
 
 ## Fora de escopo
@@ -323,8 +536,8 @@ declarado em `markers_obrigatorios`.
 
 - `test_adequacao_exige_chefia_e_nivel_suficiente` — Diretor de Divisão titulariza Divisão; Chefe de
   Seção não titulariza Coordenadoria; Assessor VI, mesmo com nível 6, não titulariza nada. Sem banco.
-- `test_tipo_sem_minimo_so_aceita_alta_administracao` — no tipo de mínimo nulo, Subsecretário
-  titulariza e Coordenador II não. Sem banco.
+- `test_tipo_que_exige_alta_administracao_recusa_qualquer_nivel` — no tipo com a marca ligada,
+  Subsecretário titulariza e Coordenador II não, mesmo no topo da escala. Sem banco.
 - `test_direcao_distingue_titular_substituto_e_as_duas_faltas` — dirige o titular em exercício;
   dirige o substituto quando ele está fora; sem os dois é `SEM_DIRECAO`; sem titular é `SEM_TITULAR`,
   e nenhuma marca de exercício muda isso. Sem banco.
@@ -335,7 +548,8 @@ declarado em `markers_obrigatorios`.
   titular. *(marker `banco`)*
 - `test_titular_invalido_e_recusado_na_validacao` — rebaixar o cargo do titular, ou mover a unidade
   para um tipo que ele não satisfaz, é recusado na validação. *(marker `banco`)*
-- `test_seed_e_ficticios_nascem_com_titularidade` — a carga grava o mínimo declarado em cada tipo, os
+- `test_seed_e_ficticios_nascem_com_titularidade` — a carga grava, em cada tipo, o mínimo ou a
+  exigência de alta administração que o arquivo declara; os
   servidores fictícios deixam titulares marcados e ao menos uma unidade fica vaga. *(marker `banco`)*
 
 ## Patches

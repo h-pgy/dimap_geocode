@@ -212,3 +212,32 @@ def test_hierarquia_invalida_e_recusada() -> None:
         carregar_seed_unidades()
     assert TipoUnidade.objects.count() == 0
     assert Unidade.objects.count() == 0
+
+
+@banco
+@pytest.mark.django_db
+def test_seed_grava_minimo_ou_exigencia_de_alta_administracao_do_tipo() -> None:
+    _escrever_seed(
+        tipos=[
+            {
+                "nome": "Divisão",
+                "nivel": 10,
+                "pode_ser_raiz": True,
+                "nivel_minimo_titular": 4,
+            },
+            {"nome": "Subsecretaria", "nivel": 20, "exige_alta_administracao": True},
+        ],
+        unidades=[
+            {"nome": "Divisão", "sigla": "DIV", "tipo": "Divisão"},
+        ],
+    )
+
+    carregar_seed_unidades()
+
+    tipo_divisao = TipoUnidade.objects.get(nome="Divisão")
+    assert tipo_divisao.nivel_minimo_titular == 4
+    assert tipo_divisao.exige_alta_administracao is False
+
+    tipo_subsecretaria = TipoUnidade.objects.get(nome="Subsecretaria")
+    assert tipo_subsecretaria.exige_alta_administracao is True
+    assert tipo_subsecretaria.nivel_minimo_titular is None

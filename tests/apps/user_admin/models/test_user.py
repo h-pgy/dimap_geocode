@@ -10,10 +10,18 @@ Postgres real.
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 
 import pytest
 
-from apps.user_admin.models import CargoBase, CorUnidade, Perfil, TipoUnidade, Unidade
+from apps.user_admin.models import (
+    CargoBase,
+    CargoComissao,
+    CorUnidade,
+    Perfil,
+    TipoUnidade,
+    Unidade,
+)
 
 AUTH_USER_MODEL_ESPERADO = "user_admin.Perfil"
 
@@ -138,3 +146,67 @@ def test_cor_unidade_reflete_a_cor_da_unidade_vinculada() -> None:
     perfil.unidade.save()
 
     assert perfil.cor_unidade == CorUnidade.SAKURA_600
+
+
+# ---------------------------------------------------------------------------
+# Titularidade — unicidade do vínculo (SPEC user_admin/014)
+# ---------------------------------------------------------------------------
+
+
+def _tipo_unidade_titularizavel(**overrides: object) -> TipoUnidade:
+    dados: dict[str, object] = {
+        "nome": "Divisão Titular Único",
+        "nivel": 10,
+        "pode_ser_raiz": True,
+        "nivel_minimo_titular": 4,
+    }
+    dados.update(overrides)
+    return TipoUnidade.objects.create(**dados)  # type: ignore[arg-type]
+
+
+def _cargo_que_titulariza(**overrides: object) -> CargoComissao:
+    dados: dict[str, object] = {
+        "sigla": "CDA",
+        "nivel": 4,
+        "e_chefia": True,
+        "nome": "Diretor de Divisão Titular Único",
+    }
+    dados.update(overrides)
+    return CargoComissao.objects.create(**dados)  # type: ignore[arg-type]
+
+
+@banco
+@pytest.mark.django_db
+def test_unidade_nao_admite_dois_titulares() -> None:
+    tipo = _tipo_unidade_titularizavel()
+    unidade = Unidade.objects.create(
+        nome="Divisão Titular Único", sigla="DIVTU", tipo=tipo
+    )
+    cargo = _cargo_que_titulariza()
+    cargo_base = CargoBase.objects.create(nome="Cargo Titular Único", sigla="CGTU")
+
+    primeiro = Perfil(
+        rf="700301",
+        nome="Titular",
+        sobrenome="Um",
+        cargo_base=cargo_base,
+        unidade=unidade,
+        cargo_comissao=cargo,
+        e_titular=True,
+    )
+    primeiro.set_password("segredo123")
+    primeiro.save()
+
+    segundo = Perfil(
+        rf="700302",
+        nome="Titular",
+        sobrenome="Dois",
+        cargo_base=cargo_base,
+        unidade=unidade,
+        cargo_comissao=cargo,
+        e_titular=True,
+    )
+    segundo.set_password("segredo123")
+    # save() direto, sem full_clean(): o que este teste fixa é o banco recusando, não a validação.
+    with pytest.raises(IntegrityError):
+        segundo.save()

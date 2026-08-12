@@ -9,6 +9,7 @@ Marker `banco`: perfil, unidade e cargo são tabelas.
 import pytest
 
 from apps.user_admin.ficticios import (
+    FAIXA_RF_FICTICIA,
     QUANTIDADE_FICTICIOS,
     criar_servidores_ficticios,
     remover_servidores_ficticios,
@@ -74,3 +75,33 @@ def test_remover_ficticios_poupa_os_servidores_reais() -> None:
 
     assert remocao.removidos == QUANTIDADE_FICTICIOS
     assert list(Perfil.objects.values_list("rf", flat=True)) == [real.rf]
+
+
+@banco
+@pytest.mark.django_db
+def test_ficticios_titularizam_e_deixam_uma_unidade_vaga() -> None:
+    tipo = TipoUnidade.objects.create(
+        nome="Divisão Fictícios",
+        nivel=10,
+        pode_ser_raiz=True,
+        nivel_minimo_titular=4,
+    )
+    Unidade.objects.create(nome="Divisão Fictícios 1", sigla="DIVF1", tipo=tipo)
+    Unidade.objects.create(nome="Divisão Fictícios 2", sigla="DIVF2", tipo=tipo)
+    CargoBase.objects.create(nome="Analista Fictícios", sigla="ANF")
+    CargoComissao.objects.create(
+        sigla="CDA",
+        nivel=4,
+        e_chefia=True,
+        nome="Diretor de Divisão Fictícios",
+    )
+    TipoImpedimento.objects.create(nome="Férias Fictícios", sigla="FERF")
+
+    criar_servidores_ficticios()
+
+    titulares = Perfil.objects.filter(rf__in=FAIXA_RF_FICTICIA, e_titular=True)
+    assert titulares.exists()
+    unidades_sem_titular = Unidade.objects.exclude(
+        pk__in=titulares.values_list("unidade_id", flat=True)
+    )
+    assert unidades_sem_titular.exists()
