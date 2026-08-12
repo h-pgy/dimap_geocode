@@ -52,6 +52,132 @@
 
     @layer components {
 
+      /* ==================== ÁTOMO · TOGGLE DE VIDRO ====================
+         O toggle do daisyUI é o único controle da tela que não passava pelo material. Aqui ele é
+         feito das duas peças que o sistema já tem: o trilho é o poço do .card-well em pílula (mesmo
+         fundo, mesma aresta, mesma sombra interna) e o botão é a gravação da SPEC 013 — um disco
+         .etched em repouso, que enche de água (.etched-inked) quando vai para o lado. Ligado não é
+         "outra cor de trilho": é o sulco entintado, o mesmo par repouso/ativo do resto do sistema.
+         Depende dos defs de #etched-onsen, como toda gravação. */
+      .toggle-onsen {
+        @apply relative w-11 h-6 shrink-0 appearance-none cursor-pointer rounded-full
+               bg-white/30 border border-white/45 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)]
+               transition-all duration-300;
+      }
+      .toggle-onsen::after {
+        @apply absolute top-1/2 left-1 w-4 h-4 -translate-y-1/2 rounded-full transition-all duration-300;
+        content: "";
+        background-color: rgba(13, 27, 42, 0.14);
+        filter: url(#etched-onsen);
+      }
+      /* O trilho clareia de leve: o degrau do poço continua, mas o material acusa que está ativo. */
+      .toggle-onsen:checked {
+        @apply bg-white/45 border-agua-500/50;
+      }
+      .toggle-onsen:checked::after {
+        @apply translate-x-5;
+        background-color: rgba(0, 119, 182, 0.85);
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+      }
+      .toggle-onsen:hover::after {
+        background-color: rgba(13, 27, 42, 0.3);
+      }
+      .toggle-onsen:checked:hover::after {
+        background-color: rgba(0, 119, 182, 0.85);
+      }
+      /* O anel de foco é o mesmo dos campos de vidro — teclado enxerga o controle como enxerga o
+         resto do formulário. */
+      .toggle-onsen:focus-visible {
+        @apply outline-none border-agua-500 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15),0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
+      }
+
+      /* ==================== ÁTOMO · FIO GRAVADO ====================
+         Um fio de gravação, no tom de repouso do .etched. Não posiciona nem dimensiona nada: é só
+         o material do sulco, para que a peça que o usa decida onde ele corre e por quanto. */
+      .etched-line {
+        @apply rounded-full;
+        background-color: rgba(13, 27, 42, 0.14);
+      }
+
+      /* ==================== ÁTOMO · FIO ENTINTADO ====================
+         O MESMO fio, cheio de água — o par repouso/entintado do resto do sistema.
+         As pontas ESMAECEM, e isso não é enfeite: quando dois trechos vizinhos têm estados
+         diferentes, uma aresta viva entre eles leria como duas peças encostadas, e o que existe é
+         um fio só mudando de estado ao longo do tempo. A transição faz a leitura ser "aqui a tinta
+         acaba", não "aqui começa outra coisa".
+         O esmaecimento é do PRÓPRIO fundo, em gradiente, e o brilho vem de drop-shadow (não de
+         box-shadow): drop-shadow segue o canal alfa, então a água também esmaece nas pontas em vez
+         de terminar num halo reto. box-shadow ignoraria o gradiente e desenharia a sombra da caixa
+         inteira.
+         A escala é PERCENTUAL — 20% de cada ponta —, não em px: assim a transição é proporcional ao
+         próprio trecho, e um trecho curto esmaece na mesma medida em que um longo, em vez de
+         desaparecer sob uma ponta de tamanho fixo.
+         A ponta NUNCA chega ao transparente: ela para num tom claro da MESMA tinta (alfa 0.32).
+         Indo até zero, o que aparece na borda é o vidro branco por baixo — e o trecho ganharia uma
+         auréola clara justamente onde a tinta acaba, que é o oposto do que o esmaecimento existe
+         para fazer. O fio tem que sair de tinta clara para tinta cheia, nunca de branco.
+         Os stops intermediários existem para a queda não ser uma rampa reta: uma interpolação
+         linear entre os dois tons deixa uma "quina de luz" visível no ponto em que ela começa.
+         Aqui a curva sai devagar, sobe rápido no meio e chega ao tom cheio de mansinho. */
+      .etched-line-inked {
+        @apply rounded-full;
+        background-image: linear-gradient(
+          to right,
+          rgba(0, 119, 182, 0.32) 0%,
+          rgba(0, 119, 182, 0.40) 5%,
+          rgba(0, 119, 182, 0.56) 10%,
+          rgba(0, 119, 182, 0.73) 15%,
+          rgba(0, 119, 182, 0.85) 20%,
+          rgba(0, 119, 182, 0.85) 80%,
+          rgba(0, 119, 182, 0.73) 85%,
+          rgba(0, 119, 182, 0.56) 90%,
+          rgba(0, 119, 182, 0.40) 95%,
+          rgba(0, 119, 182, 0.32) 100%
+        );
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+      }
+
+      /* ==================== MOLÉCULA · CALHA DA COBERTURA ====================
+         O afastamento inteiro como uma bandeja funda, com os dois fios acima correndo dentro dela e
+         os nomes de quem responde por cada trecho. A molécula é só COMPOSIÇÃO E MEDIDA: material
+         nenhum nasce aqui — o poço é o .card-well, os fios são os átomos, e o âmbar é a cor
+         semântica do tema.
+         A bandeja NUNCA se preenche: o poço continua poço de ponta a ponta, e o que muda de estado
+         é o fio no fundo dele.
+         REGRA DA ESCALA, e é ela que dá sentido à peça: `left` e `width` de cada trecho são a
+         fração de DIAS que ele ocupa no afastamento — left = (início do trecho − início do
+         afastamento) / total, width = dias do trecho / total, ambos inclusivos das duas pontas. Um
+         buraco de três semanas tem que parecer três vezes maior que um de uma; sem isso a peça vira
+         enfeite e mente. Quem calcula é a view: é medida de renderização, não domínio.
+         Feita do zero em Tailwind, e não com o `steps` do daisyUI, exatamente por isso: no steps a
+         métrica é a ORDEM, e o trilho entre dois nós tem sempre a mesma largura. */
+      .calha-cobertura {
+        @apply relative w-full h-6 rounded-full bg-white/30 border border-white/45;
+        box-shadow: inset 0 2px 6px rgba(7, 58, 84, 0.15);
+      }
+      /* Prazo indeterminado: não há denominador, então a régua vai até a última data conhecida e o
+         resto DISSOLVE. Desenhar um fim mentiria sobre um fim que não existe — a mesma razão pela
+         qual data_fim é nulo em vez de uma data-sentinela. */
+      .calha-cobertura-aberta {
+        mask-image: linear-gradient(to right, black 72%, transparent 100%);
+      }
+      /* O trilho corre centrado no fundo do poço, com folga nas pontas para o poço aparecer em
+         volta. A folga é `inset-x-2` e é a MESMA das marcas — as duas réguas têm que coincidir. */
+      .calha-trilho {
+        @apply absolute inset-x-2 top-1/2 -translate-y-1/2 h-1.5;
+      }
+      .calha-trecho { @apply absolute inset-y-0; }
+      /* Mesma régua do trilho: sem esta caixa, os rótulos seriam % da calha inteira e os trechos
+         % dela menos a folga — meio rem de desencontro justamente nas bordas. */
+      .calha-marcas { @apply absolute inset-x-2 top-0; }
+      /* O rótulo é ancorado no centro do seu trecho, abaixo da calha. Sem disco sobre a linha: o
+         nome já está aqui, e um por trecho empilharia peça sobre a mesma informação. */
+      .calha-marca {
+        @apply absolute top-7 -translate-x-1/2 flex flex-col items-center leading-tight
+               text-center w-24;
+      }
+      .calha-marca-vazia { @apply text-warning; }
+
       /* ==================== MOLÉCULA · LINHA DE PESSOA ====================
          Uma pessoa identificada em uma linha: moldura de avatar, nome, e a meta que a qualifica
          naquele contexto (RF, cargo, desde quando). Ganha classe porque o layout se repete nesta
@@ -71,8 +197,10 @@
                shadow-[inset_0_1px_0_rgba(255,255,255,0.8)];
         border-radius: var(--radius-placa);
       }
-      /* Pendência: mesma placa, com a aresta em âmbar. A cor semântica carrega o estado do sistema
-         (§3.2 do DS); o material não muda, porque o que mudou não é a natureza da peça. */
+      /* Fora do ar: o vínculo existe e está gravado, mas não vale hoje — a cobertura que ainda não
+         começou ou já terminou dentro de um afastamento que continua. Mesma placa, aresta em âmbar:
+         a cor semântica carrega o estado do sistema (§3.2 do DS) e o material não muda, porque o que
+         mudou não é a natureza da peça. */
       .tarja-vinculo-pendente {
         @apply border-warning/50 bg-warning/10;
       }
@@ -191,12 +319,16 @@
         <span><code class="text-code">.text-overline</code> / <code class="text-code">.text-code</code></span>
         <span><code class="text-code">.modal-glass</code> / <code class="text-code">.modal-box-glass</code></span>
         <span><code class="text-code">.icon-glow</code></span>
+        <span><code class="text-code">.etched</code> / <code class="text-code">.etched-inked</code></span>
       </div>
       <p class="text-[13px] text-base-content/70">
         Fora o raio, as peças que nascem aqui são <strong>moléculas</strong>:
         <code class="text-code">.linha-pessoa</code> e <code class="text-code">.tarja-vinculo</code>.
-        Escolher o substituto <strong>não</strong> inventa peça: é o campo de seleção de vidro da
-        SPEC 011, o mesmo da lotação.
+        O <strong>cartão do impedimento</strong> — a peça que estrutura a seção — não é classe
+        nenhuma: é <code class="text-code">.glass-panel</code> com dois
+        <code class="text-code">.card-well</code> dentro (3.4). E escolher o substituto
+        <strong>não</strong> inventa peça: é o campo de seleção de vidro da SPEC 011, o mesmo da
+        lotação.
       </p>
     </section>
 
@@ -204,8 +336,11 @@
     <section class="glass-panel p-6 flex flex-col gap-6">
       <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
       <p class="text-[15px] text-base-content/90">
-        Nenhum átomo novo. O selo de exercício é o <code class="text-code">badge</code> do daisyUI em
-        cor semântica — e é ele, sozinho, que responde "esta pessoa está na cadeira?".
+        O selo de exercício é o <code class="text-code">badge</code> do daisyUI em cor semântica — e
+        é ele, sozinho, que responde "esta pessoa está na cadeira?". Nascem <strong>dois</strong>
+        átomos: o <strong>toggle de vidro</strong>, que é controle e vem do daisyUI passado pelo
+        material, e a <strong>calha da cobertura</strong>, que é leitura e é feita do zero — o
+        afastamento como uma bandeja funda, com tinta nos pedaços que têm substituto.
       </p>
 
       <div class="card-well p-5 flex flex-col gap-4">
@@ -213,23 +348,114 @@
         <div class="flex flex-wrap items-center gap-3">
           <span class="badge badge-success badge-soft">Em exercício</span>
           <span class="badge badge-warning badge-soft">Afastado</span>
-          <span class="badge badge-warning badge-soft">Retorno pendente</span>
+          <span class="badge badge-warning badge-soft">Exonerado</span>
         </div>
         <p class="text-[13px] text-base-content/70">
-          <strong>Retorno pendente</strong> é a divergência exposta: fora de exercício, mas sem
-          impedimento ativo hoje. Nada devolve ninguém à cadeira sozinho — o fim do impedimento é uma
-          data passando, e data que passa não escreve. Em vez de esconder, a tela cobra.
+          <strong>São três porque as causas são duas.</strong> Não se está fora da cadeira por
+          nenhuma outra razão: ou há impedimento valendo hoje, ou a pessoa foi exonerada. O selo não é
+          um campo — é a leitura dessas duas coisas, e por isso não existe estado a reconciliar nem
+          "retorno pendente" a cobrar: vencido o impedimento, o selo volta a verde sozinho, no dia
+          seguinte, sem que ninguém clique em nada.
         </p>
         <p class="text-[13px] text-base-content/70">
           Os dois estados de ausência dividem o âmbar de propósito: o selo diz respeito à
           <strong>pessoa</strong>, e para a pessoa os dois são a mesma coisa — não está na cadeira.
-          O que os separa é o rótulo e a tarja abaixo dele. O <strong>vermelho não é do selo</strong>:
-          fica reservado à consequência para a unidade (§3.3), que é de outra ordem.
+          O que os separa é a palavra. O <strong>vermelho não é do selo</strong>: fica reservado à
+          consequência para a unidade (§3.3), que é de outra ordem.
         </p>
       </div>
 
       <div class="card-well p-5 flex flex-col gap-4">
-        <p class="text-overline">2.2 · Ícones da seção — glifos novos, átomo existente</p>
+        <p class="text-overline">2.2 · Toggle de vidro · <code class="text-code">.toggle-onsen</code></p>
+        <div class="flex flex-wrap items-center gap-x-10 gap-y-4">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" class="toggle-onsen" />
+            <span class="text-[13px] text-base-content/80">desligado — o disco está gravado no poço</span>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" class="toggle-onsen" checked />
+            <span class="text-[13px] text-base-content/80">ligado — o sulco encheu de água</span>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer opacity-40">
+            <input type="checkbox" class="toggle-onsen" disabled />
+            <span class="text-[13px] text-base-content/80">indisponível</span>
+          </label>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          Duas peças que já existem, e nenhuma medida nova: o trilho é o poço do
+          <code class="text-code">.card-well</code> em pílula — mesmo fundo, mesma aresta, mesma
+          sombra interna — e o botão é a <strong>gravação</strong> da SPEC 013, um disco
+          <code class="text-code">.etched</code> em repouso que vira
+          <code class="text-code">.etched-inked</code> ao ir para o lado. Ligado não é outra cor de
+          trilho: é o mesmo par repouso/entintado que a seta de ordenação e o botão gravado já usam,
+          e por isso o controle não precisa de cor semântica para dizer que está ativo — cor
+          semântica aqui é do <em>estado do servidor</em>, não do interruptor.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          Como toda gravação, depende dos <code class="text-code">defs</code> de
+          <code class="text-code">#etched-onsen</code> (<code class="text-code">_filtros_gravacao.html</code>,
+          já no <code class="text-code">base.html</code>): sem eles o disco continua lá, chapado.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">2.3 · Fio gravado e fio entintado · <code class="text-code">.etched-line</code> / <code class="text-code">.etched-line-inked</code></p>
+
+        <div class="flex flex-col gap-5">
+          <div class="flex flex-col gap-1.5">
+            <span class="text-[12px] text-base-content/60">em repouso — o sulco vazio</span>
+            <div class="etched-line h-1.5 w-full"></div>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <span class="text-[12px] text-base-content/60">entintado — o mesmo fio cheio de água, com as pontas esmaecendo</span>
+            <div class="etched-line-inked h-1.5 w-full"></div>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <span class="text-[12px] text-base-content/60">os dois no mesmo fio: onde a tinta acaba, não há aresta</span>
+            <div class="etched-line relative h-1.5 w-full">
+              <div class="etched-line-inked absolute inset-y-0" style="left:0%;width:30%"></div>
+              <div class="etched-line-inked absolute inset-y-0" style="left:55%;width:45%"></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-[13px] text-base-content/70">
+          Dois átomos, e os dois são <strong>só material</strong>: não posicionam nem dimensionam
+          nada — quem decide onde o fio corre e por quanto é a peça que o usa. É o par
+          repouso/entintado do resto do sistema, aplicado a um traço em vez de a um glifo.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          <strong>O esmaecimento das pontas não é enfeite.</strong> Quando dois trechos vizinhos têm
+          estados diferentes, uma aresta viva entre eles leria como <em>duas peças encostadas</em>, e
+          o que existe é <strong>um fio só</strong> mudando de estado ao longo do tempo. A transição
+          faz a leitura ser "aqui a tinta acaba", não "aqui começa outra coisa".
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          <strong>A transição é 20% de cada ponta, e é percentual — não em px.</strong> Assim ela é
+          proporcional ao próprio trecho: um trecho curto esmaece na mesma medida que um longo, em
+          vez de sumir sob uma ponta de tamanho fixo. E a queda <strong>não é uma rampa reta</strong>
+          — interpolação linear deixa uma "quina de luz" visível no ponto em que ela começa, que é
+          justamente a aresta que a peça existe para não ter. Os stops intermediários fazem a curva
+          sair devagar, subir rápido no meio e chegar ao tom cheio de mansinho.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          <strong>E a ponta nunca chega ao transparente:</strong> ela para num <strong>tom claro da
+          mesma tinta</strong>. Indo até zero, o que aparece na borda é o <em>vidro branco por
+          baixo</em>, e o trecho ganha uma auréola clara exatamente onde a tinta acaba — o oposto do
+          que o esmaecimento existe para fazer. O fio sai de tinta clara para tinta cheia, nunca de
+          branco.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          Duas decisões de implementação que isso obriga: o esmaecimento é do <strong>próprio
+          fundo</strong>, em gradiente, e o brilho vem de <code class="text-code">drop-shadow</code>,
+          não de <code class="text-code">box-shadow</code> — o drop-shadow segue o canal alfa, então
+          a água também esmaece nas pontas em vez de terminar num halo reto; box-shadow ignoraria o
+          gradiente e desenharia a sombra da caixa inteira.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">2.4 · Ícones da seção — glifos novos, átomo existente</p>
         <div class="flex flex-wrap items-center gap-8">
           <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
             <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
@@ -241,13 +467,18 @@
           </span>
           <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
             <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
-            retorno ao exercício
+            voltar ao exercício
           </span>
           <span class="inline-flex items-center gap-2 text-[13px] text-warning">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
-            pendência
+            substituição fora do ar
           </span>
         </div>
+        <p class="text-[13px] text-base-content/70">
+          O glifo de retorno perdeu um sentido e ganhou outro: não existe mais "reassumir o que
+          venceu" — o vencimento devolve sozinho. Ele agora marca o ato de <strong>voltar antes do
+          prazo</strong>, que é encerrar o impedimento hoje.
+        </p>
       </div>
     </section>
 
@@ -295,13 +526,13 @@
           valor e <code class="text-code">change</code> nativos. Uma lista de rádios com avatar
           mostraria o rosto de quem se escolhe, mas custaria um campo paralelo, com teclado, foco e
           estado próprios, para resolver o que este já resolve. O rosto aparece <strong>depois</strong>,
-          na <code class="text-code">.tarja-vinculo</code> do substituto designado — que é onde ele
-          é informação, e não enfeite de opção.
+          no poço do substituto, dentro do cartão do impedimento — que é onde ele é informação, e não
+          enfeite de opção.
         </p>
       </div>
 
       <div class="card-well p-5 flex flex-col gap-4">
-        <p class="text-overline">3.3 · Tarja de vínculo — <code class="text-code">.tarja-vinculo</code></p>
+        <p class="text-overline">3.3 · Tarja de aviso — <code class="text-code">.tarja-vinculo</code></p>
         <div class="tarja-vinculo flex items-center gap-3">
           <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
           <div class="min-w-0">
@@ -312,8 +543,8 @@
         <div class="tarja-vinculo tarja-vinculo-pendente flex items-center gap-3">
           <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
           <div class="min-w-0">
-            <p class="text-[15px] font-medium text-base-content/90">Impedimento encerrado em 24/08/2026</p>
-            <p class="text-[13px] text-base-content/60">O exercício não foi retomado, e a substituição segue vigente.</p>
+            <p class="text-[15px] font-medium text-base-content/90">A substituição terminou em 15/08/2026, o afastamento vai até 24/08</p>
+            <p class="text-[13px] text-base-content/60">De 16 a 24 de agosto ninguém responde pelo cargo.</p>
           </div>
         </div>
         <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
@@ -324,11 +555,184 @@
           </div>
         </div>
         <p class="text-[13px] text-base-content/70">
-          A seção já é um poço — poço dentro de poço perderia o degrau. A tarja é placa clara
-          assentada sobre ele, e as variantes trocam só a aresta, porque o que mudou é o estado e não
-          a natureza da peça. Âmbar é <strong>pendência da pessoa</strong>; vermelho é
-          <strong>unidade sem direção</strong> — a única coisa nesta tela que trava competência
-          administrativa, e por isso a única em vermelho.
+          Placa clara <strong>assentada dentro de um poço</strong> — e é só isso que ela é. O poço
+          pode ser a seção, o do substituto dentro do cartão ou o painel espesso de um modal; em
+          qualquer deles a tarja é o que <strong>avisa</strong>, não o que estrutura. As variantes
+          trocam só a aresta, porque o que mudou é o estado e não a natureza da peça: âmbar é
+          <strong>vínculo gravado que não vale hoje</strong>; vermelho é <strong>unidade sem
+          direção</strong> — a única coisa nesta tela que trava competência administrativa, e por
+          isso a única em vermelho.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.4 · Calha da cobertura — molécula · <code class="text-code">.calha-cobertura</code></p>
+
+        <p class="text-[13px] text-base-content/70">
+          Os dois fios de 2.3 postos numa bandeja funda e medidos pelo calendário. A molécula é
+          só <strong>composição e medida</strong>: material nenhum nasce aqui.
+        </p>
+
+        <p class="text-[13px] text-base-content/70">
+          Licença de 01/08 a 30/09, coberta de ponta a ponta por três pessoas em sequência:
+        </p>
+        <div class="relative pb-12">
+          <div class="calha-cobertura">
+            <div class="calha-trilho etched-line">
+              <div class="calha-trecho etched-line-inked" style="left:0%;width:14.75%"></div>
+              <div class="calha-trecho etched-line-inked" style="left:14.75%;width:36.07%"></div>
+              <div class="calha-trecho etched-line-inked" style="left:50.82%;width:49.18%"></div>
+            </div>
+          </div>
+          <div class="calha-marcas">
+            <div class="calha-marca" style="left:7.38%">
+              <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+              <span class="text-[11px] text-base-content/60">01/08 → 09/08</span>
+            </div>
+            <div class="calha-marca" style="left:32.79%">
+              <span class="text-[12px] font-medium text-base-content/90">Marina</span>
+              <span class="text-[11px] text-base-content/60">10/08 → 31/08</span>
+            </div>
+            <div class="calha-marca" style="left:75.41%">
+              <span class="text-[12px] font-medium text-base-content/90">Joana</span>
+              <span class="text-[11px] text-base-content/60">01/09 → 30/09</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-[13px] text-base-content/70">
+          A mesma licença com um buraco de três semanas no meio — o poço fica <strong>vazio</strong>,
+          e é só isso que precisa acontecer:
+        </p>
+        <div class="relative pb-12">
+          <div class="calha-cobertura">
+            <div class="calha-trilho etched-line">
+              <div class="calha-trecho etched-line-inked" style="left:0%;width:14.75%"></div>
+              <div class="calha-trecho etched-line-inked" style="left:50.82%;width:49.18%"></div>
+            </div>
+          </div>
+          <div class="calha-marcas">
+            <div class="calha-marca" style="left:7.38%">
+              <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+              <span class="text-[11px] text-base-content/60">01/08 → 09/08</span>
+            </div>
+            <div class="calha-marca calha-marca-vazia" style="left:32.79%">
+              <span class="text-[12px] font-medium">Sem substituto</span>
+              <span class="text-[11px] opacity-80">10/08 → 31/08</span>
+            </div>
+            <div class="calha-marca" style="left:75.41%">
+              <span class="text-[12px] font-medium text-base-content/90">Joana</span>
+              <span class="text-[11px] text-base-content/60">01/09 → 30/09</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-[13px] text-base-content/70">
+          E o prazo indeterminado, em que a calha <strong>não termina — se dissolve</strong>:
+        </p>
+        <div class="relative pb-12">
+          <div class="calha-cobertura calha-cobertura-aberta">
+            <div class="calha-trilho etched-line">
+              <div class="calha-trecho etched-line-inked" style="left:0%;width:72%"></div>
+            </div>
+          </div>
+          <div class="calha-marcas">
+            <div class="calha-marca" style="left:36%">
+              <span class="text-[12px] font-medium text-base-content/90">Marina</span>
+              <span class="text-[11px] text-base-content/60">01/08 → 20/08</span>
+            </div>
+            <div class="calha-marca calha-marca-vazia" style="left:86%">
+              <span class="text-[12px] font-medium">Sem substituto</span>
+              <span class="text-[11px] opacity-80">a partir de 21/08</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-[13px] text-base-content/70">
+          <strong>Uma bandeja funda com uma linha correndo dentro.</strong> A calha é o
+          <code class="text-code">.card-well</code> em pílula — mesmo fundo, mesma aresta, mesma
+          sombra interna — valendo o afastamento <strong>inteiro</strong>, e ela
+          <strong>nunca se preenche</strong>: o poço continua poço de ponta a ponta, com folga em
+          volta. O que se preenche é a <strong>linha</strong> no fundo dele. Em repouso, essa linha é
+          o <strong>tom da gravação</strong> — a mesma tinta de descanso do
+          <code class="text-code">.etched</code>, quase transparente; onde há substituto, o mesmo fio
+          <strong>vira tinta</strong>. É um material só mudando de estado ao longo do tempo, e não
+          duas peças diferentes disputando a leitura.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          <strong>Sem bolas.</strong> Um disco por trecho empilhava peça sobre a mesma informação: o
+          nome já está no rótulo abaixo, e a lista logo em seguida traz o rosto, o RF e a unidade.
+          Quem carrega a leitura aqui é <strong>o fio</strong> — quando ele é tinta e quando ele é
+          sulco —, e cada elemento a mais em volta disputava atenção com ele.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          <strong>Por que não é o <code class="text-code">steps</code> do daisyUI.</strong> O steps é
+          uma sequência de <em>etapas</em>: a métrica dele é a ordem, e o trilho entre dois nós tem
+          sempre a mesma largura. Aqui a largura é o que informa — cada trecho ocupa a fração de
+          dias que dura, e um buraco de três semanas precisa parecer três vezes maior que um de uma.
+          Forçar o componente a isso seria lutar contra ele para chegar num lugar pior. Do zero em
+          Tailwind são cinco regras, todas compostas de material que já existe.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          <strong>Sem cor semântica na calha.</strong> A diferença entre tinta e sulco é de
+          <em>estado do mesmo material</em>, contínua e comparável ao longo da linha — não é um glifo
+          gravado tentando dizer sozinho um estado do sistema, que é o que o tema veda. E quem
+          <em>nomeia</em> o buraco é o <strong>rótulo em âmbar</strong> abaixo dele: é ele que
+          garante a leitura sem depender de perceber diferença de tom. O vermelho continua fora
+          daqui: é da unidade sem direção, não do trecho.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          <strong>Quando a peça aparece:</strong> só quando há <strong>mais de um trecho</strong>.
+          Um substituto cobrindo o afastamento inteiro é uma calha cheia de ponta a ponta — não
+          informa nada que a linha da pessoa já não diga, e vira enfeite.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.5 · Cartão do impedimento — composição, sem classe nova</p>
+        <div class="glass-panel p-4 flex flex-col gap-3">
+          <div class="card-well p-4 flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+              <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
+            </div>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-2">
+            <p class="text-overline">Substituída por</p>
+            <div class="flex items-center justify-between gap-3">
+              <div class="linha-pessoa">
+                <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                  <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="linha-pessoa-nome">Rafael Andrade</p>
+                  <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · 05/08 → 24/08 · substituindo hoje</p>
+                </div>
+              </div>
+              <label for="modal-trocar" class="btn btn-glass btn-xs shrink-0">Trocar</label>
+            </div>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          <strong>Nenhuma classe nova.</strong> É <code class="text-code">.glass-panel</code> erguido
+          sobre o poço da seção, com dois <code class="text-code">.card-well</code> afundados dentro
+          — o afastamento e <strong>as substituições dele</strong>. A alternância de material é o que
+          diz o <strong>pertencimento</strong>: o substituto não está "perto" do impedimento, está
+          <em>dentro</em> dele, e com dois afastamentos em aberto não sobra dúvida sobre quem
+          substitui qual. Recuo e proximidade resolveriam mal a mesma coisa, e mal justamente no caso
+          em que isso importa.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          O segundo poço é uma <strong>lista</strong>, porque um afastamento longo é coberto por
+          várias pessoas em sequência (estado 6). Com uma só, o rótulo é
+          <em>Substituída por</em>; com mais de uma, <em>Substituições</em>, em ordem cronológica.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          É por isso também que <strong>designar mora no segundo poço</strong>, e não no rodapé da
+          seção: o botão herda do cartão a resposta para "substituto de quê?". Sem ninguém designado,
+          o poço continua lá com o botão dentro; sem cargo em comissão, o poço <strong>não
+          existe</strong>.
         </p>
       </div>
     </section>
@@ -340,12 +744,15 @@
       </h2>
       <p class="text-[15px] text-base-content/90 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
         A seção entra na página do servidor como mais uma irmã de Identificação e Lotação — mesma
-        gramática, mesmo poço. Abaixo, os seis estados que ela precisa cobrir.
+        gramática, mesmo poço. O que ela lista são os <strong>impedimentos em aberto</strong> — o que
+        vale hoje e os que ainda vêm —, cada um num <strong>cartão</strong> que traz o afastamento e
+        <strong>as substituições dele</strong> em dois poços aninhados (3.4). Abaixo, os dez estados
+        que ela precisa cobrir.
       </p>
 
       <!-- ESTADO 1 -->
       <div class="glass-panel p-6 flex flex-col gap-3">
-        <p class="text-overline text-madeira-600">Estado 1 · Em exercício</p>
+        <p class="text-overline text-madeira-600">Estado 1 · Em exercício, sem impedimento registrado</p>
         <div class="card-well p-5 flex flex-col gap-4">
           <div class="flex items-center justify-between gap-4">
             <p class="text-overline">Exercício</p>
@@ -361,41 +768,115 @@
         </div>
       </div>
 
-      <!-- ESTADO 2 -->
+      <!-- ESTADO 2 — o que a designação antecipada abre: o impedimento existe, a cobertura existe,
+           e a pessoa continua na cadeira até a data chegar. -->
       <div class="glass-panel p-6 flex flex-col gap-3">
-        <p class="text-overline text-madeira-600">Estado 2 · Afastado, sem substituto</p>
+        <p class="text-overline text-madeira-600">Estado 2 · Em exercício, com afastamento marcado e substituto já designado</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-success badge-soft">Em exercício</span>
+          </div>
+
+          <!-- CARTÃO DO IMPEDIMENTO: painel erguido sobre o poço da seção, com dois poços dentro —
+               o afastamento e a substituição dele. O aninhamento é o que diz de qual afastamento é
+               cada substituto, sem depender de recuo nem de proximidade. -->
+          <div class="glass-panel p-4 flex flex-col gap-3">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+                <p class="text-[13px] text-base-content/60">02/09/2026 → 21/09/2026 · começa em 21 dias</p>
+              </div>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-2">
+              <p class="text-overline">Substituído por</p>
+              <div class="flex items-center justify-between gap-3">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="linha-pessoa-nome">Rafael Andrade</p>
+                    <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · 02/09 → 21/09</p>
+                  </div>
+                </div>
+                <div class="flex gap-2 shrink-0">
+                  <label for="modal-trocar" class="btn btn-glass btn-xs">Trocar</label>
+                  <label for="modal-encerrar" class="btn btn-glass btn-xs">Encerrar</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <label for="modal-impedimento" class="btn btn-glass btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              Registrar impedimento
+            </label>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70 px-1">
+          O selo é <strong>verde</strong> e o cartão do afastamento está abaixo dele: nada tira
+          ninguém da cadeira antes da data, e é justamente por isso que dá para deixar a substituição
+          resolvida com semanas de antecedência. Duas férias distintas podem ter substitutos
+          diferentes — cada uma é <strong>um cartão</strong>, com o seu afastamento e a sua
+          substituição dentro. A inversão do material é o que separa os dois níveis: o cartão
+          <strong>sobe</strong> do poço da seção, e dentro dele os dois conteúdos <strong>afundam</strong>
+          de novo.
+        </p>
+      </div>
+
+      <!-- ESTADO 3 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 3 · Afastado, sem substituto</p>
         <div class="card-well p-5 flex flex-col gap-4">
           <div class="flex items-center justify-between gap-4">
             <p class="text-overline">Exercício</p>
             <span class="badge badge-warning badge-soft">Afastado</span>
           </div>
-          <div class="tarja-vinculo flex items-center gap-3">
-            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
-            <div class="min-w-0">
-              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
-              <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+          <div class="glass-panel p-4 flex flex-col gap-3">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+                <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
+              </div>
+            </div>
+            <!-- O poço da substituição existe mesmo vazio: é ele que carrega o botão, e é o que
+                 mantém a pergunta "substituto de quê?" respondida antes de o modal abrir. -->
+            <div class="card-well p-4 flex flex-wrap items-center justify-between gap-3">
+              <p class="text-[13px] text-base-content/60">Sem substituto designado</p>
+              <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+                Designar substituto
+              </label>
             </div>
           </div>
           <p class="text-[13px] text-base-content/70">
-            Ninguém responde pelo cargo enquanto o afastamento durar.
+            Ninguém responde pelo cargo enquanto o afastamento durar. No dia 25 ela volta à cadeira
+            sozinha — o botão abaixo é para voltar <strong>antes</strong>.
           </p>
-          <div class="flex flex-wrap justify-end gap-3">
+          <div class="flex justify-end">
             <label for="modal-retorno" class="btn btn-glass btn-sm gap-2">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
-              Retornar ao exercício
-            </label>
-            <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
-              Designar substituto
+              Voltar ao exercício
             </label>
           </div>
         </div>
+        <p class="text-[13px] text-base-content/70 px-1">
+          <strong>Designar mora dentro do cartão do impedimento</strong> — cada afastamento tem o seu
+          substituto, e o botão não teria como dizer de qual se estivesse no rodapé.
+          <strong>Voltar ao exercício</strong> é da pessoa, não de um afastamento específico, e por
+          isso é o único que fica no rodapé da seção.
+        </p>
       </div>
 
-      <!-- ESTADO 3 — chega com a SPEC 014: é ela que sabe quem é titular. O desenho nasce aqui
-           para a peça entrar no styleguide junto com as irmãs, e não ser reinventada depois. -->
+      <!-- ESTADO 4 — o alarme só ganha código na SPEC 016, que compõe o titular (014) com a
+           substituição (esta). O desenho nasce aqui para a peça entrar no styleguide junto com as
+           irmãs, e não ser reinventada depois. -->
       <div class="glass-panel p-6 flex flex-col gap-3">
-        <p class="text-overline text-madeira-600">Estado 3 · Titular afastado sem substituto — a unidade fica sem direção <span class="text-error">(chega com a SPEC 014)</span></p>
+        <p class="text-overline text-madeira-600">Estado 4 · Titular afastada sem substituto — a unidade fica sem direção <span class="text-error">(chega com a SPEC 016)</span></p>
         <div class="card-well p-5 flex flex-col gap-4">
           <div class="flex items-center justify-between gap-4">
             <p class="text-overline">Exercício</p>
@@ -408,119 +889,357 @@
               <p class="text-[13px] text-base-content/60">Helena Prado é a titular da unidade, está afastada e não há substituto designado.</p>
             </div>
           </div>
-          <div class="tarja-vinculo flex items-center gap-3">
-            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
-            <div class="min-w-0">
-              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
-              <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+          <div class="glass-panel p-4 flex flex-col gap-3">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+                <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
+              </div>
+            </div>
+            <div class="card-well p-4 flex flex-wrap items-center justify-between gap-3">
+              <p class="text-[13px] text-base-content/60">Sem substituto designado</p>
+              <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+                Designar substituto
+              </label>
             </div>
           </div>
-          <div class="flex flex-wrap justify-end gap-3">
+          <div class="flex justify-end">
             <label for="modal-retorno" class="btn btn-glass btn-sm gap-2">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
-              Retornar ao exercício
-            </label>
-            <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
-              Designar substituto
+              Voltar ao exercício
             </label>
           </div>
         </div>
         <p class="text-[13px] text-base-content/70 px-1">
-          O alarme sobe para o topo do poço — antes do impedimento, que aqui é só a causa. E ele fala
+          O alarme sobe para o topo do poço — antes do cartão do afastamento, que aqui é só a causa.
+          Ele é <strong>tarja</strong>, e não cartão: fala da unidade, não de um impedimento, e por
+          isso não entra na pilha dos cartões. E ele fala
           da <strong>unidade</strong>, não da pessoa: o selo dela continua "Afastada", porque o que
           está errado não é o afastamento, é a vaga aberta que ele deixou.
         </p>
       </div>
 
-      <!-- ESTADO 4 -->
-      <div class="glass-panel p-6 flex flex-col gap-3">
-        <p class="text-overline text-madeira-600">Estado 4 · Afastado, com substituto designado</p>
-        <div class="card-well p-5 flex flex-col gap-4">
-          <div class="flex items-center justify-between gap-4">
-            <p class="text-overline">Exercício</p>
-            <span class="badge badge-warning badge-soft">Afastado</span>
-          </div>
-          <div class="tarja-vinculo flex items-center gap-3">
-            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
-            <div class="min-w-0">
-              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
-              <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <p class="text-overline">Substituído por</p>
-            <div class="tarja-vinculo flex items-center justify-between gap-3">
-              <div class="linha-pessoa">
-                <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
-                  <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
-                </div>
-                <div class="min-w-0">
-                  <p class="linha-pessoa-nome">Rafael Andrade</p>
-                  <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · desde 05/08/2026</p>
-                </div>
-              </div>
-              <label for="modal-substituto" class="btn btn-glass btn-xs shrink-0">Trocar</label>
-            </div>
-          </div>
-
-          <div class="flex justify-end">
-            <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
-              Retornar ao exercício
-            </label>
-          </div>
-        </div>
-      </div>
-
       <!-- ESTADO 5 -->
       <div class="glass-panel p-6 flex flex-col gap-3">
-        <p class="text-overline text-madeira-600">Estado 5 · Retorno pendente — o impedimento venceu e ninguém reassumiu</p>
-        <div class="card-well p-5 flex flex-col gap-4">
-          <div class="flex items-center justify-between gap-4">
-            <p class="text-overline">Exercício</p>
-            <span class="badge badge-warning badge-soft">Retorno pendente</span>
-          </div>
-          <div class="tarja-vinculo tarja-vinculo-pendente flex items-center gap-3">
-            <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
-            <div class="min-w-0">
-              <p class="text-[15px] font-medium text-base-content/90">Férias encerradas em 24/08/2026</p>
-              <p class="text-[13px] text-base-content/60">O exercício não foi retomado, e Rafael Andrade segue respondendo pelo cargo.</p>
-            </div>
-          </div>
-          <div class="flex justify-end">
-            <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
-              Retornar ao exercício
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- ESTADO 6 -->
-      <div class="glass-panel p-6 flex flex-col gap-3">
-        <p class="text-overline text-madeira-600">Estado 6 · Afastado, sem cargo em comissão — não há o que substituir</p>
+        <p class="text-overline text-madeira-600">Estado 5 · Afastado, com substituto em exercício hoje</p>
         <div class="card-well p-5 flex flex-col gap-4">
           <div class="flex items-center justify-between gap-4">
             <p class="text-overline">Exercício</p>
             <span class="badge badge-warning badge-soft">Afastado</span>
           </div>
-          <div class="tarja-vinculo flex items-center gap-3">
-            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+
+          <div class="glass-panel p-4 flex flex-col gap-3">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+                <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
+              </div>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-2">
+              <p class="text-overline">Substituído por</p>
+              <div class="flex items-center justify-between gap-3">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="linha-pessoa-nome">Rafael Andrade</p>
+                    <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · 05/08 → 24/08 · substituindo hoje</p>
+                  </div>
+                </div>
+                <div class="flex gap-2 shrink-0">
+                  <label for="modal-trocar" class="btn btn-glass btn-xs">Trocar</label>
+                  <label for="modal-encerrar" class="btn btn-glass btn-xs">Encerrar</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Voltar ao exercício
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO 6 — a agenda do afastamento: várias substituições que não se sobrepõem. É este
+           estado que carrega o histórico, porque cada troca deixa a anterior encerrada aqui. -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 6 · Afastada, com substitutos em sequência — o histórico do afastamento</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Afastada</span>
+          </div>
+
+          <div class="glass-panel p-4 flex flex-col gap-3">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Licença médica</p>
+                <p class="text-[13px] text-base-content/60">01/08/2026 → 30/09/2026 · vigente</p>
+              </div>
+            </div>
+
+            <!-- A lista em ordem cronológica. As três presenças se distinguem sem cor nova: o que
+                 passou recua, o que vale hoje fica em foco, o que vem tem a data à frente. -->
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Substituições</p>
+
+              <!-- A calha resume o que a lista detalha: dois meses inteiros entintados, sem
+                   buraco. Ela só aparece porque há mais de um trecho. -->
+              <div class="relative pb-12">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line">
+                    <div class="calha-trecho etched-line-inked" style="left:0%;width:14.75%"></div>
+                    <div class="calha-trecho etched-line-inked" style="left:14.75%;width:36.07%"></div>
+                    <div class="calha-trecho etched-line-inked" style="left:50.82%;width:49.18%"></div>
+                  </div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca" style="left:7.38%">
+                    <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+                    <span class="text-[11px] text-base-content/60">01/08 → 09/08</span>
+                  </div>
+                  <div class="calha-marca" style="left:32.79%">
+                    <span class="text-[12px] font-medium text-base-content/90">Marina</span>
+                    <span class="text-[11px] text-base-content/60">10/08 → 31/08</span>
+                  </div>
+                  <div class="calha-marca" style="left:75.41%">
+                    <span class="text-[12px] font-medium text-base-content/90">Joana</span>
+                    <span class="text-[11px] text-base-content/60">01/09 → 30/09</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between gap-3 opacity-55">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="linha-pessoa-nome">Rafael Andrade</p>
+                    <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · 01/08 → 09/08 · encerrada</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t border-white/50 pt-3 flex items-center justify-between gap-3">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#8A5A44"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">MC</text></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="linha-pessoa-nome">Marina Castro</p>
+                    <p class="linha-pessoa-meta">RF 999901 · DIMAP-1 · 10/08 → 31/08 · substituindo hoje</p>
+                  </div>
+                </div>
+                <div class="flex gap-2 shrink-0">
+                  <label for="modal-trocar" class="btn btn-glass btn-xs">Trocar</label>
+                  <label for="modal-encerrar" class="btn btn-glass btn-xs">Encerrar</label>
+                </div>
+              </div>
+
+              <div class="border-t border-white/50 pt-3 flex items-center justify-between gap-3">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#2F5D50"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">JT</text></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="linha-pessoa-nome">Joana Teixeira</p>
+                    <p class="linha-pessoa-meta">RF 999907 · DIMAP-1 · a partir de 01/09 → 30/09</p>
+                  </div>
+                </div>
+                <div class="flex gap-2 shrink-0">
+                  <label for="modal-trocar" class="btn btn-glass btn-xs">Trocar</label>
+                  <label for="modal-encerrar" class="btn btn-glass btn-xs">Encerrar</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <label for="modal-retorno" class="btn btn-glass btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Voltar ao exercício
+            </label>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70 px-1">
+          Uma licença de dois meses coberta por <strong>três pessoas em sequência</strong> — que é o
+          que acontece quando o afastamento é longo, e o que a v6 desta SPEC proibia sem querer. O
+          poço das substituições é uma <strong>lista</strong>, e é ela o histórico: quem substituiu de
+          quando a quando fica registrado porque <strong>trocar encerra a anterior</strong> em vez de
+          sobrescrevê-la. Não há botão de designar aqui porque <strong>não há lacuna</strong>: as três
+          cobrem o afastamento inteiro, encostadas mas nunca sobrepostas.
+        </p>
+        <p class="text-[13px] text-base-content/70 px-1">
+          O que passou <strong>recua e perde as ações</strong>: substituição encerrada não se troca
+          nem se encerra de novo. Nenhuma cor semântica entra aqui — âmbar diria que há algo a
+          resolver, e não há: esta é a aparência de um afastamento bem coberto.
+        </p>
+      </div>
+
+      <!-- ESTADO 7 — o estado que o período próprio da substituição cria: ela acabou antes do
+           afastamento. Aqui na titular, porque é onde a consequência é mais dura. -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 7 · Afastada, com a substituição fora do ar — ela terminou antes das férias</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Afastada</span>
+          </div>
+
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
             <div class="min-w-0">
-              <p class="text-[15px] font-medium text-base-content/90">Licença médica</p>
-              <p class="text-[13px] text-base-content/60">01/08/2026 → prazo indeterminado</p>
+              <p class="text-[15px] font-medium text-base-content/90">A DIMAP-1 está sem quem responda por ela</p>
+              <p class="text-[13px] text-base-content/60">A titular segue afastada e a substituição de Rafael Andrade terminou em 15/08.</p>
+            </div>
+          </div>
+
+          <div class="glass-panel p-4 flex flex-col gap-3">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+                <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
+              </div>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Substituída por</p>
+
+              <!-- Aqui a peça ganha o seu caso: o poço vazio à direita é visível antes de qualquer
+                   data ser lida, e é justamente esse pedaço que o botão abaixo se oferece para
+                   preencher. -->
+              <div class="relative pb-12">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line">
+                    <div class="calha-trecho etched-line-inked" style="left:0%;width:55%"></div>
+                  </div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca" style="left:27.5%">
+                    <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+                    <span class="text-[11px] text-base-content/60">05/08 → 15/08</span>
+                  </div>
+                  <div class="calha-marca calha-marca-vazia" style="left:77.5%">
+                    <span class="text-[12px] font-medium">Sem substituto</span>
+                    <span class="text-[11px] opacity-80">16/08 → 24/08</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between gap-3">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="linha-pessoa-nome">Rafael Andrade</p>
+                    <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · 05/08 → 15/08</p>
+                  </div>
+                </div>
+                <div class="flex gap-2 shrink-0">
+                  <label for="modal-trocar" class="btn btn-glass btn-xs">Trocar</label>
+                  <label for="modal-encerrar" class="btn btn-glass btn-xs">Encerrar</label>
+                </div>
+              </div>
+              <!-- A tarja volta ao papel que sobrou para ela: aviso assentado dentro de um poço.
+                   Aqui ela diz o que a linha da pessoa não diz — que este vínculo não vale hoje. -->
+              <div class="tarja-vinculo tarja-vinculo-pendente flex items-center gap-3">
+                <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                <p class="text-[13px] text-base-content/80">
+                  Encerrada há 3 dias — de <strong>16 a 24 de agosto</strong> ninguém responde pelo
+                  cargo.
+                </p>
+              </div>
+
+              <!-- Há lacuna, então o botão está aqui: designar propõe justamente o pedaço
+                   descoberto (16/08 → 24/08), e não o afastamento inteiro. -->
+              <label for="modal-substituto" class="btn btn-onsen btn-sm gap-2 self-start">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+                Designar para o período descoberto
+              </label>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap justify-end gap-3">
+            <label for="modal-retorno" class="btn btn-glass btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Voltar ao exercício
+            </label>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70 px-1">
+          A substituição pode ser <strong>mais estreita que o afastamento</strong> — nunca mais larga
+          —, e é isso que abre este buraco: de 16 a 24 de agosto a titular está fora e ninguém
+          responde. Para a unidade o efeito é idêntico ao de nunca ter havido substituto, e o alarme é
+          o mesmo, <strong>no mesmo vermelho</strong>: não há um "meio sem direção". O cartão do
+          afastamento continua com o seu substituto dentro, porque o vínculo <em>existe</em> — some
+          apenas o presente dele, e é isso que a tarja âmbar diz, de dentro do próprio poço da
+          substituição. Apagar o cartão faria parecer que ninguém chegou a ser designado.
+        </p>
+      </div>
+
+      <!-- ESTADO 8 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 8 · Exonerado — a outra causa de estar fora da cadeira</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Exonerado</span>
+          </div>
+          <p class="text-[15px] text-base-content/90">
+            Diego Nunes não integra mais o quadro da DIMAP.
+          </p>
+          <p class="text-[13px] text-base-content/70">
+            Sem impedimento, sem substituto e sem caminho para designar um: a cadeira do exonerado
+            não é <em>coberta</em>, é <strong>preenchida</strong> por outra pessoa — o que é lotação e
+            titularidade, não substituição. Registrar impedimento também não se oferece: não se
+            afasta quem já não está.
+          </p>
+        </div>
+        <p class="text-[13px] text-base-content/70 px-1">
+          O selo divide o âmbar com "Afastado" porque, para a pessoa, os dois dizem a mesma coisa:
+          não está na cadeira. O que muda é a palavra — e o fato de que deste aqui não se volta por
+          botão nenhum desta tela.
+        </p>
+      </div>
+
+      <!-- ESTADO 9 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 9 · Afastado, sem cargo em comissão — não há o que substituir</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Afastado</span>
+          </div>
+          <!-- Cartão de um poço só: sem cargo em comissão não há substituição, e o poço dela
+               simplesmente não existe — a ausência é a mensagem. -->
+          <div class="glass-panel p-4">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Licença médica</p>
+                <p class="text-[13px] text-base-content/60">01/08/2026 → prazo indeterminado</p>
+              </div>
             </div>
           </div>
           <p class="text-[13px] text-base-content/70">
             Substituição existe para cobrir a competência de um cargo em comissão — sem ele, não há o
-            que cobrir.
+            que cobrir. E como o prazo é <strong>indeterminado</strong>, não há data que devolva
+            ninguém: aqui o botão abaixo não é atalho, é o único caminho de volta.
           </p>
           <div class="flex justify-end">
             <label for="modal-retorno" class="btn btn-glass btn-sm gap-2">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
-              Retornar ao exercício
+              Voltar ao exercício
             </label>
           </div>
         </div>
@@ -530,31 +1249,36 @@
         </p>
       </div>
 
-      <!-- ESTADO 7 -->
+      <!-- ESTADO 10 -->
       <div class="glass-panel p-6 flex flex-col gap-3">
-        <p class="text-overline text-madeira-600">Estado 7 · O outro lado — a página de quem está substituindo</p>
+        <p class="text-overline text-madeira-600">Estado 10 · O outro lado — a página de quem está substituindo</p>
         <div class="card-well p-5 flex flex-col gap-4">
           <div class="flex items-center justify-between gap-4">
             <p class="text-overline">Exercício</p>
             <span class="badge badge-success badge-soft">Em exercício</span>
           </div>
-          <div class="flex flex-col gap-2">
-            <p class="text-overline">Substituindo</p>
-            <div class="tarja-vinculo">
+          <!-- Mesmo cartão do outro lado, com um poço só: aqui não há afastamento próprio a
+               mostrar — o que existe é a substituição, lida pela outra ponta do mesmo registro. -->
+          <div class="glass-panel p-4">
+            <div class="card-well p-4 flex flex-col gap-2">
+              <p class="text-overline">Substituindo</p>
               <div class="linha-pessoa">
                 <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
                   <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">HP</text></svg>
                 </div>
                 <div class="min-w-0">
                   <p class="linha-pessoa-nome">Helena Prado</p>
-                  <p class="linha-pessoa-meta">CDA-4 · Diretora de Divisão · desde 05/08/2026</p>
+                  <p class="linha-pessoa-meta">CDA-4 · Diretora de Divisão · 05/08 → 15/08, de férias que vão até 24/08</p>
                 </div>
               </div>
             </div>
           </div>
           <p class="text-[13px] text-base-content/70">
             Quem substitui vê de quem responde, na própria página — o vínculo é o mesmo registro,
-            lido do outro lado.
+            lido do outro lado. O período aparece <strong>duas vezes</strong> de propósito: o da
+            substituição é o que obriga Rafael, e o do afastamento é o que explica por que ela termina
+            antes. Ele substitui <strong>uma pessoa por vez</strong>, mas nada impede que substitua
+            outra em setembro — o que não pode é sobrepor.
           </p>
         </div>
       </div>
@@ -610,33 +1334,58 @@
             <p class="text-overline">Exercício</p>
             <span class="badge badge-warning badge-soft">Afastada</span>
           </div>
-          <div class="tarja-vinculo flex items-center gap-3">
-            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
-            <div class="min-w-0">
-              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
-              <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+          <!-- Os impedimentos EM ABERTO, o vigente e os que vêm — cada um com a sua cobertura
+               recuada logo abaixo. É pelo impedimento que se designa, e a tela diz para qual. -->
+          <div class="glass-panel p-4 flex flex-col gap-3">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+                <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026 · vigente</p>
+              </div>
             </div>
-          </div>
-          <div class="flex flex-col gap-2">
-            <p class="text-overline">Substituída por</p>
-            <div class="tarja-vinculo flex items-center justify-between gap-3">
-              <div class="linha-pessoa">
-                <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
-                  <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
+            <div class="card-well p-4 flex flex-col gap-2">
+              <p class="text-overline">Substituída por</p>
+              <div class="flex items-center justify-between gap-3">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">RA</text></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="linha-pessoa-nome">Rafael Andrade</p>
+                    <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · 05/08 → 24/08 · substituindo hoje</p>
+                  </div>
                 </div>
-                <div class="min-w-0">
-                  <p class="linha-pessoa-nome">Rafael Andrade</p>
-                  <p class="linha-pessoa-meta">RF 999904 · DIMAP-1 · desde 05/08/2026</p>
+                <div class="flex gap-2 shrink-0">
+                  <label for="modal-trocar" class="btn btn-glass btn-xs">Trocar</label>
+                  <label for="modal-encerrar" class="btn btn-glass btn-xs">Encerrar</label>
                 </div>
               </div>
-              <label for="modal-substituto" class="btn btn-glass btn-xs shrink-0">Trocar</label>
             </div>
           </div>
+
+          <div class="glass-panel p-4 flex flex-col gap-3">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Licença-prêmio</p>
+                <p class="text-[13px] text-base-content/60">02/11/2026 → 01/12/2026 · começa em 82 dias</p>
+              </div>
+            </div>
+            <div class="card-well p-4 flex flex-wrap items-center justify-between gap-3">
+              <p class="text-[13px] text-base-content/60">Sem substituto designado</p>
+              <label for="modal-substituto" class="btn btn-glass btn-sm gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+                Designar substituto
+              </label>
+            </div>
+          </div>
+
           <div class="flex flex-wrap justify-end gap-3">
             <label for="modal-impedimento" class="btn btn-glass btn-sm">Registrar impedimento</label>
             <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
-              Retornar ao exercício
+              Voltar ao exercício
             </label>
           </div>
         </div>
@@ -650,6 +1399,13 @@
         A seção não é formulário do perfil: os atos dela gravam sozinhos, pelos modais. O botão de
         salvar continua sendo o do cadastro, e segue sem destino até gravar perfil virar ação.
       </p>
+      <p class="text-[13px] text-base-content/70 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
+        Dois afastamentos em aberto, dois cartões — e é aqui que o aninhamento se paga: a
+        licença-prêmio de novembro pode ter outro substituto, e a pergunta "substituto de quê?" já
+        está respondida pelo cartão antes de o modal abrir. <strong>Voltar ao exercício</strong>, ao
+        contrário, é um só e é da pessoa, não de um afastamento — por isso fica no rodapé da seção,
+        fora dos cartões, e encerra o que está valendo hoje. A licença de novembro continua marcada.
+      </p>
     </section>
 
     <footer class="glass-panel p-6">
@@ -657,8 +1413,13 @@
       <p class="mt-1 text-[15px] text-base-content/90">
         As classes <code class="text-code">.linha-pessoa*</code> e
         <code class="text-code">.tarja-vinculo*</code> migram para
-        <code class="text-code">static/src/tema-dimap.dev.css</code> na camada de moléculas, e
-        <code class="text-code">--radius-placa</code> entra em
+        <code class="text-code">static/src/tema-dimap.dev.css</code> na camada de
+        <strong>moléculas</strong>, junto de <code class="text-code">.calha-cobertura*</code>; os
+        átomos <code class="text-code">.toggle-onsen</code>,
+        <code class="text-code">.etched-line</code> e
+        <code class="text-code">.etched-line-inked</code> vão para a camada de
+        <strong>átomos</strong> — os dois fios ao lado das outras gravações, que é de onde eles
+        vêm. <code class="text-code">--radius-placa</code> entra em
         <code class="text-code">html[data-theme="dimap"]</code>, junto dos outros raios do tema. As
         peças são renderizadas no styleguide da skill <code class="text-code">componentes-frontend</code>
         — antes de qualquer template da aplicação usá-las.
@@ -709,8 +1470,9 @@
         <div class="tarja-vinculo flex items-start gap-3">
           <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
           <p class="text-[13px] text-base-content/80">
-            Registrar o impedimento <strong>tira Helena do exercício</strong> na mesma operação. O
-            retorno não é automático quando o prazo vencer: é ato, e é ele que encerra a substituição.
+            Helena sai do exercício <strong>na data de início</strong>, não agora — e volta
+            <strong>sozinha</strong> no dia seguinte ao fim, sem que ninguém precise clicar em nada.
+            Com o fim em branco, ela só volta por ato.
           </p>
         </div>
 
@@ -735,23 +1497,89 @@
           </p>
         </div>
 
-        <label class="form-field">
-          <span class="text-overline">Servidores da DIMAP-1</span>
-          <select name="substituto" class="select select-glass" data-select-onsen>
-            <option value="999904">Rafael Andrade · RF 999904 · CDA-3 · Chefe de Seção</option>
-            <option value="999901">Marina Castro · RF 999901 · Assistente de Gestão</option>
-            <option value="999907">Joana Teixeira · RF 999907 · Engenheira</option>
-            <option value="999912">Bruno Sales · RF 999912 · Analista de Planejamento</option>
-            <option value="999915">Camila Rocha · RF 999915 · Arquiteta</option>
-            <option value="999918">Diego Nunes · RF 999918 · Assistente Técnico</option>
-            <option value="999921">Elisa Prado · RF 999921 · Engenheira</option>
-          </select>
-          <span class="form-field-hint">
-            A lista traz só quem está lotado na DIMAP-1 e <strong>em exercício</strong> — quem está
-            afastado não aparece, porque designá-lo seria criar o vazio na origem. Cargo em comissão
-            não é exigido de quem cobre.
-          </span>
-        </label>
+        <!-- Substituto DE QUÊ: a placa é fixa porque o botão que abriu este modal é o de um
+             impedimento específico — a pergunta já vem respondida da seção, e não se escolhe aqui
+             o que já foi escolhido lá. -->
+        <div class="tarja-vinculo flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+            <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+          </div>
+        </div>
+
+        <!-- O alcance é estado do campo, não outro modal: um só diálogo, um só rótulo, e o que
+             troca é a lista. Aqui pelo toggle do design system; na aplicação, um hx-get que devolve
+             o campo. -->
+        <div class="form-field group">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-overline">Servidor</span>
+            <label class="flex items-center gap-2 shrink-0 cursor-pointer">
+              <span class="text-xs text-base-content/60">Outras unidades</span>
+              <input type="checkbox" class="toggle-onsen" aria-label="Liberar outras unidades" />
+            </label>
+          </div>
+
+          <!-- O has() precisa apontar o toggle: :checked pega também a <option> selecionada dos
+               <select> daqui de dentro, e um group-has-[:checked] ficaria ligado para sempre. -->
+          <div class="flex flex-col gap-1.5 group-has-[.toggle-onsen:checked]:hidden">
+            <select name="substituto" class="select select-glass" data-select-onsen>
+              <option value="999904">Rafael Andrade · RF 999904 · CDA-3 · Chefe de Seção</option>
+              <option value="999901">Marina Castro · RF 999901 · Assistente de Gestão</option>
+              <option value="999907">Joana Teixeira · RF 999907 · Engenheira</option>
+              <option value="999912">Bruno Sales · RF 999912 · Analista de Planejamento</option>
+              <option value="999915">Camila Rocha · RF 999915 · Arquiteta</option>
+              <option value="999918">Diego Nunes · RF 999918 · Assistente Técnico</option>
+              <option value="999921">Elisa Prado · RF 999921 · Engenheira</option>
+            </select>
+            <span class="form-field-hint">
+              A DIMAP-1 inteira, menos quem estiver <strong>afastado</strong> ou <strong>cobrindo
+              outra pessoa</strong> no período — designar quem está fora seria criar o vazio na
+              origem, e duas coberturas ao mesmo tempo não dizem sob qual competência o ato foi
+              praticado. A lista filtra pelo período do afastamento; quem valida o período estreitado
+              é a rota. Cargo em comissão não é exigido nem impede.
+            </span>
+          </div>
+
+          <div class="hidden flex-col gap-1.5 group-has-[.toggle-onsen:checked]:flex">
+            <select name="substituto" class="select select-glass" data-select-onsen>
+              <option value="999950">Sérgio Lemos · RF 999950 · DIMAP · CDA-4 · Diretor de Divisão</option>
+              <option value="999953">Tereza Braga · RF 999953 · DIMAP · Assistente de Gestão</option>
+              <option value="999904">Rafael Andrade · RF 999904 · DIMAP-1 · CDA-3 · Chefe de Seção</option>
+              <option value="999901">Marina Castro · RF 999901 · DIMAP-1 · Assistente de Gestão</option>
+              <option value="999930">Otávio Lins · RF 999930 · DIMAP-2 · CDA-3 · Chefe de Seção</option>
+              <option value="999940">Priscila Amorim · RF 999940 · DIMAP-3 · Arquiteta</option>
+            </select>
+            <span class="form-field-hint">
+              Liberado o alcance, a <strong>unidade superior vem primeiro</strong> — é de onde a
+              cobertura costuma vir — e a sigla entra na linha. Um titular pode cobrir outro titular
+              e <strong>responder pelas duas unidades</strong>; o que ele não pode é cobrir duas
+              pessoas ao mesmo tempo.
+            </span>
+          </div>
+        </div>
+
+        <!-- O período da cobertura: em branco é o caso comum (cobre o afastamento inteiro), e os
+             campos existem para o caso em que ela é mais estreita. Mais larga, nunca. -->
+        <div class="grid sm:grid-cols-2 gap-4">
+          <label class="form-field">
+            <span class="text-overline">Substitui a partir de</span>
+            <input type="date" class="input input-glass" placeholder="05/08/2026" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Substitui até</span>
+            <input type="date" class="input input-glass" />
+          </label>
+        </div>
+        <p class="form-field-hint -mt-4">
+          Em branco, a substituição ocupa <strong>o primeiro pedaço descoberto</strong> do
+          afastamento — aqui, ele inteiro: de 05/08 a 24/08, e indeterminado se o afastamento for.
+          Preenchidos, os campos só podem <strong>estreitar</strong>: nunca antes de 05/08, nunca
+          depois de 24/08 — substituir quem está na cadeira não é substituir —, e nunca por cima de
+          outra substituição já designada. Se terminar antes, o resto fica <strong>sem ninguém
+          respondendo</strong> até que outra pessoa seja designada para ele, e a seção passa a dizer
+          isso.
+        </p>
 
         <div class="modal-action">
           <label for="modal-substituto" class="btn btn-glass btn-sm">Cancelar</label>
@@ -762,27 +1590,180 @@
     <label class="modal-backdrop" for="modal-substituto">Fechar</label>
   </div>
 
-  <!-- ==================== MODAL · RETORNAR AO EXERCÍCIO ====================
-       Confirmação curta, porque o ato tem dois efeitos e um deles não está na tela: encerrar a
-       substituição vigente. -->
+  <!-- ==================== MODAL · TROCAR SUBSTITUTO ====================
+       A VARIANTE do diálogo acima, não outro formulário: mesmos campos, mesma rota, mesma regra.
+       O que muda é o que o servidor já sabe — que há substituto — e por isso muda o título, o verbo
+       do botão, o preenchimento dos campos e o aviso do que acontece com quem está designado hoje.
+       Na aplicação é UM partial com esses trechos condicionais; aqui são dois blocos porque o mock
+       não tem servidor para escolher entre eles. -->
+  <input type="checkbox" id="modal-trocar" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Trocar substituto</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            Quem passa a responder pelo cargo de Helena Prado neste afastamento.
+          </p>
+        </div>
+
+        <div class="tarja-vinculo flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+            <p class="text-[13px] text-base-content/60">05/08/2026 → 24/08/2026</p>
+          </div>
+        </div>
+
+        <!-- Quem sai: a troca não sobrescreve nada. A substituição do Rafael é ENCERRADA na véspera
+             e continua na lista com o período que ele de fato exerceu — é daí que vem o histórico. -->
+        <div class="tarja-vinculo flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            <strong>Rafael Andrade</strong> responde pelo cargo desde 05/08. A substituição dele é
+            <strong>encerrada na véspera</strong> do dia em que a nova assume e <strong>continua na
+            lista</strong>, com o período que ele exerceu — trocar não apaga quem passou.
+          </p>
+        </div>
+
+        <div class="form-field group">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-overline">Servidor</span>
+            <label class="flex items-center gap-2 shrink-0 cursor-pointer">
+              <span class="text-xs text-base-content/60">Outras unidades</span>
+              <input type="checkbox" class="toggle-onsen" aria-label="Liberar outras unidades" />
+            </label>
+          </div>
+
+          <div class="flex flex-col gap-1.5 group-has-[.toggle-onsen:checked]:hidden">
+            <select name="substituto" class="select select-glass" data-select-onsen>
+              <option value="999904" selected>Rafael Andrade · RF 999904 · CDA-3 · Chefe de Seção</option>
+              <option value="999901">Marina Castro · RF 999901 · Assistente de Gestão</option>
+              <option value="999907">Joana Teixeira · RF 999907 · Engenheira</option>
+              <option value="999912">Bruno Sales · RF 999912 · Analista de Planejamento</option>
+              <option value="999915">Camila Rocha · RF 999915 · Arquiteta</option>
+              <option value="999918">Diego Nunes · RF 999918 · Assistente Técnico</option>
+              <option value="999921">Elisa Prado · RF 999921 · Engenheira</option>
+            </select>
+            <span class="form-field-hint">
+              O atual vem <strong>selecionado</strong> — trocar só o período é uma troca legítima, e o
+              campo não deve obrigar a reescolher a pessoa para isso.
+            </span>
+          </div>
+
+          <div class="hidden flex-col gap-1.5 group-has-[.toggle-onsen:checked]:flex">
+            <select name="substituto" class="select select-glass" data-select-onsen>
+              <option value="999950">Sérgio Lemos · RF 999950 · DIMAP · CDA-4 · Diretor de Divisão</option>
+              <option value="999953">Tereza Braga · RF 999953 · DIMAP · Assistente de Gestão</option>
+              <option value="999904" selected>Rafael Andrade · RF 999904 · DIMAP-1 · CDA-3 · Chefe de Seção</option>
+              <option value="999901">Marina Castro · RF 999901 · DIMAP-1 · Assistente de Gestão</option>
+              <option value="999930">Otávio Lins · RF 999930 · DIMAP-2 · CDA-3 · Chefe de Seção</option>
+              <option value="999940">Priscila Amorim · RF 999940 · DIMAP-3 · Arquiteta</option>
+            </select>
+            <span class="form-field-hint">
+              O mesmo alcance ampliado do diálogo de designar, sob o mesmo rótulo — a unidade
+              superior primeiro.
+            </span>
+          </div>
+        </div>
+
+        <!-- O campo que só a troca tem: a data em que a nova assume. É dela que sai a véspera em
+             que a anterior é encerrada — e é por isso que não há como sobrar um dia com dois
+             respondendo nem uma lacuna de um dia entre eles. -->
+        <div class="grid sm:grid-cols-2 gap-4">
+          <label class="form-field">
+            <span class="text-overline">Assume em</span>
+            <input type="date" class="input input-glass" value="2026-08-18" />
+            <span class="form-field-hint">Rafael fica registrado até 17/08.</span>
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Substitui até</span>
+            <input type="date" class="input input-glass" value="2026-08-24" />
+            <span class="form-field-hint">O fim do afastamento; encurtar deixa o resto descoberto.</span>
+          </label>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-trocar" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-trocar" class="btn btn-onsen btn-sm">Trocar</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-trocar">Fechar</label>
+  </div>
+
+  <!-- ==================== MODAL · ENCERRAR SUBSTITUIÇÃO ====================
+       Revogar sem pôr outra pessoa no lugar. Confirmação curta, e o que ela precisa dizer é o que
+       acontece com o REGISTRO — que é diferente conforme a substituição já tenha começado ou não. -->
+  <input type="checkbox" id="modal-encerrar" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
+      <div class="flex flex-col gap-5">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Encerrar substituição</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            Rafael Andrade deixa de responder pelo cargo de Helena Prado.
+          </p>
+        </div>
+        <div class="tarja-vinculo flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            Como ela <strong>está em curso</strong>, termina <strong>hoje</strong> e continua na
+            lista, registrada de 05/08 a 18/08. Se ainda não tivesse começado, seria
+            <strong>apagada</strong> — cobertura que nunca vigorou não é histórico.
+          </p>
+        </div>
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            De <strong>19 a 24 de agosto</strong> ninguém responde pelo cargo, até que outra pessoa
+            seja designada para esse período. Helena é a titular — a DIMAP-1 fica sem direção.
+          </p>
+        </div>
+        <div class="modal-action">
+          <label for="modal-encerrar" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-encerrar" class="btn btn-onsen btn-sm">Encerrar</label>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-encerrar">Fechar</label>
+  </div>
+
+  <!-- ==================== MODAL · VOLTAR AO EXERCÍCIO ====================
+       Confirmação pura, e é o único modal que precisa ser: o ato tem efeitos que não estão no seu
+       enunciado — encerra o afastamento hoje e acerta a cobertura. -->
   <input type="checkbox" id="modal-retorno" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
       <div class="flex flex-col gap-5">
         <div>
-          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Retornar ao exercício</h2>
-          <p class="text-sm text-base-content/70 mt-1">Helena Prado volta a responder pelo cargo.</p>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Voltar ao exercício</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            Helena Prado volta a responder pelo cargo hoje, antes do prazo.
+          </p>
+        </div>
+        <div class="tarja-vinculo flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            As <strong>Férias</strong> passam a terminar em <strong>18/08/2026</strong>, no lugar de
+            24/08 — é encerrando o afastamento que se volta antes do prazo, e não há outro caminho.
+          </p>
         </div>
         <div class="tarja-vinculo flex items-start gap-3">
           <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
           <p class="text-[13px] text-base-content/80">
-            A substituição de <strong>Rafael Andrade</strong> é encerrada na mesma operação, com
-            término em 24/08/2026.
+            As substituições deste afastamento são acertadas junto: a de <strong>Rafael
+            Andrade</strong>, em curso, termina também em 18/08; as que ainda não começaram são
+            apagadas.
           </p>
         </div>
+        <p class="text-[13px] text-base-content/70">
+          A licença-prêmio de novembro <strong>não é tocada</strong>: o ato encerra o que está
+          valendo hoje, não a agenda inteira.
+        </p>
         <div class="modal-action">
           <label for="modal-retorno" class="btn btn-glass btn-sm">Cancelar</label>
-          <label for="modal-retorno" class="btn btn-onsen btn-sm">Retornar</label>
+          <label for="modal-retorno" class="btn btn-onsen btn-sm">Voltar ao exercício</label>
         </div>
       </div>
     </div>
