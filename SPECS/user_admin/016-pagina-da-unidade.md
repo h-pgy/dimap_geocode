@@ -1,12 +1,15 @@
 ---
 spec: user_admin/016
-versao: v1
-atualizado_em: 2026-08-11
+versao: v2
+atualizado_em: 2026-08-12
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: a montagem do `EstadoDaDirecao` passa a ser desta SPEC — a 014 a deixou de fora por ler uma
+        `Substituicao` que ainda não existia (patch 001 dela) —, e o substituto vem da
+        `substituicao_vigente` da SPEC 015, não de helper próprio
 ---
 
 # SPEC user_admin/016 — A página da unidade: quem dirige aqui hoje, e os atos de titularidade
@@ -138,6 +141,14 @@ quatro respostas porque é o único lugar onde elas cabem juntas — na vaga nã
 ancorar aviso nenhum. Já o titular afastado sem substituto aparece **também** na página dele, onde
 está o caminho da saída: designar quem cubra. Mesma leitura, mesma peça, dois lugares.
 
+**A montagem do `EstadoDaDirecao` é desta SPEC, e não repete consulta.** A 014 entregou o DTO e o
+avaliador, e deixou a montagem de fora porque lia uma `Substituicao` que ainda não existia (patch
+001 dela); a 015 entrega o dado e a leitura da vigente, mas não tem quem consuma o estado. Aqui há:
+a orquestração já carrega titular e substituto para renderizar as `.linha-pessoa`, e montar o DTO
+sobre eles é uma linha — enquanto uma função que recebesse a unidade e refizesse a busca cobraria as
+mesmas duas consultas de novo. A vigente vem de `substituicao_vigente` (SPEC 015): o filtro por
+`data_fim` não se copia por tela.
+
 **Nada de peça inventada, e duas moléculas novas.** Titular e substituto são a `.linha-pessoa`, o
 alarme é a `.tarja-vinculo-critica`, o rosto é o `_imagem_perfil.html`, os modais são o `checkbox` da
 SPEC 012, o campo de escolha é o select de vidro da SPEC 011, a gravação e o par repouso/entintado do
@@ -150,9 +161,9 @@ system antes de serem markup de template.
 - SPEC 014 (**pré-requisito**): `services/domain/titularidade/` → `Direcao`, `EstadoDaDirecao`,
   `AvaliadorDirecao` e `AvaliadorTitularidade`; e as funções de ato `definir_titular` /
   `destituir_titular`, que gravam em transação. Esta SPEC não reimplementa nenhuma delas.
-- SPEC 015 (**pré-requisito**): `Perfil.em_exercicio` e a `Substituicao` vigente — as duas marcas de
-  que a leitura da direção é feita —, mais a seção de exercício da página do servidor, que ganha o
-  alarme.
+- SPEC 015 (**pré-requisito**): `Perfil.em_exercicio` e a `Substituicao` — as duas marcas de que a
+  leitura da direção é feita —, a função `substituicao_vigente`, que é como se chega ao substituto,
+  e a seção de exercício da página do servidor, que ganha o alarme.
 - `@templates/user_admin/unidade_form.html` e `@templates/user_admin/partials/_campos_unidade.html`:
   as três seções de campos já existem e são partial próprio; o que falta é renderizá-las com
   instância.
@@ -230,7 +241,9 @@ vem antes.
 # apps/user_admin/context.py
 def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
     titular = unidade.titular
-    substituto = _substituto_vigente(titular)
+    # A vigente vem da SPEC 015: o filtro por data_fim não se copia por tela.
+    substituicao = substituicao_vigente(titular) if titular else None
+    substituto = substituicao.substituto if substituicao else None
     return (
         contexto_fundo_admin()
         | _catalogos_de_unidade()
@@ -244,6 +257,21 @@ def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
             "cargo_minimo": _rotulo_do_minimo(unidade.tipo),
             "total_lotados": unidade.perfis.count(),
         }
+    )
+```
+
+```python
+# apps/user_admin/context.py — a montagem que a SPEC 014 deixou de fora (patch 001 dela): sobre o
+# titular e o substituto que a tela já carregou, sem refazer as duas consultas.
+def _estado_da_direcao(
+    titular: Perfil | None,
+    substituto: Perfil | None,
+) -> EstadoDaDirecao:
+    return EstadoDaDirecao(
+        tem_titular=titular is not None,
+        titular_em_exercicio=bool(titular and titular.em_exercicio),
+        # O substituto fora de exercício não cobre ninguém: a unidade fica sem direção.
+        substituto_do_titular_em_exercicio=bool(substituto and substituto.em_exercicio),
     )
 ```
 
@@ -287,8 +315,9 @@ def definir_titular_da_unidade(request: HttpRequest, pk: int) -> HttpResponse:
 ## Fora de escopo
 - **Gravar os demais campos da unidade** pela página: o formulário da SPEC 012 segue sem destino — o
   que grava aqui são os três modais de titularidade.
-- A **regra e o dado** da titularidade: models, índice, adequação, leitura da direção e as funções de
-  ato são da SPEC 014, **pré-requisito desta**.
+- A **regra e o dado** da titularidade: models, índice, adequação, o **avaliador** da direção e as
+  funções de ato são da SPEC 014, **pré-requisito desta**. Daqui é só a **montagem** do
+  `EstadoDaDirecao` que o avaliador lê (patch 001 da 014, ver Contexto).
 - **Listagem de unidades**, criar unidade por esta página e criar **tipo** de unidade: a ida para cá
   é pela listagem de servidores, e cadastrar unidade continua sendo a tela da SPEC 012.
 - **Desde quando** a unidade está vaga, e histórico de quem já dirigiu: exigiria guardar a data da

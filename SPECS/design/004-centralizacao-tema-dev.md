@@ -1,5 +1,5 @@
 ---
-spec: design/005
+spec: design/004
 versao: v1
 atualizado_em: 2026-07-08
 implementado: true
@@ -7,7 +7,7 @@ changelog:
   - v1: versão inicial
 ---
 
-# SPEC design/005 — Centralização do tema dev em fonte única (`static/src`)
+# SPEC design/004 — Centralização do tema dev em fonte única (`static/src`)
 
 - [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
@@ -77,7 +77,7 @@ nenhuma camada de domínio ou persistência. Decisões:
 # config/settings.py — DIRS do template engine
 "DIRS": [
     BASE_DIR / "templates",
-    # static/src entra SÓ para o {% include %} do tema dev (SPEC design/005):
+    # static/src entra SÓ para o {% include %} do tema dev (SPEC design/004):
     # o base.html inclui tema-dimap.dev.css server-side dentro do <style type="text/tailwindcss">.
     BASE_DIR / "static" / "src",
 ],

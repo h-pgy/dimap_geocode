@@ -1,7 +1,7 @@
 ---
 spec: user_admin/014
-versao: v9
-atualizado_em: 2026-08-11
+versao: v11
+atualizado_em: 2026-08-12
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
@@ -32,6 +32,10 @@ changelog:
   - v9: a exigência de alta administração vira coluna própria do tipo de unidade, em vez de ficar
         implícita no mínimo nulo — duas colunas pareadas por constraint, na mesma forma que
         `alta_administracao` × `nivel` em `CargoComissao`; o DTO e o avaliador leem a marca
+  - v10: patch 001 — a montagem `estado_da_direcao` não entrou na implementação e passa para a
+         SPEC 016
+  - v11: patch 002 — a 015 deixa de ser pré-requisito desta; dentro de um épico a ordem numérica é
+         a ordem de implementação, e nenhuma SPEC depende da seguinte
 ---
 
 # SPEC user_admin/014 — Titular da unidade: um por unidade, com que cargo e quem dirige hoje
@@ -554,4 +558,36 @@ declarado em `markers_obrigatorios`.
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v10) — a montagem do `EstadoDaDirecao` não entrou, e passa para a SPEC 016
+
+Esta SPEC foi implementada **antes** da 015, que ela declara como pré-requisito. Consequência: o
+snippet `estado_da_direcao(unidade)` — que monta o DTO lendo `Perfil.em_exercicio` e a
+`Substituicao` — **não foi implementado**, porque nenhum dos dois existe no model. Tudo o mais
+entrou, e o critério de aceite das quatro respostas está satisfeito pelo `avaliar_direcao`, que é
+puro, testado e não depende daqueles campos.
+
+A montagem **não volta para cá quando a 015 entrar**: ela fica na **SPEC 016**, a primeira que a
+consome, onde titular e substituto já estão carregados para a tela e a composição não custa uma
+consulta a mais. A 015 entrega a leitura da substituição vigente que a 016 compõe com
+`Unidade.titular`.
+
+O que existe hoje em `apps/user_admin/titularidade.py` são os dois atos — `definir_titular` e
+`destituir_titular`.
+
+### Patch 002 (v11) — a 015 deixa de ser pré-requisito: nenhuma SPEC depende da seguinte
+
+Dentro de um épico, a ordem numérica **é** a ordem de implementação, e a SPEC N não depende da N+1
+(skill `specs`). Esta SPEC violava a regra ao declarar a 015 como pré-requisito — e a implementação
+mostrou que a dependência não existia: o único ponto que precisava de `em_exercicio` e da
+`Substituicao` era a montagem do `EstadoDaDirecao`, que saiu daqui no patch 001. O dado, a regra, os
+avaliadores e os atos ficaram de pé sem nada da 015.
+
+Ficam sem efeito, no corpo, duas declarações:
+
+- a marca "**pré-requisito desta**" nas duas menções à SPEC 015 (Peças de referência e Fora de
+  escopo) — a 015 é a SPEC **seguinte**, e o que ela entrega é consumido pela **016**, não por esta;
+- a exceção de rota aberta ao §3.5, que o Contexto atribui à SPEC 015 — ela foi declarada primeiro
+  na **SPEC 013**, nos mesmos termos, e é de lá que esta SPEC a herda.
+
+O que a 015 e a 016 devem a esta SPEC segue como está: a leitura de quem dirige hoje é a mesma peça
+nas duas.

@@ -34,6 +34,23 @@ o app é onde o código acaba morando.
 > **Regra prática:** se uma SPEC está crescendo a ponto de tocar funcionalidades não
 > relacionadas, quebre em duas. Cada SPEC = uma iteração coesa e entregável.
 
+### A ordem numérica é a ordem de implementação
+
+Dentro de um épico, a numeração **é** a ordem em que as SPECs serão implementadas: a SPEC `NNN` só
+pode depender de SPECs de número **menor**. **Nenhuma SPEC N depende da N+1.**
+
+- **Depender** é precisar do que a outra SPEC entrega (model, campo, função, componente) para poder
+  ser implementada. Citar uma SPEC posterior como **consumidora** do que esta entrega, ou como
+  destino de algo que fica para depois, **não** é dependência — é ponteiro, e é permitido.
+- Nenhum "pré-requisito" aponta para número maior. Se a redação pedir isso, o desenho da sequência
+  está errado: ou as duas trocam de número, ou o que falta muda de SPEC.
+- SPEC **já implementada** que declarou dependência inválida não tem o corpo corrigido — a revogação
+  entra como **patch** (append-only), como qualquer mudança pós-entrega.
+
+*Por quê:* a numeração é o que diz "o que vem agora". Se ela não é a ordem de implementação, cada
+iteração precisa reconstruir a sequência lendo todas as SPECs do épico — e a inversão só aparece na
+hora de implementar, com o pré-requisito faltando no banco.
+
 ---
 
 ## Versionamento
@@ -332,6 +349,8 @@ Antes de apresentar a SPEC ao usuário, verifique:
 - [ ] Se a mudança é um **patch** (SPEC já implementada), ela foi **apenas acrescentada ao final** da
       seção `Patches` + front-matter (versão/changelog) — o **corpo da SPEC não foi editado**.
 - [ ] Slug do arquivo no padrão `NNN-slug-da-spec.md` dentro da subpasta do épico correto.
+- [ ] A SPEC só depende de SPECs de número **menor** do mesmo épico — nenhum "pré-requisito" aponta
+      para a seguinte.
 - [ ] User story com persona, objetivo e valor claros.
 - [ ] Critérios de aceite são **condições observáveis** (não tarefas técnicas).
 - [ ] Contexto explica em quais camadas a SPEC mexe e por quê essa abordagem.

@@ -1,7 +1,7 @@
 ---
 spec: user_admin/015
-versao: v3
-atualizado_em: 2026-08-11
+versao: v4
+atualizado_em: 2026-08-12
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -12,9 +12,20 @@ changelog:
         titularidade; a unicidade da titularidade deixa de depender da marca de exercício
   - v3: o alarme de unidade sem direção passa a ganhar código na SPEC 016 (a interface da
         titularidade), não na 014 — só o ponteiro muda
+  - v4: a SPEC 014 foi implementada antes desta e deixou de fora a montagem do `EstadoDaDirecao`,
+        que lia a substituição inexistente; esta SPEC passa a expor a leitura da substituição
+        vigente que a 016 compõe, o andaime deixa de ter porta própria para criar impedimento, e os
+        DTOs de domínio vão para `models.py`, como nos demais submódulos; a 014 deixa de declarar
+        esta como pré-requisito (patch 002 dela), e a ordem numérica do épico volta a ser a ordem
+        de implementação
 ---
 
 # SPEC user_admin/015 — Exercício e substituição: quem está na cadeira e quem cobre
+
+> A **SPEC 014 já está implementada e não depende desta** (patch 002 dela): `e_titular`, os
+> avaliadores de domínio e os atos de titularidade existem e são puros. As duas marcas que faltavam
+> ao sistema — exercício e substituição — entram aqui, e quem as compõe com o titular para dizer
+> quem dirige a unidade é a **SPEC 016**.
 
 - [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
 - [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
@@ -38,12 +49,20 @@ direção da unidade quando quem se afasta é o titular.
       nunca é o próprio substituído.
 - [ ] Enquanto vigora, o substituto **responde pelo cargo** do afastado — e, se o afastado é o
       **titular** da unidade, é o substituto quem **dirige a unidade** (SPEC 014). A designação
-      **não** o torna titular: o vínculo é único e continua com o afastado.
+      **não marca nada no substituto**: `e_titular` continua com o afastado, e o que muda é a
+      resposta da leitura derivada, não o vínculo.
 - [ ] Um substituído tem **no máximo uma substituição vigente**, e é o **banco** que recusa a
       segunda. Um mesmo servidor **pode** substituir mais de uma pessoa.
 - [ ] A página do servidor mostra o impedimento vigente, **quem o substitui** e **quem ele está
       substituindo** — e marca como **pendência** o caso de estar fora de exercício sem impedimento
       ativo.
+- [ ] A **substituição vigente** de um perfil sai de **uma leitura só** — a que ele recebe e as que
+      ele exerce —, e é ela que a página do servidor consome e que a SPEC 016 compõe com o titular
+      para saber quem dirige a unidade hoje. Não há segunda consulta para a mesma pergunta.
+- [ ] O **andaime** (`ficticios.py`) cria impedimento **pelo mesmo caminho da tela** — não há segunda
+      porta para a mesma escrita —, e deixa exercitáveis o **titular afastado sem substituto**, o
+      **titular afastado com substituto** e o **retorno pendente**. Rodar de novo devolve todos ao
+      exercício, em vez de acumular afastamento.
 - [ ] A regra de quem pode substituir quem é decidida em `services/` e é **testável sem banco**.
 - [ ] O design foi aprovado no **mock** antes de qualquer código de aplicação.
 
@@ -100,16 +119,36 @@ servidores (SPEC 013) já abriu essa exceção nos mesmos termos. Registrar a ex
 registro da SPEC `autorizacao/004`. As duas coisas entram com o épico `autorizacao` — até lá a
 exceção fica declarada aqui, num lugar só, e não espalhada em código.
 
-**A titularidade vem depois e se apoia nisto, mas não depende dele para ser única.** A SPEC 014
-garante um titular por unidade num índice que só olha para a marca de titular; o que ela consome
-daqui é a leitura de quem dirige hoje — o titular em exercício, ou o substituto dele — e o alarme de
-unidade sem direção. Esta SPEC grava exercício e substituição, e não sabe o que é titular.
+**A titularidade já entrou, e não depende disto para ser única.** A SPEC 014 garante um titular por
+unidade num índice que só olha para a marca de titular — nada que a substituição faça mexe nela.
+Esta SPEC grava exercício e substituição, e segue não sabendo o que é titular.
+
+**A montagem do `EstadoDaDirecao` não é daqui, e o que falta para ela é a leitura da substituição
+vigente.** A 014 entregou o DTO e o avaliador, mas deixou de fora a função que monta o estado a
+partir do banco: ela lê `Substituicao`, que não existia. Depois desta SPEC o dado existe — e mesmo
+assim a montagem fica para a **016**, que é a primeira a consumi-la, e que já tem o titular e o
+substituto carregados para a tela. Escrevê-la aqui seria função sem chamador, e lá ela custa uma
+linha sem repetir consulta. O que esta SPEC deve à 016 é a **leitura da substituição vigente**, que a
+página do servidor já usa para dizer quem cobre quem: a mesma função nos dois lugares, em vez de um
+`filter(data_fim__isnull=True)` copiado por tela.
+
+**O andaime perde a porta própria de impedir.** O `ficticios.py` cria impedimento direto no model
+desde a SPEC 002; a partir daqui isso produziria impedido ainda em exercício — a pendência que a
+seção existe para acusar, fabricada em massa e sem causa. Ele passa a chamar a mesma função da tela,
+pelo motivo que a 014 já aplicou aos atos de titularidade: uma escrita, uma porta. E, como a carga é
+repetível, ela também **devolve ao exercício e encerra as substituições** antes de recomeçar — a
+limpeza de impedimentos que já existe não bastaria.
 
 ## Peças de referência a compor
 - `@apps/user_admin/models/impedimentos.py` → `Impedimento` e `TipoImpedimento`: o impedimento já
   existe e não muda de forma; o que falta é criá-lo pela tela e ligá-lo ao exercício.
 - `@apps/user_admin/models/user.py` → `Perfil.esta_impedido`: segue derivado, ao lado da marca
-  gravada — a divergência entre os dois é a pendência de retorno.
+  gravada — a divergência entre os dois é a pendência de retorno. E `Perfil.e_titular` (SPEC 014,
+  **já implementada**): a marca que a designação **não** toca.
+- `@services/domain/titularidade/` (SPEC 014) → `EstadoDaDirecao` e `avaliar_direcao`: a leitura de
+  quem dirige hoje já existe e é pura; o que falta a ela é o dado desta SPEC.
+- `@apps/user_admin/titularidade.py` (SPEC 014) → `definir_titular` / `destituir_titular`: o
+  precedente de "ato é função em transação, e há um caminho só" que os atos de exercício repetem.
 - `@templates/user_admin/perfil_form.html` e os partials `_secao_identificacao.html` /
   `_secao_lotacao.html`: a seção nova é mais uma seção do mesmo organismo, não uma tela.
 - `@templates/user_admin/partials/_modal_nova_unidade.html`: modal por checkbox nativo, irmão do
@@ -118,8 +157,9 @@ unidade sem direção. Esta SPEC grava exercício e substituição, e não sabe 
   respondendo pelo erro; nada de `try/except` na view.
 - `@apps/user_admin/views.py` + `@apps/user_admin/context.py`: view fina e função de contexto — o
   padrão do app.
-- `@apps/user_admin/ficticios.py`: o andaime da área administrativa passa a deixar impedimento e
-  substituição exercitáveis.
+- `@apps/user_admin/ficticios.py`: o andaime da área administrativa — `_impedir` e
+  `_limpar_impedimentos` já existem e passam a chamar os atos desta SPEC; `_titularizar` (SPEC 014)
+  é quem diz quais afastados são titulares.
 - Skills `componentes-frontend` (Atomic Design e o styleguide), `escrever-testes` (marker `banco`) e
   `test-django-views`.
 
@@ -204,7 +244,7 @@ class Substituicao(models.Model):
 ```
 
 ```python
-# services/domain/exercicio/designacao.py
+# services/domain/exercicio/models.py — os DTOs no models.py do submódulo, como nos demais
 class ParteDaSubstituicao(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -219,8 +259,10 @@ class Designacao(BaseModel):
 
     substituido: ParteDaSubstituicao
     substituto: ParteDaSubstituicao
+```
 
-
+```python
+# services/domain/exercicio/designacao.py
 class AvaliadorDesignacao:
     """Quem pode cobrir quem. Sem Django: a regra é a mesma no clean, na view e no teste."""
 
@@ -228,20 +270,50 @@ class AvaliadorDesignacao:
 ```
 
 ```python
-# apps/user_admin/exercicio.py
-def registrar_impedimento(perfil: Perfil, impedimento: Impedimento) -> None:
+# apps/user_admin/exercicio.py — os atos e a leitura da substituição vigente; mesma casa e mesmo
+# padrão de titularidade.py (SPEC 014).
+def registrar_impedimento(perfil: Perfil, dados: NovoImpedimento) -> Impedimento:
     """Grava o impedimento e tira do exercício na mesma transação: não existe impedimento gravado
     com a pessoa ainda na cadeira."""
+    # DTO, e não Impedimento pronto: é o que faz a tela e o andaime usarem a mesma porta.
     ...
 
 
 def retornar_ao_exercicio(perfil: Perfil) -> None:
     """Devolve à cadeira e encerra a substituição vigente na mesma transação."""
     ...
+
+
+def substituicao_vigente(perfil: Perfil) -> "Substituicao | None":
+    """Quem cobre este perfil hoje. É o que a SPEC 016 compõe com o titular da unidade."""
+    return perfil.substituicoes_recebidas.filter(data_fim__isnull=True).first()
+
+
+def substituicoes_que_exerce(perfil: Perfil) -> "QuerySet[Substituicao]":
+    """Quem este perfil está cobrindo — o outro lado, que a seção mostra na página dele."""
+    return perfil.substituicoes_exercidas.filter(data_fim__isnull=True)
+```
+
+```python
+# apps/user_admin/ficticios.py
+def _limpar_exercicio(self) -> None:
+    # A carga é repetível: sem devolver ao exercício, o afastamento da vez passada viraria pendência.
+    fic = Perfil.objects.filter(rf__in=FAIXA_RF_FICTICIA)
+    Substituicao.objects.filter(substituido__in=fic).delete()
+    Impedimento.objects.filter(perfil__in=fic).delete()
+    fic.update(em_exercicio=True)
+
+
+def _impedir(self, perfil: Perfil, tipo: TipoImpedimento) -> None:
+    # Pela mesma porta da tela: criar direto no model deixaria o impedido ainda em exercício.
+    registrar_impedimento(perfil, NovoImpedimento(tipo=tipo.pk, data_inicio=..., data_fim=None))
 ```
 
 ## Fora de escopo
-- Titularidade e o efeito do exercício sobre ela — SPEC 014, que vem depois desta.
+- A **montagem** do `EstadoDaDirecao` a partir do banco e o **alarme** de unidade sem direção —
+  SPEC 016, que compõe a leitura desta com o titular da 014 (ver Contexto).
+- Titularidade e o efeito do exercício sobre ela — SPEC 014, **já implementada**; nada aqui altera
+  `e_titular` nem a unicidade dele.
 - Cadeia de substituição: substituto do substituto, e redesignação automática quando o substituto se
   impede. O substituto fora de exercício não cobre ninguém — a leitura da direção (SPEC 014) enxerga
   isso e acende o alarme —, mas nada entra no lugar dele sozinho.
@@ -266,8 +338,15 @@ declarado em `markers_obrigatorios`.
   vigente ganha término no mesmo passo. *(marker `banco`)*
 - `test_substituido_nao_admite_duas_substituicoes_vigentes` — a segunda designação sem encerrar a
   primeira é recusada pelo banco. *(marker `banco`)*
+- `test_designar_substituto_nao_mexe_na_titularidade` — designado o substituto de um titular
+  afastado, `e_titular` continua com o afastado e o substituto segue sem a marca; a leitura da
+  direção (SPEC 014), montada sobre essas linhas, responde `SUBSTITUTO`. *(marker `banco`)*
 - `test_secao_mostra_substituto_e_pendencia_de_retorno` — a seção traz o nome de quem substitui, e
   acusa a pendência quando não há impedimento ativo e a pessoa segue fora. *(marker `banco`)*
+- `test_ficticios_deixam_os_estados_de_exercicio_exercitaveis` — depois da carga, todo impedido
+  fictício está fora de exercício, há titular afastado com substituto e titular afastado sem
+  substituto, e rodar duas vezes não deixa ninguém fora de exercício sem impedimento.
+  *(marker `banco`)*
 
 ## Patches
 
