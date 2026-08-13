@@ -34,30 +34,11 @@
         "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
   </script>
 
-  <!-- PEÇAS DESTA SPEC + as herdadas da SPEC 015, que ainda não estão no tema.
-       Guardadas em script[type=text/css] (inerte) e concatenadas ao tema pelo loader acima.
-       Ao implementar, só o bloco DESTA SPEC migra: o resto é porte da 015. -->
+  <!-- PEÇAS DESTA SPEC, que ainda não estão no tema. Guardadas em script[type=text/css] (inerte) e
+       concatenadas ao tema pelo loader acima. O que a página usa da SPEC 015 — o raio da placa, a
+       linha de pessoa e a tarja de vínculo — vem do tema, onde já foi portado. -->
   <script type="text/css" id="tokens-spec-016">
-    /* ==================== HERDADO DA SPEC 015 ====================
-       O raio da placa, a linha de pessoa e a tarja de vínculo são daquela SPEC — que vem antes
-       desta. Estão repetidos aqui só para este mock renderizar sozinho; a fonte é o tema. */
-    html[data-theme="dimap"] {
-      --radius-placa: 0.625rem;
-    }
-
     @layer components {
-      .linha-pessoa      { @apply flex items-center gap-3 min-w-0; }
-      .linha-pessoa-nome { @apply text-[15px] font-medium text-base-content/90 truncate; }
-      .linha-pessoa-meta { @apply text-[13px] text-base-content/60 truncate; }
-
-      .tarja-vinculo {
-        @apply border border-white/60 bg-white/45 px-4 py-3
-               shadow-[inset_0_1px_0_rgba(255,255,255,0.8)];
-        border-radius: var(--radius-placa);
-      }
-      .tarja-vinculo-pendente { @apply border-warning/50 bg-warning/10; }
-      .tarja-vinculo-critica  { @apply border-error/50 bg-error/10; }
-
       /* ==================== MOLÉCULA · BANDEJA DE INDICADORES ====================
          O `stats` do daisyUI vestido de placa — e a placa é a de FORA. A bandeja é uma placa de
          gelo FINA (.glass-panel composto no HTML) e cada indicador é um poço (.card-well, também no
@@ -357,9 +338,10 @@
           </div>
         </div>
         <p class="text-[13px] text-base-content/70">
-          O tipo cujo mínimo é <strong>nulo</strong> não tem célula em branco: nulo quer dizer que
-          <strong>nenhum nível da escala serve</strong> — só alta administração titulariza —, e é isso que a
-          placa diz. O valor não escala para vermelho: é exigência do organograma, não falta.
+          O tipo que declara <strong>exigir alta administração</strong> não tem célula em branco: a
+          exigência é <strong>coluna própria</strong> do tipo (SPEC 014) e quer dizer que
+          <strong>nenhum nível da escala serve</strong>, e é isso que a placa diz. O valor não escala para
+          vermelho: é exigência do organograma, não falta.
         </p>
         <p class="text-[13px] text-base-content/70">
           O <code class="text-code">stats</code> do daisyUI dá a grade, os rótulos e a figura; o design

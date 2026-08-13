@@ -1,7 +1,7 @@
 ---
 spec: user_admin/016
-versao: v2
-atualizado_em: 2026-08-12
+versao: v3
+atualizado_em: 2026-08-13
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -10,6 +10,12 @@ changelog:
   - v2: a montagem do `EstadoDaDirecao` passa a ser desta SPEC — a 014 a deixou de fora por ler uma
         `Substituicao` que ainda não existia (patch 001 dela) —, e o substituto vem da
         `substituicao_vigente` da SPEC 015, não de helper próprio
+  - v3: os três atos de titularidade deixam de ganhar rota — os modais renderizam com o submit sem
+        destino e os atos seguem sendo as funções da SPEC 014, como a 015 fixou para os atos de
+        exercício, e com isso caem o Post/Redirect/Get e os dois testes de rota; o cargo mínimo
+        passa a ler a coluna `exige_alta_administracao` do tipo (SPEC 014 v9) em vez do mínimo
+        nulo; as peças da 015 deixam de ser porte pendente, porque já estão no tema; e a prosa foi
+        reescrita, sem histórico de decisão
 ---
 
 # SPEC user_admin/016 — A página da unidade: quem dirige aqui hoje, e os atos de titularidade
@@ -26,14 +32,13 @@ precisa de uma assinatura.
 ## Critérios de aceite
 - [ ] A unidade **tem página própria**, em rota de leitura para uma unidade existente, com duas
       seções **nesta ordem** — **Resumo** e **Direção** — e, ao fim, um botão grande e centrado que
-      abre a edição. A rota nasce **aberta**, exceção declarada aqui nos mesmos termos das SPECs 013
-      e 015.
+      abre a edição. A rota nasce **aberta**, pela exceção ao §3.5 declarada na SPEC 013.
 - [ ] A página tem **cabeçalho de identidade da unidade** — sigla, nome, tipo, nível, quantos
       servidores são lotados ali e o ponto na cor da unidade —, irmão do cabeçalho do servidor.
 - [ ] O **Resumo** traz o que a unidade **é**, em texto — nome, sigla, tipo e o **cargo mínimo**
-      exigido do titular, com o tipo **sem mínimo** lendo-se "alta administração" —, e, abaixo, a
-      **bandeja de indicadores** com quantos servidores são lotados ali (com caminho para a listagem
-      já filtrada) e qual é a unidade superior.
+      exigido do titular, com o tipo que **exige alta administração** lendo-se "Alta administração"
+      —, e, abaixo, a **bandeja de indicadores** com quantos servidores são lotados ali (com caminho
+      para a listagem já filtrada) e qual é a unidade superior.
 - [ ] A **Direção** responde "quem dirige aqui hoje" num **selo de quatro respostas**, que são as
       quatro da SPEC 014: titular, substituto, sem direção, sem titular. Titular e substituto
       aparecem **com foto ou iniciais** e **levam à página de cada um**, e a célula do titular
@@ -41,21 +46,19 @@ precisa de uma assinatura.
 - [ ] As duas faltas são **acusadas em vermelho**, **antes** da bandeja de titular e substituto, e o
       texto diz a **causa e a saída**: sem titular, nomear; sem direção, designar substituto na
       página do titular.
-- [ ] **Editar é modal**, como os três atos de titularidade: os campos do cadastro (SPEC 012)
-      aparecem preenchidos e **lidos**, e cada um só vira campo quando alguém abre o **lápis ao lado
-      do valor** — o botão redondo de vidro da listagem, com o glifo gravado por dentro, que se
-      entinta enquanto o campo está aberto. O campo aberto é **poço**, que é o que neste design
-      system se lê como "escreve-se aqui". O `submit` segue sem destino.
+- [ ] **Editar é modal**: os campos do cadastro (SPEC 012) aparecem preenchidos e **lidos**, e cada
+      um só vira campo quando alguém abre o **lápis ao lado do valor** — o botão redondo de vidro da
+      listagem, com o glifo gravado por dentro, que se entinta enquanto o campo está aberto. O campo
+      aberto é **poço**, que é o que neste design system se lê como "escreve-se aqui".
 - [ ] O que a **validação pode recusar** naquele campo é dito em **aviso âmbar dentro dele**, e só
       **enquanto ele está aberto**: consequência de ato não se escreve em cinza miúdo, nem fica
       avisando sobre o que ninguém vai mudar.
-- [ ] **Definir, trocar e destituir** titular são atos por **modal** na página, com a lista restrita a
-      quem pode titularizar aquela unidade (SPEC 014). **Nenhum candidato** tem tela própria: o modal
-      diz o que falta, em vez de abrir um campo vazio.
-- [ ] Consumado o ato, a página **volta a responder** com a direção já refeita — selo, alarme,
-      bandeja e botões —, e o modal está fechado.
-- [ ] A rota do ato **recusa** o titular inadequado e a unidade que já tem titular: não é a lista da
-      tela que garante a regra.
+- [ ] **Definir, trocar e destituir** titular são três **modais** na página, com a lista restrita a
+      quem pode titularizar aquela unidade (SPEC 014). **Nenhum candidato** não tem tela própria: o
+      modal diz o que falta, em vez de abrir um campo vazio.
+- [ ] **Nenhuma rota de escrita nasce aqui**: os quatro modais renderizam com o **submit sem
+      destino**, e os atos seguem sendo as funções da SPEC 014, exercitadas pelo andaime e pelos
+      testes.
 - [ ] Há **como chegar** à página: a unidade da listagem de servidores (SPEC 013) leva a ela.
 - [ ] A **seção de exercício do servidor** (SPEC 015) acusa a **unidade sem direção** quando o
       afastado é o titular e não há substituto em exercício.
@@ -66,43 +69,37 @@ precisa de uma assinatura.
 ## Contexto e decisões de arquitetura
 
 Iteração de **interface e orquestração**: nenhum model novo, nenhuma migração. O dado, a regra e os
-atos de titularidade são da SPEC 014, **pré-requisito desta**; aqui só se lê o que ela decide e se
-chamam as funções que ela expõe.
+atos de titularidade são da SPEC 014; a leitura de quem cobre o afastado é da SPEC 015. Aqui só se
+lê o que elas decidem e se chamam as funções que elas expõem.
 
-**A página da unidade nasce aqui, e é isso que justifica a SPEC.** A SPEC 012 desenhou o formulário
-de **cadastro** e deixou "editar e listar unidades" fora de escopo: existe rota de criar, e o partial
+**A página da unidade nasce aqui, e é isso que justifica a SPEC.** A SPEC 012 entregou o formulário
+de **cadastro** e deixou editar e listar unidades fora de escopo: existe rota de criar, e o partial
 dos campos só tem `placeholder`. A unidade ganha agora a página que a SPEC 013 deu ao servidor —
 mesma moldura, mesmo organismo em seções de poço. O partial dos campos passa a aceitar uma
-instância: placeholder vira valor e a opção corrente vira `selected`, sem instância ele segue exato
+instância: placeholder vira valor e a opção corrente vira `selected`; sem instância ele segue exato
 como está, e o modal de nova unidade continua servido por ele.
 
 **A ordem é a da pergunta: Resumo, Direção, editar.** O Resumo é o que a unidade **é** e o quanto ela
-tem — quatro respostas de texto numa placa, mais o que se conta ou se navega na bandeja, onde o
-número grande e o glifo têm o que fazer. A Direção é o que se veio saber. Editar é o que quase
-ninguém veio fazer: sai da página e vira **modal**, atrás de um botão grande e centrado no fim. Com
-isso **nada na página é campo** — a Direção grava pelos modais dela, o cadastro pelo modal de edição,
-e a página em si só responde. É o que dispensa o botão de salvar solto no rodapé, que numa tela de
-leitura nunca se sabe a que se refere.
+tem — respostas de texto numa placa, mais o que se conta ou se navega na bandeja. A Direção é o que
+se veio saber. Editar é o que quase ninguém veio fazer: sai da página e vira **modal**, atrás de um
+botão grande e centrado no fim. Com isso **nada na página é campo**, e some o botão de salvar solto
+no rodapé, que numa tela de leitura nunca se sabe a que se refere. Consequência aceita: tipo e cargo
+mínimo aparecem duas vezes — no Resumo como texto, no modal como campo —, o que poupa quem só lê de
+abrir o modal para saber o porte da unidade.
 
-Consequência aceita: tipo e cargo mínimo aparecem duas vezes — no Resumo como texto, no modal como
-campo. É a diferença entre ler e mudar, e poupa quem só lê de abrir o modal para saber o porte da
-unidade.
-
-**Dentro do modal, o campo nasce lido e o lápis o abre.** Um formulário inteiro de campos claros não
-diz que é editável — foi o que o mock mostrou. Aqui o campo nasce como rótulo gravado e valor em
-texto, com o **botão redondo de vidro da listagem** (SPEC 013) ao lado **do valor**, não do rótulo,
-porque o que se edita é o valor. Abrir entinta o glifo gravado e rebaixa o valor em **poço**, que é a
+**Dentro do modal, o campo nasce lido e o lápis o abre.** O campo nasce como rótulo gravado e valor
+em texto, com o **botão redondo de vidro** (SPEC 013) ao lado **do valor**, não do rótulo, porque o
+que se edita é o valor. Abrir entinta o glifo gravado e rebaixa o valor em **poço**, que é a
 gramática de campo do design system. O estado é `checkbox` + `:has()`, como o cabeçalho afundado da
 tabela e a paleta da SPEC 005 — nenhum estado de interface em JavaScript. Efeito colateral que se
 quer: o que está aberto é o que se pretende mudar, e isso se vê sem ler os valores.
 
 **Consequência de ato é aviso, não dica — e vive dentro do campo.** O que a validação recusa — mudar
-o tipo para um que o titular não satisfaça, mudar a unidade superior contra o nível ou as vedas — sai
-do `.form-field-hint`, que é cinza miúdo de apoio, e vira a **tarja âmbar** da SPEC 015, com glifo:
-no modal, âmbar é a cor da consequência que se precisa saber antes de confirmar, e é o mesmo registro
-que o aviso da troca de titular já usa. Cada aviso mora **dentro do campo a que pertence**, e por
-isso só aparece quando aquele campo é aberto: fixo no rodapé da seção, ele avisava o tempo todo sobre
-o que ninguém ia mudar — e um aviso que está sempre lá deixa de ser lido.
+o tipo para um que o titular não satisfaça, mudar a unidade superior contra o nível ou as vedações —
+é a **tarja âmbar** da SPEC 015, com glifo, e não o `.form-field-hint`, que é cinza miúdo de apoio.
+Cada aviso mora **dentro do campo a que pertence** e só aparece quando aquele campo é aberto: fixo no
+rodapé da seção, ele avisaria o tempo todo sobre o que ninguém vai mudar — e um aviso que está sempre
+lá deixa de ser lido.
 
 **Dentro da Direção, o alarme vem antes da bandeja.** A notícia precede quem a explica: primeiro
 "esta unidade está sem quem responda por ela", depois as células que mostram o titular afastado e o
@@ -112,58 +109,59 @@ vermelha ia lhe dizer.
 **O estado vem do domínio; o template escolhe a peça.** A view monta o `EstadoDaDirecao` e recebe a
 `Direcao` (SPEC 014); o template acende selo e alarme pelo valor do enum. Remontar a causa no
 template, com `{% if %}` sobre titular, exercício e substituição, duplicaria em linguagem de
-apresentação exatamente a decisão que o domínio existe para concentrar — e as duas cópias divergiriam
-na primeira mudança.
+apresentação exatamente a decisão que o domínio existe para concentrar.
 
-**O ato grava e a página renasce (Post/Redirect/Get), em vez de trocar um pedaço por HTMX.** O modal
-é `checkbox` nativo (SPEC 012) e não fecha por resposta do servidor sem JavaScript de estado;
-redirecionar para a própria página fecha o modal de graça, refaz a leitura da direção **inteira** — o
-selo, o alarme, a bandeja e quais botões existem mudam todos juntos — e faz o `F5` não repetir o ato.
-Custo aceito: a página recarrega num ato raro, praticado por dezenas de usuários.
+**A montagem do `EstadoDaDirecao` é desta SPEC, e não repete consulta.** A orquestração já carrega
+titular e substituto para renderizar as `.linha-pessoa`, e montar o DTO sobre eles é uma linha —
+enquanto uma função que recebesse a unidade refaria as mesmas duas consultas. O substituto vem de
+`substituicao_vigente` (SPEC 015), e não de um filtro escrito aqui: "há substituição vigente hoje"
+nunca é respondido pela existência da linha, e o predicado de data não se copia por tela.
 
-**A lista de candidatos é filtro no banco mais o predicado do domínio.** Perfis lotados na unidade com
-cargo em comissão saem de uma consulta; quem serve, do `AvaliadorTitularidade` (SPEC 014) — a mesma
-regra do `clean()`, sem cópia em `QuerySet`. Lista vazia **não é erro de tela**: é o organograma
-dizendo que ninguém ali tem cargo para dirigir a unidade, e o modal diz o que falta e onde se resolve
-(o cadastro do servidor), porque um `<select>` vazio não explicaria nada.
+**A lista de candidatos é filtro no banco mais o predicado do domínio.** Perfis lotados na unidade
+com cargo em comissão saem de uma consulta; quem serve, de `cargo_titulariza` (SPEC 014) — a mesma
+regra que o `clean()` usa, sem cópia em `QuerySet`. Lista vazia **não é erro de tela**: é o
+organograma dizendo que ninguém ali tem cargo para dirigir a unidade, e o modal diz o que falta e
+onde se resolve (o cadastro do servidor), porque um `<select>` vazio não explicaria nada.
 
-**A tela filtra, a rota decide** (§3.5). A lista restrita é UX; a rota revalida a adequação e a
-unicidade antes de gravar, e é a validação do model que responde pelo erro — sem `try/except` na view.
+**A tela é leitura: nenhuma rota de escrita nasce aqui.** Os três atos de titularidade já existem
+como funções em transação (SPEC 014), exercitadas pelo `ficticios.py` e pelos testes; ligá-los a uma
+rota é o que exige autenticação, autorização por perfil e registro da execução, que ainda não
+existem. Fazer a rota agora seria abrir exceção de rota aberta para **escrita** — onde ela custa caro
+— e refazê-la protegida depois. Os modais renderizam com o **submit sem destino**, como o de nova
+unidade (SPEC 012) e os da SPEC 015. *Consequência aceita:* dá para ver e testar a página nos quatro
+estados da direção, e não dá para mudar nada por ela — quem produz os estados é o andaime, chamando
+os atos pela mesma porta que a rota vai chamar.
 
 **O cargo mínimo aparece em padrão, não em número.** O organograma fala "CDA-IV", não "nível 4": a
-orquestração lê no catálogo um cargo de chefia do nível mínimo e mostra o `padrao` dele, em vez de
-escrever a sigla da escala no template — que seria copiar dado de seed para dentro da apresentação.
-Mínimo nulo lê-se **"Alta administração"**, na mesma célula: é exigência, não ausência, e por isso não
-escala para vermelho.
+orquestração lê no catálogo um cargo de chefia do nível mínimo do tipo e mostra o `padrao` dele, em
+vez de escrever a sigla da escala no template — que seria copiar dado de seed para dentro da
+apresentação. O tipo que declara `exige_alta_administracao` lê-se **"Alta administração"** na mesma
+célula: é exigência, não ausência, e por isso não escala para vermelho.
 
 **A vaga é da unidade, e o alarme do afastamento é das duas telas.** A página da unidade acusa as
 quatro respostas porque é o único lugar onde elas cabem juntas — na vaga não há servidor a quem
 ancorar aviso nenhum. Já o titular afastado sem substituto aparece **também** na página dele, onde
 está o caminho da saída: designar quem cubra. Mesma leitura, mesma peça, dois lugares.
 
-**A montagem do `EstadoDaDirecao` é desta SPEC, e não repete consulta.** A 014 entregou o DTO e o
-avaliador, e deixou a montagem de fora porque lia uma `Substituicao` que ainda não existia (patch
-001 dela); a 015 entrega o dado e a leitura da vigente, mas não tem quem consuma o estado. Aqui há:
-a orquestração já carrega titular e substituto para renderizar as `.linha-pessoa`, e montar o DTO
-sobre eles é uma linha — enquanto uma função que recebesse a unidade e refizesse a busca cobraria as
-mesmas duas consultas de novo. A vigente vem de `substituicao_vigente` (SPEC 015): o filtro por
-`data_fim` não se copia por tela.
-
 **Nada de peça inventada, e duas moléculas novas.** Titular e substituto são a `.linha-pessoa`, o
 alarme é a `.tarja-vinculo-critica`, o rosto é o `_imagem_perfil.html`, os modais são o `checkbox` da
 SPEC 012, o campo de escolha é o select de vidro da SPEC 011, a gravação e o par repouso/entintado do
 lápis são da SPEC 013 e a placa de resumo é a placa de gelo com rótulo e valor. Nascem a **bandeja de
 indicadores** (`.stats-onsen`, com a variante `.stat-vaga`), que é o `stats` do daisyUI vestido de
-placa fina, e o **campo que se abre para edição** (`.campo-onsen`) — e as duas são patrimônio do design
-system antes de serem markup de template.
+placa fina, e o **campo que se abre para edição** (`.campo-onsen`) — e as duas são patrimônio do
+design system antes de serem markup de template.
 
 ## Peças de referência a compor
-- SPEC 014 (**pré-requisito**): `services/domain/titularidade/` → `Direcao`, `EstadoDaDirecao`,
-  `AvaliadorDirecao` e `AvaliadorTitularidade`; e as funções de ato `definir_titular` /
-  `destituir_titular`, que gravam em transação. Esta SPEC não reimplementa nenhuma delas.
-- SPEC 015 (**pré-requisito**): `Perfil.em_exercicio` e a `Substituicao` — as duas marcas de que a
-  leitura da direção é feita —, a função `substituicao_vigente`, que é como se chega ao substituto,
-  e a seção de exercício da página do servidor, que ganha o alarme.
+- `@services/domain/titularidade/` (SPEC 014) → `Direcao`, `EstadoDaDirecao` e `avaliar_direcao`: a
+  leitura de quem dirige hoje, pura e testada; esta SPEC só monta o estado que ela lê.
+- `@apps/user_admin/titularidade.py` (SPEC 014) → `definir_titular` / `destituir_titular`: os atos
+  em transação, que esta SPEC não reimplementa e não expõe por rota.
+- `@apps/user_admin/models/titularidade.py` (SPEC 014) → `cargo_titulariza`: a mesma adequação que
+  os `clean()` usam, e que a lista de candidatos consulta.
+- `@apps/user_admin/exercicio.py` (SPEC 015) → `substituicao_vigente`: como se chega ao substituto
+  de hoje. E `Perfil.em_exercicio`, que diz se titular e substituto estão na cadeira.
+- `@templates/user_admin/partials/_secao_exercicio.html` e `@apps/user_admin/context.py` →
+  `contexto_exercicio` (SPEC 015): a seção do servidor que ganha o alarme de unidade sem direção.
 - `@templates/user_admin/unidade_form.html` e `@templates/user_admin/partials/_campos_unidade.html`:
   as três seções de campos já existem e são partial próprio; o que falta é renderizá-las com
   instância.
@@ -172,12 +170,12 @@ system antes de serem markup de template.
 - `@templates/user_admin/partials/_imagem_perfil.html`: foto ou iniciais já resolvidas (SPECs 004 e
   006).
 - `@templates/user_admin/partials/_modal_nova_unidade.html`: modal por checkbox nativo, irmão do
-  formulário e nunca dentro dele (SPEC 012) — o padrão que os três modais repetem.
+  formulário e nunca dentro dele (SPEC 012) — o padrão que os quatro modais repetem.
 - `.etched` e `.etched-rotulo` (SPEC 013): a gravação e o par repouso/entintado que o lápis repete —
   e os filtros SVG de que ela depende, já no `base.html`.
-- `.linha-pessoa` e `.tarja-vinculo` / `.tarja-vinculo-critica` (SPEC 015); `.card-well`,
-  `.glass-panel-thick`, `.avatar-glass`, `.dot-unidade`, `.btn-onsen` / `.btn-glass`,
-  `.select-glass` + `data-select-onsen` (SPEC 011) e `.text-overline`.
+- `.linha-pessoa`, `.tarja-vinculo` / `.tarja-vinculo-critica` e `--radius-placa` (SPEC 015), já no
+  tema e no styleguide; `.card-well`, `.glass-panel`, `.avatar-glass`, `.dot-unidade`, `.btn-onsen` /
+  `.btn-glass`, `.select-glass` + `data-select-onsen` (SPEC 011) e `.text-overline`.
 - `@apps/user_admin/views.py` + `@apps/user_admin/context.py` + `@apps/user_admin/schemas.py`: view
   fina, função de contexto e DTO construído na view, com o `PydanticValidationMiddleware`
   respondendo pelo erro.
@@ -185,8 +183,8 @@ system antes de serem markup de template.
 - `@templates/user_admin/partials/_corpo_servidores.html` e a query string da listagem (SPEC 013): a
   coluna de unidade vira o caminho de ida, e "ver na listagem" é o caminho de volta, com o filtro já
   aplicado.
-- `@apps/user_admin/ficticios.py` (SPEC 014): os titulares marcados e a unidade deixada vaga são o
-  que torna esta página exercitável nos quatro estados.
+- `@apps/user_admin/ficticios.py` (SPECs 014 e 015): os titulares marcados, a unidade deixada vaga e
+  o titular afastado com e sem substituto são o que torna esta página exercitável nos quatro estados.
 - Skills `componentes-frontend` (Atomic Design e o styleguide), `daisyui` (o componente `stats`),
   `escrever-testes` (marker `banco`) e `test-django-views`.
 
@@ -214,8 +212,8 @@ sobre interface escura (SPEC 011), e aqui a bandeja está entre dois brancos —
 embaixo, os poços das células em cima —, onde empilhá-lo fecha a vista. A placa de resumo, vizinha de
 poço, usa a mesma espessura pelo mesmo motivo. A classe nova cuida só do que é do componente:
 derrubar o fundo opaco do daisyUI, dar o respiro entre os poços e trocar o traço divisor por luz. A
-variante `.stat-vaga` é a célula do titular quando não há titular: em vez de campo vazio — que se lê como "ainda não carregou" — a célula **é** a
-mensagem de erro.
+variante `.stat-vaga` é a célula do titular quando não há titular: em vez de campo vazio — que se lê
+como "ainda não carregou" — a célula **é** a mensagem de erro.
 
 A segunda é o **`.campo-onsen`**: rótulo gravado e valor em texto no repouso, poço e lápis entintado
 quando aberto. Ela não inventa material nenhum — o sulco é o `.etched` da SPEC 013, o poço é a sombra
@@ -229,8 +227,7 @@ resumo **não é peça nova**: é a placa de gelo com uma grade de rótulo e val
 Aprovado o mock, `.stats-onsen` (com `.stat-vaga`) e `.campo-onsen` migram para
 `static/src/tema-dimap.dev.css` na camada de moléculas e são renderizadas no styleguide da skill
 `componentes-frontend`, antes de qualquer template da aplicação usá-las. O que o mock repete da SPEC
-015 (o raio da placa, a linha de pessoa, a tarja) **não** se porta daqui: é porte daquela SPEC, que
-vem antes.
+015 — o raio da placa, a linha de pessoa, a tarja — **não** se porta daqui: já está no tema.
 
 ## Snippets sugeridos
 
@@ -241,7 +238,7 @@ vem antes.
 # apps/user_admin/context.py
 def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
     titular = unidade.titular
-    # A vigente vem da SPEC 015: o filtro por data_fim não se copia por tela.
+    # A vigente vem da SPEC 015: o filtro por data não se copia por tela.
     substituicao = substituicao_vigente(titular) if titular else None
     substituto = substituicao.substituto if substituicao else None
     return (
@@ -283,24 +280,28 @@ def candidatos_a_titular(unidade: Unidade) -> list[Perfil]:
         unidade=unidade,
         cargo_comissao__isnull=False,
     ).select_related("cargo_comissao")
-    return [perfil for perfil in lotados if _pode_titularizar(perfil, unidade.tipo)]
+    return [
+        perfil
+        for perfil in lotados
+        if cargo_titulariza(
+            perfil.cargo_comissao,
+            exige_alta_administracao=unidade.tipo.exige_alta_administracao,
+            nivel_minimo=unidade.tipo.nivel_minimo_titular,
+        )
+    ]
 ```
 
 ```python
-# apps/user_admin/schemas.py
-class EscolhaDeTitular(BaseModel):
-    titular: int
-
-
-# apps/user_admin/views.py
-def definir_titular_da_unidade(request: HttpRequest, pk: int) -> HttpResponse:
-    unidade = get_object_or_404(Unidade, pk=pk)
-    escolha = EscolhaDeTitular.model_validate(request.POST.dict())
-    perfil = get_object_or_404(Perfil, pk=escolha.titular, unidade=unidade)
-    # A lista da tela é UX; a regra é revalidada aqui, antes de gravar (§3.5).
-    definir_titular(perfil)
-    # PRG: o modal fecha porque a página renasce, e o F5 não repete o ato.
-    return redirect("user_admin:ver_unidade", pk=unidade.pk)
+# apps/user_admin/context.py
+def _rotulo_do_minimo(tipo: TipoUnidade) -> str:
+    # O organograma fala em padrão de cargo, não em número de nível.
+    if tipo.exige_alta_administracao:
+        return ROTULO_ALTA_ADMINISTRACAO
+    cargo = CargoComissao.objects.filter(
+        e_chefia=True,
+        nivel=tipo.nivel_minimo_titular,
+    ).first()
+    return cargo.padrao if cargo else ""
 ```
 
 ```html
@@ -313,25 +314,22 @@ def definir_titular_da_unidade(request: HttpRequest, pk: int) -> HttpResponse:
 ```
 
 ## Fora de escopo
-- **Gravar os demais campos da unidade** pela página: o formulário da SPEC 012 segue sem destino — o
-  que grava aqui são os três modais de titularidade.
+- **As rotas de escrita** dos três atos de titularidade e do cadastro da unidade — épico de ações,
+  onde nascem protegidas e com a execução registrada (ver Contexto). Aqui os modais renderizam com o
+  submit sem destino, como na SPEC 015.
 - A **regra e o dado** da titularidade: models, índice, adequação, o **avaliador** da direção e as
-  funções de ato são da SPEC 014, **pré-requisito desta**. Daqui é só a **montagem** do
-  `EstadoDaDirecao` que o avaliador lê (patch 001 da 014, ver Contexto).
+  funções de ato são da SPEC 014. Daqui é só a **montagem** do `EstadoDaDirecao` que o avaliador lê
+  (patch 001 da 014).
 - **Listagem de unidades**, criar unidade por esta página e criar **tipo** de unidade: a ida para cá
   é pela listagem de servidores, e cadastrar unidade continua sendo a tela da SPEC 012.
 - **Desde quando** a unidade está vaga, e histórico de quem já dirigiu: exigiria guardar a data da
   destituição (fora de escopo na SPEC 014) — a tela diz que falta, não desde quando.
 - Escolher **quem responde** pela unidade vaga: a tela diz que o superior responde, mas nomeá-lo é
   regra do épico `autorizacao`.
-- **Fechar o modal por resposta do servidor** e trocar só um pedaço da página: resolvido pelo
-  redirect (ver Contexto).
-- **Gravar campo a campo** pelo lápis: abrir um campo é gesto de tela, não requisição — o que grava é
-  o modal inteiro, e o do cadastro segue sem destino.
+- **Gravar campo a campo** pelo lápis: abrir um campo é gesto de tela, não requisição.
 - Editar, encerrar ou excluir impedimento e substituição pela página da unidade — são atos da SPEC
   015, na página do servidor.
-- Autenticação, autorização por perfil e **registro** da execução do ato — épico `autorizacao`, nos
-  mesmos termos da exceção declarada na SPEC 015.
+- Autenticação, autorização por perfil e **registro** da execução do ato — épico `autorizacao`.
 
 ## Testes (TDD)
 Todos fixam contrato HTTP/partial e tocam o banco: carregam o marker `banco`, declarado em
@@ -340,18 +338,13 @@ se repete aqui.
 
 - `test_pagina_da_unidade_traz_o_resumo_e_quem_dirige` — GET devolve 200 com nome, sigla, tipo e
   cargo mínimo no resumo, a unidade superior na bandeja, o titular em exercício no selo, e os campos
-  do cadastro preenchidos no modal de edição.
-  *(marker `banco`)*
+  do cadastro preenchidos no modal de edição. *(marker `banco`)*
 - `test_pagina_distingue_as_duas_faltas` — unidade vaga acusa "sem titular"; titular afastado sem
   substituto acusa "sem direção"; com substituto em exercício, nenhuma das duas é acusada.
   *(marker `banco`)*
 - `test_modal_lista_so_quem_pode_titularizar` — a lista traz a chefia que satisfaz o mínimo do tipo e
   não traz o assessor de nível alto, o servidor sem cargo em comissão nem quem é de outra unidade;
   sem nenhum candidato, a página traz o aviso em vez do campo. *(marker `banco`)*
-- `test_definir_e_trocar_titular_gravam_e_redirecionam` — o POST marca o novo titular, destitui o
-  anterior e responde 302 para a página da unidade. *(marker `banco`)*
-- `test_rota_recusa_titular_inadequado` — POST com perfil que não satisfaz o mínimo do tipo não grava,
-  ainda que a lista da tela nunca o oferecesse. *(marker `banco`)*
 - `test_secao_do_servidor_acusa_unidade_sem_direcao` — a página do titular afastado sem substituto
   acusa a unidade sem direção, e para de acusar quando há substituto em exercício. *(marker `banco`)*
 
