@@ -1,9 +1,9 @@
 ---
 spec: user_admin/015
-versao: v11
+versao: v12
 atualizado_em: 2026-08-12
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -64,6 +64,9 @@ changelog:
          vira "**o ato** recusa". Duas correções de desenho vêm junto: o toggle de alcance **não
          ganha rota** — as duas listas nascem renderizadas, como no mock —, e os campos de data do
          diálogo **vêm preenchidos** com a primeira lacuna, não em branco
+  - v12: patch 001 — o retorno antecipado encerra os impedimentos vigentes na VÉSPERA de hoje, e
+         não em `data_fim = hoje`: com o período inclusivo no fim, encerrar hoje deixava a pessoa
+         afastada pelo resto do dia em que clicou no botão
   - v11: sem mudança de escopo — a prosa (abertura, "Contexto e decisões de arquitetura" e "Mock de
          validação") foi reescrita como se fosse a primeira versão: cada decisão enunciada por si,
          sem contrapor-se ao que versões anteriores diziam e sem repetir justificativa entre seções.
@@ -78,7 +81,7 @@ changelog:
 > **SPEC 016**.
 
 - [x] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+- [x] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
 
 ## User story
 Como responsável pela DIMAP, quero registrar o impedimento de um servidor e designar quem o
@@ -904,4 +907,35 @@ antes uma constraint fixava agora só existe se estes testes existirem.
 
 ## Patches
 
-_Nenhum patch registrado até o momento._
+### Patch 001 (v12) — o retorno antecipado encerra na véspera, não hoje
+
+O critério dizia `data_fim = hoje` e o predicado de vigência é **inclusivo no fim**
+(`data_fim >= hoje`, snippet de `models/periodo.py`). As duas coisas juntas se contradizem: o
+afastamento encerrado "hoje" **ainda vale hoje**, e a pessoa só voltava à cadeira no dia seguinte —
+o botão prometia um retorno que a leitura não entregava, e a unidade continuava sem direção pelo
+resto do dia. Os testes da SPEC fixavam os dois lados dessa contradição ao mesmo tempo
+(`data_fim == hoje` e `em_exercicio is True`), e portanto não podiam passar juntos.
+
+`retornar_ao_exercicio` passa a gravar **a véspera de hoje** nos impedimentos vigentes e na
+substituição em curso. O predicado de vigência **não muda** — ele continua sendo um só, inclusive
+nas duas pontas, que é o que a troca na véspera (sem dia com dois respondendo e sem lacuna) e a
+cobertura em sequência exigem.
+
+*Borda:* afastamento que **começou hoje** não pode terminar ontem — o fim é limitado ao próprio
+início, e nesse caso o retorno vale a partir de amanhã. Por isso o encerramento é feito linha a
+linha, e não em `update()` em massa.
+
+```python
+# apps/user_admin/exercicio.py
+hoje = timezone.localdate()
+ontem = hoje - DIA
+for impedimento in vigentes:
+    impedimento.data_fim = max(ontem, impedimento.data_inicio)
+    impedimento.save(update_fields=["data_fim"])
+```
+
+O teste `test_voltar_ao_exercicio_encerra_impedimentos_e_acerta_substituicoes` passa a esperar a
+véspera nas três datas. No mesmo patch, o cenário dele deixa de designar duas substituições
+sobrepostas para o mesmo substituído (os dois impedimentos do teste se sobrepõem, e a
+não-sobreposição vale para os dois lados, §Substituição): a segunda designação passa a começar
+depois do fim da primeira.

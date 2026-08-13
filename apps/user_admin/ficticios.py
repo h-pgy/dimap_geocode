@@ -10,7 +10,8 @@ dado de desenvolvimento não deve criar credencial que funcione.
 Mexe em persistência e orquestração, não em domínio: por isso vive no app, não em `services/`.
 """
 
-from datetime import timedelta
+from collections.abc import Iterator
+from datetime import date, timedelta
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
@@ -18,6 +19,7 @@ from django.utils import timezone
 
 from pydantic import BaseModel
 
+from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
 from apps.user_admin.models import (
     CargoBase,
     CargoComissao,
@@ -27,6 +29,7 @@ from apps.user_admin.models import (
     Unidade,
 )
 from apps.user_admin.models.titularidade import cargo_titulariza
+from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento
 from apps.user_admin.titularidade import definir_titular
 
 # Longe de qualquer RF real: seis dígitos altos que a Prefeitura não emite.
@@ -41,6 +44,14 @@ DIAS_DESDE_O_INICIO = 1
 # Ritmos diferentes de propósito: as quatro combinações de situação × cargo em comissão aparecem.
 PASSO_IMPEDIMENTO = 2
 PASSO_COMISSAO = 3
+# O roteiro dos estados de exercício (SPEC user_admin/015), em dias em torno de hoje. Datas
+# relativas, e não fixas: o andaime é rodado em qualquer dia e os estados têm que valer no dia em
+# que se olha para a tela.
+DIAS_AFASTAMENTO_LONGO = 20
+DIAS_COBERTURA_ENCERRADA = 11
+DIAS_COBERTURA_VIGENTE = 5
+DIAS_ATE_O_AFASTAMENTO_FUTURO = 30
+DIAS_DO_AFASTAMENTO_FUTURO = 40
 # Uma unidade elegível fica de fora: a vaga é o estado que a tela da SPEC 016 existe para acusar.
 UNIDADES_SEM_TITULAR = 1
 ERRO_SEM_CATALOGO = (
@@ -84,7 +95,7 @@ class RemocaoFicticios(BaseModel):
 
 
 class CriadorServidoresFicticios:
-    """Grava os perfis da faixa reservada e os impedimentos vigentes de metade deles."""
+    """Grava os perfis da faixa reservada e encena neles os estados de exercício da SPEC 015."""
 
     def __call__(self) -> ContagemFicticios:
         return self.pipeline()
@@ -97,10 +108,9 @@ class CriadorServidoresFicticios:
         self._checar_catalogos(
             unidades, cargos_base, cargos_comissao, tipos_impedimento
         )
-        # A carga anterior sai antes: sem isso, rodar de novo acumularia impedimentos em quem já os
+        # A carga anterior sai antes: sem isso, rodar de novo acumularia afastamento em quem já o
         # tinha e o "sem impedimento" da vez passada continuaria impedido.
-        self._limpar_impedimentos()
-        impedidos = 0
+        self._limpar_exercicio()
         com_comissao = 0
         perfis = []
         for indice, rf in enumerate(FAIXA_RF_FICTICIA):
@@ -118,17 +128,15 @@ class CriadorServidoresFicticios:
             )
             perfis.append(perfil)
             com_comissao += int(tem_comissao)
-            if indice % PASSO_IMPEDIMENTO == 0:
-                self._impedir(
-                    perfil, tipos_impedimento[indice % len(tipos_impedimento)]
-                )
-                impedidos += 1
+        # Titularizar antes de afastar: é a titularidade que diz quais afastamentos deixam uma
+        # unidade sem direção, e é ela que decide o cargo em comissão de quem dirige.
         titulares = self._titularizar(perfis, cargos_comissao)
+        impedidos = self._encenar_exercicio(perfis, titulares, tipos_impedimento)
         return ContagemFicticios(
             criados=len(FAIXA_RF_FICTICIA),
             impedidos=impedidos,
             com_comissao=com_comissao,
-            titulares=titulares,
+            titulares=len(titulares),
         )
 
     def _checar_catalogos(
@@ -142,8 +150,12 @@ class CriadorServidoresFicticios:
         if not (unidades and cargos_base and cargos_comissao and tipos_impedimento):
             raise ObjectDoesNotExist(ERRO_SEM_CATALOGO)
 
-    def _limpar_impedimentos(self) -> None:
-        Impedimento.objects.filter(perfil__rf__in=FAIXA_RF_FICTICIA).delete()
+    def _limpar_exercicio(self) -> None:
+        # As substituições caem junto com os impedimentos, pela relação; a reativação desfaz a
+        # exoneração que esta mesma carga encenou.
+        ficticios = Perfil.objects.filter(rf__in=FAIXA_RF_FICTICIA)
+        Impedimento.objects.filter(perfil__in=ficticios).delete()
+        ficticios.update(is_active=True)
 
     def _gravar_perfil(
         self,
@@ -168,23 +180,201 @@ class CriadorServidoresFicticios:
         perfil.save(update_fields=["password"])
         return perfil
 
-    def _impedir(self, perfil: Perfil, tipo: TipoImpedimento) -> None:
-        # Sem data de fim: impedimento vigente hoje e amanhã, sem manutenção de datas no andaime.
-        Impedimento.objects.create(
-            perfil=perfil,
-            tipo=tipo,
-            data_inicio=timezone.localdate() - timedelta(days=DIAS_DESDE_O_INICIO),
-            data_fim=None,
+    def _encenar_exercicio(
+        self,
+        perfis: list[Perfil],
+        titulares: list[Perfil],
+        tipos: list[TipoImpedimento],
+    ) -> int:
+        """Os seis estados que a seção de exercício precisa deixar exercitáveis. Cada papel é
+        escalado uma vez só, e o que sobra vira substituto — quem cobre não precisa de cargo."""
+        escalados: list[Perfil] = []
+        comissionados = [p for p in perfis if p.cargo_comissao_id is not None]
+        papeis = {
+            papel: self._escalar(candidatos, escalados)
+            for papel, candidatos in (
+                ("titular_coberto", titulares),
+                ("titular_descoberto", titulares),
+                ("sequencia", comissionados),
+                ("fora_do_ar", comissionados),
+                ("futuro", comissionados),
+                ("exonerado", perfis),
+            )
+        }
+        substitutos = iter([p for p in perfis if p not in escalados])
+        self._exonerar(papeis["exonerado"])
+        return sum(
+            (
+                self._afastar_coberto(papeis["titular_coberto"], substitutos, tipos),
+                self._afastar_descoberto(papeis["titular_descoberto"], tipos),
+                self._afastar_em_sequencia(papeis["sequencia"], substitutos, tipos),
+                self._afastar_fora_do_ar(papeis["fora_do_ar"], substitutos, tipos),
+                self._marcar_afastamento_futuro(papeis["futuro"], substitutos, tipos),
+            )
+        )
+
+    def _escalar(
+        self,
+        candidatos: list[Perfil],
+        escalados: list[Perfil],
+    ) -> Perfil | None:
+        # Sem candidato livre o papel simplesmente não é encenado: o andaime roda com o catálogo
+        # que houver, e uma unidade só não produz titular nenhum.
+        livre = next((c for c in candidatos if c not in escalados), None)
+        if livre is not None:
+            escalados.append(livre)
+        return livre
+
+    def _afastar_coberto(
+        self,
+        perfil: Perfil | None,
+        substitutos: Iterator[Perfil],
+        tipos: list[TipoImpedimento],
+    ) -> int:
+        substituto = next(substitutos, None)
+        if perfil is None or substituto is None:
+            return 0
+        inicio = timezone.localdate() - timedelta(days=DIAS_DESDE_O_INICIO)
+        impedimento = self._impedir(perfil, tipos[0], inicio, None)
+        self._designar(impedimento, substituto)
+        return 1
+
+    def _afastar_descoberto(
+        self,
+        perfil: Perfil | None,
+        tipos: list[TipoImpedimento],
+    ) -> int:
+        # Titular afastado e ninguém cobrindo: é o alarme de unidade sem direção (SPEC 016).
+        if perfil is None:
+            return 0
+        inicio = timezone.localdate() - timedelta(days=DIAS_DESDE_O_INICIO)
+        self._impedir(perfil, tipos[0], inicio, None)
+        return 1
+
+    def _afastar_em_sequencia(
+        self,
+        perfil: Perfil | None,
+        substitutos: Iterator[Perfil],
+        tipos: list[TipoImpedimento],
+    ) -> int:
+        """Uma encerrada, uma vigente e uma por vir — é deste cartão que sai o histórico."""
+        elenco = [next(substitutos, None) for _ in range(3)]
+        if perfil is None or any(s is None for s in elenco):
+            return 0
+        hoje = timezone.localdate()
+        impedimento = self._impedir(
+            perfil,
+            tipos[-1],
+            hoje - timedelta(days=DIAS_AFASTAMENTO_LONGO),
+            hoje + timedelta(days=DIAS_AFASTAMENTO_LONGO),
+        )
+        self._designar(
+            impedimento,
+            elenco[0],
+            hoje - timedelta(days=DIAS_AFASTAMENTO_LONGO),
+            hoje - timedelta(days=DIAS_COBERTURA_ENCERRADA),
+        )
+        self._designar(
+            impedimento,
+            elenco[1],
+            hoje - timedelta(days=DIAS_COBERTURA_ENCERRADA - 1),
+            hoje + timedelta(days=DIAS_COBERTURA_VIGENTE),
+        )
+        self._designar(
+            impedimento,
+            elenco[2],
+            hoje + timedelta(days=DIAS_COBERTURA_VIGENTE + 1),
+            hoje + timedelta(days=DIAS_AFASTAMENTO_LONGO),
+        )
+        return 1
+
+    def _afastar_fora_do_ar(
+        self,
+        perfil: Perfil | None,
+        substitutos: Iterator[Perfil],
+        tipos: list[TipoImpedimento],
+    ) -> int:
+        """A cobertura existe, gravada, e terminou antes do afastamento: hoje ninguém responde."""
+        substituto = next(substitutos, None)
+        if perfil is None or substituto is None:
+            return 0
+        hoje = timezone.localdate()
+        impedimento = self._impedir(
+            perfil,
+            tipos[0],
+            hoje - timedelta(days=DIAS_AFASTAMENTO_LONGO),
+            hoje + timedelta(days=DIAS_AFASTAMENTO_LONGO),
+        )
+        self._designar(
+            impedimento,
+            substituto,
+            hoje - timedelta(days=DIAS_AFASTAMENTO_LONGO),
+            hoje - timedelta(days=DIAS_COBERTURA_ENCERRADA),
+        )
+        return 1
+
+    def _marcar_afastamento_futuro(
+        self,
+        perfil: Perfil | None,
+        substitutos: Iterator[Perfil],
+        tipos: list[TipoImpedimento],
+    ) -> int:
+        """Designar antes de o afastamento começar: a pessoa segue na cadeira até a data chegar."""
+        substituto = next(substitutos, None)
+        if perfil is None or substituto is None:
+            return 0
+        hoje = timezone.localdate()
+        impedimento = self._impedir(
+            perfil,
+            tipos[-1],
+            hoje + timedelta(days=DIAS_ATE_O_AFASTAMENTO_FUTURO),
+            hoje + timedelta(days=DIAS_DO_AFASTAMENTO_FUTURO),
+        )
+        self._designar(impedimento, substituto)
+        return 1
+
+    def _exonerar(self, perfil: Perfil | None) -> None:
+        if perfil is None:
+            return
+        perfil.is_active = False
+        perfil.save(update_fields=["is_active"])
+
+    def _impedir(
+        self,
+        perfil: Perfil,
+        tipo: TipoImpedimento,
+        inicio: date,
+        fim: date | None,
+    ) -> Impedimento:
+        # Pela mesma porta da tela: quando a criação passar a validar e registrar o ato (épico
+        # autorizacao), o andaime não pode ser o caminho que escapa.
+        return registrar_impedimento(
+            perfil,
+            NovoImpedimento(tipo=tipo.pk, data_inicio=inicio, data_fim=fim),
+        )
+
+    def _designar(
+        self,
+        impedimento: Impedimento,
+        substituto: Perfil | None,
+        inicio: date | None = None,
+        fim: date | None = None,
+    ) -> None:
+        if substituto is None:
+            return
+        designar_substituto(
+            impedimento,
+            NovaSubstituicao(substituto=substituto.pk, data_inicio=inicio, data_fim=fim),
         )
 
     def _titularizar(
         self,
         perfis: list[Perfil],
         cargos_comissao: list[CargoComissao],
-    ) -> int:
+    ) -> list[Perfil]:
         # Uma unidade elegível fica de fora: a vaga é o estado que a tela da SPEC 016 acusa.
         titulaveis = self._um_por_unidade(perfis)[:-UNIDADES_SEM_TITULAR]
-        titularizados = 0
+        titularizados = []
         for perfil in titulaveis:
             cargo = self._cargo_que_titulariza(perfil.unidade, cargos_comissao)
             if cargo is None:
@@ -193,7 +383,7 @@ class CriadorServidoresFicticios:
             perfil.cargo_comissao = cargo
             perfil.save(update_fields=["cargo_comissao"])
             definir_titular(perfil)
-            titularizados += 1
+            titularizados.append(perfil)
         return titularizados
 
     def _um_por_unidade(self, perfis: list[Perfil]) -> list[Perfil]:
@@ -232,5 +422,8 @@ def remover_servidores_ficticios() -> RemocaoFicticios:
     ficticios = Perfil.objects.filter(rf__in=FAIXA_RF_FICTICIA)
     with transaction.atomic():
         removidos = ficticios.count()
+        # Os impedimentos saem primeiro: a substituição protege o substituto (PROTECT), e apagar a
+        # pessoa antes do vínculo esbarraria nela mesma cobrindo outro fictício.
+        Impedimento.objects.filter(perfil__in=ficticios).delete()
         ficticios.delete()
     return RemocaoFicticios(removidos=removidos)

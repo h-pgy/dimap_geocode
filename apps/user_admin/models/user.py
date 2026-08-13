@@ -13,6 +13,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .cargos import CargoBase, CargoComissao
+from .periodo import q_vigente_em
 from .titularidade import cargo_titulariza
 from .unidade import Unidade
 
@@ -120,11 +121,19 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
 
     @property
     def esta_impedido(self) -> bool:
-        hoje = timezone.localdate()
-        return self.impedimentos.filter(
-            Q(data_fim__isnull=True) | Q(data_fim__gte=hoje),
-            data_inicio__lte=hoje,
-        ).exists()
+        return self.impedimentos.filter(q_vigente_em(timezone.localdate())).exists()
+
+    # is_active já existe desde a SPEC 001 e não tinha outro uso: exonerado é quem não é mais
+    # servidor da DIMAP, e isso é exatamente o que conta inativa significa — inclusive não entrar.
+    @property
+    def exonerado(self) -> bool:
+        return not self.is_active
+
+    # Derivado, e de exatamente duas causas: coluna própria seria um terceiro valor capaz de
+    # discordar das duas, e é essa discordância que a SPEC 015 existe para tornar impossível.
+    @property
+    def em_exercicio(self) -> bool:
+        return not self.exonerado and not self.esta_impedido
 
     # Deriva da Unidade (SPEC user_admin/005); não duplica a cor no perfil.
     @property

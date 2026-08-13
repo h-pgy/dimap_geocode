@@ -5,6 +5,7 @@
 
 {% block content %}
   {% include "mapping/_mapa_admin.html" %}
+  {% if perfil %}{% include "user_admin/partials/_glifos_exercicio.html" %}{% endif %}
 
   {# .admin-shell: o fundo fica parado e o conteúdo rola aqui dentro — a viewport travada do #}
   {# base.html existe porque a página do produto é o mapa, e não se aplica a formulário.     #}
@@ -24,6 +25,11 @@
 
         {% include "user_admin/partials/_secao_identificacao.html" %}
         {% include "user_admin/partials/_secao_lotacao.html" %}
+        {% if perfil %}
+          {# A seção não é formulário do perfil: os atos dela gravam sozinhos, pelos modais #}
+          {# (SPEC user_admin/015). O botão de salvar continua sendo o do cadastro.         #}
+          {% include "user_admin/partials/_secao_exercicio.html" %}
+        {% endif %}
         {% include "user_admin/partials/_campo_upload_foto.html" %}
 
         <div class="flex justify-end gap-3 pt-1">
@@ -39,6 +45,7 @@
   {# Fora da .admin-shell, que é contexto de empilhamento (z-10): dentro dela os chips fixos do   #}
   {# base.html (z-20) passariam por cima da placa.                                                #}
   {% include "user_admin/partials/_modal_nova_unidade.html" %}
+  {% if perfil %}{% include "user_admin/partials/_modais_exercicio.html" %}{% endif %}
 {% endblock %}
 
 {% block scripts %}

@@ -1,0 +1,107 @@
+{# Modal de designar substituto e a VARIANTE de trocar (SPEC user_admin/015): um partial só, com os #}
+{# trechos que dependem de já haver substituto. Muda o título, o verbo do botão, o preenchimento e  #}
+{# o campo que só a troca tem — a data em que a nova assume, de onde sai a véspera que encerra a    #}
+{# anterior. Parâmetros: modal_id, cartao, candidatos, data_inicio, data_fim e (na troca) troca.    #}
+<input type="checkbox" id="{{ modal_id }}" class="modal-toggle" />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+    <form class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-xl font-bold tracking-tight text-madeira-700">{% if troca %}Trocar substituto{% else %}Designar substituto{% endif %}</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          {% if troca %}Quem passa a responder{% else %}Quem responde{% endif %} pelo cargo de {{ perfil.nome }} {{ perfil.sobrenome }} neste afastamento.
+        </p>
+      </div>
+
+      {# Substituto DE QUÊ: placa fixa, não campo — o botão que abriu o diálogo mora dentro do #}
+      {# cartão de um impedimento, então a pergunta já vem respondida da seção.                #}
+      <div class="tarja-vinculo flex items-center gap-3">
+        <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+        <div class="min-w-0">
+          <p class="text-[15px] font-medium text-base-content/90">{{ cartao.impedimento.tipo.nome }}</p>
+          <p class="text-[13px] text-base-content/60">{{ cartao.periodo }}</p>
+        </div>
+      </div>
+
+      {% if troca %}
+        <div class="tarja-vinculo flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            <strong>{{ troca.perfil.nome }} {{ troca.perfil.sobrenome }}</strong> responde pelo cargo em
+            {{ troca.periodo }}. A substituição dele é <strong>encerrada na véspera</strong> do dia em que
+            a nova assume e <strong>continua na lista</strong>, com o período que exerceu — trocar não
+            apaga quem passou.
+          </p>
+        </div>
+      {% endif %}
+
+      {# O alcance é estado do campo, não outro modal: as duas listas nascem renderizadas e o     #}
+      {# toggle troca qual aparece. O has() aponta o toggle porque :checked pegaria também a      #}
+      {# <option> selecionada dos selects daqui de dentro, e o grupo ficaria ligado para sempre.  #}
+      <div class="form-field group">
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-overline">Servidor</span>
+          <label class="flex items-center gap-2 shrink-0 cursor-pointer">
+            <span class="text-xs text-base-content/60">Outras unidades</span>
+            <input type="checkbox" class="toggle-onsen" aria-label="Liberar outras unidades" />
+          </label>
+        </div>
+
+        <div class="flex flex-col gap-1.5 group-has-[.toggle-onsen:checked]:hidden">
+          <select name="substituto" class="select select-glass" data-select-onsen>
+            {% for candidato in candidatos.unidade %}
+              <option value="{{ candidato.pk }}"{% if troca and candidato.pk == troca.perfil.pk %} selected{% endif %}>{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">
+            A {{ perfil.unidade.sigla }} inteira, menos quem estiver <strong>afastado</strong> ou
+            <strong>cobrindo outra pessoa</strong> no período. Cargo em comissão não é exigido nem impede.
+          </span>
+        </div>
+
+        <div class="hidden flex-col gap-1.5 group-has-[.toggle-onsen:checked]:flex">
+          <select name="substituto" class="select select-glass" data-select-onsen>
+            {% for candidato in candidatos.ampliado %}
+              <option value="{{ candidato.pk }}"{% if troca and candidato.pk == troca.perfil.pk %} selected{% endif %}>{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }} · {{ candidato.unidade.sigla }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">
+            Liberado o alcance, a <strong>unidade superior vem primeiro</strong> — é de onde a cobertura
+            costuma vir. Um titular pode cobrir outro titular e responder pelas duas unidades; o que ele
+            não pode é cobrir duas pessoas ao mesmo tempo.
+          </span>
+        </div>
+      </div>
+
+      {# As datas já vêm preenchidas com o pedaço descoberto (ou, na troca, com o que está gravado): #}
+      {# em branco obrigariam a ler a calha e digitar de volta o que o servidor já calculou.         #}
+      <div class="grid sm:grid-cols-2 gap-4">
+        <label class="form-field">
+          <span class="text-overline">{% if troca %}Assume em{% else %}Substitui a partir de{% endif %}</span>
+          <input type="date" name="data_inicio" class="input input-glass" value="{{ data_inicio|date:'Y-m-d' }}" />
+          {% if troca %}<span class="form-field-hint">{{ troca.perfil.nome }} fica registrado até a véspera deste dia.</span>{% endif %}
+        </label>
+        <label class="form-field">
+          <span class="text-overline">Substitui até</span>
+          <input type="date" name="data_fim" class="input input-glass" value="{{ data_fim|date:'Y-m-d' }}" />
+          {% if troca %}<span class="form-field-hint">Encurtar deixa o resto do afastamento descoberto.</span>{% endif %}
+        </label>
+      </div>
+      {% if not troca %}
+        <p class="form-field-hint -mt-4">
+          As datas vêm do <strong>primeiro pedaço descoberto</strong> do afastamento; sendo ele
+          indeterminado, <em>Substitui até</em> vem vazio, e vazio continua querendo dizer indeterminado.
+          Editáveis, os campos só podem <strong>estreitar</strong> — substituir quem está na cadeira não
+          é substituir —, e nunca por cima de outra substituição já designada. Se terminar antes, o resto
+          segue <strong>sem ninguém respondendo</strong> até que outra pessoa seja designada para ele.
+        </p>
+      {% endif %}
+
+      <div class="modal-action">
+        <label for="{{ modal_id }}" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">{% if troca %}Trocar{% else %}Designar{% endif %}</button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="{{ modal_id }}">Fechar</label>
+</div>

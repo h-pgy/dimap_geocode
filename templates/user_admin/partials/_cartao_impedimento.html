@@ -1,0 +1,46 @@
+{# Cartão do impedimento (SPEC user_admin/015): .glass-panel ERGUIDO sobre o poço da seção, com    #}
+{# dois .card-well AFUNDADOS dentro — o afastamento e as substituições dele. A alternância de      #}
+{# material é o que diz pertencimento: com dois afastamentos em aberto, não sobra dúvida sobre quem #}
+{# substitui qual. Nenhuma classe nova: é composição do que o tema já tem.                          #}
+<div class="glass-panel p-4 flex flex-col gap-3">
+  <div class="card-well p-4 flex items-center gap-3">
+    <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+    <div class="min-w-0">
+      <p class="text-[15px] font-medium text-base-content/90">{{ cartao.impedimento.tipo.nome }}</p>
+      <p class="text-[13px] text-base-content/60">{{ cartao.periodo }} · {{ cartao.situacao }}</p>
+    </div>
+  </div>
+
+  {# Sem cargo em comissão não há competência a cobrir: o poço da substituição NÃO EXISTE, e com #}
+  {# ele vai a calha — a ausência é a mensagem, sem botão desabilitado.                          #}
+  {% if exercicio.tem_cargo_comissao %}
+    <div class="card-well p-4 flex flex-col gap-3">
+      {% if cartao.substituicoes %}<p class="text-overline">{{ cartao.rotulo_lista }}</p>{% endif %}
+
+      {% include "user_admin/partials/_calha_cobertura.html" with calha=cartao.calha %}
+
+      {% for item in cartao.substituicoes %}
+        {% include "user_admin/partials/_linha_substituicao.html" %}
+      {% endfor %}
+
+      {# O vínculo existe e não vale hoje: some o presente dele, não o cartão. Apagar o cartão #}
+      {# faria parecer que ninguém chegou a ser designado.                                     #}
+      {% if cartao.alerta_sem_cobertura %}
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            Nenhuma substituição vale hoje{% if cartao.lacuna %} — <strong>{{ cartao.lacuna_texto }}</strong> ninguém responde pelo cargo{% endif %}.
+          </p>
+        </div>
+      {% endif %}
+
+      {# Há lacuna, então o botão está aqui, e ele propõe O BURACO — não o afastamento inteiro. #}
+      {% if cartao.lacuna %}
+        <label for="{{ cartao.modal }}" class="btn btn-onsen btn-sm gap-2 self-start">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+          {% if cartao.substituicoes %}Designar para o período descoberto{% else %}Designar substituto{% endif %}
+        </label>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

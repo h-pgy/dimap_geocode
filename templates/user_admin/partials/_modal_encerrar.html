@@ -1,0 +1,41 @@
+{# Modal de encerrar substituição (SPEC user_admin/015): revogar sem pôr outra pessoa no lugar. A #}
+{# confirmação precisa dizer o que acontece com o REGISTRO, que é diferente conforme a cobertura  #}
+{# já tenha começado ou não.                                                                      #}
+<input type="checkbox" id="{{ item.modal_encerrar }}" class="modal-toggle" />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
+    <div class="flex flex-col gap-5">
+      <div>
+        <h2 class="text-xl font-bold tracking-tight text-madeira-700">Encerrar substituição</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          {{ item.perfil.nome }} {{ item.perfil.sobrenome }} deixa de responder pelo cargo de
+          {{ perfil.nome }} {{ perfil.sobrenome }}.
+        </p>
+      </div>
+      <div class="tarja-vinculo flex items-start gap-3">
+        <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+        <p class="text-[13px] text-base-content/80">
+          {% if item.vigente %}
+            Como ela <strong>está em curso</strong>, termina <strong>hoje</strong> e continua na lista,
+            com o período que de fato exerceu.
+          {% else %}
+            Como ela <strong>ainda não começou</strong>, é <strong>apagada</strong> — cobertura que nunca
+            vigorou não é histórico, é registro sem fato.
+          {% endif %}
+        </p>
+      </div>
+      <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+        <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+        <p class="text-[13px] text-base-content/80">
+          A partir daí ninguém responde pelo cargo em {{ item.periodo }}, até que outra pessoa seja
+          designada para esse período.
+        </p>
+      </div>
+      <div class="modal-action">
+        <label for="{{ item.modal_encerrar }}" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="button" class="btn btn-onsen btn-sm">Encerrar</button>
+      </div>
+    </div>
+  </div>
+  <label class="modal-backdrop" for="{{ item.modal_encerrar }}">Fechar</label>
+</div>

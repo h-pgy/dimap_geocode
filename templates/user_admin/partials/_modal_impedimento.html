@@ -1,0 +1,49 @@
+{# Modal de registrar impedimento (SPEC user_admin/015). Checkbox nativo e SEMPRE fora de qualquer #}
+{# formulário (SPEC 012). O submit não tem destino: a rota nasce protegida no épico de ações.      #}
+<input type="checkbox" id="modal-impedimento" class="modal-toggle" />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+    <form class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-xl font-bold tracking-tight text-madeira-700">Registrar impedimento</h2>
+        <p class="text-sm text-base-content/70 mt-1">{{ perfil.nome }} {{ perfil.sobrenome }} · {{ perfil.unidade.sigla }}</p>
+      </div>
+
+      <label class="form-field">
+        <span class="text-overline">Tipo</span>
+        <select name="tipo" class="select select-glass" data-select-onsen>
+          {% for tipo in exercicio.tipos_impedimento %}
+            <option value="{{ tipo.pk }}">{{ tipo.nome }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <label class="form-field">
+          <span class="text-overline">Início</span>
+          <input type="date" name="data_inicio" class="input input-glass" />
+        </label>
+        <label class="form-field">
+          <span class="text-overline">Fim</span>
+          <input type="date" name="data_fim" class="input input-glass" />
+          <span class="form-field-hint">Em branco, o prazo é indeterminado.</span>
+        </label>
+      </div>
+
+      <div class="tarja-vinculo flex items-start gap-3">
+        <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+        <p class="text-[13px] text-base-content/80">
+          {{ perfil.nome }} sai do exercício <strong>na data de início</strong>, não agora — e volta
+          <strong>sozinho</strong> no dia seguinte ao fim, sem que ninguém precise clicar em nada.
+          Com o fim em branco, só volta por ato.
+        </p>
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-impedimento" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">Registrar</button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-impedimento">Fechar</label>
+</div>

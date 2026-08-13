@@ -395,7 +395,9 @@ def test_voltar_ao_exercicio_encerra_impedimentos_e_acerta_substituicoes() -> No
         hoje + timedelta(days=30),
     )
     futuro_substituto = _perfil(unidade, rf="700562", nome="Futuro Retorno")
-    futura = _designar(impedimento_2, futuro_substituto, hoje + timedelta(days=5), None)
+    # Depois do fim da que está em curso: os dois impedimentos se sobrepõem, e o substituído nunca
+    # tem duas substituições que se cruzem — venham do mesmo afastamento ou de outro.
+    futura = _designar(impedimento_2, futuro_substituto, hoje + timedelta(days=31), None)
 
     retornar_ao_exercicio(afastado)
 
@@ -403,10 +405,12 @@ def test_voltar_ao_exercicio_encerra_impedimentos_e_acerta_substituicoes() -> No
     assert afastado.em_exercicio is True
     impedimento_1.refresh_from_db()
     impedimento_2.refresh_from_db()
-    assert impedimento_1.data_fim == hoje
-    assert impedimento_2.data_fim == hoje
+    # Na véspera, e não hoje: o período é inclusivo no fim, então afastamento que termina hoje ainda
+    # vale hoje — e quem volta ao exercício volta agora, não amanhã.
+    assert impedimento_1.data_fim == hoje - timedelta(days=1)
+    assert impedimento_2.data_fim == hoje - timedelta(days=1)
     em_curso.refresh_from_db()
-    assert em_curso.data_fim == hoje
+    assert em_curso.data_fim == hoje - timedelta(days=1)
     assert not Substituicao.objects.filter(pk=futura.pk).exists()
 
 

@@ -588,6 +588,36 @@
             <p class="text-xs text-base-content/60">O <span class="text-code">.paint-well</span> em escala de marca. O hex chega em <span class="text-code">--cor-unidade</span>, resolvido na borda do app.</p>
           </div>
         </div>
+
+        <!-- Átomos do exercício (SPEC user_admin/015) -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.toggle-onsen</p>
+            <div class="card-well p-4 flex flex-col gap-3 min-h-[6.5rem] justify-center">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="toggle-onsen" />
+                <span class="text-[13px] text-base-content/80">desligado — o disco está gravado no poço</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="toggle-onsen" checked />
+                <span class="text-[13px] text-base-content/80">ligado — o sulco encheu de água</span>
+              </label>
+            </div>
+            <p class="text-xs text-base-content/60">O trilho é o poço do <span class="text-code">.card-well</span> em pílula e o botão é a gravação da SPEC 013. Ligado não é outra cor de trilho: é o mesmo par repouso/entintado do resto do sistema. Depende dos <span class="text-code">defs</span> de <span class="text-code">#etched-onsen</span>.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.etched-line / .etched-line-inked</p>
+            <div class="card-well p-4 flex flex-col gap-4 min-h-[6.5rem] justify-center">
+              <div class="etched-line h-1.5 w-full"></div>
+              <div class="etched-line-inked h-1.5 w-full"></div>
+              <div class="etched-line relative h-1.5 w-full">
+                <div class="etched-line-inked absolute inset-y-0" style="left:0%;width:30%"></div>
+                <div class="etched-line-inked absolute inset-y-0" style="left:55%;width:45%"></div>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">A gravação aplicada a um traço. São <strong>só material</strong>: não posicionam nem dimensionam nada. As pontas esmaecem 20% de cada lado — entre dois trechos vizinhos, aresta viva leria como duas peças encostadas, e o que existe é <strong>um fio só</strong> mudando ao longo do tempo.</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -994,6 +1024,76 @@
           <div class="scroll-etched" data-barra aria-hidden="true">
             <div class="scroll-etched-thumb" data-polegar></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Moléculas do exercício e da substituição (SPEC user_admin/015) -->
+      <div class="glass-panel p-6 flex flex-col gap-5">
+        <div>
+          <p class="text-overline">Linha de pessoa e tarja de vínculo (<span class="text-code">.linha-pessoa</span> · <span class="text-code">.tarja-vinculo</span>)</p>
+          <p class="text-sm text-base-content/70 mt-1">A tarja é uma <strong>placa clara assentada dentro de um poço</strong> — não é <span class="text-code">.card-well</span>, porque poço dentro de poço perde o degrau. As variantes trocam só a aresta: <strong>âmbar</strong> é vínculo gravado que não vale hoje; <strong>vermelho</strong> é unidade sem direção, a única condição que trava competência administrativa. O raio é <span class="text-code">--radius-placa</span>.</p>
+        </div>
+        <div class="card-well p-4 flex flex-col gap-3">
+          <div class="tarja-vinculo">
+            <div class="linha-pessoa">
+              <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#0077B6"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">MC</text></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="linha-pessoa-nome">Marina Castro</p>
+                <p class="linha-pessoa-meta">RF 999901 · Assistente de Gestão · desde 05/08/2026</p>
+              </div>
+            </div>
+          </div>
+          <div class="tarja-vinculo tarja-vinculo-pendente text-[13px] text-base-content/80">Cobertura gravada que não vale hoje</div>
+          <div class="tarja-vinculo tarja-vinculo-critica text-[13px] text-base-content/80">A DIMAP-1 está sem quem responda por ela</div>
+        </div>
+
+        <div>
+          <p class="text-overline">Calha da cobertura (<span class="text-code">.calha-cobertura</span>)</p>
+          <p class="text-sm text-base-content/70 mt-1">O afastamento inteiro como <strong>bandeja funda</strong>, com os dois fios correndo dentro. A bandeja <strong>nunca se preenche</strong>: o que muda de estado é o fio no fundo dela. A régua é o <strong>calendário</strong> — <span class="text-code">left</span>/<span class="text-code">width</span> são a fração de dias de cada trecho, medida na orquestração —, e é por isso que não é o <span class="text-code">steps</span> do daisyUI, cuja métrica é a ordem. Sem cor semântica no fio: quem <em>nomeia</em> o buraco é o rótulo em âmbar.</p>
+        </div>
+        <div class="card-well p-4 flex flex-col gap-8">
+          <div class="relative pb-12">
+            <div class="calha-cobertura">
+              <div class="calha-trilho etched-line">
+                <div class="calha-trecho etched-line-inked" style="left:0%;width:14.75%"></div>
+                <div class="calha-trecho etched-line-inked" style="left:50.82%;width:49.18%"></div>
+              </div>
+            </div>
+            <div class="calha-marcas">
+              <div class="calha-marca" style="left:7.38%">
+                <span class="text-[12px] font-medium text-base-content/90">Rafael</span>
+                <span class="text-[11px] text-base-content/60">01/08 → 09/08</span>
+              </div>
+              <div class="calha-marca calha-marca-vazia" style="left:32.79%">
+                <span class="text-[12px] font-medium">Sem substituto</span>
+                <span class="text-[11px] opacity-80">10/08 → 31/08</span>
+              </div>
+              <div class="calha-marca" style="left:75.41%">
+                <span class="text-[12px] font-medium text-base-content/90">Joana</span>
+                <span class="text-[11px] text-base-content/60">01/09 → 30/09</span>
+              </div>
+            </div>
+          </div>
+          <div class="relative pb-12">
+            <div class="calha-cobertura calha-cobertura-aberta">
+              <div class="calha-trilho etched-line">
+                <div class="calha-trecho etched-line-inked" style="left:0%;width:72%"></div>
+              </div>
+            </div>
+            <div class="calha-marcas">
+              <div class="calha-marca" style="left:36%">
+                <span class="text-[12px] font-medium text-base-content/90">Marina</span>
+                <span class="text-[11px] text-base-content/60">01/08 → 20/08</span>
+              </div>
+              <div class="calha-marca calha-marca-vazia" style="left:86%">
+                <span class="text-[12px] font-medium">Sem substituto</span>
+                <span class="text-[11px] opacity-80">a partir de 21/08</span>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">Prazo indeterminado: a calha <strong>não termina, se dissolve</strong> (<span class="text-code">.calha-cobertura-aberta</span>) — desenhar um fim mentiria sobre um fim que não existe.</p>
         </div>
       </div>
     </section>

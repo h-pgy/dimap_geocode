@@ -1,0 +1,60 @@
+{# Seção de exercício e substituição (SPEC user_admin/015) — irmã de Identificação e Lotação, no    #}
+{# mesmo poço. Lista os impedimentos EM ABERTO (o vigente e os que vêm), cada um num cartão com o   #}
+{# afastamento e a agenda dele. É leitura: os atos gravam pelos diálogos, cujo submit ainda não tem #}
+{# destino — as rotas nascem protegidas no épico de ações (§3.5).                                   #}
+<div class="card-well p-5 flex flex-col gap-4">
+  <div class="flex items-center justify-between gap-4">
+    <p class="text-overline">Exercício</p>
+    <span class="badge {{ exercicio.selo.classe }} badge-soft">{{ exercicio.selo.rotulo }}</span>
+  </div>
+
+  {% if exercicio.exonerado %}
+    {# Da exoneração não se volta por botão nenhum desta tela, e não se afasta quem já não está: #}
+    {# a cadeira do exonerado não é coberta, é preenchida — lotação e titularidade, não          #}
+    {# substituição. O ato de exonerar é de outra SPEC.                                          #}
+    <p class="text-[15px] text-base-content/90">{{ perfil.nome }} {{ perfil.sobrenome }} não integra mais o quadro da DIMAP.</p>
+    <p class="text-[13px] text-base-content/70">
+      Sem impedimento, sem substituto e sem caminho para designar um.
+    </p>
+  {% else %}
+    {% for cartao in exercicio.cartoes %}
+      {% include "user_admin/partials/_cartao_impedimento.html" %}
+    {% empty %}
+      <p class="text-[15px] text-base-content/90">Sem impedimento registrado.</p>
+    {% endfor %}
+
+    {% if exercicio.substituindo %}
+      {# O outro lado do mesmo registro: aqui não há afastamento próprio a mostrar, e o período #}
+      {# aparece duas vezes de propósito — o da substituição obriga, o do afastamento explica.  #}
+      <div class="glass-panel p-4">
+        <div class="card-well p-4 flex flex-col gap-2">
+          <p class="text-overline">Substituindo</p>
+          <div class="linha-pessoa">
+            {% include "user_admin/partials/_imagem_perfil.html" with perfil=exercicio.substituindo.perfil imagem=exercicio.substituindo.imagem cor_unidade_hex=exercicio.substituindo.cor_unidade_hex tamanho="w-10 h-10" %}
+            <div class="min-w-0">
+              <p class="linha-pessoa-nome">{{ exercicio.substituindo.perfil.nome }} {{ exercicio.substituindo.perfil.sobrenome }}</p>
+              <p class="linha-pessoa-meta">
+                {% if exercicio.substituindo.perfil.cargo_comissao %}{{ exercicio.substituindo.perfil.cargo_comissao.padrao }} · {{ exercicio.substituindo.perfil.cargo_comissao.nome }} · {% endif %}{{ exercicio.substituindo.periodo }}, dentro do afastamento {{ exercicio.substituindo.periodo_do_afastamento }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="flex flex-wrap justify-end gap-3">
+      <label for="modal-impedimento" class="btn btn-glass btn-sm gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+        Registrar impedimento
+      </label>
+      {# Voltar ao exercício é da PESSOA, não de um afastamento: por isso fica no rodapé da seção, #}
+      {# fora dos cartões, e encerra o que está valendo hoje.                                     #}
+      {% if exercicio.afastado %}
+        <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+          Voltar ao exercício
+        </label>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

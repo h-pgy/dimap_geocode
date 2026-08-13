@@ -1,22 +1,39 @@
 """
 Contexto das páginas administrativas de servidor (SPEC user_admin/007), de unidade
-(SPEC user_admin/012) e da listagem de servidores (SPEC user_admin/013). Orquestração: traduz o
-model para o que o template consome — o hex da cor, a imagem já resolvida pelo domínio, os
-catálogos dos selects e as linhas que o domínio filtra e ordena. Nenhuma regra de negócio.
+(SPEC user_admin/012), da listagem de servidores (SPEC user_admin/013) e da seção de exercício
+(SPEC user_admin/015). Orquestração: traduz o model para o que o template consome — o hex da cor, a
+imagem já resolvida pelo domínio, os catálogos dos selects, as linhas que o domínio filtra e ordena
+e a régua da calha. Nenhuma regra de negócio.
 """
 
+from datetime import date
 from typing import Any
 
+from django.utils import timezone
+
 from apps.mapping.context import contexto_fundo_admin
+from apps.user_admin.exercicio import (
+    candidatos_a_substituto,
+    impedimentos_em_aberto,
+    lacuna_proposta,
+    periodo_de,
+    substituicao_que_exerce,
+    substituicoes_do_impedimento,
+    trechos_do_impedimento,
+)
 from apps.user_admin.models import (
     CargoBase,
     CargoComissao,
+    Impedimento,
     Perfil,
+    Substituicao,
+    TipoImpedimento,
     TipoUnidade,
     Unidade,
 )
 from apps.user_admin.paleta import TINTA_AVATAR, hex_da_cor, tons_da_paleta
-from services.domain.avatar import resolver_imagem_perfil
+from services.domain.avatar import ImagemPerfilOutput, resolver_imagem_perfil
+from services.domain.exercicio import Periodo, Trecho, vigente_em
 from services.domain.servidores_listagem import (
     ColunaServidor,
     ConsultaServidores,
@@ -25,6 +42,23 @@ from services.domain.servidores_listagem import (
 )
 
 SEM_CARGO_COMISSAO = "—"
+# Selo do exercício: o vermelho é da unidade sem direção (SPEC 016), nunca da pessoa.
+SELO_EM_EXERCICIO = ("Em exercício", "badge-success")
+SELO_AFASTADO = ("Afastado", "badge-warning")
+SELO_EXONERADO = ("Exonerado", "badge-warning")
+ROTULO_UM_SUBSTITUTO = "Substituído por"
+ROTULO_VARIOS_SUBSTITUTOS = "Substituições"
+ROTULO_SEM_SUBSTITUTO = "Sem substituto"
+PRAZO_INDETERMINADO = "prazo indeterminado"
+SITUACAO_VIGENTE = "substituindo hoje"
+SITUACAO_ENCERRADA = "encerrada"
+SITUACAO_IMPEDIMENTO_VIGENTE = "vigente"
+FORMATO_LONGO = "%d/%m/%Y"
+FORMATO_CURTO = "%d/%m"
+# Prazo indeterminado não tem denominador: a régua vai até a última data conhecida e o resto
+# dissolve sob a máscara da calha.
+FRACAO_REGUA_ABERTA = 72.0
+LARGURA_TOTAL = 100.0
 # Valores do aria-sort (WAI-ARIA); o relevo da seta é afordância e não carrega a semântica sozinho.
 ORDEM_ASCENDENTE = "ascending"
 ORDEM_DESCENDENTE = "descending"
@@ -50,24 +84,39 @@ def contexto_criar_perfil() -> dict[str, Any]:
 
 
 def contexto_editar_perfil(perfil: Perfil) -> dict[str, Any]:
-    cor_unidade_hex = hex_da_cor(perfil.cor_unidade)
-    imagem = resolver_imagem_perfil(
-        nome=perfil.nome,
-        sobrenome=perfil.sobrenome,
-        cor_fundo=cor_unidade_hex,
-        cor_tinta=TINTA_AVATAR,
-        foto_url=_foto_url(perfil),
-    )
     return (
         contexto_fundo_admin()
         | _catalogos_de_lotacao()
         | _contexto_do_modal_de_unidade()
+        | contexto_exercicio(perfil)
         | {
             "perfil": perfil,
-            "imagem": imagem,
-            "cor_unidade_hex": cor_unidade_hex,
+            "imagem": _imagem_do_perfil(perfil),
+            "cor_unidade_hex": hex_da_cor(perfil.cor_unidade),
         }
     )
+
+
+def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
+    """A seção e os diálogos dela: os cartões dos impedimentos em aberto, a agenda de cada um, a
+    lacuna que a designação propõe e os candidatos dos dois alcances. Uma passagem só — nada na
+    página pergunta duas vezes a mesma coisa ao banco."""
+    tem_cargo_comissao = perfil.cargo_comissao_id is not None
+    universos = _universos_de_candidatos(perfil) if tem_cargo_comissao else {}
+    return {
+        "exercicio": {
+            "selo": _selo_do_exercicio(perfil),
+            "exonerado": perfil.exonerado,
+            "afastado": perfil.esta_impedido,
+            "tem_cargo_comissao": tem_cargo_comissao,
+            "tipos_impedimento": TipoImpedimento.objects.order_by("nome"),
+            "cartoes": [
+                _cartao_do_impedimento(impedimento, universos)
+                for impedimento in impedimentos_em_aberto(perfil)
+            ],
+            "substituindo": _substituindo(perfil),
+        }
+    }
 
 
 def contexto_listagem_servidores(consulta: ConsultaServidores) -> dict[str, Any]:
@@ -107,6 +156,253 @@ def contexto_cor_sugerida(pai_pk: int | None) -> dict[str, Any]:
         "tons": tons_da_paleta(cor),
         "cor_hex": hex_da_cor(cor),
     }
+
+
+def _selo_do_exercicio(perfil: Perfil) -> dict[str, str]:
+    # O selo descreve a PESSOA e nunca fica vermelho: afastado e exonerado dividem o âmbar, e o
+    # que os separa é a palavra. Vermelho é da unidade sem direção (SPEC 016).
+    if perfil.exonerado:
+        rotulo, classe = SELO_EXONERADO
+    elif perfil.em_exercicio:
+        rotulo, classe = SELO_EM_EXERCICIO
+    else:
+        rotulo, classe = SELO_AFASTADO
+    return {
+        "rotulo": rotulo,
+        "classe": classe,
+    }
+
+
+def _cartao_do_impedimento(
+    impedimento: Impedimento,
+    universos: dict[str, list[Perfil]],
+) -> dict[str, Any]:
+    # Uma consulta pela agenda, e é dela que saem a lista, a calha e a lacuna proposta.
+    agenda = list(substituicoes_do_impedimento(impedimento))
+    lacuna = lacuna_proposta(impedimento, agenda)
+    itens = [
+        _item_de_substituicao(substituicao, impedimento, universos)
+        for substituicao in agenda
+    ]
+    return {
+        "impedimento": impedimento,
+        "periodo": _texto_periodo_longo(periodo_de(impedimento)),
+        "situacao": _situacao_do_impedimento(impedimento),
+        "rotulo_lista": (
+            ROTULO_UM_SUBSTITUTO if len(agenda) == 1 else ROTULO_VARIOS_SUBSTITUTOS
+        ),
+        "substituicoes": itens,
+        # O vínculo existe e não vale hoje: a pergunta é sempre "há substituição vigente hoje", e
+        # nunca a existência da linha.
+        "alerta_sem_cobertura": (
+            bool(itens)
+            and vigente_em(periodo_de(impedimento), timezone.localdate())
+            and not any(item["vigente"] for item in itens)
+        ),
+        "lacuna_texto": _texto_periodo_corrido(lacuna) if lacuna is not None else "",
+        "calha": _calha(impedimento, agenda),
+        "lacuna": lacuna,
+        "candidatos": (
+            _candidatos(impedimento, lacuna, universos, exceto=None)
+            if lacuna is not None
+            else None
+        ),
+        "modal": f"modal-designar-{impedimento.pk}",
+    }
+
+
+def _item_de_substituicao(
+    substituicao: Substituicao,
+    impedimento: Impedimento,
+    universos: dict[str, list[Perfil]],
+) -> dict[str, Any]:
+    hoje = timezone.localdate()
+    periodo = periodo_de(substituicao)
+    vigente = vigente_em(periodo, hoje)
+    futura = substituicao.data_inicio > hoje
+    return {
+        "substituicao": substituicao,
+        "perfil": substituicao.substituto,
+        "imagem": _imagem_do_perfil(substituicao.substituto),
+        "cor_unidade_hex": hex_da_cor(substituicao.substituto.cor_unidade),
+        "periodo": _texto_periodo_curto(periodo),
+        "vigente": vigente,
+        # O que passou recua e perde as ações: substituição encerrada não se troca nem se encerra.
+        "encerrada": not vigente and not futura,
+        "situacao": SITUACAO_VIGENTE if vigente else "" if futura else SITUACAO_ENCERRADA,
+        "candidatos": (
+            None
+            if not vigente and not futura
+            else _candidatos(impedimento, periodo, universos, exceto=substituicao.pk)
+        ),
+        "modal_trocar": f"modal-trocar-{substituicao.pk}",
+        "modal_encerrar": f"modal-encerrar-{substituicao.pk}",
+    }
+
+
+def _calha(
+    impedimento: Impedimento,
+    agenda: list[Substituicao],
+) -> dict[str, Any]:
+    # left/width em porcentagem: medida de renderização, não conhecimento de domínio — trechos()
+    # devolve períodos e a régua sai daqui. Em texto já formatado porque float em template é
+    # localizado (pt-br), e "14,75%" não é CSS.
+    pedacos = trechos_do_impedimento(impedimento, agenda)
+    # A chave admite None porque é o id do trecho descoberto que consulta este mapa.
+    nomes: dict[int | None, str] = {
+        substituicao.substituto_id: substituicao.substituto.nome
+        for substituicao in agenda
+    }
+    dias = _dias_da_regua(impedimento, pedacos)
+    escala = LARGURA_TOTAL if impedimento.data_fim is not None else FRACAO_REGUA_ABERTA
+    entintados: list[dict[str, str]] = []
+    marcas: list[dict[str, Any]] = []
+    for pedaco in pedacos:
+        inicio = (pedaco.periodo.inicio - impedimento.data_inicio).days / dias * escala
+        largura = _largura_do_trecho(pedaco.periodo, dias, escala, inicio)
+        if pedaco.substituto_id is not None:
+            entintados.append(_medida(inicio, largura))
+        marcas.append(
+            {
+                "left": f"{inicio + largura / 2:.2f}",
+                "rotulo": nomes.get(pedaco.substituto_id, ROTULO_SEM_SUBSTITUTO),
+                "periodo": _texto_periodo_curto(pedaco.periodo),
+                "vazia": pedaco.substituto_id is None,
+            }
+        )
+    return {
+        # Prazo indeterminado: a calha não termina, se dissolve.
+        "aberta": impedimento.data_fim is None,
+        "trechos": entintados,
+        "marcas": marcas,
+    }
+
+
+def _substituindo(perfil: Perfil) -> dict[str, Any] | None:
+    substituicao = substituicao_que_exerce(perfil)
+    if substituicao is None:
+        return None
+    substituido = substituicao.impedimento.perfil
+    return {
+        "perfil": substituido,
+        "imagem": _imagem_do_perfil(substituido),
+        "cor_unidade_hex": hex_da_cor(substituido.cor_unidade),
+        "periodo": _texto_periodo_curto(periodo_de(substituicao)),
+        # O do afastamento aparece junto de propósito: é ele que explica por que a substituição
+        # termina antes.
+        "periodo_do_afastamento": _texto_periodo_corrido(
+            periodo_de(substituicao.impedimento)
+        ),
+    }
+
+
+def _universos_de_candidatos(perfil: Perfil) -> dict[str, list[Perfil]]:
+    # As duas listas nascem renderizadas: o toggle de alcance troca qual aparece, e uma rota para
+    # isso recalcularia o que não muda com o diálogo aberto. O prefetch é o que faz o avaliador
+    # rodar sem uma consulta por candidato.
+    servidores = list(
+        Perfil.objects.exclude(pk=perfil.pk)
+        .select_related("unidade", "cargo_comissao")
+        .prefetch_related("impedimentos", "substituicoes_exercidas")
+        .order_by("nome", "sobrenome")
+    )
+    return {
+        "unidade": [
+            candidato
+            for candidato in servidores
+            if candidato.unidade_id == perfil.unidade_id
+        ],
+        "ampliado": sorted(servidores, key=lambda c: _ordem_do_alcance(c, perfil)),
+    }
+
+
+def _ordem_do_alcance(candidato: Perfil, substituido: Perfil) -> int:
+    # Ampliada, a lista abre pela unidade superior: é de onde a cobertura de fora costuma vir.
+    if candidato.unidade_id == substituido.unidade.pai_id:
+        return 0
+    if candidato.unidade_id == substituido.unidade_id:
+        return 1
+    return 2
+
+
+def _candidatos(
+    impedimento: Impedimento,
+    periodo: Periodo,
+    universos: dict[str, list[Perfil]],
+    exceto: int | None,
+) -> dict[str, list[Perfil]]:
+    return {
+        alcance: candidatos_a_substituto(impedimento, periodo, perfis, exceto=exceto)
+        for alcance, perfis in universos.items()
+    }
+
+
+def _dias_da_regua(impedimento: Impedimento, pedacos: tuple[Trecho, ...]) -> int:
+    fim = impedimento.data_fim or _ultima_data_conhecida(pedacos)
+    return ((fim or impedimento.data_inicio) - impedimento.data_inicio).days + 1
+
+
+def _ultima_data_conhecida(pedacos: tuple[Trecho, ...]) -> date | None:
+    conhecidas = [
+        pedaco.periodo.fim for pedaco in pedacos if pedaco.periodo.fim is not None
+    ]
+    return max(conhecidas) if conhecidas else None
+
+
+def _largura_do_trecho(
+    periodo: Periodo,
+    dias: int,
+    escala: float,
+    inicio: float,
+) -> float:
+    # Sem fim conhecido o trecho vai até a borda, e é a máscara da calha que o dissolve.
+    if periodo.fim is None:
+        return LARGURA_TOTAL - inicio
+    return ((periodo.fim - periodo.inicio).days + 1) / dias * escala
+
+
+def _medida(inicio: float, largura: float) -> dict[str, str]:
+    return {
+        "left": f"{inicio:.2f}",
+        "width": f"{largura:.2f}",
+    }
+
+
+def _situacao_do_impedimento(impedimento: Impedimento) -> str:
+    dias = (impedimento.data_inicio - timezone.localdate()).days
+    if dias <= 0:
+        return SITUACAO_IMPEDIMENTO_VIGENTE
+    return f"começa em {dias} dia{'s' if dias > 1 else ''}"
+
+
+def _texto_periodo_longo(periodo: Periodo) -> str:
+    fim = periodo.fim.strftime(FORMATO_LONGO) if periodo.fim else PRAZO_INDETERMINADO
+    return f"{periodo.inicio.strftime(FORMATO_LONGO)} → {fim}"
+
+
+def _texto_periodo_curto(periodo: Periodo) -> str:
+    if periodo.fim is None:
+        return f"a partir de {periodo.inicio.strftime(FORMATO_CURTO)}"
+    inicio = periodo.inicio.strftime(FORMATO_CURTO)
+    return f"{inicio} → {periodo.fim.strftime(FORMATO_CURTO)}"
+
+
+def _texto_periodo_corrido(periodo: Periodo) -> str:
+    # A seta é da linha do tempo; dentro de uma frase, o período se lê por extenso.
+    if periodo.fim is None:
+        return f"a partir de {periodo.inicio.strftime(FORMATO_CURTO)}"
+    inicio = periodo.inicio.strftime(FORMATO_CURTO)
+    return f"de {inicio} a {periodo.fim.strftime(FORMATO_CURTO)}"
+
+
+def _imagem_do_perfil(perfil: Perfil) -> ImagemPerfilOutput:
+    return resolver_imagem_perfil(
+        nome=perfil.nome,
+        sobrenome=perfil.sobrenome,
+        cor_fundo=hex_da_cor(perfil.cor_unidade),
+        cor_tinta=TINTA_AVATAR,
+        foto_url=_foto_url(perfil),
+    )
 
 
 def _contexto_do_modal_de_unidade() -> dict[str, Any]:

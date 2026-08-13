@@ -1,0 +1,18 @@
+{# Molécula: uma substituição da agenda do afastamento (SPEC user_admin/015). As três presenças se #}
+{# distinguem sem cor nova — o que passou recua e PERDE AS AÇÕES, o que vale hoje fica em foco, o  #}
+{# que vem tem a data à frente.                                                                    #}
+<div class="flex items-center justify-between gap-3{% if item.encerrada %} opacity-55{% endif %}{% if not forloop.first %} border-t border-white/50 pt-3{% endif %}">
+  <div class="linha-pessoa">
+    {% include "user_admin/partials/_imagem_perfil.html" with perfil=item.perfil imagem=item.imagem cor_unidade_hex=item.cor_unidade_hex tamanho="w-10 h-10" %}
+    <div class="min-w-0">
+      <p class="linha-pessoa-nome">{{ item.perfil.nome }} {{ item.perfil.sobrenome }}</p>
+      <p class="linha-pessoa-meta">RF {{ item.perfil.rf }} · {{ item.perfil.unidade.sigla }} · {{ item.periodo }}{% if item.situacao %} · {{ item.situacao }}{% endif %}</p>
+    </div>
+  </div>
+  {% if not item.encerrada %}
+    <div class="flex gap-2 shrink-0">
+      <label for="{{ item.modal_trocar }}" class="btn btn-glass btn-xs">Trocar</label>
+      <label for="{{ item.modal_encerrar }}" class="btn btn-glass btn-xs">Encerrar</label>
+    </div>
+  {% endif %}
+</div>

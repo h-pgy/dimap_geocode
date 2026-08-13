@@ -80,6 +80,8 @@ O menor elemento com identidade própria: botão, input, badge, kbd, ícone, too
 | Botão gravado | `.btn-etched` | a gravação em corpo de botão (o "limpar filtros"); enche de água no hover |
 | Ícone gravado em botão de vidro | `.icon-etched` | o glifo dentro de um `.btn-glass`, onde quem carrega a afordância é o botão |
 | Ponto da unidade | `.dot-unidade` | o `.paint-well` em escala de marca; o hex chega em `--cor-unidade` |
+| Toggle de vidro | `.toggle-onsen` | trilho = poço do `.card-well` em pílula; botão = disco `.etched` que enche de água ao ir para o lado (depende dos `defs`) |
+| Fio gravado / entintado | `.etched-line` / `.etched-line-inked` | a gravação num traço; **só material** — não posicionam nem dimensionam. Pontas esmaecem 20% de cada lado, e nunca até o transparente |
 | Overline | `.text-overline` | rótulo 11px caps `rocha-700` |
 | Código | `.text-code` | Roboto Mono `agua-700` (SQL, codlog) |
 
@@ -118,6 +120,15 @@ rebaixada. **Afundado = a coluna tem filtro**, não "alguém clicou": o CSS lê 
 `:has(input:not(:placeholder-shown))`, sem estado de UI em JavaScript. A régua **abre inteira** (o
 campo de uma coluna abre o de todas). Coluna que não responde **não tem peça**: o rótulo é gravado
 direto na bandeja — a ausência da peça é a mensagem, sem cinza de desabilitado.
+
+**Linha de pessoa, tarja de vínculo e calha da cobertura** (`.linha-pessoa`, `.tarja-vinculo`
+(`-pendente`/`-critica`), `.calha-cobertura*`, SPEC user_admin/015): a tarja é **placa clara
+assentada dentro de um poço** — não é `.card-well`, porque poço dentro de poço perde o degrau —, e
+usa o raio `--radius-placa`. A calha é o afastamento inteiro como **bandeja funda**: ela nunca se
+preenche, o que muda de estado é o **fio** no fundo dela, e a régua é o **calendário** —
+`left`/`width` são a fração de dias de cada trecho, calculada na orquestração (`context.py`), nunca
+no domínio. Prazo indeterminado **dissolve** a ponta (`.calha-cobertura-aberta`) em vez de desenhar
+um fim que não existe. Sem cor semântica no fio: quem *nomeia* o buraco é o rótulo em âmbar.
 
 **Barra de rolagem gravada** (`.scroll-etched`, `.scroll-etched-thumb`, `.scroll-etched-ativa`,
 `.scroll-etched-ociosa`): trilho sulcado e polegar de água, para **qualquer** `.card-well` rolável.
