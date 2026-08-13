@@ -1,16 +1,20 @@
 """
 Testes de Perfil (SPEC user_admin/001): autenticação por RF e a obrigatoriedade de cargo base
 e unidade, com o cargo em comissão como o único vínculo opcional. Inclui também nome/sobrenome
-separados, foto opcional e a cor da unidade exposta via `cor_unidade` (SPEC user_admin/006).
+separados, foto opcional e a cor da unidade exposta via `cor_unidade` (SPEC user_admin/006), e o
+exercício como leitura derivada de impedimento e exoneração (SPEC user_admin/015).
 
-Os três últimos levam o marker `banco`: FK de cargo_base/unidade só se verifica contra o
-Postgres real.
+Os testes de persistência levam o marker `banco`: FK de cargo_base/unidade e a leitura de
+impedimento só se verificam contra o Postgres real.
 """
+
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.utils import timezone
 
 import pytest
 
@@ -18,7 +22,9 @@ from apps.user_admin.models import (
     CargoBase,
     CargoComissao,
     CorUnidade,
+    Impedimento,
     Perfil,
+    TipoImpedimento,
     TipoUnidade,
     Unidade,
 )
@@ -211,3 +217,56 @@ def test_unidade_nao_admite_dois_titulares() -> None:
     # save() direto, sem full_clean(): o que este teste fixa é o banco recusando, não a validação.
     with pytest.raises(IntegrityError):
         segundo.save()
+
+
+# ---------------------------------------------------------------------------
+# Exercício — leitura derivada de impedimento e exoneração (SPEC user_admin/015)
+# ---------------------------------------------------------------------------
+
+
+def _tipo_impedimento_exercicio(**overrides: object) -> TipoImpedimento:
+    dados: dict[str, object] = {"nome": "Férias Exercício"}
+    dados.update(overrides)
+    return TipoImpedimento.objects.create(**dados)  # type: ignore[arg-type]
+
+
+@banco
+@pytest.mark.django_db
+def test_exercicio_deriva_do_impedimento_e_da_exoneracao() -> None:
+    hoje = timezone.localdate()
+    perfil = _perfil_completo(rf="700401")
+    perfil.save()
+
+    # Sem impedimento e ativo: em exercício.
+    assert perfil.em_exercicio is True
+    assert perfil.exonerado is False
+
+    # Com impedimento vigente: fora.
+    vigente = Impedimento.objects.create(
+        perfil=perfil,
+        tipo=_tipo_impedimento_exercicio(),
+        data_inicio=hoje - timedelta(days=1),
+        data_fim=None,
+    )
+    assert perfil.em_exercicio is False
+
+    # Vencido, volta sem que nada escreva — é o próprio dado passando, não uma rotina.
+    vigente.data_fim = hoje - timedelta(days=1)
+    vigente.save(update_fields=["data_fim"])
+    assert perfil.em_exercicio is True
+
+    # De início futuro: segue em exercício até a data chegar.
+    Impedimento.objects.create(
+        perfil=perfil,
+        tipo=_tipo_impedimento_exercicio(nome="Férias Futuras Exercício"),
+        data_inicio=hoje + timedelta(days=10),
+        data_fim=hoje + timedelta(days=20),
+    )
+    assert perfil.em_exercicio is True
+
+    # Inativo e sem impedimento: fora, pela outra causa.
+    Impedimento.objects.filter(perfil=perfil).delete()
+    perfil.is_active = False
+    perfil.save(update_fields=["is_active"])
+    assert perfil.em_exercicio is False
+    assert perfil.exonerado is True

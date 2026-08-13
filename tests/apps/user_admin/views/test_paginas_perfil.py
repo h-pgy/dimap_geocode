@@ -8,24 +8,29 @@ das tabelas, então nem ela renderiza sem Postgres (SPEC 007, Patch 001).
 """
 
 import base64
+from datetime import timedelta
 from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
+from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
 from apps.user_admin.models import (
     CargoBase,
     CargoComissao,
     CorUnidade,
     Perfil,
+    TipoImpedimento,
     TipoUnidade,
     Unidade,
 )
 from apps.user_admin.paleta import HEX_POR_COR
+from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento
 
 banco = pytest.mark.banco
 
@@ -167,3 +172,199 @@ def test_select_de_unidade_mantem_a_opcao_selecionada_na_edicao(client: Client) 
         f'<option value="{perfil.unidade_id}" selected>DIMAP-1 · Divisão de Avaliação</option>'
         in html
     )
+
+
+# ---------------------------------------------------------------------------
+# Seção de exercício e substituição (SPEC user_admin/015): nenhuma rota nova — a seção entra no
+# contexto que a página do servidor já renderiza (§ Fora de escopo: nenhum submit tem destino).
+# ---------------------------------------------------------------------------
+
+
+def _unidade_exercicio(sigla: str, **overrides: object) -> Unidade:
+    tipo, _ = TipoUnidade.objects.get_or_create(
+        nome="Divisão Seção Exercício",
+        defaults={"nivel": 10, "pode_ser_raiz": True, "nivel_minimo_titular": 1},
+    )
+    dados: dict[str, object] = {
+        "nome": f"Divisão {sigla}",
+        "sigla": sigla,
+        "tipo": tipo,
+    }
+    dados.update(overrides)
+    return Unidade.objects.create(**dados)  # type: ignore[arg-type]
+
+
+def _perfil_exercicio(
+    unidade: Unidade, rf: str, nome: str, **overrides: object
+) -> Perfil:
+    cargo_base, _ = CargoBase.objects.get_or_create(
+        nome="Cargo Seção Exercício", sigla="CGSE"
+    )
+    dados: dict[str, object] = {
+        "rf": rf,
+        "nome": nome,
+        "sobrenome": "Seção",
+        "cargo_base": cargo_base,
+        "unidade": unidade,
+    }
+    dados.update(overrides)
+    perfil = Perfil(**dados)  # type: ignore[arg-type]
+    perfil.set_password("segredo123")
+    perfil.save()
+    return perfil
+
+
+@banco
+@pytest.mark.django_db
+def test_secao_mostra_a_agenda_do_afastamento(client: Client) -> None:
+    unidade = _unidade_exercicio("DIVSE")
+    tipo_impedimento = TipoImpedimento.objects.create(nome="Férias Seção")
+    hoje = timezone.localdate()
+
+    # Cartão com histórico: encerrada, vigente e futura, em ordem cronológica.
+    afastado = _perfil_exercicio(
+        unidade,
+        "700601",
+        "Afastado",
+        cargo_comissao=CargoComissao.objects.create(
+            sigla="CDA", nivel=1, e_chefia=True, nome="Diretor Seção Exercício"
+        ),
+    )
+    impedimento = registrar_impedimento(
+        afastado,
+        NovoImpedimento(
+            tipo=tipo_impedimento.pk,
+            data_inicio=hoje - timedelta(days=10),
+            data_fim=hoje + timedelta(days=20),
+        ),
+    )
+    encerrada_substituto = _perfil_exercicio(unidade, "700602", "Encerrada")
+    designar_substituto(
+        impedimento,
+        NovaSubstituicao(
+            substituto=encerrada_substituto.pk,
+            data_inicio=hoje - timedelta(days=10),
+            data_fim=hoje - timedelta(days=1),
+        ),
+    )
+    vigente_substituto = _perfil_exercicio(unidade, "700603", "Vigente")
+    designar_substituto(
+        impedimento,
+        NovaSubstituicao(
+            substituto=vigente_substituto.pk,
+            data_inicio=hoje,
+            data_fim=hoje + timedelta(days=20),
+        ),
+    )
+
+    html_afastado = client.get(
+        reverse("user_admin:editar_perfil", kwargs={"pk": afastado.pk})
+    ).content.decode()
+    assert "Afastado" in html_afastado
+    assert (
+        f"{encerrada_substituto.nome} {encerrada_substituto.sobrenome}" in html_afastado
+    )
+    assert f"{vigente_substituto.nome} {vigente_substituto.sobrenome}" in html_afastado
+    assert html_afastado.index(encerrada_substituto.nome) < html_afastado.index(
+        vigente_substituto.nome
+    )
+
+    # Impedimento futuro com substituto já designado: a pessoa segue "em exercício" — não é
+    # afastado ainda —, e a cobertura que vem já aparece.
+    futuro_afastado = _perfil_exercicio(
+        unidade,
+        "700604",
+        "Futuro",
+        cargo_comissao=CargoComissao.objects.create(
+            sigla="CDB", nivel=1, e_chefia=True, nome="Diretor Futuro Seção"
+        ),
+    )
+    impedimento_futuro = registrar_impedimento(
+        futuro_afastado,
+        NovoImpedimento(
+            tipo=tipo_impedimento.pk,
+            data_inicio=hoje + timedelta(days=30),
+            data_fim=hoje + timedelta(days=40),
+        ),
+    )
+    ja_designado = _perfil_exercicio(unidade, "700605", "JaDesignado")
+    designar_substituto(
+        impedimento_futuro, NovaSubstituicao(substituto=ja_designado.pk)
+    )
+
+    html_futuro = client.get(
+        reverse("user_admin:editar_perfil", kwargs={"pk": futuro_afastado.pk})
+    ).content.decode()
+    assert "Em exercício" in html_futuro
+    assert f"{ja_designado.nome} {ja_designado.sobrenome}" in html_futuro
+
+    # Exonerado: mesma causa de estar fora da cadeira, palavra diferente do afastado.
+    exonerado = _perfil_exercicio(unidade, "700606", "Exonerado")
+    exonerado.is_active = False
+    exonerado.save(update_fields=["is_active"])
+
+    html_exonerado = client.get(
+        reverse("user_admin:editar_perfil", kwargs={"pk": exonerado.pk})
+    ).content.decode()
+    assert "Exonerado" in html_exonerado
+
+
+@banco
+@pytest.mark.django_db
+def test_modal_de_designar_propoe_a_lacuna_e_os_candidatos(client: Client) -> None:
+    tipo_superior = TipoUnidade.objects.create(
+        nome="Coordenadoria Modal Exercício",
+        nivel=20,
+        pode_ser_raiz=True,
+        nivel_minimo_titular=1,
+    )
+    unidade_superior = Unidade.objects.create(
+        nome="Coordenadoria Modal Exercício", sigla="DIVSUP", tipo=tipo_superior
+    )
+    unidade_propria = _unidade_exercicio("DIVPROP", pai=unidade_superior)
+    hoje = timezone.localdate()
+    tipo_impedimento = TipoImpedimento.objects.create(nome="Férias Modal")
+
+    substituido = _perfil_exercicio(
+        unidade_propria,
+        "700610",
+        "Substituído",
+        cargo_comissao=CargoComissao.objects.create(
+            sigla="CDA", nivel=1, e_chefia=True, nome="Diretor Modal Exercício"
+        ),
+    )
+    impedimento = registrar_impedimento(
+        substituido,
+        NovoImpedimento(
+            tipo=tipo_impedimento.pk,
+            data_inicio=hoje,
+            data_fim=hoje + timedelta(days=14),
+        ),
+    )
+
+    # Impedido na própria unidade: não entra na lista de candidatos.
+    impedido = _perfil_exercicio(unidade_propria, "700611", "Impedido")
+    registrar_impedimento(
+        impedido,
+        NovoImpedimento(tipo=tipo_impedimento.pk, data_inicio=hoje, data_fim=None),
+    )
+
+    # Livre na própria unidade: entra.
+    livre = _perfil_exercicio(unidade_propria, "700612", "Livre")
+
+    # Só aparece com o alcance ampliado, e a unidade superior vem primeiro.
+    da_unidade_superior = _perfil_exercicio(unidade_superior, "700613", "DaSuperior")
+
+    html = client.get(
+        reverse("user_admin:editar_perfil", kwargs={"pk": substituido.pk})
+    ).content.decode()
+
+    # As datas do diálogo já vêm preenchidas com a lacuna proposta — aqui, o impedimento inteiro,
+    # porque ainda não há nenhuma substituição.
+    assert f'value="{impedimento.data_inicio.isoformat()}"' in html
+    assert impedimento.data_fim is not None
+    assert f'value="{impedimento.data_fim.isoformat()}"' in html
+
+    assert f'value="{livre.pk}"' in html
+    assert f'value="{impedido.pk}"' not in html
+    assert f'value="{da_unidade_superior.pk}"' in html
