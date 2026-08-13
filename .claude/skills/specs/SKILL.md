@@ -256,6 +256,14 @@ meio da prosa.
   escondendo uma decisão que devia estar no "Contexto".
 - **Não use ênfase para compensar tamanho.** Negrito em tudo é o mesmo que negrito em nada.
 
+**A prosa descreve o estado atual, nunca como se chegou nele.** Cada decisão é enunciada por si, como
+se a SPEC estivesse na primeira versão: nada de "a SPEC X deixou isso de fora", "o mock mostrou
+que…", "antes era Y e passou a ser Z", nem contraposição ao que uma versão anterior dizia. O
+histórico de como a especificação evoluiu vive no `changelog` do front-matter e, depois da entrega,
+nos `Patches` — é lá que se procura, e repeti-lo no corpo faz cada releitura pagar por uma discussão
+já encerrada. Ponteiro para outra SPEC continua valendo, desde que diga o que ela **entrega hoje**,
+não o que ela deixou de entregar ontem.
+
 ---
 
 ## Template do arquivo de SPEC
@@ -356,6 +364,8 @@ Antes de apresentar a SPEC ao usuário, verifique:
 - [ ] Contexto explica em quais camadas a SPEC mexe e por quê essa abordagem.
 - [ ] O "por quê" está **curto**: uma decisão por parágrafo, sem repetição, sem alternativa
       descartada em detalhe, e comentário de snippet em uma linha.
+- [ ] A prosa descreve o **estado atual**, sem histórico de decisão — o "como se chegou aqui" está
+      no `changelog` (ou nos `Patches`), não no corpo.
 - [ ] Peças de referência listam apenas o que **já existe** e deve ser reutilizado.
 - [ ] Fora de escopo define explicitamente o que **não** entra nesta iteração.
 - [ ] Seção "Testes (TDD)" presente, com os testes derivados dos critérios de aceite — **poucos e
