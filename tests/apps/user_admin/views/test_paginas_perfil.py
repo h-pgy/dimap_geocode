@@ -1,7 +1,8 @@
 """
 Testes das páginas administrativas de servidor (SPEC user_admin/007): o contrato HTTP/partial de
-criar e editar perfil. O que é visual (estados do poço, disco de tinta, deriva do fundo) se valida
-no mock da SPEC, não aqui.
+criar perfil e do modal de edição — que a SPEC user_admin/017 separou da leitura, hoje em
+`test_pagina_do_servidor.py`. O que é visual (estados do poço, disco de tinta, deriva do fundo) se
+valida no mock da SPEC, não aqui.
 
 Todos levam o marker `banco`: a página de criar já monta os selects de unidade e cargos a partir
 das tabelas, então nem ela renderiza sem Postgres (SPEC 007, Patch 001).
@@ -176,7 +177,8 @@ def test_select_de_unidade_mantem_a_opcao_selecionada_na_edicao(client: Client) 
 
 # ---------------------------------------------------------------------------
 # Seção de exercício e substituição (SPEC user_admin/015): nenhuma rota nova — a seção entra no
-# contexto que a página do servidor já renderiza (§ Fora de escopo: nenhum submit tem destino).
+# contexto que a página de leitura do servidor renderiza (SPEC user_admin/017; § Fora de escopo:
+# nenhum submit tem destino).
 # ---------------------------------------------------------------------------
 
 
@@ -258,7 +260,7 @@ def test_secao_mostra_a_agenda_do_afastamento(client: Client) -> None:
     )
 
     html_afastado = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": afastado.pk})
+        reverse("user_admin:pagina_perfil", kwargs={"pk": afastado.pk})
     ).content.decode()
     assert "Afastado" in html_afastado
     assert (
@@ -293,7 +295,7 @@ def test_secao_mostra_a_agenda_do_afastamento(client: Client) -> None:
     )
 
     html_futuro = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": futuro_afastado.pk})
+        reverse("user_admin:pagina_perfil", kwargs={"pk": futuro_afastado.pk})
     ).content.decode()
     assert "Em exercício" in html_futuro
     assert f"{ja_designado.nome} {ja_designado.sobrenome}" in html_futuro
@@ -304,7 +306,7 @@ def test_secao_mostra_a_agenda_do_afastamento(client: Client) -> None:
     exonerado.save(update_fields=["is_active"])
 
     html_exonerado = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": exonerado.pk})
+        reverse("user_admin:pagina_perfil", kwargs={"pk": exonerado.pk})
     ).content.decode()
     assert "Exonerado" in html_exonerado
 
@@ -356,7 +358,7 @@ def test_modal_de_designar_propoe_a_lacuna_e_os_candidatos(client: Client) -> No
     da_unidade_superior = _perfil_exercicio(unidade_superior, "700613", "DaSuperior")
 
     html = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": substituido.pk})
+        reverse("user_admin:pagina_perfil", kwargs={"pk": substituido.pk})
     ).content.decode()
 
     # As datas do diálogo já vêm preenchidas com a lacuna proposta — aqui, o impedimento inteiro,

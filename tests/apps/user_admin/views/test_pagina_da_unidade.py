@@ -282,8 +282,10 @@ def test_secao_do_servidor_acusa_unidade_sem_direcao(client: Client) -> None:
         ),
     )
 
+    # A seção de exercício mora na página de leitura do servidor, não no modal de edição
+    # (SPEC user_admin/017).
     html_sem_substituto = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": titular.pk})
+        reverse("user_admin:pagina_perfil", kwargs={"pk": titular.pk})
     ).content.decode()
     assert f"A {unidade.sigla} está sem quem responda por ela" in html_sem_substituto
 
@@ -294,6 +296,6 @@ def test_secao_do_servidor_acusa_unidade_sem_direcao(client: Client) -> None:
     )
 
     html_com_substituto = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": titular.pk})
+        reverse("user_admin:pagina_perfil", kwargs={"pk": titular.pk})
     ).content.decode()
     assert "está sem quem responda por ela" not in html_com_substituto

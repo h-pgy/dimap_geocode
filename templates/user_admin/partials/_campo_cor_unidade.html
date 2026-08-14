@@ -1,19 +1,23 @@
 {# Campo de cor da unidade: o disco de paleta da SPEC user_admin/007, agora como partial próprio — #}
-{# é ele o alvo do hx-get disparado pelo select da unidade superior (SPEC 012). O hex vem resolvido #}
-{# da borda do app em --tinta: classe montada no template (bg-{{ cor }}) o Tailwind não enxerga no #}
-{# @source e sumiria no build de produção.                                                          #}
-<div id="campo-cor-unidade" class="palette-field dropdown dropdown-bottom form-field">
+{# é ele o alvo do hx-get disparado pelo select da unidade superior (SPEC 012). ALTERAÇÃO da SPEC   #}
+{# user_admin/017: o dropdown desce um nível, do campo inteiro para o gatilho — "para a direita"    #}
+{# passa a ser 100% da largura do BOTÃO, não do poço, e o disco cabe dentro do recorte de um painel #}
+{# que o envolva (Caveats). O hex vem resolvido da borda do app em --tinta: classe montada no       #}
+{# template o Tailwind não enxerga no @source e sumiria no build de produção.                       #}
+<div id="campo-cor-unidade" class="palette-field form-field">
   <span class="text-overline">Cor da unidade</span>
-  <div tabindex="0" role="button" class="btn btn-ghost btn-glass w-fit gap-3 px-3 h-12">
-    <span class="paint-well-atual w-8 h-8 pointer-events-none" style="--tinta: {{ cor_hex }}"></span>
-    <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-  </div>
-  <div tabindex="0" class="dropdown-content z-30 mt-2">
-    <div class="palette-disc">
-      <span class="paint-well-atual absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="--tinta: {{ cor_hex }}"></span>
-      {% for tom in tons %}
-        <label class="paint-well" style="--a: {{ tom.angulo }}deg; --tinta: {{ tom.hex }}" title="{{ tom.rotulo }}"><input type="radio" name="cor" value="{{ tom.slug }}" class="sr-only"{% if tom.selecionado %} checked{% endif %}></label>
-      {% endfor %}
+  <div class="dropdown dropdown-right dropdown-end w-fit">
+    <div tabindex="0" role="button" class="btn btn-ghost btn-glass w-fit gap-3 px-3 h-12">
+      <span class="paint-well-atual w-8 h-8 pointer-events-none" style="--tinta: {{ cor_hex }}"></span>
+      <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+    <div tabindex="0" class="dropdown-content z-30 ml-2">
+      <div class="palette-disc">
+        <span class="paint-well-atual absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="--tinta: {{ cor_hex }}"></span>
+        {% for tom in tons %}
+          <label class="paint-well" style="--a: {{ tom.angulo }}deg; --tinta: {{ tom.hex }}" title="{{ tom.rotulo }}"><input type="radio" name="cor" value="{{ tom.slug }}" form="form-nova-unidade" class="sr-only"{% if tom.selecionado %} checked{% endif %}></label>
+        {% endfor %}
+      </div>
     </div>
   </div>
   <span class="form-field-hint">Pinta o anel do avatar de quem é lotado aqui. Repetir tom entre unidades é permitido.</span>

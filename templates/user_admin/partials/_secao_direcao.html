@@ -34,7 +34,7 @@
               <p class="linha-pessoa-nome">{{ titular.nome }} {{ titular.sobrenome }}</p>
               <p class="linha-pessoa-meta">RF {{ titular.rf }}{% if titular.cargo_comissao %} · {{ titular.cargo_comissao.padrao }} · {{ titular.cargo_comissao.nome }}{% endif %}</p>
             </div>
-            <a href="{% url 'user_admin:editar_perfil' titular.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de {{ titular.nome }} {{ titular.sobrenome }}">
+            <a href="{% url 'user_admin:pagina_perfil' titular.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de {{ titular.nome }} {{ titular.sobrenome }}">
               <span class="etched icon-etched">↗</span>
             </a>
           </div>
@@ -58,7 +58,7 @@
               <p class="linha-pessoa-nome">{{ substituto.nome }} {{ substituto.sobrenome }}</p>
               <p class="linha-pessoa-meta">RF {{ substituto.rf }}{% if substituto.cargo_comissao %} · {{ substituto.cargo_comissao.padrao }} · {{ substituto.cargo_comissao.nome }}{% endif %}</p>
             </div>
-            <a href="{% url 'user_admin:editar_perfil' substituto.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de {{ substituto.nome }} {{ substituto.sobrenome }}">
+            <a href="{% url 'user_admin:pagina_perfil' substituto.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de {{ substituto.nome }} {{ substituto.sobrenome }}">
               <span class="etched icon-etched">↗</span>
             </a>
           </div>

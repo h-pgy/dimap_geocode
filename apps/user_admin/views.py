@@ -1,12 +1,13 @@
 """
 Páginas administrativas de servidor (SPEC user_admin/007), de unidade (SPEC user_admin/012), a
-listagem de servidores (SPEC user_admin/013) e a página própria da unidade (SPEC user_admin/016):
-criar e editar renderizam o mesmo organismo sobre o fundo administrativo. Só leitura — gravar é ato
-administrativo e entra com autenticação, autorização por perfil e registro da execução no épico de
-ações (§3.5); os modais de titularidade da página da unidade renderizam sem destino de submit.
+listagem de servidores (SPEC user_admin/013), a página própria da unidade (SPEC user_admin/016) e a
+página própria do servidor (SPEC user_admin/017): criar servidor e criar unidade seguem em
+formulário aberto; ver um servidor ou uma unidade é página, e editar os dois é modal, buscado por
+rota própria. Só leitura — gravar é ato administrativo e entra com autenticação, autorização por
+perfil e registro da execução no épico de ações (§3.5); os modais renderizam sem destino de submit.
 
-A rota da listagem e a da página da unidade nascem ABERTAS, exceção declarada nas SPECs 013 e 016
-nos termos do §3.5: a proteção por perfil de administrador entra com a SPEC de autenticação.
+As rotas de leitura nascem ABERTAS, exceção declarada nas SPECs 013, 016 e 017 nos termos do §3.5: a
+proteção por perfil de administrador entra com a SPEC de autenticação.
 """
 
 from django.http import HttpRequest, HttpResponse
@@ -17,14 +18,17 @@ from apps.user_admin.context import (
     contexto_cor_sugerida,
     contexto_criar_perfil,
     contexto_criar_unidade,
-    contexto_editar_perfil,
     contexto_listagem_servidores,
+    contexto_modal_perfil,
+    contexto_pagina_perfil,
     contexto_unidade,
 )
 from apps.user_admin.models import Perfil, Unidade
 from apps.user_admin.schemas import SelecaoUnidadePai, consulta_de_servidores
 
 TEMPLATE_FORMULARIO = "user_admin/perfil_form.html"
+TEMPLATE_PAGINA_PERFIL = "user_admin/perfil.html"
+TEMPLATE_MODAL_PERFIL = "user_admin/partials/_modal_editar_perfil.html"
 TEMPLATE_UNIDADE = "user_admin/unidade_form.html"
 TEMPLATE_PAGINA_UNIDADE = "user_admin/unidade.html"
 TEMPLATE_CAMPO_COR = "user_admin/partials/_campo_cor_unidade.html"
@@ -48,12 +52,21 @@ def criar_perfil(request: HttpRequest) -> HttpResponse:
     return render(request, TEMPLATE_FORMULARIO, contexto_criar_perfil())
 
 
+def pagina_perfil(request: HttpRequest, pk: int) -> HttpResponse:
+    return render(request, TEMPLATE_PAGINA_PERFIL, contexto_pagina_perfil(_perfil(pk)))
+
+
 def editar_perfil(request: HttpRequest, pk: int) -> HttpResponse:
-    perfil = get_object_or_404(
+    # Só o partial do modal: a página de leitura não o carrega, e os catálogos dos selects só são
+    # consultados quando alguém abre o lápis.
+    return render(request, TEMPLATE_MODAL_PERFIL, contexto_modal_perfil(_perfil(pk)))
+
+
+def _perfil(pk: int) -> Perfil:
+    return get_object_or_404(
         Perfil.objects.select_related("unidade", "cargo_base", "cargo_comissao"),
         pk=pk,
     )
-    return render(request, TEMPLATE_FORMULARIO, contexto_editar_perfil(perfil))
 
 
 def criar_unidade(request: HttpRequest) -> HttpResponse:

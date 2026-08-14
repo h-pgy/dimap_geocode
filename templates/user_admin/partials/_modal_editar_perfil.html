@@ -1,0 +1,204 @@
+{# Modal de edição do servidor (SPEC user_admin/017) — o partial que a rota de edição devolve. Chega #}
+{# com o toggle já marcado: abrir é chegar, fechar é o <label> desmarcando, sem JS de estado. Os     #}
+{# campos vêm preenchidos e LIDOS — cada um só vira campo ao abrir o lápis ao lado (.campo-onsen).   #}
+{# Nenhuma rota de escrita nasce aqui: o submit não tem destino (Caveats).                           #}
+<input type="checkbox" id="modal-editar-perfil" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+    <form class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+        <p class="text-sm text-base-content/70 mt-1">{{ perfil.nome }} {{ perfil.sobrenome }} · RF {{ perfil.rf }}</p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Identificação</p>
+        <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+          <div class="campo-onsen">
+            <input type="checkbox" id="editar-campo-rf" class="campo-onsen-toggle" />
+            <span class="text-overline etched-rotulo">RF</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor text-code">{{ perfil.rf }}</p>
+              <div class="campo-onsen-campo">
+                <input type="text" name="rf" class="input input-glass" value="{{ perfil.rf }}" />
+              </div>
+              <label for="editar-campo-rf" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o RF">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+          <div class="campo-onsen">
+            <input type="checkbox" id="editar-campo-nome" class="campo-onsen-toggle" />
+            <span class="text-overline etched-rotulo">Nome</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">{{ perfil.nome }}</p>
+              <div class="campo-onsen-campo">
+                <input type="text" name="nome" class="input input-glass" value="{{ perfil.nome }}" />
+              </div>
+              <label for="editar-campo-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+          <div class="campo-onsen">
+            <input type="checkbox" id="editar-campo-sobrenome" class="campo-onsen-toggle" />
+            <span class="text-overline etched-rotulo">Sobrenome</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">{{ perfil.sobrenome }}</p>
+              <div class="campo-onsen-campo">
+                <input type="text" name="sobrenome" class="input input-glass" value="{{ perfil.sobrenome }}" />
+              </div>
+              <label for="editar-campo-sobrenome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o sobrenome">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Lotação</p>
+        <div class="grid gap-x-8 gap-y-4">
+          <div class="campo-onsen">
+            <input type="checkbox" id="editar-campo-unidade" class="campo-onsen-toggle" />
+            <span class="text-overline etched-rotulo">Unidade</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">{{ perfil.unidade.sigla }} <span class="text-base-content/50">· {{ perfil.unidade.nome }}</span></p>
+              <div class="campo-onsen-campo">
+                <select name="unidade" class="select select-glass" data-select-onsen>
+                  {% for unidade in unidades %}
+                    <option value="{{ unidade.pk }}"{% if unidade.pk == perfil.unidade_id %} selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
+                  {% endfor %}
+                </select>
+                {% if perfil.e_titular %}
+                  <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                    <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                    <p class="text-[13px] text-base-content/80">Mover {{ perfil.nome }} para outra unidade é <strong>recusado na validação</strong>: a {{ perfil.unidade.sigla }} não fica com titular de fora.</p>
+                  </div>
+                {% endif %}
+              </div>
+              <label for="editar-campo-unidade" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a unidade">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+
+          {# O gatilho e o painel ocupam o mesmo lugar: aberto o painel, o botão sai de cena. #}
+          <label for="painel-nova-unidade" class="painel-onsen-gatilho btn btn-glass btn-xs gap-1.5 self-start">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+            Unidade não encontrada
+          </label>
+
+          <div class="painel-onsen">
+            <input type="checkbox" id="painel-nova-unidade" class="painel-onsen-toggle" />
+            <div class="painel-onsen-corpo">
+              <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4">
+                <div class="flex items-center justify-between gap-4">
+                  <div class="min-w-0">
+                    <p class="text-overline">Cadastrar unidade</p>
+                    <p class="text-[13px] text-base-content/60 mt-0.5">Criada aqui, ela passa a existir na lista acima.</p>
+                  </div>
+                  <label for="painel-nova-unidade" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Fechar o cadastro de unidade">
+                    <span class="etched icon-etched">✕</span>
+                  </label>
+                </div>
+
+                {% include "user_admin/partials/_campos_unidade.html" %}
+
+                {# O ✕ do topo sai de vista num painel longo: o mesmo gesto se repete aqui embaixo, #}
+                {# em registro gravado, ao lado do que grava.                                       #}
+                <div class="flex items-center justify-end gap-5">
+                  <label for="painel-nova-unidade" class="btn-etched btn-etched-sm etched">✕ cancelar</label>
+                  <button type="submit" form="form-nova-unidade" class="btn btn-onsen btn-sm">Criar unidade</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="campo-onsen">
+            <input type="checkbox" id="editar-campo-base" class="campo-onsen-toggle" />
+            <span class="text-overline etched-rotulo">Cargo base</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">{{ perfil.cargo_base.nome }}</p>
+              <div class="campo-onsen-campo">
+                <select name="cargo_base" class="select select-glass" data-select-onsen>
+                  {% for cargo in cargos_base %}
+                    <option value="{{ cargo.pk }}"{% if cargo.pk == perfil.cargo_base_id %} selected{% endif %}>{{ cargo.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <label for="editar-campo-base" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o cargo base">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+
+          {# Só quem é titular carrega a recusa: é o clean() que cruza cargo → unidade → tipo. #}
+          <div class="campo-onsen">
+            <input type="checkbox" id="editar-campo-comissao" class="campo-onsen-toggle" />
+            <span class="text-overline etched-rotulo">Cargo em comissão</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">
+                {% if perfil.cargo_comissao %}{{ perfil.cargo_comissao.padrao }} · {{ perfil.cargo_comissao.nome }}{% else %}— sem cargo em comissão —{% endif %}
+              </p>
+              <div class="campo-onsen-campo">
+                <select name="cargo_comissao" class="select select-glass" data-select-onsen>
+                  <option value="">— sem cargo em comissão —</option>
+                  {% for cargo in cargos_comissao %}
+                    <option value="{{ cargo.pk }}"{% if cargo.pk == perfil.cargo_comissao_id %} selected{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>
+                  {% endfor %}
+                </select>
+                {% if perfil.e_titular %}
+                  <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                    <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                    <p class="text-[13px] text-base-content/80">Trocar por um cargo que não titulariza a {{ perfil.unidade.sigla }} é <strong>recusado na validação</strong>: a unidade não fica com titular inválido gravado.</p>
+                  </div>
+                {% endif %}
+              </div>
+              <label for="editar-campo-comissao" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o cargo em comissão">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Foto</p>
+        <div class="campo-onsen items-center">
+          <input type="checkbox" id="editar-campo-foto" class="campo-onsen-toggle" />
+          <div class="avatar-editavel">
+            {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-28 h-28" %}
+            <label for="editar-campo-foto" class="btn btn-circle btn-foto campo-onsen-lapis" title="Trocar a foto">
+              <span class="campo-onsen-lapis-abre">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+              </span>
+              <span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+            </label>
+          </div>
+          <div class="campo-onsen-campo w-full mt-2">
+            <label class="upload-well cursor-pointer">
+              <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+              </span>
+              <span class="text-sm font-medium">Arraste a nova foto ou clique para escolher</span>
+              <input type="file" name="foto" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs" />
+              <span class="form-field-hint">JPG ou PNG. Sem foto, o sistema desenha o avatar com as iniciais na cor da unidade.</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-editar-perfil" class="btn btn-glass btn-sm">Cancelar</label>
+        <label for="modal-editar-perfil" class="btn btn-onsen btn-sm">Salvar alterações</label>
+      </div>
+    </form>
+
+    {# O formulário do cadastro de unidade nasce VAZIO e irmão do de cima. Os campos dele moram lá  #}
+    {# dentro, ao pé da lotação, e se ligam aqui pelo atributo `form` — é o que deixa o painel      #}
+    {# crescer onde a pergunta nasceu sem produzir formulário aninhado, que é HTML inválido.        #}
+    <form id="form-nova-unidade" class="hidden"></form>
+  </div>
+  <label class="modal-backdrop" for="modal-editar-perfil">Fechar</label>
+</div>

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ perfil.nome }} {{ perfil.sobrenome }} · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+  {# O sprite é por página, e os ids se repetem entre sprites: incluir os dois juntos duplicaria #}
+  {# glifo-alerta e glifo-substituto. O da página do servidor carrega o exercício mais o lápis.   #}
+  {% include "user_admin/partials/_glifos_servidor.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-3xl mx-auto px-4 py-24">
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        {% include "user_admin/partials/_identidade_perfil.html" %}
+        {% include "user_admin/partials/_secao_resumo_perfil.html" %}
+        {% include "user_admin/partials/_secao_exercicio.html" %}
+
+        <div class="flex justify-center pt-2">
+          <button type="button"
+                  hx-get="{% url 'user_admin:editar_perfil' perfil.pk %}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms"
+                  class="btn btn-onsen btn-lg gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+            Editar servidor
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Poço do modal, irmão do conteúdo e nunca dentro dele: formulário aninhado é HTML inválido, e    #}
+  {# aqui fora ele escapa do contexto de empilhamento da .admin-shell. Nasce vazio — a rota o monta. #}
+  <div id="poco-modal" class="poco-modal"></div>
+  {% include "user_admin/partials/_modais_exercicio.html" %}
+{% endblock %}
+
+{% block scripts %}
+  {# Fundo à deriva — só existe onde existe o canvas administrativo #}
+  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+  {# O modal chega por HTMX depois: sem este módulo já carregado, os selects que ele traz não são #}
+  {# aprimorados — select_onsen.js reage a htmx:afterSwap (SPEC user_admin/011).                  #}
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+{% endblock %}

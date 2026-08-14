@@ -88,12 +88,28 @@ def contexto_criar_perfil() -> dict[str, Any]:
     )
 
 
-def contexto_editar_perfil(perfil: Perfil) -> dict[str, Any]:
+def contexto_pagina_perfil(perfil: Perfil) -> dict[str, Any]:
+    """O que a página lê. Sem catálogo nenhum: os selects são do modal, que vem por rota."""
     return (
         contexto_fundo_admin()
-        | _catalogos_de_lotacao()
-        | _contexto_do_modal_de_unidade()
         | contexto_exercicio(perfil)
+        | {
+            "perfil": perfil,
+            "imagem": _imagem_do_perfil(perfil),
+            "cor_unidade_hex": hex_da_cor(perfil.cor_unidade),
+            # Titularidade é atributo do perfil, e a unidade dirigida é sempre a de lotação:
+            # perguntar de novo ao banco por Unidade.titular seria refazer o que já está em mãos.
+            "unidade_dirigida": perfil.unidade if perfil.e_titular else None,
+        }
+    )
+
+
+def contexto_modal_perfil(perfil: Perfil) -> dict[str, Any]:
+    """O que o modal preenche: o perfil, os catálogos dos três selects e os do painel de unidade,
+    que vem fechado dentro dele."""
+    return (
+        _catalogos_de_lotacao()
+        | _contexto_do_modal_de_unidade()
         | {
             "perfil": perfil,
             "imagem": _imagem_do_perfil(perfil),

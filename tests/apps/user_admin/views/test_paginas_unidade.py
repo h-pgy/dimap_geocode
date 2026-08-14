@@ -1,7 +1,9 @@
 """
 Testes do formulário de unidade (SPEC user_admin/012): a página própria, o modal dentro da página
-de servidor e a troca do campo de cor pela unidade superior. O que é visual — a placa de gelo do
-modal, o embaçamento do fundo, o brilho do botão — se valida no mock da SPEC.
+de criar servidor e a troca do campo de cor pela unidade superior. Editar servidor passou a montar
+o cadastro de unidade como painel dentro do próprio modal de edição (SPEC user_admin/017), testado
+em test_pagina_do_servidor.py. O que é visual — a placa de gelo do modal, o embaçamento do fundo, o
+brilho do botão — se valida no mock da SPEC.
 
 Todos levam o marker `banco`: os selects são montados a partir das tabelas.
 """
@@ -13,7 +15,7 @@ from django.urls import reverse
 
 import pytest
 
-from apps.user_admin.models import CargoBase, CorUnidade, Perfil, TipoUnidade, Unidade
+from apps.user_admin.models import CorUnidade, TipoUnidade, Unidade
 
 banco = pytest.mark.banco
 
@@ -36,23 +38,11 @@ def _unidade_gravada(cor: str) -> Unidade:
     )
 
 
-def _perfil_gravado(unidade: Unidade) -> Perfil:
-    cargo_base = CargoBase.objects.create(
-        nome="Analista de Ordenamento Territorial",
-        sigla="AOT",
-    )
-    return Perfil.objects.create_user(
-        rf="812345",
-        nome="Fulano",
-        sobrenome="de Tal",
-        password="segredo123",
-        cargo_base=cargo_base,
-        unidade=unidade,
-    )
-
-
 def _radio_do_tom(slug: str) -> str:
-    return f'<input type="radio" name="cor" value="{slug}" class="sr-only"'
+    # form="form-nova-unidade" desde a SPEC user_admin/017: cada campo do cadastro de unidade
+    # declara o formulário a que pertence, porque o painel da página do servidor o mantém fora
+    # do formulário do servidor.
+    return f'<input type="radio" name="cor" value="{slug}" form="form-nova-unidade" class="sr-only"'
 
 
 @banco
@@ -76,21 +66,13 @@ def test_pagina_criar_unidade_renderiza_o_formulario(client: Client) -> None:
 
 @banco
 @pytest.mark.django_db
-@pytest.mark.parametrize("pagina", ["criar", "editar"])
-def test_pagina_de_perfil_traz_o_modal_de_unidade(client: Client, pagina: str) -> None:
-    # Criar e editar servidor renderizam o mesmo organismo: o modal precisa dos catálogos nas duas
-    # — sem eles o disco de paleta nasce sem tons e o select de tipo, vazio.
+def test_pagina_de_criar_perfil_traz_o_modal_de_unidade(client: Client) -> None:
+    # O modal precisa dos catálogos: sem eles o disco de paleta nasce sem tons e o select de tipo,
+    # vazio. O modal de EDITAR servidor passou a montar o cadastro de unidade como painel dentro de
+    # si mesmo (SPEC user_admin/017) — testado em test_pagina_do_servidor.py.
     unidade = _unidade_gravada(cor=CorUnidade.ROCHA_700)
-    url = (
-        reverse("user_admin:criar_perfil")
-        if pagina == "criar"
-        else reverse(
-            "user_admin:editar_perfil",
-            kwargs={"pk": _perfil_gravado(unidade).pk},
-        )
-    )
 
-    html = client.get(url).content.decode()
+    html = client.get(reverse("user_admin:criar_perfil")).content.decode()
 
     assert 'for="modal-nova-unidade"' in html
     assert 'id="modal-nova-unidade"' in html

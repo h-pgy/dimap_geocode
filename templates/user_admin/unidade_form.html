@@ -10,8 +10,9 @@
   <div class="admin-shell">
     <div class="max-w-3xl mx-auto px-4 py-24">
       {# Gravar unidade é ato administrativo e entra com autenticação, autorização e registro na #}
-      {# SPEC seguinte (§3.5): aqui o formulário só renderiza, e o submit não tem destino.       #}
-      <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      {# SPEC seguinte (§3.5): aqui o formulário só renderiza, e o submit não tem destino. O id  #}
+      {# é o mesmo que _campos_unidade.html declara em cada campo (SPEC user_admin/017).         #}
+      <form id="form-nova-unidade" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
         <div>
           <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Nova unidade</h1>
           <p class="text-sm text-base-content/70 mt-1">A unidade é o eixo da competência administrativa: é ela que, com o cargo, define o que cada servidor pode praticar.</p>

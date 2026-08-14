@@ -4,7 +4,7 @@
   {% for linha in linhas %}
     <tr>
       <td class="font-medium text-madeira-700">
-        <a href="{% url 'user_admin:editar_perfil' linha.pk %}" class="hover:text-agua-700 transition-colors">{{ linha.nome }}</a>
+        <a href="{% url 'user_admin:pagina_perfil' linha.pk %}" class="hover:text-agua-700 transition-colors">{{ linha.nome }}</a>
       </td>
       <td><span class="text-code">{{ linha.rf }}</span></td>
       <td>
@@ -24,7 +24,9 @@
         {% endif %}
       </td>
       <td class="text-right">
-        <a href="{% url 'user_admin:editar_perfil' linha.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar servidor">
+        {# Ver é página; editar é modal, aberto de lá (SPEC user_admin/017) — daqui o lápis já leva #}
+        {# à página, de onde o botão "Editar servidor" busca o modal.                              #}
+        <a href="{% url 'user_admin:pagina_perfil' linha.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver servidor">
           <span class="etched icon-etched">✎</span>
         </a>
       </td>

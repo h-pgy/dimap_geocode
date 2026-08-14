@@ -773,6 +773,51 @@ html[data-theme="dimap"] {
   .campo-onsen-campo :where(input, select, .select-onsen-trigger) {
     @apply bg-white/30! border-white/45! shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
   }
+  /* ALTERAÇÃO (SPEC user_admin/017): aberto o campo, o mesmo lápis desfaz — e nada dizia isso. No
+     hover ele vira ✕, e o vale também para o modal da página da unidade. */
+  .campo-onsen-lapis-fecha { @apply hidden; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-abre { @apply hidden; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-fecha { @apply inline; }
+
+  /* Painel que cresce (SPEC user_admin/017): traz o cadastro de unidade para dentro do modal de
+     edição do servidor. A grade é o único jeito de animar altura sem fixar um valor em pixels que
+     o conteúdo desmente: 0fr → 1fr. */
+  .painel-onsen { @apply grid transition-all duration-300 ease-in-out; grid-template-rows: 0fr; }
+  .painel-onsen-toggle { @apply sr-only; }
+  /* A folga vive DENTRO do recorte: sem ela o overflow corta a sombra da placa e a quina sai reta. */
+  .painel-onsen-corpo { @apply overflow-hidden -mx-4 px-4 pt-6 pb-6 opacity-0 transition-opacity duration-300; }
+  .painel-onsen:has(> .painel-onsen-toggle:checked) { grid-template-rows: 1fr; }
+  .painel-onsen:has(> .painel-onsen-toggle:checked) > .painel-onsen-corpo { @apply opacity-100; }
+  /* O painel toma o lugar do gatilho, e o :has() sobe ao pai porque os dois moram em ramos diferentes. */
+  *:has(> .painel-onsen > .painel-onsen-toggle:checked) .painel-onsen-gatilho { @apply hidden; }
+  /* Campo do painel é campo rebaixado: sobre placa erguida o .input-glass sozinho não diz que se
+     escreve nele. */
+  .painel-onsen-corpo :where(input, select, .select-onsen-trigger) {
+    @apply bg-white/30! border-white/45! shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
+  }
+
+  /* Botão de trocar foto (SPEC user_admin/017): irmão do .btn-criar-inline — círculo de gelo com a
+     tinta ciana —, pousado na quina do retrato. */
+  .btn-foto {
+    @apply w-9 h-9 shrink-0 p-0 rounded-full backdrop-blur-[10px] bg-white/60 border border-white/70 text-agua-700
+           shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_4px_16px_rgba(7,58,84,0.22)]
+           transition-all duration-300 hover:bg-white/80 hover:shadow-[0_4px_20px_rgba(72,202,228,0.45)];
+  }
+
+  /* Retrato editável (SPEC user_admin/017): o retrato grande com o botão de trocar na quina. */
+  .avatar-editavel { @apply relative w-fit; }
+  /* O mt-0! desfaz o empurrão que o campo aberto dá no lápis: este não fica na linha do valor. */
+  .avatar-editavel > .btn-foto { @apply absolute bottom-0 right-0 translate-x-1 translate-y-1 mt-0!; }
+
+  /* Variante do .btn-etched (SPEC user_admin/017): ao lado de um botão que grava, no mesmo tamanho,
+     o corpo cheio disputa a atenção em vez de ceder. */
+  .btn-etched-sm { @apply text-[12px] font-semibold tracking-[0.1em] px-1 py-0.5; }
+
+  /* Entrada da placa (SPEC user_admin/017): o fragmento chega com o toggle já marcado — sem a fase
+     de settle do HTMX ela apareceria pronta, sem animação alguma. */
+  .poco-modal .modal-box { @apply transition-[opacity,scale,translate] duration-150 ease-out; }
+  /* O important é contra o daisyUI, que entinta o estado aberto com seletor mais específico. */
+  .poco-modal.htmx-settling .modal-box { @apply opacity-0! -translate-y-1!; }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */
