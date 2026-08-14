@@ -18,6 +18,7 @@ from apps.user_admin.exercicio import (
     lacuna_proposta,
     periodo_de,
     substituicao_que_exerce,
+    substituicao_vigente,
     substituicoes_do_impedimento,
     trechos_do_impedimento,
 )
@@ -31,6 +32,7 @@ from apps.user_admin.models import (
     TipoUnidade,
     Unidade,
 )
+from apps.user_admin.models.titularidade import cargo_titulariza
 from apps.user_admin.paleta import TINTA_AVATAR, hex_da_cor, tons_da_paleta
 from services.domain.avatar import ImagemPerfilOutput, resolver_imagem_perfil
 from services.domain.exercicio import Periodo, Trecho, vigente_em
@@ -40,8 +42,11 @@ from services.domain.servidores_listagem import (
     LinhaServidor,
     listar_servidores,
 )
+from services.domain.titularidade import Direcao, EstadoDaDirecao, avaliar_direcao
 
 SEM_CARGO_COMISSAO = "—"
+# O organograma fala em padrão de cargo, não em número de nível (SPEC user_admin/016).
+ROTULO_ALTA_ADMINISTRACAO = "Alta administração"
 # Selo do exercício: o vermelho é da unidade sem direção (SPEC 016), nunca da pessoa.
 SELO_EM_EXERCICIO = ("Em exercício", "badge-success")
 SELO_AFASTADO = ("Afastado", "badge-warning")
@@ -115,6 +120,9 @@ def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
                 for impedimento in impedimentos_em_aberto(perfil)
             ],
             "substituindo": _substituindo(perfil),
+            # Reflexo da SPEC 016: a mesma pergunta ("esta unidade tem direção hoje?"), aplicada à
+            # unidade de quem é titular desta página.
+            "alarme_sem_direcao": _alarme_sem_direcao_do_titular(perfil),
         }
     }
 
@@ -148,6 +156,57 @@ def contexto_criar_unidade() -> dict[str, Any]:
     )
 
 
+def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
+    """Uma passagem só: quem a tela carrega para desenhar é quem ela usa para decidir."""
+    titular = unidade.titular
+    # A vigente vem da SPEC 015: o predicado de data não se copia por tela.
+    substituicao = substituicao_vigente(titular) if titular else None
+    substituto = substituicao.substituto if substituicao else None
+    direcao = avaliar_direcao(_estado_da_direcao(titular, substituto))
+    return (
+        contexto_fundo_admin()
+        | _catalogos_de_unidade()
+        | {
+            "unidade": unidade,
+            "unidade_cor_hex": hex_da_cor(unidade.cor),
+            "pai_cor_hex": hex_da_cor(unidade.pai.cor) if unidade.pai else None,
+            "titular": titular,
+            "titular_selo": _selo_do_exercicio(titular) if titular else None,
+            "titular_imagem": _imagem_do_perfil(titular) if titular else None,
+            "titular_cor_unidade_hex": hex_da_cor(titular.cor_unidade) if titular else None,
+            "substituto": substituto,
+            "substituto_imagem": _imagem_do_perfil(substituto) if substituto else None,
+            "substituto_cor_unidade_hex": (
+                hex_da_cor(substituto.cor_unidade) if substituto else None
+            ),
+            # O template acende selo e alarme pelo enum; a causa é decidida no domínio.
+            "direcao": direcao,
+            "alarme_sem_titular": _alarme_sem_titular(unidade),
+            "alarme_sem_direcao": _alarme_sem_direcao(unidade, titular) if titular else "",
+            "candidatos": candidatos_a_titular(unidade),
+            "cargo_minimo": _rotulo_do_minimo(unidade.tipo),
+            "total_lotados": unidade.perfis.count(),
+        }
+    )
+
+
+def candidatos_a_titular(unidade: Unidade) -> list[Perfil]:
+    """Quem a unidade pode titularizar: o filtro estreita, o domínio decide."""
+    lotados = Perfil.objects.filter(
+        unidade=unidade,
+        cargo_comissao__isnull=False,
+    ).select_related("cargo_comissao")
+    return [
+        perfil
+        for perfil in lotados
+        if cargo_titulariza(
+            perfil.cargo_comissao,
+            exige_alta_administracao=unidade.tipo.exige_alta_administracao,
+            nivel_minimo=unidade.tipo.nivel_minimo_titular,
+        )
+    ]
+
+
 def contexto_cor_sugerida(pai_pk: int | None) -> dict[str, Any]:
     pai = Unidade.objects.filter(pk=pai_pk).first() if pai_pk else None
     # Instância não gravada só para não repetir aqui o default que o model já decide.
@@ -156,6 +215,56 @@ def contexto_cor_sugerida(pai_pk: int | None) -> dict[str, Any]:
         "tons": tons_da_paleta(cor),
         "cor_hex": hex_da_cor(cor),
     }
+
+
+def _estado_da_direcao(
+    titular: Perfil | None,
+    substituto: Perfil | None,
+) -> EstadoDaDirecao:
+    return EstadoDaDirecao(
+        tem_titular=titular is not None,
+        titular_em_exercicio=bool(titular and titular.em_exercicio),
+        # O substituto fora de exercício não cobre ninguém: a unidade fica sem direção.
+        substituto_do_titular_em_exercicio=bool(substituto and substituto.em_exercicio),
+    )
+
+
+def _rotulo_do_minimo(tipo: TipoUnidade) -> str:
+    # O organograma fala em padrão de cargo, não em número de nível.
+    if tipo.exige_alta_administracao:
+        return ROTULO_ALTA_ADMINISTRACAO
+    cargo = CargoComissao.objects.filter(
+        e_chefia=True,
+        nivel=tipo.nivel_minimo_titular,
+    ).first()
+    return cargo.padrao if cargo else ""
+
+
+def _alarme_sem_titular(unidade: Unidade) -> str:
+    return (
+        f"A {unidade.sigla} está sem titular. Nenhum servidor titulariza esta unidade — "
+        "é preciso nomear um titular."
+    )
+
+
+def _alarme_sem_direcao(unidade: Unidade, titular: Perfil) -> str:
+    return (
+        f"A {unidade.sigla} está sem quem responda por ela. {titular.nome} {titular.sobrenome} "
+        "é o titular, está afastado e não há substituto designado — designe um substituto na "
+        "página dele."
+    )
+
+
+def _alarme_sem_direcao_do_titular(perfil: Perfil) -> str:
+    # Só o titular puxa o alarme para a própria página: o afastado sem cargo de direção não
+    # deixa unidade nenhuma sem quem responda por ela.
+    if not perfil.e_titular:
+        return ""
+    substituicao = substituicao_vigente(perfil)
+    substituto = substituicao.substituto if substituicao else None
+    if avaliar_direcao(_estado_da_direcao(perfil, substituto)) != Direcao.SEM_DIRECAO:
+        return ""
+    return _alarme_sem_direcao(perfil.unidade, perfil)
 
 
 def _selo_do_exercicio(perfil: Perfil) -> dict[str, str]:
@@ -448,6 +557,7 @@ def _linha_do_perfil(perfil: Perfil) -> LinhaServidor:
         nome=f"{perfil.nome} {perfil.sobrenome}",
         rf=perfil.rf,
         unidade=perfil.unidade.sigla,
+        unidade_pk=perfil.unidade_id,
         cor_unidade=hex_da_cor(perfil.cor_unidade),
         cargo=perfil.cargo_base.nome,
         comissao=perfil.cargo_comissao.nome if perfil.cargo_comissao else SEM_CARGO_COMISSAO,

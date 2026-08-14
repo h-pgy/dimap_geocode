@@ -1,0 +1,55 @@
+{# Modal de trocar titular (SPEC user_admin/016): destitui o atual e define o novo na mesma        #}
+{# operação — o ato de titularidade da SPEC 014. Só há conteúdo quando existe titular; sem um, o    #}
+{# botão que abre este modal nem aparece na seção de direção.                                       #}
+<input type="checkbox" id="modal-trocar-titular" class="modal-toggle" />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+    {% if titular %}
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Trocar titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {{ unidade.nome }}</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">Titular hoje</p>
+          <div class="tarja-vinculo">
+            <div class="linha-pessoa">
+              {% include "user_admin/partials/_imagem_perfil.html" with perfil=titular imagem=titular_imagem cor_unidade_hex=titular_cor_unidade_hex tamanho="w-10 h-10" %}
+              <div class="min-w-0 flex-1">
+                <p class="linha-pessoa-nome">{{ titular.nome }} {{ titular.sobrenome }}</p>
+                <p class="linha-pessoa-meta">RF {{ titular.rf }}{% if titular.cargo_comissao %} · {{ titular.cargo_comissao.padrao }} · {{ titular.cargo_comissao.nome }}{% endif %}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <label class="form-field">
+          <span class="text-overline">Novo titular</span>
+          <select name="titular" class="select select-glass" data-select-onsen>
+            {% for candidato in candidatos %}
+              {% if candidato.pk != titular.pk %}
+                <option value="{{ candidato.pk }}">{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">Mesma lista de sempre: lotado na {{ unidade.sigla }}, chefia, e o mínimo do tipo ({{ cargo_minimo }}).</span>
+        </label>
+
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="min-w-0 text-[13px] text-base-content/80 flex flex-col gap-1">
+            <p>{{ titular.nome }} {{ titular.sobrenome }} é destituído(a) na mesma operação — inclusive se estiver afastado(a).</p>
+            <p>A substituição vigente não é encerrada: ela cobre o cargo, não a direção da unidade, que passa a seguir o novo titular.</p>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-trocar-titular" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-trocar-titular" class="btn btn-onsen btn-sm">Trocar</label>
+        </div>
+      </form>
+    {% endif %}
+  </div>
+  <label class="modal-backdrop" for="modal-trocar-titular">Fechar</label>
+</div>

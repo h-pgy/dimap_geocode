@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ unidade.sigla }} · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+  {% include "user_admin/partials/_glifos_unidade.html" %}
+
+  {# .admin-shell: o fundo fica parado e o conteúdo rola aqui dentro — mesmo esqueleto das demais  #}
+  {# páginas administrativas (SPEC user_admin/007).                                                #}
+  <div class="admin-shell">
+    <div class="max-w-3xl mx-auto px-4 py-24">
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        {% include "user_admin/partials/_identidade_unidade.html" %}
+        {% include "user_admin/partials/_secao_resumo_unidade.html" %}
+        {% include "user_admin/partials/_secao_direcao.html" %}
+
+        <div class="flex justify-center pt-2">
+          <label for="modal-editar-unidade" class="btn btn-onsen btn-lg gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+            Editar unidade
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Irmãos do conteúdo, nunca dentro dele: formulário aninhado é HTML inválido e o navegador       #}
+  {# descarta o interno. Nenhuma rota de escrita nasce nesta SPEC — os quatro modais renderizam com #}
+  {# o submit sem destino; os atos seguem sendo as funções da SPEC 014 (Caveats).                   #}
+  {% include "user_admin/partials/_modal_editar_unidade.html" %}
+  {% include "user_admin/partials/_modal_definir_titular.html" %}
+  {% include "user_admin/partials/_modal_trocar_titular.html" %}
+  {% include "user_admin/partials/_modal_destituir_titular.html" %}
+{% endblock %}
+
+{% block scripts %}
+  {# Fundo à deriva — só existe onde existe o canvas administrativo #}
+  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+  {# Sem este módulo os selects seguem nativos: marcar o campo não carrega o componente #}
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+{% endblock %}

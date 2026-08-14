@@ -1,0 +1,24 @@
+{# Modal de destituir titular (SPEC user_admin/016): abre a vaga — o ato `destituir_titular` da    #}
+{# SPEC 014. Só há conteúdo quando existe titular; sem um, o botão que abre este modal nem aparece. #}
+<input type="checkbox" id="modal-destituir-titular" class="modal-toggle" />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
+    {% if titular %}
+      <div class="flex flex-col gap-5">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Destituir titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">{{ titular.nome }} {{ titular.sobrenome }} deixa de dirigir a {{ unidade.sigla }}.</p>
+        </div>
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <p class="text-[13px] text-base-content/80">A {{ unidade.sigla }} fica <strong>sem titular</strong> e passa a ser acusada como tal, aqui e na listagem, até que outro seja definido. Lotação e cargo não mudam — o que se desfaz é o vínculo de direção.</p>
+        </div>
+        <div class="modal-action">
+          <label for="modal-destituir-titular" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-destituir-titular" class="btn btn-error btn-soft btn-sm">Destituir</label>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+  <label class="modal-backdrop" for="modal-destituir-titular">Fechar</label>
+</div>

@@ -23,6 +23,9 @@ class LinhaServidor(BaseModel):
     nome: str
     rf: str
     unidade: str
+    # A página da unidade (SPEC user_admin/016) é alcançada por este pk; o filtro e a ordenação
+    # seguem casando pelo texto da sigla.
+    unidade_pk: int
     # Hex já resolvido na borda do app: o domínio não conhece o design system.
     cor_unidade: str
     cargo: str

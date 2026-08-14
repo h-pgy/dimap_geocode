@@ -738,6 +738,41 @@ html[data-theme="dimap"] {
 
   /* Título de seção flutuando direto sobre o mapa: halo frio para leitura */
   .section-title { @apply text-2xl font-bold tracking-tight text-rocha-950 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]; }
+
+  /* Bandeja de indicadores (SPEC user_admin/016): o `.stats` do daisyUI composto sobre o material
+     do sistema — cada célula é um `.card-well`, e a bandeja em si fica sem tinta própria (o
+     important derruba o `bg-base-100` que o daisyUI põe em `.stats`). */
+  .stats-onsen { @apply bg-transparent! w-full gap-3 p-3; }
+  /* A aresta tracejada do daisyUI vem num :not(:last-child) que empata em força com o seletor. */
+  .stats-onsen .stat { @apply px-4 py-3 gap-1.5 border-solid! border-white/45!; }
+  /* As partes do daisyUI têm pele própria: a tinta do sistema só entra por descendência. */
+  .stats-onsen .stat-title  { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
+  .stats-onsen .stat-value  { @apply text-[26px] leading-tight font-bold text-madeira-700 whitespace-normal; }
+  .stats-onsen .stat-desc   { @apply text-[13px] text-base-content/60 whitespace-normal; }
+  .stats-onsen .stat-figure { @apply self-end justify-self-end text-agua-600/60; }
+  /* Variante: célula do titular ou do substituto quando a unidade está vaga ou sem cobertura. */
+  .stat-vaga .stat-value { @apply text-error; }
+
+  /* Campo que se abre para edição (SPEC user_admin/016): lido por padrão, vira campo só quando o
+     lápis ao lado é aberto — o checkbox nativo controla o par via :has(), como o resto do sistema. */
+  .campo-onsen { @apply flex flex-col gap-1.5; }
+  .campo-onsen-toggle { @apply sr-only; }
+  .campo-onsen-linha { @apply flex items-center gap-2 min-w-0; }
+  .campo-onsen-valor { @apply flex-1 min-w-0 text-[15px] text-base-content/90 py-1.5; }
+  .campo-onsen-campo { @apply hidden flex-1 min-w-0; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-valor { @apply hidden; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-campo { @apply block; }
+  /* Aberto, o campo cresce e o botão sobe: centrado, ele flutuaria no meio da coluna. */
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-linha { @apply items-start; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis { @apply mt-1.5; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis .icon-etched {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  /* O poço do campo aberto é a sombra do .card-well; o .input-glass entra por composição. */
+  .campo-onsen-campo :where(input, select, .select-onsen-trigger) {
+    @apply bg-white/30! border-white/45! shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
+  }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */

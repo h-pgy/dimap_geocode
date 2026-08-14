@@ -2,8 +2,8 @@
 spec: user_admin/016
 versao: v4
 atualizado_em: 2026-08-14
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial

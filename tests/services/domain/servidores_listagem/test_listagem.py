@@ -24,6 +24,7 @@ def _linha(
         nome=nome,
         rf="999900",
         unidade=unidade,
+        unidade_pk=abs(hash(unidade)) % 10_000,
         cor_unidade="#0077B6",
         cargo=cargo,
         comissao="",

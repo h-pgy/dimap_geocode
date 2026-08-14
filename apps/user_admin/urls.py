@@ -17,4 +17,5 @@ urlpatterns = [
         views.cor_sugerida_unidade,
         name="cor_sugerida_unidade",
     ),
+    path("unidades/<int:pk>/", views.pagina_unidade, name="pagina_unidade"),
 ]

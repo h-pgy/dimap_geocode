@@ -1,0 +1,14 @@
+{# Cabeçalho de identidade da unidade (SPEC user_admin/016): sigla, nome, tipo, quantos servidores #}
+{# são lotados e o ponto na cor da unidade — a mesma composição do cabeçalho de servidor.           #}
+<div class="flex items-start justify-between gap-4">
+  <div class="min-w-0">
+    <h1 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">{{ unidade.sigla }}</h1>
+    <p class="text-sm text-base-content/70 mt-1">{{ unidade.nome }}</p>
+    <div class="flex flex-wrap gap-2 mt-3">
+      <span class="badge badge-linha badge-sm">{{ unidade.tipo.nome }}</span>
+      <span class="badge badge-info badge-soft">nível {{ unidade.tipo.nivel }}</span>
+      <span class="badge badge-ponto badge-sm">{{ total_lotados }} servidor{{ total_lotados|pluralize }}</span>
+    </div>
+  </div>
+  <span class="dot-unidade w-6 h-6 mt-1" style="--cor-unidade:{{ unidade_cor_hex }}"></span>
+</div>

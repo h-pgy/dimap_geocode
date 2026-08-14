@@ -17,6 +17,12 @@
       Sem impedimento, sem substituto e sem caminho para designar um.
     </p>
   {% else %}
+    {# Reflexo da SPEC 016: quando o afastado é o titular e não há substituto em exercício, a #}
+    {# unidade fica sem direção — e é aqui, na página de quem a causa, que isso se cobra. #}
+    {% if exercicio.alarme_sem_direcao %}
+      {% include "user_admin/partials/_alarme_direcao.html" with titulo=exercicio.alarme_sem_direcao %}
+    {% endif %}
+
     {% for cartao in exercicio.cartoes %}
       {% include "user_admin/partials/_cartao_impedimento.html" %}
     {% empty %}
