@@ -39,67 +39,35 @@
        linha de pessoa e a tarja de vínculo — vem do tema, onde já foi portado. -->
   <script type="text/css" id="tokens-spec-016">
     @layer components {
-      /* ==================== MOLÉCULA · BANDEJA DE INDICADORES ====================
-         O `stats` do daisyUI vestido de placa — e a placa é a de FORA. A bandeja é uma placa de
-         gelo FINA (.glass-panel composto no HTML) e cada indicador é um poço (.card-well, também no
-         HTML). Fina, e não espessa: o espesso existe para gelo sobre interface escura (SPEC 011), e
-         aqui a bandeja está entre dois brancos — o poço da seção embaixo e os poços das células em
-         cima. Empilhado, o espesso fechava a vista; o fino separa sem tapar. O limite de cada card vem do degrau
-         placa/poço, que é a gramática do sistema, e não de um traço divisor — e a alternância
-         poço (a seção) → placa (a bandeja) → poço (o card) é o que mantém o degrau legível a cada
-         nível. Esta classe cuida só do que é do componente: o respiro entre os poços e a aresta do
-         daisyUI, que sobra. */
-      /* O bg-transparent! é o mesmo gesto do .modal-box-glass: nenhuma tinta do componente por
-         baixo do gelo. O respiro entre os cards é do grid, não da célula — quem o paga agora é a
-         bandeja, porque o poço já paga o próprio. */
+      /* ==================== MOLÉCULA · BANDEJA DE INDICADORES ==================== */
+      /* Sem o important, a tinta do componente entra por baixo do gelo. */
       .stats-onsen { @apply bg-transparent! w-full gap-3 p-3; }
-      /* A aresta tracejada do daisyUI é o divisor entre células, e não tem mais o que dividir. Ela
-         vem num :not(:last-child) que empata em força com qualquer seletor nosso: sem o important,
-         um lado de cada poço sairia tracejado e cinza, quebrando o contorno. */
+      /* A aresta tracejada do daisyUI vem num :not(:last-child) que empata em força com o seletor. */
       .stats-onsen .stat { @apply px-4 py-3 gap-1.5 border-solid! border-white/45!; }
-      /* As partes do daisyUI têm pele própria e átomo empilhado no HTML não a alcança: a tinta do
-         sistema entra por descendência. O rótulo é o .text-overline, na mesma receita. */
+      /* As partes do daisyUI têm pele própria: a tinta do sistema só entra por descendência. */
       .stats-onsen .stat-title  { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
       .stats-onsen .stat-value  { @apply text-[26px] leading-tight font-bold text-madeira-700 whitespace-normal; }
       .stats-onsen .stat-desc   { @apply text-[13px] text-base-content/60 whitespace-normal; }
-      /* O glifo é assinatura da célula, não conteúdo: pequeno, no canto inferior direito e em tinta
-         diluída. Centrado e grande, como o daisyUI o põe, ele competia com o valor. */
       .stats-onsen .stat-figure { @apply self-end justify-self-end text-agua-600/60; }
-      /* Vaga: a célula do titular vira a mensagem de erro. Só ela escala — as outras seguem
-         informação, e vermelho em tudo é vermelho em nada. */
+      /* Variante: célula do titular quando a unidade está vaga. */
       .stat-vaga .stat-value { @apply text-error; }
 
-      /* ==================== MOLÉCULA · CAMPO QUE SE ABRE PARA EDIÇÃO ====================
-         O campo nasce LIDO: rótulo gravado e valor em texto, sem caixa. O lápis ao lado é a
-         afordância — gravado em repouso (.etched), entintado enquanto o campo está aberto, o mesmo
-         par repouso/entintado da seta de ordenação (SPEC 013). Aberto, o valor vira POÇO: neste
-         design system o rebaixado é que se lê como "escreve-se aqui" (§3.4 da SPEC 013), e é
-         justamente o que o .input-glass sozinho não estava dizendo.
-         Estado por checkbox + :has(), como o afundado da tabela e a paleta da SPEC 005 — nenhum
-         estado de interface em JavaScript. */
+      /* ==================== MOLÉCULA · CAMPO QUE SE ABRE PARA EDIÇÃO ==================== */
       .campo-onsen { @apply flex flex-col gap-1.5; }
       .campo-onsen-toggle { @apply sr-only; }
-      /* O botão fica ao lado do VALOR, não do rótulo: o que se edita é o valor. */
       .campo-onsen-linha { @apply flex items-center gap-2 min-w-0; }
-      /* Valor lido: texto, sem caixa — quem não está editando não precisa de moldura. */
       .campo-onsen-valor { @apply flex-1 min-w-0 text-[15px] text-base-content/90 py-1.5; }
-      /* O aviso de consequência mora DENTRO daqui: só existe enquanto o campo está aberto, e é o
-         aviso daquele campo — fixo no rodapé da seção, ele avisava sobre o que ninguém ia mudar. */
       .campo-onsen-campo { @apply hidden flex-1 min-w-0; }
       .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-valor { @apply hidden; }
       .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-campo { @apply block; }
-      /* Aberto, o campo cresce (campo + aviso) e o botão sobe para a linha do campo: centrado, ele
-         flutuaria no meio da coluna. */
+      /* Aberto, o campo cresce e o botão sobe: centrado, ele flutuaria no meio da coluna. */
       .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-linha { @apply items-start; }
       .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis { @apply mt-1.5; }
-      /* Aberto, o sulco do lápis fica cheio — o botão de vidro já dá a afordância no repouso e o
-         glifo gravado só diz qual gesto é (.icon-etched, SPEC 013). */
       .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis .icon-etched {
         filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
         color: rgba(0, 119, 182, 0.85);
       }
-      /* O poço do campo aberto é o mesmo do .card-well: mesma sombra que entra pela borda de cima,
-         mesmo lábio de luz embaixo. O .input-glass entra por composição e traz o foco. */
+      /* O poço do campo aberto é a sombra do .card-well; o .input-glass entra por composição. */
       .campo-onsen-campo :where(input, select, .select-onsen-trigger) {
         @apply bg-white/30! border-white/45! shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
       }
@@ -179,14 +147,12 @@
 
     <header class="glass-panel p-8 sm:p-10">
       <p class="text-overline text-madeira-600">SPEC user_admin/016 · mock de validação</p>
-      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Titular da unidade</h1>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">A página da unidade</h1>
       <p class="mt-4 max-w-2xl text-base-content/80 leading-relaxed">
-        A página da unidade passa a responder <strong class="text-base-content">quem dirige aqui hoje</strong> —
-        e a acusar, em vermelho, quando ninguém dirige. São <strong class="text-base-content">duas</strong> maneiras
-        de não ter direção, e a tela as separa: a unidade <strong class="text-error">sem titular</strong> (vaga
-        aberta, ninguém nomeado) e a unidade cujo titular está <strong class="text-error">afastado sem
-        substituto</strong>. Peça nova: a <strong class="text-agua-700">bandeja de indicadores</strong>, que é o
-        <span class="text-code">stats</span> do daisyUI vestido de placa.
+        Peças novas: a <strong class="text-agua-700">bandeja de indicadores</strong>
+        (<span class="text-code">.stats-onsen</span>, com <span class="text-code">.stat-vaga</span>) e o
+        <strong class="text-agua-700">campo que se abre para edição</strong>
+        (<span class="text-code">.campo-onsen</span>).
       </p>
       <div class="flex flex-wrap gap-2 mt-5">
         <span class="badge badge-ponto">bandeja de indicadores</span>
@@ -196,73 +162,22 @@
       </div>
     </header>
 
-    <!-- ==================== 1 · TOKENS ==================== -->
-    <section class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
-      <h2 class="text-[24px] font-bold text-madeira-700">1 · Tokens</h2>
-      <p class="text-[15px] text-base-content/90">
-        <strong>Nenhum token novo.</strong> Materiais, escalas, tipografia e o raio da placa são os que já
-        existem — e o estado da direção é dito pelas <strong>cores semânticas</strong> do tema, obrigatórias
-        para estado do sistema (§3.2 do design system).
-      </p>
-      <div class="card-well p-4 flex flex-wrap gap-x-8 gap-y-2 text-[13px] text-base-content/80">
-        <span><code class="text-code">--radius-placa</code> <span class="text-base-content/50">(SPEC 015)</span></span>
-        <span><code class="text-code">.card-well</code> / <code class="text-code">.glass-panel</code> / <code class="text-code">.glass-panel-thick</code></span>
-        <span><code class="text-code">.tarja-vinculo</code> <span class="text-base-content/50">(SPEC 015)</span></span>
-        <span><code class="text-code">.linha-pessoa</code> <span class="text-base-content/50">(SPEC 015)</span></span>
-        <span><code class="text-code">.avatar-glass</code> / <code class="text-code">.dot-unidade</code></span>
-        <span><code class="text-code">.select-onsen</code> (<code class="text-code">data-select-onsen</code>)</span>
-        <span><code class="text-code">.btn-onsen</code> / <code class="text-code">.btn-glass</code></span>
-        <span><code class="text-code">.modal-glass</code> / <code class="text-code">.modal-box-glass</code></span>
-        <span><code class="text-code">.text-overline</code> / <code class="text-code">.text-code</code></span>
-        <span><code class="text-code">.etched</code> / <code class="text-code">.etched-rotulo</code> <span class="text-base-content/50">(SPEC 013)</span></span>
-      </div>
-      <p class="text-[13px] text-base-content/70">
-        Nascem aqui duas <strong>moléculas</strong>: <code class="text-code">.stats-onsen</code> e
-        <code class="text-code">.campo-onsen</code>. A SPEC 015 previu que a
-        <code class="text-code">.linha-pessoa</code> e a <code class="text-code">.tarja-vinculo</code> se
-        repetiriam na titularidade — é exatamente o que acontece: o titular, o substituto e o alarme de
-        unidade sem direção são as mesmas peças, lidas do lado da unidade.
-      </p>
-    </section>
-
     <!-- ==================== 2 · ÁTOMOS ==================== -->
     <section class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
       <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
-      <p class="text-[15px] text-base-content/90">
-        Nenhum átomo novo. O selo de direção é o <code class="text-code">badge</code> do daisyUI em cor
-        semântica, e é ele que responde, sozinho, "quem dirige esta unidade hoje?".
-      </p>
 
       <div class="card-well p-5 flex flex-col gap-4">
-        <p class="text-overline">2.1 · Selo de direção — as quatro respostas</p>
+        <p class="text-overline">2.1 · Selo de direção — o <code class="text-code">badge</code> nas quatro respostas</p>
         <div class="flex flex-wrap items-center gap-3">
           <span class="badge badge-success badge-soft">Dirigida pelo titular</span>
           <span class="badge badge-success badge-soft">Dirigida pelo substituto</span>
           <span class="badge badge-error badge-soft">Sem direção</span>
           <span class="badge badge-error badge-soft">Sem titular</span>
         </div>
-        <p class="text-[13px] text-base-content/70">
-          As duas primeiras são a unidade dirigida: pelo titular em exercício ou, enquanto ele está fora,
-          pelo substituto dele. As duas últimas são a unidade <strong>sem quem responda por ela</strong>, e
-          diferem na causa — <strong>sem direção</strong> é titular afastado que ninguém cobre;
-          <strong>sem titular</strong> é a vaga: exonerado o anterior, ninguém foi nomeado. Verde e
-          vermelho, sem meio-termo: aqui não existe pendência, existe competência administrativa exercida
-          ou não exercida.
-        </p>
-        <p class="text-[13px] text-base-content/70">
-          O âmbar continua sendo da <strong>pessoa</strong> (afastada, retorno pendente, SPEC 015). Esta
-          seção fala da <strong>unidade</strong>, e para ela o afastamento só importa pelo que deixa em
-          aberto.
-        </p>
-        <p class="text-[13px] text-base-content/70">
-          O rótulo <strong>não concorda em gênero</strong> com quem dirige: o perfil não guarda gênero
-          gramatical, e concordar exigiria um dado que o sistema não tem — errar o gênero de uma pessoa
-          real é pior do que a forma fixa.
-        </p>
       </div>
 
       <div class="card-well p-5 flex flex-col gap-4">
-        <p class="text-overline">2.2 · Glifos da seção — átomo existente, desenho novo</p>
+        <p class="text-overline">2.2 · Glifos da seção</p>
         <div class="flex flex-wrap items-center gap-8">
           <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
             <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
@@ -298,6 +213,7 @@
 
       <div class="card-well p-5 flex flex-col gap-4">
         <p class="text-overline">3.1 · Bandeja de indicadores — <code class="text-code">.stats-onsen</code></p>
+        <!-- estado: cargo mínimo em padrão de cargo -->
         <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
           <div class="stat card-well">
             <div class="stat-figure">
@@ -327,6 +243,7 @@
             <div class="stat-desc">exigido do tipo Divisão</div>
           </div>
         </div>
+        <!-- estado: tipo que exige alta administração -->
         <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
           <div class="stat card-well">
             <div class="stat-figure">
@@ -338,28 +255,8 @@
           </div>
         </div>
         <p class="text-[13px] text-base-content/70">
-          O tipo que declara <strong>exigir alta administração</strong> não tem célula em branco: a
-          exigência é <strong>coluna própria</strong> do tipo (SPEC 014) e quer dizer que
-          <strong>nenhum nível da escala serve</strong>, e é isso que a placa diz. O valor não escala para
-          vermelho: é exigência do organograma, não falta.
-        </p>
-        <p class="text-[13px] text-base-content/70">
-          O <code class="text-code">stats</code> do daisyUI dá a grade, os rótulos e a figura; o design
-          system dá a pele — e a pele é o par <strong>placa/poço</strong>. A bandeja é uma
-          <strong>placa de gelo fina</strong> (<code class="text-code">.glass-panel</code>, composta no
-          HTML) e cada indicador é um <strong>poço</strong>
-          (<code class="text-code">.card-well</code>): o limite de cada card vem do <strong>degrau</strong>,
-          não de um traço. A seção continua sendo um poço, e é justamente por isso que a bandeja sobe —
-          poço → placa → poço alterna o degrau a cada nível, e é a alternância que dá o contorno.
-        </p>
-        <p class="text-[13px] text-base-content/70">
-          A placa é a <strong>fina</strong>, não a espessa: o gelo espesso existe para separar figura de
-          fundo sobre interface escura (SPEC 011), e aqui a bandeja está entre dois brancos — o poço da
-          seção embaixo, os poços das células em cima. Empilhado, ele fechava a vista.
-          O que a classe nova faz é o mínimo: tirar a tinta do componente de baixo do gelo, dar o respiro
-          entre os poços e apagar a aresta tracejada do daisyUI, que só existia para dividir células sem
-          caixa própria. Na vertical (telas estreitas) nada muda de gramática: o grid vira coluna e o
-          respiro é o mesmo — o divisor, que era o que dependia da direção, não existe mais.
+          Composição: <code class="text-code">.glass-panel</code> (bandeja) →
+          <code class="text-code">.card-well</code> (cada indicador).
         </p>
       </div>
 
@@ -387,6 +284,7 @@
             </div>
             <div class="stat-desc"><span class="badge badge-success badge-soft badge-sm">Em exercício</span></div>
           </div>
+          <!-- estado: vaga -->
           <div class="stat stat-vaga card-well">
             <div class="stat-figure text-error/70!">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
@@ -397,20 +295,16 @@
           </div>
         </div>
         <p class="text-[13px] text-base-content/70">
-          O rosto de quem dirige entra pela <code class="text-code">.linha-pessoa</code> — a mesma peça do
-          substituto na página do servidor, com a mesma moldura de avatar e o mesmo anel na cor da unidade
-          (SPEC 005). Foto ou iniciais é decisão do
-          <code class="text-code">_imagem_perfil.html</code>: a bandeja não sabe qual dos dois veio.
-        </p>
-        <p class="text-[13px] text-base-content/70">
-          Na <strong>vaga</strong>, a célula não fica vazia nem cinza: ela <strong>é</strong> a mensagem de
-          erro, na única variante da bandeja (<code class="text-code">.stat-vaga</code>). Vazio se lê como
-          "ainda não carregou"; vermelho se lê como "está faltando".
+          Composição: <code class="text-code">.stat</code> → <code class="text-code">.linha-pessoa</code> →
+          <code class="text-code">.avatar-glass</code> (foto ou iniciais, resolvidas no
+          <code class="text-code">_imagem_perfil.html</code>). À direita, a variante
+          <code class="text-code">.stat-vaga</code>.
         </p>
       </div>
 
       <div class="card-well p-5 flex flex-col gap-4">
         <p class="text-overline">3.3 · O alarme — <code class="text-code">.tarja-vinculo-critica</code>, sem peça nova</p>
+        <!-- estado: sem titular -->
         <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
           <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
           <div class="min-w-0">
@@ -418,6 +312,7 @@
             <p class="text-[13px] text-base-content/60">Nenhum servidor titulariza esta unidade. Enquanto durar, quem responde por ela é a direção da unidade superior.</p>
           </div>
         </div>
+        <!-- estado: sem direção -->
         <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
           <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
           <div class="min-w-0">
@@ -425,12 +320,6 @@
             <p class="text-[13px] text-base-content/60">Helena Prado é a titular, está afastada e não há substituta designada.</p>
           </div>
         </div>
-        <p class="text-[13px] text-base-content/70">
-          O alarme é a peça já aprovada na SPEC 015 — a mesma placa, o mesmo vermelho, o mesmo lugar no topo
-          do poço. O que muda é o texto, porque a causa é outra: <strong>vaga</strong> acima,
-          <strong>afastamento sem cobertura</strong> abaixo. Duas condições, uma peça: a unidade sem direção
-          é sempre a mesma notícia para quem lê.
-        </p>
       </div>
 
       <div class="card-well p-5 flex flex-col gap-4">
@@ -454,11 +343,8 @@
           </div>
         </div>
         <p class="text-[13px] text-base-content/70">
-          O que a unidade <strong>é</strong> não são indicadores: são quatro respostas de texto, e por isso a
-          placa é uma grade de rótulo e valor — não a bandeja. Mesmo gelo fino da bandeja, porque as duas
-          moram no mesmo poço e uma espessura só é o que as faz ler como duas peças da mesma seção. A bandeja fica para o que se <strong>conta</strong>
-          ou se <strong>navega</strong> (servidores lotados, unidade superior), onde o número grande e o glifo
-          têm o que fazer. Mesma placa de gelo, dois conteúdos de natureza diferente.
+          Composição: <code class="text-code">.glass-panel</code> fino com grade de
+          <code class="text-code">.text-overline</code> + valor em texto.
         </p>
       </div>
 
@@ -493,25 +379,10 @@
           </div>
         </div>
         <p class="text-[13px] text-base-content/70">
-          Os dois estados lado a lado: à esquerda, <strong>lido</strong> — rótulo gravado, valor em texto,
-          nenhuma moldura; à direita, <strong>aberto</strong> — o valor virou <strong>poço</strong>, e o lápis
-          encheu de água. Rebaixado é o que, neste design system, se lê como "escreve-se aqui" (SPEC 013):
-          era exatamente essa leitura que faltava quando o formulário aparecia inteiro em campos claros.
-        </p>
-        <p class="text-[13px] text-base-content/70">
-          O lápis é o <strong>botão redondo de vidro</strong> da listagem de servidores (SPEC 013), com o
-          mesmo glifo gravado por dentro: quem carrega a afordância é o botão, e a gravação só diz qual gesto
-          é. Ele fica <strong>ao lado do valor</strong>, não do rótulo — o que se edita é o valor —, e o sulco
-          enche de água enquanto o campo está aberto, o mesmo par repouso/entintado da seta de ordenação. O
-          estado é <code class="text-code">checkbox</code> + <code class="text-code">:has()</code>, como o
-          afundado da tabela: <strong>nenhum estado de interface em JavaScript</strong>.
-        </p>
-        <p class="text-[13px] text-base-content/70">
-          Abrir campo a campo tem um efeito que o formulário inteiro não tem: o que está aberto é o que se
-          pretende mudar. Quem abriu a sigla sabe que só a sigla está em jogo — e quem revisa a tela vê isso
-          sem ler os valores. É também o que dá lugar ao <strong>aviso</strong>: quando mudar aquele campo
-          tem consequência que a validação pode recusar, a tarja âmbar mora <strong>dentro</strong> dele e
-          aparece com ele. Fixa no rodapé da seção, ela avisava o tempo todo sobre o que ninguém ia mudar.
+          À esquerda, <strong>lido</strong>; à direita, <strong>aberto</strong>. Composição:
+          <code class="text-code">.etched-rotulo</code> + valor em texto + o botão de vidro da SPEC 013, com
+          o campo em <code class="text-code">.input-glass</code> por dentro. Estado por
+          <code class="text-code">checkbox</code> + <code class="text-code">:has()</code>.
         </p>
       </div>
     </section>
@@ -521,10 +392,6 @@
       <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
         4 · Organismos — a seção de direção nos seus estados
       </h2>
-      <p class="text-[15px] text-base-content/90 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
-        A seção entra na página da unidade como irmã de Identificação, Hierarquia e Identidade visual —
-        mesmo poço, mesma gramática. Quatro estados, que são exatamente as quatro respostas do selo.
-      </p>
 
       <!-- ESTADO 1 -->
       <div class="glass-panel p-6 flex flex-col gap-3">
@@ -663,12 +530,6 @@
             </div>
           </div>
 
-          <p class="text-[13px] text-base-content/70">
-            Substituir não é titularizar: o vínculo continua com Helena, e é por isso que o retorno dela
-            devolve a direção sem negociar com ninguém. Do substituto não se exige o cargo mínimo do tipo —
-            ele ocupa o papel, não recebe o vínculo.
-          </p>
-
           <div class="flex flex-wrap justify-end gap-3">
             <label for="modal-destituir-titular" class="btn btn-glass btn-sm">Destituir</label>
             <label for="modal-trocar-titular" class="btn btn-glass btn-sm gap-2">
@@ -728,12 +589,6 @@
             </div>
           </div>
 
-          <p class="text-[13px] text-base-content/70">
-            O selo da <strong>pessoa</strong> continua âmbar na página dela: quem está errado não é o
-            afastamento, é a vaga que ele deixou. Quem escala para o vermelho é a <strong>unidade</strong> —
-            e a saída não é trocar o titular, é designar quem cubra.
-          </p>
-
           <div class="flex flex-wrap justify-end gap-3">
             <a href="#" class="btn btn-onsen btn-sm gap-2">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
@@ -745,7 +600,7 @@
 
       <!-- ESTADO 4 -->
       <div class="glass-panel p-6 flex flex-col gap-3">
-        <p class="text-overline text-madeira-600">Estado 4 · Sem titular — a vaga aberta que esta SPEC passa a admitir e nomear</p>
+        <p class="text-overline text-madeira-600">Estado 4 · Sem titular — a vaga aberta</p>
         <div class="card-well p-5 flex flex-col gap-4">
           <div class="flex items-center justify-between gap-4">
             <p class="text-overline">Direção</p>
@@ -819,12 +674,6 @@
             </label>
           </div>
         </div>
-        <p class="text-[13px] text-base-content/70 px-1">
-          Estar sem titular é <strong>estado operacional legítimo</strong> — acontece a cada exoneração
-          antes da nomeação seguinte —, e por isso nada no sistema o impede. O que o sistema faz é
-          <strong>nomeá-lo</strong>: a unidade responde "não tenho titular", e a tela acusa em vez de deixar
-          o campo em branco.
-        </p>
       </div>
     </section>
 
@@ -833,14 +682,10 @@
       <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
         5 · A página da unidade — visualizar a DIMAP
       </h2>
-      <p class="text-[15px] text-base-content/90 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
-        Duas seções de leitura, nesta ordem — <strong>Resumo</strong> (o que a unidade é e quanto ela tem)
-        e <strong>Direção</strong> (quem responde por ela hoje) —, e no fim um botão só:
-        <strong>Editar unidade</strong>, que abre o quarto modal. É a ordem da pergunta que traz alguém a
-        esta página, e corrigir a sigla nunca é a pergunta.
-      </p>
 
+      <!-- página: user_admin/unidade.html -->
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6 max-w-3xl mx-auto w-full">
+        <!-- partial: user_admin/partials/_identidade_unidade.html -->
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
             <h3 class="text-2xl font-bold tracking-tight text-madeira-700">DIMAP</h3>
@@ -853,9 +698,9 @@
           </div>
           <span class="dot-unidade w-6 h-6 mt-1" style="--cor-unidade:#0077b6"></span>
         </div>
+        <!-- /partial -->
 
-        <!-- ==================== RESUMO ====================
-             O que a unidade É, em placa de texto; e o que ela TEM, na bandeja. -->
+        <!-- partial: user_admin/partials/_secao_resumo_unidade.html -->
         <div class="card-well p-5 flex flex-col gap-4">
           <p class="text-overline">Resumo</p>
 
@@ -902,10 +747,10 @@
             </div>
           </div>
         </div>
+        <!-- /partial -->
 
-        <!-- ==================== DIREÇÃO ====================
-             O alarme, quando há, entra AQUI — entre o selo e a bandeja, como nos estados 3 e 4:
-             a notícia vem antes de quem a explica. Nesta unidade não há o que acusar. -->
+        <!-- partial: user_admin/partials/_secao_direcao.html — nos estados 3 e 4 ela inclui o
+             _alarme_direcao.html entre o selo e a bandeja -->
         <div class="card-well p-5 flex flex-col gap-4">
           <div class="flex items-center justify-between gap-4">
             <p class="text-overline">Direção</p>
@@ -920,10 +765,11 @@
               <div class="stat-title">Titular</div>
               <div class="stat-value">
                 <div class="linha-pessoa">
-                  <!-- Foto real: o mesmo _imagem_perfil.html que resolve foto OU iniciais (SPEC 006). -->
+                  <!-- partial: user_admin/partials/_imagem_perfil.html — foto ou iniciais -->
                   <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
                     <img src="https://i.pravatar.cc/160?img=47" alt="Foto de Helena Prado" class="w-full h-full object-cover" />
                   </div>
+                  <!-- /partial -->
                   <div class="min-w-0 flex-1">
                     <p class="linha-pessoa-nome">Helena Prado</p>
                     <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
@@ -953,10 +799,9 @@
             </label>
           </div>
         </div>
+        <!-- /partial -->
 
-        <!-- ==================== EDITAR ====================
-             A página inteira é leitura. Editar é ato, e ato aqui é modal — o mesmo caminho dos três da
-             titularidade. Um botão só, grande e centrado no fim: nada disputa com a Direção acima. -->
+        <!-- fica na página: só arranjo — o botão que abre o modal de edição -->
         <div class="flex justify-center pt-2">
           <label for="modal-editar-unidade" class="btn btn-onsen btn-lg gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
@@ -964,39 +809,13 @@
           </label>
         </div>
       </div>
-
-      <p class="text-[13px] text-base-content/70 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
-        <strong>Nada na página é campo.</strong> A Direção grava pelos modais dela (como a seção de exercício
-        na página do servidor, SPEC 015) e o cadastro grava pelo modal de edição — a página em si só responde.
-        É o que dispensa o botão de salvar solto no rodapé, que numa tela de leitura nunca se sabe a que se
-        refere.
-      </p>
-      <p class="text-[13px] text-base-content/70 px-2 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">
-        O <strong>tipo</strong> e o <strong>cargo mínimo</strong> aparecem no Resumo e de novo no modal, e de
-        propósito: no Resumo são <strong>o que a unidade é</strong>, em texto; no modal são <strong>o que se
-        pode mudar</strong>, em campo. Quem só lê nunca abre o modal para saber o porte da unidade.
-      </p>
     </section>
-
-    <footer class="glass-panel p-6">
-      <p class="text-overline">Porte obrigatório após a aprovação</p>
-      <p class="mt-1 text-[15px] text-base-content/90">
-        As classes <code class="text-code">.stats-onsen</code> (com <code class="text-code">.stat-vaga</code>)
-        e <code class="text-code">.campo-onsen</code> migram para
-        <code class="text-code">static/src/tema-dimap.dev.css</code> na camada de moléculas, e as duas peças
-        são renderizadas no styleguide da skill
-        <code class="text-code">componentes-frontend</code> — antes de qualquer template da aplicação usá-las.
-        O raio da placa, a <code class="text-code">.linha-pessoa</code> e a
-        <code class="text-code">.tarja-vinculo</code> repetidos neste mock <strong>não</strong> se portam
-        daqui: são da SPEC 015, que vem antes.
-      </p>
-    </footer>
   </main>
 
   <!-- ==================== MODAL · EDITAR UNIDADE ====================
-       Os campos de sempre (SPEC 012), agora preenchidos e LIDOS: cada um abre no lápis. Abrir campo a
-       campo é o que faz o modal dizer, sozinho, o que se pretende mudar — e é a leitura de "editável"
-       que faltava quando o formulário aparecia inteiro em campos claros. -->
+       partial: user_admin/partials/_modal_editar_unidade.html — irmão do formulário, nunca dentro
+       dele; os campos por dentro são o _campos_unidade.html (SPEC 012), com instância.
+       estados: campo lido (Nome, Sigla) × campo aberto com aviso (Tipo, Unidade superior) -->
   <input type="checkbox" id="modal-editar-unidade" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
@@ -1097,8 +916,9 @@
   </div>
 
   <!-- ==================== MODAL · DEFINIR TITULAR ====================
-       Checkbox nativo, sem JavaScript, e SEMPRE fora de qualquer formulário (SPEC 012): formulário
-       aninhado é HTML inválido e o navegador descarta o interno. -->
+       partial: user_admin/partials/_modal_definir_titular.html — checkbox nativo, sempre fora de
+       qualquer formulário (formulário aninhado é HTML inválido).
+       estado: com candidatos -->
   <input type="checkbox" id="modal-definir-titular" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
@@ -1140,9 +960,8 @@
     <label class="modal-backdrop" for="modal-definir-titular">Fechar</label>
   </div>
 
-  <!-- ==================== MODAL · DEFINIR TITULAR, SEM CANDIDATOS ====================
-       A lista vazia não é erro de tela: é o organograma dizendo que ninguém ali tem cargo para
-       dirigir a unidade. O modal explica o que falta em vez de mostrar um campo vazio. -->
+  <!-- ==================== MODAL · DEFINIR TITULAR ====================
+       estado: sem nenhum candidato -->
   <input type="checkbox" id="modal-titular-sem-candidatos" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
@@ -1177,7 +996,8 @@
     <label class="modal-backdrop" for="modal-titular-sem-candidatos">Fechar</label>
   </div>
 
-  <!-- ==================== MODAL · TROCAR TITULAR ==================== -->
+  <!-- ==================== MODAL · TROCAR TITULAR ====================
+       partial: user_admin/partials/_modal_trocar_titular.html -->
   <input type="checkbox" id="modal-trocar-titular" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
@@ -1194,7 +1014,7 @@
               <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
                 <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">HP</text></svg>
               </div>
-              <!-- Sem atalho para sair: quem está no meio de um ato não é convidado a navegar. -->
+              <!-- estado: .linha-pessoa sem o atalho de navegação -->
               <div class="min-w-0 flex-1">
                 <p class="linha-pessoa-nome">Helena Prado</p>
                 <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão · afastada</p>
@@ -1231,8 +1051,7 @@
   </div>
 
   <!-- ==================== MODAL · DESTITUIR TITULAR ====================
-       O ato que ABRE a vaga — o caso real do titular exonerado sem nomeação seguinte. Confirmação
-       curta, porque o efeito não cabe na tela de onde se clica: a unidade passa a ser acusada. -->
+       partial: user_admin/partials/_modal_destituir_titular.html -->
   <input type="checkbox" id="modal-destituir-titular" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
