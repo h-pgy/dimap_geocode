@@ -188,7 +188,8 @@ rastro; e o registro da execução é o que permite saber *quem* praticou o ato 
 **Regra inegociável:** escrever a SPEC **antes** de implementar e **aguardar a aprovação explícita
 do usuário**. Nunca começar a codar com a SPEC não apresentada ou não aprovada.
 
-- Patches de SPEC são **append-only** — nunca editam o corpo da SPEC.
+- SPEC muda **editando o corpo** + bump de versão + **uma frase** no `changelog`. Não existe patch.
+- SPEC com **interface** entre os entregáveis: a modelagem é aprovada **antes** do mock — skill `mock`.
 - **A fonte de verdade sobre o que já existe é o front-matter `implementado:` das SPECs.** Consulte
   antes de assumir que algo está ou não implementado.
 
@@ -307,8 +308,10 @@ request/response.**
   (`# incrementa o contador`) é ruído que envelhece e passa a mentir.
   **Objetividade é regra:** uma linha, no imperativo ou na afirmativa direta, sem preâmbulo, sem
   repetir o que já está na SPEC ou na docstring, sem narrar o histórico da decisão. Se o porquê não
-  cabe em uma ou duas linhas, ele é decisão de arquitetura e o lugar dele é a SPEC — não um bloco de
-  comentário no meio do código.
+  cabe em uma ou duas linhas, ele é custo ou desvio assumido e o lugar dele são os **Caveats da
+  SPEC** — não um bloco de comentário no meio do código.
+  **Exceção: o snippet da SPEC.** Ali o comentário é didático, escrito para o revisor ler rápido — e
+  **não é portado**: ao levar o snippet para o código, sobra só o comentário que esta regra permite.
   Vale também para **docstring de módulo**: a maioria dos arquivos não tem uma — não abra todo
   arquivo novo com um resumo que só parafraseia a SPEC ou a docstring da classe/função abaixo.
 - **Pydantic nas fronteiras:** DTOs de domínio e contratos de integração.
@@ -326,9 +329,11 @@ request/response.**
   (`x, y = ponto`, `for k, v in d.items()`) não é isso e segue normal.
   *Por quê:* cada nome na sua linha faz a mudança aparecer no diff como uma linha alterada, em vez
   de uma linha inteira reescrita. Vale também para os **snippets das SPECs**.
-- **JavaScript restrito:** só JS puro, em dois casos — callbacks de eventos HTMX e utilitários do
-  Leaflet. Sem regra de negócio, sem estado, sem montar UI a partir de JSON. Validação e
-  persistência sempre no servidor.
+- **JavaScript restrito:** só JS puro, em três casos — callbacks de eventos HTMX, utilitários do
+  Leaflet e **estado visual de um controle**, este último **mediante aprovação do usuário**: quando o
+  estado de interface sai simples em JS e só sai complexo em CSS, pergunte em vez de fazer malabarismo
+  (skill `mock`). Sem regra de negócio, sem **estado de domínio**, sem montar UI a partir de JSON.
+  Validação e persistência sempre no servidor.
 - **Templates:** partials prefixados com `_`; páginas estendem `base.html`.
 - **HTMX:** `hx-trigger` com `delay`/`changed` na busca; alvos e swaps explícitos.
 - **UI:** nenhum componente fora do design system e do Atomic Design (§3.4).
@@ -365,14 +370,15 @@ uv run pytest -m integration              # com dados reais
 4. Valida-se o conjunto (smoke test da view quando houver interface, `mypy`, `ruff`).
 
 *Por quê:* o erro mais caro do desenvolvimento assistido por IA não é código malfeito — é código
-plausível que resolve o problema errado. A SPEC diz o que fazer em prosa; o teste torna isso
-**executável e verificável antes** de existir implementação. E como os testes são aprovados junto
+plausível que resolve o problema errado. A SPEC diz o que fazer — a ontologia em Pydantic e os
+snippets de regra de negócio; o teste torna isso **executável e verificável antes** de existir
+implementação. E como os testes são aprovados junto
 com a SPEC, a validação humana acontece **antes** do código, não depois.
 
 Regras que tornam isso sustentável:
 
 - **Poucos testes, bem escolhidos.** O teste existe para fixar **comportamento observável**: um por
-  critério de aceite, mais os casos de borda que realmente quebram. Não se testa getter, DTO
+  condição de pronto, mais os casos de borda que realmente quebram. Não se testa getter, DTO
   trivial nem variação que só repete outro caso, e **não se persegue cobertura**. Excesso de teste
   engessa refactor e queima ciclo de revisão — o oposto do que o TDD deveria comprar.
 - **Testa-se comportamento, não implementação.** Teste que quebra quando o código é refatorado sem
@@ -390,8 +396,9 @@ Regras que tornam isso sustentável:
 - [ ] As respostas são **partials HTML**; nenhum JSON consumido por JS? (§3.1)
 - [ ] Lógica em `services/`; views só orquestram; models só persistem; commands só disparam? (§3)
 - [ ] Comunicação com o domínio por **DTOs Pydantic** nas duas pontas? (§3.3)
-- [ ] Se mexe em UI: o componente está **no design system**, composto pelo nível inferior do Atomic
-      Design, sem token novo fora dele? (§3.4)
+- [ ] Se mexe em UI: o design foi **aprovado no mock** (skill `mock`, depois da modelagem), e o
+      componente está **no design system**, composto pelo nível inferior do Atomic Design, sem token
+      novo fora dele? (§3.4)
 - [ ] Se é ação: app próprio, **rota protegida**, contrato declarando o perfil, execução
       **registrada** — e a busca segue intocada? (§3.5)
 - [ ] **Responsabilidade única**, e nenhum módulo cruzando domínios? (§7.1)
