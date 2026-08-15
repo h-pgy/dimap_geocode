@@ -1,7 +1,7 @@
 ---
 spec: autorizacao/008
-versao: v5
-atualizado_em: 2026-08-11
+versao: v6
+atualizado_em: 2026-08-14
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -17,144 +17,86 @@ changelog:
   - v5: pendência resolvida — quem abre a tela é quem responde pela direção da unidade (titular em
     exercício ou substituto dele, SPECs user_admin/014 e 015), e a unidade sem titular ou sem
     direção é alcançada por quem dirige o nível acima
+  - v6: o seletor de duas posições passa a se chamar `.seletor-onsen` — `.toggle-onsen` já é o
+    interruptor da SPEC user_admin/015, no tema desde então —, a origem do alcance passa a ser as
+    unidades dirigidas, e a SPEC foi reescrita no formato de seções numeradas da skill `specs`
 ---
 
 # SPEC autorizacao/008 — Conceder competência: distribuir entre os cargos o que a unidade tem
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+## 1 · User story
+Quem responde pela direção de uma unidade da DIMAP distribui entre os cargos as ações que a unidade
+possui, na tela de competências, para que um servidor recém-chegado — ou um cargo que a unidade passou a
+ter — comece a trabalhar sem depender de alteração em código ou no banco.
 
-## User story
-Como diretor de unidade da DIMAP, quero distribuir entre os cargos da minha unidade as ações que ela
-possui, para que um servidor recém-chegado — ou um cargo que a unidade passou a ter — comece a
-trabalhar sem depender de alguém mexer em código ou no banco.
-
-## Critérios de aceite
-- [ ] Quem abre a tela é **quem responde pela direção da unidade** (SPEC `user_admin/014`) — o
-      titular em exercício ou o substituto vigente dele —, sem depender de concessão gravada desta
-      ação.
-- [ ] A tela lista as atribuições **da unidade-alvo**, que é a do perfil ou uma **abaixo dela** no
-      organograma; unidade fora da subárvore é recusada mesmo vindo no request.
+## 2 · Condições de pronto
+- [ ] Quem abre a tela é **quem responde pela direção** da unidade — o titular em exercício ou o
+      substituto vigente dele —, sem depender de concessão gravada desta ação.
+- [ ] A tela lista as atribuições da **unidade-alvo**, que é uma das que o perfil **dirige** ou uma
+      **abaixo dela** no organograma; unidade fora desse alcance é recusada mesmo vindo no request.
 - [ ] Conceder e revogar acontecem **sem recarregar a página**, trocando só o trecho afetado.
-- [ ] A escolha do cargo distingue explicitamente **cargo base** de **cargo em comissão**, e só um
-      dos dois é concedido por vez.
-- [ ] Não há caminho para conceder uma ação que a unidade **não possui**, nem pela interface nem
-      forjando o request.
-- [ ] Conceder e revogar são **atos registrados** (SPEC 004), distinguíveis pela operação e com o
-      alvo identificando ação e cargo.
+- [ ] A escolha do cargo distingue explicitamente **cargo base** de **cargo em comissão**, e só um dos
+      dois é concedido por vez.
+- [ ] Não há caminho para conceder uma ação que a unidade **não possui**, nem pela interface nem forjando
+      o request.
+- [ ] Conceder e revogar são **atos registrados** (SPEC 004), distinguíveis pela operação e com o alvo
+      identificando ação e cargo.
 - [ ] A ação aparece no **menu de administrador** (SPEC 007) apenas para quem pode executá-la.
-- [ ] O design foi **aprovado no mock** antes de qualquer código de aplicação.
-- [ ] As peças novas estão renderizadas no styleguide e suas classes migraram para o CSS base.
+- [ ] O design foi aprovado no **mock**, e as peças novas — `.seletor-onsen` e `.chip-concessao` — mais
+      `.card-atribuicao`, compartilhada com a SPEC 007, foram portadas para
+      `static/src/tema-dimap.dev.css` e renderizadas no styleguide antes de qualquer template da
+      aplicação usá-las.
 
-## Mock de validação
-`SPECS/autorizacao/008-mock-conceder-competencia.html` — a tela nos seus estados: unidade com
-atribuições e cargos concedidos, atribuição sem nenhum cargo ainda, unidade sem atribuição alguma, o
-item da ação no menu de administrador, e o **modal de concessão**, aberto pelo `+` de qualquer
-cartão.
+## 3 · Domínio
+Nenhum model novo: é o **nível 2** da SPEC 002 virando ato administrativo, e a 007 é quem põe atribuição
+no banco para esta tela distribuir. A concessão mira **um** cargo — base ou em comissão —, e é a linha
+da atribuição que ela pendura, não a dupla unidade × ação.
 
-Servir com root na **raiz do projeto** (Live Server). Via `file://` o fetch do tema é bloqueado.
+O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 
-## Contexto e decisões de arquitetura
+- [`AtribuicaoUnidade` e `Concessao`](002-competencia-no-banco.md) — "o que esta unidade exerce, e quais
+  cargos já a exercem?"; a tela cria e revoga concessão, e não toca a atribuição.
+- [`has_perm`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil exerce esta ação estrutural?".
+- [`CadeiraExercida`](003-avaliador-e-backend-de-autorizacao.md) — "quais unidades este perfil dirige
+  hoje?", que é de onde o alcance parte.
+- [`AlcanceDeUnidades`](007-acao-definir-atribuicao.md) — "a unidade-alvo está na subárvore que ele
+  dirige?", a mesma regra da SPEC 007, sem segunda cópia.
+- [`acao_protegida` e `registrar_ato`](004-protecao-de-rota-e-registro-de-execucao.md) — a rota protegida
+  e o rastro dos dois atos.
+- [`MENU_ADMINISTRADOR`](007-acao-definir-atribuicao.md) — o menu que **pinça** também esta ação.
+- `CargoBase` e `CargoComissao` — os dois catálogos oferecidos no campo.
 
-É a SPEC que fecha o épico exercitando tudo: catálogo (001), projeção e concessão (002), avaliador e
-backend (003), proteção e registro (004), router (005) e as peças visuais (006). É o **nível 2** do
-modelo da 002 — a 007 entrega o nível 1 e é quem põe atribuição no banco para esta tela distribuir.
+**Mock:** [008-mock-conceder-competencia.html](008-mock-conceder-competencia.html) — leia a skill `mock`.
 
-**Distribuir competência é atributo de quem dirige, então esta ação também é estrutural.** Marcada
-`estrutural` (SPEC 001), ela é liberada pela direção da unidade (SPEC 003) sem passar por atribuição
-nem concessão. Se fosse concedida como as demais, o épico voltaria a ter um primeiro estado
-impossível: conceder `competencias.conceder` a um cargo exigiria alguém que já a exercesse. Não há
-seed nem perfil especial cravado em código — há quem dirige.
+## 4 · Fora de escopo
+- Criar atribuição de unidade — SPEC 007.
+- Concessão nominal a um servidor e concessão por natureza de cargo ("qualquer chefia") — sem dono ainda.
+- Registrar impedimento e designar substituto — SPEC `user_admin/015`; aqui a substituição só é lida,
+  pela SPEC 003.
+- Tela de consulta do histórico de execuções — SPEC 004.
+- Demais ações da plataforma: esta SPEC inscreve uma só.
 
-**Quem dirige não é sempre o titular.** Enquanto ele está afastado, quem responde pela unidade é o
-substituto designado (SPECs `user_admin/014` e `015`) — e distribuir competência é parte de
-responder pela unidade, não um ato reservado ao vínculo. Quem lê isso é a SPEC 003; aqui a pergunta
-continua sendo uma `has_perm` só.
-
-**O alcance é a subárvore, como na SPEC 007.** A versão anterior lia a unidade do perfil e ignorava o
-request; isso deixava a unidade **sem titular** — e a **sem direção** — com atribuições e ninguém
-para distribuí-las. Como quem dirige o nível acima já a alcança para atribuir, alcança também para
-conceder — a alternativa seria a unidade órfã ficar inerte até alguém ser nomeado ou voltar. A
-barreira muda de forma, não de força: a unidade-alvo é validada contra a subárvore do perfil pelo
-mesmo `AlcanceDeUnidades` da SPEC 007, e unidade de outro ramo é recusada com id válido.
-
-**Conceder o que a unidade não tem é impossível por estrutura.** A concessão pendura na linha de
-atribuição (SPEC 002); a interface só oferece as atribuições da unidade-alvo, e um request forjado
-com outra atribuição esbarra no fato de ela não pertencer a uma unidade alcançada. Dois cercos, e o
-de baixo não depende do de cima.
-
-**Conceder acontece num modal, não num campo embutido no cartão.** A escolha é maior do que um
-dropdown: a concessão mira **um** cargo, base **ou** em comissão (o XOR da SPEC 002), e são dois
-catálogos distintos. Fundi-los num único campo esconderia a regra — e `select_onsen.js` não trata
-`optgroup`, então nem a saída barata existe. No modal a natureza do cargo é escolhida antes do
-catálogo, e a regra fica visível na tela em vez de só no `CheckConstraint`. O modal vive **fora** do
-cartão e de qualquer formulário: formulário aninhado é HTML inválido, e é o padrão que o projeto já
-usa para gatilho-em-campo (SPEC user_admin/012).
-
-**A escolha da natureza pede uma molécula nova: o toggle de vidro.** O `join` com `btn` do daisyUI
-foi descartado — quinas quadradas no meio e a paleta dele, que não é a da cena. Mas duas peças
-soltas lado a lado também não servem: leem como dois chips, não como um controle de duas posições. O
-que dá a leitura são três coisas juntas — **trilha única, metades de largura igual sem folga, e uma
-placa que desliza** de uma para a outra. E os materiais são os dois do design system em oposição: a
-trilha é **poço** (`.card-well`), porque escolha é campo e campo aqui é sempre coisa rebaixada; o
-polegar é **placa de gelo** (`.glass-panel`) correndo sobre ele — a mesma figura da tabela de vidro,
-agora em movimento. Nenhuma receita de vidro é reescrita: os dois materiais são compostos no HTML.
-
-A tinta do rótulo alterna entre `.etched-deeper` em repouso e `.etched-inked` quando selecionado —
-ambos já existentes, sem cinza de desabilitado. Estado lido em CSS por `:has(input:checked)`, com o
-rádio nativo continuando a ser o campo: nenhum estado de UI em JavaScript.
-
-O toggle nasce **genérico** (`.toggle-onsen`), não como peça desta tela: escolha entre duas posições
-excludentes vai reaparecer, e o §3.4 existe para que a segunda seja montagem e não invenção.
-
-**Revogar também é ato.** Tirar competência muda o que alguém pode fazer tanto quanto dar; as duas
-operações passam pelo mesmo decorator e deixam rastro, com o alvo dizendo qual ação e qual cargo.
-
-**Escopo do diretor é a unidade, não o cargo.** Ele distribui para qualquer cargo do catálogo, desde
-que dentro de uma unidade que alcança — inclusive cargos que ele mesmo não ocupa e ações que ele
-mesmo não exerce. Foi decisão explícita: a competência é da unidade, e distribuí-la é a atribuição de
-quem a dirige. Vale igual para o substituto: ele responde pela unidade enquanto cobre, sem que a
-concessão que ele faz caduque no retorno do titular — é da unidade, não dele.
-
-**Duas peças novas: o toggle e o chip.** Além do `.toggle-onsen`, a concessão já feita aparece como
-`.chip-concessao` com afordância de remoção — o cartão da atribuição precisa mostrar *quais* cargos
-exercem, e badge simples não carrega ação. As duas vão ao CSS base e ao styleguide no porte.
-
-**A regra de hover do ícone do item é a da SPEC 006.** O mock desta SPEC a escreve mais estreita, sem
-o cartão; no porte vale a versão da 006, que cobre as duas formas — a classe é compartilhada e a
-última a ser portada não pode estreitar a primeira.
-
-## Peças de referência a compor
-- `@apps/competencias/models` (SPEC 002) → `AtribuicaoUnidade`, `Concessao`: a tela não cria
-  atribuição, só concessão.
-- SPEC 007 → a ação `competencias.definir_atribuicao`, o `MENU_ADMINISTRADOR` e o
-  `AlcanceDeUnidades`: é ela que põe atribuição no banco, declara o menu que esta ação também compõe
-  e entrega a regra de subárvore reusada aqui. `.card-atribuicao` é a **mesma classe** das duas
-  telas — quem implementar primeiro a leva ao CSS base e ao styleguide; aqui ela ganha os chips.
+## 5 · Peças de referência a compor
+- `@apps/competencias/models` (SPEC 002) → `AtribuicaoUnidade`, `Concessao`.
+- `@apps/competencias/utils.py` (SPEC 001) → `instanciar_acao`.
 - `@apps/competencias/protecao.py` (SPEC 004) → `acao_protegida` e `registrar_ato`.
-- `@apps/competencias/menus.py` (SPEC 005) → `ItemDeMenu` e `ContratoMenu`: o menu de administrador
-  pinça esta ação; ela não se inscreve nele.
-- `@apps/user_admin/models/user.py` → `Perfil.e_titular` e `Perfil.em_exercicio`, e
-  `@services/domain/titularidade/` → `AvaliadorDirecao` (SPECs `user_admin/014` e `015`): a direção
-  da unidade é a fonte da competência desta ação, lida pela SPEC 003 — não por esta tela.
-- Skill `componentes-frontend` → `.card-well`, `.select-onsen` (SPEC user_admin/011), `.btn-onsen`,
-  `.btn-glass`, `.text-overline`, `.icon-etched`, badges semânticos.
-- `.modal-glass` + `.modal-box-glass`: o modal já existe no design system e abre por checkbox
-  nativo — não se escreve JS para isso.
-- `.etched` + `.etched-rotulo` (SPEC user_admin/013): o repouso do seletor de natureza é a gravação
-  que já existe; a tinta sobe porque o sulco ali **nomeia** a opção.
-- SPEC 006 → `.icone-acao`: a ação aparece na tela com o próprio glifo.
+- `@apps/competencias/menus.py` (SPEC 005) → `ItemDeMenu` e `ContratoMenu`; e
+  `@apps/competencias/menus_declarados.py` (SPEC 007) → `MENU_ADMINISTRADOR`.
+- `@services/domain/autorizacao/alcance.py` (SPEC 007) → `AlcanceDeUnidades`, `ComandoAlcance`,
+  `ParUnidade`.
+- `@apps/competencias/consulta.py` (SPEC 003) → `cadeiras_do_perfil`.
 - `@apps/user_admin/models` → `CargoBase`, `CargoComissao`: catálogo oferecido no campo.
-- Skill `pydantic-validation-errors`: a view monta o DTO e deixa o middleware tratar — sem
-  `try/except`.
+- SPEC 006 → `.icone-acao`, e SPEC 007 → `.card-atribuicao`: a peça é a mesma, aqui com a faixa de chips.
+- `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel`, `.glass-panel-thick`, `.modal-glass` +
+  `.modal-box-glass`, `.select-onsen`, `.btn-onsen`, `.btn-glass`, `.text-overline`, `.dot-unidade`,
+  `.etched` + `.etched-deeper` + `.etched-inked`.
+- Skills: `componentes-frontend`, `daisyui`, `htmx`, `mock`, `pydantic-validation-errors`,
+  `escrever-testes`, `test-django-views`.
 
-## Snippets sugeridos
+## 6 · Snippets
 
+**`apps/competencias/acoes_declaradas.py`** — a segunda ação inscrita.
 ```python
-# direção de implementação — adaptar conforme necessário, sem violar os princípios de
-# arquitetura nem o estilo de código do CLAUDE.md
-
-# apps/competencias/acoes_declaradas.py
 ACAO_CONCEDER = instanciar_acao(
     slug="competencias.conceder",
     nome="Conceder competência",
@@ -163,57 +105,110 @@ ACAO_CONCEDER = instanciar_acao(
     url_name="competencias:conceder",
     partial="competencias/partials/_item_menu_conceder.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
-    # Distribuir é atributo de quem dirige: liberada pela direção da unidade, não por concessão.
+    # Distribuir é atributo de quem dirige: liberada pela direção da unidade, não por concessão —
+    # senão conceder `competencias.conceder` exigiria alguém que já a exercesse.
     estrutural=True,
 )
 ```
 
+**`apps/competencias/views.py`** — dois cercos, e o de baixo não depende do de cima.
 ```python
-# apps/competencias/views.py
 @acao_protegida(ACAO_CONCEDER)
 def conceder(request: HttpRequest) -> HttpResponse:
-    # A unidade-alvo é validada contra a subárvore do perfil: sem isso um POST forjado concede em
-    # ramo alheio.
+    # A unidade-alvo é validada contra a subárvore dirigida; a atribuição, contra a unidade-alvo.
+    # Sem o segundo, um id de atribuição de outro ramo passaria pelo primeiro.
     comando = ComandoConcessao(
-        unidade_origem_id=request.user.unidade_id,
+        origens=unidades_dirigidas(request.user),
         unidade_alvo_id=request.POST["unidade"],
         atribuicao_id=request.POST["atribuicao"],
         cargo_base_id=request.POST.get("cargo_base"),
         cargo_comissao_id=request.POST.get("cargo_comissao"),
     )
     ...
+    registrar_ato(
+        request,
+        operacao="conceder",
+        alvo_tipo="acao_cargo",
+        alvo_identificador=f"{acao.slug}:{cargo.padrao}",
+    )
 ```
 
-## Fora de escopo
-- Criar atribuição de unidade: é a ação `competencias.definir_atribuicao` (SPEC 007).
-- Concessão nominal a um servidor e concessão por natureza de cargo.
-- Registrar impedimento e designar substituto: são do `user_admin` (SPEC `015`); aqui a substituição
-  só é lida, pela SPEC 003.
-- Tela de consulta do histórico de execuções.
-- Demais ações da plataforma: esta SPEC inscreve uma só.
-- Aplicar a migração: o agente gera, quem aplica é o usuário (CLAUDE.md §4).
+**`templates/competencias/partials/_modal_conceder.html`** — a natureza do cargo antes do catálogo: são
+dois catálogos distintos, e o XOR da SPEC 002 fica visível na tela em vez de só no `CheckConstraint`.
+```html
+{# Rádio nativo é o campo; o estado é lido em CSS por :has(input:checked). Nenhum estado em JS. #}
+<div class="card-well seletor-onsen">
+  <span class="seletor-onsen-polegar glass-panel" aria-hidden="true"></span>
+  <label class="seletor-onsen-opcao">
+    <input type="radio" name="natureza" class="sr-only" checked />
+    <span class="seletor-onsen-rotulo etched etched-deeper">Cargo base</span>
+  </label>
+  <label class="seletor-onsen-opcao">
+    <input type="radio" name="natureza" class="sr-only" />
+    <span class="seletor-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+  </label>
+</div>
+```
 
-## Porte obrigatório após a aprovação do mock
-As classes novas migram **tal e qual** para `static/src/tema-dimap.dev.css` (fonte única, SPEC
-design/004), e cada peça nova é renderizada em
-`.claude/skills/componentes-frontend/examples/design_system.html`, na seção da sua camada. A SPEC não
-está implementada enquanto os dois portes não tiverem sido feitos.
+**`static/src/tema-dimap.dev.css`** — o seletor de duas posições, genérico.
+```css
+/* Trilha única, metades de largura igual e uma placa que desliza: é isso que faz ler como UM
+   controle, e não como dois chips. Os materiais vêm compostos no HTML — poço na trilha, gelo no
+   polegar —, sem receita de vidro reescrita aqui. */
+.seletor-onsen { @apply relative inline-grid grid-cols-2 p-1; }
+/* Metade da trilha menos a folga: assim translateX(100%) pousa exatamente na outra metade. */
+.seletor-onsen-polegar { @apply absolute z-0 top-1 bottom-1 left-1 transition-transform duration-500 ease-in-out; }
+/* O rádio é sr-only: o anel de foco aparece na TRILHA. `:has(input:focus-visible)`, nunca
+   `:focus-within`, que acenderia também no clique de mouse. */
+.seletor-onsen:has(input:focus-visible) { @apply ring-2 ring-agua-400/70; }
+```
 
-## Testes (TDD)
+## 7 · Caveats
+**O seletor de duas posições nasce como peça genérica do design system**, `.seletor-onsen`, embora só uma
+tela o use hoje. Escolha entre duas posições excludentes vai reaparecer, e o §3.4 existe para que a
+segunda seja montagem e não invenção. Custo: uma peça no styleguide com um consumidor só, e um nome a um
+caractere de distância do `.toggle-onsen` da SPEC `user_admin/015`, que é o interruptor liga/desliga —
+confundir os dois é fácil e o styleguide é o único lugar que os separa.
+
+**A natureza do cargo é escolhida antes do catálogo, em vez de um campo único com os dois.** Fundi-los
+esconderia o XOR da SPEC 002, e o `select_onsen.js` não trata `optgroup` — nem a saída barata existe.
+Custo: são dois campos onde a interface poderia ter um, e o formulário carrega os dois catálogos mesmo
+quando só um será usado.
+
+**O alcance é a mesma regra da SPEC 007, importada dela.** A unidade sem titular — e a sem direção —
+ficaria com atribuições e ninguém para distribuí-las se a tela lesse só a unidade do perfil, e quem
+dirige o nível acima já a alcança para atribuir. Custo: as duas telas passam a depender da mesma peça de
+domínio, e mudar o alcance muda as duas de uma vez.
+
+**Quem dirige distribui para qualquer cargo dentro do alcance**, inclusive cargos que não ocupa e ações
+que não exerce. A competência é da unidade, e distribuí-la é atribuição de quem responde por ela. Custo:
+não há segunda aprovação, e o que contém o ato é o registro (SPEC 004).
+
+**A concessão feita pelo substituto não caduca quando o titular volta.** Ela é da unidade, não de quem a
+concedeu, e expirá-la faria a competência oscilar com o afastamento de terceiros. Custo: uma decisão
+tomada durante a cobertura sobrevive ao fim dela, e desfazê-la é ato explícito de quem voltar.
+
+**`.card-atribuicao` é a mesma classe da SPEC 007**, aqui com a faixa de chips. Custo: a classe tem duas
+SPECs donas; quem implementar primeiro a leva ao tema e ao styleguide, e a outra confere em vez de
+reescrever.
+
+**A regra de hover do ícone do item é a da SPEC 006**, que cobre as duas formas. O mock desta SPEC a
+escreve mais estreita, sem o cartão. Custo: no porte vale a versão da 006 — a última a ser portada não
+pode estreitar a primeira, e nada além da revisão impede isso.
+
+## 8 · Testes (TDD)
 Todos exercitam a view com dados gravados e carregam o marker `banco`.
 
 - `test_tela_abre_para_quem_dirige_e_lista_a_subarvore` — o titular em exercício entra sem concessão
-  gravada, e o substituto dele entra enquanto ele está afastado; os dois veem as atribuições da
-  própria unidade e das de baixo, e a da unidade superior não aparece.
-- `test_concessao_recusa_unidade_fora_do_alcance` — POST com unidade de outro ramo é recusado mesmo
-  com id válido.
-- `test_concessao_recusa_atribuicao_de_outra_unidade` — atribuição existente mas de unidade não
-  alcançada é recusada mesmo com id válido.
+  gravada, e o substituto dele entra enquanto ele está afastado; os dois veem as atribuições da unidade
+  dirigida e das de baixo, e a da unidade superior não aparece. *(marker `banco`)*
+- `test_concessao_recusa_unidade_fora_do_alcance` — POST com unidade de outro ramo é recusado mesmo com
+  id válido. *(marker `banco`)*
+- `test_concessao_recusa_atribuicao_de_outra_unidade` — atribuição existente mas de unidade não alcançada
+  é recusada mesmo com id válido. *(marker `banco`)*
+- `test_concessao_mira_exatamente_um_cargo` — POST com os dois cargos, ou com nenhum, é recusado antes de
+  chegar ao banco. *(marker `banco`)*
 - `test_conceder_e_revogar_ficam_registrados_com_alvo` — as duas operações geram execução registrada
-  distinguível pela operação, identificando ação e cargo.
-- `test_menu_administrador_mostra_a_acao_so_para_quem_pode` — o item aparece para quem dirige a
-  unidade e some para quem não dirige.
-
-## Patches
-
-_Nenhum patch registrado até o momento._
+  distinguível pela operação, identificando ação e cargo. *(marker `banco`)*
+- `test_menu_administrador_mostra_a_acao_so_para_quem_pode` — o item aparece para quem dirige a unidade e
+  some para quem não dirige. *(marker `banco`)*

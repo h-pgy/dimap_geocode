@@ -19,7 +19,7 @@
        Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server) —
        aberto via file:// o fetch é bloqueado e o tema não carrega. -->
   <script>
-    // Tema e classes desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
+    // Tema e peças desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
     // vêm do @theme do tema, e um bloco separado que as usa em @apply cai com "unknown utility".
     fetch("/static/src/tema-dimap.dev.css")
       .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
@@ -34,15 +34,13 @@
         "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
   </script>
 
-  <!-- ESTA SPEC NÃO CRIA PEÇA NOVA. Tudo abaixo já foi proposto em SPEC anterior e está repetido
-       aqui só para o mock rodar sozinho — no porte, nada disto é reimplementado:
-         .icone-acao*, .item-menu*, .card-acao*  → SPEC 006
-         .card-atribuicao*                       → compartilhada com a SPEC 008 (lá, com os chips) -->
+  <!-- PEÇAS FORA DO TEMA. As da SPEC 006 estão repetidas aqui só para o mock rodar sozinho e NÃO
+       são reimplementadas no porte; a .card-atribuicao é compartilhada com a SPEC 008, onde ganha
+       a faixa de chips. -->
   <script type="text/css" id="tokens-spec-007">
     @layer components {
 
-      /* ---- herdado da SPEC 006 (não reimplementar no porte) ---- */
-      /* Sem `color` aqui: declarar cor no átomo vence a pele empilhada (.icon-glow) por cascata. */
+      /* ---- SPEC 006: não reimplementar no porte ---- */
       .icone-acao { @apply inline-flex items-center justify-center shrink-0; }
       .icone-acao svg {
         @apply w-full h-full block;
@@ -81,9 +79,9 @@
       .card-acao-alvo { @apply h-full; }
       .card-acao-alvo:hover .card-acao { @apply bg-white/55; }
 
-      /* ---- compartilhada com a SPEC 008 (lá, com a faixa de chips de cargo) ---- */
-      /* Sem hover-3d: o cartão contém botões, e o componente exige conteúdo não-interativo.
-         O glifo fica em tinta neutra — ele IDENTIFICA a atribuição, e acender é gesto de hover. */
+      /* ==================== MOLÉCULA · CARTÃO DA ATRIBUIÇÃO ====================
+         Compartilhada com a SPEC 008 (lá, com a faixa de chips de cargo). */
+      /* Sem hover-3d: o cartão contém botões, e o componente exige conteúdo não-interativo. */
       .card-atribuicao {
         @apply flex flex-col gap-3 p-4 rounded-(--radius-box)
                bg-white/30 border border-white/45;
@@ -100,8 +98,8 @@
 <body class="min-h-screen">
   <div id="map" class="fixed inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
 
-  <!-- defs da gravação (SPEC user_admin/013): sem eles .etched e .icon-etched existem e não
-       desenham nada. Na aplicação vêm de templates/partials/_filtros_gravacao.html, no base.html. -->
+  <!-- defs da gravação (SPEC user_admin/013) — repetidos aqui só para o mock renderizar sozinho;
+       na aplicação vêm de templates/partials/_filtros_gravacao.html, no base.html. -->
   <svg width="0" height="0" class="absolute" aria-hidden="true">
     <defs>
       <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
@@ -143,8 +141,6 @@
 
   <svg width="0" height="0" class="absolute" aria-hidden="true">
     <defs>
-      <!-- Glifo desta ação: organograma. A ação não é sobre "poder" nem sobre "marcar" — é sobre
-           dizer o que cada unidade da árvore faz. -->
       <g id="glifo-atribuicao">
         <rect x="9" y="3" width="6" height="4" rx="1"/>
         <path d="M12 7v3"/><path d="M5 10h14"/><path d="M5 10v3"/><path d="M19 10v3"/>
@@ -176,44 +172,18 @@
     <header class="glass-panel p-6">
       <p class="text-overline">SPEC autorizacao/007 · mock de validação</p>
       <h1 class="text-[30px] font-black tracking-tight text-madeira-700">Definir atribuições da unidade</h1>
-      <p class="mt-1 text-[15px] text-base-content/90">
-        Camadas separadas antes da tela montada. <strong>Nenhuma peça nasce aqui</strong>: a tela é
-        composição do cartão de ação da SPEC 006, do cartão de atribuição da SPEC 008 e dos átomos
-        que já estão no styleguide. O que se aprova neste mock é a composição e os estados.
-      </p>
-    </header>
-
-    <!-- ==================== 1 · TOKENS ==================== -->
-    <section class="glass-panel p-6 flex flex-col gap-4">
-      <h2 class="text-[24px] font-bold text-madeira-700">1 · Tokens</h2>
-      <p class="text-[15px] text-base-content/90">
-        <strong>Nenhum token novo.</strong> A tela usa escalas, materiais e tipografia existentes.
-      </p>
-      <div class="card-well p-4 flex flex-wrap gap-x-8 gap-y-2 text-[13px] text-base-content/80">
-        <span><code class="text-code">.glass-panel</code> / <code class="text-code">.glass-panel-thick</code></span>
-        <span><code class="text-code">.card-well</code></span>
-        <span><code class="text-code">.form-field</code></span>
-        <span><code class="text-code">.select-glass</code> / <code class="text-code">.select-onsen</code></span>
-        <span><code class="text-code">.btn-onsen</code> / <code class="text-code">.btn-glass</code></span>
-        <span><code class="text-code">.text-overline</code></span>
-        <span><code class="text-code">.dot-unidade</code></span>
-        <span><code class="text-code">.icon-etched</code> / <code class="text-code">.icon-glow</code></span>
-        <span><code class="text-code">.modal-glass</code></span>
-        <span><code class="text-code">.card-acao</code> <span class="opacity-60">(SPEC 006)</span></span>
-        <span><code class="text-code">.card-atribuicao</code> <span class="opacity-60">(SPEC 008)</span></span>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="badge badge-ponto">.card-atribuicao</span>
+        <span class="badge badge-linha">.card-acao (SPEC 006)</span>
+        <span class="badge badge-poligono">glifo da ação</span>
+        <span class="badge badge-neutral badge-soft">unidade sem atribuição</span>
       </div>
-      <p class="text-[13px] text-base-content/70">
-        O único desenho novo da SPEC é o <strong>glifo</strong> da ação — arquivo da ação, não token
-        do design system (SPEC 006): a ação é dona do desenho, o design system é dono da renderização.
-      </p>
-    </section>
+    </header>
 
     <!-- ==================== 2 · ÁTOMOS ==================== -->
     <section class="glass-panel p-6 flex flex-col gap-5">
       <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
-      <p class="text-[15px] text-base-content/90">
-        Todos já existem. O glifo aparece nas duas variantes declaradas pela ação.
-      </p>
+      <!-- Nenhum átomo nasce aqui; o desenho novo é o glifo da ação, arquivo dela e não token. -->
       <div class="card-well p-5 flex flex-wrap items-center gap-6">
         <span class="icone-acao icone-acao-grande icon-glow"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
         <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
@@ -232,14 +202,12 @@
     <section class="glass-panel p-6 flex flex-col gap-5">
       <h2 class="text-[24px] font-bold text-madeira-700">3 · Moléculas</h2>
 
+      <!-- .card-atribuicao — nesta tela sem a faixa de chips: aqui o que interessa é quantos cargos
+           caem junto se a atribuição sair. -->
       <div class="flex flex-col gap-3">
-        <p class="text-[15px] text-base-content/90">
-          <code class="text-code">.card-atribuicao</code> — uma ação que a unidade exerce. Aqui sem a
-          faixa de chips da SPEC 008: nesta tela o que interessa é <em>quantos cargos</em> perdem a
-          competência se a atribuição sair. O alvo de remover é explícito e separado do rótulo —
-          retirar competência da unidade não se faz por clique ambíguo.
-        </p>
+        <span class="text-overline">.card-atribuicao</span>
         <div class="card-well p-5 grid gap-3 sm:grid-cols-2">
+          <!-- estado: com cargos exercendo -->
           <div class="card-atribuicao">
             <div class="card-atribuicao-cabeca">
               <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
@@ -247,22 +215,21 @@
                 <p class="card-atribuicao-nome">Amostragem de ofertas</p>
                 <p class="card-atribuicao-descricao">3 cargos exercem</p>
               </div>
-              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle">
+              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
                 <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
               </label>
             </div>
           </div>
 
+          <!-- estado de falta: atribuição sem nenhum cargo ainda -->
           <div class="card-atribuicao">
             <div class="card-atribuicao-cabeca">
               <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
               <div class="flex-1 min-w-0">
                 <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
-                <!-- Atribuição sem ninguém designado é estado VÁLIDO: a unidade acabou de recebê-la
-                     e a distribuição entre cargos é da SPEC 008. -->
                 <p class="card-atribuicao-vazio">nenhum cargo ainda</p>
               </div>
-              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle">
+              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
                 <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
               </label>
             </div>
@@ -270,11 +237,9 @@
         </div>
       </div>
 
+      <!-- .card-acao (SPEC 006) reusado como item do catálogo -->
       <div class="flex flex-col gap-3">
-        <p class="text-[15px] text-base-content/90">
-          <code class="text-code">.card-acao</code> (SPEC 006) — o item do catálogo, reusado sem
-          redesenho: é o mesmo cartão explicativo do menu, e é o que o modal oferece para atribuir.
-        </p>
+        <span class="text-overline">.card-acao · item do catálogo, sem redesenho</span>
         <div class="card-well p-5 grid gap-4 sm:grid-cols-2">
           <a href="#" class="hover-3d card-acao-alvo">
             <div class="card-well card-acao">
@@ -301,12 +266,9 @@
         </div>
       </div>
 
+      <!-- seletor da unidade-alvo — .select-onsen (SPEC user_admin/011), sem peça nova -->
       <div class="flex flex-col gap-3">
-        <p class="text-[15px] text-base-content/90">
-          Seletor da <strong>unidade-alvo</strong> — <code class="text-code">.select-onsen</code>
-          (SPEC user_admin/011), sem peça nova. A lista traz a unidade do perfil e as que estão abaixo
-          dela, indentadas pela profundidade; superior e irmã não existem aqui nem no request.
-        </p>
+        <span class="text-overline">unidade-alvo · as dirigidas e o que está abaixo delas</span>
         <div class="card-well p-5">
           <label class="form-field max-w-md">
             <span class="text-overline">Unidade</span>
@@ -326,76 +288,9 @@
     <section class="glass-panel p-6 flex flex-col gap-6">
       <h2 class="text-[24px] font-bold text-madeira-700">4 · Organismos</h2>
 
-      <!-- ORGANISMO · PAINEL DA UNIDADE
-           Cabeçalho identifica a unidade-alvo (ponto de cor da SPEC user_admin/005) e concentra o
-           gatilho de atribuir; o poço carrega o que a unidade já tem. Trocar a unidade no seletor
-           troca só o poço (hx-target), não a página. -->
+      <!-- estado de falta: unidade recém-criada, sem nenhuma atribuição -->
       <div class="flex flex-col gap-3">
-        <span class="text-overline">unidade com atribuições</span>
-        <div class="glass-panel p-5 flex flex-col gap-4">
-          <div class="flex flex-wrap items-end justify-between gap-4">
-            <label class="form-field grow max-w-sm">
-              <span class="text-overline">Unidade</span>
-              <select class="select select-glass w-full" data-select-onsen>
-                <option>DIMAP-1</option>
-                <option>DIMAP-2</option>
-              </select>
-            </label>
-            <label for="modal-catalogo" class="btn btn-onsen btn-sm gap-2">
-              <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
-              Atribuir ação
-            </label>
-          </div>
-
-          <div class="flex items-center gap-2 text-[13px] text-base-content/70">
-            <span class="dot-unidade" style="--cor-unidade:#0077B6"></span>
-            <span>DIMAP-1 · Seção · subordinada à DIMAP</span>
-          </div>
-
-          <div class="card-well p-4 grid gap-3 sm:grid-cols-2">
-            <div class="card-atribuicao">
-              <div class="card-atribuicao-cabeca">
-                <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
-                <div class="flex-1 min-w-0">
-                  <p class="card-atribuicao-nome">Amostragem de ofertas</p>
-                  <p class="card-atribuicao-descricao">3 cargos exercem</p>
-                </div>
-                <label for="modal-remover" class="btn btn-glass btn-xs btn-circle">
-                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
-                </label>
-              </div>
-            </div>
-            <div class="card-atribuicao">
-              <div class="card-atribuicao-cabeca">
-                <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
-                <div class="flex-1 min-w-0">
-                  <p class="card-atribuicao-nome">Conceder competência</p>
-                  <p class="card-atribuicao-descricao">1 cargo exerce</p>
-                </div>
-                <label for="modal-remover" class="btn btn-glass btn-xs btn-circle">
-                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
-                </label>
-              </div>
-            </div>
-            <div class="card-atribuicao">
-              <div class="card-atribuicao-cabeca">
-                <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
-                <div class="flex-1 min-w-0">
-                  <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
-                  <p class="card-atribuicao-vazio">nenhum cargo ainda</p>
-                </div>
-                <label for="modal-remover" class="btn btn-glass btn-xs btn-circle">
-                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Unidade recém-criada: estado VÁLIDO e frequente, não erro. -->
-      <div class="flex flex-col gap-3">
-        <span class="text-overline">unidade sem nenhuma atribuição</span>
+        <span class="text-overline">poço da unidade · sem nenhuma atribuição</span>
         <div class="glass-panel p-5 flex flex-col gap-4">
           <div class="flex flex-wrap items-end justify-between gap-4">
             <label class="form-field grow max-w-sm">
@@ -416,7 +311,7 @@
         </div>
       </div>
 
-      <!-- A ação vista de fora: item do menu de administrador (SPEC 005/006), só para quem a possui. -->
+      <!-- a ação vista de fora, no menu de administrador (SPECs 005 e 006) -->
       <div class="flex flex-col gap-3">
         <span class="text-overline">no menu de administrador</span>
         <div class="glass-panel menu-acoes">
@@ -440,7 +335,6 @@
         </div>
       </div>
 
-      <!-- Os modais vivem no fim do documento; aqui ficam os gatilhos para vê-los nos três estados. -->
       <div class="card-well p-4 flex flex-wrap items-center gap-3">
         <span class="text-overline">estados dos modais</span>
         <label for="modal-catalogo" class="btn btn-glass btn-sm">Catálogo</label>
@@ -449,13 +343,89 @@
       </div>
     </section>
 
+    <!-- ==================== 5 · TELA MONTADA ==================== -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
+        5 · Tela montada — unidade com atribuições
+      </h2>
+
+      <!-- página: competencias/definir_atribuicao.html -->
+      <div class="glass-panel p-5 flex flex-col gap-4">
+
+        <!-- partial: competencias/partials/_cabecalho_atribuicao.html -->
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <label class="form-field grow max-w-sm">
+            <span class="text-overline">Unidade</span>
+            <select class="select select-glass w-full" data-select-onsen>
+              <option>DIMAP-1</option>
+              <option>DIMAP-2</option>
+              <option>DIMAP-3</option>
+              <option>DIMAP-4</option>
+            </select>
+          </label>
+          <label for="modal-catalogo" class="btn btn-onsen btn-sm gap-2">
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+            Atribuir ação
+          </label>
+        </div>
+
+        <div class="flex items-center gap-2 text-[13px] text-base-content/70">
+          <span class="dot-unidade" style="--cor-unidade:#0077B6"></span>
+          <span>DIMAP-1 · Seção · subordinada à DIMAP</span>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: competencias/partials/_poco_atribuicoes.html — alvo de hx-swap ao trocar a
+             unidade no seletor, ao atribuir e ao remover -->
+        <div class="card-well p-4 grid gap-3 sm:grid-cols-2">
+          <!-- partial: competencias/partials/_card_atribuicao.html — um por atribuição -->
+          <div class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Amostragem de ofertas</p>
+                <p class="card-atribuicao-descricao">3 cargos exercem</p>
+              </div>
+              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+              </label>
+            </div>
+          </div>
+          <!-- /partial -->
+          <div class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Conceder competência</p>
+                <p class="card-atribuicao-descricao">1 cargo exerce</p>
+              </div>
+              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+              </label>
+            </div>
+          </div>
+          <div class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                <p class="card-atribuicao-vazio">nenhum cargo ainda</p>
+              </div>
+              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+      </div>
+      <!-- fica na página: o arranjo do painel; os modais são irmãos dele, no fim do documento -->
+    </section>
+
   </div>
 
-  <!-- ==================== ORGANISMO · MODAL DO CATÁLOGO ====================
-       Fica FORA do painel e de qualquer formulário: form aninhado é HTML inválido, e o padrão do
-       projeto para gatilho-em-campo já é esse (SPEC user_admin/012). Abre por checkbox nativo.
-       Na aplicação o conteúdo vem por HTMX com as ações ATIVAS que a unidade ainda não tem —
-       oferecer o que ela já exerce criaria o caminho para a duplicata que a SPEC 002 recusa. -->
+  <!-- partial: competencias/partials/_modal_catalogo.html — alvo de hx-get do botão "Atribuir ação"
+       Fica FORA do painel e de qualquer formulário: form aninhado é HTML inválido. -->
   <input type="checkbox" id="modal-catalogo" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
@@ -502,8 +472,9 @@
     <!-- Fechar clicando fora: a cena EMBAÇA, nunca escurece (§5 do DS). -->
     <label class="modal-backdrop" for="modal-catalogo">Fechar</label>
   </div>
+  <!-- /partial -->
 
-  <!-- Mesmo modal com o catálogo esgotado: a unidade já exerce tudo que existe. -->
+  <!-- estado de falta: catálogo esgotado — a unidade já exerce tudo que existe -->
   <input type="checkbox" id="modal-catalogo-vazio" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
@@ -521,11 +492,8 @@
     <label class="modal-backdrop" for="modal-catalogo-vazio">Fechar</label>
   </div>
 
-  <!-- ==================== ORGANISMO · CONFIRMAÇÃO DA REMOÇÃO ====================
-       A remoção cascateia nas concessões (SPEC 002). A contagem é o único lugar em que esse efeito
-       aparece ANTES de acontecer — por isso o modal não é cortesia, é parte do ato.
-       Na aplicação o botão de remover pede este modal ao servidor, que devolve a contagem real;
-       atribuição sem nenhuma concessão dispensa a pergunta e some direto. -->
+  <!-- partial: competencias/partials/_modal_remover.html — alvo de hx-get do botão de retirar, que
+       traz a contagem real de concessões -->
   <input type="checkbox" id="modal-remover" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
@@ -559,6 +527,7 @@
     </div>
     <label class="modal-backdrop" for="modal-remover">Fechar</label>
   </div>
+  <!-- /partial -->
 
   <script>
     const mapa = L.map("map", { zoomControl: false, attributionControl: false })

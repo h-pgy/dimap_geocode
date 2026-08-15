@@ -1,7 +1,7 @@
 ---
 spec: autorizacao/004
-versao: v3
-atualizado_em: 2026-08-11
+versao: v4
+atualizado_em: 2026-08-14
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -12,141 +12,57 @@ changelog:
   - v3: o registro passa a dizer por quem o autor respondia — com a substituição (SPEC
     user_admin/015) o ato pode ser praticado pela competência do cargo de outra pessoa, e só o
     cargo do autor descreveria o ato errado
+  - v4: sem mudança de escopo — a SPEC foi reescrita no formato de seções numeradas da skill
+    `specs`, com a justificativa toda concentrada em Caveats
 ---
 
 # SPEC autorizacao/004 — Proteção de rota e registro de execução do ato
 
-- [ ] **Testes (TDD) escritos** <!-- marque [x] e ponha testes_tdd: true quando os testes existirem e falharem; sem isso NÃO se escreve o código -->
-- [ ] **Implementada** <!-- marque [x] e ponha implementado: true quando o código for entregue -->
+## 1 · User story
+**Requisito não-funcional** — a competência da SPEC 003 vira barreira na rota e rastro no banco: todo
+ato administrativo praticado na plataforma passa a ter autor conhecido, e toda tentativa negada passa a
+ser investigável.
 
-## User story
-Como responsável pela DIMAP, quero que toda execução de ação seja barrada na rota para quem não tem
-competência e fique registrada para quem tem, para que o ato administrativo praticado na plataforma
-tenha autor conhecido — e para que esconder o botão nunca seja a única barreira.
-
-## Critérios de aceite
+## 2 · Condições de pronto
 - [ ] Rota de ação **nega com 403** o perfil autenticado sem competência, e manda o **anônimo para o
       login** pelo caminho padrão do Django.
 - [ ] Toda execução autorizada que **altera estado** fica registrada: quem, com qual cargo e unidade
       **no momento do ato**, qual ação, **qual operação**, quando.
-- [ ] Quando o autor pratica o ato **cobrindo alguém** (SPEC `user_admin/015`), o registro diz **por
-      quem ele respondia**; quando não, o campo fica vazio.
-- [ ] Toda tentativa **negada de perfil autenticado** fica registrada, inclusive a de leitura — é o
-      que permite responder se a pessoa podia.
+- [ ] Quando o autor pratica o ato **cobrindo alguém**, o registro diz **por quem ele respondia**;
+      quando não, o campo fica vazio.
+- [ ] Toda tentativa **negada de perfil autenticado** fica registrada, inclusive a de leitura.
 - [ ] Duas operações opostas da mesma ação — conceder e revogar, atribuir e remover — ficam
       **distinguíveis** no registro.
-- [ ] A view pode acrescentar ao registro **sobre o que** o ato incidiu; esquecer de fazê-lo não
-      impede o registro de existir.
-- [ ] A proteção é declarada com o **contrato da ação**, não com uma string solta.
+- [ ] A view pode acrescentar ao registro **sobre o que** o ato incidiu; esquecer de fazê-lo não impede
+      o registro de existir.
+- [ ] A proteção é declarada com o **contrato da ação**, não com uma string solta: slug inexistente é
+      erro de import, não negação silenciosa.
 
-## Contexto e decisões de arquitetura
+## 3 · Domínio
+O ato praticado é a entidade nova, e ela guarda o que descreve o ato **no dia em que foi praticado** —
+não o que o cadastro diz hoje.
 
-Esta SPEC transforma a resposta da SPEC 003 em barreira efetiva e em rastro. É a contraparte do
-router (SPEC 005): lá o menu esconde o que não se pode; aqui a rota recusa mesmo que alguém digite a
-URL.
-
-**403 para autenticado, login para anônimo.** Redirecionar um perfil autenticado para o login não
-diz nada — ele já está logado; o que falta é competência, e isso é 403. Para HTMX o 403 é ainda mais
-necessário: redirect vira a página de login trocada dentro de um fragmento. A distinção é a
-combinação que o próprio Django recomenda (`login_required` + `permission_required` com
-`raise_exception`).
-
-**O decorator recebe o contrato, não a string.** O slug é escrito uma vez só, na declaração da ação;
-a rota referencia o objeto. Typo vira erro de import, não negação silenciosa — que é o modo de falha
-ruim de autorização por string.
-
-**Registro garantido pelo decorator, enriquecido pela view.** O decorator grava sem depender de a
-view lembrar: é o que torna o rastro estrutural em vez de dependente de disciplina. Mas só a view
-sabe sobre qual entidade o ato incidiu, então ela acrescenta o alvo, e o registro existe mesmo se
-ela não acrescentar. Nada disso por signal: o CLAUDE.md (§3.2) recusa efeito colateral escondido do
-ponto de chamada justamente quando o efeito é ato auditável.
-
-**Grava-se a negativa sempre, e a execução quando ela altera estado.** Uma tela de ação é aberta por
-GET a cada navegação e a cada swap do HTMX; registrar tudo encheria o histórico de "atos" que são
-leitura, e o ato de verdade se perderia no meio. Então: **método não-seguro autorizado** vira
-registro; **qualquer método negado** vira registro, porque tentativa é o que se quer poder
-investigar. Ação cujo ato é uma leitura — emitir um documento, por exemplo — força o registro
-chamando o mesmo enriquecimento que a view já usa para o alvo.
-
-**Anônimo não gera registro.** Ele é redirecionado ao login antes de haver perfil, unidade e cargo —
-e são esses campos que dão sentido à linha. Registrar acesso anônimo é assunto de log de servidor,
-não de histórico de ato administrativo.
-
-**O registro diz qual operação foi praticada.** A ação é a competência ("definir atribuições"), não
-o que se fez com ela: a mesma rota atribui e remove, concede e revoga. Sem esse campo, o rastro
-responde "mexeu na competência" e não responde "tirou a competência de quem" — que é a pergunta que
-motiva o registro existir. Texto curto vindo da view, não enumeração central: quem sabe as operações
-de uma ação é ela.
-
-**O alvo é uma coisa só; par vira identificador composto.** Atribuir incide sobre unidade **e** ação;
-conceder, sobre ação **e** cargo. Em vez de multiplicar colunas de alvo por ação, o `alvo_tipo` diz o
-que é o par e o `alvo_identificador` o compõe — o alvo já é texto por natureza (abaixo), e um par
-cabe nele.
-
-**O alvo é texto, não relação.** Lote, logradouro e endereço não são models — vêm dos parquets e do
-WFS. `GenericForeignKey` não alcança isso; dois campos livres (tipo e identificador) alcançam, e são
-opcionais porque ação de menu administrativo não incide sobre entidade territorial nenhuma.
-
-**Cargo e unidade ficam na linha do registro.** Perfil muda de lotação; se o registro só apontasse
-para o perfil, a consulta de amanhã descreveria o ato de ontem com a lotação de hoje. Risco residual
-aceito: renomear a sigla de uma unidade reescreve como o histórico se lê — não se guarda cópia do
-texto para evitar isso.
-
-**Quem cobre pratica pela competência de outro, e a linha precisa dizer isso.** O substituto exerce
-o cargo do afastado enquanto a substituição vigora (SPEC `user_admin/015`), e a competência que abre
-a rota pode ser a dele emprestada — inclusive a estrutural, quando quem se afastou é o titular.
-Gravar só o cargo do autor descreveria o ato pelo cargo errado: um subordinado sem chefia figuraria
-distribuindo competência sem nada explicar como. Um FK anulável para o substituído resolve, e é
-`SET_NULL` como o do autor. Não se grava a linha da `Substituicao`: ela é encerrada e reaberta ao
-longo do tempo, e o histórico não pode depender de um vínculo que muda depois do ato.
-
-## Peças de referência a compor
-- `@apps/competencias/backends.py` (SPEC 003): o decorator pergunta por `has_perm`, não reimplementa
-  a decisão — e a substituição vigente já foi resolvida ali, na montagem da avaliação.
-- `@apps/user_admin/models/substituicao.py` → `Substituicao` (SPEC `user_admin/015`): de onde sai
-  quem o autor cobria; o registro guarda a pessoa, não a linha.
-- `@apps/competencias/schemas.py` (SPEC 001) → `AcaoImplementada`: é o que o decorator recebe.
-- `@apps/competencias/models` (SPEC 002) → `Acao`: alvo da FK do registro.
-- `django.contrib.auth.decorators` → `login_required`: o caminho do anônimo é o padrão, não se
-  reescreve.
-
-## Snippets sugeridos
-
+**`apps/competencias/models/execucao.py`**
 ```python
-# direção de implementação — adaptar conforme necessário, sem violar os princípios de
-# arquitetura nem o estilo de código do CLAUDE.md
-
-# apps/competencias/models/execucao.py
 class ExecucaoAcao(models.Model):
-    acao = models.ForeignKey(
-        Acao,
-        on_delete=models.PROTECT,
-        related_name="execucoes",
-    )
+    acao = models.ForeignKey(Acao, on_delete=models.PROTECT, related_name="execucoes")
     perfil = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         related_name="execucoes",
         null=True,
     )
-    # Lotação no momento do ato: perfil muda de unidade e o histórico não pode mudar junto.
-    unidade = models.ForeignKey(
-        Unidade,
-        on_delete=models.PROTECT,
-        related_name="execucoes",
-    )
-    cargo_base = models.ForeignKey(
-        CargoBase,
-        on_delete=models.PROTECT,
-        related_name="execucoes",
-    )
+    # Lotação no momento do ato: perfil muda de unidade, e o histórico não pode mudar junto.
+    unidade = models.ForeignKey(Unidade, on_delete=models.PROTECT, related_name="execucoes")
+    cargo_base = models.ForeignKey(CargoBase, on_delete=models.PROTECT, related_name="execucoes")
     cargo_comissao = models.ForeignKey(
         CargoComissao,
         on_delete=models.PROTECT,
         related_name="execucoes",
         null=True,
     )
-    # Ato praticado cobrindo alguém: sem isso a linha descreveria o ato pelo cargo errado.
+    # Ato praticado cobrindo alguém: a pessoa, nunca a linha da Substituicao, que é encerrada e
+    # reaberta ao longo do tempo.
     substituindo = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -156,28 +72,56 @@ class ExecucaoAcao(models.Model):
     )
     autorizado = models.BooleanField()
     # A ação é a competência; a operação é o que se fez com ela — atribuir não é remover.
-    operacao = models.CharField(
-        max_length=40,
-        blank=True,
-    )
-    # Entidade territorial não é model: o alvo é texto livre, e ação de menu não tem alvo.
-    alvo_tipo = models.CharField(
-        max_length=40,
-        blank=True,
-    )
-    alvo_identificador = models.CharField(
-        max_length=120,
-        blank=True,
-    )
+    operacao = models.CharField(max_length=40, blank=True)
+    # Entidade territorial não é model (vem de parquet e WFS): o alvo é texto livre. Par de alvos
+    # vira identificador composto, em vez de multiplicar colunas por ação.
+    alvo_tipo = models.CharField(max_length=40, blank=True)
+    alvo_identificador = models.CharField(max_length=120, blank=True)
     momento = models.DateTimeField(auto_now_add=True)
 ```
 
+O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
+
+- [`AcaoImplementada`](001-catalogo-de-acoes-em-codigo.md) — "qual ação esta rota executa?"; é o objeto
+  que o decorator recebe, não o slug.
+- [`Acao` projetada](002-competencia-no-banco.md) — o alvo da FK do registro.
+- [`CompetenciaBackend`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil pode executar esta
+  ação?", já respondida; o decorator pergunta por `has_perm` e não reimplementa nada.
+- [`substituicao_que_exerce`](../user_admin/015-exercicio-e-substituicao.md) — "quem o autor estava
+  cobrindo no momento do ato?".
+
+## 4 · Fora de escopo
+- Tela de consulta do histórico de execuções — por ora sai pelo admin do Django; sem dono ainda.
+- Retenção, expurgo e exportação do registro — sem dono ainda.
+- Ação assíncrona ou enfileirada — ações são síncronas por padrão (§3.5).
+- Registrar leitura de informação pública da ontologia — não é ação e não exige login.
+- Gravar a unidade **em que o ato produziu efeito** quando ela não é a de lotação do autor — sem dono
+  ainda (§7).
+
+## 5 · Peças de referência a compor
+- `@apps/competencias/backends.py` (SPEC 003) → `has_perm`: a decisão de acesso, já resolvida.
+- `@apps/competencias/consulta.py` (SPEC 003) → `cadeiras_do_perfil`: quem o autor cobre já foi
+  resolvido ali, na montagem da avaliação.
+- `@apps/user_admin/exercicio.py` → `substituicao_que_exerce`: o substituído é `impedimento.perfil`.
+- `@apps/competencias/schemas.py` (SPEC 001) → `AcaoImplementada`: é o que o decorator recebe.
+- `@apps/competencias/models` (SPEC 002) → `Acao`: alvo da FK do registro.
+- `django.contrib.auth.decorators` → `login_required`: o caminho do anônimo é o padrão.
+- Skills: `escrever-testes`, `test-django-views`.
+
+## 6 · Snippets
+
+**`apps/competencias/protecao.py`** — a barreira e o rastro no mesmo decorator: autorizar sem registrar
+deixaria o rastro dependente de disciplina de quem escreve a view.
 ```python
-# apps/competencias/protecao.py
-def acao_protegida(
-    acao: AcaoImplementada,
-) -> Callable[[ViewFunc], ViewFunc]:
-    """Autoriza pelo contrato e grava a execução — autorizada ou não."""
+def acao_protegida(acao: AcaoImplementada) -> Callable[[ViewFunc], ViewFunc]:
+    """Autoriza pelo contrato e grava a execução — autorizada ou não.
+
+    403 para autenticado, login para anônimo: redirecionar quem já está logado não diz nada, e para
+    o HTMX o redirect vira a página de login trocada dentro de um fragmento.
+
+    Grava-se SEMPRE a negativa, e a execução quando ela altera estado: tela de ação é aberta por GET
+    a cada navegação e a cada swap, e registrar tudo afogaria o ato de verdade em leitura.
+    """
     ...
 
 
@@ -188,35 +132,88 @@ def registrar_ato(
     alvo_identificador: str = "",
 ) -> None:
     """Enriquece o registro que o decorator vai gravar — e força a gravação quando o ato é uma
-    leitura, que o decorator sozinho não registraria."""
+    leitura (emitir um documento, por exemplo), que o decorator sozinho não registraria.
+
+    Só a view sabe sobre o que o ato incidiu; o registro existe mesmo se ela não disser."""
     ...
 ```
 
-## Fora de escopo
-- Tela de consulta do histórico de execuções: por ora sai pelo admin do Django.
-- Retenção, expurgo e exportação do registro.
-- Ação assíncrona ou enfileirada — ações são síncronas por padrão (§3.5).
-- Registrar leitura de informação pública da ontologia: não é ação e não exige login.
-- Aplicar a migração: o agente gera, quem aplica é o usuário (CLAUDE.md §4).
+**`apps/competencias/registro_execucao.py`** — a linha gravada, com a lotação do momento e quem o autor
+cobria.
+```python
+def gravar_execucao(
+    perfil: Perfil,
+    acao: AcaoImplementada,
+    autorizado: bool,
+    operacao: str = "",
+    ...
+) -> ExecucaoAcao:
+    # A competência que abriu a rota pode ser a de outra pessoa: sem isto a linha descreveria o ato
+    # pelo cargo errado, e um subordinado sem chefia figuraria distribuindo competência.
+    substituicao = substituicao_que_exerce(perfil)
+    ...
+```
 
-## Testes (TDD)
+**`apps/competencias/views.py`** — como a view usa as duas peças.
+```python
+@acao_protegida(ACAO_DEFINIR_ATRIBUICAO)
+def definir_atribuicao(request: HttpRequest) -> HttpResponse:
+    ...
+    registrar_ato(
+        request,
+        operacao="atribuir",
+        alvo_tipo="unidade_acao",
+        alvo_identificador=f"{unidade.sigla}:{acao.slug}",
+    )
+```
+
+## 7 · Caveats
+**O registro é gravado pelo decorator, e não por signal.** Signal esconderia do ponto de chamada o
+efeito que mais precisa ser visível — e o CLAUDE.md §3.2 o recusa justamente quando o efeito é ato
+auditável. Custo: o decorator passa a fazer duas coisas, autorizar e gravar, e quem ler a view precisa
+saber que a segunda acontece sem aparecer ali.
+
+**Grava-se toda negativa e só a execução que altera estado.** Uma tela de ação é aberta por GET a cada
+navegação e a cada swap do HTMX, e registrar tudo encheria o histórico de "atos" que são leitura. Custo:
+ação cujo ato **é** uma leitura — emitir um documento — só fica registrada se a view chamar
+`registrar_ato`, e esquecer disso não quebra nada visivelmente.
+
+**Acesso anônimo não gera registro.** Ele é redirecionado ao login antes de haver perfil, unidade e
+cargo, que são os campos que dão sentido à linha. Custo: varredura de URL por quem não está logado não
+aparece no histórico de atos — só no log do servidor.
+
+**O alvo é texto livre, em dois campos opcionais.** Lote, logradouro e endereço não são models — vêm dos
+parquets e do WFS —, e `GenericForeignKey` não os alcança. Custo: nada garante que o identificador
+gravado ainda exista nem que esteja bem formado, e consultar o histórico por alvo é busca em texto.
+
+**Cargo e unidade são copiados para a linha, mas a sigla não.** Sem a cópia, a consulta de amanhã
+descreveria o ato de ontem com a lotação de hoje. Custo aceito: renomear a sigla de uma unidade reescreve
+como todo o histórico dela se lê.
+
+**A unidade gravada é a de lotação do autor, não aquela em que o ato produziu efeito.** Quem cobre alguém
+de outra unidade (SPEC `user_admin/015`) pratica o ato pela cadeira do coberto, e fazer o decorator
+descobrir qual cadeira autorizou exigiria o avaliador devolver a origem de cada slug liberado. Custo: nesse
+caso a unidade da linha descreve onde o autor está lotado, e chegar à unidade do ato exige passar por
+`substituindo`.
+
+## 8 · Testes (TDD)
 Todos exercitam view real com `Perfil` gravado e carregam o marker `banco`.
 
 - `test_rota_nega_autenticado_sem_competencia_com_403` — perfil logado sem concessão recebe 403, não
-  redirect.
-- `test_rota_manda_anonimo_para_o_login` — anônimo é redirecionado, não recebe 403.
-- `test_execucao_autorizada_fica_registrada_com_a_lotacao_do_momento` — o POST autorizado guarda
-  unidade e cargos vigentes no ato, e mudar a lotação do perfil depois não altera a linha gravada.
-- `test_ato_praticado_em_substituicao_diz_por_quem_responde` — o substituto que age pela competência
-  do afastado deixa gravado quem ele cobria; quem age por competência própria deixa o campo vazio.
+  redirect. *(marker `banco`)*
+- `test_rota_manda_anonimo_para_o_login` — anônimo é redirecionado, não recebe 403, e não deixa linha.
+  *(marker `banco`)*
+- `test_execucao_autorizada_fica_registrada_com_a_lotacao_do_momento` — o POST autorizado guarda unidade
+  e cargos vigentes no ato, e mudar a lotação do perfil depois não altera a linha gravada.
+  *(marker `banco`)*
+- `test_ato_praticado_em_substituicao_diz_por_quem_responde` — o substituto que age pela competência do
+  afastado deixa gravado quem ele cobria; quem age por competência própria deixa o campo vazio.
+  *(marker `banco`)*
 - `test_tentativa_negada_fica_registrada` — o 403 também deixa rastro, marcado como não autorizado.
+  *(marker `banco`)*
 - `test_leitura_autorizada_nao_vira_registro` — o GET autorizado da tela não gera linha; o mesmo GET
-  negado gera.
+  negado gera. *(marker `banco`)*
 - `test_operacoes_opostas_ficam_distinguiveis` — duas operações da mesma ação geram registros que se
-  distinguem pela operação gravada.
-- `test_alvo_e_opcional_no_registro` — view que informa o alvo o grava; view que não informa gera
-  registro mesmo assim.
-
-## Patches
-
-_Nenhum patch registrado até o momento._
+  distinguem pela operação gravada. *(marker `banco`)*
+- `test_alvo_e_opcional_no_registro` — view que informa o alvo o grava; view que não informa gera registro
+  mesmo assim. *(marker `banco`)*

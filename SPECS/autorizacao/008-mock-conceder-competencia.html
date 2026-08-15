@@ -19,7 +19,7 @@
        Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server) —
        aberto via file:// o fetch é bloqueado e o tema não carrega. -->
   <script>
-    // Tema e classes desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
+    // Tema e peças desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
     // vêm do @theme do tema, e um bloco separado que as usa em @apply cai com "unknown utility".
     fetch("/static/src/tema-dimap.dev.css")
       .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
@@ -34,14 +34,12 @@
         "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
   </script>
 
-  <!-- PEÇAS PROPOSTAS POR ESTA SPEC — ainda NÃO estão no tema-dimap.dev.css.
-       Guardadas em script[type=text/css] (inerte) e concatenadas ao tema pelo loader acima.
-       As classes .icone-acao* vêm da SPEC 006 e estão repetidas aqui só para o mock rodar sozinho. -->
+  <!-- PEÇAS FORA DO TEMA. As das SPECs 006 e 007 estão repetidas aqui só para o mock rodar sozinho
+       e NÃO são reimplementadas no porte; nascem nesta SPEC o .seletor-onsen e o .chip-concessao. -->
   <script type="text/css" id="tokens-spec-008">
     @layer components {
 
-      /* ---- herdado da SPEC 006 (não reimplementar no porte) ---- */
-      /* Sem `color` aqui: declarar cor no átomo vence a pele empilhada (.icon-glow) por cascata. */
+      /* ---- SPEC 006: não reimplementar no porte ---- */
       .icone-acao { @apply inline-flex items-center justify-center shrink-0; }
       .icone-acao svg {
         @apply w-full h-full block;
@@ -67,50 +65,51 @@
       .menu-acoes { @apply w-[22rem] max-w-[92vw] p-4 flex flex-col gap-3; }
       .menu-acoes-lista { @apply flex flex-col gap-1.5; }
 
-      /* ==================== MOLÉCULA · TOGGLE DE VIDRO ====================
-         Escolha entre DUAS posições excludentes. O que dá a leitura de UM controle — e não de dois
-         chips soltos — são três coisas juntas: trilha única, metades de largura IGUAL sem folga
-         entre elas, e uma placa que DESLIZA de uma para a outra.
-         Os dois materiais do DS em oposição: a trilha é POÇO (.card-well) e o polegar é PLACA DE
-         GELO (.glass-panel) deslizando sobre ele — a mesma figura da tabela de vidro, agora em
-         movimento. Ambos vêm compostos no HTML: nenhuma receita de vidro é reescrita aqui.
-         Repouso .etched-deeper, selecionado .etched-inked — os dois já existem, sem cinza de
-         desabilitado. O filtro vive no RÓTULO, nunca na caixa: na caixa o sulco seguiria o
-         retângulo em vez da silhueta das letras.
-         Estado lido em CSS por :has(input:checked); o rádio nativo continua sendo o campo. */
-      .toggle-onsen { @apply relative inline-grid grid-cols-2 p-1; }
-      .toggle-onsen-polegar {
+      /* ---- SPEC 007: compartilhada; aqui ganha a faixa de chips ---- */
+      /* Sem hover-3d: o cartão contém botões, e o componente exige conteúdo não-interativo. */
+      .card-atribuicao {
+        @apply flex flex-col gap-3 p-4 rounded-(--radius-box)
+               bg-white/30 border border-white/45;
+      }
+      .card-atribuicao-cabeca { @apply flex items-start gap-3; }
+      .card-atribuicao-corpo  { @apply flex flex-wrap items-center gap-2; }
+      .card-atribuicao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
+      .card-atribuicao-descricao { @apply text-[13px] text-base-content/70; }
+      .card-atribuicao-vazio  { @apply text-[13px] italic text-base-content/55; }
+
+      /* ==================== MOLÉCULA · SELETOR DE DUAS POSIÇÕES ====================
+         Nome próprio: .toggle-onsen já é o interruptor liga/desliga da SPEC user_admin/015. */
+      /* Trilha única e metades de largura igual: é isso que faz ler como UM controle, e não como
+         dois chips soltos. Os materiais vêm compostos no HTML — poço na trilha, gelo no polegar. */
+      .seletor-onsen { @apply relative inline-grid grid-cols-2 p-1; }
+      .seletor-onsen-polegar {
         /* Só posição e movimento: cor, borda, sombra, blur e raio vêm do .glass-panel no HTML. */
         @apply absolute z-0 top-1 bottom-1 left-1 transition-transform duration-500 ease-in-out;
-        /* Metade da trilha menos a folga: assim translateX(100%) pousa exatamente na outra metade. */
+        /* Metade da trilha menos a folga: assim translateX(100%) pousa na outra metade. */
         width: calc(50% - 0.25rem);
       }
-      .toggle-onsen:has(.toggle-onsen-opcao:nth-of-type(2) input:checked) .toggle-onsen-polegar {
+      .seletor-onsen:has(.seletor-onsen-opcao:nth-of-type(2) input:checked) .seletor-onsen-polegar {
         @apply translate-x-full;
       }
-      /* Espelha .etched-inked, que não se alcança por seletor a partir daqui. No porte, esta regra
-         passa a ler o token em vez de repetir os valores. */
-      .toggle-onsen-opcao:has(input:checked) .toggle-onsen-rotulo {
+      /* Espelha o .etched-inked, que não se alcança por seletor a partir daqui. No porte, esta
+         regra passa a ler o token em vez de repetir os valores. */
+      .seletor-onsen-opcao:has(input:checked) .seletor-onsen-rotulo {
         filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
         color: rgba(0, 119, 182, 0.85);
       }
-      .toggle-onsen-opcao { @apply relative z-10 px-4 py-1.5 text-center cursor-pointer; }
-      /* O rádio é sr-only, então o anel de foco tem de aparecer em outro lugar — e aparece na
-         TRILHA inteira, não no rótulo: no rótulo ele desenha um retângulo justo nas letras, contra
-         o raio do polegar. `:has(input:focus-visible)`, nunca `:focus-within`: este último acende
-         também no clique de mouse, e aí o anel vira contorno permanente do item ativo. */
-      .toggle-onsen:has(input:focus-visible) {
+      .seletor-onsen-opcao { @apply relative z-10 px-4 py-1.5 text-center cursor-pointer; }
+      /* O rádio é sr-only, então o anel de foco aparece na TRILHA. `:has(input:focus-visible)`,
+         nunca `:focus-within`: este acenderia também no clique de mouse. */
+      .seletor-onsen:has(input:focus-visible) {
         @apply ring-2 ring-agua-400/70;
       }
-      .toggle-onsen-rotulo {
+      .seletor-onsen-rotulo {
         @apply block text-[13px] font-bold uppercase tracking-[0.12em]
                whitespace-nowrap transition-all duration-300;
       }
 
-      /* ==================== MOLÉCULA · CHIP DE CONCESSÃO ====================
-         Um cargo que exerce a atribuição. Remover é ato administrativo, então o alvo de clique é
-         explícito e separado do rótulo — não se revoga competência por clique ambíguo.
-         Sem cor de estado: concessão não é "sucesso" nem "aviso", é fato. */
+      /* ==================== MOLÉCULA · CHIP DE CONCESSÃO ==================== */
+      /* O alvo de remover é explícito e separado do rótulo: não se revoga por clique ambíguo. */
       .chip-concessao {
         @apply inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full
                text-[13px] font-medium text-base-content/90
@@ -122,27 +121,6 @@
                text-base-content/45 transition-all duration-200
                hover:text-error hover:bg-white/70;
       }
-
-      /* ==================== ORGANISMO · CARTÃO DA ATRIBUIÇÃO ====================
-         Uma atribuição da unidade e quem a exerce. O poço rebaixado carrega os cargos porque
-         campo e conteúdo editável aqui são sempre coisa rebaixada (mesma regra da tabela de vidro).
-         O cartão NÃO oferece criar atribuição: isso é a ação da SPEC 007.
-         Sem hover-3d aqui, ao contrário do cartão de ação da SPEC 006: este cartão contém botões,
-         select e campo, e o componente exige conteúdo não-interativo.
-         O glifo fica em tinta neutra: ele IDENTIFICA a atribuição, e três cartões empilhados com
-         ícone aceso viram parede de ciano — acender é gesto de hover, e aqui não há hover a servir. */
-      .card-atribuicao {
-        @apply flex flex-col gap-3 p-4 rounded-(--radius-box)
-               bg-white/30 border border-white/45;
-      }
-      .card-atribuicao-cabeca { @apply flex items-start gap-3; }
-      .card-atribuicao-corpo  { @apply flex flex-wrap items-center gap-2; }
-      /* Madeira porque é TÍTULO (mesma regra do .card-acao-nome da SPEC 006): a madeira quente é
-         reservada aos títulos e é o único calor orgânico da cena; rocha-950 é tinta de corpo. */
-      .card-atribuicao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
-      .card-atribuicao-descricao { @apply text-[13px] text-base-content/70; }
-      /* Atribuição sem ninguém designado é estado VÁLIDO — a unidade acabou de recebê-la. */
-      .card-atribuicao-vazio  { @apply text-[13px] italic text-base-content/55; }
     }
   </script>
 </head>
@@ -150,8 +128,8 @@
 <body class="min-h-screen">
   <div id="map" class="fixed inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
 
-  <!-- defs da gravação (SPEC user_admin/013): sem eles .etched e .icon-etched existem e não
-       desenham nada. Na aplicação vêm de templates/partials/_filtros_gravacao.html, no base.html. -->
+  <!-- defs da gravação (SPEC user_admin/013) — repetidos aqui só para o mock renderizar sozinho;
+       na aplicação vêm de templates/partials/_filtros_gravacao.html, no base.html. -->
   <svg width="0" height="0" class="absolute" aria-hidden="true">
     <defs>
       <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
@@ -196,43 +174,18 @@
     <header class="glass-panel p-6">
       <p class="text-overline">SPEC autorizacao/008 · mock de validação</p>
       <h1 class="text-[30px] font-black tracking-tight text-madeira-700">Conceder competência</h1>
-      <p class="mt-1 text-[15px] text-base-content/90">
-        Camadas separadas antes da tela montada. Os átomos e o ícone vêm da SPEC 006 e do styleguide
-        — aqui nascem só o chip de concessão e o cartão da atribuição.
-      </p>
-    </header>
-
-    <!-- ==================== 1 · TOKENS ==================== -->
-    <section class="glass-panel p-6 flex flex-col gap-4">
-      <h2 class="text-[24px] font-bold text-madeira-700">1 · Tokens</h2>
-      <p class="text-[15px] text-base-content/90">
-        <strong>Nenhum token novo.</strong> A tela usa escalas, materiais e tipografia existentes.
-      </p>
-      <div class="card-well p-4 flex flex-wrap gap-x-8 gap-y-2 text-[13px] text-base-content/80">
-        <span><code class="text-code">.glass-panel</code></span>
-        <span><code class="text-code">.card-well</code></span>
-        <span><code class="text-code">.form-field</code></span>
-        <span><code class="text-code">.select-glass</code> / <code class="text-code">.select-onsen</code></span>
-        <span><code class="text-code">.btn-onsen</code></span>
-        <span><code class="text-code">.btn-glass</code></span>
-        <span><code class="text-code">.text-overline</code></span>
-        <span><code class="text-code">.dot-unidade</code></span>
-        <span><code class="text-code">.etched-deeper</code> / <code class="text-code">.etched-inked</code></span>
-        <span><code class="text-code">.modal-glass</code></span>
-        <span><code class="text-code">.item-menu</code> <span class="opacity-60">(SPEC 006)</span></span>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="badge badge-ponto">.seletor-onsen</span>
+        <span class="badge badge-linha">.chip-concessao</span>
+        <span class="badge badge-poligono">.card-atribuicao (SPEC 007)</span>
+        <span class="badge badge-neutral badge-soft">unidade sem atribuição</span>
       </div>
-      <p class="text-[13px] text-base-content/70">
-        O toggle não traz material próprio: a trilha é <code class="text-code">.card-well</code> e o
-        polegar é <code class="text-code">.glass-panel</code>, compostos no HTML. A tinta do rótulo
-        alterna entre <code class="text-code">.etched-deeper</code> (repouso) e
-        <code class="text-code">.etched-inked</code> (selecionado) — os dois já existem.
-      </p>
-    </section>
+    </header>
 
     <!-- ==================== 2 · ÁTOMOS ==================== -->
     <section class="glass-panel p-6 flex flex-col gap-5">
       <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
-      <p class="text-[15px] text-base-content/90">Todos já existem; nenhum átomo nasce aqui.</p>
+      <!-- Nenhum átomo nasce aqui: todos vêm do styleguide. -->
       <div class="card-well p-5 flex flex-wrap items-center gap-6">
         <button class="btn btn-onsen btn-sm">Conceder</button>
         <button class="btn btn-glass btn-sm btn-circle">
@@ -246,58 +199,109 @@
     <!-- ==================== 3 · MOLÉCULAS ==================== -->
     <section class="glass-panel p-6 flex flex-col gap-5">
       <h2 class="text-[24px] font-bold text-madeira-700">3 · Moléculas</h2>
-      <p class="text-[15px] text-base-content/90">
-        <code class="text-code">.chip-concessao</code> — um cargo que exerce a atribuição. O alvo de
-        revogar é separado do rótulo: competência não se tira por clique ambíguo.
-      </p>
-      <div class="card-well p-5 flex flex-wrap items-center gap-3">
-        <span class="chip-concessao">
-          Assistente de Gestão de Políticas Públicas
-          <button class="chip-concessao-remover" aria-label="Revogar">
-            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
-          </button>
-        </span>
-        <span class="chip-concessao">
-          CDA-II · Diretor de Divisão
-          <button class="chip-concessao-remover" aria-label="Revogar">
-            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
-          </button>
-        </span>
+
+      <!-- .chip-concessao -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.chip-concessao · um cargo que exerce a atribuição</span>
+        <div class="card-well p-5 flex flex-wrap items-center gap-3">
+          <span class="chip-concessao">
+            Assistente de Gestão de Políticas Públicas
+            <button class="chip-concessao-remover" aria-label="Revogar">
+              <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
+            </button>
+          </span>
+          <span class="chip-concessao">
+            CDA-II · Diretor de Divisão
+            <button class="chip-concessao-remover" aria-label="Revogar">
+              <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
+            </button>
+          </span>
+        </div>
       </div>
 
-      <p class="text-[15px] text-base-content/90">
-        <code class="text-code">.toggle-onsen</code> — duas posições excludentes. Trilha única,
-        metades iguais e a placa de gelo que desliza: é isso que faz ler como <em>um</em> controle.
-        Repouso gravado, ativo cheio de água. Clique nas duas posições.
-      </p>
-      <div class="card-well p-5 flex flex-wrap items-center gap-8">
-        <div class="flex flex-col gap-2">
-          <span class="text-overline">primeira posição</span>
-          <div class="card-well toggle-onsen">
-            <span class="toggle-onsen-polegar glass-panel" aria-hidden="true"></span>
-            <label class="toggle-onsen-opcao">
-              <input type="radio" name="demo-toggle-a" class="sr-only" checked />
-              <span class="toggle-onsen-rotulo etched etched-deeper">Cargo base</span>
-            </label>
-            <label class="toggle-onsen-opcao">
-              <input type="radio" name="demo-toggle-a" class="sr-only" />
-              <span class="toggle-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
-            </label>
+      <!-- .seletor-onsen -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.seletor-onsen · duas posições excludentes (clique nas duas)</span>
+        <div class="card-well p-5 flex flex-wrap items-center gap-8">
+          <!-- estado: primeira posição -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline">primeira posição</span>
+            <div class="card-well seletor-onsen">
+              <span class="seletor-onsen-polegar glass-panel" aria-hidden="true"></span>
+              <label class="seletor-onsen-opcao">
+                <input type="radio" name="demo-seletor-a" class="sr-only" checked />
+                <span class="seletor-onsen-rotulo etched etched-deeper">Cargo base</span>
+              </label>
+              <label class="seletor-onsen-opcao">
+                <input type="radio" name="demo-seletor-a" class="sr-only" />
+                <span class="seletor-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+              </label>
+            </div>
+          </div>
+          <!-- estado: segunda posição -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline">segunda posição</span>
+            <div class="card-well seletor-onsen">
+              <span class="seletor-onsen-polegar glass-panel" aria-hidden="true"></span>
+              <label class="seletor-onsen-opcao">
+                <input type="radio" name="demo-seletor-b" class="sr-only" />
+                <span class="seletor-onsen-rotulo etched etched-deeper">Cargo base</span>
+              </label>
+              <label class="seletor-onsen-opcao">
+                <input type="radio" name="demo-seletor-b" class="sr-only" checked />
+                <span class="seletor-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+              </label>
+            </div>
           </div>
         </div>
-        <div class="flex flex-col gap-2">
-          <span class="text-overline">segunda posição</span>
-          <div class="card-well toggle-onsen">
-            <span class="toggle-onsen-polegar glass-panel" aria-hidden="true"></span>
-            <label class="toggle-onsen-opcao">
-              <input type="radio" name="demo-toggle-b" class="sr-only" />
-              <span class="toggle-onsen-rotulo etched etched-deeper">Cargo base</span>
-            </label>
-            <label class="toggle-onsen-opcao">
-              <input type="radio" name="demo-toggle-b" class="sr-only" checked />
-              <span class="toggle-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
-            </label>
-          </div>
+      </div>
+
+      <!-- .card-atribuicao (SPEC 007) com a faixa de chips desta tela -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.card-atribuicao · aqui com a faixa de cargos</span>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <!-- estado: com cargos concedidos -->
+          <article class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Amostragem de ofertas</p>
+                <p class="card-atribuicao-descricao">Busca ofertas próximas com características similares.</p>
+              </div>
+            </div>
+            <div class="card-well p-3">
+              <div class="card-atribuicao-corpo">
+                <span class="chip-concessao">
+                  Assistente de Gestão de Políticas Públicas
+                  <button class="chip-concessao-remover" aria-label="Revogar">
+                    <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
+                  </button>
+                </span>
+                <label for="modal-conceder" class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a outro cargo">
+                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+                </label>
+              </div>
+            </div>
+          </article>
+
+          <!-- estado de falta: nenhum cargo designado ainda -->
+          <article class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                <p class="card-atribuicao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+              </div>
+            </div>
+            <div class="card-well p-3">
+              <div class="card-atribuicao-corpo">
+                <span class="card-atribuicao-vazio">Nenhum cargo designado ainda.</span>
+                <label for="modal-conceder" class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a um cargo">
+                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+                </label>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
     </section>
@@ -306,102 +310,28 @@
     <section class="glass-panel p-6 flex flex-col gap-6">
       <h2 class="text-[24px] font-bold text-madeira-700">4 · Organismos</h2>
 
-      <div class="flex flex-col gap-2">
-        <span class="text-overline">tela montada · unidade com atribuições</span>
-        <div class="glass-panel p-6 flex flex-col gap-5">
-          <div class="flex items-center gap-3">
-            <span class="dot-unidade" style="--cor-unidade:#0077B6"></span>
-            <div>
-              <p class="text-overline">Unidade</p>
-              <p class="text-[18px] font-bold text-rocha-950">DIMAP-1 · Divisão de Avaliação</p>
-            </div>
+      <!-- estado de falta: unidade sem atribuição alguma -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">poço da unidade · sem atribuição alguma</span>
+        <div class="glass-panel p-6 flex flex-col gap-4">
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <label class="form-field grow max-w-sm">
+              <span class="text-overline">Unidade</span>
+              <select class="select select-glass w-full" data-select-onsen>
+                <option>DIMAP-3 · Divisão de Cadastro</option>
+              </select>
+            </label>
           </div>
-          <!-- Nota do painel, não descrição de cartão: legenda avulsa fica em utilities (§2.3). -->
-          <p class="text-[13px] text-base-content/70">
-            A unidade é a sua e não se escolhe aqui. Para acrescentar uma atribuição nova à unidade,
-            procure o administrador do sistema. <strong>Clique num <span class="text-agua-700">+</span>
-            para abrir o modal de concessão.</strong>
-          </p>
-
-          <div class="flex flex-col gap-4">
-            <!-- atribuição com cargos concedidos -->
-            <article class="card-atribuicao">
-              <div class="card-atribuicao-cabeca">
-                <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
-                <div class="flex-1 min-w-0">
-                  <p class="card-atribuicao-nome">Amostragem de ofertas</p>
-                  <p class="card-atribuicao-descricao">Busca ofertas próximas com características similares.</p>
-                </div>
-              </div>
-              <div class="card-well p-3">
-                <div class="card-atribuicao-corpo">
-                  <span class="chip-concessao">
-                    Assistente de Gestão de Políticas Públicas
-                    <button class="chip-concessao-remover" aria-label="Revogar">
-                      <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
-                    </button>
-                  </span>
-                  <span class="chip-concessao">
-                    CDA-II · Diretor de Divisão
-                    <button class="chip-concessao-remover" aria-label="Revogar">
-                      <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
-                    </button>
-                  </span>
-                  <label for="modal-conceder" class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a outro cargo">
-                    <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
-                  </label>
-                </div>
-              </div>
-            </article>
-
-            <!-- atribuição sem ninguém designado: estado VÁLIDO -->
-            <article class="card-atribuicao">
-              <div class="card-atribuicao-cabeca">
-                <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
-                <div class="flex-1 min-w-0">
-                  <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
-                  <p class="card-atribuicao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
-                </div>
-              </div>
-              <div class="card-well p-3">
-                <div class="card-atribuicao-corpo">
-                  <span class="card-atribuicao-vazio">Nenhum cargo designado ainda.</span>
-                  <label for="modal-conceder" class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a um cargo">
-                    <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
-                  </label>
-                </div>
-              </div>
-            </article>
-
-            <!-- a própria ação de conceder é uma atribuição como as outras -->
-            <article class="card-atribuicao">
-              <div class="card-atribuicao-cabeca">
-                <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
-                <div class="flex-1 min-w-0">
-                  <p class="card-atribuicao-nome">Conceder competência</p>
-                  <p class="card-atribuicao-descricao">Distribui as atribuições da unidade entre os cargos.</p>
-                </div>
-              </div>
-              <div class="card-well p-3">
-                <div class="card-atribuicao-corpo">
-                  <span class="chip-concessao">
-                    CDA-II · Diretor de Divisão
-                    <button class="chip-concessao-remover" aria-label="Revogar">
-                      <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
-                    </button>
-                  </span>
-                  <label for="modal-conceder" class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a outro cargo">
-                    <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
-                  </label>
-                </div>
-              </div>
-            </article>
+          <div class="card-well p-6 text-center text-[13px] text-base-content/60">
+            Esta unidade ainda não possui nenhuma atribuição.<br>
+            Quem as define é quem responde pela direção, em <em>Definir atribuições</em>.
           </div>
         </div>
       </div>
 
-      <div class="flex flex-col gap-2">
-        <span class="text-overline">a ação no menu de administrador · só para quem a possui</span>
+      <!-- a ação vista de fora, no menu de administrador (SPECs 005 e 006) -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">no menu de administrador</span>
         <nav class="glass-panel menu-acoes">
           <p class="text-overline">Administração</p>
           <div class="menu-acoes-lista">
@@ -413,31 +343,127 @@
         </nav>
       </div>
 
-      <div class="flex flex-col gap-2">
-        <span class="text-overline">unidade sem atribuição alguma</span>
-        <div class="glass-panel p-6 flex flex-col gap-4">
-          <div class="flex items-center gap-3">
-            <span class="dot-unidade" style="--cor-unidade:#5E412F"></span>
-            <div>
-              <p class="text-overline">Unidade</p>
-              <p class="text-[18px] font-bold text-rocha-950">DIMAP-3 · Divisão de Cadastro</p>
-            </div>
-          </div>
-          <div class="card-well p-6 text-center text-[13px] text-base-content/60">
-            Esta unidade ainda não possui nenhuma atribuição.<br>
-            Quem as define é o administrador do sistema.
+      <div class="card-well p-4 flex flex-wrap items-center gap-3">
+        <span class="text-overline">estado do modal</span>
+        <label for="modal-conceder" class="btn btn-glass btn-sm">Conceder a um cargo</label>
+      </div>
+    </section>
+
+    <!-- ==================== 5 · TELA MONTADA ==================== -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
+        5 · Tela montada — unidade com atribuições e cargos
+      </h2>
+
+      <!-- página: competencias/conceder.html -->
+      <div class="glass-panel p-6 flex flex-col gap-5">
+
+        <!-- partial: competencias/partials/_cabecalho_concessao.html -->
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <label class="form-field grow max-w-sm">
+            <span class="text-overline">Unidade</span>
+            <select class="select select-glass w-full" data-select-onsen>
+              <option>DIMAP-1 · Divisão de Avaliação</option>
+              <option>&nbsp;&nbsp;&nbsp;DIMAP-1-A</option>
+              <option>&nbsp;&nbsp;&nbsp;DIMAP-1-B</option>
+            </select>
+          </label>
+          <div class="flex items-center gap-2 text-[13px] text-base-content/70">
+            <span class="dot-unidade" style="--cor-unidade:#0077B6"></span>
+            <span>DIMAP-1 · Divisão de Avaliação</span>
           </div>
         </div>
+        <p class="text-[13px] text-base-content/70">
+          A lista traz as unidades que você dirige e as que estão abaixo delas. Para acrescentar uma
+          atribuição nova, use <em>Definir atribuições</em>.
+        </p>
+        <!-- /partial -->
+
+        <!-- partial: competencias/partials/_poco_concessoes.html — alvo de hx-swap ao trocar a
+             unidade no seletor, ao conceder e ao revogar -->
+        <div class="flex flex-col gap-4">
+          <!-- partial: competencias/partials/_card_concessoes.html — um por atribuição -->
+          <article class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Amostragem de ofertas</p>
+                <p class="card-atribuicao-descricao">Busca ofertas próximas com características similares.</p>
+              </div>
+            </div>
+            <div class="card-well p-3">
+              <div class="card-atribuicao-corpo">
+                <span class="chip-concessao">
+                  Assistente de Gestão de Políticas Públicas
+                  <button class="chip-concessao-remover" aria-label="Revogar">
+                    <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
+                  </button>
+                </span>
+                <span class="chip-concessao">
+                  CDA-II · Diretor de Divisão
+                  <button class="chip-concessao-remover" aria-label="Revogar">
+                    <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
+                  </button>
+                </span>
+                <label for="modal-conceder" class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a outro cargo">
+                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+                </label>
+              </div>
+            </div>
+          </article>
+          <!-- /partial -->
+
+          <article class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                <p class="card-atribuicao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+              </div>
+            </div>
+            <div class="card-well p-3">
+              <div class="card-atribuicao-corpo">
+                <span class="card-atribuicao-vazio">Nenhum cargo designado ainda.</span>
+                <label for="modal-conceder" class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a um cargo">
+                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+                </label>
+              </div>
+            </div>
+          </article>
+
+          <article class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Conceder competência</p>
+                <p class="card-atribuicao-descricao">Distribui as atribuições da unidade entre os cargos.</p>
+              </div>
+            </div>
+            <div class="card-well p-3">
+              <div class="card-atribuicao-corpo">
+                <span class="chip-concessao">
+                  CDA-II · Diretor de Divisão
+                  <button class="chip-concessao-remover" aria-label="Revogar">
+                    <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
+                  </button>
+                </span>
+                <label for="modal-conceder" class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a outro cargo">
+                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+                </label>
+              </div>
+            </div>
+          </article>
+        </div>
+        <!-- /partial -->
       </div>
+      <!-- fica na página: o arranjo do painel; o modal é irmão dele, no fim do documento -->
     </section>
 
   </div>
 
-  <!-- ==================== ORGANISMO · MODAL DE CONCESSÃO ====================
-       Fica FORA dos cartões e de qualquer formulário: form aninhado é HTML inválido, e o padrão do
-       projeto para gatilho-em-campo já é esse (SPEC user_admin/012). Abre por checkbox nativo, sem
-       JS (SPEC design do modal): o gatilho é o <label for> do + em cada cartão.
-       Na aplicação o modal é carregado por HTMX com a atribuição da vez — aqui o conteúdo é fixo. -->
+  <!-- partial: competencias/partials/_modal_conceder.html — alvo de hx-get do + de cada cartão, que
+       traz a atribuição da vez.
+       Fica FORA dos cartões e de qualquer formulário: form aninhado é HTML inválido. -->
   <input type="checkbox" id="modal-conceder" class="modal-toggle" />
   <div class="modal modal-glass" role="dialog">
     <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
@@ -447,26 +473,24 @@
         <p class="text-[13px] text-base-content/70">DIMAP-1 · Divisão de Avaliação</p>
       </div>
 
-      <!-- A concessão mira UM cargo: base OU em comissão (o XOR da SPEC 002). A natureza vem ANTES
-           do catálogo porque são duas listas distintas — fundi-las num dropdown só esconderia a
-           regra, e o select-onsen não trata <optgroup>. -->
+      <!-- A natureza vem ANTES do catálogo: são duas listas distintas, e o seletor as separa. -->
       <div class="flex flex-col gap-2">
         <span class="text-overline">Natureza do cargo</span>
-        <div class="card-well toggle-onsen">
-          <span class="toggle-onsen-polegar glass-panel" aria-hidden="true"></span>
-          <label class="toggle-onsen-opcao">
+        <div class="card-well seletor-onsen">
+          <span class="seletor-onsen-polegar glass-panel" aria-hidden="true"></span>
+          <label class="seletor-onsen-opcao">
             <input type="radio" name="natureza" class="sr-only" checked />
-            <span class="toggle-onsen-rotulo etched etched-deeper">Cargo base</span>
+            <span class="seletor-onsen-rotulo etched etched-deeper">Cargo base</span>
           </label>
-          <label class="toggle-onsen-opcao">
+          <label class="seletor-onsen-opcao">
             <input type="radio" name="natureza" class="sr-only" />
-            <span class="toggle-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+            <span class="seletor-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
           </label>
         </div>
       </div>
 
-      <!-- data-select-onsen (SPEC user_admin/011): o <select> segue sendo o campo e o módulo monta
-           o gatilho de vidro. O catálogo passa de seis opções, então o filtro por texto entra. -->
+      <!-- data-select-onsen (SPEC user_admin/011): o <select> segue sendo o campo, e o catálogo
+           passa de seis opções, então o filtro por texto entra. -->
       <label class="form-field">
         <span class="text-overline">Cargo</span>
         <select class="select select-glass w-full" data-select-onsen>
@@ -493,6 +517,7 @@
     <!-- Fechar clicando fora: a cena EMBAÇA, nunca escurece (§5 do DS). -->
     <label class="modal-backdrop" for="modal-conceder">Fechar</label>
   </div>
+  <!-- /partial -->
 
   <script>
     const mapa = L.map("map", { zoomControl: false, attributionControl: false })
