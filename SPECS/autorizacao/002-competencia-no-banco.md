@@ -1,8 +1,8 @@
 ---
 spec: autorizacao/002
-versao: v5
+versao: v6
 atualizado_em: 2026-08-14
-testes_tdd: false
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
@@ -18,6 +18,9 @@ changelog:
     user_admin/015); referências corrigidas, sem mudança nas tabelas
   - v5: sem mudança de escopo — a SPEC foi reescrita no formato de seções numeradas da skill
     `specs`, com a justificativa toda concentrada em Caveats
+  - v6: sem mudança de escopo — o XOR entre `cargo_base` e `cargo_comissao` fica explícito no
+    snippet de modelagem, e a projeção do catálogo a cada deploy passa a estar escrita em código
+    (`sincronizar_acoes`, comando e bloco do `entrypoint.sh`)
 ---
 
 # SPEC autorizacao/002 — Competência no banco: projeção da ação, atribuição da unidade e concessão ao cargo
@@ -80,7 +83,10 @@ class Concessao(models.Model):
         on_delete=models.CASCADE,
         related_name="concessoes",
     )
-    # Exatamente um dos dois, garantido por CheckConstraint (§6).
+    # XOR entre os dois FKs abaixo: uma concessão nomeia cargo_base OU cargo_comissao —
+    # exatamente um preenchido, nunca os dois, nunca nenhum. Ambos são anuláveis no schema
+    # porque cada concessão só preenche um dos ramos; o "exatamente um" quem garante é a
+    # CheckConstraint `concessao_exatamente_um_cargo` (§6), espelhada no `clean()`.
     cargo_base = models.ForeignKey(
         CargoBase,
         on_delete=models.PROTECT,
@@ -180,26 +186,82 @@ class AtribuicaoUnidade(models.Model):
 ```
 
 **`apps/competencias/sync.py`** — a projeção: upsert por slug, desativação do que sumiu do código.
+`Acao` aqui é o **model** (§3); o contrato do registro entra como `implementada.acao`.
 ```python
+class ContagemSync(BaseModel):
+    """Feedback do comando — e o que o teste de idempotência lê para saber que a 2ª rodada não
+    mexeu em nada."""
+
+    criadas: int
+    atualizadas: int
+    desativadas: int
+    reativadas: int
+
+
 def sincronizar_acoes(registro: RegistroAcoes) -> ContagemSync:
     """Recebe o registro por argumento para o teste não depender do global."""
-    # Apagar a linha da ação removida do código cascatearia atribuições e concessões reais: o que
-    # sai do registro é desativado, e o que volta reencontra o próprio histórico.
-    ...
+    slugs_no_codigo = {implementada.acao.slug for implementada in registro.todas()}
+    # Lido ANTES do upsert: depois dele toda linha do código já está ativa e a reativação seria
+    # indistinguível de uma linha que nunca saiu.
+    reativados = set(
+        Acao.objects.filter(ativa=False, slug__in=slugs_no_codigo).values_list("slug", flat=True)
+    )
+    criadas = 0
+    with transaction.atomic():
+        for implementada in registro.todas():
+            contrato = implementada.acao
+            _, criada = Acao.objects.update_or_create(
+                slug=contrato.slug,
+                defaults={
+                    "nome": contrato.nome,
+                    # O contrato admite None; a coluna é `blank=True`, não anulável.
+                    "nome_curto": contrato.nome_curto or "",
+                    "tooltip": contrato.tooltip,
+                    "estrutural": contrato.estrutural,
+                    # Voltar ao registro reativa a linha — e ela reencontra as atribuições e
+                    # concessões que continuaram penduradas nela enquanto esteve inativa.
+                    "ativa": True,
+                },
+            )
+            criadas += int(criada)
+        # Apagar a linha da ação removida do código cascatearia atribuições e concessões reais: o
+        # que sai do registro é desativado. Filtrar por `ativa=True` é o que faz a 2ª rodada contar
+        # zero em vez de reescrever as mesmas linhas.
+        desativadas = (
+            Acao.objects.filter(ativa=True).exclude(slug__in=slugs_no_codigo).update(ativa=False)
+        )
+    return ContagemSync(
+        criadas=criadas,
+        atualizadas=len(slugs_no_codigo) - criadas,
+        desativadas=desativadas,
+        reativadas=len(reativados),
+    )
 ```
 
-**`apps/competencias/management/commands/sincronizar_acoes.py`** — comando fino: parsing, chamada e
-feedback no stdout, sem lógica.
+**`apps/competencias/management/commands/sincronizar_acoes.py`** — comando fino: chamada e feedback
+no stdout, sem lógica e sem argumento (o registro é o do processo).
+```python
+class Command(BaseCommand):
+    help = "Projeta o catálogo de ações em código na tabela `Acao`."
 
-**`docker/entrypoint.sh`** — dentro do MESMO bloco do `migrate`.
+    def handle(self, *args: object, **options: object) -> None:
+        contagem = sincronizar_acoes(REGISTRO)
+        self.stdout.write(self.style.SUCCESS(f"Catálogo sincronizado: {contagem}"))
+```
+
+**`docker/entrypoint.sh`** — o que faz a projeção acompanhar o deploy: toda subida do serviço web
+roda o comando, dentro do MESMO bloco do `migrate`, que já existe no arquivo.
 ```sh
 # Sync contra banco não migrado derrubaria a subida pelo set -e: quem desliga a migração automática
 # desliga a projeção junto.
 if [ -f manage.py ] && [ "${DJANGO_AUTO_MIGRATE:-1}" = "1" ]; then
+    echo "==> Aplicando migrações..."
     python manage.py migrate --noinput
     echo "==> Sincronizando catálogo de ações..."
     python manage.py sincronizar_acoes
 fi
+
+exec "$@"
 ```
 
 **`apps/competencias/admin.py`** — as três tabelas entram somente-leitura; nenhum `add`/`change` para
