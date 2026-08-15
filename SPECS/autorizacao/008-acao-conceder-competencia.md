@@ -57,7 +57,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - [`AtribuicaoUnidade` e `Concessao`](002-competencia-no-banco.md) — "o que esta unidade exerce, e quais
   cargos já a exercem?"; a tela cria e revoga concessão, e não toca a atribuição.
 - [`has_perm`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil exerce esta ação estrutural?".
-- [`CadeiraExercida`](003-avaliador-e-backend-de-autorizacao.md) — "quais unidades este perfil dirige
+- [`Caneta`](003-avaliador-e-backend-de-autorizacao.md) — "quais unidades este perfil dirige
   hoje?", que é de onde o alcance parte.
 - [`AlcanceDeUnidades`](007-acao-definir-atribuicao.md) — "a unidade-alvo está na subárvore que ele
   dirige?", a mesma regra da SPEC 007, sem segunda cópia.
@@ -84,7 +84,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   `@apps/competencias/menus_declarados.py` (SPEC 007) → `MENU_ADMINISTRADOR`.
 - `@services/domain/autorizacao/alcance.py` (SPEC 007) → `AlcanceDeUnidades`, `ComandoAlcance`,
   `ParUnidade`.
-- `@apps/competencias/consulta.py` (SPEC 003) → `cadeiras_do_perfil`.
+- `@apps/competencias/consulta.py` (SPEC 003) → `canetas_do_perfil`.
 - `@apps/user_admin/models` → `CargoBase`, `CargoComissao`: catálogo oferecido no campo.
 - SPEC 006 → `.icone-acao`, e SPEC 007 → `.card-atribuicao`: a peça é a mesma, aqui com a faixa de chips.
 - `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel`, `.glass-panel-thick`, `.modal-glass` +

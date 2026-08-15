@@ -1,8 +1,8 @@
 ---
 spec: autorizacao/003
-versao: v6
+versao: v8
 atualizado_em: 2026-08-14
-testes_tdd: false
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
@@ -22,6 +22,10 @@ changelog:
   - v6: a competência exercida passa a ser um conjunto de **cadeiras** (unidade × cargo), e não uma
     unidade com dois conjuntos de cargos — o substituto pode ser de outra unidade (SPEC
     user_admin/015), e a cobertura vale na unidade do substituído
+  - v7: a estrutural passa a ter duas portas — já vem liberada a quem responde pela direção e ainda
+    pode ser concedida a outros cargos, pela mesma regra das demais; e a unidade × cargo de onde se
+    exerce competência passa a se chamar **caneta**
+  - v8: testes TDD escritos e falhando (§8) — avaliador e backend seguem por implementar
 ---
 
 # SPEC autorizacao/003 — Avaliador de competência e backend de autorização
@@ -35,9 +39,11 @@ quem responde pela direção da unidade hoje.
 - [ ] `perfil.has_perm("<app>.<nome>")` devolve `True` quando existe concessão daquela ação para um
       cargo que o perfil **exerce**, **na unidade em que o exerce**, e `False` no resto.
 - [ ] Concessão da mesma ação **em outra unidade** — inclusive na unidade superior — não libera.
-- [ ] Ação **estrutural** (SPEC 001) é liberada a quem **responde pela direção** da unidade — o titular
-      em exercício ou o substituto vigente dele —, sem atribuição nem concessão gravada; a quem não
-      dirige, nem com concessão. Unidade **sem titular** e unidade **sem direção** não liberam ninguém.
+- [ ] Ação **estrutural** (SPEC 001) já vem liberada a quem **responde pela direção** da unidade — o
+      titular em exercício ou o substituto vigente dele —, sem atribuição nem concessão gravada.
+      Unidade **sem titular** e unidade **sem direção** não liberam ninguém por essa porta.
+- [ ] Ação estrutural **concedida** a um cargo libera quem exerce esse cargo naquela unidade, pela
+      mesma regra das demais — e quem dirige segue liberado sem concessão nenhuma.
 - [ ] Perfil **fora de exercício** não exerce competência nenhuma — nem a estrutural nem a concedida ao
       cargo dele.
 - [ ] Enquanto a substituição vigora, o substituto exerce também as competências concedidas ao **cargo
@@ -49,12 +55,19 @@ quem responde pela direção da unidade hoje.
       é **fixo** e acontece na primeira pergunta.
 
 ## 3 · Domínio
-Iteração de **decisão de acesso**: nenhum model novo, nenhuma migração. A competência é exercida numa
-**cadeira** — a dupla unidade × cargo —, e quem cobre alguém ocupa duas: a própria e a do coberto, que
-pode ser de outra unidade.
+Iteração de **decisão de acesso**: nenhum model novo, nenhuma migração. A competência é exercida por
+uma **caneta** — a dupla unidade × cargo de onde se assina —, e quem cobre alguém tem duas: a própria
+e a do coberto, que pode ser de outra unidade.
+
+Caneta e concessão declaram as mesmas duas coisas, unidade e cargo, e é por isso que uma se confere
+contra a outra; o que as separa é o terceiro campo de cada uma — a concessão nomeia a **ação**, a caneta
+diz se **dirige a unidade**. Uma caneta existe sem ação nenhuma: o servidor recém-chegado tem cargo e
+unidade e não pratica ato algum. Uma concessão existe sem pessoa nenhuma: o cargo vago mantém a linha
+gravada. A caneta vem da pessoa — lotação, cargo e substituição vigente; a concessão vem do ato de quem
+dirige.
 
 ```python
-class CadeiraExercida(BaseModel):
+class Caneta(BaseModel):
     """Uma posição de onde se exerce competência. A própria, e — enquanto a substituição vigora —
     a de quem se cobre."""
 
@@ -72,26 +85,28 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 
 - [`AtribuicaoUnidade` e `Concessao`](002-competencia-no-banco.md) — "que ações estão concedidas a
   quais cargos, nesta unidade?".
-- [`Acao.ativa` e `Acao.estrutural`](002-competencia-no-banco.md) — "esta ação ainda existe, e a
-  competência dela vem de concessão ou de dirigir a unidade?".
+- [`Acao.ativa` e `Acao.estrutural`](002-competencia-no-banco.md) — "esta ação ainda existe, e dirigir
+  a unidade já a libera?".
 - [`avaliar_direcao`, `EstadoDaDirecao` e `Direcao`](../user_admin/014-titular-da-unidade.md) — "quem
   dirige esta unidade hoje?"; a camada de aplicação pergunta e traduz a resposta em
   `dirige_a_unidade`, e o submódulo `autorizacao` não importa o `titularidade`.
 - [`Perfil.em_exercicio`](../user_admin/015-exercicio-e-substituicao.md) — "este perfil está na
   cadeira?", leitura derivada do impedimento vigente e da exoneração.
 - [`substituicao_que_exerce`](../user_admin/015-exercicio-e-substituicao.md) — "quem este perfil cobre
-  hoje, e de que cadeira?"; a substituição é do impedimento, e o substituído é
+  hoje, e de que caneta?"; a substituição é do impedimento, e o substituído é
   `impedimento.perfil`.
 - [`RegistroAcoes`](001-catalogo-de-acoes-em-codigo.md) — "quais slugs são estruturais?", lido do
   registro em memória e entregue ao domínio já resolvido.
 
-A competência tem duas fontes e um resultado só: a concessão responde pelas ações comuns, a direção da
-unidade responde pelas estruturais, e o exercício é pré-condição das duas. Nada mais no sistema precisa
-saber que são duas.
+A competência tem duas fontes e um resultado só: a concessão responde por qualquer ação, estrutural
+inclusive; dirigir a unidade já responde pelas estruturais dela, sem nada gravado; e o exercício é
+pré-condição das duas. Nada mais no sistema precisa saber que são duas.
 
 ## 4 · Fora de escopo
 - Proteger rota e registrar a execução do ato — SPEC 004.
 - Contrato de menu e router — SPEC 005.
+- Oferecer a ação estrutural no catálogo de atribuição da unidade, para que ela possa ser concedida —
+  SPEC 007.
 - Alcance de quem dirige sobre as unidades **abaixo** — regra de domínio de cada ação (SPEC 007), não
   da decisão de acesso.
 - Autorização dependente do objeto: a assinatura recebe `obj` porque o Django a define assim, e esta
@@ -112,7 +127,7 @@ saber que são duas.
 - `@services/domain/titularidade/` → `avaliar_direcao`, `EstadoDaDirecao`, `Direcao`.
 - `@apps/user_admin/context.py` → `_estado_da_direcao` (SPEC 016): a montagem do estado a partir do
   titular e do substituto já carregados.
-- `@apps/user_admin/exercicio.py` → `substituicao_que_exerce`: a cadeira coberta, com o substituído já
+- `@apps/user_admin/exercicio.py` → `substituicao_que_exerce`: a caneta coberta, com o substituído já
   em `select_related`.
 - `@apps/user_admin/models/unidade.py` → `Unidade.titular`: o titular da unidade, sem consulta nova.
 - `@apps/competencias/registro.py` → `REGISTRO`: de onde saem os slugs estruturais.
@@ -130,8 +145,8 @@ class PerfilCompetencia(BaseModel):
     # Fora da cadeira não se exerce competência nenhuma, nem a estrutural.
     em_exercicio: bool
     # A própria e, enquanto a substituição vigora, a de quem ele cobre — que pode ser de outra
-    # unidade. Uma regra só para as duas: "bate com uma cadeira que ele ocupa".
-    cadeiras: tuple[CadeiraExercida, ...]
+    # unidade. Uma regra só para as duas: "bate com uma caneta que ele tem".
+    canetas: tuple[Caneta, ...]
 
 
 class ConcessaoVigente(BaseModel):
@@ -144,7 +159,7 @@ class ConcessaoVigente(BaseModel):
     cargo_comissao_id: int | None = None
 
 
-class AvaliacaoCompetencia(BaseModel):
+class AvaliacaoCompetenciaInput(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     perfil: PerfilCompetencia
@@ -153,7 +168,7 @@ class AvaliacaoCompetencia(BaseModel):
     slugs_estruturais: frozenset[str] = frozenset()
 
 
-class CompetenciaResultado(BaseModel):
+class AvaliacaoCompetenciaOutput(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     slugs_liberados: frozenset[str]
@@ -163,41 +178,64 @@ class CompetenciaResultado(BaseModel):
 qualquer fonte, e as duas fontes se somam num conjunto só.
 ```python
 class AvaliadorCompetencia:
-    def __call__(self, entrada: AvaliacaoCompetencia) -> CompetenciaResultado:
+    def __call__(self, entrada: AvaliacaoCompetenciaInput) -> AvaliacaoCompetenciaOutput:
         # Pré-condição, não terceira fonte: competência é do cargo exercido.
         if not entrada.perfil.em_exercicio:
-            return CompetenciaResultado(slugs_liberados=frozenset())
-        return CompetenciaResultado(
+            return AvaliacaoCompetenciaOutput(slugs_liberados=frozenset())
+        return AvaliacaoCompetenciaOutput(
             slugs_liberados=self._por_concessao(entrada) | self._por_direcao(entrada),
         )
 
-    def _por_concessao(self, entrada: AvaliacaoCompetencia) -> frozenset[str]:
-        """Ação ativa cuja concessão bate com alguma cadeira — unidade exata E o cargo daquela
-        cadeira. Estrutural nunca sai por aqui: a fonte dela é a direção, e aceitar as duas daria
-        à mesma competência duas portas com regras diferentes."""
-        ...
+    def _por_concessao(self, entrada: AvaliacaoCompetenciaInput) -> frozenset[str]:
+        """O cruzamento das duas listas: as canetas do perfil (uma, ou duas quando ele cobre
+        alguém) contra as concessões das unidades dessas canetas.
 
-    def _por_direcao(self, entrada: AvaliacaoCompetencia) -> frozenset[str]:
-        """Todas as estruturais, se alguma cadeira dirige a unidade dela — sem consultar concessão."""
-        ...
+        A estrutural entra por aqui como qualquer outra — o que a distingue é já vir liberada a
+        quem dirige, não ser exclusiva dele."""
+        return frozenset(
+            concessao.acao_slug
+            for concessao in entrada.concessoes
+            if concessao.acao_ativa
+            and any(self._caneta_bate(caneta, concessao) for caneta in entrada.perfil.canetas)
+        )
 
-    def _cadeira_bate(self, cadeira: CadeiraExercida, concessao: ConcessaoVigente) -> bool:
-        # O cargo é comparado DENTRO da cadeira: o cargo do coberto vale na unidade dele, não na do
-        # substituto, e cruzar os dois liberaria competência em unidade alheia.
-        if cadeira.unidade_id != concessao.unidade_id:
+    def _por_direcao(self, entrada: AvaliacaoCompetenciaInput) -> frozenset[str]:
+        """O atalho de quem responde pela direção: `dirige_a_unidade` é o campo que só a caneta
+        tem, e ele libera as estruturais sem consultar concessão nenhuma.
+
+        Não há filtro de ação inativa aqui: os slugs vêm do registro em código, e ação inativa é
+        justamente a que saiu de lá."""
+        if not any(caneta.dirige_a_unidade for caneta in entrada.perfil.canetas):
+            return frozenset()
+        return entrada.slugs_estruturais
+
+    def _caneta_bate(self, caneta: Caneta, concessao: ConcessaoVigente) -> bool:
+        """A conferência que dá sentido às duas listas: mesma unidade E mesmo cargo.
+
+        O cargo é comparado DENTRO da caneta — o cargo do coberto vale na unidade dele, não na do
+        substituto, e cruzar os dois liberaria competência em unidade alheia."""
+        if caneta.unidade_id != concessao.unidade_id:
             return False
-        ...
+        # A concessão nomeia exatamente um cargo (XOR do `CheckConstraint`, SPEC 002): o ramo
+        # preenchido é o que se compara, e o `None` do outro lado nunca casa por acidente.
+        if concessao.cargo_base_id is not None:
+            return concessao.cargo_base_id == caneta.cargo_base_id
+        return concessao.cargo_comissao_id == caneta.cargo_comissao_id
+
+
+def avaliar_competencia(entrada: AvaliacaoCompetenciaInput) -> AvaliacaoCompetenciaOutput:
+    return AvaliadorCompetencia()(entrada)
 ```
 
 **`apps/competencias/consulta.py`** — a borda que traduz banco → DTO, numa passagem só.
 ```python
-def montar_avaliacao(perfil: Perfil) -> AvaliacaoCompetencia:
-    """Cadeiras do perfil, concessões das unidades dessas cadeiras e os slugs estruturais — custo
+def montar_avaliacao(perfil: Perfil) -> AvaliacaoCompetenciaInput:
+    """Canetas do perfil, concessões das unidades dessas canetas e os slugs estruturais — custo
     fixo, independente de quantas ações serão perguntadas depois."""
     ...
 
 
-def cadeiras_do_perfil(perfil: Perfil) -> tuple[CadeiraExercida, ...]:
+def canetas_do_perfil(perfil: Perfil) -> tuple[Caneta, ...]:
     """A própria mais a coberta. A cobertura entra com a unidade e os cargos do SUBSTITUÍDO, que é
     quem tem a competência emprestada."""
     substituicao = substituicao_que_exerce(perfil)
@@ -211,27 +249,68 @@ def dirige(perfil: Perfil, unidade: Unidade) -> bool:
 
 
 def unidades_dirigidas(perfil: Perfil) -> frozenset[int]:
-    """As unidades das cadeiras que dirigem — pode ser mais de uma, quando alguém cobre o titular de
+    """As unidades das canetas que dirigem — pode ser mais de uma, quando alguém cobre o titular de
     outra unidade. É daqui que a SPEC 007 parte para calcular o alcance."""
     ...
 ```
 
-**`apps/competencias/backends.py`** — backend só de autorização, ao lado do `ModelBackend`.
+**`apps/competencias/backends.py`** — a implementação da DIMAP que ocupa o slot de backend do Django,
+respondendo permissão e nada mais.
 ```python
 ATRIBUTO_CACHE = "_competencia_cache"
 
 
-class CompetenciaBackend:
+class CompetenciaPermissionBackend:
+    """Backend de autorização da DIMAP: serve `has_perm` a partir da competência (concessão da
+    unidade + direção), sem autenticar ninguém.
+
+    Não há classe-base a herdar — o Django resolve backend por duck typing, e é a assinatura destes
+    três métodos que faz esta classe ser aceita em `AUTHENTICATION_BACKENDS`."""
+
     def authenticate(self, request: HttpRequest | None, **credenciais: object) -> None:
-        # Quem autentica segue sendo o ModelBackend: este backend só responde competência.
+        # Quem autentica segue sendo o ModelBackend: devolver None aqui é como o protocolo diz
+        # "não é comigo", e o Django passa ao backend seguinte.
         return None
 
     def get_all_permissions(self, user_obj: object, obj: object | None = None) -> set[str]:
-        # O conjunto é montado uma vez e guardado no próprio objeto de usuário — mesma técnica do
-        # ModelBackend, com atributo próprio para não colidir com o cache dele.
-        ...
+        """Os slugs liberados, montados uma vez e guardados no próprio objeto de usuário — mesma
+        técnica do ModelBackend, com atributo próprio para não colidir com o cache dele.
 
-    def has_perm(self, user_obj: object, perm: str, obj: object | None = None) -> bool: ...
+        É aqui que o custo fixo se cumpre: a primeira pergunta paga a consulta, e o menu que
+        pergunta por dez ações seguidas não paga mais nada."""
+        # Anônimo não tem caneta nenhuma. Superusuário nem chega aqui: `PermissionsMixin.has_perm`
+        # responde True antes de consultar backend algum.
+        if not isinstance(user_obj, Perfil):
+            return set()
+        # Permissão por objeto não tem dono (§4), e negar é o default seguro: devolver o conjunto
+        # global responderia "pode" a uma pergunta sobre um lote específico.
+        if obj is not None:
+            return set()
+        cacheado = getattr(user_obj, ATRIBUTO_CACHE, None)
+        if cacheado is None:
+            # Exoneração e afastamento não são conferidos aqui: entram no DTO como `em_exercicio`,
+            # e o avaliador zera tudo antes de olhar concessão.
+            entrada = montar_avaliacao(user_obj)
+            avaliacao = avaliar_competencia(entrada)
+            cacheado = set(avaliacao.slugs_liberados)
+            setattr(user_obj, ATRIBUTO_CACHE, cacheado)
+        return cacheado
+
+    def has_perm(self, user_obj: object, perm: str, obj: object | None = None) -> bool:
+        # O protocolo do Django é plano: a pergunta é pertinência no conjunto, e o `obj` só é
+        # repassado para que a negativa por objeto aconteça num lugar só.
+        return perm in self.get_all_permissions(user_obj, obj)
+```
+
+**`config/settings.py`** — os dois backends, cada um com um papel; a ordem não decide nada, porque
+`has_perm` é verdadeiro se qualquer um deles disser sim.
+```python
+AUTHENTICATION_BACKENDS = [
+    # Autenticação, e as permissions do admin.
+    "django.contrib.auth.backends.ModelBackend",
+    # Autorização por competência: só responde permissão, e é a única fonte das ações da plataforma.
+    "apps.competencias.backends.CompetenciaPermissionBackend",
+]
 ```
 
 ## 7 · Caveats
@@ -247,7 +326,7 @@ concessão alterada, impedimento registrado ou substituição encerrada só vale
 
 **A regra decide em Python, sobre as linhas carregadas, em vez de filtrar cargo no queryset.** É o que
 mantém a competência testável sem banco (§3.3, §9) em vez de escondida num `.filter()`. Custo: O(n)
-sobre as concessões das unidades das cadeiras a cada primeira pergunta — dezenas de linhas, no
+sobre as concessões das unidades das canetas a cada primeira pergunta — dezenas de linhas, no
 organograma que a DIMAP tem hoje.
 
 **A direção e os slugs estruturais chegam ao domínio já resolvidos, pela aplicação.** É o que impede o
@@ -259,10 +338,16 @@ estrutural sumir para quem dirige.
 SPEC a consome em vez de reescrever a leitura. Custo: uma peça de `context.py` passa a ter dois
 consumidores em apps diferentes, e mudar a assinatura dela quebra longe de onde ela mora.
 
-**Conceder uma ação estrutural a um cargo não libera ninguém.** A fonte dela é a direção, e aceitar as
-duas portas faria a mesma competência ter duas regras diferentes de conferência. Custo: a linha de
-concessão gravada existe, é inerte, e nada na tela nem no banco avisa disso — a SPEC 007 evita produzi-la
-excluindo as estruturais do catálogo oferecido.
+**A ação estrutural tem duas portas: já vem liberada a quem dirige a unidade e ainda pode ser concedida
+a outros cargos.** Quem responde pela direção precisa dela sem depender de ninguém, e trancá-la nele
+impediria a delegação que o dia a dia da unidade exige. Custo: a mesma competência passa a ser conferida
+por duas regras, e revogar a concessão não tira o acesso de quem dirige — sem a tela dizer de onde ele
+vem, a revogação parece não ter funcionado.
+
+**Delegar a estrutural passa pelos dois níveis da SPEC 002**, a atribuição da unidade e depois a
+concessão ao cargo, enquanto a porta da direção não exige linha nenhuma. É o que mantém uma regra só
+para toda concessão, em vez de um caminho curto exclusivo da estrutural. Custo: a unidade precisa
+receber a atribuição de uma ação que seu dirigente já exerce sem ela.
 
 **O afastado perde o acesso a tudo enquanto está fora de exercício.** É o efeito que o afastamento existe
 para produzir: competência é do cargo exercido. Custo: ato pendente iniciado antes do afastamento fica
@@ -273,20 +358,22 @@ Os seis primeiros são domínio puro e rodam na suíte padrão. Os três último
 `Perfil` real e carregam o marker `banco`.
 
 - `test_avaliador_libera_por_cargo_base_ou_comissao` — concessão que mira o cargo base **ou** o cargo em
-  comissão da cadeira libera a ação; cargo que não é nenhum dos dois não libera.
+  comissão da caneta libera a ação; cargo que não é nenhum dos dois não libera.
 - `test_avaliador_exige_unidade_exata` — concessão idêntica numa unidade diferente, inclusive na
   superior, não libera: não há herança pelo organograma.
-- `test_avaliador_nao_cruza_cadeiras` — o cargo de uma cadeira não libera concessão da unidade da outra:
+- `test_avaliador_nao_cruza_canetas` — o cargo de uma caneta não libera concessão da unidade da outra:
   quem cobre alguém de outra unidade exerce lá o cargo do coberto, e aqui o dele.
 - `test_avaliador_ignora_acao_inativa` — concessão gravada de ação inativa não entra no resultado.
-- `test_avaliador_libera_estrutural_so_para_quem_dirige` — a estrutural sai liberada para a cadeira que
-  dirige a unidade, sem concessão nenhuma, e não sai para quem não dirige nem quando há concessão dela
-  gravada.
+- `test_avaliador_libera_estrutural_para_quem_dirige` — a estrutural sai liberada para a caneta que
+  dirige a unidade, sem atribuição nem concessão gravada, e não sai para quem não dirige e não tem
+  concessão dela.
+- `test_avaliador_libera_estrutural_concedida_a_outro_cargo` — concessão de ação estrutural ao cargo da
+  caneta libera quem não dirige, pela mesma regra de unidade exata das ações comuns.
 - `test_avaliador_nega_tudo_fora_de_exercicio` — perfil fora de exercício não recebe nem a concedida ao
   cargo dele nem a estrutural, ainda que dirija a unidade no papel.
 - `test_backend_responde_has_perm_sem_multiplicar_consultas` — `has_perm` acerta o liberado e o negado, e
   perguntar por várias ações do mesmo perfil não acrescenta consulta. *(marker `banco`)*
-- `test_backend_monta_as_cadeiras_do_banco` — o titular em exercício e o substituto do titular afastado
+- `test_backend_monta_as_canetas_do_banco` — o titular em exercício e o substituto do titular afastado
   recebem a estrutural da unidade dirigida; o titular afastado sem substituto não recebe; e o substituto
   de outra unidade ganha a concessão do **cargo do substituído, na unidade do substituído**.
   *(marker `banco`)*

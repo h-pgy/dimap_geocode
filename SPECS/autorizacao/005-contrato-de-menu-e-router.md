@@ -71,7 +71,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   ela está montada na interface, e quais variantes de ícone ela possui?".
 - [`RegistroAcoes`](001-catalogo-de-acoes-em-codigo.md) — "quais ações existem hoje?", que é o conjunto
   do superusuário.
-- [`CompetenciaBackend`](003-avaliador-e-backend-de-autorizacao.md) — "quais slugs este perfil pode
+- [`CompetenciaPermissionBackend`](003-avaliador-e-backend-de-autorizacao.md) — "quais slugs este perfil pode
   executar?", com o cache por instância de usuário que ele já mantém.
 
 ## 4 · Fora de escopo

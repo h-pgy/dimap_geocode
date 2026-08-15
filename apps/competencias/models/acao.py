@@ -19,7 +19,8 @@ class Acao(models.Model):
     tooltip = models.CharField(max_length=LIMITE_TOOLTIP)
     # Ação some do código sem levar junto atribuições e concessões já concedidas.
     ativa = models.BooleanField(default=True)
-    # Exercida por quem dirige a unidade: projetada para as telas a excluírem da oferta.
+    # Já liberada a quem dirige a unidade, sem concessão gravada; projetada para o avaliador saber
+    # de quais slugs isso vale.
     estrutural = models.BooleanField(default=False)
 
     class Meta:

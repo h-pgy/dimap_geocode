@@ -1,6 +1,6 @@
 ---
 spec: autorizacao/007
-versao: v5
+versao: v6
 atualizado_em: 2026-08-14
 testes_tdd: false
 implementado: false
@@ -19,6 +19,8 @@ changelog:
   - v5: a origem do alcance passa a ser as unidades que o perfil DIRIGE, e não a de lotação — quem
     cobre o titular de outra unidade dirige aquela (SPEC user_admin/015); e a SPEC foi reescrita no
     formato de seções numeradas da skill `specs`
+  - v6: o catálogo volta a oferecer as ações estruturais — a estrutural agora pode ser concedida a
+    outros cargos além de quem dirige (SPEC 003), e sem a atribuição não há o que conceder
 ---
 
 # SPEC autorizacao/007 — Definir atribuição: a competência da unidade, e a primeira ação do registro
@@ -33,8 +35,8 @@ na tela de atribuições, para que uma competência nova entre em vigor sem ning
       403 mesmo com concessão da ação.
 - [ ] A tela oferece como alvo **as unidades que o perfil dirige e as que estão abaixo delas** no
       organograma; unidade fora desse alcance não aparece — e é recusada se vier no request.
-- [ ] O catálogo oferecido traz **apenas as ações ativas e não estruturais** que a unidade-alvo ainda
-      **não** tem.
+- [ ] O catálogo oferecido traz **todas as ações ativas** que a unidade-alvo ainda **não** tem — as
+      estruturais inclusive, que a unidade precisa possuir para poder concedê-las (SPEC 008).
 - [ ] Atribuir e remover acontecem **sem recarregar a página**, trocando só o trecho afetado.
 - [ ] Remover atribuição que tem concessões **exige confirmação** e diz **quantos cargos** perdem a
       competência; confirmada, as concessões vão junto.
@@ -57,7 +59,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   o que o catálogo ainda oferece, e quantos cargos caem junto se a atribuição sair?".
 - [`has_perm`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil exerce esta ação estrutural?";
   quem lê a direção da unidade é o backend, não esta tela.
-- [`CadeiraExercida`](003-avaliador-e-backend-de-autorizacao.md) — "quais unidades este perfil dirige
+- [`Caneta`](003-avaliador-e-backend-de-autorizacao.md) — "quais unidades este perfil dirige
   hoje?", que é de onde o alcance parte.
 - [`acao_protegida` e `registrar_ato`](004-protecao-de-rota-e-registro-de-execucao.md) — a rota protegida
   e o rastro dos dois atos.
@@ -83,7 +85,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   `_construir_registro`: esta ação é a primeira inscrita.
 - `@apps/competencias/protecao.py` (SPEC 004) → `acao_protegida` e `registrar_ato`.
 - `@apps/competencias/menus.py` (SPEC 005) → `ItemDeMenu`, `ContratoMenu`, `RoteadorMenu`.
-- `@apps/competencias/consulta.py` (SPEC 003) → `cadeiras_do_perfil`: as unidades dirigidas já saem
+- `@apps/competencias/consulta.py` (SPEC 003) → `canetas_do_perfil`: as unidades dirigidas já saem
   resolvidas dali.
 - `@apps/user_admin/models/unidade.py` → `Unidade.pai` / `filhas`: a árvore.
 - `@templates/user_admin/servidores_list.html` e `@templates/user_admin/unidade.html`: a área
@@ -177,11 +179,9 @@ def definir_atribuicao(request: HttpRequest) -> HttpResponse:
 **`apps/competencias/catalogo.py`** — o que o modal oferece.
 ```python
 def acoes_oferecidas(unidade: Unidade) -> QuerySet[Acao]:
-    """Ativas, não estruturais e ainda não atribuídas. O filtro é pela COLUNA `estrutural`, não por
-    lista de slugs, para a próxima ação estrutural não precisar lembrar de se excluir."""
-    return Acao.objects.filter(ativa=True, estrutural=False).exclude(
-        atribuicoes__unidade=unidade,
-    )
+    """Ativas e ainda não atribuídas. A estrutural entra: quem dirige já a exerce sem atribuição
+    nenhuma (SPEC 003), mas delegá-la a outro cargo exige que a unidade a possua primeiro."""
+    return Acao.objects.exclude(atribuicoes__unidade=unidade).filter(ativa=True)
 ```
 
 ## 7 · Caveats
@@ -210,6 +210,12 @@ o contém é o registro do ato, não uma segunda barreira.
 exercer uma ação nova. Custo: nada impede que quem dirige amplie a própria competência, e o controle
 disso é o registro (SPEC 004), não uma aprovação de terceiro.
 
+**O catálogo oferece as duas ações administrativas desta SPEC e da 008, como qualquer outra.** Elas são
+estruturais e agora a estrutural é concedível (SPEC 003); excluí-las exigiria uma lista de slugs
+privilegiados, que é a configuração em runtime que o §3.5 recusa. Custo: quem dirige pode atribuir e
+depois conceder a um cargo o poder de atribuir e conceder — a delegação não tem profundidade limitada, e
+o que a contém é o registro do ato.
+
 **A remoção cascateia nas concessões, e a confirmação é o único lugar onde isso aparece antes.** A
 contagem é lida no momento em que o modal é montado. Custo: entre a pergunta e o "sim" outra pessoa pode
 conceder mais um cargo, e o número que o diretor viu não é o que caiu.
@@ -228,8 +234,8 @@ Carregam o marker `banco`, menos o do alcance, que é domínio puro e roda na su
 - `test_tela_abre_para_quem_dirige_e_nega_o_resto` — o titular em exercício entra sem concessão nenhuma
   gravada, e o substituto dele entra enquanto ele está afastado; quem não dirige recebe 403 mesmo com
   concessão da ação. *(marker `banco`)*
-- `test_catalogo_oferece_so_o_que_falta_e_nao_oferece_estrutural` — a ação já atribuída, a inativa e a
-  estrutural ficam fora da oferta. *(marker `banco`)*
+- `test_catalogo_oferece_so_o_que_falta` — a ação já atribuída e a inativa ficam fora da oferta; a
+  estrutural que a unidade ainda não tem é oferecida. *(marker `banco`)*
 - `test_atribuir_recusa_unidade_fora_do_alcance` — POST com unidade existente mas de outro ramo é
   recusado mesmo com id válido. *(marker `banco`)*
 - `test_remover_com_concessoes_exige_confirmacao` — sem confirmação nada é apagado; confirmada, a

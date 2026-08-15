@@ -85,7 +85,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - [`AcaoImplementada`](001-catalogo-de-acoes-em-codigo.md) — "qual ação esta rota executa?"; é o objeto
   que o decorator recebe, não o slug.
 - [`Acao` projetada](002-competencia-no-banco.md) — o alvo da FK do registro.
-- [`CompetenciaBackend`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil pode executar esta
+- [`CompetenciaPermissionBackend`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil pode executar esta
   ação?", já respondida; o decorator pergunta por `has_perm` e não reimplementa nada.
 - [`substituicao_que_exerce`](../user_admin/015-exercicio-e-substituicao.md) — "quem o autor estava
   cobrindo no momento do ato?".
@@ -100,7 +100,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 
 ## 5 · Peças de referência a compor
 - `@apps/competencias/backends.py` (SPEC 003) → `has_perm`: a decisão de acesso, já resolvida.
-- `@apps/competencias/consulta.py` (SPEC 003) → `cadeiras_do_perfil`: quem o autor cobre já foi
+- `@apps/competencias/consulta.py` (SPEC 003) → `canetas_do_perfil`: quem o autor cobre já foi
   resolvido ali, na montagem da avaliação.
 - `@apps/user_admin/exercicio.py` → `substituicao_que_exerce`: o substituído é `impedimento.perfil`.
 - `@apps/competencias/schemas.py` (SPEC 001) → `AcaoImplementada`: é o que o decorator recebe.
@@ -191,8 +191,8 @@ descreveria o ato de ontem com a lotação de hoje. Custo aceito: renomear a sig
 como todo o histórico dela se lê.
 
 **A unidade gravada é a de lotação do autor, não aquela em que o ato produziu efeito.** Quem cobre alguém
-de outra unidade (SPEC `user_admin/015`) pratica o ato pela cadeira do coberto, e fazer o decorator
-descobrir qual cadeira autorizou exigiria o avaliador devolver a origem de cada slug liberado. Custo: nesse
+de outra unidade (SPEC `user_admin/015`) pratica o ato pela caneta do coberto, e fazer o decorator
+descobrir qual caneta autorizou exigiria o avaliador devolver a origem de cada slug liberado. Custo: nesse
 caso a unidade da linha descreve onde o autor está lotado, e chegar à unidade do ato exige passar por
 `substituindo`.
 
