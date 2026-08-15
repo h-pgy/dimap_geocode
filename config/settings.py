@@ -204,6 +204,15 @@ MIDDLEWARE = [
 # Perfil (apps.user_admin) concentra RF, cargo e unidade — o Perfil do CLAUDE.md §3.5.
 AUTH_USER_MODEL = "user_admin.Perfil"
 
+# Os dois backends, cada um com um papel; a ordem não decide nada, porque `has_perm` é verdadeiro
+# se qualquer um deles disser sim (SPEC autorizacao/003).
+AUTHENTICATION_BACKENDS = [
+    # Autenticação, e as permissions do admin.
+    "django.contrib.auth.backends.ModelBackend",
+    # Autorização por competência: só responde permissão, e é a única fonte das ações da plataforma.
+    "apps.competencias.backends.CompetenciaPermissionBackend",
+]
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [

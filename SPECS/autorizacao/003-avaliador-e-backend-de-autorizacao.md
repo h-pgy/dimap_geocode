@@ -1,11 +1,13 @@
 ---
 spec: autorizacao/003
-versao: v8
+versao: v9
 atualizado_em: 2026-08-14
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
+  - v9: implementado — avaliador (`services/domain/autorizacao`), `apps/competencias/consulta.py`
+    e `backends.py`, e os dois backends em `AUTHENTICATION_BACKENDS`; os 10 testes de §8 passam
   - v1: versão inicial
   - v2: segunda fonte de competência — ação estrutural liberada pela titularidade da unidade
     (SPEC titularidade/001), sem passar por atribuição nem concessão

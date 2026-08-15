@@ -1,3 +1,4 @@
+from .avaliador import AvaliadorCompetencia, avaliar_competencia
 from .contratos import (
     LIMITE_NOME,
     LIMITE_NOME_CURTO,
@@ -7,6 +8,13 @@ from .contratos import (
     Acao,
     VarianteIcone,
 )
+from .models import (
+    AvaliacaoCompetenciaInput,
+    AvaliacaoCompetenciaOutput,
+    Caneta,
+    ConcessaoVigente,
+    PerfilCompetencia,
+)
 
 __all__ = [
     "LIMITE_NOME",
@@ -15,5 +23,12 @@ __all__ = [
     "LIMITE_TOOLTIP",
     "PADRAO_SLUG",
     "Acao",
+    "AvaliacaoCompetenciaInput",
+    "AvaliacaoCompetenciaOutput",
+    "AvaliadorCompetencia",
+    "Caneta",
+    "ConcessaoVigente",
+    "PerfilCompetencia",
     "VarianteIcone",
+    "avaliar_competencia",
 ]

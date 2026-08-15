@@ -54,9 +54,12 @@ def _unidade(sigla: str, **overrides: object) -> Unidade:
 
 
 def _cargo_base(**overrides: object) -> CargoBase:
+    # get_or_create: o default de `_perfil` chama isto mesmo quando o teste passa `cargo_base`
+    # explícito, e mais de um perfil sem override no mesmo teste precisa cair no mesmo cargo.
     dados: dict[str, object] = {"nome": "Cargo Backend", "sigla": "CGBK"}
     dados.update(overrides)
-    return CargoBase.objects.create(**dados)  # type: ignore[arg-type]
+    cargo, _ = CargoBase.objects.get_or_create(**dados)  # type: ignore[arg-type]
+    return cargo
 
 
 def _cargo_chefia(nome: str, nivel: int) -> CargoComissao:
@@ -207,4 +210,6 @@ def test_backend_nega_anonimo_e_exonerado_e_nao_autentica() -> None:
 
     assert backend.has_perm(AnonymousUser(), "competencias.anon_teste") is False
     assert backend.has_perm(_fresco(perfil), "competencias.anon_teste") is False
-    assert backend.authenticate(None) is None
+    # mypy sabe, pela assinatura, que o retorno é sempre None — o assert confere em runtime que
+    # a implementação não passou a devolver outra coisa.
+    assert backend.authenticate(None) is None  # type: ignore[func-returns-value]
