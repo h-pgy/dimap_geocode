@@ -1,8 +1,8 @@
 ---
 spec: autorizacao/004
-versao: v7
+versao: v8
 atualizado_em: 2026-08-17
-testes_tdd: false
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
@@ -20,6 +20,17 @@ changelog:
     unidade à árvore hierárquica
   - v7: o alcance nomeia as peças que de fato consome da árvore — a posição e os ids do nó — e o
     custo de recalculá-lo passa a contar também as canetas
+  - v8: nomenclatura mais aderente ao domínio — `execucoes` vira `acoes_executadas` no related_name
+    do registro; o alcance ganha o tipo abstrato `TipoAlcance`, do qual `SubarvoreDirigida` (agora
+    `UnidadesSubordinadas`) é subtipo, com o campo `parametro_id_unidade_alvo` explicitado como o
+    nome do parâmetro na assinatura da view — nunca um id de unidade real — para que um alcance
+    futuro entre como subtipo novo sem mudar `Acao`; `conferir_alvo` nomeia o valor bruto do request
+    (`id_bruto`) e o id já convertido (`id_unidade_alvo`) como passos distintos, em vez de converter
+    escondido dentro do `if` final; os snippets de `acao_protegida`/`registrar_ato` deixam explícito
+    o `_registro_ato` como a única ponte entre view e decorator — a view nunca chama `gravar_execucao`
+    —; e `conferir_alvo` passa a despachar a checagem de pertencimento por subtipo de `TipoAlcance`
+    (`isinstance` no próprio corpo, chamando `_unidade_esta_subordinada`), com `NotImplementedError`
+    no `else` marcando onde estender quando um alcance novo aparecer
 ---
 
 # SPEC autorizacao/004 — Proteção de rota e registro de execução do ato
@@ -55,20 +66,20 @@ não o que o cadastro diz hoje.
 **`apps/competencias/models/execucao.py`**
 ```python
 class ExecucaoAcao(models.Model):
-    acao = models.ForeignKey(Acao, on_delete=models.PROTECT, related_name="execucoes")
+    acao = models.ForeignKey(Acao, on_delete=models.PROTECT, related_name="acoes_executadas")
     perfil = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
-        related_name="execucoes",
+        related_name="acoes_executadas",
         null=True,
     )
     # Lotação no momento do ato: perfil muda de unidade, e o histórico não pode mudar junto.
-    unidade = models.ForeignKey(Unidade, on_delete=models.PROTECT, related_name="execucoes")
-    cargo_base = models.ForeignKey(CargoBase, on_delete=models.PROTECT, related_name="execucoes")
+    unidade = models.ForeignKey(Unidade, on_delete=models.PROTECT, related_name="acoes_executadas")
+    cargo_base = models.ForeignKey(CargoBase, on_delete=models.PROTECT, related_name="acoes_executadas")
     cargo_comissao = models.ForeignKey(
         CargoComissao,
         on_delete=models.PROTECT,
-        related_name="execucoes",
+        related_name="acoes_executadas",
         null=True,
     )
     # Ato praticado cobrindo alguém: a pessoa, nunca a linha da Substituicao, que é encerrada e
@@ -97,13 +108,24 @@ no Django.
 
 **`services/domain/autorizacao/contratos.py`**
 ```python
-class SubarvoreDirigida(BaseModel):
-    """O alcance de quem dirige: as unidades que o perfil dirige e todas abaixo delas."""
+class TipoAlcance(BaseModel):
+    """O que todo alcance é: até onde a ação pode incidir, e o parâmetro do request que carrega o
+    id da unidade-alvo. Abstrato — cada alcance concreto é um subtipo, nunca uma instância desta
+    classe. Alcance sobre lote, logradouro ou endereço não é subtipo desta classe: é regra de
+    domínio de cada ação (§4)."""
 
     model_config = ConfigDict(frozen=True)
 
-    # Nome do parâmetro do request que carrega o id da unidade-alvo.
-    parametro: str = "unidade"
+    # O NOME do parâmetro na assinatura da view/formulário — não um id de unidade real. Fixo no
+    # código porque é parte da assinatura da ação; o id concreto (de qualquer unidade) só existe em
+    # tempo de requisição, e nada aqui pode depender do dado do banco.
+    parametro_id_unidade_alvo: str
+
+
+class UnidadesSubordinadas(TipoAlcance):
+    """O alcance de quem dirige: as unidades que o perfil dirige e todas abaixo delas."""
+
+    parametro_id_unidade_alvo: str = "unidade"
 
 
 class Acao(BaseModel):
@@ -118,9 +140,9 @@ class Acao(BaseModel):
     variantes_icone: frozenset[VarianteIcone] = frozenset()
     estrutural: bool = False
     # ALTERADO nesta SPEC: campo novo. Ausente, a ação não incide sobre unidade e não há alvo a
-    # conferir — é o caso das que recebem uma entidade territorial. Um tipo de alcance só hoje; o
-    # dia que houver outro, o campo vira união.
-    alcance: SubarvoreDirigida | None = None
+    # conferir — é o caso das que recebem uma entidade territorial. Tipado pelo alcance abstrato:
+    # um alcance novo entra como subtipo de `TipoAlcance`, sem mexer neste campo.
+    alcance: TipoAlcance | None = None
 ```
 
 O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
@@ -135,7 +157,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - [`unidades_dirigidas`](003-avaliador-e-backend-de-autorizacao.md) — "quais unidades este perfil dirige
   hoje?", que é de onde o alcance parte.
 - [`PosicaoHierarquica.ego` e `NoHierarquia.ids`](../user_admin/018-arvore-hierarquica.md) — "o que
-  pende desta unidade?"; a regra responde por uma unidade, e "subárvore dirigida" é a união do que
+  pende desta unidade?"; a regra responde por uma unidade, e "unidades subordinadas" é a união do que
   pende de cada uma das dirigidas.
 
 ## 4 · Fora de escopo
@@ -145,8 +167,9 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - Registrar leitura de informação pública da ontologia — não é ação e não exige login.
 - Gravar a unidade **em que o ato produziu efeito** quando ela não é a de lotação do autor — sem dono
   ainda (§7).
-- Alcance que não seja a subárvore dirigida — sem dono ainda; o campo aceita um tipo só.
-- A regra da subárvore em si — SPEC `user_admin/018`, **pré-requisito desta**.
+- Alcance que não seja unidades subordinadas — sem dono ainda; hoje o único subtipo de `TipoAlcance`
+  implementado é `UnidadesSubordinadas`.
+- A regra das unidades subordinadas em si — SPEC `user_admin/018`, **pré-requisito desta**.
 - Conferir alvo que **não é unidade** — lote, logradouro e endereço são regra de domínio de cada ação;
   sem dono ainda.
 
@@ -179,7 +202,42 @@ def acao_protegida(acao: AcaoImplementada) -> Callable[[ViewFunc], ViewFunc]:
     Grava-se SEMPRE a negativa, e a execução quando ela altera estado: tela de ação é aberta por GET
     a cada navegação e a cada swap, e registrar tudo afogaria o ato de verdade em leitura.
     """
-    ...
+
+    def decorator(view: ViewFunc) -> ViewFunc:
+        @wraps(view)
+        def wrapper(request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
+            if not request.user.is_authenticated:
+                ...  # redireciona ao login; nada gravado (Caveats)
+            if not request.user.has_perm(acao.slug):
+                gravar_execucao(request.user, acao, autorizado=False)
+                raise PermissionDenied
+            try:
+                conferir_alvo(request, acao)
+            except PermissionDenied:
+                gravar_execucao(request.user, acao, autorizado=False)
+                raise
+            except BadRequest:
+                # Parâmetro ausente ou malformado é requisição errada, não tentativa negada contra
+                # o alcance — não gera linha.
+                raise
+            resposta = view(request, *args, **kwargs)
+            # `_registro_ato` só existe se a view chamou `registrar_ato` (ver abaixo). É a ÚNICA
+            # ponte entre as duas: a view nunca chama `gravar_execucao`, só deixa esse recado.
+            registro = getattr(request, "_registro_ato", None)
+            if request.method in METODOS_QUE_ALTERAM or registro is not None:
+                gravar_execucao(
+                    request.user,
+                    acao,
+                    autorizado=True,
+                    operacao=registro.operacao if registro else "",
+                    alvo_tipo=registro.alvo_tipo if registro else "",
+                    alvo_identificador=registro.alvo_identificador if registro else "",
+                )
+            return resposta
+
+        return wrapper
+
+    return decorator
 
 
 METODOS_QUE_ALTERAM = frozenset({"POST", "PUT", "PATCH", "DELETE"})
@@ -196,28 +254,53 @@ def conferir_alvo(request: HttpRequest, acao: Acao) -> None:
     # territorial. Nada a conferir.
     if acao.alcance is None:
         return
-    bruto = _valor_do_parametro(request, acao.alcance.parametro)
-    if bruto is None:
+    id_bruto = _valor_do_parametro(request, acao.alcance.parametro_id_unidade_alvo)
+    if id_bruto is None:
         # A ausência tem duas leituras, e é aqui que elas se separam: em leitura é a tela ainda sem
         # alvo escolhido; em requisição que altera estado é alvo faltando, e sem este ramo um POST
         # que omitisse o parâmetro escaparia da conferência inteira.
         if request.method in METODOS_QUE_ALTERAM:
             raise BadRequest(...)
         return
-    if not bruto.isdigit():
+    if not id_bruto.isdigit():
         # Id malformado é 400, não 500: o valor vem do cliente e nunca chega ao `int()` sem passar
         # por aqui.
         raise BadRequest(...)
-    if int(bruto) not in alcance_do_perfil(request.user):
-        # Mesmo tratamento da falta de competência: 403 e linha de negativa. Alvo de outro ramo é
-        # tentativa de praticar ato onde não se responde, e é isso que o histórico precisa mostrar.
-        raise PermissionDenied
+    id_unidade_alvo = int(id_bruto)
+    # Despacha pelo subtipo concreto de `alcance` — cada um tem sua própria regra de pertencimento,
+    # e é por isso que `TipoAlcance` é herança e não enum. Alcance novo sem ramo aqui não passa
+    # batido: `NotImplementedError` aponta exatamente este ponto de extensão.
+    if isinstance(acao.alcance, UnidadesSubordinadas):
+        if not _unidade_esta_subordinada(request.user, id_unidade_alvo):
+            # Mesmo tratamento da falta de competência: 403 e linha de negativa. Alvo de outro ramo
+            # é tentativa de praticar ato onde não se responde, e é isso que o histórico precisa
+            # mostrar.
+            raise PermissionDenied
+    else:
+        raise NotImplementedError(
+            f"conferência de alvo não implementada para {type(acao.alcance).__name__}"
+        )
+
+
+def _unidade_esta_subordinada(perfil: Perfil, id_unidade_alvo: int) -> bool:
+    return id_unidade_alvo in alcance_do_perfil(perfil)
 
 
 def _valor_do_parametro(request: HttpRequest, parametro: str) -> str | None:
     """POST antes de GET, e string vazia conta como ausente: `select` sem escolha manda o campo com
     valor vazio, que não é um id."""
     ...
+
+
+@dataclass(frozen=True)
+class _RegistroAto:
+    """Recado da view para o decorator — detalhe interno de `protecao.py`, nunca importado fora
+    daqui. Não é DTO de domínio: não cruza a fronteira de nenhum serviço, só passa de uma função
+    para a outra dentro do mesmo request."""
+
+    operacao: str
+    alvo_tipo: str
+    alvo_identificador: str
 
 
 def registrar_ato(
@@ -229,8 +312,11 @@ def registrar_ato(
     """Enriquece o registro que o decorator vai gravar — e força a gravação quando o ato é uma
     leitura (emitir um documento, por exemplo), que o decorator sozinho não registraria.
 
-    Só a view sabe sobre o que o ato incidiu; o registro existe mesmo se ela não disser."""
-    ...
+    Só a view sabe sobre o que o ato incidiu; o registro existe mesmo se ela não disser. A view
+    NUNCA chama `gravar_execucao` — só grava este recado; quem lê e persiste é sempre o decorator,
+    depois que a view retorna.
+    """
+    request._registro_ato = _RegistroAto(operacao, alvo_tipo, alvo_identificador)
 ```
 
 **`apps/competencias/consulta.py`** — a composição que dá nome ao alcance, ao lado da que monta a
@@ -238,7 +324,7 @@ avaliação (SPEC 003). Curta porque as duas peças já existem: uma diz de onde
 pende dali.
 ```python
 def alcance_do_perfil(perfil: Perfil) -> frozenset[int]:
-    """"Subárvore dirigida" não é conceito, é esta composição: cada unidade que o perfil dirige (SPEC
+    """"Unidades subordinadas" não é conceito, é esta composição: cada unidade que o perfil dirige (SPEC
     003) perguntada à árvore hierárquica (SPEC user_admin/018).
 
     A regra de lá responde por uma unidade só; dirigir duas é dirigir dois ramos, e o alcance é a
@@ -276,6 +362,8 @@ def definir_atribuicao(request: HttpRequest) -> HttpResponse:
     # decorator o cumpriu. A view que a repetisse duplicaria a regra em cada ação nova — que é o
     # que a declaração existe para evitar.
     ...
+    # Só deixa o recado — quem grava é o `wrapper` de `acao_protegida`, depois que esta função
+    # retornar. A view nunca importa nem chama `gravar_execucao`.
     registrar_ato(
         request,
         operacao="atribuir",
@@ -306,6 +394,16 @@ a unidade junto.
 o lê é o decorator, que já tem o contrato em mãos, e uma coluna que ninguém consulta é o mesmo dado em
 dois lugares livres para divergir. Custo: o admin não mostra o alcance de cada ação, e conferi-lo exige
 abrir `acoes_declaradas.py`.
+
+**A conferência de pertencimento é despachada por `isinstance` no corpo de `conferir_alvo`, um `if` por
+subtipo de `TipoAlcance`, não um método de cada subtipo.** A regra depende de `alcance_do_perfil`
+(`apps/competencias/consulta.py`), que por sua vez depende de `unidades_dirigidas` e `posicao_de` —
+peças do app, não do domínio (§3.3 proíbe `services/domain/` de depender de `apps/`); um método em
+`UnidadesSubordinadas` teria que carregar essa dependência para dentro do contrato Pydantic. Custo:
+diferente do slug de ação inexistente (erro de import, §2), um `TipoAlcance` novo sem ramo no
+`isinstance` de `conferir_alvo` só estoura `NotImplementedError` na primeira requisição que exercitar
+aquela ação — declarar o alcance no contrato
+não obriga, sozinho, a estender o dispatcher.
 
 **O alcance é recalculado a cada requisição protegida, sem cache** — ao contrário dos slugs liberados,
 que a SPEC 003 guarda na instância de usuário. Cachear exigiria invalidar a cada mudança de organograma
@@ -338,10 +436,11 @@ caso a unidade da linha descreve onde o autor está lotado, e chegar à unidade 
 `substituindo`.
 
 ## 8 · Testes (TDD)
-Todos exercitam view real com `Perfil` gravado e carregam o marker `banco`. A regra da subárvore é
-testada na SPEC `user_admin/018`; aqui se fixa a composição dela com as unidades dirigidas.
+Todos exercitam view real com `Perfil` gravado e carregam o marker `banco`. A regra das unidades
+subordinadas é testada na SPEC `user_admin/018`; aqui se fixa a composição dela com as unidades
+dirigidas.
 
-- `test_rota_confere_o_alvo_declarado` — POST com unidade fora da subárvore dirigida recebe 403 e deixa
+- `test_rota_confere_o_alvo_declarado` — POST com unidade fora do alcance de subordinadas recebe 403 e deixa
   linha de negativa; POST sem o parâmetro declarado é recusado com 400 antes de a view rodar; e o GET
   sem alvo escolhido abre normalmente. *(marker `banco`)*
 
