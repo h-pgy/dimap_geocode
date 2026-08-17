@@ -1,7 +1,7 @@
 ---
 spec: autorizacao/004
-versao: v4
-atualizado_em: 2026-08-14
+versao: v7
+atualizado_em: 2026-08-17
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -14,14 +14,20 @@ changelog:
     cargo do autor descreveria o ato errado
   - v4: sem mudança de escopo — a SPEC foi reescrita no formato de seções numeradas da skill
     `specs`, com a justificativa toda concentrada em Caveats
+  - v5: a ação declara no contrato o alcance do seu alvo, e a própria proteção confere a
+    unidade-alvo antes de a view rodar, compondo a árvore hierárquica da SPEC `user_admin/018`
+  - v6: o alcance passa a ser a união do que pende de cada unidade dirigida, uma pergunta por
+    unidade à árvore hierárquica
+  - v7: o alcance nomeia as peças que de fato consome da árvore — a posição e os ids do nó — e o
+    custo de recalculá-lo passa a contar também as canetas
 ---
 
 # SPEC autorizacao/004 — Proteção de rota e registro de execução do ato
 
 ## 1 · User story
 **Requisito não-funcional** — a competência da SPEC 003 vira barreira na rota e rastro no banco: todo
-ato administrativo praticado na plataforma passa a ter autor conhecido, e toda tentativa negada passa a
-ser investigável.
+ato administrativo praticado na plataforma passa a ter autor conhecido, alvo conferido contra o alcance
+que a ação declara, e toda tentativa negada passa a ser investigável.
 
 ## 2 · Condições de pronto
 - [ ] Rota de ação **nega com 403** o perfil autenticado sem competência, e manda o **anônimo para o
@@ -37,6 +43,10 @@ ser investigável.
       o registro de existir.
 - [ ] A proteção é declarada com o **contrato da ação**, não com uma string solta: slug inexistente é
       erro de import, não negação silenciosa.
+- [ ] Ação que declara **alcance** tem a unidade-alvo conferida **pela própria proteção**: alvo fora do
+      alcance é negado com **403 antes de a view rodar**, e a negativa fica registrada como as demais.
+- [ ] Requisição que **altera estado** de ação com alcance declarado e **não traz o parâmetro do alvo**
+      é recusada com **400**; a leitura sem alvo escolhido abre normalmente.
 
 ## 3 · Domínio
 O ato praticado é a entidade nova, e ela guarda o que descreve o ato **no dia em que foi praticado** —
@@ -80,6 +90,39 @@ class ExecucaoAcao(models.Model):
     momento = models.DateTimeField(auto_now_add=True)
 ```
 
+E o **contrato conceitual** da ação — o Pydantic de `services/domain/`, não o model projetado acima —
+passa a dizer sobre qual unidade ela pode incidir. O alcance fica ao lado de `estrutural`, e não em
+`AcaoImplementada`: "sobre o que esta ação pode incidir" é o que a ação **é**, não como ela está montada
+no Django.
+
+**`services/domain/autorizacao/contratos.py`**
+```python
+class SubarvoreDirigida(BaseModel):
+    """O alcance de quem dirige: as unidades que o perfil dirige e todas abaixo delas."""
+
+    model_config = ConfigDict(frozen=True)
+
+    # Nome do parâmetro do request que carrega o id da unidade-alvo.
+    parametro: str = "unidade"
+
+
+class Acao(BaseModel):
+    """O que a ação é. Sem rota, sem template, sem Django."""
+
+    model_config = ConfigDict(frozen=True)
+
+    slug: str = Field(pattern=PADRAO_SLUG, max_length=LIMITE_SLUG)
+    nome: str = Field(min_length=1, max_length=LIMITE_NOME)
+    tooltip: str = Field(min_length=1, max_length=LIMITE_TOOLTIP)
+    nome_curto: str | None = Field(default=None, max_length=LIMITE_NOME_CURTO)
+    variantes_icone: frozenset[VarianteIcone] = frozenset()
+    estrutural: bool = False
+    # ALTERADO nesta SPEC: campo novo. Ausente, a ação não incide sobre unidade e não há alvo a
+    # conferir — é o caso das que recebem uma entidade territorial. Um tipo de alcance só hoje; o
+    # dia que houver outro, o campo vira união.
+    alcance: SubarvoreDirigida | None = None
+```
+
 O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 
 - [`AcaoImplementada`](001-catalogo-de-acoes-em-codigo.md) — "qual ação esta rota executa?"; é o objeto
@@ -89,6 +132,11 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   ação?", já respondida; o decorator pergunta por `has_perm` e não reimplementa nada.
 - [`substituicao_que_exerce`](../user_admin/015-exercicio-e-substituicao.md) — "quem o autor estava
   cobrindo no momento do ato?".
+- [`unidades_dirigidas`](003-avaliador-e-backend-de-autorizacao.md) — "quais unidades este perfil dirige
+  hoje?", que é de onde o alcance parte.
+- [`PosicaoHierarquica.ego` e `NoHierarquia.ids`](../user_admin/018-arvore-hierarquica.md) — "o que
+  pende desta unidade?"; a regra responde por uma unidade, e "subárvore dirigida" é a união do que
+  pende de cada uma das dirigidas.
 
 ## 4 · Fora de escopo
 - Tela de consulta do histórico de execuções — por ora sai pelo admin do Django; sem dono ainda.
@@ -97,11 +145,19 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - Registrar leitura de informação pública da ontologia — não é ação e não exige login.
 - Gravar a unidade **em que o ato produziu efeito** quando ela não é a de lotação do autor — sem dono
   ainda (§7).
+- Alcance que não seja a subárvore dirigida — sem dono ainda; o campo aceita um tipo só.
+- A regra da subárvore em si — SPEC `user_admin/018`, **pré-requisito desta**.
+- Conferir alvo que **não é unidade** — lote, logradouro e endereço são regra de domínio de cada ação;
+  sem dono ainda.
 
 ## 5 · Peças de referência a compor
 - `@apps/competencias/backends.py` (SPEC 003) → `has_perm`: a decisão de acesso, já resolvida.
 - `@apps/competencias/consulta.py` (SPEC 003) → `canetas_do_perfil`: quem o autor cobre já foi
-  resolvido ali, na montagem da avaliação.
+  resolvido ali, na montagem da avaliação; e `unidades_dirigidas`, a origem do alcance.
+- `@apps/competencias/utils.py` (SPEC 001) → `instanciar_acao`: ganha o parâmetro do alcance, com o
+  mesmo default do contrato.
+- `@apps/user_admin/consulta.py` (SPEC `user_admin/018`) → `posicao_de`: a árvore já sai montada dali,
+  sem esta SPEC tocar em `Unidade`.
 - `@apps/user_admin/exercicio.py` → `substituicao_que_exerce`: o substituído é `impedimento.perfil`.
 - `@apps/competencias/schemas.py` (SPEC 001) → `AcaoImplementada`: é o que o decorator recebe.
 - `@apps/competencias/models` (SPEC 002) → `Acao`: alvo da FK do registro.
@@ -110,11 +166,12 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 
 ## 6 · Snippets
 
-**`apps/competencias/protecao.py`** — a barreira e o rastro no mesmo decorator: autorizar sem registrar
-deixaria o rastro dependente de disciplina de quem escreve a view.
+**`apps/competencias/protecao.py`** — a barreira, a conferência do alvo e o rastro no mesmo decorator:
+autorizar sem registrar deixaria o rastro dependente de disciplina de quem escreve a view, e conferir o
+alvo dentro de cada view deixaria a declaração do contrato sem quem a cumprisse.
 ```python
 def acao_protegida(acao: AcaoImplementada) -> Callable[[ViewFunc], ViewFunc]:
-    """Autoriza pelo contrato e grava a execução — autorizada ou não.
+    """Autoriza pelo contrato, confere o alvo declarado e grava a execução — autorizada ou não.
 
     403 para autenticado, login para anônimo: redirecionar quem já está logado não diz nada, e para
     o HTMX o redirect vira a página de login trocada dentro de um fragmento.
@@ -122,6 +179,44 @@ def acao_protegida(acao: AcaoImplementada) -> Callable[[ViewFunc], ViewFunc]:
     Grava-se SEMPRE a negativa, e a execução quando ela altera estado: tela de ação é aberta por GET
     a cada navegação e a cada swap, e registrar tudo afogaria o ato de verdade em leitura.
     """
+    ...
+
+
+METODOS_QUE_ALTERAM = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
+def conferir_alvo(request: HttpRequest, acao: Acao) -> None:
+    """Segunda barreira do decorator, e a que faz `alcance` valer alguma coisa. Levanta ou passa —
+    quem precisa do alvo é a view, que o relê do próprio request.
+
+    Roda DEPOIS do login e do `has_perm`: sem perfil autenticado não há unidade dirigida de onde
+    partir, e perguntar o alcance do anônimo seria consulta jogada fora.
+    """
+    # Ação sem alcance declarado não incide sobre unidade — é o caso das que recebem uma entidade
+    # territorial. Nada a conferir.
+    if acao.alcance is None:
+        return
+    bruto = _valor_do_parametro(request, acao.alcance.parametro)
+    if bruto is None:
+        # A ausência tem duas leituras, e é aqui que elas se separam: em leitura é a tela ainda sem
+        # alvo escolhido; em requisição que altera estado é alvo faltando, e sem este ramo um POST
+        # que omitisse o parâmetro escaparia da conferência inteira.
+        if request.method in METODOS_QUE_ALTERAM:
+            raise BadRequest(...)
+        return
+    if not bruto.isdigit():
+        # Id malformado é 400, não 500: o valor vem do cliente e nunca chega ao `int()` sem passar
+        # por aqui.
+        raise BadRequest(...)
+    if int(bruto) not in alcance_do_perfil(request.user):
+        # Mesmo tratamento da falta de competência: 403 e linha de negativa. Alvo de outro ramo é
+        # tentativa de praticar ato onde não se responde, e é isso que o histórico precisa mostrar.
+        raise PermissionDenied
+
+
+def _valor_do_parametro(request: HttpRequest, parametro: str) -> str | None:
+    """POST antes de GET, e string vazia conta como ausente: `select` sem escolha manda o campo com
+    valor vazio, que não é um id."""
     ...
 
 
@@ -136,6 +231,24 @@ def registrar_ato(
 
     Só a view sabe sobre o que o ato incidiu; o registro existe mesmo se ela não disser."""
     ...
+```
+
+**`apps/competencias/consulta.py`** — a composição que dá nome ao alcance, ao lado da que monta a
+avaliação (SPEC 003). Curta porque as duas peças já existem: uma diz de onde partir, a outra diz o que
+pende dali.
+```python
+def alcance_do_perfil(perfil: Perfil) -> frozenset[int]:
+    """"Subárvore dirigida" não é conceito, é esta composição: cada unidade que o perfil dirige (SPEC
+    003) perguntada à árvore hierárquica (SPEC user_admin/018).
+
+    A regra de lá responde por uma unidade só; dirigir duas é dirigir dois ramos, e o alcance é a
+    união deles — a unidade que aparece nos dois entra uma vez, porque o resultado é conjunto.
+    """
+    return frozenset(
+        alcancada
+        for dirigida in unidades_dirigidas(perfil)
+        for alcancada in posicao_de(dirigida).ego.ids
+    )
 ```
 
 **`apps/competencias/registro_execucao.py`** — a linha gravada, com a lotação do momento e quem o autor
@@ -154,10 +267,14 @@ def gravar_execucao(
     ...
 ```
 
-**`apps/competencias/views.py`** — como a view usa as duas peças.
+**`apps/competencias/views.py`** — o decorator já chegou aqui com o alvo conferido; à view sobra o que é
+dela.
 ```python
 @acao_protegida(ACAO_DEFINIR_ATRIBUICAO)
 def definir_atribuicao(request: HttpRequest) -> HttpResponse:
+    # Nenhuma conferência de alcance escrita aqui: `ACAO_DEFINIR_ATRIBUICAO` declara o alcance e o
+    # decorator o cumpriu. A view que a repetisse duplicaria a regra em cada ação nova — que é o
+    # que a declaração existe para evitar.
     ...
     registrar_ato(
         request,
@@ -170,8 +287,32 @@ def definir_atribuicao(request: HttpRequest) -> HttpResponse:
 ## 7 · Caveats
 **O registro é gravado pelo decorator, e não por signal.** Signal esconderia do ponto de chamada o
 efeito que mais precisa ser visível — e o CLAUDE.md §3.2 o recusa justamente quando o efeito é ato
-auditável. Custo: o decorator passa a fazer duas coisas, autorizar e gravar, e quem ler a view precisa
-saber que a segunda acontece sem aparecer ali.
+auditável. Custo: quem lê a view não vê a gravação acontecer em lugar nenhum.
+
+**A conferência do alvo também é do decorator, e não de cada view.** Uma declaração de alcance no
+contrato que ninguém cumprisse seria documentação com cara de garantia, e conferência repetida view a
+view fica aberta na primeira ação que a esquecer. Custo: `acao_protegida` acumula três
+responsabilidades — autorizar, conferir o alvo e gravar —, e nenhuma delas aparece na view que ele
+protege.
+
+**A ação nomeia o parâmetro do alvo por string, e a requisição que altera estado é obrigada a
+carregá-lo.** Sem o nome declarado o decorator não acha a unidade em requisições de formatos diferentes,
+e sem a obrigatoriedade a ausência do parâmetro viraria porta de saída da conferência. Custo: o nome no
+contrato e o `name` do campo no template divergem sem ninguém avisar — o 400 do POST é o que contém o
+erro —, e uma ação futura cujo POST identificaria o alvo só pelo id da linha filha passa a ter de mandar
+a unidade junto.
+
+**O alcance fica só no registro em código, sem coluna na projeção**, ao contrário de `estrutural`. Quem
+o lê é o decorator, que já tem o contrato em mãos, e uma coluna que ninguém consulta é o mesmo dado em
+dois lugares livres para divergir. Custo: o admin não mostra o alcance de cada ação, e conferi-lo exige
+abrir `acoes_declaradas.py`.
+
+**O alcance é recalculado a cada requisição protegida, sem cache** — ao contrário dos slugs liberados,
+que a SPEC 003 guarda na instância de usuário. Cachear exigiria invalidar a cada mudança de organograma
+ou de titularidade, que é o mesmo problema que a 003 já assume e resolveu adiando. Custo: toda
+requisição de ação com alcance carrega a árvore inteira (SPEC `user_admin/018`) uma vez por unidade
+dirigida, e refaz por dentro de `unidades_dirigidas` as canetas que o `has_perm` da mesma requisição
+acabou de montar.
 
 **Grava-se toda negativa e só a execução que altera estado.** Uma tela de ação é aberta por GET a cada
 navegação e a cada swap do HTMX, e registrar tudo encheria o histórico de "atos" que são leitura. Custo:
@@ -197,7 +338,12 @@ caso a unidade da linha descreve onde o autor está lotado, e chegar à unidade 
 `substituindo`.
 
 ## 8 · Testes (TDD)
-Todos exercitam view real com `Perfil` gravado e carregam o marker `banco`.
+Todos exercitam view real com `Perfil` gravado e carregam o marker `banco`. A regra da subárvore é
+testada na SPEC `user_admin/018`; aqui se fixa a composição dela com as unidades dirigidas.
+
+- `test_rota_confere_o_alvo_declarado` — POST com unidade fora da subárvore dirigida recebe 403 e deixa
+  linha de negativa; POST sem o parâmetro declarado é recusado com 400 antes de a view rodar; e o GET
+  sem alvo escolhido abre normalmente. *(marker `banco`)*
 
 - `test_rota_nega_autenticado_sem_competencia_com_403` — perfil logado sem concessão recebe 403, não
   redirect. *(marker `banco`)*

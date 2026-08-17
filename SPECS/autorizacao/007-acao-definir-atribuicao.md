@@ -1,7 +1,7 @@
 ---
 spec: autorizacao/007
-versao: v6
-atualizado_em: 2026-08-14
+versao: v8
+atualizado_em: 2026-08-17
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -21,6 +21,10 @@ changelog:
     formato de seções numeradas da skill `specs`
   - v6: o catálogo volta a oferecer as ações estruturais — a estrutural agora pode ser concedida a
     outros cargos além de quem dirige (SPEC 003), e sem a atribuição não há o que conceder
+  - v7: o alcance passa a ser declarado no contrato da ação e conferido pela proteção (SPEC 004); a
+    regra da subárvore sai desta SPEC para a `user_admin/018` e a view perde a conferência à mão
+  - v8: a lista de alvos oferecidos passa a sair da árvore hierárquica em `alvos_oferecidos`, com a
+    subordinação visível no seletor, e `alcance_do_perfil` fica só como a barreira do decorator
 ---
 
 # SPEC autorizacao/007 — Definir atribuição: a competência da unidade, e a primeira ação do registro
@@ -34,7 +38,8 @@ na tela de atribuições, para que uma competência nova entre em vigor sem ning
       substituto vigente dele —, sem depender de atribuição ou concessão gravada; quem não dirige recebe
       403 mesmo com concessão da ação.
 - [ ] A tela oferece como alvo **as unidades que o perfil dirige e as que estão abaixo delas** no
-      organograma; unidade fora desse alcance não aparece — e é recusada se vier no request.
+      organograma, na **ordem do organograma e com a subordinação visível**; unidade fora desse alcance
+      não aparece — e é recusada se vier no request.
 - [ ] O catálogo oferecido traz **todas as ações ativas** que a unidade-alvo ainda **não** tem — as
       estruturais inclusive, que a unidade precisa possuir para poder concedê-las (SPEC 008).
 - [ ] Atribuir e remover acontecem **sem recarregar a página**, trocando só o trecho afetado.
@@ -49,9 +54,9 @@ na tela de atribuições, para que uma competência nova entre em vigor sem ning
       aplicação usá-la.
 
 ## 3 · Domínio
-Nenhum model novo: a SPEC 002 já entregou as duas tabelas, e esta é o **nível 1** delas virando ato
-administrativo. O que nasce aqui é uma regra de domínio — o **alcance**: a unidade de origem e tudo
-abaixo dela na árvore.
+Nenhum model novo e nenhuma regra nova: a SPEC 002 já entregou as duas tabelas, e esta é o **nível 1**
+delas virando ato administrativo. A ação é a primeira do registro a **declarar alcance**, e é o contrato
+dela que diz sobre quais unidades pode incidir.
 
 O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 
@@ -59,13 +64,17 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   o que o catálogo ainda oferece, e quantos cargos caem junto se a atribuição sair?".
 - [`has_perm`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil exerce esta ação estrutural?";
   quem lê a direção da unidade é o backend, não esta tela.
-- [`Caneta`](003-avaliador-e-backend-de-autorizacao.md) — "quais unidades este perfil dirige
-  hoje?", que é de onde o alcance parte.
-- [`acao_protegida` e `registrar_ato`](004-protecao-de-rota-e-registro-de-execucao.md) — a rota protegida
-  e o rastro dos dois atos.
+- [`SubarvoreDirigida`](004-protecao-de-rota-e-registro-de-execucao.md) — "até onde o alvo desta ação
+  pode chegar?", declarado no contrato dela.
+- [`acao_protegida` e `registrar_ato`](004-protecao-de-rota-e-registro-de-execucao.md) — a rota
+  protegida, o alvo conferido contra o alcance e o rastro dos dois atos.
+- [`alcance_do_perfil`](004-protecao-de-rota-e-registro-de-execucao.md) — "este id de unidade está no
+  alcance?"; a resposta é um conjunto de ids, e quem a consome é o decorator.
+- [`posicao_de` e `NoHierarquia`](../user_admin/018-arvore-hierarquica.md) — "em que ordem e a que
+  profundidade o organograma alcançado se lê?"; é dali que sai o seletor de alvos, que precisa da
+  forma da árvore e não do conjunto.
 - [`ItemDeMenu`, `ContratoMenu` e `RoteadorMenu`](005-contrato-de-menu-e-router.md) — o menu de
   administrador, que **pinça** esta ação; ela não se inscreve nele.
-- `Unidade.pai` / `Unidade.filhas` — a árvore que o alcance percorre, sem alteração.
 
 **Mock:** [007-mock-definir-atribuicao.html](007-mock-definir-atribuicao.html) — leia a skill `mock`.
 
@@ -85,9 +94,13 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   `_construir_registro`: esta ação é a primeira inscrita.
 - `@apps/competencias/protecao.py` (SPEC 004) → `acao_protegida` e `registrar_ato`.
 - `@apps/competencias/menus.py` (SPEC 005) → `ItemDeMenu`, `ContratoMenu`, `RoteadorMenu`.
-- `@apps/competencias/consulta.py` (SPEC 003) → `canetas_do_perfil`: as unidades dirigidas já saem
-  resolvidas dali.
-- `@apps/user_admin/models/unidade.py` → `Unidade.pai` / `filhas`: a árvore.
+- `@apps/competencias/consulta.py` (SPEC 004) → `alcance_do_perfil` e `unidades_dirigidas`: o conjunto
+  de ids alcançados e as unidades de onde ele parte.
+- `@apps/user_admin/consulta.py` → `posicao_de`, e `@apps/user_admin/context.py` →
+  `contexto_organograma` (SPEC `user_admin/018`): a subárvore de uma unidade e o padrão de casar os ids
+  dela com as `Unidade` num `in_bulk`.
+- `@services/domain/autorizacao/contratos.py` (SPEC 004) → `SubarvoreDirigida`: o alcance declarado no
+  contrato da ação.
 - `@templates/user_admin/servidores_list.html` e `@templates/user_admin/unidade.html`: a área
   administrativa onde o organismo de menu é renderizado.
 - SPEC 006 → `.card-acao`, `.card-acao-nome`, `.card-acao-descricao`, `.icone-acao`: o cartão explicativo
@@ -112,6 +125,10 @@ ACAO_DEFINIR_ATRIBUICAO = instanciar_acao(
     # Quem a exerce é quem dirige a unidade: não passa por atribuição nem concessão, e é isso que
     # dispensa qualquer seed de bootstrap.
     estrutural=True,
+    # Onde ela pode incidir, e não só quem a exerce: o dirigente age sobre a própria unidade e sobre
+    # as de baixo. Declarado aqui, a proteção (SPEC 004) o cumpre sozinha — a view não repete a
+    # conferência, e a ação seguinte que precisar de alcance também não a reescreve.
+    alcance=SubarvoreDirigida(parametro="unidade"),
 )
 ```
 
@@ -130,40 +147,14 @@ MENU_ADMINISTRADOR = ContratoMenu(
 )
 ```
 
-**`services/domain/autorizacao/alcance.py`** — mesmo submódulo do avaliador (SPEC 003), não um novo.
-```python
-class ParUnidade(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    unidade_id: int
-    pai_id: int | None
-
-
-class ComandoAlcance(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    # As unidades DIRIGIDAS, não a de lotação: quem cobre o titular de outra unidade dirige aquela
-    # (SPEC user_admin/015), e pode dirigir duas ao mesmo tempo.
-    origens: frozenset[int]
-    pares: tuple[ParUnidade, ...]
-
-
-class AlcanceDeUnidades:
-    """As origens e tudo abaixo delas. Recebe os pares por DTO: a regra é testável sem banco, e a
-    árvore da DIMAP cabe numa consulta só."""
-
-    def __call__(self, comando: ComandoAlcance) -> frozenset[int]: ...
-```
-
-**`apps/competencias/views.py`** — duas barreiras distintas: o decorator barra quem não dirige, o
-domínio recusa unidade-alvo fora do alcance.
+**`apps/competencias/views.py`** — a view chega com competência e alvo já conferidos; o alcance só
+reaparece aqui para montar a lista de alvos oferecidos, que é UX, não barreira.
 ```python
 @acao_protegida(ACAO_DEFINIR_ATRIBUICAO)
 def definir_atribuicao(request: HttpRequest) -> HttpResponse:
-    # Sem esta validação um POST forjado atribuiria competência em ramo alheio: `has_perm` responde
-    # pela competência, não pelo alvo.
+    # Nenhuma conferência de alcance escrita aqui: o POST forjado com unidade de outro ramo já foi
+    # recusado pelo decorator, que leu o alcance do contrato da ação.
     comando = ComandoAtribuicao(
-        origens=unidades_dirigidas(request.user),
         unidade_alvo_id=request.POST["unidade"],
         acao_slug=request.POST["acao"],
     )
@@ -174,6 +165,33 @@ def definir_atribuicao(request: HttpRequest) -> HttpResponse:
         alvo_tipo="unidade_acao",
         alvo_identificador=f"{unidade.sigla}:{acao.slug}",
     )
+```
+
+**`apps/competencias/consulta.py`** — a mesma árvore que o decorator confere, aqui na forma que a tela
+desenha. Ao lado de `alcance_do_perfil` (SPEC 004), que a lê como conjunto.
+```python
+def alvos_oferecidos(perfil: Perfil) -> list[dict[str, Any]]:
+    """As unidades alcançadas na ordem do organograma, com a profundidade que o seletor indenta. O
+    conjunto de ids de `alcance_do_perfil` não serve aqui: ele não tem ordem nem nível, e o seletor
+    precisa dos dois."""
+    arvores = [posicao_de(dirigida).ego for dirigida in unidades_dirigidas(perfil)]
+    # Segunda consulta para casar id com Unidade, como no organograma da SPEC user_admin/018: sem
+    # ela o domínio precisaria conhecer `Unidade` para já devolver sigla e cor.
+    por_id = Unidade.objects.in_bulk(
+        frozenset(unidade_id for arvore in arvores for unidade_id in arvore.ids)
+    )
+    return [alvo for arvore in arvores for alvo in _achatar(arvore, por_id, profundidade=0)]
+
+
+def _achatar(
+    no: NoHierarquia,
+    por_id: Mapping[int, Unidade],
+    profundidade: int,
+) -> Iterator[dict[str, Any]]:
+    """Pré-ordem: a unidade antes do que pende dela, que é a ordem em que o organograma se lê."""
+    yield {"unidade": por_id[no.unidade_id], "profundidade": profundidade}
+    for filha in sorted(no.filhas, key=lambda filha: por_id[filha.unidade_id].sigla):
+        yield from _achatar(filha, por_id, profundidade + 1)
 ```
 
 **`apps/competencias/catalogo.py`** — o que o modal oferece.
@@ -190,16 +208,23 @@ regra existe para que um processo novo da DIMAP não engorde o núcleo, e estas 
 são a administração da própria competência, operam sobre os models desta SPEC e não existem sem eles.
 Custo: o app deixa de ser só infraestrutura de autorização e passa a ter view, template e tela.
 
-**A autorização acontece em dois lugares para o mesmo ato**: o decorator confere a competência, o
-domínio confere o alvo. `has_perm` responde pela unidade em que o perfil exerce e nada mais — alcançar
-as unidades abaixo é regra desta ação, não da decisão de acesso. Custo: quem lê a view precisa saber que
-passar pelo decorator não basta, e uma ação futura que esqueça a segunda barreira fica aberta a POST
-forjado com id de outro ramo.
+**A autorização continua acontecendo em duas conferências, agora as duas dentro do decorator**: a
+competência responde pela unidade em que o perfil exerce, o alcance responde por sobre qual unidade ele
+pode incidir. Declarar o alcance no contrato (SPEC 004) é o que impede que cada ação nova reescreva a
+segunda — e esqueça. Custo: quem lê a view não vê nenhuma das duas, e a barreira que a protege está no
+`acoes_declaradas.py`, longe daqui.
 
-**O alcance é calculado em Python, sobre todos os pares `(unidade, pai)` carregados numa consulta.**
-Manter a regra fora do ORM é o que a torna testável sem banco (§3.3), e o organograma da DIMAP é menor
-que o custo de uma recursão em SQL. Custo: a tela carrega o organograma inteiro a cada abertura, e isso
-deixa de ser barato se a árvore crescer para além da DIMAP.
+**A árvore é percorrida duas vezes por abertura de tela**: uma pelo decorator, para conferir o alvo, e
+outra pela view, para montar a lista de unidades oferecidas. Cachear a segunda exigiria carregar estado
+entre decorator e view, e o organograma da DIMAP é pequeno. Custo: cada uma das duas recarrega todos os
+pares uma vez por unidade dirigida — até quatro varreduras do organograma por requisição, já que
+dirigir duas unidades é o caso normal de quem cobre o titular de outra.
+
+**A mesma árvore é lida em duas formas, por duas funções**: `alcance_do_perfil` a reduz a um conjunto
+de ids, e `alvos_oferecidos` a achata na ordem do organograma. Uma só forma serviria mal aos dois — o
+conjunto não desenha o seletor, e a lista ordenada não responde pertinência em tempo constante. Custo:
+o que a barreira aceita e o que a tela oferece são calculados separadamente, e passam a divergir se
+uma das duas mudar de origem.
 
 **Quem dirige a raiz alcança o organograma inteiro.** O Secretário é titular da unidade-raiz, e a
 subárvore da raiz é tudo — o alcance máximo cai da mesma regra, sem exceção escrita para a alta
@@ -226,18 +251,19 @@ classe tem duas SPECs donas; quem implementar primeiro a leva ao tema e ao style
 em vez de reescrever — se a segunda estreitar a regra, a primeira quebra longe daqui.
 
 ## 8 · Testes (TDD)
-Carregam o marker `banco`, menos o do alcance, que é domínio puro e roda na suíte padrão.
+Todos carregam o marker `banco`.
 
-- `test_alcance_cobre_a_subarvore_e_para_no_ramo` — a partir das origens, devolve elas e todas as
-  descendentes; nunca a superior, a irmã ou outro ramo. Duas origens devolvem a união das duas
-  subárvores.
 - `test_tela_abre_para_quem_dirige_e_nega_o_resto` — o titular em exercício entra sem concessão nenhuma
   gravada, e o substituto dele entra enquanto ele está afastado; quem não dirige recebe 403 mesmo com
   concessão da ação. *(marker `banco`)*
+- `test_seletor_oferece_a_subarvore_na_ordem_do_organograma` — o seletor traz a unidade dirigida antes
+  das de baixo, cada uma com a profundidade dela; unidade de outro ramo e unidade acima não aparecem.
+  *(marker `banco`)*
 - `test_catalogo_oferece_so_o_que_falta` — a ação já atribuída e a inativa ficam fora da oferta; a
   estrutural que a unidade ainda não tem é oferecida. *(marker `banco`)*
 - `test_atribuir_recusa_unidade_fora_do_alcance` — POST com unidade existente mas de outro ramo é
-  recusado mesmo com id válido. *(marker `banco`)*
+  recusado mesmo com id válido, sem a view conferir nada: é a declaração do contrato chegando à rota.
+  *(marker `banco`)*
 - `test_remover_com_concessoes_exige_confirmacao` — sem confirmação nada é apagado; confirmada, a
   atribuição e as concessões dependentes somem juntas. *(marker `banco`)*
 - `test_atribuir_e_remover_ficam_registrados_com_alvo` — as duas operações geram execução registrada

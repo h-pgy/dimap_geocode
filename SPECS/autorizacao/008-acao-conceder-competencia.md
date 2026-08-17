@@ -1,7 +1,7 @@
 ---
 spec: autorizacao/008
-versao: v6
-atualizado_em: 2026-08-14
+versao: v8
+atualizado_em: 2026-08-17
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -20,6 +20,10 @@ changelog:
   - v6: o seletor de duas posições passa a se chamar `.seletor-onsen` — `.toggle-onsen` já é o
     interruptor da SPEC user_admin/015, no tema desde então —, a origem do alcance passa a ser as
     unidades dirigidas, e a SPEC foi reescrita no formato de seções numeradas da skill `specs`
+  - v7: o alcance passa a ser declarado no contrato da ação e conferido pela proteção (SPEC 004); a
+    view perde a conferência escrita à mão e a atribuição-alvo continua conferida contra a unidade
+  - v8: o seletor de unidades passa a vir de `alvos_oferecidos` (SPEC 007), e o poço de atribuições
+    fica explicitamente restrito à unidade-alvo escolhida
 ---
 
 # SPEC autorizacao/008 — Conceder competência: distribuir entre os cargos o que a unidade tem
@@ -32,8 +36,11 @@ ter — comece a trabalhar sem depender de alteração em código ou no banco.
 ## 2 · Condições de pronto
 - [ ] Quem abre a tela é **quem responde pela direção** da unidade — o titular em exercício ou o
       substituto vigente dele —, sem depender de concessão gravada desta ação.
-- [ ] A tela lista as atribuições da **unidade-alvo**, que é uma das que o perfil **dirige** ou uma
-      **abaixo dela** no organograma; unidade fora desse alcance é recusada mesmo vindo no request.
+- [ ] A tela lista as atribuições **da unidade-alvo escolhida**, e só dela — as das outras unidades
+      alcançadas não entram no mesmo poço.
+- [ ] O seletor oferece as unidades que o perfil **dirige** e as que estão **abaixo delas** no
+      organograma, na **ordem do organograma e com a subordinação visível**; unidade fora desse alcance
+      é recusada mesmo vindo no request.
 - [ ] Conceder e revogar acontecem **sem recarregar a página**, trocando só o trecho afetado.
 - [ ] A escolha do cargo distingue explicitamente **cargo base** de **cargo em comissão**, e só um dos
       dois é concedido por vez.
@@ -57,12 +64,12 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - [`AtribuicaoUnidade` e `Concessao`](002-competencia-no-banco.md) — "o que esta unidade exerce, e quais
   cargos já a exercem?"; a tela cria e revoga concessão, e não toca a atribuição.
 - [`has_perm`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil exerce esta ação estrutural?".
-- [`Caneta`](003-avaliador-e-backend-de-autorizacao.md) — "quais unidades este perfil dirige
-  hoje?", que é de onde o alcance parte.
-- [`AlcanceDeUnidades`](007-acao-definir-atribuicao.md) — "a unidade-alvo está na subárvore que ele
-  dirige?", a mesma regra da SPEC 007, sem segunda cópia.
-- [`acao_protegida` e `registrar_ato`](004-protecao-de-rota-e-registro-de-execucao.md) — a rota protegida
-  e o rastro dos dois atos.
+- [`SubarvoreDirigida`](004-protecao-de-rota-e-registro-de-execucao.md) — "até onde o alvo desta ação
+  pode chegar?", declarado no contrato dela, como na SPEC 007.
+- [`alvos_oferecidos`](007-acao-definir-atribuicao.md) — "que unidades o seletor oferece, em que ordem
+  e a que profundidade?"; a subárvore alcançada já sai achatada dali, como na tela da SPEC 007.
+- [`acao_protegida` e `registrar_ato`](004-protecao-de-rota-e-registro-de-execucao.md) — a rota
+  protegida, o alvo conferido contra o alcance e o rastro dos dois atos.
 - [`MENU_ADMINISTRADOR`](007-acao-definir-atribuicao.md) — o menu que **pinça** também esta ação.
 - `CargoBase` e `CargoComissao` — os dois catálogos oferecidos no campo.
 
@@ -82,9 +89,10 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - `@apps/competencias/protecao.py` (SPEC 004) → `acao_protegida` e `registrar_ato`.
 - `@apps/competencias/menus.py` (SPEC 005) → `ItemDeMenu` e `ContratoMenu`; e
   `@apps/competencias/menus_declarados.py` (SPEC 007) → `MENU_ADMINISTRADOR`.
-- `@services/domain/autorizacao/alcance.py` (SPEC 007) → `AlcanceDeUnidades`, `ComandoAlcance`,
-  `ParUnidade`.
-- `@apps/competencias/consulta.py` (SPEC 003) → `canetas_do_perfil`.
+- `@services/domain/autorizacao/contratos.py` (SPEC 004) → `SubarvoreDirigida`: o alcance declarado no
+  contrato da ação.
+- `@apps/competencias/consulta.py` (SPEC 007) → `alvos_oferecidos`: a subárvore alcançada, já casada com
+  as `Unidade` e achatada na ordem do organograma.
 - `@apps/user_admin/models` → `CargoBase`, `CargoComissao`: catálogo oferecido no campo.
 - SPEC 006 → `.icone-acao`, e SPEC 007 → `.card-atribuicao`: a peça é a mesma, aqui com a faixa de chips.
 - `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel`, `.glass-panel-thick`, `.modal-glass` +
@@ -108,17 +116,20 @@ ACAO_CONCEDER = instanciar_acao(
     # Distribuir é atributo de quem dirige: liberada pela direção da unidade, não por concessão —
     # senão conceder `competencias.conceder` exigiria alguém que já a exercesse.
     estrutural=True,
+    # Mesmo alcance da SPEC 007, pela mesma declaração: quem dirige distribui na própria unidade e
+    # nas de baixo. A conferência é da proteção (SPEC 004), não desta view.
+    alcance=SubarvoreDirigida(parametro="unidade"),
 )
 ```
 
-**`apps/competencias/views.py`** — dois cercos, e o de baixo não depende do de cima.
+**`apps/competencias/views.py`** — o cerco que sobra para a view, porque o decorator não tem como fazê-lo.
 ```python
 @acao_protegida(ACAO_CONCEDER)
 def conceder(request: HttpRequest) -> HttpResponse:
-    # A unidade-alvo é validada contra a subárvore dirigida; a atribuição, contra a unidade-alvo.
-    # Sem o segundo, um id de atribuição de outro ramo passaria pelo primeiro.
+    # A unidade-alvo já foi conferida contra o alcance pelo decorator. A atribuição, não: ela é
+    # entidade desta ação, e um id de atribuição de outro ramo passaria pela primeira conferência
+    # sem esbarrar em nada.
     comando = ComandoConcessao(
-        origens=unidades_dirigidas(request.user),
         unidade_alvo_id=request.POST["unidade"],
         atribuicao_id=request.POST["atribuicao"],
         cargo_base_id=request.POST.get("cargo_base"),
@@ -175,10 +186,16 @@ esconderia o XOR da SPEC 002, e o `select_onsen.js` não trata `optgroup` — ne
 Custo: são dois campos onde a interface poderia ter um, e o formulário carrega os dois catálogos mesmo
 quando só um será usado.
 
-**O alcance é a mesma regra da SPEC 007, importada dela.** A unidade sem titular — e a sem direção —
-ficaria com atribuições e ninguém para distribuí-las se a tela lesse só a unidade do perfil, e quem
-dirige o nível acima já a alcança para atribuir. Custo: as duas telas passam a depender da mesma peça de
-domínio, e mudar o alcance muda as duas de uma vez.
+**O alcance é o mesmo da SPEC 007, declarado do mesmo jeito no contrato desta ação.** A unidade sem
+titular — e a sem direção — ficaria com atribuições e ninguém para distribuí-las se a tela lesse só a
+unidade do perfil, e quem dirige o nível acima já a alcança para atribuir. Custo: as duas ações repetem
+a mesma linha de declaração, e mudar o alcance de uma não muda o da outra — a repetição é visível, mas
+nada obriga as duas a andarem juntas.
+
+**A atribuição-alvo continua conferida dentro da view.** O decorator confere unidade, que é o alvo que
+toda ação com alcance compartilha; a atribuição é entidade desta ação, e ensiná-la ao decorator faria a
+proteção conhecer os models de cada ação que ela protege. Custo: esta view tem uma barreira própria que
+o contrato não declara, e é a que um refactor descuidado apaga sem o `has_perm` reclamar.
 
 **Quem dirige distribui para qualquer cargo dentro do alcance**, inclusive cargos que não ocupa e ações
 que não exerce. A competência é da unidade, e distribuí-la é atribuição de quem responde por ela. Custo:
@@ -199,9 +216,11 @@ pode estreitar a primeira, e nada além da revisão impede isso.
 ## 8 · Testes (TDD)
 Todos exercitam a view com dados gravados e carregam o marker `banco`.
 
-- `test_tela_abre_para_quem_dirige_e_lista_a_subarvore` — o titular em exercício entra sem concessão
-  gravada, e o substituto dele entra enquanto ele está afastado; os dois veem as atribuições da unidade
-  dirigida e das de baixo, e a da unidade superior não aparece. *(marker `banco`)*
+- `test_tela_abre_para_quem_dirige` — o titular em exercício entra sem concessão gravada, e o substituto
+  dele entra enquanto ele está afastado; quem não dirige recebe 403. *(marker `banco`)*
+- `test_poco_traz_so_as_atribuicoes_da_unidade_escolhida` — o poço lista as atribuições da unidade-alvo
+  e nenhuma das outras alcançadas; o seletor, esse sim, oferece a subárvore dirigida na ordem do
+  organograma, e a unidade superior não aparece nele. *(marker `banco`)*
 - `test_concessao_recusa_unidade_fora_do_alcance` — POST com unidade de outro ramo é recusado mesmo com
   id válido. *(marker `banco`)*
 - `test_concessao_recusa_atribuicao_de_outra_unidade` — atribuição existente mas de unidade não alcançada

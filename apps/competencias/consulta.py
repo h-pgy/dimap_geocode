@@ -70,7 +70,7 @@ def dirige(perfil: Perfil, unidade: Unidade) -> bool:
 
 def unidades_dirigidas(perfil: Perfil) -> frozenset[int]:
     """As unidades das canetas que dirigem — pode ser mais de uma, quando alguém cobre o titular de
-    outra unidade. É daqui que a SPEC 007 parte para calcular o alcance."""
+    outra unidade. É daqui que a SPEC 004 parte para calcular o alcance."""
     return frozenset(
         caneta.unidade_id for caneta in canetas_do_perfil(perfil) if caneta.dirige_a_unidade
     )

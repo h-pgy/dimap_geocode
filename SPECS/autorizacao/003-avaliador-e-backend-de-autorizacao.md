@@ -1,7 +1,7 @@
 ---
 spec: autorizacao/003
-versao: v9
-atualizado_em: 2026-08-14
+versao: v10
+atualizado_em: 2026-08-17
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
@@ -28,6 +28,8 @@ changelog:
     pode ser concedida a outros cargos, pela mesma regra das demais; e a unidade × cargo de onde se
     exerce competência passa a se chamar **caneta**
   - v8: testes TDD escritos e falhando (§8) — avaliador e backend seguem por implementar
+  - v10: sem mudança de código — o alcance de quem dirige passa a ser declarado no contrato da ação
+    e conferido pela proteção (SPEC 004), e os ponteiros daqui apontavam para a SPEC 007
 ---
 
 # SPEC autorizacao/003 — Avaliador de competência e backend de autorização
@@ -109,8 +111,8 @@ pré-condição das duas. Nada mais no sistema precisa saber que são duas.
 - Contrato de menu e router — SPEC 005.
 - Oferecer a ação estrutural no catálogo de atribuição da unidade, para que ela possa ser concedida —
   SPEC 007.
-- Alcance de quem dirige sobre as unidades **abaixo** — regra de domínio de cada ação (SPEC 007), não
-  da decisão de acesso.
+- Alcance de quem dirige sobre as unidades **abaixo** — declarado no contrato de cada ação e conferido
+  pela proteção da rota (SPEC 004), não pela decisão de acesso.
 - Autorização dependente do objeto: a assinatura recebe `obj` porque o Django a define assim, e esta
   SPEC a ignora — sem dono ainda.
 - Gravar exercício, impedimento e substituição, e decidir quem dirige a unidade — SPECs
@@ -252,7 +254,7 @@ def dirige(perfil: Perfil, unidade: Unidade) -> bool:
 
 def unidades_dirigidas(perfil: Perfil) -> frozenset[int]:
     """As unidades das canetas que dirigem — pode ser mais de uma, quando alguém cobre o titular de
-    outra unidade. É daqui que a SPEC 007 parte para calcular o alcance."""
+    outra unidade. É daqui que a SPEC 004 parte para calcular o alcance."""
     ...
 ```
 
