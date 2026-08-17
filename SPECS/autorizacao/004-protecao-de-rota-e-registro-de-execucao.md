@@ -3,7 +3,7 @@ spec: autorizacao/004
 versao: v8
 atualizado_em: 2026-08-17
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial

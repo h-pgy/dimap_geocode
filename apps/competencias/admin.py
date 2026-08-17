@@ -7,7 +7,7 @@ criação aqui — o admin só existe para conferir o que já está no banco.
 from django.contrib import admin
 from django.http import HttpRequest
 
-from .models import Acao, AtribuicaoUnidade, Concessao
+from .models import Acao, AtribuicaoUnidade, Concessao, ExecucaoAcao
 
 
 class SomenteLeituraAdmin(admin.ModelAdmin):
@@ -40,3 +40,12 @@ class AtribuicaoUnidadeAdmin(SomenteLeituraAdmin):
 class ConcessaoAdmin(SomenteLeituraAdmin):
     list_display = ["atribuicao", "cargo_base", "cargo_comissao", "concedida_por", "concedida_em"]
     list_filter = ["cargo_base", "cargo_comissao"]
+
+
+@admin.register(ExecucaoAcao)
+class ExecucaoAcaoAdmin(SomenteLeituraAdmin):
+    """Consulta do histórico de atos — sem tela própria ainda (SPEC autorizacao/004, §4)."""
+
+    list_display = ["acao", "perfil", "unidade", "operacao", "autorizado", "momento"]
+    list_filter = ["acao", "unidade", "autorizado"]
+    search_fields = ["alvo_identificador"]

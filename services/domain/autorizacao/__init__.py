@@ -6,6 +6,8 @@ from .contratos import (
     LIMITE_TOOLTIP,
     PADRAO_SLUG,
     Acao,
+    TipoAlcance,
+    UnidadesSubordinadas,
     VarianteIcone,
 )
 from .models import (
@@ -29,6 +31,8 @@ __all__ = [
     "Caneta",
     "ConcessaoVigente",
     "PerfilCompetencia",
+    "TipoAlcance",
+    "UnidadesSubordinadas",
     "VarianteIcone",
     "avaliar_competencia",
 ]

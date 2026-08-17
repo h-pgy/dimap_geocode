@@ -6,6 +6,7 @@ custo fixo, independente de quantas ações serão perguntadas depois (SPEC auto
 
 from apps.competencias.models import Concessao
 from apps.competencias.registro import REGISTRO
+from apps.user_admin.consulta import posicao_de
 from apps.user_admin.context import _estado_da_direcao
 from apps.user_admin.exercicio import substituicao_que_exerce, substituicao_vigente
 from apps.user_admin.models import Perfil, Unidade
@@ -82,6 +83,20 @@ def _caneta_de(quem_exerce: Perfil, dono_do_cargo: Perfil) -> Caneta:
         cargo_base_id=dono_do_cargo.cargo_base_id,
         cargo_comissao_id=dono_do_cargo.cargo_comissao_id,
         dirige_a_unidade=dirige(quem_exerce, dono_do_cargo.unidade),
+    )
+
+
+def alcance_do_perfil(perfil: Perfil) -> frozenset[int]:
+    """"Unidades subordinadas" não é conceito, é esta composição: cada unidade que o perfil dirige
+    perguntada à árvore hierárquica (SPEC user_admin/018).
+
+    A regra de lá responde por uma unidade só; dirigir duas é dirigir dois ramos, e o alcance é a
+    união deles — a unidade que aparece nos dois entra uma vez, porque o resultado é conjunto.
+    """
+    return frozenset(
+        alcancada
+        for dirigida in unidades_dirigidas(perfil)
+        for alcancada in posicao_de(dirigida).ego.ids
     )
 
 

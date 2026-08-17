@@ -365,7 +365,11 @@ def test_leitura_autorizada_nao_vira_registro() -> None:
     cargo = _cargo_base()
     autorizado = _perfil(unidade, "900806", "Autorizado", cargo_base=cargo)
     _conceder(unidade, SLUG_SIMPLES, cargo_base=cargo)
-    negado = _perfil(unidade, "900807", "Negado")
+    # Cargo distinto: o default de _perfil() reusaria o MESMO CargoBase de `autorizado`
+    # (_cargo_base() é get_or_create por nome+sigla fixos) e concederia a ele por acidente.
+    negado = _perfil(
+        unidade, "900807", "Negado", cargo_base=_cargo_base(nome="Outro Cargo", sigla="OUTR")
+    )
 
     resposta = _chamar(_view_simples, _get(_fresco(autorizado)))
     assert resposta.status_code == 200
