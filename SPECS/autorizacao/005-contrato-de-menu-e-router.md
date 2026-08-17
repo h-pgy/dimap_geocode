@@ -1,8 +1,8 @@
 ---
 spec: autorizacao/005
-versao: v3
-atualizado_em: 2026-08-14
-testes_tdd: false
+versao: v5
+atualizado_em: 2026-08-17
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
@@ -12,6 +12,11 @@ changelog:
     recebe os slugs do registro em código
   - v3: sem mudança de escopo — a SPEC foi reescrita no formato de seções numeradas da skill
     `specs`, com a justificativa toda concentrada em Caveats
+  - v4: o campo `ItemDeMenu.acao` passa a se chamar `acao_implementada` — o tipo já é
+    `AcaoImplementada`, e o nome curto escondia que `.acao.acao` atravessa duas camadas
+    (envelope → contrato)
+  - v5: testes da §8 escritos (`tests/apps/competencias/test_menus.py` e `test_resolucao.py`) e
+    falhando por ausência dos módulos — `testes_tdd: true`
 ---
 
 # SPEC autorizacao/005 — Contrato de menu e router de ações
@@ -49,7 +54,8 @@ class ItemDeMenu(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    acao: AcaoImplementada
+    # Nome não é "acao": o valor é o envelope de implementação, não o contrato (SPEC 001).
+    acao_implementada: AcaoImplementada
     # Entre as que a ação declara possuir: pedir uma que ela não tem é erro de declaração.
     variante_icone: VarianteIcone
     # Linha compacta ou cartão explicativo (SPEC 006): também é escolha de quem exibe.
@@ -100,7 +106,7 @@ class ItemDeMenu(BaseModel):
     def _variante_declarada(self) -> "ItemDeMenu":
         # O fallback da SPEC 006 existe para arquivo faltando em runtime, não para esconder erro de
         # declaração. Como o item já compõe a ação, a checagem é local — dispensa system check.
-        if self.variante_icone not in self.acao.acao.variantes_icone:
+        if self.variante_icone not in self.acao_implementada.acao.variantes_icone:
             raise ValueError(...)
         return self
 ```
@@ -145,7 +151,7 @@ class RoteadorMenu:
             itens=tuple(
                 self._renderizavel(item)
                 for item in montagem.menu.itens
-                if item.acao.acao.slug in montagem.slugs_liberados
+                if item.acao_implementada.acao.slug in montagem.slugs_liberados
             ),
         )
 

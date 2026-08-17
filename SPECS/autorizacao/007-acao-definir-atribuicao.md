@@ -1,6 +1,6 @@
 ---
 spec: autorizacao/007
-versao: v8
+versao: v9
 atualizado_em: 2026-08-17
 testes_tdd: false
 implementado: false
@@ -25,6 +25,7 @@ changelog:
     regra da subárvore sai desta SPEC para a `user_admin/018` e a view perde a conferência à mão
   - v8: a lista de alvos oferecidos passa a sair da árvore hierárquica em `alvos_oferecidos`, com a
     subordinação visível no seletor, e `alcance_do_perfil` fica só como a barreira do decorator
+  - v9: acompanha o rename de `ItemDeMenu.acao` para `acao_implementada` na SPEC 005 v4
 ---
 
 # SPEC autorizacao/007 — Definir atribuição: a competência da unidade, e a primeira ação do registro
@@ -139,7 +140,7 @@ MENU_ADMINISTRADOR = ContratoMenu(
     nome="Administração",
     itens=(
         ItemDeMenu(
-            acao=ACAO_DEFINIR_ATRIBUICAO,
+            acao_implementada=ACAO_DEFINIR_ATRIBUICAO,
             variante_icone=VarianteIcone.PEQUENO,
             forma=FormaItem.LINHA,
         ),
