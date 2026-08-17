@@ -1096,6 +1096,50 @@
           <p class="text-xs text-base-content/60">Prazo indeterminado: a calha <strong>não termina, se dissolve</strong> (<span class="text-code">.calha-cobertura-aberta</span>) — desenhar um fim mentiria sobre um fim que não existe.</p>
         </div>
       </div>
+
+      <!-- Card da unidade no organograma (SPEC user_admin/018) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <div>
+          <p class="text-overline">Card da unidade (<span class="text-code">.card-unidade</span>)</p>
+          <p class="text-sm text-base-content/70 mt-1">Largura fixa: é ela que faz as barras do organograma casarem com o centro dos cards. <strong>Percorrido = escavado</strong> (<span class="text-code">.card-unidade-poco</span>) — mesma língua do <span class="text-code">.scroll-etched</span>, numa escala menor que o <span class="text-code">.card-well</span> não alcança. O <strong>ego</strong> é o mesmo sulco, aceso.</p>
+        </div>
+        <div class="card-well p-5 flex flex-wrap items-start gap-6">
+          <div class="flex flex-col items-center gap-2">
+            <div class="card-unidade card-unidade-repouso glass-panel">
+              <span class="card-unidade-gatilho">
+                <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                <span class="card-unidade-sigla">DICAD</span>
+              </span>
+            </div>
+            <p class="text-[11px] text-base-content/60">simples · repouso</p>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <div class="card-unidade card-unidade-poco">
+              <span class="card-unidade-gatilho">
+                <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                <span class="card-unidade-sigla">DECAD</span>
+              </span>
+              <a class="card-unidade-pagina block!" href="#" title="Abrir a página de DECAD">
+                <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5"/><path d="M13.4 10.6a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5"/></svg>
+              </a>
+            </div>
+            <p class="text-[11px] text-base-content/60">no caminho</p>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <div class="card-unidade card-unidade-poco card-unidade-ego">
+              <span class="card-unidade-gatilho">
+                <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                <span class="card-unidade-sigla">DIMAP</span>
+                <span class="card-unidade-nome block!">Divisão do Mapa de Valores</span>
+              </span>
+              <a class="card-unidade-pagina block!" href="#" title="Abrir a página de DIMAP">
+                <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5"/><path d="M13.4 10.6a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5"/></svg>
+              </a>
+            </div>
+            <p class="text-[11px] text-base-content/60">ego · detalhado</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 4. ORGANISMOS ============ -->
@@ -1435,6 +1479,95 @@
             </div>
           </div>
           <p class="form-field-hint">O corpo separa as linhas <strong>em luz</strong> (aresta branca), não tem zebra — alternar opacidade sobre translúcido deixaria o mapa aparecer em faixas — e o hover <strong>acende</strong> o gelo sem mudar de cor.</p>
+        </div>
+      </div>
+
+      <!-- Organograma (SPEC user_admin/018) -->
+      <div class="flex flex-col gap-2">
+        <p class="text-overline px-2">Organograma (<span class="text-code">.organograma</span> · <span class="text-code">.no-arvore</span>)</p>
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+          <p class="text-sm text-base-content/70">O organograma inteiro chega pronto do servidor, com o <strong>caminho</strong> e o <strong>ego</strong> já marcados nas classes de estado; abrir, fechar e chamar as irmãs é <span class="text-code">static/src/js/ui/arvore_hierarquica.js</span> — estado visual do controle, nunca dado de domínio. O partial <span class="text-code">user_admin/partials/_no_arvore.html</span> se inclui a si mesmo por nível.</p>
+          <div class="card-well p-5">
+            <div class="glass-panel rounded-2xl overflow-x-auto">
+              <div class="organograma">
+                <div class="no-arvore no-arvore-caminho no-arvore-aberto">
+                  <div class="card-unidade card-unidade-poco">
+                    <button class="card-unidade-gatilho" type="button" title="DECAD · Departamento de Cadastros">
+                      <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                      <span class="card-unidade-sigla">DECAD</span>
+                      <span class="card-unidade-nome">Departamento de Cadastros</span>
+                    </button>
+                    <a class="card-unidade-pagina" href="#" title="Abrir a página de DECAD"><svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5"/><path d="M13.4 10.6a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5"/></svg></a>
+                  </div>
+                  <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                  <div class="no-arvore-filhas">
+                    <div class="no-arvore no-arvore-primeiro no-arvore-ego no-arvore-aberto">
+                      <span class="etched-line no-arvore-barra"></span>
+                      <span class="etched-line no-arvore-fio"></span>
+                      <div class="card-unidade card-unidade-poco card-unidade-ego">
+                        <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão do Mapa de Valores">
+                          <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                          <span class="card-unidade-sigla">DIMAP</span>
+                          <span class="card-unidade-nome">Divisão do Mapa de Valores</span>
+                        </button>
+                        <a class="card-unidade-pagina" href="#" title="Abrir a página de DIMAP"><svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5"/><path d="M13.4 10.6a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5"/></svg></a>
+                      </div>
+                      <button class="no-arvore-irmas etched-deeper" type="button" title="Mostrar as unidades irmãs">&rsaquo;</button>
+                      <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                      <div class="no-arvore-filhas">
+                        <div class="no-arvore no-arvore-primeiro">
+                          <span class="etched-line no-arvore-barra"></span>
+                          <span class="etched-line no-arvore-fio"></span>
+                          <div class="card-unidade card-unidade-repouso glass-panel">
+                            <button class="card-unidade-gatilho" type="button" title="DIMAP-1 · Setor de Avaliações">
+                              <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                              <span class="card-unidade-sigla">DIMAP-1</span>
+                              <span class="card-unidade-nome">Setor de Avaliações</span>
+                            </button>
+                            <a class="card-unidade-pagina" href="#" title="Abrir a página de DIMAP-1"><svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5"/><path d="M13.4 10.6a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5"/></svg></a>
+                          </div>
+                          <button class="no-arvore-irmas etched-deeper" type="button" title="Mostrar as unidades irmãs">&rsaquo;</button>
+                          <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                          <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                        </div>
+                        <div class="no-arvore no-arvore-ultimo">
+                          <span class="etched-line no-arvore-barra"></span>
+                          <span class="etched-line no-arvore-fio"></span>
+                          <div class="card-unidade card-unidade-repouso glass-panel">
+                            <button class="card-unidade-gatilho" type="button" title="DIMAP-2 · Setor de Cadastro Territorial">
+                              <span class="dot-unidade w-9 h-9" style="--cor-unidade:#bc3a67"></span>
+                              <span class="card-unidade-sigla">DIMAP-2</span>
+                              <span class="card-unidade-nome">Setor de Cadastro Territorial</span>
+                            </button>
+                            <a class="card-unidade-pagina" href="#" title="Abrir a página de DIMAP-2"><svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5"/><path d="M13.4 10.6a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5"/></svg></a>
+                          </div>
+                          <button class="no-arvore-irmas etched-deeper" type="button" title="Mostrar as unidades irmãs">&rsaquo;</button>
+                          <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                          <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="no-arvore no-arvore-ultimo">
+                      <span class="etched-line no-arvore-barra"></span>
+                      <span class="etched-line no-arvore-fio"></span>
+                      <div class="card-unidade card-unidade-repouso glass-panel">
+                        <button class="card-unidade-gatilho" type="button" title="DICAD · Divisão de Cadastro Imobiliário">
+                          <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                          <span class="card-unidade-sigla">DICAD</span>
+                          <span class="card-unidade-nome">Divisão de Cadastro Imobiliário</span>
+                        </button>
+                        <a class="card-unidade-pagina" href="#" title="Abrir a página de DICAD"><svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5"/><path d="M13.4 10.6a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5"/></svg></a>
+                      </div>
+                      <button class="no-arvore-irmas etched-deeper" type="button" title="Mostrar as unidades irmãs">&rsaquo;</button>
+                      <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                      <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="form-field-hint">Ego aberto, uma folha sem subordinadas (<span class="text-code">.no-arvore-vazio</span>) e a seta que chama as irmãs do nível de cima (<span class="text-code">.no-arvore-irmas</span>), na ponta da aresta.</p>
         </div>
       </div>
 

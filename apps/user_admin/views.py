@@ -20,6 +20,7 @@ from apps.user_admin.context import (
     contexto_criar_unidade,
     contexto_listagem_servidores,
     contexto_modal_perfil,
+    contexto_organograma,
     contexto_pagina_perfil,
     contexto_unidade,
 )
@@ -34,6 +35,7 @@ TEMPLATE_PAGINA_UNIDADE = "user_admin/unidade.html"
 TEMPLATE_CAMPO_COR = "user_admin/partials/_campo_cor_unidade.html"
 TEMPLATE_LISTAGEM = "user_admin/servidores_list.html"
 TEMPLATE_CORPO_SERVIDORES = "user_admin/partials/_corpo_servidores.html"
+TEMPLATE_ARVORE = "user_admin/arvore_unidades.html"
 
 
 def listar_servidores(request: HttpRequest) -> HttpResponse:
@@ -81,3 +83,9 @@ def cor_sugerida_unidade(request: HttpRequest) -> HttpResponse:
 def pagina_unidade(request: HttpRequest, pk: int) -> HttpResponse:
     unidade = get_object_or_404(Unidade.objects.select_related("tipo", "pai"), pk=pk)
     return render(request, TEMPLATE_PAGINA_UNIDADE, contexto_unidade(unidade))
+
+
+def arvore_de_unidades(request: HttpRequest) -> HttpResponse:
+    """Rota de leitura, como a página da unidade. Sem unidade em foco: a página do organograma
+    abre no topo."""
+    return render(request, TEMPLATE_ARVORE, contexto_organograma(None))

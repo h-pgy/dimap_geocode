@@ -15,6 +15,7 @@
         {% include "user_admin/partials/_identidade_unidade.html" %}
         {% include "user_admin/partials/_secao_resumo_unidade.html" %}
         {% include "user_admin/partials/_secao_direcao.html" %}
+        {% include "user_admin/partials/_secao_hierarquia.html" %}
 
         <div class="flex justify-center pt-2">
           <label for="modal-editar-unidade" class="btn btn-onsen btn-lg gap-2">
@@ -40,4 +41,7 @@
   <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
   {# Sem este módulo os selects seguem nativos: marcar o campo não carrega o componente #}
   <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+  {# Percorrer o organograma é estado visual do controle — sem este módulo a árvore fica no estado #}
+  {# que o servidor entregou (SPEC user_admin/018 §7).                                             #}
+  <script type="module" src="{% static 'js/ui/arvore_hierarquica.js' %}"></script>
 {% endblock %}

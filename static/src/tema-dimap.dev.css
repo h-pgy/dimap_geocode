@@ -700,6 +700,91 @@ html[data-theme="dimap"] {
      perceber diferença de tom no fio. */
   .calha-marca-vazia { @apply text-warning; }
 
+  /* Card da unidade no organograma (SPEC user_admin/018): largura fixa, porque é ela que faz as
+     barras do organograma casarem com o centro dos cards. */
+  .card-unidade {
+    @apply relative flex flex-col items-center gap-1.5 w-24 shrink-0 px-2 py-2.5 rounded-2xl text-center transition-all duration-300;
+  }
+  /* Em repouso o card é placa de gelo — o .glass-panel do tema, composto no HTML. O que muda aqui é
+     só o acender sob o cursor: a placa tem gradiente, então quem levanta a luz é o brilho, não uma
+     cor de fundo por cima. */
+  .card-unidade-repouso:hover { @apply brightness-[1.06] border-agua-500/40; }
+  /* Percorrido = escavado. O .card-well é calibrado para superfície de seção; num card de 6rem o
+     sulco só se lê na profundidade do trilho do .scroll-etched — mesma língua, outra escala: tinta
+     escura por dentro e o fio de luz na aresta de baixo. */
+  .card-unidade-poco {
+    @apply border border-white/45 bg-rocha-900/10 shadow-[inset_0_2px_7px_rgba(7,58,84,0.32),inset_0_-1px_0_rgba(255,255,255,0.75)];
+  }
+  /* O ego é o mesmo sulco, ACESO: a aresta enche de água e o gelo brilha em volta. O brilho é
+     também a afordância do segundo caminho — no ego, a chapa inteira abre a página. */
+  .card-unidade-ego {
+    @apply border-agua-500/70 shadow-[inset_0_2px_7px_rgba(7,58,84,0.32),inset_0_-1px_0_rgba(255,255,255,0.75),0_0_22px_rgba(72,202,228,0.5)];
+  }
+  .card-unidade-ego:hover {
+    @apply shadow-[inset_0_2px_7px_rgba(7,58,84,0.32),inset_0_-1px_0_rgba(255,255,255,0.75),0_0_30px_rgba(72,202,228,0.75)];
+  }
+  .card-unidade-ego .card-unidade-sigla { @apply text-agua-700; }
+  .card-unidade-gatilho { @apply flex flex-col items-center gap-1.5 w-full rounded-xl cursor-pointer; }
+  .card-unidade-gatilho:focus-visible { @apply outline-none shadow-[0_0_0_3px_rgba(0,150,199,0.2)]; }
+  .card-unidade-sigla { @apply text-[13px] font-bold leading-tight text-madeira-700 break-words transition-colors duration-300; }
+  /* Versão detalhada: o nome inteiro, que na versão simples só existe no tooltip. */
+  .card-unidade-nome { @apply hidden text-[11px] leading-snug text-base-content/65; }
+  /* Segundo caminho: o elo abaixo da sigla, em todo card escavado — quem está no caminho também se
+     abre. A chapa inteira como link era caminho invisível; ninguém achava. */
+  .card-unidade-pagina { @apply hidden p-0.5 rounded-full cursor-pointer transition-transform duration-300; }
+  .card-unidade-pagina:hover { @apply scale-125; }
+  /* Chamar as irmãs: a seta nasce NA PONTA da aresta que vai para elas, apontando para fora. Gira
+     no hover — é o giro que diz que ela abre alguma coisa. */
+  .no-arvore-irmas {
+    @apply hidden absolute -top-[7px] right-0 z-20 px-1 text-[15px] leading-none font-bold cursor-pointer transition-transform duration-300;
+  }
+  /* Na última irmã a aresta corre para o outro lado, e a seta acompanha, espelhada. */
+  .no-arvore-ultimo > .no-arvore-irmas { @apply right-auto left-0 scale-x-[-1]; }
+  .no-arvore-irmas:hover {
+    @apply rotate-45;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .no-arvore-ultimo > .no-arvore-irmas:hover { @apply -rotate-45; }
+
+  /* Organograma (SPEC user_admin/018): uma coluna por unidade — o que está acima e o que está
+     abaixo se lê no eixo Y, e as irmãs ficam lado a lado no eixo X. */
+  .no-arvore { @apply relative flex flex-col items-center shrink-0 px-1.5; }
+  /* Fio vertical entre o card e a barra do nível: só medida — o material é o .etched-line. */
+  .no-arvore-fio { @apply w-[3px] h-4 shrink-0; }
+  /* A barra de cada coluna encosta na da vizinha e forma a linha do nível; nas pontas ela para no
+     centro do card, e a coluna filha única fica com barra de largura zero. */
+  .no-arvore-barra { @apply absolute top-0 left-0 right-0 h-[3px]; }
+  .no-arvore-primeiro > .no-arvore-barra { @apply left-1/2; }
+  .no-arvore-ultimo > .no-arvore-barra { @apply right-1/2; }
+  /* Sem gap: o afastamento entre irmãs é padding da coluna, senão a linha do nível se parte. */
+  .no-arvore-filhas { @apply hidden items-start justify-center; }
+  .no-arvore-desce { @apply hidden; }
+  .no-arvore-vazio { @apply hidden w-24 pt-3 text-[11px] leading-snug text-center text-base-content/60; }
+  /* O organograma repousa numa PLACA, nunca num poço: poço dentro de poço perde o degrau, e é o
+     degrau que faz o caminho escavado se ler. */
+  .organograma { @apply flex justify-center min-w-max py-3 px-3; }
+
+  /* Desce um nível quem está no caminho (só o filho do caminho) e quem está aberto (a linha inteira
+     de filhas). */
+  .no-arvore-caminho > .no-arvore-desce,
+  .no-arvore-aberto > .no-arvore-desce { @apply block; }
+  .no-arvore-caminho > .no-arvore-filhas,
+  .no-arvore-aberto > .no-arvore-filhas { @apply flex; }
+  /* A ausência só é dita no ego: em "ver toda a árvore" ela apareceria em cada folha. */
+  .no-arvore-ego.no-arvore-aberto > .no-arvore-vazio { @apply block; }
+  .no-arvore-filhas > .no-arvore { @apply hidden; }
+  .no-arvore-filhas > .no-arvore-caminho,
+  .no-arvore-filhas > .no-arvore-ego,
+  .no-arvore-aberto > .no-arvore-filhas > .no-arvore { @apply flex; }
+  /* Detalhado é o ego e as filhas diretas dele — o resto do organograma fica simples. */
+  .no-arvore-ego > .card-unidade .card-unidade-nome,
+  .no-arvore-ego > .no-arvore-filhas > .no-arvore > .card-unidade .card-unidade-nome { @apply block; }
+  .no-arvore-caminho > .card-unidade > .card-unidade-pagina,
+  .no-arvore-ego > .card-unidade > .card-unidade-pagina { @apply block; }
+  .no-arvore-caminho > .no-arvore-irmas,
+  .no-arvore-ego > .no-arvore-irmas { @apply block; }
+
   /* ==================== COREOGRAFIA ==================== */
   .transition-glass { @apply transition-all duration-500 ease-in-out; }
   .glass-hide-up    { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }

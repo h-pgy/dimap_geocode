@@ -6,12 +6,14 @@ imagem já resolvida pelo domínio, os catálogos dos selects, as linhas que o d
 e a régua da calha. Nenhuma regra de negócio.
 """
 
+from collections.abc import Mapping
 from datetime import date
 from typing import Any
 
 from django.utils import timezone
 
 from apps.mapping.context import contexto_fundo_admin
+from apps.user_admin.consulta import posicao_de
 from apps.user_admin.exercicio import (
     candidatos_a_substituto,
     impedimentos_em_aberto,
@@ -34,6 +36,7 @@ from apps.user_admin.models import (
 )
 from apps.user_admin.models.titularidade import cargo_titulariza
 from apps.user_admin.paleta import TINTA_AVATAR, hex_da_cor, tons_da_paleta
+from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.avatar import ImagemPerfilOutput, resolver_imagem_perfil
 from services.domain.exercicio import Periodo, Trecho, vigente_em
 from services.domain.servidores_listagem import (
@@ -182,6 +185,7 @@ def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
     return (
         contexto_fundo_admin()
         | _catalogos_de_unidade()
+        | contexto_organograma(unidade)
         | {
             "unidade": unidade,
             "unidade_cor_hex": hex_da_cor(unidade.cor),
@@ -204,6 +208,42 @@ def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
             "total_lotados": unidade.perfis.count(),
         }
     )
+
+
+def contexto_organograma(unidade_em_foco: Unidade | None) -> dict[str, Any]:
+    """A seção da página da unidade (caminho aberto até `unidade_em_foco`) e a página da árvore
+    inteira (`unidade_em_foco=None`) nascem da mesma regra: a posição da raiz é o organograma
+    inteiro, e o caminho que abre é a posição da unidade da página."""
+    # A regra devolve ids; o template precisa de unidades. Casar as duas coisas aqui é o que impede
+    # o domínio de conhecer `Unidade` e o template de conhecer id solto.
+    raizes = Unidade.objects.filter(pai__isnull=True).order_by("sigla")
+    arvores = [posicao_de(raiz.pk).ego for raiz in raizes]
+    caminho = frozenset(posicao_de(unidade_em_foco.pk).acima) if unidade_em_foco else frozenset()
+    por_id = Unidade.objects.in_bulk(
+        frozenset(unidade_id for arvore in arvores for unidade_id in arvore.ids)
+    )
+    return {
+        "ramos": [_ramo(arvore, por_id, caminho, unidade_em_foco) for arvore in arvores],
+        "unidade_em_foco": unidade_em_foco,
+    }
+
+
+def _ramo(
+    no: NoHierarquia,
+    por_id: Mapping[int, Unidade],
+    caminho: frozenset[int],
+    em_foco: Unidade | None,
+) -> dict[str, Any]:
+    """O card sai daqui já sabendo o que é: fora do caminho, no caminho, ou em foco. Quem decide o
+    estado inicial é o servidor; o JS só o move a partir dali."""
+    unidade = por_id[no.unidade_id]
+    return {
+        "unidade": unidade,
+        "cor_hex": hex_da_cor(unidade.cor),
+        "no_caminho": no.unidade_id in caminho,
+        "em_foco": em_foco is not None and no.unidade_id == em_foco.pk,
+        "filhas": [_ramo(filha, por_id, caminho, em_foco) for filha in no.filhas],
+    }
 
 
 def candidatos_a_titular(unidade: Unidade) -> list[Perfil]:

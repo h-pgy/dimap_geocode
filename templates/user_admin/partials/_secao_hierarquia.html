@@ -1,0 +1,24 @@
+{# Seção de hierarquia (SPEC user_admin/018): o organograma inteiro no DOM, com o caminho e o ego  #}
+{# já marcados pelo servidor — abrir e fechar é estado visual do controle                          #}
+{# (static/src/js/ui/arvore_hierarquica.js), não vai ao servidor.                                  #}
+<div class="card-well p-5 flex flex-col gap-4">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-overline">Hierarquia</p>
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="btn btn-glass btn-xs" type="button" data-voltar="#organograma-unidade">
+        Voltar para {{ unidade.sigla }}
+      </button>
+      <a class="btn btn-glass btn-xs gap-1.5" href="{% url 'user_admin:arvore_de_unidades' %}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+        Organograma inteiro
+      </a>
+    </div>
+  </div>
+  <div class="glass-panel rounded-2xl overflow-x-auto">
+    <div class="organograma" id="organograma-unidade">
+      {% for ramo in ramos %}
+        {% include "user_admin/partials/_no_arvore.html" with no=ramo raiz=True %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
