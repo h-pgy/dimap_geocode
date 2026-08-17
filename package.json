@@ -4,7 +4,7 @@
   "description": "Build do CSS (Tailwind 4 + daisyUI 5) — consumido pelo serviço `tailwind` do docker compose.",
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.0",
-    "daisyui": "^5.0.0",
+    "daisyui": "5.7.4",
     "tailwindcss": "^4.1.0"
   }
 }

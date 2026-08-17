@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
   <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
@@ -81,12 +81,14 @@
       .item-menu-apoio  { @apply block text-[13px] font-normal text-base-content/60 truncate; }
 
       /* ==================== MOLÉCULA · CARTÃO DE AÇÃO (forma explicativa) ==================== */
-      /* Material é .card-well, não vidro: backdrop-filter dentro de transform 3D reamostra o fundo
-         errado e o blur descola da peça durante o tilt. */
+      /* Material: os tokens de gelo do tema MENOS o .glass-blur, compostos no HTML — o cartão precisa
+         da placa levantada do .glass-shadow, e backdrop-filter dentro de transform 3D reamostra o
+         fundo errado e descola da peça durante o tilt. Poço (.card-well) não serve aqui: ele só tem
+         sombra inset, e afundaria justamente a peça que o tilt manda flutuar. */
       /* `relative` ancora o brilho que o hover-3d desenha no ::before do primeiro filho; transição
          só de COR, porque o transform e o easing de mola são do daisyUI. */
       .card-acao {
-        @apply relative flex flex-col gap-3 p-5 h-full text-left
+        @apply relative flex flex-col gap-3 p-5 h-full text-left rounded-2xl
                transition-colors duration-300;
       }
       .card-acao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
@@ -94,7 +96,9 @@
       /* NUNCA declarar `display` aqui: o .hover-3d é `inline-grid` e posiciona as 8 zonas de
          detecção por grid-area numa grade 3×3. */
       .card-acao-alvo { @apply h-full; }
-      .card-acao-alvo:hover .card-acao { @apply bg-white/55; }
+      /* O hover acende a ARESTA, não o fundo: a placa é gradiente, e cor de fundo por baixo dele não
+         aparece — a mesma razão do .card-unidade-repouso:hover no tema. */
+      .card-acao-alvo:hover .card-acao { @apply border-agua-500/50; }
 
       /* ==================== ORGANISMO · MENU DE AÇÕES ==================== */
       .menu-acoes { @apply w-[22rem] max-w-[92vw] p-4 flex flex-col gap-3; }
@@ -112,8 +116,14 @@
 </head>
 
 <body class="min-h-screen">
-  <!-- Água límpida: as peças precisam ser julgadas sobre o mapa vivo, não sobre fundo chapado. -->
+  <!-- Água límpida: as peças precisam ser julgadas sobre o mapa vivo, não sobre fundo chapado.
+       A lente é a de templates/mapping/_mapa_fullscreen.html, camada por camada — sem ela o vidro
+       e os poços não têm contra o que se destacar e a tela inteira lê chapada. -->
   <div id="map" class="fixed inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
 
   <!-- defs do filtro de gravação (SPEC user_admin/013) — repetidos aqui só para o mock renderizar
        sozinho; na aplicação vêm de templates/partials/_filtros_gravacao.html, no base.html. -->
@@ -281,7 +291,7 @@
           <!-- O .hover-3d do daisyUI exige 9 filhos diretos e conteúdo não-interativo: o clicável
                é o <a> de fora. -->
           <a href="#" class="hover-3d card-acao-alvo">
-            <div class="card-well card-acao">
+            <div class="glass-bg glass-edge glass-shadow card-acao">
               <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
               <div>
                 <p class="card-acao-nome">Emitir certidão de lançamento</p>
@@ -294,7 +304,7 @@
 
           <!-- estado de falta: ícone ausente na forma de cartão -->
           <a href="#" class="hover-3d card-acao-alvo">
-            <div class="card-well card-acao">
+            <div class="glass-bg glass-edge glass-shadow card-acao">
               <span class="icone-acao icone-acao-grande icone-acao-generico"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
               <div>
                 <p class="card-acao-nome">Ação sem glifo desenhado</p>
@@ -354,7 +364,7 @@
           <p class="text-overline">Ações</p>
           <div class="menu-acoes-cartoes">
             <a href="#" class="hover-3d card-acao-alvo">
-              <div class="card-well card-acao">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
                 <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
                 <div>
                   <p class="card-acao-nome">Conceder competência</p>
@@ -366,7 +376,7 @@
             </a>
 
             <a href="#" class="hover-3d card-acao-alvo">
-              <div class="card-well card-acao">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
                 <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
                 <div>
                   <p class="card-acao-nome">Emitir certidão de lançamento</p>
@@ -378,7 +388,7 @@
             </a>
 
             <a href="#" class="hover-3d card-acao-alvo">
-              <div class="card-well card-acao">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
                 <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
                 <div>
                   <p class="card-acao-nome">Amostragem de ofertas</p>
@@ -437,9 +447,46 @@
 
   <script>
     // Mapa só como cenário: as peças precisam ser julgadas sobre a água, não sobre fundo chapado.
-    const mapa = L.map("map", { zoomControl: false, attributionControl: false })
-      .setView([-23.5505, -46.6333], 15);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(mapa);
+    // A deriva é de static/src/js/mapa/deriva.js, com os mesmos parâmetros — aqui ela existe porque
+    // no mock o mapa fica sob o conteúdo e ninguém consegue arrastá-lo; no produto quem move é o
+    // usuário.
+    const CENTRO = [-23.5613, -46.6565];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map", {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      requestAnimationFrame(derivar);
+      if (document.hidden || reduzido.matches) return;
+      if (agora - ultimoFrame < INTERVALO_FRAME_MS) return;
+      ultimoFrame = agora;
+      const fase = ((agora % PERIODO_MS) / PERIODO_MS) * 2 * Math.PI;
+      const lat = CENTRO[0] + AMPLITUDE_GRAUS * Math.sin(fase);
+      const lng = CENTRO[1] + (AMPLITUDE_GRAUS * Math.sin(2 * fase)) / 2;
+      mapa.setView([lat, lng], ZOOM, { animate: false });
+    }
+
+    requestAnimationFrame(derivar);
   </script>
 </body>
 </html>

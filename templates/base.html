@@ -19,8 +19,14 @@
        O browser build do Tailwind não suporta @plugin — DaisyUI entra como CSS separado e o tema
        "dimap" vem de static/src/tema-dimap.dev.css (fonte ÚNICA do design system, SPEC design/004),
        incluído server-side no <style> abaixo. Não há mais espelho: editar o design system é editar
-       aquele arquivo. {% endcomment %}
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+       aquele arquivo.
+
+       DaisyUI é FIXO em 5.7.4, não em @5: da 5.7.5 em diante as regras de componente deixaram de vir
+       na sub-layer `daisyui.l1.l2.l3` e passaram a competir por especificidade dentro de
+       @layer utilities — o que faz o daisyUI vencer classes do design system que antes vencia. O
+       tema foi calibrado sob a cascata antiga; subir de versão é decisão, não deriva do CDN.
+       {% endcomment %}
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/htmx.org@2"></script>
     <script>
