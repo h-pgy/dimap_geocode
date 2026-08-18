@@ -44,6 +44,16 @@ html[data-theme="dimap"] {
      luz. Consumo em Tailwind 4: border-radius: var(--radius-placa) ou rounded-(--radius-placa);
      o rounded-[--x] da v3 emite propriedade inválida e cai em raio zero. */
   --radius-placa: 0.625rem;
+  /* Profundidade única dos poços do sistema (SPEC design/006). Enquanto o valor estava copiado em
+     cada peça, os poços eram livres para divergir — e divergiram. O segundo inset é o lábio de luz:
+     sem ele a sombra afunda a peça sem desenhar a quina, e o degrau não fecha. */
+  --sombra-poco: inset 0 2px 7px rgba(7, 58, 84, 0.38), inset 0 -1px 0 rgba(255, 255, 255, 0.8);
+  /* Mesma língua, outra escala: num pill de 24px o blur de 7px lava a altura inteira de escuro em
+     vez de desenhar um degrau. Vale para trilho e calha, não para poço de seção. */
+  --sombra-poco-fina: inset 0 1px 3px rgba(7, 58, 84, 0.3), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+  /* Escavado: o degrau acima do poço comum, para o que precisa ler como cavado DENTRO de uma
+     superfície que já é rebaixada. Nunca abaixo do --sombra-poco, ou o nome mente. */
+  --sombra-escavado: inset 0 2px 7px rgba(7, 58, 84, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.75);
   --size-selector: 0.25rem;
   --size-field: 0.25rem;
   --border: 1px;
@@ -187,7 +197,8 @@ html[data-theme="dimap"] {
     @apply backdrop-blur-[12px] bg-gradient-to-l from-white/80 via-white/65 to-white/55 border-r border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),12px_0_40px_rgba(7,58,84,0.3),0_0_40px_rgba(72,202,228,0.25)];
   }
   .card-well {
-    @apply rounded-2xl bg-white/30 border border-white/45 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
+    @apply rounded-2xl bg-white/30 border border-white/45;
+    box-shadow: var(--sombra-poco);
   }
 
   /* Modal de vidro (SPEC user_admin/012): o fundo EMBAÇA, nunca escurece (§6 do design system) —
@@ -205,11 +216,13 @@ html[data-theme="dimap"] {
 
   /* Poço de upload: o card-well com aresta tracejada. Acende no hover/foco, nunca muda de cor. */
   .upload-well {
-    @apply rounded-2xl bg-white/30 border border-dashed border-white/60 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)] flex flex-col items-center gap-3 p-6 text-center transition-all duration-300;
+    @apply rounded-2xl bg-white/30 border border-dashed border-white/60 flex flex-col items-center gap-3 p-6 text-center transition-all duration-300;
+    box-shadow: var(--sombra-poco);
   }
   .upload-well:hover,
   .upload-well:focus-within {
-    @apply bg-white/45 border-agua-500/60 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15),0_0_22px_rgba(72,202,228,0.35)];
+    @apply bg-white/45 border-agua-500/60;
+    box-shadow: var(--sombra-poco), 0 0 22px rgba(72, 202, 228, 0.35);
   }
 
   /* Moldura da imagem de perfil. O anel é a cor da unidade em --cor-unidade: o hex é resolvido na
@@ -228,8 +241,10 @@ html[data-theme="dimap"] {
   .btn-onsen {
     @apply border-none rounded-xl font-bold text-rocha-950 bg-gradient-to-br from-agua-300 to-agua-500 shadow-[0_4px_20px_rgba(0,150,199,0.4)] transition-all duration-300 hover:brightness-105 hover:shadow-[0_4px_28px_rgba(0,150,199,0.55)];
   }
+  /* O relevo é o oposto do poço (SPEC design/006): a sombra fecha e escurece, porque sombra larga e
+     clara só separa contra o mapa — sobre a placa ela vira véu. */
   .btn-glass {
-    @apply rounded-full backdrop-blur-[10px] bg-white/50 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(7,58,84,0.2)] transition-all duration-300 hover:bg-white/70 hover:shadow-[0_4px_20px_rgba(72,202,228,0.4)];
+    @apply rounded-full backdrop-blur-[10px] bg-white/50 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_8px_rgba(7,58,84,0.38)] transition-all duration-300 hover:bg-white/70 hover:shadow-[0_4px_20px_rgba(72,202,228,0.4)];
   }
   /* Botão de criação inline (SPEC user_admin/012): o gesto "não achei — cadastra agora". Mesma
      receita de gelo do .btn-glass, em tinta ciana (água = ação) e no tamanho que casa com a altura
@@ -241,15 +256,27 @@ html[data-theme="dimap"] {
     @apply bg-white/70 text-agua-600 shadow-[0_4px_20px_rgba(72,202,228,0.4)];
   }
 
+  /* Campo é coisa rebaixada (SPEC design/006): o poço vem em REPOUSO, não só no foco. Sobre a placa
+     o gelo claro deixava o campo mais claro que o próprio fundo, sem degrau nenhum. No foco o anel
+     de água entra POR CIMA do poço — sem repetir o inset aqui, focar o campo o desafundaria. */
   .input-glass {
-    @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/60 focus:border-agua-500 focus:outline-none focus:shadow-[0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
+    @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/45 focus:border-agua-500 focus:outline-none;
+    box-shadow: var(--sombra-poco);
+  }
+  .input-glass:focus {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
   }
   /* Controles de vidro que faltavam: mesma receita do .input-glass, aplicada a select e file. */
   .select-glass {
-    @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content backdrop-blur-[10px] transition-all duration-300 focus:bg-white/60 focus:border-agua-500 focus:outline-none focus:shadow-[0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
+    @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content backdrop-blur-[10px] transition-all duration-300 focus:bg-white/45 focus:border-agua-500 focus:outline-none;
+    box-shadow: var(--sombra-poco);
+  }
+  .select-glass:focus {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
   }
   .file-input-glass {
-    @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content backdrop-blur-[10px] transition-all duration-300 focus:outline-none focus:border-agua-500;
+    @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content backdrop-blur-[10px] transition-all duration-300 focus:outline-none focus:border-agua-500;
+    box-shadow: var(--sombra-poco);
   }
 
   /* Cavidade de tinta: a tinta "molhada" vem em --tinta (hex resolvido na borda do app). */
@@ -271,8 +298,11 @@ html[data-theme="dimap"] {
   .sort-etched {
     @apply shrink-0 w-6 h-6 mt-0.5 flex items-center justify-center;
     @apply text-[15px] leading-none cursor-pointer;
+    /* O átomo declara a própria tinta em vez de esperar .etched-deeper empilhado no markup: assim
+       uma seta nova nasce legível. Vence o .etched por vir depois, com a mesma especificidade. */
+    color: rgba(13, 27, 42, 0.3);
   }
-  .sort-etched:hover { color: rgba(13, 27, 42, 0.3); }
+  .sort-etched:hover { color: rgba(13, 27, 42, 0.45); }
   /* Ordenando: a depressão enche. A semântica de verdade é o aria-sort do th — o relevo é
      afordância, e afordância não carrega informação sozinha. */
   .th-onsen[aria-sort] .sort-etched {
@@ -293,7 +323,10 @@ html[data-theme="dimap"] {
 
   /* Ícone gravado dentro de um botão de vidro: quem carrega a afordância é o botão, e o glifo só
      diz qual gesto é — exatamente o registro do .etched. */
-  .icon-etched { @apply text-[15px] leading-none; }
+  /* O glifo dentro de um botão de vidro mora sempre sobre placa, e ali a tinta de repouso do
+     .etched não se lê. O átomo declara a própria — vence o .etched por vir depois, com a mesma
+     especificidade — para que um glifo novo nasça legível sem depender de classe empilhada. */
+  .icon-etched { @apply text-[15px] leading-none; color: rgba(13, 27, 42, 0.3); }
   .btn:hover .icon-etched {
     filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
     color: rgba(0, 119, 182, 0.85);
@@ -322,8 +355,9 @@ html[data-theme="dimap"] {
      Depende dos defs de #etched-onsen, como toda gravação. */
   .toggle-onsen {
     @apply relative w-11 h-6 shrink-0 appearance-none cursor-pointer rounded-full
-           bg-white/30 border border-white/45 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)]
+           bg-white/30 border border-white/45
            transition-all duration-300;
+    box-shadow: var(--sombra-poco-fina);
   }
   .toggle-onsen::after {
     @apply absolute top-1/2 left-1 w-4 h-4 -translate-y-1/2 rounded-full transition-all duration-300;
@@ -347,7 +381,8 @@ html[data-theme="dimap"] {
     background-color: rgba(0, 119, 182, 0.85);
   }
   .toggle-onsen:focus-visible {
-    @apply outline-none border-agua-500 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15),0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
+    @apply outline-none border-agua-500;
+    box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
   }
 
   /* Fio gravado e fio entintado (SPEC user_admin/015): a gravação aplicada a um traço em vez de a
@@ -480,7 +515,9 @@ html[data-theme="dimap"] {
     top: calc(0.5rem + var(--altura-cabecalho, 0px));
     bottom: 0.5rem;
     background: rgba(255, 255, 255, 0.16);
-    box-shadow: inset 0 2px 5px rgba(7, 58, 84, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+    /* Mais fundo que o poço que o contém (--sombra-poco): sulco cavado no fundo de uma bacia não
+       pode ler mais claro que a bacia. */
+    box-shadow: inset 0 2px 5px rgba(7, 58, 84, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
     @apply transition-opacity duration-300;
   }
   /* Nada a rolar, nada a mostrar: sulco vazio é controle morto desenhado na tela. */
@@ -546,10 +583,13 @@ html[data-theme="dimap"] {
      th empilha por conta própria, desenharia uma emenda escura a cada coluna. */
   .table-onsen thead th::after {
     content: "";
-    @apply pointer-events-none absolute left-0 right-0 top-full h-9;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    /* Paradas intermediárias porque sombra é queda gaussiana, não linear. */
+    @apply pointer-events-none absolute left-0 right-0 top-full h-14;
+    /* Sem backdrop-filter: ele NÃO é atenuado por mask-image (Chromium aplica na caixa inteira e
+       corta a seco), e o degrau entre o borrado e o nítido lia como aresta dura no fim da sombra.
+       Quem esconde as linhas que passam sob o cabeçalho é o blur da bandeja, no ::before.
+       Sem o blur, a máscara também sai: ela multiplicaria o gradiente, que já cai sozinho até zero,
+       e a sombra apareceria atenuada duas vezes. Paradas intermediárias porque sombra é queda
+       gaussiana, não linear. */
     background: linear-gradient(
       to bottom,
       rgba(7, 58, 84, 0.2) 0%,
@@ -557,27 +597,25 @@ html[data-theme="dimap"] {
       rgba(7, 58, 84, 0.04) 55%,
       rgba(7, 58, 84, 0) 85%
     );
-    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
   }
   /* Nas pontas a faixa não pode terminar em esquadro sob o canto redondo da bandeja: a segunda
      máscara a dissolve no comprimento do raio. intersect porque as duas valem ao mesmo tempo. */
   .table-onsen thead th:first-child::after {
-    mask-image: linear-gradient(to bottom, black 0%, transparent 100%),
-                linear-gradient(to right, transparent 0, black 1.75rem);
-    mask-composite: intersect;
+    mask-image: linear-gradient(to right, transparent 0, black 1.75rem);
   }
   .table-onsen thead th:last-child::after {
-    mask-image: linear-gradient(to bottom, black 0%, transparent 100%),
-                linear-gradient(to left, transparent 0, black 1.75rem);
-    mask-composite: intersect;
+    mask-image: linear-gradient(to left, transparent 0, black 1.75rem);
   }
 
   /* Separador em LUZ, não em tinta: sobre gelo quem divide é a aresta branca. Sem zebra — alternar
      opacidade sobre translúcido deixaria o mapa aparecer em faixas. */
   .table-onsen tbody td {
-    @apply px-4 py-3 align-middle border-b border-white/45 transition-colors duration-200;
+    @apply px-4 py-3 align-middle border-b border-white/65 transition-colors duration-200;
+    /* Um fio de tinta ACIMA da aresta branca: sozinha, a luz sobre gelo claro não separa e as linhas
+       leem chapadas. O par sombra-luz é o mesmo degrau do poço, na espessura de um fio. */
+    box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09);
   }
-  .table-onsen tbody tr:last-child td { @apply border-b-0; }
+  .table-onsen tbody tr:last-child td { @apply border-b-0; box-shadow: none; }
   .table-onsen tbody tr:hover td { @apply bg-white/55; }
   .table-onsen-vazio { @apply px-4 py-10 text-center text-sm text-base-content/60; }
 
@@ -632,7 +670,7 @@ html[data-theme="dimap"] {
   }
 
   .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }
-  .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.15)]; }
+  .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.38)]; }
 
   /* Painel de sugestões flutuante: altura máxima (o mapa continua protagonista) e cada seção
      rola por conta própria (título fixo, lista com scroll). */
@@ -679,7 +717,7 @@ html[data-theme="dimap"] {
      um de uma. É por isso que não é o `steps` do daisyUI, cuja métrica é a ordem. */
   .calha-cobertura {
     @apply relative w-full h-6 rounded-full bg-white/30 border border-white/45;
-    box-shadow: inset 0 2px 6px rgba(7, 58, 84, 0.15);
+    box-shadow: var(--sombra-poco-fina);
   }
   /* Prazo indeterminado: a calha não termina, se dissolve. Desenhar um fim mentiria sobre um fim
      que não existe — a mesma razão pela qual data_fim é nulo em vez de uma data-sentinela. */
@@ -709,19 +747,20 @@ html[data-theme="dimap"] {
      só o acender sob o cursor: a placa tem gradiente, então quem levanta a luz é o brilho, não uma
      cor de fundo por cima. */
   .card-unidade-repouso:hover { @apply brightness-[1.06] border-agua-500/40; }
-  /* Percorrido = escavado. O .card-well é calibrado para superfície de seção; num card de 6rem o
-     sulco só se lê na profundidade do trilho do .scroll-etched — mesma língua, outra escala: tinta
-     escura por dentro e o fio de luz na aresta de baixo. */
+  /* Percorrido = escavado: tinta escura por dentro e o fio de luz na aresta de baixo, sobre um card
+     de 6rem. */
   .card-unidade-poco {
-    @apply border border-white/45 bg-rocha-900/10 shadow-[inset_0_2px_7px_rgba(7,58,84,0.32),inset_0_-1px_0_rgba(255,255,255,0.75)];
+    @apply border border-white/45 bg-rocha-900/10;
+    box-shadow: var(--sombra-escavado);
   }
   /* O ego é o mesmo sulco, ACESO: a aresta enche de água e o gelo brilha em volta. O brilho é
      também a afordância do segundo caminho — no ego, a chapa inteira abre a página. */
   .card-unidade-ego {
-    @apply border-agua-500/70 shadow-[inset_0_2px_7px_rgba(7,58,84,0.32),inset_0_-1px_0_rgba(255,255,255,0.75),0_0_22px_rgba(72,202,228,0.5)];
+    @apply border-agua-500/70;
+    box-shadow: var(--sombra-escavado), 0 0 22px rgba(72, 202, 228, 0.5);
   }
   .card-unidade-ego:hover {
-    @apply shadow-[inset_0_2px_7px_rgba(7,58,84,0.32),inset_0_-1px_0_rgba(255,255,255,0.75),0_0_30px_rgba(72,202,228,0.75)];
+    box-shadow: var(--sombra-escavado), 0 0 30px rgba(72, 202, 228, 0.75);
   }
   .card-unidade-ego .card-unidade-sigla { @apply text-agua-700; }
   .card-unidade-gatilho { @apply flex flex-col items-center gap-1.5 w-full rounded-xl cursor-pointer; }
@@ -854,10 +893,6 @@ html[data-theme="dimap"] {
     filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
     color: rgba(0, 119, 182, 0.85);
   }
-  /* O poço do campo aberto é a sombra do .card-well; o .input-glass entra por composição. */
-  .campo-onsen-campo :where(input, select, .select-onsen-trigger) {
-    @apply bg-white/30! border-white/45! shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
-  }
   /* ALTERAÇÃO (SPEC user_admin/017): aberto o campo, o mesmo lápis desfaz — e nada dizia isso. No
      hover ele vira ✕, e o vale também para o modal da página da unidade. */
   .campo-onsen-lapis-fecha { @apply hidden; }
@@ -875,11 +910,6 @@ html[data-theme="dimap"] {
   .painel-onsen:has(> .painel-onsen-toggle:checked) > .painel-onsen-corpo { @apply opacity-100; }
   /* O painel toma o lugar do gatilho, e o :has() sobe ao pai porque os dois moram em ramos diferentes. */
   *:has(> .painel-onsen > .painel-onsen-toggle:checked) .painel-onsen-gatilho { @apply hidden; }
-  /* Campo do painel é campo rebaixado: sobre placa erguida o .input-glass sozinho não diz que se
-     escreve nele. */
-  .painel-onsen-corpo :where(input, select, .select-onsen-trigger) {
-    @apply bg-white/30! border-white/45! shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
-  }
 
   /* Botão de trocar foto (SPEC user_admin/017): irmão do .btn-criar-inline — círculo de gelo com a
      tinta ciana —, pousado na quina do retrato. */
