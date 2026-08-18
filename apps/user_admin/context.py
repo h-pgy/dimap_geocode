@@ -39,11 +39,15 @@ from apps.user_admin.paleta import TINTA_AVATAR, hex_da_cor, tons_da_paleta
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.avatar import ImagemPerfilOutput, resolver_imagem_perfil
 from services.domain.exercicio import Periodo, Trecho, vigente_em
-from services.domain.servidores_listagem import (
+from services.domain.listagem_gestao import (
     ColunaServidor,
+    ColunaUnidade,
     ConsultaServidores,
+    ConsultaUnidades,
     LinhaServidor,
+    LinhaUnidade,
     listar_servidores,
+    listar_unidades,
 )
 from services.domain.titularidade import Direcao, EstadoDaDirecao, avaliar_direcao
 
@@ -80,6 +84,13 @@ ROTULO_DA_COLUNA = {
     ColunaServidor.UNIDADE: "Unidade",
     ColunaServidor.CARGO: "Cargo base",
     ColunaServidor.COMISSAO: "Em comissão",
+}
+ROTULO_COLUNAS_UNIDADE = {
+    ColunaUnidade.SIGLA: "Sigla",
+    ColunaUnidade.NOME: "Unidade",
+    ColunaUnidade.TIPO: "Tipo",
+    ColunaUnidade.TITULAR: "Titular",
+    ColunaUnidade.PAI: "Subordinação",
 }
 
 
@@ -166,6 +177,40 @@ def contexto_corpo_servidores(consulta: ConsultaServidores) -> dict[str, Any]:
     return {
         "linhas": listar_servidores(linhas, consulta),
         "total_servidores": len(linhas),
+    }
+
+
+def contexto_listagem_unidades(
+    consulta: ConsultaUnidades,
+    unidade_em_foco: Unidade | None = None,
+) -> dict[str, Any]:
+    return (
+        contexto_fundo_admin()
+        | contexto_organograma(unidade_em_foco)
+        | contexto_corpo_unidades(consulta, unidade_em_foco)
+        | {
+            "colunas": _colunas_unidade(consulta),
+            "ordenar_por": consulta.ordenar_por or "",
+            "descendente": DESCENDENTE_LIGADO if consulta.descendente else DESCENDENTE_DESLIGADO,
+            "unidade_foco_pk": unidade_em_foco.pk if unidade_em_foco else None,
+        }
+    )
+
+
+def contexto_corpo_unidades(
+    consulta: ConsultaUnidades,
+    unidade_em_foco: Unidade | None = None,
+) -> dict[str, Any]:
+    linhas = _linhas_de_unidades()
+    linhas_processadas = listar_unidades(linhas, consulta)
+    if unidade_em_foco is not None:
+        linha_foco = next((l for l in linhas_processadas if l.pk == unidade_em_foco.pk), None)
+        if linha_foco:
+            linhas_processadas = [linha_foco] + [l for l in linhas_processadas if l.pk != unidade_em_foco.pk]
+    return {
+        "linhas": linhas_processadas,
+        "total_unidades": len(linhas),
+        "unidade_foco_pk": unidade_em_foco.pk if unidade_em_foco else None,
     }
 
 
@@ -634,7 +679,46 @@ def _colunas(consulta: ConsultaServidores) -> list[dict[str, Any]]:
     ]
 
 
-def _ordem_da_coluna(coluna: ColunaServidor, consulta: ConsultaServidores) -> str:
+def _colunas_unidade(consulta: ConsultaUnidades) -> list[dict[str, Any]]:
+    termos = {filtro.coluna: filtro.termo for filtro in consulta.filtros}
+    return [
+        {
+            "slug": coluna.value,
+            "rotulo": ROTULO_COLUNAS_UNIDADE[coluna],
+            "termo": termos.get(coluna, ""),
+            "ordem": _ordem_da_coluna(coluna, consulta),
+        }
+        for coluna in ColunaUnidade
+    ]
+
+
+def _linhas_de_unidades() -> list[LinhaUnidade]:
+    unidades = (
+        Unidade.objects.select_related("tipo", "pai")
+        .prefetch_related("perfis")
+        .order_by("sigla")
+    )
+    linhas: list[LinhaUnidade] = []
+    for unidade in unidades:
+        titular = unidade.titular
+        linhas.append(
+            LinhaUnidade(
+                pk=unidade.pk,
+                sigla=unidade.sigla,
+                nome=unidade.nome,
+                tipo=unidade.tipo.nome,
+                exige_alta_administracao=unidade.tipo.exige_alta_administracao,
+                cor_hex=hex_da_cor(unidade.cor),
+                titular_pk=titular.pk if titular else None,
+                titular_nome=f"{titular.nome} {titular.sobrenome}" if titular else None,
+                pai_pk=unidade.pai.pk if unidade.pai else None,
+                pai_sigla=unidade.pai.sigla if unidade.pai else None,
+            )
+        )
+    return linhas
+
+
+def _ordem_da_coluna(coluna: Any, consulta: Any) -> str:
     # Vazio = sem ordem; o template só escreve aria-sort quando há ordenação nesta coluna.
     if consulta.ordenar_por != coluna:
         return ""

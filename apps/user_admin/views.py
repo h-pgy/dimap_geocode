@@ -11,21 +11,29 @@ proteção por perfil de administrador entra com a SPEC de autenticação.
 """
 
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.user_admin.context import (
     contexto_corpo_servidores,
+    contexto_corpo_unidades,
     contexto_cor_sugerida,
     contexto_criar_perfil,
     contexto_criar_unidade,
     contexto_listagem_servidores,
+    contexto_listagem_unidades,
     contexto_modal_perfil,
     contexto_organograma,
     contexto_pagina_perfil,
     contexto_unidade,
 )
 from apps.user_admin.models import Perfil, Unidade
-from apps.user_admin.schemas import SelecaoUnidadePai, consulta_de_servidores
+from apps.user_admin.schemas import SelecaoUnidadePai
+from services.domain.listagem_gestao import (
+    ColunaServidor,
+    ColunaUnidade,
+    ConsultaServidores,
+    ConsultaUnidades,
+)
 
 TEMPLATE_FORMULARIO = "user_admin/perfil_form.html"
 TEMPLATE_PAGINA_PERFIL = "user_admin/perfil.html"
@@ -35,19 +43,40 @@ TEMPLATE_PAGINA_UNIDADE = "user_admin/unidade.html"
 TEMPLATE_CAMPO_COR = "user_admin/partials/_campo_cor_unidade.html"
 TEMPLATE_LISTAGEM = "user_admin/servidores_list.html"
 TEMPLATE_CORPO_SERVIDORES = "user_admin/partials/_corpo_servidores.html"
+TEMPLATE_LISTAGEM_UNIDADES = "user_admin/unidades_list.html"
+TEMPLATE_CORPO_UNIDADES = "user_admin/partials/_corpo_unidades.html"
 TEMPLATE_ARVORE = "user_admin/arvore_unidades.html"
 
 
 def listar_servidores(request: HttpRequest) -> HttpResponse:
-    consulta = consulta_de_servidores(request.GET.dict())
+    consulta = ConsultaServidores.de_parametros(request.GET.dict(), ColunaServidor)
     return render(request, TEMPLATE_LISTAGEM, contexto_listagem_servidores(consulta))
 
 
 def corpo_servidores(request: HttpRequest) -> HttpResponse:
     # Alvo do swap do HTMX: só o <tbody>. Trocar o <thead> junto destruiria, a cada tecla, o campo
     # em que se está digitando.
-    consulta = consulta_de_servidores(request.GET.dict())
+    consulta = ConsultaServidores.de_parametros(request.GET.dict(), ColunaServidor)
     return render(request, TEMPLATE_CORPO_SERVIDORES, contexto_corpo_servidores(consulta))
+
+
+def listar_unidades(request: HttpRequest) -> HttpResponse:
+    consulta = ConsultaUnidades.de_parametros(request.GET.dict(), ColunaUnidade)
+    foco_param = request.GET.get("foco")
+    unidade_em_foco = None
+    if foco_param and foco_param.isdigit():
+        unidade_em_foco = Unidade.objects.filter(pk=int(foco_param)).first()
+    return render(
+        request,
+        TEMPLATE_LISTAGEM_UNIDADES,
+        contexto_listagem_unidades(consulta, unidade_em_foco),
+    )
+
+
+def corpo_unidades(request: HttpRequest) -> HttpResponse:
+    # Alvo do swap do HTMX: só o <tbody> da tabela de unidades.
+    consulta = ConsultaUnidades.de_parametros(request.GET.dict(), ColunaUnidade)
+    return render(request, TEMPLATE_CORPO_UNIDADES, contexto_corpo_unidades(consulta))
 
 
 def criar_perfil(request: HttpRequest) -> HttpResponse:
@@ -86,6 +115,5 @@ def pagina_unidade(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 def arvore_de_unidades(request: HttpRequest) -> HttpResponse:
-    """Rota de leitura, como a página da unidade. Sem unidade em foco: a página do organograma
-    abre no topo."""
-    return render(request, TEMPLATE_ARVORE, contexto_organograma(None))
+    """Redireciona para a listagem de unidades com organograma integrado (SPEC user_admin/019)."""
+    return redirect("user_admin:listar_unidades")

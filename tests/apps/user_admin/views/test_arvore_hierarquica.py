@@ -148,7 +148,7 @@ def test_cada_card_leva_a_pagina_da_sua_unidade(client: Client) -> None:
 def test_pagina_da_arvore_abre_no_topo(client: Client) -> None:
     unidades = _organograma()
 
-    resposta = client.get(reverse("user_admin:arvore_de_unidades"))
+    resposta = client.get(reverse("user_admin:arvore_de_unidades"), follow=True)
     html = resposta.content.decode()
     soup = BeautifulSoup(html, "html.parser")
 

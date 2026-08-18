@@ -14,6 +14,8 @@ urlpatterns = [
     # a página, editar é o modal (SPEC user_admin/017).
     path("servidores/<int:pk>/", views.pagina_perfil, name="pagina_perfil"),
     path("servidores/<int:pk>/editar/", views.editar_perfil, name="editar_perfil"),
+    path("unidades/", views.listar_unidades, name="listar_unidades"),
+    path("unidades/corpo/", views.corpo_unidades, name="corpo_unidades"),
     path("unidades/nova/", views.criar_unidade, name="criar_unidade"),
     path(
         "unidades/cor-sugerida/",

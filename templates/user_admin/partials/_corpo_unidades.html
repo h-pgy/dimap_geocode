@@ -1,0 +1,50 @@
+{# Corpo da tabela de unidades (SPEC user_admin/019) — alvo exclusivo de swap do HTMX #}
+<tbody id="corpo-unidades">
+  {% for linha in linhas %}
+    <tr data-unidade-sigla="{{ linha.sigla }}"{% if unidade_foco_pk == linha.pk %} data-ativo="true"{% endif %}>
+      <td>
+        <a href="{% url 'user_admin:pagina_unidade' linha.pk %}" class="link-tabela-onsen link-interno">{{ linha.sigla }}</a>
+      </td>
+      <td>
+        <p class="td-nome-unidade">{{ linha.nome }}</p>
+      </td>
+      <td class="text-base-content/80">{{ linha.tipo }}</td>
+      <td>
+        {% if linha.exige_alta_administracao %}
+          <span class="badge badge-info badge-soft badge-sm font-medium">Alta adm.</span>
+        {% else %}
+          <span class="text-xs text-base-content/50">—</span>
+        {% endif %}
+      </td>
+      <td>
+        <span class="dot-unidade" style="--cor-unidade: {{ linha.cor_hex }}"></span>
+      </td>
+      <td>
+        {% if linha.titular_pk %}
+          <a href="{% url 'user_admin:pagina_perfil' linha.titular_pk %}" class="link-tabela-onsen link-interno">{{ linha.titular_nome }}</a>
+        {% else %}
+          <span class="text-xs text-base-content/50">— (Vaga)</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if linha.pai_pk %}
+          <a href="{% url 'user_admin:pagina_unidade' linha.pai_pk %}" class="link-tabela-onsen link-interno">{{ linha.pai_sigla }}</a>
+        {% else %}
+          <span class="text-xs text-base-content/50">— (Raiz)</span>
+        {% endif %}
+      </td>
+      <td class="text-right">
+        <a href="{% url 'user_admin:pagina_unidade' linha.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+          <span class="etched icon-etched">✎</span>
+        </a>
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="8" class="table-onsen-vazio">
+        <span class="etched text-3xl block mb-2">⌕</span>
+        Nenhuma unidade corresponde aos filtros.
+      </td>
+    </tr>
+  {% endfor %}
+</tbody>
