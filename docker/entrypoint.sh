@@ -14,6 +14,12 @@ if [ -f manage.py ] && [ "${DJANGO_AUTO_MIGRATE:-1}" = "1" ]; then
     python manage.py migrate --noinput
     echo "==> Sincronizando catálogo de ações..."
     python manage.py sincronizar_acoes
+
+    # Executa a carga de seeds se habilitado (padrão 1).
+    if [ "${DJANGO_AUTO_SEED:-1}" = "1" ]; then
+        echo "==> Executando seeds..."
+        sh docker/run_seeds.sh
+    fi
 fi
 
 exec "$@"

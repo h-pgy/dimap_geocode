@@ -3,7 +3,7 @@ spec: ingestao_dados/010
 versao: v1
 atualizado_em: 2026-08-18
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: []
 changelog:
   - v1: versão inicial
@@ -15,10 +15,10 @@ changelog:
 **Requisito não-funcional** — automatizar a carga inicial dos catálogos versionados na inicialização do serviço web, permitindo desativação opcional por variável de ambiente e execução manual agregada via script.
 
 ## 2 · Condições de pronto
-- [ ] O script `docker/run_seeds.sh` executa sequencialmente `seed_unidades`, `seed_cargos` e `seed_tipos_impedimento`, abortando imediatamente em caso de erro (`set -e`).
-- [ ] Na inicialização padrão do container `web`, as seeds são executadas automaticamente após as migrações e a sincronização do catálogo de ações.
-- [ ] Definir `DJANGO_AUTO_SEED=0` impede a execução das seeds na inicialização do container `web`.
-- [ ] A variável `DJANGO_AUTO_SEED` está configurada com valor default `1` no `docker-compose.yml` e documentada no `.env.example`.
+- [x] O script `docker/run_seeds.sh` executa sequencialmente `seed_unidades`, `seed_cargos` e `seed_tipos_impedimento`, abortando imediatamente em caso de erro (`set -e`).
+- [x] Na inicialização padrão do container `web`, as seeds são executadas automaticamente após as migrações e a sincronização do catálogo de ações.
+- [x] Definir `DJANGO_AUTO_SEED=0` impede a execução das seeds na inicialização do container `web`.
+- [x] A variável `DJANGO_AUTO_SEED` está configurada com valor default `1` no `docker-compose.yml` e documentada no `.env.example`.
 
 ## 3 · Domínio
 Orquestração do ciclo de inicialização do container e consumo dos management commands de seed do app `user_admin`.
