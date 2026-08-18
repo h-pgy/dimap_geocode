@@ -143,6 +143,13 @@ Toda a interface é construída **dentro** do design system do projeto ("Onsen d
 - Nenhum componente introduz cor, espaçamento, tipografia, sombra ou animação **fora dos tokens do
   design system**. Não se resolve falta de peça com CSS ad hoc.
 
+**Peça já implementada não se altera sem aval explícito do usuário.** Token, átomo e molécula que já
+existem são intocáveis por conta própria — cria-se peça nova ou compõe-se com a existente. Se a única
+saída for alterar a peça, o agente **para e pergunta**.
+
+*Por quê:* alterar nível baixo do Atomic Design muda, de uma vez, tudo que compõe com ele —
+inclusive telas que o agente não está olhando. O ganho local nunca compensa a regressão silenciosa.
+
 *Por quê:* a gaveta muda de conteúdo a cada ação nova (§3.5), e cada processo da DIMAP traz suas
 telas. Se cada ação puder inventar seu próprio HTML/CSS, a interface diverge processo a processo e
 o custo de manutenção cresce com o número de ações — exatamente o que o §3.5 evita no backend.
@@ -399,6 +406,7 @@ Regras que tornam isso sustentável:
 - [ ] Se mexe em UI: o design foi **aprovado no mock** (skill `mock`, depois da modelagem), e o
       componente está **no design system**, composto pelo nível inferior do Atomic Design, sem token
       novo fora dele? (§3.4)
+- [ ] Nenhum token/átomo/molécula **já implementado** foi alterado sem aval explícito do usuário? (§3.4)
 - [ ] Se é ação: app próprio, **rota protegida**, contrato declarando o perfil, execução
       **registrada** — e a busca segue intocada? (§3.5)
 - [ ] **Responsabilidade única**, e nenhum módulo cruzando domínios? (§7.1)
