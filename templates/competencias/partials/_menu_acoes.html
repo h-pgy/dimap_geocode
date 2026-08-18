@@ -1,0 +1,14 @@
+{# O organismo não conhece perfil, cargo nem unidade: ele desenha o que o router devolveu. #}
+{# A forma é homogênea por menu: quem declara o ContratoMenu escolhe, o organismo só lê o 1º item. #}
+<nav class="glass-panel menu-acoes{% if menu.itens.0.forma == "cartao" %} menu-acoes-amplo{% endif %}">
+  <p class="text-overline">Ações</p>
+  {% if menu.itens %}
+    <div class="{% if menu.itens.0.forma == "cartao" %}menu-acoes-cartoes{% else %}menu-acoes-lista{% endif %}">
+      {% for item in menu.itens %}
+        {% include item.partial %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="menu-acoes-vazio">Nenhuma ação disponível para o seu cargo nesta unidade.</div>
+  {% endif %}
+</nav>

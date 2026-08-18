@@ -933,6 +933,76 @@ html[data-theme="dimap"] {
   .poco-modal .modal-box { @apply transition-[opacity,scale,translate] duration-150 ease-out; }
   /* O important é contra o daisyUI, que entinta o estado aberto com seletor mais específico. */
   .poco-modal.htmx-settling .modal-box { @apply opacity-0! -translate-y-1!; }
+
+  /* Ícone de ação (SPEC autorizacao/006): sem `color` no átomo — declará-la aqui venceria por
+     cascata a pele empilhada (.icon-glow é text-agua-600) e o brilho sumiria sem erro nenhum. */
+  .icone-acao { @apply inline-flex items-center justify-center shrink-0; }
+  .icone-acao svg {
+    @apply w-full h-full block;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* Duas medidas só, como no .etched: o traço do glifo é desenhado para uma delas. */
+  .icone-acao-pequeno { @apply w-5 h-5; }
+  .icone-acao-grande  { @apply w-12 h-12; }
+  .icone-acao-generico { @apply opacity-45; }
+
+  /* Pele do glifo dentro de item e cartão: quem acende é o hover do item, não o glifo. */
+  .icone-acao-acende { @apply transition-all duration-200; }
+  /* Medida grande do filtro: os deslocamentos da gravação são px absolutos, e no glifo de 48px o
+     sulco da medida pequena vira um fio. */
+  .card-acao .icone-acao-acende {
+    filter: url(#etched-onsen-lg);
+    @apply text-agua-700/85;
+  }
+  /* O hover troca o `filter` inteiro: a gravação sai e o brilho entra. */
+  :is(.item-menu, .card-acao-alvo):hover .icone-acao-acende,
+  .item-menu:focus-visible .icone-acao-acende {
+    @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)];
+  }
+
+  /* Item de menu (SPEC autorizacao/006): a forma compacta. */
+  .item-menu {
+    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-(--radius-field)
+           text-left text-[15px] text-base-content/90
+           bg-white/25 border border-white/40
+           transition-all duration-200
+           hover:bg-white/60 hover:text-agua-700
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
+  }
+  .item-menu-rotulo { @apply flex-1 min-w-0 truncate font-medium; }
+  .item-menu-apoio  { @apply block text-[13px] font-normal text-base-content/60 truncate; }
+
+  /* Cartão de ação (SPEC autorizacao/006): a forma explicativa. Material: os tokens de gelo do tema
+     menos o .glass-blur — o backdrop-filter dentro do transform 3D do .hover-3d reamostra o fundo
+     errado e descola da peça durante o tilt. */
+  .card-acao {
+    @apply relative flex flex-col gap-3 p-5 h-full text-left rounded-2xl
+           transition-colors duration-300;
+  }
+  .card-acao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
+  .card-acao-descricao { @apply text-[13px] text-base-content/70 leading-relaxed; }
+  /* NUNCA declarar `display` aqui: o .hover-3d é `inline-grid` e posiciona as 8 zonas de detecção
+     por grid-area numa grade 3×3. */
+  .card-acao-alvo { @apply h-full; }
+  /* O hover acende a ARESTA, não o fundo: a placa é gradiente, e cor de fundo por baixo dele não
+     aparece — a mesma razão do .card-unidade-repouso:hover no tema. */
+  .card-acao-alvo:hover .card-acao { @apply border-agua-500/50; }
+
+  /* Menu de ações (SPEC autorizacao/006): o organismo que compõe item/cartão sobre o router. */
+  .menu-acoes { @apply w-[22rem] max-w-[92vw] p-4 flex flex-col gap-3; }
+  .menu-acoes-lista { @apply flex flex-col gap-1.5; }
+  /* Variante ampla: a forma de cartão precisa de largura, e o tilt precisa de respiro (p-2). */
+  .menu-acoes-amplo   { @apply w-[40rem]; }
+  .menu-acoes-cartoes {
+    @apply grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4 p-2;
+  }
+  .menu-acoes-vazio {
+    @apply px-3 py-6 text-center text-[13px] text-base-content/60;
+  }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */

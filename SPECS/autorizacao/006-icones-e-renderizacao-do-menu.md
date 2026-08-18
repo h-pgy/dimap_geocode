@@ -2,8 +2,8 @@
 spec: autorizacao/006
 versao: v2
 atualizado_em: 2026-08-14
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: sem mudança de escopo — a SPEC foi reescrita no formato de seções numeradas da skill

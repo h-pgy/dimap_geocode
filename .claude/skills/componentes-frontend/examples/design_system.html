@@ -82,6 +82,26 @@
     </defs>
   </svg>
 
+  <!-- Glifos de exemplo (SPEC autorizacao/006). Na aplicação cada um é um arquivo em
+       static/acoes/<app>/<nome>/icones/<variante>.svg, lido pelo ResolvedorIcones. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-certidao">
+        <path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+        <path d="M14 3v5h5"/><path d="M8 13h8"/><path d="M8 17h5"/>
+      </g>
+      <g id="glifo-amostragem">
+        <circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/><path d="M11 8v6"/><path d="M8 11h6"/>
+      </g>
+      <g id="glifo-competencia">
+        <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/>
+      </g>
+      <g id="glifo-generico">
+        <circle cx="12" cy="12" r="8"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+      </g>
+    </defs>
+  </svg>
+
   <!-- Mapa real de fundo: o design system é validado na condição de uso -->
   <div id="map" class="fixed inset-0 z-0 pointer-events-none saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
   <!-- Tinta de água límpida (multiply com ciano claro) -->
@@ -618,6 +638,34 @@
             <p class="text-xs text-base-content/60">A gravação aplicada a um traço. São <strong>só material</strong>: não posicionam nem dimensionam nada. As pontas esmaecem 20% de cada lado — entre dois trechos vizinhos, aresta viva leria como duas peças encostadas, e o que existe é <strong>um fio só</strong> mudando ao longo do tempo.</p>
           </div>
         </div>
+
+        <!-- Ícone de ação (SPEC autorizacao/006) -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">.icone-acao</p>
+          <div class="card-well p-5 flex flex-wrap items-end gap-8">
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-pequeno icon-glow"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <span class="text-[11px] text-base-content/60">pequeno · aceso</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icon-glow"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <span class="text-[11px] text-base-content/60">grande · aceso</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+              <span class="text-[11px] text-base-content/60">pequeno · gravado</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-pequeno icone-acao-generico"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+              <span class="text-[11px] text-base-content/60">fallback</span>
+            </div>
+            <div class="flex flex-col items-center gap-2 text-sakura-600">
+              <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+              <span class="text-[11px] text-base-content/60">herda a tinta do contexto</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">O SVG entra <strong>inline</strong> e herda <span class="text-code">currentColor</span>: sem <span class="text-code">color</span> declarado no átomo, quem tinge é a pele empilhada (<span class="text-code">.icon-glow</span>, <span class="text-code">.icon-etched</span>) ou o contexto. Arquivo ausente cai no fallback genérico — nunca um buraco no menu.</p>
+        </div>
       </div>
     </section>
 
@@ -1140,6 +1188,38 @@
           </div>
         </div>
       </div>
+
+      <!-- Item de menu e cartão de ação (SPEC autorizacao/006) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Item de menu (<span class="text-code">.item-menu</span>) e cartão de ação (<span class="text-code">.card-acao</span>)</p>
+        <p class="text-sm text-base-content/70 -mt-1">A mesma ação, em duas formas — quem escolhe é o menu que a declara, não a ação. A linha usa o nome curto; o cartão nomeia por extenso e usa o tooltip como descrição.</p>
+        <div class="card-well p-5 flex flex-col gap-3">
+          <button class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+            <span class="item-menu-rotulo">Emitir certidão de lançamento</span>
+          </button>
+          <button class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-generico"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+            <span class="item-menu-rotulo">Ação sem glifo desenhado</span>
+          </button>
+        </div>
+        <div class="card-well p-5 flex flex-col gap-3">
+          <div class="menu-acoes-cartoes">
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Amostragem de ofertas</p>
+                  <p class="card-acao-descricao">Busca ofertas próximas com características similares para a avaliação.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">O cartão depende do <span class="text-code">.hover-3d</span> do daisyUI: 9 filhos diretos, conteúdo não-interativo — o clicável é o <span class="text-code">&lt;a&gt;</span> de fora — e material sem <span class="text-code">.glass-blur</span>, porque <span class="text-code">backdrop-filter</span> dentro de um transform 3D reamostra o fundo errado.</p>
+      </div>
     </section>
 
     <!-- ============ 4. ORGANISMOS ============ -->
@@ -1568,6 +1648,39 @@
             </div>
           </div>
           <p class="form-field-hint">Ego aberto, uma folha sem subordinadas (<span class="text-code">.no-arvore-vazio</span>) e a seta que chama as irmãs do nível de cima (<span class="text-code">.no-arvore-irmas</span>), na ponta da aresta.</p>
+        </div>
+      </div>
+
+      <!-- Menu de ações (SPEC autorizacao/006) -->
+      <div class="flex flex-col gap-2">
+        <p class="text-overline px-2">Menu de ações (<span class="text-code">.menu-acoes</span>)</p>
+        <div class="glass-panel p-6 flex flex-col gap-6">
+          <div class="flex flex-wrap gap-6 items-start">
+            <div class="flex flex-col gap-2">
+              <p class="text-[11px] text-base-content/60">com itens liberados</p>
+              <nav class="glass-panel menu-acoes">
+                <p class="text-overline">Ações</p>
+                <div class="menu-acoes-lista">
+                  <button class="item-menu">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+                    <span class="item-menu-rotulo">Conceder competência</span>
+                  </button>
+                  <button class="item-menu">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                    <span class="item-menu-rotulo">Emitir certidão de lançamento</span>
+                  </button>
+                </div>
+              </nav>
+            </div>
+            <div class="flex flex-col gap-2">
+              <p class="text-[11px] text-base-content/60">sem nada liberado</p>
+              <nav class="glass-panel menu-acoes">
+                <p class="text-overline">Ações</p>
+                <div class="menu-acoes-vazio">Nenhuma ação disponível para o seu cargo nesta unidade.</div>
+              </nav>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">O organismo desenha o que o router (SPEC 005) devolveu: não conhece perfil, cargo nem unidade. Sem item liberado, estado vazio — nunca painel quebrado.</p>
         </div>
       </div>
 

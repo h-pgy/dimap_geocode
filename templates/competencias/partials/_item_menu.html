@@ -1,0 +1,6 @@
+{% load icones %}
+{% icone_acao item.slug item.variante_icone as svg %}
+<a href="{{ item.url }}" class="item-menu">
+  {% include "competencias/partials/_icone_acao.html" with svg=svg variante=item.variante_icone %}
+  <span class="item-menu-rotulo">{{ item.nome_curto }}</span>
+</a>
