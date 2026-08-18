@@ -209,6 +209,16 @@ html[data-theme="dimap"] {
      só o que é do modal — recopiar a receita faria a espessura divergir da SPEC que a define. */
   .modal-box-glass { @apply bg-transparent! max-h-[85vh] overflow-y-auto; }
 
+  /* Neutralização de artefato de GPU (SPEC design/007): quando o modal está fechado
+     (toggle desmarcado ou ausência de .modal-open/[open]), força o descarte do backdrop-filter
+     em toda a subárvore para impedir retenção da textura de blur na memória de vídeo (Chromium/Windows). */
+  .modal-toggle:not(:checked) + .modal,
+  .modal-toggle:not(:checked) + .modal *,
+  .modal:not(.modal-open):not([open]):not(:has(.modal-toggle:checked)),
+  .modal:not(.modal-open):not([open]):not(:has(.modal-toggle:checked)) * {
+    backdrop-filter: none !important;
+  }
+
   /* Casca da área administrativa (SPEC user_admin/007): o fundo à deriva fica parado atrás e o
      conteúdo rola aqui dentro — a viewport travada do base.html existe porque a página do produto
      é o mapa, e não se aplica a formulário. */
