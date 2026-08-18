@@ -204,9 +204,9 @@ def contexto_corpo_unidades(
     linhas = _linhas_de_unidades()
     linhas_processadas = listar_unidades(linhas, consulta)
     if unidade_em_foco is not None:
-        linha_foco = next((l for l in linhas_processadas if l.pk == unidade_em_foco.pk), None)
+        linha_foco = next((linha_item for linha_item in linhas_processadas if linha_item.pk == unidade_em_foco.pk), None)
         if linha_foco:
-            linhas_processadas = [linha_foco] + [l for l in linhas_processadas if l.pk != unidade_em_foco.pk]
+            linhas_processadas = [linha_foco] + [linha_item for linha_item in linhas_processadas if linha_item.pk != unidade_em_foco.pk]
     return {
         "linhas": linhas_processadas,
         "total_unidades": len(linhas),

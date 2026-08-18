@@ -51,6 +51,11 @@
   <!-- PEÇAS DESTA SPEC (apenas o que é novo e ainda não foi para o tema base) -->
   <script type="text/css" id="tokens-spec-019">
     @layer components {
+      /* Âncora relativa do poço da tabela para conter elementos flutuantes */
+      .table-onsen-wrap {
+        position: relative !important;
+      }
+
       /* ==================== ÁTOMO · CÉLULA DE NOME COM QUEBRA ==================== */
       .td-nome-unidade {
         @apply max-w-xs break-words whitespace-normal text-sm leading-snug;
@@ -89,6 +94,32 @@
       .table-onsen tbody tr[data-ativo="true"] .link-tabela-onsen,
       .table-onsen tbody tr[data-ativo="true"] a {
         @apply text-agua-800 font-bold;
+      }
+
+      /* Animações de micro-degrau (subida passo a passo) */
+      @keyframes degrauSubida {
+        0% {
+          transform: translateY(24px);
+          background-color: rgba(72, 202, 228, 0.6) !important;
+        }
+        100% {
+          transform: translateY(0);
+          background-color: rgba(72, 202, 228, 0.35) !important;
+        }
+      }
+      @keyframes degrauDescida {
+        0% {
+          transform: translateY(-24px);
+        }
+        100% {
+          transform: translateY(0);
+        }
+      }
+      .table-onsen tbody tr.linha-subindo td {
+        animation: degrauSubida var(--duracao-passo, 160ms) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .table-onsen tbody tr.linha-descendo td {
+        animation: degrauDescida var(--duracao-passo, 160ms) cubic-bezier(0.22, 1, 0.36, 1) forwards;
       }
     }
   </script>
@@ -258,6 +289,30 @@
                   Ver toda a árvore
                 </button>
                 <button type="button" class="btn-etched etched" id="btn-limpar-filtros">✕ limpar filtros</button>
+              </div>
+            </div>
+
+            <!-- Controle Interativo de Velocidade e Modo da Pinçagem (Validação de UX) -->
+            <div class="glass-panel p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-agua-300/40 bg-white/50 shadow-sm">
+              <div class="flex flex-col gap-1">
+                <span class="text-xs font-bold uppercase tracking-wider text-madeira-700">⚙️ Configuração da Animação de Pinçagem</span>
+                <span class="text-xs text-base-content/70">Aprovado: <strong>Deslizamento Contínuo em 500ms</strong> (com Thick Glass). Experimente também as outras opções:</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <!-- Seletor de Modo -->
+                <div class="flex items-center gap-1 p-1 bg-white/80 rounded-xl border border-white/90 shadow-xs" id="seletor-modo">
+                  <button type="button" class="btn-modo-pincagem px-3 py-1 text-xs rounded-lg font-bold transition-all bg-agua-600 text-white shadow-sm" data-modo="continuo">🌊 Deslizamento Contínuo (Aprovado)</button>
+                  <button type="button" class="btn-modo-pincagem px-3 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-modo="passo">🪜 Posição a Posição (Degraus)</button>
+                </div>
+
+                <!-- Seletor de Duração -->
+                <div class="flex items-center gap-1 p-1 bg-white/80 rounded-xl border border-white/90 shadow-xs" id="seletor-duracao">
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-bold transition-all bg-agua-600 text-white shadow-sm" data-ms="500">500 ms (Aprovado)</button>
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-ms="800">800 ms</button>
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-ms="1000">1.0 s</button>
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-ms="1500">1.5 s</button>
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-ms="2000">2.0 s</button>
+                </div>
               </div>
             </div>
 
@@ -744,21 +799,208 @@
       document.querySelectorAll(".organograma .no-arvore").forEach(vestir);
     }
 
-    // 3. Sincronização Bidirecional & Eventos da Árvore
+    // 3. Sincronização Bidirecional, Animação Contínua (Ghost Glide) & Degraus
+    let duracaoPincagemMs = 500;
+    let modoPincagem = "continuo";
+    let timeoutsPincagem = [];
+
+    // Seletor de Modo (Contínuo vs Passo a Passo)
+    document.querySelectorAll(".btn-modo-pincagem").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        modoPincagem = btn.dataset.modo || "continuo";
+        document.querySelectorAll(".btn-modo-pincagem").forEach((b) => {
+          b.classList.remove("bg-agua-600", "text-white", "font-bold", "shadow-sm");
+          b.classList.add("bg-white/50", "text-madeira-700", "font-medium");
+        });
+        btn.classList.add("bg-agua-600", "text-white", "font-bold", "shadow-sm");
+        btn.classList.remove("bg-white/50", "text-madeira-700", "font-medium");
+      });
+    });
+
+    // Seletor de Duração
+    document.querySelectorAll(".btn-velocidade-pincagem").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        duracaoPincagemMs = parseInt(btn.dataset.ms, 10) || 800;
+        document.querySelectorAll(".btn-velocidade-pincagem").forEach((b) => {
+          b.classList.remove("bg-agua-600", "text-white", "font-bold", "shadow-sm");
+          b.classList.add("bg-white/50", "text-madeira-700", "font-medium");
+        });
+        btn.classList.add("bg-agua-600", "text-white", "font-bold", "shadow-sm");
+        btn.classList.remove("bg-white/50", "text-madeira-700", "font-medium");
+      });
+    });
+
+    function limparAnimacoesEmCurso() {
+      timeoutsPincagem.forEach((t) => clearTimeout(t));
+      timeoutsPincagem = [];
+      document.querySelectorAll(".table-flutuante-clone").forEach((c) => c.remove());
+      const tbody = document.getElementById("corpo-unidades");
+      if (tbody) {
+        tbody.querySelectorAll("tr").forEach((tr) => {
+          tr.classList.remove("linha-subindo", "linha-descendo");
+          tr.style.opacity = "";
+          tr.style.transition = "";
+          tr.style.transform = "";
+          tr.style.zIndex = "";
+          tr.style.position = "";
+          tr.style.boxShadow = "";
+        });
+      }
+    }
+
     function destacarLinhaNaTabela(sigla) {
       const tbody = document.getElementById("corpo-unidades");
+      if (!tbody) return;
       const linha = tbody.querySelector(`tr[data-unidade-sigla="${sigla}"]`);
       if (!linha) return;
 
-      // Desmarca as demais
-      tbody.querySelectorAll("tr").forEach((tr) => tr.removeAttribute("data-ativo"));
+      limparAnimacoesEmCurso();
 
-      // Move para a primeira posição
-      tbody.prepend(linha);
+      // Marca a linha com destaque ativo ciano
+      tbody.querySelectorAll("tr").forEach((tr) => tr.removeAttribute("data-ativo"));
       linha.setAttribute("data-ativo", "true");
 
-      // Rola a tabela suavemente para o topo
-      document.getElementById("rolador-tabela").scrollTo({ top: 0, behavior: "smooth" });
+      // Se já está na primeira linha, apenas rola suavemente ao topo
+      if (linha === tbody.firstElementChild) {
+        const rolador = document.getElementById("rolador-tabela");
+        if (rolador) rolador.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      if (modoPincagem === "continuo") {
+        executarDeslizamentoContinuo(tbody, linha, duracaoPincagemMs);
+      } else {
+        executarSubidaPassoAPasso(tbody, linha, duracaoPincagemMs);
+      }
+    }
+
+    // MODO 1 (PADRÃO): Deslizamento Contínuo Delimitado dentro da Tabela (Thick Glass)
+    function executarDeslizamentoContinuo(tbody, linha, duracaoTotal) {
+      const rolador = document.getElementById("rolador-tabela");
+      if (!rolador) return;
+
+      const primeiraLinha = tbody.querySelector("tr:not([style*='display: none'])");
+      if (!primeiraLinha || primeiraLinha === linha) {
+        tbody.querySelectorAll("tr").forEach((tr) => tr.removeAttribute("data-ativo"));
+        linha.setAttribute("data-ativo", "true");
+        rolador.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      const thead = rolador.querySelector("thead");
+      const theadHeight = thead ? thead.offsetHeight : 40;
+      const topInicial = linha.offsetTop;
+      const topFinal = theadHeight;
+
+      // Cria a tabela flutuante delimitada rigorosamente ao rolador
+      const cloneTable = document.createElement("table");
+      cloneTable.className = "table table-onsen table-flutuante-clone glass-panel-thick";
+      cloneTable.style.position = "absolute";
+      cloneTable.style.top = `${topInicial}px`;
+      cloneTable.style.left = "0";
+      cloneTable.style.width = "100%";
+      cloneTable.style.maxWidth = "100%";
+      cloneTable.style.height = `${linha.offsetHeight}px`;
+      cloneTable.style.boxSizing = "border-box";
+      cloneTable.style.zIndex = "40";
+      cloneTable.style.pointerEvents = "none";
+      cloneTable.style.tableLayout = "fixed";
+      cloneTable.style.borderRadius = "10px";
+      cloneTable.style.overflow = "hidden";
+      cloneTable.style.backdropFilter = "blur(28px)";
+      cloneTable.style.background = "linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(220, 245, 255, 0.92) 50%, rgba(200, 235, 250, 0.88) 100%)";
+      cloneTable.style.border = "1px solid rgba(255, 255, 255, 0.85)";
+      cloneTable.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,1), 0 12px 30px rgba(7,58,84,0.3), 0 0 28px rgba(72,202,228,0.3)";
+      cloneTable.style.transition = `top ${duracaoTotal}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+
+      const cloneTbody = document.createElement("tbody");
+      const cloneTr = linha.cloneNode(true);
+      cloneTr.setAttribute("data-ativo", "true");
+      cloneTr.style.background = "transparent";
+
+      const tabela = tbody.closest("table");
+      const ths = tabela ? tabela.querySelectorAll("thead th") : [];
+      const cloneTds = cloneTr.querySelectorAll("td");
+      cloneTds.forEach((td, i) => {
+        const refEl = (ths[i]) || linha.querySelectorAll("td")[i];
+        if (refEl) {
+          const w = refEl.getBoundingClientRect().width;
+          td.style.width = `${w}px`;
+          td.style.minWidth = `${w}px`;
+          td.style.maxWidth = `${w}px`;
+          td.style.boxSizing = "border-box";
+        }
+      });
+
+      cloneTbody.appendChild(cloneTr);
+      cloneTable.appendChild(cloneTbody);
+      rolador.appendChild(cloneTable);
+
+      // Linha original translúcida enquanto o clone viaja
+      linha.style.opacity = "0.15";
+
+      // Força reflow síncrono
+      void cloneTable.offsetHeight;
+
+      // Desliza suavemente até o topo exato da área de dados
+      cloneTable.style.top = `${topFinal}px`;
+
+      // Rola o poço da tabela suavemente ao topo
+      rolador.scrollTo({ top: 0, behavior: "smooth" });
+
+      // Ao completar o percurso, acomoda a linha no topo do DOM e descarta o clone
+      const t = setTimeout(() => {
+        tbody.prepend(linha);
+        linha.style.opacity = "1";
+        tbody.querySelectorAll("tr").forEach((tr) => tr.removeAttribute("data-ativo"));
+        linha.setAttribute("data-ativo", "true");
+        cloneTable.remove();
+        rolador.scrollTo({ top: 0, behavior: "smooth" });
+        limparAnimacoesEmCurso();
+      }, duracaoTotal);
+      timeoutsPincagem.push(t);
+    }
+
+    // MODO 2: Subida física posição a posição (degrau por degrau)
+    function executarSubidaPassoAPasso(tbody, linha, duracaoTotal) {
+      let posicoes = 0;
+      let aux = linha;
+      while (aux.previousElementSibling) {
+        posicoes++;
+        aux = aux.previousElementSibling;
+      }
+      if (posicoes === 0) return;
+
+      const tempoPorPasso = Math.max(70, Math.floor(duracaoTotal / posicoes));
+      document.documentElement.style.setProperty("--duracao-passo", `${tempoPorPasso}ms`);
+
+      function subirUmDegrau() {
+        const anterior = linha.previousElementSibling;
+        if (!anterior) {
+          const rolador = document.getElementById("rolador-tabela");
+          if (rolador) rolador.scrollTo({ top: 0, behavior: "smooth" });
+          limparAnimacoesEmCurso();
+          linha.setAttribute("data-ativo", "true");
+          return;
+        }
+
+        linha.classList.remove("linha-subindo");
+        anterior.classList.remove("linha-descendo");
+        void linha.offsetWidth;
+
+        linha.classList.add("linha-subindo");
+        anterior.classList.add("linha-descendo");
+
+        tbody.insertBefore(linha, anterior);
+        linha.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+        const t = setTimeout(() => {
+          subirUmDegrau();
+        }, tempoPorPasso);
+        timeoutsPincagem.push(t);
+      }
+
+      subirUmDegrau();
     }
 
     document.addEventListener("click", (evento) => {
@@ -787,7 +1029,7 @@
         return;
       }
 
-      // Clique no nó da árvore -> Move ego e destaca na tabela
+      // Clique no nó da árvore -> Move ego e pina com animação na tabela
       const gatilho = evento.target.closest(".card-unidade-gatilho");
       if (gatilho) {
         const no = gatilho.closest(".no-arvore");
@@ -798,7 +1040,7 @@
         return;
       }
 
-      // Clique na linha da tabela -> Ativa nó na árvore
+      // Clique na linha da tabela -> Ativa nó na árvore E pina com animação na tabela
       const linha = evento.target.closest("#corpo-unidades tr");
       if (linha) {
         // Se clicou em link ou botão de ação, navega normalmente
@@ -811,8 +1053,7 @@
         if (no) {
           moverEgo(organograma, no);
         }
-        document.getElementById("corpo-unidades").querySelectorAll("tr").forEach((tr) => tr.removeAttribute("data-ativo"));
-        linha.setAttribute("data-ativo", "true");
+        if (sigla) destacarLinhaNaTabela(sigla);
       }
     });
 

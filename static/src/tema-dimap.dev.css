@@ -507,7 +507,7 @@ html[data-theme="dimap"] {
      overflow acontece na padding box e o cabeçalho grudento pararia a exata medida dele acima da
      linha de corte, deixando aparecer uma faixa de linha nítida. */
   .table-onsen-wrap {
-    @apply overflow-auto overscroll-contain max-h-[32rem] rounded-2xl;
+    @apply relative overflow-auto overscroll-contain max-h-[32rem] rounded-2xl;
     /* A coluna da barra gravada: como é padding do rolador, a bandeja também para aqui. */
     padding-right: 1.125rem;
     scrollbar-width: none;

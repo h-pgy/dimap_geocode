@@ -22,7 +22,6 @@ from apps.user_admin.context import (
     contexto_listagem_servidores,
     contexto_listagem_unidades,
     contexto_modal_perfil,
-    contexto_organograma,
     contexto_pagina_perfil,
     contexto_unidade,
 )

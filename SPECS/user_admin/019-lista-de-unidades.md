@@ -1,11 +1,12 @@
 ---
 spec: user_admin/019
-versao: v2
+versao: v3
 atualizado_em: 2026-08-18
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
 changelog:
+  - v3: deslizamento contínuo em Thick Glass de 500ms na pinçagem da linha selecionada até o topo da tabela
   - v2: navegação a partir de unidade selecionada via query param '?foco=<pk>' pré-renderizando nó ativo e linha em destaque no topo
   - v1: versão inicial implementada
 ---
@@ -25,7 +26,7 @@ O servidor da DIMAP consulta e filtra as unidades da Secretaria na tabela com o 
 - [x] As colunas **Sigla** e **Unidade pai** contêm links para a página da respectiva unidade; a coluna **Titular** contém link para a página de perfil do servidor titular quando houver.
 - [x] O corpo da tabela atualiza via HTMX em `/gestao/unidades/corpo/` conforme filtros ou ordenação mudam, sem reconstruir o cabeçalho nem o organograma.
 - [x] **Clicar no corpo de uma linha da tabela** (fora de links diretos) ativa o nó correspondente na árvore superior via `moverEgo` (abrindo o caminho até o topo) e rola suavemente a árvore até o nó.
-- [x] **Clicar em um nó do organograma** move a linha correspondente para a primeira posição da tabela, aplica o destaque ciano ativo e rola a tabela até o topo.
+- [x] **Clicar em um nó do organograma ou em uma linha da tabela** destaca a unidade e executa o **deslizamento contínuo** da linha correspondente em Thick Glass até a primeira posição da tabela (500ms) sem saltos laterais ou verticais.
 - [x] O design foi aprovado no **mock**, e as peças novas foram portadas para `static/src/tema-dimap.dev.css` e renderizadas no styleguide antes de qualquer template da aplicação usá-las.
 
 ## 3 · Domínio
@@ -157,7 +158,7 @@ __all__ = [
 ]
 ```
 
-**Mock:** [019-mock-lista-de-unidades.html](019-mock-lista-de-unidades.html) (Aprovado).
+**Mock:** [019-mock-lista-de-unidades.html](019-mock-lista-de-unidades.html) (Aprovado — Deslizamento contínuo em Thick Glass com 500ms).
 
 ### Tokens de Design System adicionados
 - `.td-nome-unidade`: Quebra de linha responsiva (`break-words`) com cor suave de texto sobre a placa.
