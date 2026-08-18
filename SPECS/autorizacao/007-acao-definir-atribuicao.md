@@ -1,6 +1,6 @@
 ---
 spec: autorizacao/007
-versao: v9
+versao: v10
 atualizado_em: 2026-08-17
 testes_tdd: false
 implementado: false
@@ -26,6 +26,9 @@ changelog:
   - v8: a lista de alvos oferecidos passa a sair da árvore hierárquica em `alvos_oferecidos`, com a
     subordinação visível no seletor, e `alcance_do_perfil` fica só como a barreira do decorator
   - v9: acompanha o rename de `ItemDeMenu.acao` para `acao_implementada` na SPEC 005 v4
+  - v10: a estrutural com alcance passa a ser exercida só por quem dirige — a concessão dela libera
+    o slug e não o alvo —, o alcance declarado passa a ser `UnidadesSubordinadas` e o seletor deixa
+    de repetir o ramo comum a duas unidades dirigidas
 ---
 
 # SPEC autorizacao/007 — Definir atribuição: a competência da unidade, e a primeira ação do registro
@@ -36,13 +39,13 @@ na tela de atribuições, para que uma competência nova entre em vigor sem ning
 
 ## 2 · Condições de pronto
 - [ ] Quem abre a tela é **quem responde pela direção** da unidade — o titular em exercício ou o
-      substituto vigente dele —, sem depender de atribuição ou concessão gravada; quem não dirige recebe
-      403 mesmo com concessão da ação.
+      substituto vigente dele —, sem depender de atribuição ou concessão gravada; quem não dirige
+      unidade alguma não tem alvo no alcance: o seletor vem vazio e qualquer POST recebe 403.
 - [ ] A tela oferece como alvo **as unidades que o perfil dirige e as que estão abaixo delas** no
-      organograma, na **ordem do organograma e com a subordinação visível**; unidade fora desse alcance
-      não aparece — e é recusada se vier no request.
-- [ ] O catálogo oferecido traz **todas as ações ativas** que a unidade-alvo ainda **não** tem — as
-      estruturais inclusive, que a unidade precisa possuir para poder concedê-las (SPEC 008).
+      organograma, cada uma **antes das que pendem dela e com a subordinação visível**; unidade fora
+      desse alcance não aparece — e é recusada se vier no request.
+- [ ] O catálogo oferecido traz **todas as ações ativas** que a unidade-alvo ainda **não** tem, as
+      estruturais inclusive.
 - [ ] Atribuir e remover acontecem **sem recarregar a página**, trocando só o trecho afetado.
 - [ ] Remover atribuição que tem concessões **exige confirmação** e diz **quantos cargos** perdem a
       competência; confirmada, as concessões vão junto.
@@ -65,8 +68,8 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   o que o catálogo ainda oferece, e quantos cargos caem junto se a atribuição sair?".
 - [`has_perm`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil exerce esta ação estrutural?";
   quem lê a direção da unidade é o backend, não esta tela.
-- [`SubarvoreDirigida`](004-protecao-de-rota-e-registro-de-execucao.md) — "até onde o alvo desta ação
-  pode chegar?", declarado no contrato dela.
+- [`UnidadesSubordinadas`](004-protecao-de-rota-e-registro-de-execucao.md) — "até onde o alvo desta
+  ação pode chegar?", declarado no contrato dela.
 - [`acao_protegida` e `registrar_ato`](004-protecao-de-rota-e-registro-de-execucao.md) — a rota
   protegida, o alvo conferido contra o alcance e o rastro dos dois atos.
 - [`alcance_do_perfil`](004-protecao-de-rota-e-registro-de-execucao.md) — "este id de unidade está no
@@ -99,9 +102,9 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   de ids alcançados e as unidades de onde ele parte.
 - `@apps/user_admin/consulta.py` → `posicao_de`, e `@apps/user_admin/context.py` →
   `contexto_organograma` (SPEC `user_admin/018`): a subárvore de uma unidade e o padrão de casar os ids
-  dela com as `Unidade` num `in_bulk`.
-- `@services/domain/autorizacao/contratos.py` (SPEC 004) → `SubarvoreDirigida`: o alcance declarado no
-  contrato da ação.
+  dela com as `Unidade` num `in_bulk`; `@services/domain/arvore_hierarquica` → `NoHierarquia`.
+- `@services/domain/autorizacao/contratos.py` (SPEC 004) → `UnidadesSubordinadas`: o alcance declarado
+  no contrato da ação.
 - `@templates/user_admin/servidores_list.html` e `@templates/user_admin/unidade.html`: a área
   administrativa onde o organismo de menu é renderizado.
 - SPEC 006 → `.card-acao`, `.card-acao-nome`, `.card-acao-descricao`, `.icone-acao`: o cartão explicativo
@@ -128,8 +131,9 @@ ACAO_DEFINIR_ATRIBUICAO = instanciar_acao(
     estrutural=True,
     # Onde ela pode incidir, e não só quem a exerce: o dirigente age sobre a própria unidade e sobre
     # as de baixo. Declarado aqui, a proteção (SPEC 004) o cumpre sozinha — a view não repete a
-    # conferência, e a ação seguinte que precisar de alcance também não a reescreve.
-    alcance=SubarvoreDirigida(parametro="unidade"),
+    # conferência, e a ação seguinte que precisar de alcance também não a reescreve. O nome do
+    # parâmetro que carrega a unidade-alvo já é o default do alcance.
+    alcance=UnidadesSubordinadas(),
 )
 ```
 
@@ -172,16 +176,34 @@ def definir_atribuicao(request: HttpRequest) -> HttpResponse:
 desenha. Ao lado de `alcance_do_perfil` (SPEC 004), que a lê como conjunto.
 ```python
 def alvos_oferecidos(perfil: Perfil) -> list[dict[str, Any]]:
-    """As unidades alcançadas na ordem do organograma, com a profundidade que o seletor indenta. O
-    conjunto de ids de `alcance_do_perfil` não serve aqui: ele não tem ordem nem nível, e o seletor
-    precisa dos dois."""
-    arvores = [posicao_de(dirigida).ego for dirigida in unidades_dirigidas(perfil)]
+    """As unidades alcançadas em pré-ordem, cada uma antes das que pendem dela, com a profundidade
+    que o seletor indenta. O conjunto de ids de `alcance_do_perfil` não serve aqui: ele não tem ordem
+    nem nível, e o seletor precisa dos dois."""
+    arvores = _ramos_do_alcance(perfil)
     # Segunda consulta para casar id com Unidade, como no organograma da SPEC user_admin/018: sem
     # ela o domínio precisaria conhecer `Unidade` para já devolver sigla e cor.
     por_id = Unidade.objects.in_bulk(
         frozenset(unidade_id for arvore in arvores for unidade_id in arvore.ids)
     )
-    return [alvo for arvore in arvores for alvo in _achatar(arvore, por_id, profundidade=0)]
+    # `unidades_dirigidas` é conjunto, e conjunto não tem ordem: sem ordenar os ramos aqui, dirigir
+    # duas unidades faria o seletor mudar de ordem entre duas aberturas da mesma tela.
+    ordenados = sorted(arvores, key=lambda arvore: por_id[arvore.unidade_id].sigla)
+    return [alvo for arvore in ordenados for alvo in _achatar(arvore, por_id, profundidade=0)]
+
+
+def _ramos_do_alcance(perfil: Perfil) -> list[NoHierarquia]:
+    """As dirigidas que não pendem de outra dirigida. Cobrir o titular de uma subordinada é dirigir
+    duas unidades do mesmo ramo, e as duas subárvores se sobrepõem — `alcance_do_perfil` não sente,
+    porque devolve conjunto, e uma lista repetiria a parte comum no seletor."""
+    arvores = [posicao_de(dirigida).ego for dirigida in unidades_dirigidas(perfil)]
+    return [
+        arvore
+        for arvore in arvores
+        if not any(
+            outra.unidade_id != arvore.unidade_id and arvore.unidade_id in outra.ids
+            for outra in arvores
+        )
+    ]
 
 
 def _achatar(
@@ -198,8 +220,8 @@ def _achatar(
 **`apps/competencias/catalogo.py`** — o que o modal oferece.
 ```python
 def acoes_oferecidas(unidade: Unidade) -> QuerySet[Acao]:
-    """Ativas e ainda não atribuídas. A estrutural entra: quem dirige já a exerce sem atribuição
-    nenhuma (SPEC 003), mas delegá-la a outro cargo exige que a unidade a possua primeiro."""
+    """Ativas e ainda não atribuídas. A estrutural entra como qualquer outra: excluí-la exigiria uma
+    lista de slugs privilegiados, que é a configuração em runtime que o §3.5 recusa."""
     return Acao.objects.exclude(atribuicoes__unidade=unidade).filter(ativa=True)
 ```
 
@@ -236,11 +258,16 @@ o contém é o registro do ato, não uma segunda barreira.
 exercer uma ação nova. Custo: nada impede que quem dirige amplie a própria competência, e o controle
 disso é o registro (SPEC 004), não uma aprovação de terceiro.
 
-**O catálogo oferece as duas ações administrativas desta SPEC e da 008, como qualquer outra.** Elas são
-estruturais e agora a estrutural é concedível (SPEC 003); excluí-las exigiria uma lista de slugs
-privilegiados, que é a configuração em runtime que o §3.5 recusa. Custo: quem dirige pode atribuir e
-depois conceder a um cargo o poder de atribuir e conceder — a delegação não tem profundidade limitada, e
-o que a contém é o registro do ato.
+**Conceder uma ação estrutural com alcance libera o slug e não o alvo.** A concessão entra pela porta
+da SPEC 003 e faz o `has_perm` passar, mas o alcance sai só das unidades dirigidas (SPEC 004): quem
+recebe a concessão sem dirigir nada abre a tela com o seletor vazio e não consuma ato nenhum. Custo: o
+catálogo oferece uma atribuição cuja concessão, para estas duas ações, não produz efeito — e o que
+avisa disso é esta linha, não a interface.
+
+**A ordem em que o seletor lê a hierarquia é a sigla, e a do organograma renderizado não é.** A árvore
+da SPEC `user_admin/018` devolve as filhas na ordem em que o banco entrega os pares, e só as raízes
+saem ordenadas na página do organograma. Custo: a mesma hierarquia se lê em duas ordens em duas telas,
+e igualá-las exige mexer na regra já implementada da 018.
 
 **A remoção cascateia nas concessões, e a confirmação é o único lugar onde isso aparece antes.** A
 contagem é lida no momento em que o modal é montado. Custo: entre a pergunta e o "sim" outra pessoa pode
@@ -255,11 +282,11 @@ em vez de reescrever — se a segunda estreitar a regra, a primeira quebra longe
 Todos carregam o marker `banco`.
 
 - `test_tela_abre_para_quem_dirige_e_nega_o_resto` — o titular em exercício entra sem concessão nenhuma
-  gravada, e o substituto dele entra enquanto ele está afastado; quem não dirige recebe 403 mesmo com
-  concessão da ação. *(marker `banco`)*
-- `test_seletor_oferece_a_subarvore_na_ordem_do_organograma` — o seletor traz a unidade dirigida antes
-  das de baixo, cada uma com a profundidade dela; unidade de outro ramo e unidade acima não aparecem.
-  *(marker `banco`)*
+  gravada, e o substituto dele entra enquanto ele está afastado; quem não dirige unidade alguma recebe
+  403. *(marker `banco`)*
+- `test_seletor_oferece_a_subarvore_hierarquica` — o seletor traz a unidade dirigida antes das de
+  baixo, cada uma com a profundidade dela; unidade de outro ramo e unidade acima não aparecem, e
+  dirigir uma unidade e outra abaixo dela não repete o ramo comum. *(marker `banco`)*
 - `test_catalogo_oferece_so_o_que_falta` — a ação já atribuída e a inativa ficam fora da oferta; a
   estrutural que a unidade ainda não tem é oferecida. *(marker `banco`)*
 - `test_atribuir_recusa_unidade_fora_do_alcance` — POST com unidade existente mas de outro ramo é

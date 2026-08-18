@@ -1,6 +1,6 @@
 ---
 spec: autorizacao/008
-versao: v8
+versao: v9
 atualizado_em: 2026-08-17
 testes_tdd: false
 implementado: false
@@ -24,6 +24,8 @@ changelog:
     view perde a conferência escrita à mão e a atribuição-alvo continua conferida contra a unidade
   - v8: o seletor de unidades passa a vir de `alvos_oferecidos` (SPEC 007), e o poço de atribuições
     fica explicitamente restrito à unidade-alvo escolhida
+  - v9: o alcance declarado passa a ser `UnidadesSubordinadas`, e conceder a estrutural deixa de
+    ampliar o alcance de quem a recebe
 ---
 
 # SPEC autorizacao/008 — Conceder competência: distribuir entre os cargos o que a unidade tem
@@ -39,8 +41,8 @@ ter — comece a trabalhar sem depender de alteração em código ou no banco.
 - [ ] A tela lista as atribuições **da unidade-alvo escolhida**, e só dela — as das outras unidades
       alcançadas não entram no mesmo poço.
 - [ ] O seletor oferece as unidades que o perfil **dirige** e as que estão **abaixo delas** no
-      organograma, na **ordem do organograma e com a subordinação visível**; unidade fora desse alcance
-      é recusada mesmo vindo no request.
+      organograma, cada uma **antes das que pendem dela e com a subordinação visível**; unidade fora
+      desse alcance é recusada mesmo vindo no request.
 - [ ] Conceder e revogar acontecem **sem recarregar a página**, trocando só o trecho afetado.
 - [ ] A escolha do cargo distingue explicitamente **cargo base** de **cargo em comissão**, e só um dos
       dois é concedido por vez.
@@ -64,8 +66,8 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - [`AtribuicaoUnidade` e `Concessao`](002-competencia-no-banco.md) — "o que esta unidade exerce, e quais
   cargos já a exercem?"; a tela cria e revoga concessão, e não toca a atribuição.
 - [`has_perm`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil exerce esta ação estrutural?".
-- [`SubarvoreDirigida`](004-protecao-de-rota-e-registro-de-execucao.md) — "até onde o alvo desta ação
-  pode chegar?", declarado no contrato dela, como na SPEC 007.
+- [`UnidadesSubordinadas`](004-protecao-de-rota-e-registro-de-execucao.md) — "até onde o alvo desta
+  ação pode chegar?", declarado no contrato dela, como na SPEC 007.
 - [`alvos_oferecidos`](007-acao-definir-atribuicao.md) — "que unidades o seletor oferece, em que ordem
   e a que profundidade?"; a subárvore alcançada já sai achatada dali, como na tela da SPEC 007.
 - [`acao_protegida` e `registrar_ato`](004-protecao-de-rota-e-registro-de-execucao.md) — a rota
@@ -89,10 +91,10 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - `@apps/competencias/protecao.py` (SPEC 004) → `acao_protegida` e `registrar_ato`.
 - `@apps/competencias/menus.py` (SPEC 005) → `ItemDeMenu` e `ContratoMenu`; e
   `@apps/competencias/menus_declarados.py` (SPEC 007) → `MENU_ADMINISTRADOR`.
-- `@services/domain/autorizacao/contratos.py` (SPEC 004) → `SubarvoreDirigida`: o alcance declarado no
-  contrato da ação.
+- `@services/domain/autorizacao/contratos.py` (SPEC 004) → `UnidadesSubordinadas`: o alcance declarado
+  no contrato da ação.
 - `@apps/competencias/consulta.py` (SPEC 007) → `alvos_oferecidos`: a subárvore alcançada, já casada com
-  as `Unidade` e achatada na ordem do organograma.
+  as `Unidade` e achatada em pré-ordem.
 - `@apps/user_admin/models` → `CargoBase`, `CargoComissao`: catálogo oferecido no campo.
 - SPEC 006 → `.icone-acao`, e SPEC 007 → `.card-atribuicao`: a peça é a mesma, aqui com a faixa de chips.
 - `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel`, `.glass-panel-thick`, `.modal-glass` +
@@ -118,7 +120,7 @@ ACAO_CONCEDER = instanciar_acao(
     estrutural=True,
     # Mesmo alcance da SPEC 007, pela mesma declaração: quem dirige distribui na própria unidade e
     # nas de baixo. A conferência é da proteção (SPEC 004), não desta view.
-    alcance=SubarvoreDirigida(parametro="unidade"),
+    alcance=UnidadesSubordinadas(),
 )
 ```
 
@@ -197,6 +199,12 @@ toda ação com alcance compartilha; a atribuição é entidade desta ação, e 
 proteção conhecer os models de cada ação que ela protege. Custo: esta view tem uma barreira própria que
 o contrato não declara, e é a que um refactor descuidado apaga sem o `has_perm` reclamar.
 
+**Conceder a estrutural que a unidade possui não dá alcance a quem a recebe.** A concessão libera o
+slug pela porta da SPEC 003, e o alcance continua saindo só das unidades dirigidas (SPEC 004) — o
+cargo contemplado abre a tela sem unidade nenhuma para escolher. Custo: o poço oferece a distribuição
+de uma competência que, para as duas ações administrativas, só quem responde pela direção exerce de
+fato.
+
 **Quem dirige distribui para qualquer cargo dentro do alcance**, inclusive cargos que não ocupa e ações
 que não exerce. A competência é da unidade, e distribuí-la é atribuição de quem responde por ela. Custo:
 não há segunda aprovação, e o que contém o ato é o registro (SPEC 004).
@@ -219,8 +227,8 @@ Todos exercitam a view com dados gravados e carregam o marker `banco`.
 - `test_tela_abre_para_quem_dirige` — o titular em exercício entra sem concessão gravada, e o substituto
   dele entra enquanto ele está afastado; quem não dirige recebe 403. *(marker `banco`)*
 - `test_poco_traz_so_as_atribuicoes_da_unidade_escolhida` — o poço lista as atribuições da unidade-alvo
-  e nenhuma das outras alcançadas; o seletor, esse sim, oferece a subárvore dirigida na ordem do
-  organograma, e a unidade superior não aparece nele. *(marker `banco`)*
+  e nenhuma das outras alcançadas; o seletor, esse sim, oferece a subárvore dirigida inteira, e a
+  unidade superior não aparece nele. *(marker `banco`)*
 - `test_concessao_recusa_unidade_fora_do_alcance` — POST com unidade de outro ramo é recusado mesmo com
   id válido. *(marker `banco`)*
 - `test_concessao_recusa_atribuicao_de_outra_unidade` — atribuição existente mas de unidade não alcançada
