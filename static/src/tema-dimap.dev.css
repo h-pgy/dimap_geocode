@@ -645,6 +645,17 @@ html[data-theme="dimap"] {
     @apply text-agua-700 scale-[1.06];
   }
 
+  /* Link de sigla/unidade na tabela com micro-zoom de afordância e brilho ciano no hover (SPEC user_admin/013 v5) */
+  .link-sigla-onsen {
+    @apply inline-flex items-center gap-2 transition-all duration-200 origin-left;
+  }
+  .link-sigla-onsen:hover {
+    @apply scale-[1.06] drop-shadow-[0_0_6px_rgba(72,202,228,0.8)];
+  }
+  .link-sigla-onsen:hover .text-code {
+    @apply text-agua-600;
+  }
+
   /* Linha em foco ativo (SPEC user_admin/019): destaque ciano suave com anel interno de água */
   .table-onsen tbody tr {
     @apply cursor-pointer;
@@ -664,6 +675,7 @@ html[data-theme="dimap"] {
     box-shadow: inset -1px 0 0 rgba(0, 150, 199, 0.5), inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
   }
   .table-onsen tbody tr[data-ativo="true"] .link-tabela-onsen,
+  .table-onsen tbody tr[data-ativo="true"] .link-sigla-onsen,
   .table-onsen tbody tr[data-ativo="true"] a {
     @apply text-agua-800 font-bold;
   }

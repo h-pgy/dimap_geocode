@@ -73,3 +73,16 @@ def test_filtro_sem_correspondencia_devolve_estado_vazio(client: Client) -> None
     assert resposta.status_code == 200
     assert "table-onsen-vazio" in html
     assert "Marina" not in html
+
+
+@banco
+@pytest.mark.django_db
+def test_links_de_servidor_e_unidade_possuem_classes_de_afordancia(client: Client) -> None:
+    _perfil_gravado(nome="Marina", rf="812345")
+
+    resposta = client.get(reverse("user_admin:corpo_servidores"), {"nome": "marina"})
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert 'class="link-tabela-onsen"' in html
+    assert 'class="link-sigla-onsen"' in html
