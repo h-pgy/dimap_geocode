@@ -616,7 +616,11 @@ html[data-theme="dimap"] {
     box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09);
   }
   .table-onsen tbody tr:last-child td { @apply border-b-0; box-shadow: none; }
-  .table-onsen tbody tr:hover td { @apply bg-white/55; }
+  .table-onsen tbody tr:hover td {
+    @apply bg-white/55;
+    box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09),
+      0 0 10px color-mix(in srgb, var(--color-agua-400) 25%, transparent);
+  }
   .table-onsen-vazio { @apply px-4 py-10 text-center text-sm text-base-content/60; }
 
   /* Célula de cabeçalho: peça de gelo assentada na bandeja. As peças têm a mesma altura por
@@ -1012,10 +1016,85 @@ html[data-theme="dimap"] {
            bg-white/30 border border-white/45;
   }
   .card-atribuicao-cabeca { @apply flex items-start gap-3; }
-  .card-atribuicao-corpo  { @apply flex flex-wrap items-center gap-2; }
+  /* Corpo é exclusivo da 008 — a 007 não o usa (Caveats): pode mudar de layout sem afetar a 007. */
+  .card-atribuicao-corpo  { @apply flex flex-col items-start gap-2; }
   .card-atribuicao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
   .card-atribuicao-descricao { @apply text-[13px] text-base-content/70; }
   .card-atribuicao-vazio     { @apply text-[13px] italic text-base-content/55; }
+
+  /* Chave de duas posições (SPEC autorizacao/008): nome próprio porque .toggle-onsen já é o        */
+  /* interruptor liga/desliga da SPEC user_admin/015. Trilho único e metades de largura igual —     */
+  /* é isso que lê como UM controle. Os materiais vêm compostos no HTML: o poço do .card-well no     */
+  /* trilho, a espessura do .glass-panel-thick na pílula.                                            */
+  .chave-onsen { @apply relative inline-grid grid-cols-2 p-1 rounded-full; }
+  /* Metade do trilho menos a folga: translateX(100%) pousa exatamente na outra metade. O            */
+  /* rounded-full sobrepõe o raio do .glass-panel-thick e depende de vir DEPOIS dele no arquivo.      */
+  .chave-onsen-polegar {
+    @apply absolute z-0 top-1 bottom-1 left-1 rounded-full
+           transition-transform duration-500 ease-in-out;
+    width: calc(50% - 0.25rem);
+  }
+  .chave-onsen:has(.chave-onsen-opcao:nth-of-type(2) input:checked) .chave-onsen-polegar {
+    @apply translate-x-full;
+  }
+  .chave-onsen-opcao { @apply relative z-10 px-4 py-1.5 text-center cursor-pointer; }
+  /* Espelha o .etched-inked, que não se alcança por seletor a partir daqui. */
+  .chave-onsen-opcao:has(input:checked) .chave-onsen-rotulo {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .chave-onsen-opcao:hover .chave-onsen-rotulo { @apply text-base-content/60; }
+  .chave-onsen-rotulo {
+    @apply block text-[13px] font-bold uppercase tracking-[0.12em]
+           whitespace-nowrap transition-all duration-300;
+  }
+  /* O rádio é sr-only: o anel de foco aparece no TRILHO, nunca com :focus-within (acenderia também */
+  /* no clique de mouse). Soma ao --sombra-poco: `ring` reescreveria o box-shadow e apagaria o degrau. */
+  .chave-onsen:has(input:focus-visible) {
+    @apply outline-none border-agua-500;
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+
+  /* Chip de concessão (SPEC autorizacao/008): um cargo que exerce a atribuição, com o alvo de       */
+  /* remover explícito e separado do rótulo — não se revoga por clique ambíguo.                      */
+  .chip-concessao {
+    @apply inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full
+           text-[13px] font-medium text-base-content/90
+           bg-white/45 border border-white/60
+           transition-all duration-200 hover:bg-white/65;
+  }
+  .chip-concessao-remover {
+    @apply w-5 h-5 grid place-items-center rounded-full
+           text-base-content/45 transition-all duration-200
+           hover:text-error hover:bg-white/70;
+  }
+
+  /* Lata de lixo da concessão (SPEC autorizacao/008, ajuste): a mesma dupla repouso/entintado do   */
+  /* resto do sistema, composta explicitamente — `.etched-deeper` parado, `.etched-inked` sob o     */
+  /* cursor/foco — em vez do `.icon-etched` de botão, porque aqui quem carrega a afordância é a     */
+  /* PRÓPRIA linha da tabela, não um crachá de botão de vidro em volta do glifo.                     */
+  .lata-concessao {
+    @apply w-7 h-7 grid place-items-center cursor-pointer;
+  }
+  .lata-concessao:hover .etched-deeper,
+  .lata-concessao:focus-visible .etched-deeper {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* Tabela de vidro SIMPLES (SPEC autorizacao/008): a mesma `.table-onsen` — poço, linha, aresta em */
+  /* luz —, sem `<thead>`. Só a altura do rolador é peça própria: 3 linhas (2,75rem cada, da folga   */
+  /* py-3 + text-sm da célula) é o que cabe antes de rolar; o resto — `.card-well.table-onsen-poco`, */
+  /* `.table-onsen-wrap`, `.scroll-etched*` — é composição do que a SPEC user_admin/013 já entregou. */
+  .tabela-onsen-simples { @apply max-h-[8.5rem]; }
+  /* Realce da linha inteira sob o cursor, em ciano: sem cabeçalho, a linha é o único alvo da     */
+  /* tabela, e o realce discreto da tabela cheia não diz qual delas o clique atinge. Fica escopado */
+  /* aqui — a `.table-onsen` da SPEC user_admin/013 continua com o realce dela.                    */
+  .tabela-onsen-simples .table-onsen tbody tr:hover td {
+    @apply bg-agua-100/55;
+    box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09),
+      0 0 14px color-mix(in srgb, var(--color-agua-400) 55%, transparent);
+  }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */

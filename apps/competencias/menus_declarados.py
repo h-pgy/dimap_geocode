@@ -6,7 +6,7 @@ autorizacao/007, §4): onde ele aparece na área administrativa é decisão de o
 
 from services.domain.autorizacao import VarianteIcone
 
-from .acoes_declaradas import ACAO_DEFINIR_ATRIBUICAO
+from .acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
 from .menus import ContratoMenu, FormaItem, ItemDeMenu
 
 MENU_ADMINISTRADOR = ContratoMenu(
@@ -15,6 +15,11 @@ MENU_ADMINISTRADOR = ContratoMenu(
     itens=(
         ItemDeMenu(
             acao_implementada=ACAO_DEFINIR_ATRIBUICAO,
+            variante_icone=VarianteIcone.PEQUENO,
+            forma=FormaItem.LINHA,
+        ),
+        ItemDeMenu(
+            acao_implementada=ACAO_CONCEDER,
             variante_icone=VarianteIcone.PEQUENO,
             forma=FormaItem.LINHA,
         ),

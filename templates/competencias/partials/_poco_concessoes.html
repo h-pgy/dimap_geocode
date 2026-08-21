@@ -1,0 +1,29 @@
+{# O poço de atribuições com quem as exerce (SPEC autorizacao/008): alvo do swap de conceder e de   #}
+{# revogar — o cabeçalho da unidade-alvo, em `_painel_concessoes.html`, não é reenviado.              #}
+<div id="poco-concessoes" class="card-well p-4 flex flex-col gap-3">
+  <div class="flex flex-col gap-1">
+    <p class="text-overline">Atribuições da unidade{% if atribuicoes %} · {{ atribuicoes|length }}{% endif %}</p>
+    <p class="text-[13px] text-base-content/70">Quem exerce cada uma. Para acrescentar uma atribuição nova, use <em>Definir atribuições</em>.</p>
+  </div>
+  {% if atribuicoes %}
+    <div class="flex flex-col gap-3">
+      {% for item in atribuicoes %}
+        {% include "competencias/partials/_card_concessoes.html" with item=item unidade_alvo=unidade_alvo %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="py-6 text-center">
+      <p class="text-[15px] text-base-content/80">Esta unidade ainda não possui nenhuma atribuição.</p>
+      <p class="text-[13px] text-base-content/60">Quem as define é quem responde pela direção, em <em>Definir atribuições</em>.</p>
+    </div>
+  {% endif %}
+</div>
+{% if fechar_modal %}
+  {# Fecha o modal desta tela quando o poço volta de um conceder/revogar/troca de unidade. OOB, não #}
+  {# JS: o HTMX troca o checkbox pelo estado fechado onde quer que ele esteja no DOM. Só aqui, e     #}
+  {# nunca na carga inicial da página (`fechar_modal` por padrão é falso): o próprio `_modal_conceder.html` #}
+  {# grava um `#modal-conceder` quando abre, e um segundo elemento com o mesmo id em repouso faria o #}
+  {# `label for="modal-conceder"` (Cancelar, fundo do modal) mirar o primeiro da árvore — que não é  #}
+  {# o que está aberto — e o modal travar sem fechar nunca.                                          #}
+  <input type="checkbox" id="modal-conceder" class="modal-toggle" hx-swap-oob="true" />
+{% endif %}

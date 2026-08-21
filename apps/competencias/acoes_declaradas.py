@@ -25,3 +25,19 @@ ACAO_DEFINIR_ATRIBUICAO = instanciar_acao(
     # parâmetro que carrega a unidade-alvo já é o default do alcance.
     alcance=UnidadesSubordinadas(),
 )
+
+ACAO_CONCEDER = instanciar_acao(
+    slug="competencias.conceder",
+    nome="Conceder competência",
+    nome_curto="Competências",
+    tooltip="Distribui as atribuições da unidade entre os cargos.",
+    url_name="competencias:conceder",
+    partial="competencias/partials/_item_menu.html",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    # Distribuir é atributo de quem dirige: liberada pela direção da unidade, não por concessão —
+    # senão conceder `competencias.conceder` exigiria alguém que já a exercesse.
+    estrutural=True,
+    # Mesmo alcance da SPEC 007, pela mesma declaração: quem dirige distribui na própria unidade e
+    # nas de baixo. A conferência é da proteção (SPEC 004), não desta view.
+    alcance=UnidadesSubordinadas(),
+)

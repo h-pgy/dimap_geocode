@@ -82,6 +82,7 @@ O menor elemento com identidade própria: botão, input, badge, kbd, ícone, too
 | Ponto da unidade | `.dot-unidade` | o `.paint-well` em escala de marca; o hex chega em `--cor-unidade` |
 | Toggle de vidro | `.toggle-onsen` | trilho = poço do `.card-well` em pílula; botão = disco `.etched` que enche de água ao ir para o lado (depende dos `defs`) |
 | Fio gravado / entintado | `.etched-line` / `.etched-line-inked` | a gravação num traço; **só material** — não posicionam nem dimensionam. Pontas esmaecem 20% de cada lado, e nunca até o transparente |
+| Lata de lixo gravada | `.lata-concessao` | `.etched` + `.etched-deeper` parado, sobe a `.etched-inked` no hover/foco; sem crachá de botão — a linha da tabela já carrega a afordância |
 | Overline | `.text-overline` | rótulo 11px caps `rocha-700` |
 | Código | `.text-code` | Roboto Mono `agua-700` (SQL, codlog) |
 
@@ -112,6 +113,16 @@ user_admin/013): a **inversão dos materiais** — corpo em poço rebaixado (`.c
 em placa de gelo sobre ele. A caixa rola por conta própria (a viewport nunca rola na horizontal) e o
 cabeçalho é grudento; a folga do poço é padding do `.card-well`, **fora** do rolador. Linhas
 separadas **em luz**, sem zebra, e hover que **acende** o gelo.
+
+**Tabela de vidro simples** (`.tabela-onsen-simples`, SPEC autorizacao/008): a mesma `.table-onsen`
+sem `<thead>` — só linha, para uma lista curta dentro de um cartão (ex.: quem exerce uma
+atribuição). Composição: `.card-well.table-onsen-poco[data-scroll-etched]` >
+`.table-onsen-wrap.tabela-onsen-simples[data-rolador]` > `table.table.table-onsen > tbody`, com a
+barra gravada (`.scroll-etched` + `[data-barra]`/`[data-polegar]`) como na tabela completa —
+`static/src/js/ui/scroll_etched.js` esconde a barra sozinho quando cabe tudo sem rolar.
+`.tabela-onsen-simples` é só a altura do rolador: **3 linhas** (2,75rem cada, da folga `py-3` +
+`text-sm` da célula) cabem antes de rolar. Uma coluna à direita para ação por linha (ex.:
+`.lata-concessao`) empilha essas ações na mesma posição em todas as linhas.
 
 **Bandeja e célula de cabeçalho** (`.th-onsen-bandeja`, `.th-onsen`, `.th-onsen-campo`,
 `.th-onsen-input`, `.th-onsen-gravado`): o cabeçalho é **uma superfície** e cada coluna é uma peça

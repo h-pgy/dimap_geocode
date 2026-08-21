@@ -19,4 +19,11 @@ urlpatterns = [
     # flag no formulário, que faz "sem confirmação nada é apagado" ser estrutural.
     path("atribuicoes/remover/confirmar/", views.confirmar_remocao, name="confirmar_remocao"),
     path("atribuicoes/remover/", views.remover, name="remover"),
+    # A tela de conceder competência (SPEC autorizacao/008), a mesma coreografia: painel por
+    # hx-get ao trocar de unidade, modal por hx-get, e conceder/revogar por hx-post.
+    path("conceder/", views.conceder, name="conceder"),
+    path("conceder/painel/", views.painel_concessoes, name="painel_concessoes"),
+    path("conceder/modal/", views.modal_conceder, name="modal_conceder"),
+    path("conceder/conceder/", views.conceder_cargo, name="conceder_cargo"),
+    path("conceder/revogar/", views.revogar_cargo, name="revogar_cargo"),
 ]

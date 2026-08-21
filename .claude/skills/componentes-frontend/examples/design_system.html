@@ -104,6 +104,9 @@
         <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
         <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>
       </g>
+      <!-- Alvo de revogar do .chip-concessao e gatilho de conceder (SPEC autorizacao/008). -->
+      <g id="glifo-x"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></g>
+      <g id="glifo-mais"><path d="M12 5v14"/><path d="M5 12h14"/></g>
     </defs>
   </svg>
 
@@ -1224,6 +1227,126 @@
           </div>
         </div>
         <p class="text-xs text-base-content/60">O cartão depende do <span class="text-code">.hover-3d</span> do daisyUI: 9 filhos diretos, conteúdo não-interativo — o clicável é o <span class="text-code">&lt;a&gt;</span> de fora — e material sem <span class="text-code">.glass-blur</span>, porque <span class="text-code">backdrop-filter</span> dentro de um transform 3D reamostra o fundo errado.</p>
+      </div>
+
+      <!-- Chave de duas posições (SPEC autorizacao/008) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Chave de duas posições (<span class="text-code">.chave-onsen</span>)</p>
+        <p class="text-sm text-base-content/70 -mt-1">Nome próprio: <span class="text-code">.toggle-onsen</span> já é o interruptor liga/desliga da SPEC user_admin/015. Trilho único e metades de largura igual fazem ler como UM controle. Os materiais vêm compostos no HTML — o poço do <span class="text-code">.card-well</span> no trilho, a espessura do <span class="text-code">.glass-panel-thick</span> na pílula.</p>
+        <div class="card-well p-5 flex flex-wrap items-center gap-8">
+          <div class="flex flex-col gap-2">
+            <span class="text-overline">primeira posição</span>
+            <div class="card-well chave-onsen">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="demo-chave-a" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Cargo base</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="demo-chave-a" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+              </label>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <span class="text-overline">segunda posição</span>
+            <div class="card-well chave-onsen">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="demo-chave-b" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Cargo base</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="demo-chave-b" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chip de concessão (SPEC autorizacao/008) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Chip de concessão (<span class="text-code">.chip-concessao</span>)</p>
+        <p class="text-sm text-base-content/70 -mt-1">Um cargo que exerce a atribuição. O alvo de remover é explícito e separado do rótulo — não se revoga por clique ambíguo.</p>
+        <div class="card-well p-5 flex flex-wrap items-center gap-3">
+          <span class="chip-concessao">
+            Assistente de Gestão de Políticas Públicas
+            <button class="chip-concessao-remover" aria-label="Revogar">
+              <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
+            </button>
+          </span>
+          <span class="chip-concessao">
+            CDA-II · Diretor de Divisão
+            <button class="chip-concessao-remover" aria-label="Revogar">
+              <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></span>
+            </button>
+          </span>
+        </div>
+      </div>
+
+      <!-- Cartão da atribuição com a tabela de vidro simples (SPEC autorizacao/008) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Cartão da atribuição com a tabela de vidro simples (<span class="text-code">.card-atribuicao-corpo</span> + <span class="text-code">.tabela-onsen-simples</span>)</p>
+        <p class="text-sm text-base-content/70 -mt-1">Mesmo <span class="text-code">.card-atribuicao</span> da SPEC 007 — aqui composto com uma <span class="text-code">.table-onsen</span> sem cabeçalho, uma linha por cargo. A lata de lixo (<span class="text-code">.lata-concessao</span>) fica sempre na segunda coluna, empilhada em todas as linhas; rola depois da 3ª. Passe o cursor: a linha inteira acende em ciano — sem cabeçalho, ela é o único alvo da tabela.</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <article class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Amostragem de ofertas</p>
+                <p class="card-atribuicao-descricao">Busca ofertas próximas com características similares.</p>
+              </div>
+            </div>
+            <div class="card-atribuicao-corpo">
+              <div class="card-well p-2 w-full table-onsen-poco" data-scroll-etched>
+                <div class="table-onsen-wrap tabela-onsen-simples" data-rolador>
+                  <table class="table table-onsen">
+                    <tbody>
+                      <tr>
+                        <td>Assistente de Gestão de Políticas Públicas</td>
+                        <td class="w-10">
+                          <button type="button" class="lata-concessao" aria-label="Revogar">
+                            <span class="icone-acao icone-acao-pequeno etched etched-deeper"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                          </button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>CDA-II · Diretor de Divisão</td>
+                        <td class="w-10">
+                          <button type="button" class="lata-concessao" aria-label="Revogar">
+                            <span class="icone-acao icone-acao-pequeno etched etched-deeper"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="scroll-etched scroll-etched-ociosa" data-barra aria-hidden="true">
+                  <div class="scroll-etched-thumb" data-polegar></div>
+                </div>
+              </div>
+              <label class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a outro cargo">
+                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+              </label>
+            </div>
+          </article>
+          <article class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                <p class="card-atribuicao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+              </div>
+            </div>
+            <div class="card-atribuicao-corpo">
+              <span class="card-atribuicao-vazio">Nenhum cargo designado ainda.</span>
+              <label class="btn btn-glass btn-xs btn-circle" aria-label="Conceder a um cargo">
+                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+              </label>
+            </div>
+          </article>
+        </div>
       </div>
 
       <!-- Cartão da atribuição (SPEC autorizacao/007, compartilhado com a 008) -->

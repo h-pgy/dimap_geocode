@@ -1,9 +1,9 @@
 ---
 spec: autorizacao/008
-versao: v10
+versao: v12
 atualizado_em: 2026-08-21
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -30,6 +30,14 @@ changelog:
     007 — `alvos_oferecidos` sai por não existir mais desde a 007 v11 —, e o seletor de duas posições
     passa a se chamar `.chave-onsen`, com o poço do `.card-well` no trilho e a espessura do
     `.glass-panel-thick` na pílula
+  - v11: correção de dois bugs pós-entrega (modal preso por `id` duplicado do checkbox OOB, e o
+    `has-[...]` do CSS truncado por colchete aninhado — resolvido com `chave_condicional.js`,
+    estado visual de controle aprovado pelo usuário) e um ajuste de design pedido em conversa: a
+    faixa de `.chip-concessao` vira `.tabela-onsen-simples` (poço + linha da `.table-onsen` sem
+    cabeçalho, rolando depois de 3) com a revogação em `.lata-concessao`, no lugar do `x` do chip;
+    `.chip-concessao` fica no tema sem consumidor
+  - v12: a linha da `.tabela-onsen-simples` passa a acender em ciano sob o cursor, para ficar claro
+    qual delas o clique atinge, e o mock — que a v11 tinha deixado para trás — foi posto em dia
 ---
 
 # SPEC autorizacao/008 — Conceder competência: distribuir entre os cargos o que a unidade tem
@@ -40,25 +48,28 @@ possui, na tela de competências, para que um servidor recém-chegado — ou um 
 ter — comece a trabalhar sem depender de alteração em código ou no banco.
 
 ## 2 · Condições de pronto
-- [ ] Quem abre a tela é **quem responde pela direção** da unidade — o titular em exercício ou o
+- [x] Quem abre a tela é **quem responde pela direção** da unidade — o titular em exercício ou o
       substituto vigente dele —, sem depender de concessão gravada desta ação.
-- [ ] A tela lista as atribuições **da unidade-alvo escolhida**, e só dela — as das outras unidades
+- [x] A tela lista as atribuições **da unidade-alvo escolhida**, e só dela — as das outras unidades
       alcançadas não entram no mesmo poço.
-- [ ] O alvo é escolhido **no organograma** — as unidades que o perfil **dirige** e as que estão
+- [x] O alvo é escolhido **no organograma** — as unidades que o perfil **dirige** e as que estão
       **abaixo delas**, com a subordinação desenhada —, e unidade fora desse alcance é recusada mesmo
       vindo no request.
-- [ ] Conceder e revogar acontecem **sem recarregar a página**, trocando só o trecho afetado.
-- [ ] A escolha do cargo distingue explicitamente **cargo base** de **cargo em comissão**, e só um dos
+- [x] Conceder e revogar acontecem **sem recarregar a página**, trocando só o trecho afetado.
+- [x] A escolha do cargo distingue explicitamente **cargo base** de **cargo em comissão**, e só um dos
       dois é concedido por vez.
-- [ ] Não há caminho para conceder uma ação que a unidade **não possui**, nem pela interface nem forjando
+- [x] Não há caminho para conceder uma ação que a unidade **não possui**, nem pela interface nem forjando
       o request.
-- [ ] Conceder e revogar são **atos registrados** (SPEC 004), distinguíveis pela operação e com o alvo
+- [x] Conceder e revogar são **atos registrados** (SPEC 004), distinguíveis pela operação e com o alvo
       identificando ação e cargo.
-- [ ] A ação aparece no **menu de administrador** (SPEC 007) apenas para quem pode executá-la.
-- [ ] O design foi aprovado no **mock**, e as peças novas — `.chave-onsen` e `.chip-concessao` — foram
+- [x] A ação aparece no **menu de administrador** (SPEC 007) apenas para quem pode executá-la.
+- [x] O design foi aprovado no **mock**, e as peças novas — `.chave-onsen` e `.chip-concessao` — foram
       portadas para `static/src/tema-dimap.dev.css` e renderizadas no styleguide antes de qualquer
       template da aplicação usá-las; `.card-atribuicao`, compartilhada com a SPEC 007, já está no tema
-      e aqui só se compõe.
+      e aqui só se compõe. Ajuste da v11, direto em conversa e **sem novo ciclo de mock**: a faixa de
+      `.chip-concessao` virou `.tabela-onsen-simples` + `.lata-concessao` — também portadas ao tema e
+      ao styleguide antes de uso; `.chip-concessao` permanece no tema, sem consumidor. O mock foi
+      posto em dia na v12, já com o realce de linha em ciano.
 
 ## 3 · Domínio
 Nenhum model novo: é o **nível 2** da SPEC 002 virando ato administrativo, e a 007 é quem põe atribuição
@@ -106,11 +117,19 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   `@templates/user_admin/partials/_no_arvore.html`, e `@static/src/js/ui/arvore_hierarquica.js`: o
   organograma como seletor de alvo — reusado, não redesenhado (Caveats).
 - `@apps/user_admin/models` → `CargoBase`, `CargoComissao`: catálogo oferecido no campo.
-- SPEC 006 → `.icone-acao`, e SPEC 007 → `.card-atribuicao`: a peça é a mesma, aqui com a faixa de chips.
+- SPEC 006 → `.icone-acao`, e SPEC 007 → `.card-atribuicao`: a peça é a mesma, aqui com o corpo da
+  tabela de vidro simples (v11).
+- SPEC user_admin/013 → `.table-onsen`, `.table-onsen-wrap`, `.table-onsen-poco`,
+  `.scroll-etched`/`.scroll-etched-thumb` + `static/src/js/ui/scroll_etched.js`: a base de onde sai
+  `.tabela-onsen-simples` (v11), a mesma tabela sem `<thead>`, rolando depois de 3 linhas — com um
+  realce de linha próprio, em ciano (v12).
 - `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel-thick`, `.modal-glass` +
   `.modal-box-glass`, `.select-onsen` (o campo de cargo), `.btn-onsen`, `.btn-glass`, `.text-overline`,
   `.dot-unidade`, `.etched` + `.etched-deeper` + `.etched-inked`; e as peças do organograma
   (SPEC user_admin/018) `.organograma`, `.no-arvore*`, `.card-unidade*`, `.etched-line`.
+- `@static/src/js/ui/chave_condicional.js` (v11) → mostra o `<select>` certo conforme a `.chave-onsen`
+  do modal; estado visual de controle, JS aprovado pelo usuário depois que o `has-[...]` de CSS
+  truncou por colchete aninhado (Caveats).
 - Skills: `componentes-frontend`, `daisyui`, `htmx`, `mock`, `pydantic-validation-errors`,
   `escrever-testes`, `test-django-views`.
 
@@ -235,9 +254,33 @@ não há segunda aprovação, e o que contém o ato é o registro (SPEC 004).
 concedeu, e expirá-la faria a competência oscilar com o afastamento de terceiros. Custo: uma decisão
 tomada durante a cobertura sobrevive ao fim dela, e desfazê-la é ato explícito de quem voltar.
 
-**`.card-atribuicao` é a mesma classe da SPEC 007**, aqui com a faixa de chips. A 007 já a levou ao tema
-e ao styleguide; aqui ela só se compõe. Custo: a classe tem duas SPECs donas, e a faixa de chips desta
-tela não pode reescrever o cartão da outra.
+**`.card-atribuicao` é a mesma classe da SPEC 007**, aqui com o corpo da tabela de vidro simples
+(v11). A 007 já a levou ao tema e ao styleguide; aqui ela só se compõe. Custo: a classe tem duas
+SPECs donas, e o corpo desta tela não pode reescrever o cartão da outra.
+
+**A faixa de `.chip-concessao` virou `.tabela-onsen-simples` na v11, direto em conversa — sem passar
+por mock novo.** Pedido explícito do usuário: mais separação visual (poço), uma linha por cargo
+reusando a tabela de vidro em vez de pílulas, e a revogação como lata de lixo gravada
+(`.lata-concessao`, `.etched-deeper`/`.etched-inked`) na coluna seguinte, empilhada entre as linhas.
+`.chip-concessao` e `.chip-concessao-remover` continuam no tema e no styleguide — só perderam o único
+consumidor. Custo: a v11 rodou com o mock desatualizado até a v12 o alcançar, e a peça foi julgada na
+tela da aplicação, não no artefato que existe para julgá-la.
+
+**O realce de linha em ciano é da `.tabela-onsen-simples`, não da `.table-onsen` (v12).** Sem
+cabeçalho e com uma linha por cargo, a linha é o único alvo da tabela, e o realce discreto da tabela
+cheia não diz qual delas o clique atinge; mexer na `.table-onsen` mudaria de uma vez toda tela que a
+usa (§3.4 do CLAUDE.md). Custo: a mesma tabela tem duas receitas de `:hover` no tema, e quem alterar
+a de cima precisa olhar a de baixo.
+
+**Os dois bugs da v11 nasceram do mesmo hábito: reusar sem checar o custo do reuso no CDN de dev.**
+O checkbox OOB de `_poco_atribuicoes.html` (SPEC 007) foi copiado para `_poco_concessoes.html` sem
+notar que ele já nascia duplicado na carga inicial — corrigido com o context flag `fechar_modal`,
+ligado só quando a resposta precisa fechar o modal. E o `has-[input[value=x]]:hidden` do CSS truncava
+no primeiro `]` no `@tailwindcss/browser` (o CDN de dev, §8 da skill `componentes-frontend`) — a saída
+foi um seletor de classe, como em `_modal_designar.html`, e onde isso não bastou (o toggle continuava
+preso), `chave_condicional.js`: estado visual de um controle, autorizado pelo usuário na conversa.
+Custo: `_poco_atribuicoes.html` (SPEC 007) provavelmente tem o mesmo bug do checkbox — não corrigido
+aqui, por não ter sido reportado.
 
 ## 8 · Testes (TDD)
 Todos exercitam a view com dados gravados e carregam o marker `banco`.

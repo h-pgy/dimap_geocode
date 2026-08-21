@@ -1,18 +1,21 @@
-"""A composição da tela de atribuições (SPEC autorizacao/007): o alvo escolhido, o organograma
-recortado ao alcance e o que a unidade-alvo já exerce. Orquestração — nenhuma regra de negócio."""
+"""A composição da tela de atribuições (SPEC autorizacao/007) e da tela de conceder competência
+(SPEC autorizacao/008): o alvo escolhido, o organograma recortado ao alcance e o que a unidade-alvo
+já exerce — a segunda troca só o que está no poço e como cada atribuição se resume. Orquestração —
+nenhuma regra de negócio."""
 
 from collections.abc import Sequence
 from typing import Any
 
 from django.db.models import Count
+from django.urls import reverse
 
 from apps.competencias.atribuicao import cargos_que_perdem
 from apps.competencias.catalogo import acoes_oferecidas
 from apps.competencias.comandos import ComandoAtribuicao
 from apps.competencias.consulta import ramos_do_alcance
-from apps.competencias.models import Acao, AtribuicaoUnidade
+from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao
 from apps.user_admin.context import contexto_organograma
-from apps.user_admin.models import Perfil, Unidade
+from apps.user_admin.models import CargoBase, CargoComissao, Perfil, Unidade
 from apps.user_admin.paleta import hex_da_cor
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.autorizacao import VarianteIcone
@@ -25,30 +28,49 @@ def contexto_da_tela(perfil: Perfil, unidade_alvo: Unidade | None = None) -> dic
     # O alvo inicial sai dos PRÓPRIOS ramos do perfil: por construção está dentro do alcance, e é
     # isso que o dispensa da conferência do decorator, que num GET sem parâmetro não roda.
     alvo = unidade_alvo or _primeira_dirigida(ramos)
-    return contexto_organograma(
-        alvo,
-        arvores=ramos,
-        # Nesta tela o card escolhe o alvo: levar à página da unidade seria sair no meio do ato, e
-        # chamar as irmãs não tem o que revelar — a linha do nível já vem aberta.
-        com_link=False,
-        com_irmas=False,
-        abrir_o_ego=True,
-    ) | contexto_painel(alvo)
+    return (
+        contexto_organograma(
+            alvo,
+            arvores=ramos,
+            # Nesta tela o card escolhe o alvo: levar à página da unidade seria sair no meio do
+            # ato, e chamar as irmãs não tem o que revelar — a linha do nível já vem aberta.
+            com_link=False,
+            com_irmas=False,
+            abrir_o_ego=True,
+        )
+        | contexto_painel(alvo)
+        | _rotas_do_seletor("competencias:painel_atribuicoes", "#painel-atribuicoes")
+    )
 
 
-def contexto_painel(unidade_alvo: Unidade | None) -> dict[str, Any]:
+def contexto_painel(
+    unidade_alvo: Unidade | None, *, fechar_modal: bool = False
+) -> dict[str, Any]:
     """O que `_painel_atribuicoes.html` consome sozinho — alvo do hx-get ao trocar de unidade na
-    árvore, que não reenvia o organograma."""
+    árvore, que não reenvia o organograma. `fechar_modal` fecha o catálogo/confirmação que a
+    unidade anterior possa ter deixado aberto — só a troca de unidade o pede; a carga inicial da
+    página nunca deve (Caveats de `contexto_poco`)."""
     return {
         "unidade_alvo": unidade_alvo,
         "subtitulo_alvo": _subtitulo_unidade(unidade_alvo) if unidade_alvo else "",
         "cor_alvo_hex": hex_da_cor(unidade_alvo.cor) if unidade_alvo else "",
-    } | contexto_poco(unidade_alvo)
+    } | contexto_poco(unidade_alvo, fechar_modal=fechar_modal)
 
 
-def contexto_poco(unidade_alvo: Unidade | None) -> dict[str, Any]:
-    """O que `_poco_atribuicoes.html` consome sozinho — alvo do swap de atribuir e remover."""
-    return {"unidade_alvo": unidade_alvo, "atribuicoes": _atribuicoes_de(unidade_alvo)}
+def contexto_poco(
+    unidade_alvo: Unidade | None, *, fechar_modal: bool = False
+) -> dict[str, Any]:
+    """O que `_poco_atribuicoes.html` consome sozinho — alvo do swap de atribuir e remover.
+    `fechar_modal` liga os checkboxes OOB que fecham `#modal-catalogo`/`#modal-remover`: só quando
+    esta renderização É a resposta de um ato que precisa fechá-los — nunca na carga inicial da
+    página, sob pena de dois elementos com o mesmo id (mesmo Caveat de `contexto_poco_concessoes`):
+    o `label for` do botão Cancelar mira o primeiro da árvore, que não é o checkbox aberto, e o
+    modal trava sem fechar nunca."""
+    return {
+        "unidade_alvo": unidade_alvo,
+        "atribuicoes": _atribuicoes_de(unidade_alvo),
+        "fechar_modal": fechar_modal,
+    }
 
 
 def contexto_catalogo(unidade_alvo: Unidade) -> dict[str, Any]:
@@ -67,6 +89,61 @@ def contexto_confirmar_remocao(comando: ComandoAtribuicao) -> dict[str, Any]:
         "cargos": cargos,
         "resumo_cargos": _resumo_cargos(len(cargos)),
         "comando": comando,
+    }
+
+
+def contexto_da_tela_conceder(perfil: Perfil, unidade_alvo: Unidade | None = None) -> dict[str, Any]:
+    """Mesmo alcance da SPEC 007 (Caveats): a unidade sem titular, ou sem direção, ficaria sem
+    quem distribua as atribuições se o alvo partisse só da unidade do perfil."""
+    ramos = ramos_do_alcance(perfil)
+    alvo = unidade_alvo or _primeira_dirigida(ramos)
+    return (
+        contexto_organograma(
+            alvo,
+            arvores=ramos,
+            com_link=False,
+            com_irmas=False,
+            abrir_o_ego=True,
+        )
+        | contexto_painel_concessoes(alvo)
+        | _rotas_do_seletor("competencias:painel_concessoes", "#painel-concessoes")
+    )
+
+
+def contexto_painel_concessoes(
+    unidade_alvo: Unidade | None, *, fechar_modal: bool = False
+) -> dict[str, Any]:
+    """O que `_painel_concessoes.html` consome sozinho — alvo do hx-get ao trocar de unidade na
+    árvore, que não reenvia o organograma. `fechar_modal` fecha o de conceder que a unidade
+    anterior possa ter deixado aberto — só a troca de unidade o pede; a carga inicial da página
+    nunca deve, pois é ela quem primeiro grava o `#modal-conceder` (Caveats)."""
+    return {
+        "unidade_alvo": unidade_alvo,
+        "subtitulo_alvo": _subtitulo_unidade(unidade_alvo) if unidade_alvo else "",
+        "cor_alvo_hex": hex_da_cor(unidade_alvo.cor) if unidade_alvo else "",
+    } | contexto_poco_concessoes(unidade_alvo, fechar_modal=fechar_modal)
+
+
+def contexto_poco_concessoes(
+    unidade_alvo: Unidade | None, *, fechar_modal: bool = False
+) -> dict[str, Any]:
+    """O que `_poco_concessoes.html` consome sozinho — alvo do swap de conceder e revogar.
+    `fechar_modal` liga o checkbox OOB que fecha `#modal-conceder`: só quando esta renderização É
+    a resposta de um ato que precisa fechá-lo — nunca na carga inicial da página, sob pena de dois
+    elementos com o mesmo id (Caveats)."""
+    return {
+        "unidade_alvo": unidade_alvo,
+        "atribuicoes": _atribuicoes_com_concessoes(unidade_alvo),
+        "fechar_modal": fechar_modal,
+    }
+
+
+def contexto_modal_conceder(atribuicao: AtribuicaoUnidade) -> dict[str, Any]:
+    return {
+        "atribuicao": atribuicao,
+        "unidade_alvo": atribuicao.unidade,
+        "cargos_base": CargoBase.objects.order_by("nome"),
+        "cargos_comissao": CargoComissao.objects.order_by("nome"),
     }
 
 
@@ -100,6 +177,41 @@ def _atribuicoes_de(unidade: Unidade | None) -> list[dict[str, Any]]:
         }
         for atribuicao in atribuicoes
     ]
+
+
+def _atribuicoes_com_concessoes(unidade: Unidade | None) -> list[dict[str, Any]]:
+    if unidade is None:
+        return []
+    atribuicoes = (
+        AtribuicaoUnidade.objects.filter(unidade=unidade)
+        .select_related("acao")
+        .prefetch_related("concessoes__cargo_base", "concessoes__cargo_comissao")
+        .order_by("acao__nome")
+    )
+    return [
+        {
+            "atribuicao": atribuicao,
+            "acao": atribuicao.acao,
+            "variante_icone": VarianteIcone.GRANDE,
+            "concessoes": [
+                {"concessao": concessao, "rotulo": _rotulo_cargo(concessao)}
+                for concessao in atribuicao.concessoes.all()
+            ],
+        }
+        for atribuicao in atribuicoes
+    ]
+
+
+def _rotulo_cargo(concessao: Concessao) -> str:
+    if concessao.cargo_comissao is not None:
+        return f"{concessao.cargo_comissao.padrao} · {concessao.cargo_comissao.nome}"
+    return concessao.cargo_base.nome if concessao.cargo_base is not None else ""
+
+
+def _rotas_do_seletor(url_name: str, alvo_painel: str) -> dict[str, Any]:
+    """`_seletor_unidade_alvo.html` é compartilhado com a SPEC 007 (Caveats): a rota do hx-get e o
+    alvo do swap variam por tela, e vêm daqui — não do partial, que não sabe qual delas o inclui."""
+    return {"url_painel": reverse(url_name), "alvo_painel": alvo_painel}
 
 
 def _descricao_dos_cargos(total: int) -> str:

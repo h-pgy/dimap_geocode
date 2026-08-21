@@ -18,8 +18,14 @@
     </div>
   {% endif %}
 </div>
-{# Fecha os dois modais desta tela sempre que o poço é reenviado — atribuir/remover concluídos, ou #}
-{# a troca de unidade na árvore (este partial vem embutido em `_painel_atribuicoes.html` também).   #}
-{# OOB, não JS: o HTMX troca o checkbox pelo estado fechado onde quer que ele esteja no DOM.         #}
-<input type="checkbox" id="modal-catalogo" class="modal-toggle" hx-swap-oob="true" />
-<input type="checkbox" id="modal-remover" class="modal-toggle" hx-swap-oob="true" />
+{% if fechar_modal %}
+  {# Fecha os dois modais desta tela sempre que o poço volta de um atribuir/remover concluído, ou  #}
+  {# da troca de unidade na árvore. OOB, não JS: o HTMX troca o checkbox pelo estado fechado onde   #}
+  {# quer que ele esteja no DOM. Só aqui, e nunca na carga inicial da página (`fechar_modal` por    #}
+  {# padrão é falso): o próprio `_modal_catalogo.html`/`_modal_remover.html` grava o seu checkbox    #}
+  {# quando abre, e um segundo elemento com o mesmo id em repouso faria o `label for` (Cancelar,     #}
+  {# fundo do modal) mirar o primeiro da árvore — que não é o que está aberto — e o modal travar     #}
+  {# sem fechar nunca.                                                                                #}
+  <input type="checkbox" id="modal-catalogo" class="modal-toggle" hx-swap-oob="true" />
+  <input type="checkbox" id="modal-remover" class="modal-toggle" hx-swap-oob="true" />
+{% endif %}
