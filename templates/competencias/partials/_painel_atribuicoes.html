@@ -1,0 +1,32 @@
+{# Painel da unidade-alvo (SPEC autorizacao/007): alvo do hx-get ao trocar de unidade na árvore — a #}
+{# árvore em si não é reenviada. `unidade_alvo=None` é o perfil com a ação por concessão que não    #}
+{# dirige unidade alguma (Caveats): sem alvo, não há o que atribuir.                                #}
+<div id="painel-atribuicoes" class="flex flex-col gap-4">
+  {% if unidade_alvo %}
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="dot-unidade w-9 h-9 shrink-0" style="--cor-unidade:{{ cor_alvo_hex }}"></span>
+        <div class="min-w-0">
+          <p class="text-overline">Unidade-alvo</p>
+          <p class="text-[18px] font-bold text-madeira-700 leading-tight">{{ unidade_alvo.sigla }}</p>
+          <p class="text-[13px] text-base-content/70">{{ subtitulo_alvo }}</p>
+        </div>
+      </div>
+      <button type="button"
+              class="btn btn-onsen btn-sm gap-2"
+              hx-get="{% url 'competencias:catalogo_atribuicao' %}"
+              hx-vals='{"unidade": "{{ unidade_alvo.pk }}"}'
+              hx-target="#poco-modal-catalogo"
+              hx-swap="innerHTML settle:150ms">
+        <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+        Atribuir ação
+      </button>
+    </div>
+    {% include "competencias/partials/_poco_atribuicoes.html" %}
+  {% else %}
+    <div class="card-well p-8 text-center">
+      <p class="text-[15px] text-base-content/80">Você não dirige nenhuma unidade.</p>
+      <p class="text-[13px] text-base-content/60">Sem unidade dirigida não há atribuição a definir.</p>
+    </div>
+  {% endif %}
+</div>

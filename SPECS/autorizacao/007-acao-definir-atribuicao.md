@@ -3,7 +3,7 @@ spec: autorizacao/007
 versao: v13
 atualizado_em: 2026-08-21
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial

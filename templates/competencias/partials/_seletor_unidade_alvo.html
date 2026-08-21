@@ -1,0 +1,22 @@
+{# Seletor da unidade-alvo (SPEC autorizacao/007): o organograma da SPEC user_admin/018 reusado sem #}
+{# redesenho — escolher a unidade é mover o ego. Sem elo para a página e sem chamado das irmãs: o   #}
+{# que chega ao DOM já é só a subárvore alcançada (`com_link=False`, `com_irmas=False`).            #}
+{# Cada card faz hx-get da unidade e troca só o painel abaixo; a árvore não é reenviada. O           #}
+{# `data-unidade-id` que `_no_arvore.html` grava por nó é o que o `js:` de `hx-vals` lê no clique —  #}
+{# `arvore_hierarquica.js` segue cuidando só do estado visual (mover o ego, abrir/fechar ramos).     #}
+<div class="card-well p-4 flex flex-col gap-3">
+  <p class="text-overline">Escolha a unidade</p>
+  <div class="glass-panel rounded-2xl overflow-x-auto">
+    <div class="organograma"
+         id="seletor-unidade-alvo"
+         hx-get="{% url 'competencias:painel_atribuicoes' %}"
+         hx-trigger="click from:.card-unidade-gatilho"
+         hx-target="#painel-atribuicoes"
+         hx-swap="outerHTML"
+         hx-vals="js:{unidade: event.target.closest('.no-arvore').dataset.unidadeId}">
+      {% for ramo in ramos %}
+        {% include "user_admin/partials/_no_arvore.html" with no=ramo raiz=True %}
+      {% endfor %}
+    </div>
+  </div>
+</div>

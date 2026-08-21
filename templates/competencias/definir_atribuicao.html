@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Definir atribuições · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+  {% include "competencias/partials/_glifos_atribuicao.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-4xl mx-auto px-4 py-24">
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Definir atribuições</h1>
+          <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e o que ela passa a exercer.</p>
+        </div>
+
+        <div class="glass-panel p-5 flex flex-col gap-4">
+          {% if ramos %}
+            {% include "competencias/partials/_seletor_unidade_alvo.html" %}
+          {% endif %}
+          {% include "competencias/partials/_painel_atribuicoes.html" %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Poços dos modais, irmãos do conteúdo e nunca dentro dele: formulário aninhado é HTML inválido, #}
+  {# e aqui fora eles escapam do contexto de empilhamento da .admin-shell. Nascem vazios — as rotas  #}
+  {# os montam.                                                                                       #}
+  <div id="poco-modal-catalogo" class="poco-modal"></div>
+  <div id="poco-modal-remover" class="poco-modal"></div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+  {# Percorrer o organograma é estado visual do controle (SPEC user_admin/018), reusado como         #}
+  {# seletor de alvo desta tela.                                                                      #}
+  <script type="module" src="{% static 'js/ui/arvore_hierarquica.js' %}"></script>
+  {# A barra gravada do catálogo (SPEC user_admin/013).                                               #}
+  <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
+{% endblock %}

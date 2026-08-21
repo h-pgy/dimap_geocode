@@ -99,6 +99,11 @@
       <g id="glifo-generico">
         <circle cx="12" cy="12" r="8"/><path d="M12 8v4"/><path d="M12 16h.01"/>
       </g>
+      <!-- Cromo de UI (SPEC autorizacao/007) — não é glifo de ação, é ícone comum a cartão de gestão. -->
+      <g id="glifo-lixeira">
+        <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>
+      </g>
     </defs>
   </svg>
 
@@ -1219,6 +1224,38 @@
           </div>
         </div>
         <p class="text-xs text-base-content/60">O cartão depende do <span class="text-code">.hover-3d</span> do daisyUI: 9 filhos diretos, conteúdo não-interativo — o clicável é o <span class="text-code">&lt;a&gt;</span> de fora — e material sem <span class="text-code">.glass-blur</span>, porque <span class="text-code">backdrop-filter</span> dentro de um transform 3D reamostra o fundo errado.</p>
+      </div>
+
+      <!-- Cartão da atribuição (SPEC autorizacao/007, compartilhado com a 008) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Cartão da atribuição (<span class="text-code">.card-atribuicao</span>)</p>
+        <p class="text-sm text-base-content/70 -mt-1">Uma competência da unidade e quantos cargos a exercem — nunca quais. Sem <span class="text-code">.hover-3d</span>: o cartão contém um botão de retirar.</p>
+        <div class="card-well p-5 grid gap-3 sm:grid-cols-2">
+          <div class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Amostragem de ofertas</p>
+                <p class="card-atribuicao-descricao">3 cargos exercem</p>
+              </div>
+              <button type="button" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+              </button>
+            </div>
+          </div>
+          <div class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                <p class="card-atribuicao-vazio">nenhum cargo ainda</p>
+              </div>
+              <button type="button" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 

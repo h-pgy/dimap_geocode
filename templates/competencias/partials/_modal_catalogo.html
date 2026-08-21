@@ -1,0 +1,45 @@
+{# Modal do catálogo (SPEC autorizacao/007): alvo do hx-get do botão "Atribuir ação", fica FORA do  #}
+{# painel e de qualquer formulário — form aninhado é HTML inválido. `checked` porque chega pronto    #}
+{# dentro do poço vazio: o toggle nasce aberto, não em resposta a um clique nele mesmo.              #}
+<input type="checkbox" id="modal-catalogo" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+    <div>
+      <p class="text-overline">Atribuir ação</p>
+      <p class="text-[18px] font-bold text-rocha-950">{{ unidade_alvo.sigla }}</p>
+      <p class="text-[13px] text-base-content/70">Ações do catálogo que esta unidade ainda não exerce.</p>
+    </div>
+
+    {% if acoes %}
+      {# O catálogo cresce a cada ação do projeto: o poço rola, com a barra gravada da SPEC         #}
+      {# user_admin/013.                                                                             #}
+      <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+        <div class="table-onsen-wrap max-h-[22rem]" data-rolador>
+          <div class="grid gap-4 sm:grid-cols-2 p-2">
+            {% for acao in acoes %}
+              {% include "competencias/partials/_card_acao_catalogo.html" with acao=acao unidade_alvo=unidade_alvo variante_icone=variante_icone %}
+            {% endfor %}
+          </div>
+        </div>
+        <div class="scroll-etched" data-barra aria-hidden="true">
+          <div class="scroll-etched-thumb" data-polegar></div>
+        </div>
+      </div>
+
+      <p class="text-[13px] text-base-content/70">
+        Atribuir dá a competência <strong>à unidade</strong>. Quem a exerce ainda não muda: a
+        distribuição entre os cargos é feita em <em>Conceder competência</em>.
+      </p>
+    {% else %}
+      <div class="card-well p-8 text-center">
+        <p class="text-[15px] text-base-content/80">Esta unidade já exerce todas as ações do catálogo.</p>
+      </div>
+    {% endif %}
+
+    <div class="modal-action">
+      <label for="modal-catalogo" class="btn btn-glass btn-sm">Fechar</label>
+    </div>
+  </div>
+  {# Fechar clicando fora: a cena EMBAÇA, nunca escurece (§5 do DS). #}
+  <label class="modal-backdrop" for="modal-catalogo">Fechar</label>
+</div>

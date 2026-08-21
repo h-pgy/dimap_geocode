@@ -1,0 +1,25 @@
+{# O poço de atribuições (SPEC autorizacao/007): alvo do swap de atribuir e de remover — o          #}
+{# cabeçalho da unidade-alvo, em `_painel_atribuicoes.html`, não é reenviado.                        #}
+<div id="poco-atribuicoes" class="card-well p-4 flex flex-col gap-3">
+  <div class="flex flex-col gap-1">
+    <p class="text-overline">Ações atribuídas{% if atribuicoes %} · {{ atribuicoes|length }}{% endif %}</p>
+    <p class="text-[13px] text-base-content/70">O que a unidade exerce. Quem exerce cada uma se define em <em>Conceder competência</em>.</p>
+  </div>
+  {% if atribuicoes %}
+    <div class="grid gap-3 sm:grid-cols-2">
+      {% for item in atribuicoes %}
+        {% include "competencias/partials/_card_atribuicao.html" with item=item unidade_alvo=unidade_alvo %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="py-6 text-center">
+      <p class="text-[15px] text-base-content/80">Esta unidade ainda não exerce nenhuma ação.</p>
+      <p class="text-[13px] text-base-content/60">Atribua a primeira para que os cargos possam recebê-la.</p>
+    </div>
+  {% endif %}
+</div>
+{# Fecha os dois modais desta tela sempre que o poço é reenviado — atribuir/remover concluídos, ou #}
+{# a troca de unidade na árvore (este partial vem embutido em `_painel_atribuicoes.html` também).   #}
+{# OOB, não JS: o HTMX troca o checkbox pelo estado fechado onde quer que ele esteja no DOM.         #}
+<input type="checkbox" id="modal-catalogo" class="modal-toggle" hx-swap-oob="true" />
+<input type="checkbox" id="modal-remover" class="modal-toggle" hx-swap-oob="true" />

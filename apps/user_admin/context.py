@@ -6,7 +6,7 @@ imagem já resolvida pelo domínio, os catálogos dos selects, as linhas que o d
 e a régua da calha. Nenhuma regra de negócio.
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import date
 from typing import Any
 
@@ -210,21 +210,44 @@ def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
     )
 
 
-def contexto_organograma(unidade_em_foco: Unidade | None) -> dict[str, Any]:
+def contexto_organograma(
+    unidade_em_foco: Unidade | None,
+    *,
+    arvores: Sequence[NoHierarquia] | None = None,
+    com_link: bool = True,
+    com_irmas: bool = True,
+    abrir_o_ego: bool = False,
+) -> dict[str, Any]:
     """A seção da página da unidade (caminho aberto até `unidade_em_foco`) e a página da árvore
     inteira (`unidade_em_foco=None`) nascem da mesma regra: a posição da raiz é o organograma
-    inteiro, e o caminho que abre é a posição da unidade da página."""
+    inteiro, e o caminho que abre é a posição da unidade da página.
+
+    `arvores` recorta o organograma ao que o chamador alcança; sem elas, a hierarquia inteira.
+    Recebe a árvore pronta, e não as raízes, porque quem tem o recorte já a percorreu para saber
+    qual é (SPEC autorizacao/007)."""
     # A regra devolve ids; o template precisa de unidades. Casar as duas coisas aqui é o que impede
     # o domínio de conhecer `Unidade` e o template de conhecer id solto.
-    raizes = Unidade.objects.filter(pai__isnull=True).order_by("sigla")
-    arvores = [posicao_de(raiz.pk).ego for raiz in raizes]
-    caminho = frozenset(posicao_de(unidade_em_foco.pk).acima) if unidade_em_foco else frozenset()
-    por_id = Unidade.objects.in_bulk(
-        frozenset(unidade_id for arvore in arvores for unidade_id in arvore.ids)
+    ramos = (
+        list(arvores)
+        if arvores is not None
+        else [posicao_de(raiz.pk).ego for raiz in Unidade.objects.filter(pai__isnull=True)]
     )
+    por_id = Unidade.objects.in_bulk(
+        frozenset(unidade_id for ramo in ramos for unidade_id in ramo.ids)
+    )
+    caminho = frozenset(posicao_de(unidade_em_foco.pk).acima) if unidade_em_foco else frozenset()
+    # Ordenar aqui, e não na origem: sigla é da `Unidade`, e é o `in_bulk` desta função que a tem
+    # em mãos. `unidades_dirigidas` devolve conjunto — sem isto a árvore trocaria de ordem entre
+    # duas aberturas da mesma tela.
+    ramos = sorted(ramos, key=lambda ramo: por_id[ramo.unidade_id].sigla)
     return {
-        "ramos": [_ramo(arvore, por_id, caminho, unidade_em_foco) for arvore in arvores],
+        "ramos": [_ramo(ramo, por_id, caminho, unidade_em_foco) for ramo in ramos],
         "unidade_em_foco": unidade_em_foco,
+        # As três SEMPRE no contexto, mesmo no default: variável ausente é falsa no template, e as
+        # telas da 018 perderiam o elo e a seta em silêncio.
+        "com_link": com_link,
+        "com_irmas": com_irmas,
+        "abrir_o_ego": abrir_o_ego,
     }
 
 

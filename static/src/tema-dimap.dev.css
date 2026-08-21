@@ -1003,6 +1003,19 @@ html[data-theme="dimap"] {
   .menu-acoes-vazio {
     @apply px-3 py-6 text-center text-[13px] text-base-content/60;
   }
+
+  /* Cartão da atribuição (SPEC autorizacao/007, compartilhado com a 008): uma competência da     */
+  /* unidade e quantos cargos a exercem. Sem .hover-3d — o cartão contém botões, e o componente    */
+  /* exige conteúdo não-interativo nos 9 filhos diretos.                                           */
+  .card-atribuicao {
+    @apply flex flex-col gap-3 p-4 rounded-(--radius-box)
+           bg-white/30 border border-white/45;
+  }
+  .card-atribuicao-cabeca { @apply flex items-start gap-3; }
+  .card-atribuicao-corpo  { @apply flex flex-wrap items-center gap-2; }
+  .card-atribuicao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
+  .card-atribuicao-descricao { @apply text-[13px] text-base-content/70; }
+  .card-atribuicao-vazio     { @apply text-[13px] italic text-base-content/55; }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */

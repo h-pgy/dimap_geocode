@@ -10,6 +10,7 @@ from apps.user_admin.consulta import posicao_de
 from apps.user_admin.context import _estado_da_direcao
 from apps.user_admin.exercicio import substituicao_que_exerce, substituicao_vigente
 from apps.user_admin.models import Perfil, Unidade
+from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.autorizacao import (
     AvaliacaoCompetenciaInput,
     Caneta,
@@ -86,18 +87,22 @@ def _caneta_de(quem_exerce: Perfil, dono_do_cargo: Perfil) -> Caneta:
     )
 
 
-def alcance_do_perfil(perfil: Perfil) -> frozenset[int]:
-    """"Unidades subordinadas" não é conceito, é esta composição: cada unidade que o perfil dirige
-    perguntada à árvore hierárquica (SPEC user_admin/018).
-
-    A regra de lá responde por uma unidade só; dirigir duas é dirigir dois ramos, e o alcance é a
-    união deles — a unidade que aparece nos dois entra uma vez, porque o resultado é conjunto.
-    """
-    return frozenset(
-        alcancada
-        for dirigida in unidades_dirigidas(perfil)
-        for alcancada in posicao_de(dirigida).ego.ids
+def ramos_do_alcance(perfil: Perfil) -> tuple[NoHierarquia, ...]:
+    """As subárvores que o perfil alcança — uma por unidade dirigida que não pende de outra dirigida.
+    Cobrir o titular de uma subordinada é dirigir duas unidades do mesmo ramo: a de baixo já está
+    dentro da de cima, e mantê-la seria percorrer e desenhar duas vezes a parte comum."""
+    arvores = {dirigida: posicao_de(dirigida).ego for dirigida in unidades_dirigidas(perfil)}
+    return tuple(
+        arvore
+        for dirigida, arvore in arvores.items()
+        if not any(outra != dirigida and dirigida in arvores[outra].ids for outra in arvores)
     )
+
+
+def alcance_do_perfil(perfil: Perfil) -> frozenset[int]:
+    """"Unidades subordinadas" não é conceito, é esta projeção: os ramos alcançados reduzidos a ids.
+    Descartar o ramo contido não muda o conjunto — ele já está inteiro dentro do outro."""
+    return frozenset[int]().union(*(ramo.ids for ramo in ramos_do_alcance(perfil)))
 
 
 def _slugs_estruturais() -> frozenset[str]:
