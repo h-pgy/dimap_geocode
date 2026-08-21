@@ -142,10 +142,10 @@
   <svg width="0" height="0" class="absolute" aria-hidden="true">
     <defs>
       <g id="glifo-atribuicao">
-        <rect x="9" y="3" width="6" height="4" rx="1"/>
-        <path d="M12 7v3"/><path d="M5 10h14"/><path d="M5 10v3"/><path d="M19 10v3"/>
-        <rect x="2" y="13" width="6" height="5" rx="1"/>
-        <rect x="16" y="13" width="6" height="5" rx="1"/>
+        <rect x="2.5" y="7" width="19" height="13" rx="2"/>
+        <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/>
+        <path d="M2.5 12.5h8"/><path d="M13.5 12.5h8"/>
+        <rect x="10.5" y="11" width="3" height="3" rx="0.75"/>
       </g>
       <g id="glifo-certidao">
         <path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
@@ -175,26 +175,78 @@
       <div class="flex flex-wrap gap-2 mt-4">
         <span class="badge badge-ponto">.card-atribuicao</span>
         <span class="badge badge-linha">.card-acao (SPEC 006)</span>
-        <span class="badge badge-poligono">glifo da ação</span>
+        <span class="badge badge-poligono">glifo da ação · maleta</span>
         <span class="badge badge-neutral badge-soft">unidade sem atribuição</span>
+        <span class="badge badge-info badge-soft">organograma (SPEC user_admin/018)</span>
       </div>
     </header>
 
     <!-- ==================== 2 · ÁTOMOS ==================== -->
     <section class="glass-panel p-6 flex flex-col gap-5">
       <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
-      <!-- Nenhum átomo nasce aqui; o desenho novo é o glifo da ação, arquivo dela e não token. -->
-      <div class="card-well p-5 flex flex-wrap items-center gap-6">
-        <span class="icone-acao icone-acao-grande icon-glow"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
-        <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
-        <button class="btn btn-onsen btn-sm">Atribuir</button>
-        <button class="btn btn-glass btn-sm btn-circle">
-          <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
-        </button>
-        <button class="btn btn-glass btn-sm btn-circle">
-          <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
-        </button>
-        <span class="text-overline">Overline</span>
+
+      <!-- Nenhum átomo nasce aqui; o desenho novo é o glifo da ação — arquivo dela (SPEC 006),
+           não token do design system. -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">glifo de "Definir atribuições da unidade" · a maleta</span>
+        <div class="card-well p-5 flex flex-col gap-5">
+          <div class="flex flex-wrap items-start gap-10">
+            <div class="flex flex-col items-center gap-2 text-center">
+              <span class="icone-acao icone-acao-grande icon-glow"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+              <p class="text-[11px] text-base-content/60">grande · cartão do catálogo</p>
+              <p class="text-code text-[11px]">acoes/competencias/definir_atribuicao/icones/grande.svg</p>
+            </div>
+            <div class="flex flex-col items-center gap-2 text-center">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+              <p class="text-[11px] text-base-content/60">pequeno · linha do menu e cartão da atribuição</p>
+              <p class="text-code text-[11px]">acoes/competencias/definir_atribuicao/icones/pequeno.svg</p>
+            </div>
+          </div>
+          <p class="text-[13px] text-base-content/70">
+            A maleta é o <strong>portfólio de trabalho</strong> da unidade — na administração
+            pública, o que designa as áreas de responsabilidade do setor.
+          </p>
+        </div>
+      </div>
+
+      <!-- o glifo entre os vizinhos com que divide menu e catálogo: o que se aprova é a distinção -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">entre as outras ações · à mesma distância de leitura</span>
+        <div class="card-well p-5">
+          <div class="flex flex-wrap items-start gap-6">
+            <div class="flex flex-col items-center gap-2 text-center w-28">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+              <p class="text-[11px] leading-snug text-base-content/60">Definir atribuições da unidade</p>
+            </div>
+            <div class="flex flex-col items-center gap-2 text-center w-28">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+              <p class="text-[11px] leading-snug text-base-content/60">Conceder competência</p>
+            </div>
+            <div class="flex flex-col items-center gap-2 text-center w-28">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+              <p class="text-[11px] leading-snug text-base-content/60">Amostragem de ofertas</p>
+            </div>
+            <div class="flex flex-col items-center gap-2 text-center w-28">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <p class="text-[11px] leading-snug text-base-content/60">Emitir certidão de lançamento</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- os átomos do tema que a tela usa, sem redesenho -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">do tema, sem redesenho</span>
+        <div class="card-well p-5 flex flex-wrap items-center gap-6">
+          <button class="btn btn-onsen btn-sm">Atribuir</button>
+          <button class="btn btn-glass btn-sm btn-circle">
+            <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+          </button>
+          <button class="btn btn-glass btn-sm btn-circle">
+            <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+          </button>
+          <span class="text-overline">Overline</span>
+        </div>
       </div>
     </section>
 
@@ -265,48 +317,238 @@
           </a>
         </div>
       </div>
-
-      <!-- seletor da unidade-alvo — .select-onsen (SPEC user_admin/011), sem peça nova -->
-      <div class="flex flex-col gap-3">
-        <span class="text-overline">unidade-alvo · as dirigidas e o que está abaixo delas</span>
-        <div class="card-well p-5">
-          <label class="form-field max-w-md">
-            <span class="text-overline">Unidade</span>
-            <select class="select select-glass w-full" data-select-onsen>
-              <option>DIMAP — Divisão do Mapa de Valores</option>
-              <option>&nbsp;&nbsp;&nbsp;DIMAP-1</option>
-              <option>&nbsp;&nbsp;&nbsp;DIMAP-2</option>
-              <option>&nbsp;&nbsp;&nbsp;DIMAP-3</option>
-              <option>&nbsp;&nbsp;&nbsp;DIMAP-4</option>
-            </select>
-          </label>
-        </div>
-      </div>
     </section>
 
     <!-- ==================== 4 · ORGANISMOS ==================== -->
     <section class="glass-panel p-6 flex flex-col gap-6">
       <h2 class="text-[24px] font-bold text-madeira-700">4 · Organismos</h2>
 
+      <!-- seletor da unidade-alvo · organograma (SPEC user_admin/018) reusado sem redesenho:
+           escolher a unidade é mover o ego. Sem o chamado das irmãs e sem "ver toda a árvore" — o
+           que chega ao DOM já é só a subárvore alcançada, com a linha do nível aberta. -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">unidade-alvo · a dirigida e o que pende dela</span>
+        <div class="card-well p-5">
+          <div class="glass-panel rounded-2xl overflow-x-auto">
+            <div class="organograma">
+              <div class="no-arvore no-arvore-ego no-arvore-aberto">
+                <div class="card-unidade card-unidade-poco card-unidade-ego">
+                  <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão do Mapa de Valores">
+                    <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                    <span class="card-unidade-sigla">DIMAP</span>
+                    <span class="card-unidade-nome">Divisão do Mapa de Valores</span>
+                  </button>
+                </div>
+                <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                <div class="no-arvore-filhas">
+                  <div class="no-arvore no-arvore-primeiro">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-1 · Setor de Avaliações">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                        <span class="card-unidade-sigla">DIMAP-1</span>
+                        <span class="card-unidade-nome">Setor de Avaliações</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-2 · Setor de Cadastro Territorial">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#bc3a67"></span>
+                        <span class="card-unidade-sigla">DIMAP-2</span>
+                        <span class="card-unidade-nome">Setor de Cadastro Territorial</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-3 · Setor de Geoprocessamento">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                        <span class="card-unidade-sigla">DIMAP-3</span>
+                        <span class="card-unidade-nome">Setor de Geoprocessamento</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore no-arvore-ultimo">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-4 · Setor de Ofertas Imobiliárias">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#7f5539"></span>
+                        <span class="card-unidade-sigla">DIMAP-4</span>
+                        <span class="card-unidade-nome">Setor de Ofertas Imobiliárias</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- estado: duas unidades dirigidas — uma raiz para cada, sem tronco comum acima -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">duas unidades dirigidas · uma raiz para cada</span>
+        <div class="card-well p-5">
+          <div class="glass-panel rounded-2xl overflow-x-auto">
+            <div class="organograma">
+              <div class="no-arvore no-arvore-ego no-arvore-aberto">
+                <div class="card-unidade card-unidade-poco card-unidade-ego">
+                  <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão do Mapa de Valores">
+                    <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                    <span class="card-unidade-sigla">DIMAP</span>
+                    <span class="card-unidade-nome">Divisão do Mapa de Valores</span>
+                  </button>
+                </div>
+                <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                <div class="no-arvore-filhas">
+                  <div class="no-arvore no-arvore-primeiro">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-1 · Setor de Avaliações">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                        <span class="card-unidade-sigla">DIMAP-1</span>
+                        <span class="card-unidade-nome">Setor de Avaliações</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-2 · Setor de Cadastro Territorial">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#bc3a67"></span>
+                        <span class="card-unidade-sigla">DIMAP-2</span>
+                        <span class="card-unidade-nome">Setor de Cadastro Territorial</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-3 · Setor de Geoprocessamento">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                        <span class="card-unidade-sigla">DIMAP-3</span>
+                        <span class="card-unidade-nome">Setor de Geoprocessamento</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore no-arvore-ultimo">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-4 · Setor de Ofertas Imobiliárias">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#7f5539"></span>
+                        <span class="card-unidade-sigla">DIMAP-4</span>
+                        <span class="card-unidade-nome">Setor de Ofertas Imobiliárias</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="no-arvore">
+                <div class="card-unidade card-unidade-repouso glass-panel">
+                  <button class="card-unidade-gatilho" type="button" title="DICAD · Divisão de Cadastro Imobiliário">
+                    <span class="dot-unidade w-9 h-9" style="--cor-unidade:#97294f"></span>
+                    <span class="card-unidade-sigla">DICAD</span>
+                    <span class="card-unidade-nome">Divisão de Cadastro Imobiliário</span>
+                  </button>
+                </div>
+                <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                <div class="no-arvore-filhas">
+                  <div class="no-arvore no-arvore-primeiro">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DICAD-1 · Setor de Cadastro Fiscal">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                        <span class="card-unidade-sigla">DICAD-1</span>
+                        <span class="card-unidade-nome">Setor de Cadastro Fiscal</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore no-arvore-ultimo">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DICAD-2 · Setor de Atendimento">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                        <span class="card-unidade-sigla">DICAD-2</span>
+                        <span class="card-unidade-nome">Setor de Atendimento</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- estado de falta: o perfil não dirige unidade alguma -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">estado de falta · não dirige unidade alguma</span>
+        <div class="card-well p-8 text-center">
+          <p class="text-[15px] text-base-content/80">Você não dirige nenhuma unidade.</p>
+          <p class="text-[13px] text-base-content/60">Sem unidade dirigida não há atribuição a definir.</p>
+        </div>
+      </div>
+
       <!-- estado de falta: unidade recém-criada, sem nenhuma atribuição -->
       <div class="flex flex-col gap-3">
         <span class="text-overline">poço da unidade · sem nenhuma atribuição</span>
         <div class="glass-panel p-5 flex flex-col gap-4">
-          <div class="flex flex-wrap items-end justify-between gap-4">
-            <label class="form-field grow max-w-sm">
-              <span class="text-overline">Unidade</span>
-              <select class="select select-glass w-full" data-select-onsen>
-                <option>DIMAP-4</option>
-              </select>
-            </label>
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="dot-unidade w-9 h-9 shrink-0" style="--cor-unidade:#7f5539"></span>
+              <div class="min-w-0">
+                <p class="text-overline">Unidade-alvo</p>
+                <p class="text-[18px] font-bold text-madeira-700 leading-tight">DIMAP-4</p>
+                <p class="text-[13px] text-base-content/70">Setor de Ofertas Imobiliárias · Seção · subordinada à DIMAP</p>
+              </div>
+            </div>
             <label for="modal-catalogo" class="btn btn-onsen btn-sm gap-2">
               <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
               Atribuir ação
             </label>
           </div>
-          <div class="card-well p-8 text-center">
-            <p class="text-[15px] text-base-content/80">Esta unidade ainda não exerce nenhuma ação.</p>
-            <p class="text-[13px] text-base-content/60">Atribua a primeira para que os cargos possam recebê-la.</p>
+          <div class="card-well p-4 flex flex-col gap-3">
+            <div class="flex flex-col gap-1">
+              <p class="text-overline">Ações atribuídas</p>
+              <p class="text-[13px] text-base-content/70">O que a unidade exerce. Quem exerce cada uma se define em <em>Conceder competência</em>.</p>
+            </div>
+            <div class="py-6 text-center">
+              <p class="text-[15px] text-base-content/80">Esta unidade ainda não exerce nenhuma ação.</p>
+              <p class="text-[13px] text-base-content/60">Atribua a primeira para que os cargos possam recebê-la.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -352,70 +594,147 @@
       <!-- página: competencias/definir_atribuicao.html -->
       <div class="glass-panel p-5 flex flex-col gap-4">
 
-        <!-- partial: competencias/partials/_cabecalho_atribuicao.html -->
-        <div class="flex flex-wrap items-end justify-between gap-4">
-          <label class="form-field grow max-w-sm">
-            <span class="text-overline">Unidade</span>
-            <select class="select select-glass w-full" data-select-onsen>
-              <option>DIMAP-1</option>
-              <option>DIMAP-2</option>
-              <option>DIMAP-3</option>
-              <option>DIMAP-4</option>
-            </select>
-          </label>
-          <label for="modal-catalogo" class="btn btn-onsen btn-sm gap-2">
-            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
-            Atribuir ação
-          </label>
-        </div>
-
-        <div class="flex items-center gap-2 text-[13px] text-base-content/70">
-          <span class="dot-unidade" style="--cor-unidade:#0077B6"></span>
-          <span>DIMAP-1 · Seção · subordinada à DIMAP</span>
+        <!-- partial: competencias/partials/_seletor_unidade_alvo.html — cada card faz hx-get da
+             unidade e troca o painel abaixo; a árvore não é trocada -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <p class="text-overline">Escolha a unidade</p>
+          <div class="glass-panel rounded-2xl overflow-x-auto">
+            <div class="organograma">
+              <div class="no-arvore no-arvore-caminho no-arvore-aberto">
+                <div class="card-unidade card-unidade-poco">
+                  <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão do Mapa de Valores">
+                    <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                    <span class="card-unidade-sigla">DIMAP</span>
+                    <span class="card-unidade-nome">Divisão do Mapa de Valores</span>
+                  </button>
+                </div>
+                <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                <div class="no-arvore-filhas">
+                  <div class="no-arvore no-arvore-primeiro no-arvore-ego no-arvore-aberto">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-poco card-unidade-ego">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-1 · Setor de Avaliações">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                        <span class="card-unidade-sigla">DIMAP-1</span>
+                        <span class="card-unidade-nome">Setor de Avaliações</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-2 · Setor de Cadastro Territorial">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#bc3a67"></span>
+                        <span class="card-unidade-sigla">DIMAP-2</span>
+                        <span class="card-unidade-nome">Setor de Cadastro Territorial</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-3 · Setor de Geoprocessamento">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                        <span class="card-unidade-sigla">DIMAP-3</span>
+                        <span class="card-unidade-nome">Setor de Geoprocessamento</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore no-arvore-ultimo">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-4 · Setor de Ofertas Imobiliárias">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#7f5539"></span>
+                        <span class="card-unidade-sigla">DIMAP-4</span>
+                        <span class="card-unidade-nome">Setor de Ofertas Imobiliárias</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <!-- /partial -->
 
-        <!-- partial: competencias/partials/_poco_atribuicoes.html — alvo de hx-swap ao trocar a
-             unidade no seletor, ao atribuir e ao remover -->
-        <div class="card-well p-4 grid gap-3 sm:grid-cols-2">
-          <!-- partial: competencias/partials/_card_atribuicao.html — um por atribuição -->
-          <div class="card-atribuicao">
-            <div class="card-atribuicao-cabeca">
-              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
-              <div class="flex-1 min-w-0">
-                <p class="card-atribuicao-nome">Amostragem de ofertas</p>
-                <p class="card-atribuicao-descricao">3 cargos exercem</p>
+        <!-- partial: competencias/partials/_painel_atribuicoes.html — alvo de hx-swap ao escolher a
+             unidade na árvore -->
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="dot-unidade w-9 h-9 shrink-0" style="--cor-unidade:#0077b6"></span>
+              <div class="min-w-0">
+                <p class="text-overline">Unidade-alvo</p>
+                <p class="text-[18px] font-bold text-madeira-700 leading-tight">DIMAP-1</p>
+                <p class="text-[13px] text-base-content/70">Setor de Avaliações · Seção · subordinada à DIMAP</p>
               </div>
-              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
-                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
-              </label>
+            </div>
+            <label for="modal-catalogo" class="btn btn-onsen btn-sm gap-2">
+              <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+              Atribuir ação
+            </label>
+          </div>
+          <!-- partial: competencias/partials/_poco_atribuicoes.html — alvo de hx-swap ao atribuir e
+               ao remover -->
+          <div class="card-well p-4 flex flex-col gap-3">
+            <div class="flex flex-col gap-1">
+              <p class="text-overline">Ações atribuídas · 3</p>
+              <p class="text-[13px] text-base-content/70">O que a unidade exerce. Quem exerce cada uma se define em <em>Conceder competência</em>.</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <!-- partial: competencias/partials/_card_atribuicao.html — um por atribuição -->
+              <div class="card-atribuicao">
+                <div class="card-atribuicao-cabeca">
+                  <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <p class="card-atribuicao-nome">Amostragem de ofertas</p>
+                    <p class="card-atribuicao-descricao">3 cargos exercem</p>
+                  </div>
+                  <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                    <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                  </label>
+                </div>
+              </div>
+              <!-- /partial -->
+              <div class="card-atribuicao">
+                <div class="card-atribuicao-cabeca">
+                  <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <p class="card-atribuicao-nome">Conceder competência</p>
+                    <p class="card-atribuicao-descricao">1 cargo exerce</p>
+                  </div>
+                  <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                    <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                  </label>
+                </div>
+              </div>
+              <div class="card-atribuicao">
+                <div class="card-atribuicao-cabeca">
+                  <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                    <p class="card-atribuicao-vazio">nenhum cargo ainda</p>
+                  </div>
+                  <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                    <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
           <!-- /partial -->
-          <div class="card-atribuicao">
-            <div class="card-atribuicao-cabeca">
-              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
-              <div class="flex-1 min-w-0">
-                <p class="card-atribuicao-nome">Conceder competência</p>
-                <p class="card-atribuicao-descricao">1 cargo exerce</p>
-              </div>
-              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
-                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
-              </label>
-            </div>
-          </div>
-          <div class="card-atribuicao">
-            <div class="card-atribuicao-cabeca">
-              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
-              <div class="flex-1 min-w-0">
-                <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
-                <p class="card-atribuicao-vazio">nenhum cargo ainda</p>
-              </div>
-              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
-                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
-              </label>
-            </div>
-          </div>
         </div>
         <!-- /partial -->
       </div>
@@ -435,29 +754,82 @@
         <p class="text-[13px] text-base-content/70">Ações do catálogo que esta unidade ainda não exerce.</p>
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
-        <a href="#" class="hover-3d card-acao-alvo">
-          <div class="card-well card-acao">
-            <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
-            <div>
-              <p class="card-acao-nome">Definir atribuições da unidade</p>
-              <p class="card-acao-descricao">Define quais ações a unidade exerce.</p>
-            </div>
+      <!-- o catálogo cresce a cada ação do projeto: o poço rola, com a barra gravada da SPEC
+           user_admin/013 -->
+      <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+        <div class="table-onsen-wrap max-h-[22rem]" data-rolador>
+          <div class="grid gap-4 sm:grid-cols-2 p-2">
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="card-well card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Definir atribuições da unidade</p>
+                  <p class="card-acao-descricao">Define quais ações a unidade exerce.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="card-well card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Emitir certidão de lançamento</p>
+                  <p class="card-acao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="card-well card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Emitir laudo de avaliação</p>
+                  <p class="card-acao-descricao">Consolida a amostra e o valor apurado num documento assinado.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="card-well card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Consultar a planta genérica de valores</p>
+                  <p class="card-acao-descricao">Mostra o valor de referência vigente para o trecho.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="card-well card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Registrar oferta imobiliária</p>
+                  <p class="card-acao-descricao">Guarda uma oferta coletada, com a localização e as características.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="card-well card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Exportar a amostra em planilha</p>
+                  <p class="card-acao-descricao">Leva a amostra levantada para fora do sistema.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
           </div>
-          <div></div><div></div><div></div><div></div>
-          <div></div><div></div><div></div><div></div>
-        </a>
-        <a href="#" class="hover-3d card-acao-alvo">
-          <div class="card-well card-acao">
-            <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
-            <div>
-              <p class="card-acao-nome">Emitir certidão de lançamento</p>
-              <p class="card-acao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
-            </div>
-          </div>
-          <div></div><div></div><div></div><div></div>
-          <div></div><div></div><div></div><div></div>
-        </a>
+        </div>
+        <div class="scroll-etched" data-barra aria-hidden="true">
+          <div class="scroll-etched-thumb" data-polegar></div>
+        </div>
       </div>
 
       <p class="text-[13px] text-base-content/70">
@@ -535,8 +907,12 @@
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(mapa);
   </script>
 
-  <!-- Marcar o campo com data-select-onsen não basta: o módulo precisa ser carregado na página
-       (SPEC user_admin/011). Sem ele o campo degrada no .select-glass nativo. -->
-  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+  <!-- Percorrer o organograma é estado visual do controle (SPEC user_admin/018): o módulo move o
+       ego e escava o caminho sobre a árvore que já está no DOM. -->
+  <script type="module" src="/static/src/js/ui/arvore_hierarquica.js"></script>
+
+  <!-- A barra gravada do catálogo é montada pelo módulo no poço marcado com data-scroll-etched
+       (SPEC user_admin/013); sem ele o poço rola com a barra nativa escondida. -->
+  <script type="module" src="/static/src/js/ui/scroll_etched.js"></script>
 </body>
 </html>

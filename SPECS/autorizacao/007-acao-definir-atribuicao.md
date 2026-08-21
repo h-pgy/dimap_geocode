@@ -1,7 +1,7 @@
 ---
 spec: autorizacao/007
-versao: v10
-atualizado_em: 2026-08-17
+versao: v11
+atualizado_em: 2026-08-21
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -29,6 +29,11 @@ changelog:
   - v10: a estrutural com alcance passa a ser exercida só por quem dirige — a concessão dela libera
     o slug e não o alvo —, o alcance declarado passa a ser `UnidadesSubordinadas` e o seletor deixa
     de repetir o ramo comum a duas unidades dirigidas
+  - v11: o alvo passa a ser escolhido no organograma da SPEC `user_admin/018`, e não numa lista
+    suspensa — `alvos_oferecidos` e o achatamento saem por serem a travessia de `contexto_organograma`
+    reescrita; a travessia das dirigidas passa a ter uma origem só, `ramos_do_alcance`, de que
+    `alcance_do_perfil` (SPEC 004) vira projeção; e o partial `_no_arvore.html` ganha as flags que
+    permitem reusá-lo aqui
 ---
 
 # SPEC autorizacao/007 — Definir atribuição: a competência da unidade, e a primeira ação do registro
@@ -40,10 +45,11 @@ na tela de atribuições, para que uma competência nova entre em vigor sem ning
 ## 2 · Condições de pronto
 - [ ] Quem abre a tela é **quem responde pela direção** da unidade — o titular em exercício ou o
       substituto vigente dele —, sem depender de atribuição ou concessão gravada; quem não dirige
-      unidade alguma não tem alvo no alcance: o seletor vem vazio e qualquer POST recebe 403.
-- [ ] A tela oferece como alvo **as unidades que o perfil dirige e as que estão abaixo delas** no
-      organograma, cada uma **antes das que pendem dela e com a subordinação visível**; unidade fora
-      desse alcance não aparece — e é recusada se vier no request.
+      unidade alguma não tem alvo no alcance: a árvore vem vazia e qualquer POST recebe 403.
+- [ ] O alvo é escolhido **no organograma**, com cada unidade dirigida na **raiz** e as de baixo
+      penduradas nela; a árvore chega **já recortada ao alcance** — unidade fora dele não é desenhada,
+      não há como navegar até ela, e é recusada se vier no request.
+- [ ] Dirigir uma unidade e outra abaixo dela desenha **um ramo só**, não o ramo comum duas vezes.
 - [ ] O catálogo oferecido traz **todas as ações ativas** que a unidade-alvo ainda **não** tem, as
       estruturais inclusive.
 - [ ] Atribuir e remover acontecem **sem recarregar a página**, trocando só o trecho afetado.
@@ -56,6 +62,8 @@ na tela de atribuições, para que uma competência nova entre em vigor sem ning
 - [ ] O design foi aprovado no **mock**, e `.card-atribuicao` foi portada para
       `static/src/tema-dimap.dev.css` e renderizada no styleguide antes de qualquer template da
       aplicação usá-la.
+- [ ] O organograma é **reusado**, não redesenhado: `_no_arvore.html` ganha as flags desta tela e as
+      duas telas da SPEC `user_admin/018` continuam renderizando como hoje.
 
 ## 3 · Domínio
 Nenhum model novo e nenhuma regra nova: a SPEC 002 já entregou as duas tabelas, e esta é o **nível 1**
@@ -74,9 +82,9 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   protegida, o alvo conferido contra o alcance e o rastro dos dois atos.
 - [`alcance_do_perfil`](004-protecao-de-rota-e-registro-de-execucao.md) — "este id de unidade está no
   alcance?"; a resposta é um conjunto de ids, e quem a consome é o decorator.
-- [`posicao_de` e `NoHierarquia`](../user_admin/018-arvore-hierarquica.md) — "em que ordem e a que
-  profundidade o organograma alcançado se lê?"; é dali que sai o seletor de alvos, que precisa da
-  forma da árvore e não do conjunto.
+- [`posicao_de` e `NoHierarquia`](../user_admin/018-arvore-hierarquica.md) — "que forma tem o
+  organograma alcançado?"; a tela desenha a árvore, e para desenhar precisa da forma dela, não do
+  conjunto de ids que basta ao decorator.
 - [`ItemDeMenu`, `ContratoMenu` e `RoteadorMenu`](005-contrato-de-menu-e-router.md) — o menu de
   administrador, que **pinça** esta ação; ela não se inscreve nele.
 
@@ -99,10 +107,14 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - `@apps/competencias/protecao.py` (SPEC 004) → `acao_protegida` e `registrar_ato`.
 - `@apps/competencias/menus.py` (SPEC 005) → `ItemDeMenu`, `ContratoMenu`, `RoteadorMenu`.
 - `@apps/competencias/consulta.py` (SPEC 004) → `alcance_do_perfil` e `unidades_dirigidas`: o conjunto
-  de ids alcançados e as unidades de onde ele parte.
+  de ids alcançados e as unidades de onde ele parte — é `alcance_do_perfil` que já percorre as
+  dirigidas, e esta SPEC a reescreve como projeção da travessia, não faz uma segunda.
 - `@apps/user_admin/consulta.py` → `posicao_de`, e `@apps/user_admin/context.py` →
-  `contexto_organograma` (SPEC `user_admin/018`): a subárvore de uma unidade e o padrão de casar os ids
-  dela com as `Unidade` num `in_bulk`; `@services/domain/arvore_hierarquica` → `NoHierarquia`.
+  `contexto_organograma` e `_ramo` (SPEC `user_admin/018`): a subárvore de uma unidade e a travessia que
+  casa os ids com as `Unidade` num `in_bulk` e marca cada nó — esta SPEC a **parametriza**, não a
+  reescreve; `@services/domain/arvore_hierarquica` → `NoHierarquia`.
+- `@templates/user_admin/partials/_no_arvore.html` e `@static/src/js/ui/arvore_hierarquica.js`
+  (SPEC `user_admin/018`): o organograma renderizado e o percorrer como estado visual do controle.
 - `@services/domain/autorizacao/contratos.py` (SPEC 004) → `UnidadesSubordinadas`: o alcance declarado
   no contrato da ação.
 - `@templates/user_admin/servidores_list.html` e `@templates/user_admin/unidade.html`: a área
@@ -110,7 +122,9 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - SPEC 006 → `.card-acao`, `.card-acao-nome`, `.card-acao-descricao`, `.icone-acao`: o cartão explicativo
   é o item do catálogo, sem redesenho.
 - `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel`, `.modal-glass` + `.modal-box-glass`,
-  `.select-onsen`, `.btn-onsen`, `.btn-glass`, `.text-overline`, `.dot-unidade`.
+  `.btn-onsen`, `.btn-glass`, `.text-overline`, `.dot-unidade`; `.organograma`, `.no-arvore` e
+  `.card-unidade` (SPEC `user_admin/018`); `.scroll-etched` sobre `.table-onsen-poco`/`.table-onsen-wrap`
+  + `@static/src/js/ui/scroll_etched.js` (SPEC `user_admin/013`), que é como o catálogo rola.
 - Skills: `componentes-frontend`, `daisyui`, `htmx`, `mock`, `pydantic-validation-errors`,
   `escrever-testes`, `test-django-views`.
 
@@ -172,49 +186,76 @@ def definir_atribuicao(request: HttpRequest) -> HttpResponse:
     )
 ```
 
-**`apps/competencias/consulta.py`** — a mesma árvore que o decorator confere, aqui na forma que a tela
-desenha. Ao lado de `alcance_do_perfil` (SPEC 004), que a lê como conjunto.
+**`apps/competencias/consulta.py`** — a travessia das dirigidas passa a ter **uma origem só**, e o
+alcance da SPEC 004 vira projeção dela. Percorrer as dirigidas já era o corpo de `alcance_do_perfil`;
+o que faltava era guardar a árvore em vez de jogá-la fora.
 ```python
-def alvos_oferecidos(perfil: Perfil) -> list[dict[str, Any]]:
-    """As unidades alcançadas em pré-ordem, cada uma antes das que pendem dela, com a profundidade
-    que o seletor indenta. O conjunto de ids de `alcance_do_perfil` não serve aqui: ele não tem ordem
-    nem nível, e o seletor precisa dos dois."""
-    arvores = _ramos_do_alcance(perfil)
-    # Segunda consulta para casar id com Unidade, como no organograma da SPEC user_admin/018: sem
-    # ela o domínio precisaria conhecer `Unidade` para já devolver sigla e cor.
-    por_id = Unidade.objects.in_bulk(
-        frozenset(unidade_id for arvore in arvores for unidade_id in arvore.ids)
-    )
-    # `unidades_dirigidas` é conjunto, e conjunto não tem ordem: sem ordenar os ramos aqui, dirigir
-    # duas unidades faria o seletor mudar de ordem entre duas aberturas da mesma tela.
-    ordenados = sorted(arvores, key=lambda arvore: por_id[arvore.unidade_id].sigla)
-    return [alvo for arvore in ordenados for alvo in _achatar(arvore, por_id, profundidade=0)]
-
-
-def _ramos_do_alcance(perfil: Perfil) -> list[NoHierarquia]:
-    """As dirigidas que não pendem de outra dirigida. Cobrir o titular de uma subordinada é dirigir
-    duas unidades do mesmo ramo, e as duas subárvores se sobrepõem — `alcance_do_perfil` não sente,
-    porque devolve conjunto, e uma lista repetiria a parte comum no seletor."""
-    arvores = [posicao_de(dirigida).ego for dirigida in unidades_dirigidas(perfil)]
-    return [
+def ramos_do_alcance(perfil: Perfil) -> tuple[NoHierarquia, ...]:
+    """As subárvores que o perfil alcança — uma por unidade dirigida que não pende de outra dirigida.
+    Cobrir o titular de uma subordinada é dirigir duas unidades do mesmo ramo: a de baixo já está
+    dentro da de cima, e mantê-la seria percorrer e desenhar duas vezes a parte comum."""
+    arvores = {dirigida: posicao_de(dirigida).ego for dirigida in unidades_dirigidas(perfil)}
+    return tuple(
         arvore
-        for arvore in arvores
-        if not any(
-            outra.unidade_id != arvore.unidade_id and arvore.unidade_id in outra.ids
-            for outra in arvores
-        )
+        for dirigida, arvore in arvores.items()
+        if not any(outra != dirigida and dirigida in arvores[outra].ids for outra in arvores)
+    )
+
+
+def alcance_do_perfil(perfil: Perfil) -> frozenset[int]:
+    """"Unidades subordinadas" não é conceito, é esta projeção: os ramos alcançados reduzidos a ids.
+    Descartar o ramo contido não muda o conjunto — ele já está inteiro dentro do outro."""
+    return frozenset().union(*(ramo.ids for ramo in ramos_do_alcance(perfil)))
+```
+
+**`apps/user_admin/context.py`** — `contexto_organograma` passa a receber as árvores já percorridas e o
+que a tela renderiza; os defaults são o que as duas telas da SPEC `user_admin/018` já fazem.
+```python
+def contexto_organograma(
+    unidade_em_foco: Unidade | None,
+    *,
+    arvores: Sequence[NoHierarquia] | None = None,
+    com_link: bool = True,
+    com_irmas: bool = True,
+    abrir_o_ego: bool = False,
+) -> dict[str, Any]:
+    """`arvores` recorta o organograma ao que o chamador alcança; sem elas, a hierarquia inteira.
+    Recebe a árvore pronta, e não as raízes, porque quem tem o recorte já a percorreu para saber
+    qual é — repetir `posicao_de` aqui seria a terceira varredura da mesma tabela na mesma
+    requisição."""
+    ramos = arvores if arvores is not None else [
+        posicao_de(raiz.pk).ego for raiz in Unidade.objects.filter(pai__isnull=True)
     ]
+    ...
+    # Ordenar aqui, e não na origem: sigla é da `Unidade`, e é o `in_bulk` desta função que a tem
+    # em mãos. `unidades_dirigidas` devolve conjunto — sem isto a árvore trocaria de ordem entre
+    # duas aberturas da mesma tela.
+    ramos = sorted(ramos, key=lambda ramo: por_id[ramo.unidade_id].sigla)
+```
 
+**`templates/user_admin/partials/_no_arvore.html`** — as flags entram como três condições, e nada
+mais muda: quem não as passa continua recebendo o organograma da 018.
+```html
+{# Aberto no ego: esta tela abre mostrando as subordinadas, porque escolher entre elas é o que se  #}
+{# faz aqui; a página da unidade abre fechada, no caminho.                                         #}
+{% if no.em_foco and abrir_o_ego %}no-arvore-aberto{% endif %}
+{# As três flags vêm do contexto, nunca de um default no template: variável ausente é falsa, e as  #}
+{# telas da 018, que não as passam, perderiam o elo e a seta em silêncio.                          #}
+{% if com_link %}<a class="card-unidade-pagina" ...>{% endif %}
+{% if com_irmas %}<button class="no-arvore-irmas" ...>{% endif %}
+```
 
-def _achatar(
-    no: NoHierarquia,
-    por_id: Mapping[int, Unidade],
-    profundidade: int,
-) -> Iterator[dict[str, Any]]:
-    """Pré-ordem: a unidade antes do que pende dela, que é a ordem em que o organograma se lê."""
-    yield {"unidade": por_id[no.unidade_id], "profundidade": profundidade}
-    for filha in sorted(no.filhas, key=lambda filha: por_id[filha.unidade_id].sigla):
-        yield from _achatar(filha, por_id, profundidade + 1)
+**`apps/competencias/context.py`** — a composição, que é toda a escolha do alvo.
+```python
+contexto_organograma(
+    unidade_alvo,
+    arvores=ramos_do_alcance(perfil),
+    # Nesta tela o card escolhe o alvo: levar à página da unidade seria sair no meio do ato, e
+    # chamar as irmãs não tem o que revelar — a linha do nível já vem aberta.
+    com_link=False,
+    com_irmas=False,
+    abrir_o_ego=True,
+)
 ```
 
 **`apps/competencias/catalogo.py`** — o que o modal oferece.
@@ -238,16 +279,16 @@ segunda — e esqueça. Custo: quem lê a view não vê nenhuma das duas, e a ba
 `acoes_declaradas.py`, longe daqui.
 
 **A árvore é percorrida duas vezes por abertura de tela**: uma pelo decorator, para conferir o alvo, e
-outra pela view, para montar a lista de unidades oferecidas. Cachear a segunda exigiria carregar estado
-entre decorator e view, e o organograma da DIMAP é pequeno. Custo: cada uma das duas recarrega todos os
-pares uma vez por unidade dirigida — até quatro varreduras do organograma por requisição, já que
-dirigir duas unidades é o caso normal de quem cobre o titular de outra.
+outra pela view, para desenhá-la — e cada uma é agora uma chamada só a `ramos_do_alcance`. Cachear a
+segunda exigiria carregar estado entre decorator e view, e o organograma da DIMAP é pequeno. Custo:
+`posicao_de` recarrega todos os pares uma vez por unidade dirigida, e dirigir duas é o caso normal de
+quem cobre o titular de outra.
 
-**A mesma árvore é lida em duas formas, por duas funções**: `alcance_do_perfil` a reduz a um conjunto
-de ids, e `alvos_oferecidos` a achata na ordem do organograma. Uma só forma serviria mal aos dois — o
-conjunto não desenha o seletor, e a lista ordenada não responde pertinência em tempo constante. Custo:
-o que a barreira aceita e o que a tela oferece são calculados separadamente, e passam a divergir se
-uma das duas mudar de origem.
+**A barreira e a tela leem a mesma travessia em duas formas**: o decorator projeta os ramos num conjunto
+de ids, e a tela os desenha como árvore. Uma forma só serviria mal aos dois — o conjunto não desenha
+nada, e a árvore não responde pertinência em tempo constante. Custo: nenhum de divergência, porque a
+origem passou a ser uma; o que sobra é a projeção do decorator jogar fora a estrutura que a tela usa,
+e as duas serem calculadas em momentos diferentes da mesma requisição.
 
 **Quem dirige a raiz alcança o organograma inteiro.** O Secretário é titular da unidade-raiz, e a
 subárvore da raiz é tudo — o alcance máximo cai da mesma regra, sem exceção escrita para a alta
@@ -260,14 +301,18 @@ disso é o registro (SPEC 004), não uma aprovação de terceiro.
 
 **Conceder uma ação estrutural com alcance libera o slug e não o alvo.** A concessão entra pela porta
 da SPEC 003 e faz o `has_perm` passar, mas o alcance sai só das unidades dirigidas (SPEC 004): quem
-recebe a concessão sem dirigir nada abre a tela com o seletor vazio e não consuma ato nenhum. Custo: o
+recebe a concessão sem dirigir nada abre a tela com a árvore vazia e não consuma ato nenhum. Custo: o
 catálogo oferece uma atribuição cuja concessão, para estas duas ações, não produz efeito — e o que
 avisa disso é esta linha, não a interface.
 
-**A ordem em que o seletor lê a hierarquia é a sigla, e a do organograma renderizado não é.** A árvore
-da SPEC `user_admin/018` devolve as filhas na ordem em que o banco entrega os pares, e só as raízes
-saem ordenadas na página do organograma. Custo: a mesma hierarquia se lê em duas ordens em duas telas,
-e igualá-las exige mexer na regra já implementada da 018.
+**Esta SPEC mexe em artefato de outras duas, e em nenhuma delas muda o que foi entregue.** Da
+`user_admin/018` ela parametriza `contexto_organograma` e põe três flags em `_no_arvore.html`, todas com
+o default no comportamento atual; da SPEC 004 ela reescreve `alcance_do_perfil` como projeção de
+`ramos_do_alcance`, com a mesma assinatura e o mesmo resultado — refactor, não modelagem nova, e por
+isso as duas seguem implementadas. Custo: o snippet de `alcance_do_perfil` no §6 da SPEC 004 passa a
+mostrar um corpo que o código não tem mais, e `_no_arvore.html` deixa de ter uma tela só — um ajuste
+feito por qualquer das três alcança as outras duas, o mesmo risco que `.card-atribuicao` corre com a
+SPEC 008.
 
 **A remoção cascateia nas concessões, e a confirmação é o único lugar onde isso aparece antes.** A
 contagem é lida no momento em que o modal é montado. Custo: entre a pergunta e o "sim" outra pessoa pode
@@ -284,9 +329,9 @@ Todos carregam o marker `banco`.
 - `test_tela_abre_para_quem_dirige_e_nega_o_resto` — o titular em exercício entra sem concessão nenhuma
   gravada, e o substituto dele entra enquanto ele está afastado; quem não dirige unidade alguma recebe
   403. *(marker `banco`)*
-- `test_seletor_oferece_a_subarvore_hierarquica` — o seletor traz a unidade dirigida antes das de
-  baixo, cada uma com a profundidade dela; unidade de outro ramo e unidade acima não aparecem, e
-  dirigir uma unidade e outra abaixo dela não repete o ramo comum. *(marker `banco`)*
+- `test_organograma_oferece_so_a_subarvore_dirigida` — a árvore nasce na unidade dirigida, com as de
+  baixo penduradas nela; unidade de outro ramo e unidade acima não aparecem, e dirigir uma unidade e
+  outra abaixo dela desenha um ramo só. *(marker `banco`)*
 - `test_catalogo_oferece_so_o_que_falta` — a ação já atribuída e a inativa ficam fora da oferta; a
   estrutural que a unidade ainda não tem é oferecida. *(marker `banco`)*
 - `test_atribuir_recusa_unidade_fora_do_alcance` — POST com unidade existente mas de outro ramo é
