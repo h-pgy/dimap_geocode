@@ -1,8 +1,8 @@
 ---
 spec: autorizacao/008
-versao: v9
-atualizado_em: 2026-08-17
-testes_tdd: false
+versao: v10
+atualizado_em: 2026-08-21
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
@@ -26,6 +26,10 @@ changelog:
     fica explicitamente restrito à unidade-alvo escolhida
   - v9: o alcance declarado passa a ser `UnidadesSubordinadas`, e conceder a estrutural deixa de
     ampliar o alcance de quem a recebe
+  - v10: o alvo passa a ser escolhido no organograma da SPEC `user_admin/018`, reusando o seletor da
+    007 — `alvos_oferecidos` sai por não existir mais desde a 007 v11 —, e o seletor de duas posições
+    passa a se chamar `.chave-onsen`, com o poço do `.card-well` no trilho e a espessura do
+    `.glass-panel-thick` na pílula
 ---
 
 # SPEC autorizacao/008 — Conceder competência: distribuir entre os cargos o que a unidade tem
@@ -40,9 +44,9 @@ ter — comece a trabalhar sem depender de alteração em código ou no banco.
       substituto vigente dele —, sem depender de concessão gravada desta ação.
 - [ ] A tela lista as atribuições **da unidade-alvo escolhida**, e só dela — as das outras unidades
       alcançadas não entram no mesmo poço.
-- [ ] O seletor oferece as unidades que o perfil **dirige** e as que estão **abaixo delas** no
-      organograma, cada uma **antes das que pendem dela e com a subordinação visível**; unidade fora
-      desse alcance é recusada mesmo vindo no request.
+- [ ] O alvo é escolhido **no organograma** — as unidades que o perfil **dirige** e as que estão
+      **abaixo delas**, com a subordinação desenhada —, e unidade fora desse alcance é recusada mesmo
+      vindo no request.
 - [ ] Conceder e revogar acontecem **sem recarregar a página**, trocando só o trecho afetado.
 - [ ] A escolha do cargo distingue explicitamente **cargo base** de **cargo em comissão**, e só um dos
       dois é concedido por vez.
@@ -51,10 +55,10 @@ ter — comece a trabalhar sem depender de alteração em código ou no banco.
 - [ ] Conceder e revogar são **atos registrados** (SPEC 004), distinguíveis pela operação e com o alvo
       identificando ação e cargo.
 - [ ] A ação aparece no **menu de administrador** (SPEC 007) apenas para quem pode executá-la.
-- [ ] O design foi aprovado no **mock**, e as peças novas — `.seletor-onsen` e `.chip-concessao` — mais
-      `.card-atribuicao`, compartilhada com a SPEC 007, foram portadas para
-      `static/src/tema-dimap.dev.css` e renderizadas no styleguide antes de qualquer template da
-      aplicação usá-las.
+- [ ] O design foi aprovado no **mock**, e as peças novas — `.chave-onsen` e `.chip-concessao` — foram
+      portadas para `static/src/tema-dimap.dev.css` e renderizadas no styleguide antes de qualquer
+      template da aplicação usá-las; `.card-atribuicao`, compartilhada com a SPEC 007, já está no tema
+      e aqui só se compõe.
 
 ## 3 · Domínio
 Nenhum model novo: é o **nível 2** da SPEC 002 virando ato administrativo, e a 007 é quem põe atribuição
@@ -68,8 +72,9 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - [`has_perm`](003-avaliador-e-backend-de-autorizacao.md) — "este perfil exerce esta ação estrutural?".
 - [`UnidadesSubordinadas`](004-protecao-de-rota-e-registro-de-execucao.md) — "até onde o alvo desta
   ação pode chegar?", declarado no contrato dela, como na SPEC 007.
-- [`alvos_oferecidos`](007-acao-definir-atribuicao.md) — "que unidades o seletor oferece, em que ordem
-  e a que profundidade?"; a subárvore alcançada já sai achatada dali, como na tela da SPEC 007.
+- [`ramos_do_alcance` e `contexto_organograma`](007-acao-definir-atribuicao.md) — "que unidades o
+  organograma oferece, e com que forma?"; a subárvore alcançada chega como árvore, a mesma travessia da
+  tela da SPEC 007.
 - [`acao_protegida` e `registrar_ato`](004-protecao-de-rota-e-registro-de-execucao.md) — a rota
   protegida, o alvo conferido contra o alcance e o rastro dos dois atos.
 - [`MENU_ADMINISTRADOR`](007-acao-definir-atribuicao.md) — o menu que **pinça** também esta ação.
@@ -93,13 +98,19 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   `@apps/competencias/menus_declarados.py` (SPEC 007) → `MENU_ADMINISTRADOR`.
 - `@services/domain/autorizacao/contratos.py` (SPEC 004) → `UnidadesSubordinadas`: o alcance declarado
   no contrato da ação.
-- `@apps/competencias/consulta.py` (SPEC 007) → `alvos_oferecidos`: a subárvore alcançada, já casada com
-  as `Unidade` e achatada em pré-ordem.
+- `@apps/competencias/consulta.py` (SPEC 007) → `ramos_do_alcance`: as subárvores que o perfil alcança;
+  e `@apps/competencias/context.py` → `contexto_da_tela`, que as passa a `contexto_organograma`
+  (`@apps/user_admin/context.py`, SPEC user_admin/018) com `com_link=False`, `com_irmas=False`,
+  `abrir_o_ego=True`.
+- `@templates/competencias/partials/_seletor_unidade_alvo.html` (SPEC 007), sobre
+  `@templates/user_admin/partials/_no_arvore.html`, e `@static/src/js/ui/arvore_hierarquica.js`: o
+  organograma como seletor de alvo — reusado, não redesenhado (Caveats).
 - `@apps/user_admin/models` → `CargoBase`, `CargoComissao`: catálogo oferecido no campo.
 - SPEC 006 → `.icone-acao`, e SPEC 007 → `.card-atribuicao`: a peça é a mesma, aqui com a faixa de chips.
-- `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel`, `.glass-panel-thick`, `.modal-glass` +
-  `.modal-box-glass`, `.select-onsen`, `.btn-onsen`, `.btn-glass`, `.text-overline`, `.dot-unidade`,
-  `.etched` + `.etched-deeper` + `.etched-inked`.
+- `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel-thick`, `.modal-glass` +
+  `.modal-box-glass`, `.select-onsen` (o campo de cargo), `.btn-onsen`, `.btn-glass`, `.text-overline`,
+  `.dot-unidade`, `.etched` + `.etched-deeper` + `.etched-inked`; e as peças do organograma
+  (SPEC user_admin/018) `.organograma`, `.no-arvore*`, `.card-unidade*`, `.etched-line`.
 - Skills: `componentes-frontend`, `daisyui`, `htmx`, `mock`, `pydantic-validation-errors`,
   `escrever-testes`, `test-django-views`.
 
@@ -150,38 +161,49 @@ def conceder(request: HttpRequest) -> HttpResponse:
 dois catálogos distintos, e o XOR da SPEC 002 fica visível na tela em vez de só no `CheckConstraint`.
 ```html
 {# Rádio nativo é o campo; o estado é lido em CSS por :has(input:checked). Nenhum estado em JS. #}
-<div class="card-well seletor-onsen">
-  <span class="seletor-onsen-polegar glass-panel" aria-hidden="true"></span>
-  <label class="seletor-onsen-opcao">
+<div class="card-well chave-onsen">
+  <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+  <label class="chave-onsen-opcao">
     <input type="radio" name="natureza" class="sr-only" checked />
-    <span class="seletor-onsen-rotulo etched etched-deeper">Cargo base</span>
+    <span class="chave-onsen-rotulo etched etched-deeper">Cargo base</span>
   </label>
-  <label class="seletor-onsen-opcao">
+  <label class="chave-onsen-opcao">
     <input type="radio" name="natureza" class="sr-only" />
-    <span class="seletor-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+    <span class="chave-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
   </label>
 </div>
 ```
 
-**`static/src/tema-dimap.dev.css`** — o seletor de duas posições, genérico.
+**`static/src/tema-dimap.dev.css`** — a chave de duas posições, genérica.
 ```css
-/* Trilha única, metades de largura igual e uma placa que desliza: é isso que faz ler como UM
-   controle, e não como dois chips. Os materiais vêm compostos no HTML — poço na trilha, gelo no
-   polegar —, sem receita de vidro reescrita aqui. */
-.seletor-onsen { @apply relative inline-grid grid-cols-2 p-1; }
-/* Metade da trilha menos a folga: assim translateX(100%) pousa exatamente na outra metade. */
-.seletor-onsen-polegar { @apply absolute z-0 top-1 bottom-1 left-1 transition-transform duration-500 ease-in-out; }
-/* O rádio é sr-only: o anel de foco aparece na TRILHA. `:has(input:focus-visible)`, nunca
-   `:focus-within`, que acenderia também no clique de mouse. */
-.seletor-onsen:has(input:focus-visible) { @apply ring-2 ring-agua-400/70; }
+/* Trilho único, metades de largura igual e uma pílula que desliza: é isso que faz ler como UM
+   controle, e não como dois chips. Os materiais vêm compostos no HTML — o poço do `.card-well` no
+   trilho, a espessura do `.glass-panel-thick` na pílula —, sem receita de vidro reescrita aqui. */
+.chave-onsen { @apply relative inline-grid grid-cols-2 p-1 rounded-full; }
+/* Metade do trilho menos a folga (`width: calc(50% - 0.25rem)`): assim translateX(100%) pousa
+   exatamente na outra metade. O `rounded-full` sobrepõe o raio do painel e depende de vir DEPOIS
+   dele no tema. */
+.chave-onsen-polegar { @apply absolute z-0 top-1 bottom-1 left-1 rounded-full transition-transform duration-500 ease-in-out; }
+/* O rádio é sr-only: o anel de foco aparece no TRILHO. `:has(input:focus-visible)`, nunca
+   `:focus-within`, que acenderia também no clique de mouse. O anel SOMA ao `--sombra-poco` do
+   trilho: `ring` reescreve o box-shadow inteiro e apagaria o degrau. */
+.chave-onsen:has(input:focus-visible) { @apply outline-none border-agua-500; }
+/* A escolhida vira `.etched-inked`, que não se alcança por seletor a partir daqui. */
+.chave-onsen-opcao:has(input:checked) .chave-onsen-rotulo { /* filtro e tinta do token */ }
 ```
 
 ## 7 · Caveats
-**O seletor de duas posições nasce como peça genérica do design system**, `.seletor-onsen`, embora só uma
-tela o use hoje. Escolha entre duas posições excludentes vai reaparecer, e o §3.4 existe para que a
-segunda seja montagem e não invenção. Custo: uma peça no styleguide com um consumidor só, e um nome a um
-caractere de distância do `.toggle-onsen` da SPEC `user_admin/015`, que é o interruptor liga/desliga —
-confundir os dois é fácil e o styleguide é o único lugar que os separa.
+**A chave de duas posições nasce como peça genérica do design system**, `.chave-onsen`, embora só uma
+tela a use hoje. Escolha entre duas posições excludentes vai reaparecer, e o §3.4 existe para que a
+segunda seja montagem e não invenção. Custo: uma peça no styleguide com um consumidor só, vizinha do
+`.toggle-onsen` da SPEC `user_admin/015`, que é o interruptor liga/desliga — os nomes afastam as duas, e
+o styleguide é onde a diferença se vê.
+
+**O organograma-seletor é o partial da SPEC 007, e hoje ele aponta para a rota dela.**
+`_seletor_unidade_alvo.html` fixa `hx-get` em `competencias:painel_atribuicoes` e `hx-target` em
+`#painel-atribuicoes`; reusá-lo aqui exige parametrizar rota e alvo, vindos do contexto de cada tela.
+Custo: um partial com duas SPECs donas e dois parâmetros a mais, e quem mexer nele primeiro tem de
+preservar a outra tela.
 
 **A natureza do cargo é escolhida antes do catálogo, em vez de um campo único com os dois.** Fundi-los
 esconderia o XOR da SPEC 002, e o `select_onsen.js` não trata `optgroup` — nem a saída barata existe.
@@ -213,13 +235,9 @@ não há segunda aprovação, e o que contém o ato é o registro (SPEC 004).
 concedeu, e expirá-la faria a competência oscilar com o afastamento de terceiros. Custo: uma decisão
 tomada durante a cobertura sobrevive ao fim dela, e desfazê-la é ato explícito de quem voltar.
 
-**`.card-atribuicao` é a mesma classe da SPEC 007**, aqui com a faixa de chips. Custo: a classe tem duas
-SPECs donas; quem implementar primeiro a leva ao tema e ao styleguide, e a outra confere em vez de
-reescrever.
-
-**A regra de hover do ícone do item é a da SPEC 006**, que cobre as duas formas. O mock desta SPEC a
-escreve mais estreita, sem o cartão. Custo: no porte vale a versão da 006 — a última a ser portada não
-pode estreitar a primeira, e nada além da revisão impede isso.
+**`.card-atribuicao` é a mesma classe da SPEC 007**, aqui com a faixa de chips. A 007 já a levou ao tema
+e ao styleguide; aqui ela só se compõe. Custo: a classe tem duas SPECs donas, e a faixa de chips desta
+tela não pode reescrever o cartão da outra.
 
 ## 8 · Testes (TDD)
 Todos exercitam a view com dados gravados e carregam o marker `banco`.
