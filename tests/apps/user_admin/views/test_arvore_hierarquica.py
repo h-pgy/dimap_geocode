@@ -156,3 +156,26 @@ def test_pagina_da_arvore_abre_no_topo(client: Client) -> None:
     for unidade in unidades.values():
         assert _no_da_unidade(soup, unidade.sigla) is not None
     assert soup.find(class_="no-arvore-ego") is None
+
+
+# ---------------------------------------------------------------------------
+# As telas que não passam flag alguma ao organograma
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_organograma_da_018_segue_com_elo_e_botao_de_irmas(client: Client) -> None:
+    """A página da unidade não passa flag nenhuma ao organograma, e a SPEC autorizacao/007 põe três
+    condições no `_no_arvore.html`. Variável ausente é falsa no template: sem os defaults chegando
+    pelo contexto, o elo e o chamado das irmãs sumiriam daqui em silêncio."""
+    unidades = _organograma()
+
+    html = client.get(_url_unidade(unidades["ego"])).content.decode()
+    soup = BeautifulSoup(html, "html.parser")
+
+    no = _no_da_unidade(soup, unidades["ego"].sigla)
+    card = no.find(class_="card-unidade", recursive=False)
+    assert card is not None
+    assert card.find("a", class_="card-unidade-pagina") is not None
+    assert no.find("button", class_="no-arvore-irmas", recursive=False) is not None

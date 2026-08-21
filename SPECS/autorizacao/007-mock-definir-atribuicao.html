@@ -71,13 +71,13 @@
       .menu-acoes { @apply w-[22rem] max-w-[92vw] p-4 flex flex-col gap-3; }
       .menu-acoes-lista { @apply flex flex-col gap-1.5; }
       .card-acao {
-        @apply relative flex flex-col gap-3 p-5 h-full text-left
+        @apply relative flex flex-col gap-3 p-5 h-full text-left rounded-2xl
                transition-colors duration-300;
       }
       .card-acao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
       .card-acao-descricao { @apply text-[13px] text-base-content/70 leading-relaxed; }
       .card-acao-alvo { @apply h-full; }
-      .card-acao-alvo:hover .card-acao { @apply bg-white/55; }
+      .card-acao-alvo:hover .card-acao { @apply border-agua-500/50; }
 
       /* ==================== MOLÉCULA · CARTÃO DA ATRIBUIÇÃO ====================
          Compartilhada com a SPEC 008 (lá, com a faixa de chips de cargo). */
@@ -294,7 +294,7 @@
         <span class="text-overline">.card-acao · item do catálogo, sem redesenho</span>
         <div class="card-well p-5 grid gap-4 sm:grid-cols-2">
           <a href="#" class="hover-3d card-acao-alvo">
-            <div class="card-well card-acao">
+            <div class="glass-bg glass-edge glass-shadow card-acao">
               <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
               <div>
                 <p class="card-acao-nome">Conceder competência</p>
@@ -305,7 +305,7 @@
             <div></div><div></div><div></div><div></div>
           </a>
           <a href="#" class="hover-3d card-acao-alvo">
-            <div class="card-well card-acao">
+            <div class="glass-bg glass-edge glass-shadow card-acao">
               <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
               <div>
                 <p class="card-acao-nome">Definir atribuições da unidade</p>
@@ -553,25 +553,22 @@
         </div>
       </div>
 
-      <!-- a ação vista de fora, no menu de administrador (SPECs 005 e 006) -->
+      <!-- a ação vista de fora, no menu de administrador (SPECs 005 e 006) — REFERÊNCIA, não
+           entregável: onde este painel aparece na área administrativa é de outra SPEC (007 §4).
+           O cabeçalho e a linha são os que o organismo implementado produz: "Ações" fixo e o
+           item mostrando só o nome_curto. -->
       <div class="flex flex-col gap-3">
-        <span class="text-overline">no menu de administrador</span>
+        <span class="text-overline">no menu de administrador · referência</span>
         <div class="glass-panel menu-acoes">
-          <p class="text-overline">Administração</p>
+          <p class="text-overline">Ações</p>
           <div class="menu-acoes-lista">
             <a href="#" class="item-menu">
               <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
-              <span class="item-menu-rotulo">
-                Definir atribuições da unidade
-                <span class="item-menu-apoio">Atribuições</span>
-              </span>
+              <span class="item-menu-rotulo">Atribuições</span>
             </a>
             <a href="#" class="item-menu">
               <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
-              <span class="item-menu-rotulo">
-                Conceder competência
-                <span class="item-menu-apoio">Competências</span>
-              </span>
+              <span class="item-menu-rotulo">Competências</span>
             </a>
           </div>
         </div>
@@ -760,7 +757,7 @@
         <div class="table-onsen-wrap max-h-[22rem]" data-rolador>
           <div class="grid gap-4 sm:grid-cols-2 p-2">
             <a href="#" class="hover-3d card-acao-alvo">
-              <div class="card-well card-acao">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
                 <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
                 <div>
                   <p class="card-acao-nome">Definir atribuições da unidade</p>
@@ -771,7 +768,7 @@
               <div></div><div></div><div></div><div></div>
             </a>
             <a href="#" class="hover-3d card-acao-alvo">
-              <div class="card-well card-acao">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
                 <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
                 <div>
                   <p class="card-acao-nome">Emitir certidão de lançamento</p>
@@ -782,7 +779,7 @@
               <div></div><div></div><div></div><div></div>
             </a>
             <a href="#" class="hover-3d card-acao-alvo">
-              <div class="card-well card-acao">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
                 <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
                 <div>
                   <p class="card-acao-nome">Emitir laudo de avaliação</p>
@@ -793,7 +790,7 @@
               <div></div><div></div><div></div><div></div>
             </a>
             <a href="#" class="hover-3d card-acao-alvo">
-              <div class="card-well card-acao">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
                 <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
                 <div>
                   <p class="card-acao-nome">Consultar a planta genérica de valores</p>
@@ -804,7 +801,7 @@
               <div></div><div></div><div></div><div></div>
             </a>
             <a href="#" class="hover-3d card-acao-alvo">
-              <div class="card-well card-acao">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
                 <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
                 <div>
                   <p class="card-acao-nome">Registrar oferta imobiliária</p>
@@ -815,7 +812,7 @@
               <div></div><div></div><div></div><div></div>
             </a>
             <a href="#" class="hover-3d card-acao-alvo">
-              <div class="card-well card-acao">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
                 <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
                 <div>
                   <p class="card-acao-nome">Exportar a amostra em planilha</p>
