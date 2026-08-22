@@ -9,6 +9,7 @@ from services.domain.email import (
     Destaque,
     Divisor,
     Imagem,
+    Otp,
     Paragrafo,
     Subtitulo,
     Tabela,
@@ -64,3 +65,14 @@ def test_texto_puro_preserva_blocos_e_url() -> None:
     assert texto.endswith(RODAPE)
     # O divisor não diz nada em texto: some, sem deixar parágrafo em branco a mais.
     assert "\n\n\n" not in texto
+
+
+# ---------------------------------------------------------------------------
+# Otp em texto: rótulo e valor na mesma linha, como o destaque
+# ---------------------------------------------------------------------------
+
+
+def test_otp_sai_legivel_em_texto_puro() -> None:
+    conteudo = _conteudo(blocos=(Otp(rotulo="Senha temporária", valor="8271k9af"),))
+
+    assert "Senha temporária: 8271k9af" in renderizar_texto_puro(conteudo)

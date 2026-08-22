@@ -32,6 +32,16 @@ TEMA_EMAIL: dict[str, str] = {
         "font-weight:700;text-decoration:none;padding:12px 24px;"
     ),
     "divisor": "border:0;border-top:1px solid #CFE2EB;margin:24px 0;",  # base-300
+    # A fileira, colada ao rótulo do poço acima dela.
+    "otp_fileira": "margin-top:10px;",
+    # A caixa: o poço do sistema com a tinta do valor monoespaçado, em largura fixa para as caixas
+    # saírem todas iguais — dígito estreito e dígito largo ocupam o mesmo espaço.
+    "otp_caixa": (
+        # Branco sobre o poço (que é base-100): a caixa precisa se destacar do fundo em que está.
+        "width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;"  # base-300
+        "padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;"  # agua-700
+        "font-family:'Roboto Mono',Consolas,monospace;text-align:center;"
+    ),
     # A faixa é o único lugar do e-mail com tinta clara sobre fundo escuro.
     "marca_selo": (
         "background:#FFFFFF;border-radius:8px;color:#0096C7;font-size:18px;"

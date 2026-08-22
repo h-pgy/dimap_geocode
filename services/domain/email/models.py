@@ -8,8 +8,13 @@ from pydantic import (
     EmailStr,
     Field,
     HttpUrl,
+    SecretStr,
     model_validator,
 )
+
+# Cada caixa ocupa largura fixa, e a placa do e-mail tem 600px: acima disto a fileira quebra e o
+# código deixa de se ler como um só.
+LIMITE_CARACTERES_OTP = 10
 
 
 class BlocoEmail(BaseModel):
@@ -92,8 +97,17 @@ class Divisor(BlocoEmail):
     tipo: Literal["divisor"] = "divisor"
 
 
+class Otp(BlocoEmail):
+    """O código que se digita caractere a caractere — uma caixa por caractere, como o campo de OTP
+    do design system."""
+
+    tipo: Literal["otp"] = "otp"
+    rotulo: str
+    valor: str = Field(min_length=1, max_length=LIMITE_CARACTERES_OTP)
+
+
 Bloco = Annotated[
-    Titulo | Subtitulo | Paragrafo | Destaque | Tabela | Imagem | Botao | Divisor,
+    Titulo | Subtitulo | Paragrafo | Destaque | Otp | Tabela | Imagem | Botao | Divisor,
     Field(discriminator="tipo"),
 ]
 
@@ -118,3 +132,18 @@ class EmailTesteInput(BaseModel):
     # De onde o e-mail partiu, para quem recebe saber qual ambiente está sendo provado.
     ambiente: str
     momento: datetime
+
+
+class EmailAcessoInput(BaseModel):
+    """O pedido do e-mail que entrega o acesso. Sem conta remetente: quem envia é a configuração,
+    não o caso de uso."""
+
+    model_config = ConfigDict(frozen=True)
+
+    nome: str
+    rf: str
+    destinatario: EmailStr
+    # SecretStr para a senha não aparecer em repr, log nem traceback de quem passa o pedido adiante;
+    # no corpo da mensagem ela viaja em claro, que é o propósito dela.
+    senha_temporaria: SecretStr
+    url_acesso: HttpUrl

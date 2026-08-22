@@ -10,6 +10,7 @@ from services.domain.email import (
     Destaque,
     Divisor,
     Imagem,
+    Otp,
     Paragrafo,
     Subtitulo,
     Tabela,
@@ -121,3 +122,16 @@ def test_tabela_escreve_cabecalho_e_linhas_na_ordem() -> None:
         {"cabecalho": ("Campo", "Valor"), "linhas": [["Momento", None]]}
     )
     assert _celulas(_escrever(com_celula_vazia)) == ["Campo", "Valor", "Momento", ""]
+
+
+# ---------------------------------------------------------------------------
+# Otp: uma caixa por caractere, na ordem
+# ---------------------------------------------------------------------------
+
+
+def test_otp_escreve_uma_caixa_por_caractere() -> None:
+    html = _escrever(Otp(rotulo="Senha temporária", valor="8271k9af"))
+
+    caixas = re.findall(rf'<td style="{re.escape(TEMA_EMAIL["otp_caixa"])}">(.*?)</td>', html)
+    assert caixas == list("8271k9af")
+    assert TEMA_EMAIL["overline"] in html

@@ -4,6 +4,7 @@ from .models import (
     Destaque,
     Divisor,
     Imagem,
+    Otp,
     Paragrafo,
     Subtitulo,
     Tabela,
@@ -30,7 +31,9 @@ class RenderizadorTextoPuro:
         match bloco:
             case Titulo() | Subtitulo() | Paragrafo():
                 return bloco.texto
-            case Destaque():
+            # O OTP e o destaque dizem a mesma coisa em texto — rótulo e valor —, e o que os
+            # separava era só a forma.
+            case Destaque() | Otp():
                 return f"{bloco.rotulo}: {bloco.valor}"
             case Tabela():
                 # Sem moldura: cada linha vira uma linha de texto com as células separadas.

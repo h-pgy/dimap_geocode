@@ -2,8 +2,8 @@
 spec: criacao_usuarios/003
 versao: v1
 atualizado_em: 2026-08-21
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
 ---
@@ -15,19 +15,19 @@ O servidor recém-cadastrado lê na caixa de entrada o RF e a senha temporária 
 caixa, como num campo de código — para digitá-la no primeiro acesso sem errar caractere.
 
 ## 2 · Condições de pronto
-- [ ] O vocabulário de blocos do e-mail ganha o **OTP**: rótulo e um **caractere por caixa**, em
+- [x] O vocabulário de blocos do e-mail ganha o **OTP**: rótulo e um **caractere por caixa**, em
       fileira — nenhum e-mail escreve marcação própria para isso.
-- [ ] As caixas saem com **estilo inline** vindo do tema do e-mail, sem `<style>` e sem `class`, e o
+- [x] As caixas saem com **estilo inline** vindo do tema do e-mail, sem `<style>` e sem `class`, e o
       vão entre elas sobrevive ao cliente que descarta folha de estilo.
-- [ ] Código **maior do que cabe** na largura fixa da placa é recusado na construção do bloco.
-- [ ] O mesmo código sai em **texto puro** como rótulo e valor na mesma linha, legível sem as caixas.
-- [ ] Existe o **e-mail de acesso**: saudação pelo nome, o RF em destaque, a senha temporária no bloco
+- [x] Código **maior do que cabe** na largura fixa da placa é recusado na construção do bloco.
+- [x] O mesmo código sai em **texto puro** como rótulo e valor na mesma linha, legível sem as caixas.
+- [x] Existe o **e-mail de acesso**: saudação pelo nome, o RF em destaque, a senha temporária no bloco
       de OTP, a instrução de troca e o botão que leva ao sistema.
-- [ ] O HTML montado é **bem formado** pelo validador da SPEC [001](001-smtp.md), com o bloco novo
+- [x] O HTML montado é **bem formado** pelo validador da SPEC [001](001-smtp.md), com o bloco novo
       entre os demais.
-- [ ] A senha chega ao montador como **segredo** e só vira texto dentro do corpo da mensagem:
+- [x] A senha chega ao montador como **segredo** e só vira texto dentro do corpo da mensagem:
       `repr`, log e traceback do pedido não a mostram.
-- [ ] O desenho foi aprovado no **mock**, que traz o bloco novo ao lado dos demais e o e-mail de
+- [x] O desenho foi aprovado no **mock**, que traz o bloco novo ao lado dos demais e o e-mail de
       acesso inteiro.
 
 ## 3 · Domínio

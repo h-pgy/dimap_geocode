@@ -7,6 +7,7 @@ from .models import (
     Destaque,
     Divisor,
     Imagem,
+    Otp,
     Paragrafo,
     Subtitulo,
     Tabela,
@@ -84,6 +85,35 @@ class EscritorDivisor:
         return f'<hr style="{TEMA_EMAIL["divisor"]}">'
 
 
+class EscritorOtp:
+    def __call__(self, bloco: Otp) -> str:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: Otp) -> str:
+        # A moldura é a mesma do destaque — poço com overline —, e é a fileira que muda.
+        return (
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
+            f'<tr><td style="{TEMA_EMAIL["poco"]}">'
+            f'<span style="{TEMA_EMAIL["overline"]}">{_texto(bloco.rotulo)}</span>'
+            f"{self._fileira(bloco.valor)}"
+            "</td></tr></table>"
+        )
+
+    def _fileira(self, valor: str) -> str:
+        # O vão entre as caixas é `cellspacing`, ATRIBUTO da tabela: `margin` em <td> é ignorado
+        # pelo Outlook, e caixas coladas leem como um número só.
+        return (
+            f'<table role="presentation" cellpadding="0" cellspacing="8" '
+            f'style="{TEMA_EMAIL["otp_fileira"]}"><tr>{self._caixas(valor)}</tr></table>'
+        )
+
+    def _caixas(self, valor: str) -> str:
+        return "".join(
+            f'<td style="{TEMA_EMAIL["otp_caixa"]}">{_texto(caractere)}</td>'
+            for caractere in valor
+        )
+
+
 # O registro é a única lista de tipos do módulo: bloco novo entra aqui e em lugar nenhum mais.
 ESCRITORES: dict[str, Callable[[Any], str]] = {
     "titulo": EscritorTitulo(),
@@ -94,4 +124,5 @@ ESCRITORES: dict[str, Callable[[Any], str]] = {
     "imagem": EscritorImagem(),
     "botao": EscritorBotao(),
     "divisor": EscritorDivisor(),
+    "otp": EscritorOtp(),
 }
