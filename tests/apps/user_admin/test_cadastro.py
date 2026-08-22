@@ -18,7 +18,6 @@ from pytest_django.fixtures import SettingsWrapper
 from apps.user_admin import cadastro
 from apps.user_admin.cadastro import ERRO_DOMINIO, ERRO_ENVIO, criar_servidor
 from apps.user_admin.models import CargoBase, Perfil, TipoUnidade, Unidade
-from apps.user_admin.schemas import NovoServidor
 from services.utils.smtp import MensagemEmail, ResultadoEnvio, SmtpEnvioError
 
 banco = pytest.mark.banco
@@ -81,19 +80,20 @@ def _cargo_base(**overrides: object) -> CargoBase:
     return cargo
 
 
-def _novo_servidor(unidade: Unidade, cargo_base: CargoBase, **overrides: object) -> NovoServidor:
-    dados: dict[str, object] = {
+def _novo_servidor(unidade: Unidade, cargo_base: CargoBase, **overrides: object) -> dict[str, Any]:
+    """O formulário cru, como o POST o entrega: quem monta o DTO é o `LeitorDeFormulario`."""
+    dados: dict[str, Any] = {
         "rf": "920100",
         "nome": "Fulano",
         "sobrenome": "de Cadastro",
         "email": "fulano.cadastro@prefeitura.sp.gov.br",
-        "unidade_id": unidade.pk,
-        "cargo_base_id": cargo_base.pk,
-        "cargo_comissao_id": None,
+        "unidade_id": str(unidade.pk),
+        "cargo_base_id": str(cargo_base.pk),
+        "cargo_comissao_id": "",
         "url_acesso": "https://geocoder.dimap.local/",
     }
     dados.update(overrides)
-    return NovoServidor(**dados)  # type: ignore[arg-type]
+    return dados
 
 
 def _preparar(
@@ -127,7 +127,7 @@ def test_cadastro_grava_o_servidor(
         _novo_servidor(unidade, cargo, rf="920101", email="ciclano@prefeitura.sp.gov.br")
     )
 
-    assert desfecho.erros == ()
+    assert desfecho.recusa.mensagens == ()
     assert desfecho.perfil is not None
     perfil = Perfil.objects.get(rf="920101")
     assert perfil.email == "ciclano@prefeitura.sp.gov.br"
@@ -177,7 +177,11 @@ def test_falha_na_entrega_desfaz_o_cadastro(
         _novo_servidor(unidade, cargo, rf="920103", email="indisponivel@prefeitura.sp.gov.br")
     )
     assert indisponivel.perfil is None
-    assert indisponivel.erros == (ERRO_ENVIO.format(email="indisponivel@prefeitura.sp.gov.br"),)
+    assert indisponivel.recusa.mensagens == (
+        ERRO_ENVIO.format(email="indisponivel@prefeitura.sp.gov.br"),
+    )
+    # Falha de entrega realça o e-mail: é o endereço que precisa mudar (SPEC 004, Caveats).
+    assert indisponivel.recusa.realce["email"] == "campo-realce-erro"
     assert not Perfil.objects.filter(rf="920103").exists()
 
     _preparar(
@@ -195,7 +199,7 @@ def test_falha_na_entrega_desfaz_o_cadastro(
     desligado = criar_servidor(
         _novo_servidor(unidade, cargo, rf="920105", email="desligado@prefeitura.sp.gov.br")
     )
-    assert desligado.erros == ()
+    assert desligado.recusa.mensagens == ()
     assert desligado.perfil is not None
     assert Perfil.objects.filter(rf="920105").exists()
 
@@ -219,13 +223,14 @@ def test_email_fora_do_dominio_e_recusado_com_a_politica_ligada(
 
     recusado = criar_servidor(_novo_servidor(unidade, cargo, rf="920106", email="fulano@gmail.com"))
     assert recusado.perfil is None
-    assert recusado.erros == (ERRO_DOMINIO,)
+    assert recusado.recusa.mensagens == (ERRO_DOMINIO,)
+    assert recusado.recusa.realce["email"] == "campo-realce-erro"
     assert enviador.mensagens == []
     assert not Perfil.objects.filter(rf="920106").exists()
 
     settings.ENFORCE_PREFEITURA_EMAIL = False
     aceito = criar_servidor(_novo_servidor(unidade, cargo, rf="920107", email="fulano2@gmail.com"))
-    assert aceito.erros == ()
+    assert aceito.recusa.mensagens == ()
     assert aceito.perfil is not None
 
 
@@ -252,12 +257,15 @@ def test_rf_ou_email_repetido_e_recusado_sem_gravar(
         _novo_servidor(unidade, cargo, rf="920108", email="outro@prefeitura.sp.gov.br")
     )
     assert rf_repetido.perfil is None
-    assert rf_repetido.erros != ()
+    # A mensagem é a do model, e o realce cai no controle que repetiu — não na tarja do `__all__`.
+    assert rf_repetido.recusa.mensagens == ("Já existe servidor cadastrado com este RF.",)
+    assert rf_repetido.recusa.realce == {"rf": "campo-realce-erro"}
     assert Perfil.objects.filter(rf="920108").count() == 1
 
     email_repetido = criar_servidor(
         _novo_servidor(unidade, cargo, rf="920109", email="existente@prefeitura.sp.gov.br")
     )
     assert email_repetido.perfil is None
-    assert email_repetido.erros != ()
+    assert email_repetido.recusa.mensagens == ("Já existe servidor cadastrado com este e-mail.",)
+    assert email_repetido.recusa.realce == {"email": "campo-realce-erro"}
     assert Perfil.objects.filter(email="existente@prefeitura.sp.gov.br").count() == 1

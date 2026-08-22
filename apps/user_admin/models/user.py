@@ -57,6 +57,9 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
     rf = models.CharField(
         max_length=20,
         unique=True,
+        # O default do Django nomeia o model ("Perfil com este RF já existe"), e quem cadastra pensa
+        # em servidor.
+        error_messages={"unique": "Já existe servidor cadastrado com este RF."},
     )
     nome = models.CharField(max_length=100)
     sobrenome = models.CharField(max_length=150)
@@ -113,6 +116,11 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
                 fields=["email"],
                 condition=~Q(email=""),
                 name="email_unico_quando_preenchido",
+                # Constraint com `condition` não herda nem o code nem a mensagem: sem o code
+                # `unique` o Django joga a violação em `__all__` e a tela não sabe qual controle
+                # realçar; sem a mensagem, quem lê recebe o nome da constraint.
+                violation_error_code="unique",
+                violation_error_message="Já existe servidor cadastrado com este e-mail.",
             ),
         ]
 

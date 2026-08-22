@@ -9,7 +9,7 @@
     <div class="form-field">
       <span class="text-overline">Unidade</span>
       <div class="form-field-inline-action">
-        <select name="unidade" class="select select-glass" data-select-onsen>
+        <select name="unidade" class="select select-glass {{ realce.unidade }}" data-select-onsen>
           {% for unidade in unidades %}
             <option value="{{ unidade.pk }}" {% if unidade.pk == perfil.unidade_id %}selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
           {% endfor %}
@@ -24,7 +24,7 @@
     </div>
     <label class="form-field">
       <span class="text-overline">Cargo base</span>
-      <select name="cargo_base" class="select select-glass" data-select-onsen>
+      <select name="cargo_base" class="select select-glass {{ realce.cargo_base }}" data-select-onsen>
         {% for cargo in cargos_base %}
           <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_base_id %}selected{% endif %}>{{ cargo.nome }}</option>
         {% endfor %}
@@ -32,7 +32,7 @@
     </label>
     <label class="form-field sm:col-span-2">
       <span class="text-overline">Cargo em comissão</span>
-      <select name="cargo_comissao" class="select select-glass" data-select-onsen>
+      <select name="cargo_comissao" class="select select-glass {{ realce.cargo_comissao }}" data-select-onsen>
         <option value="">— sem cargo em comissão —</option>
         {% for cargo in cargos_comissao %}
           <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_comissao_id %}selected{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>

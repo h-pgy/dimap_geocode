@@ -5,20 +5,20 @@
   <div class="grid sm:grid-cols-3 gap-4">
     <label class="form-field">
       <span class="text-overline">RF</span>
-      <input type="text" name="rf" value="{{ perfil.rf|default:'' }}" placeholder="812.345-6" class="input input-glass" />
+      <input type="text" name="rf" value="{{ perfil.rf|default:'' }}" placeholder="812.345-6" class="input input-glass {{ realce.rf }}" />
     </label>
     <label class="form-field">
       <span class="text-overline">Nome</span>
-      <input type="text" name="nome" value="{{ perfil.nome|default:'' }}" placeholder="Henrique" class="input input-glass" />
+      <input type="text" name="nome" value="{{ perfil.nome|default:'' }}" placeholder="Henrique" class="input input-glass {{ realce.nome }}" />
     </label>
     <label class="form-field">
       <span class="text-overline">Sobrenome</span>
-      <input type="text" name="sobrenome" value="{{ perfil.sobrenome|default:'' }}" placeholder="Pougy" class="input input-glass" />
+      <input type="text" name="sobrenome" value="{{ perfil.sobrenome|default:'' }}" placeholder="Pougy" class="input input-glass {{ realce.sobrenome }}" />
     </label>
   </div>
   <label class="form-field">
     <span class="text-overline">E-mail</span>
-    <input type="email" name="email" value="{{ perfil.email|default:'' }}" placeholder="ana.ramos@prefeitura.sp.gov.br" class="input input-glass" />
+    <input type="email" name="email" value="{{ perfil.email|default:'' }}" placeholder="ana.ramos@prefeitura.sp.gov.br" class="input input-glass {{ realce.email }}" />
     <span class="form-field-hint">Para cá vai a senha de primeiro acesso. Sem e-mail não há como entregar o acesso.</span>
   </label>
 </div>

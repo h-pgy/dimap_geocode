@@ -44,8 +44,9 @@ class NovoImpedimento(BaseModel):
 
 
 class NovoServidor(BaseModel):
-    """Construído na view, que deixa o `PydanticValidationMiddleware` interceptar o
-    `ValidationError` — e-mail torto e id não-numérico morrem aqui, antes de virar consulta."""
+    """Quem o constrói é o `LeitorDeFormulario` de `apps/user_admin/formularios.py`, e não a view —
+    e-mail torto e id não-numérico morrem aqui, antes de virar consulta, e a recusa volta como o
+    próprio formulário (SPEC formularios/001)."""
 
     model_config = ConfigDict(frozen=True)
 

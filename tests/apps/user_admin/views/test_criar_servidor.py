@@ -12,7 +12,7 @@ Todos levam o marker `banco`: direção, concessão e execução são lidas e gr
 
 from datetime import timedelta
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from django.conf import settings as django_settings
 from django.test import Client
 from django.urls import reverse
@@ -159,6 +159,12 @@ def _desligar_envio(settings: SettingsWrapper) -> None:
     settings.ENFORCE_PREFEITURA_EMAIL = False
 
 
+def _controle(soup: BeautifulSoup, tag: str, nome: str) -> Tag:
+    controle = soup.find(tag, attrs={"name": nome})
+    assert isinstance(controle, Tag), f"a tela não trouxe o {tag} de {nome}"
+    return controle
+
+
 def _siglas_do_select(soup: BeautifulSoup) -> set[str]:
     select = soup.find("select", attrs={"name": "unidade"})
     assert select is not None, "a tela não trouxe o select de unidade"
@@ -208,6 +214,45 @@ def test_listagem_so_oferece_novo_servidor_a_quem_pode(client: Client) -> None:
 
     client.force_login(sem_direcao)
     assert "Novo servidor" not in client.get(url_listagem).content.decode()
+
+
+# ---------------------------------------------------------------------------
+# Recusa devolve o próprio formulário, preenchido e realçado
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_campo_invalido_devolve_o_formulario_realcado(
+    client: Client, settings: SettingsWrapper
+) -> None:
+    _desligar_envio(settings)
+    unidade = _unidade("CRS-REALCE")
+    cargo = _cargo_base()
+    dirigente = _dirigente(unidade, "930240")
+    payload = _payload(unidade, cargo, "930241", "isto não é e-mail")
+    payload["nome"] = ""
+
+    client.force_login(dirigente)
+    resposta = client.post(_url_gravar(), payload)
+    html = resposta.content.decode()
+    soup = BeautifulSoup(html, "html.parser")
+
+    assert resposta.status_code == 422
+    # Campo em branco com min_length=1 é `string_too_short`, não `missing`: a frase é a da regra
+    # padrão da SPEC formularios/001.
+    assert "Preencha o campo Nome com a quantidade mínima de caracteres." in html
+    assert "E-mail inválido: confira o endereço." in html
+    # O realce é do controle recusado, e só dele.
+    assert "campo-realce-erro" in _controle(soup, "input", "nome")["class"]
+    assert "campo-realce-erro" in _controle(soup, "input", "email")["class"]
+    assert "campo-realce-erro" not in _controle(soup, "input", "rf")["class"]
+    # O que já estava digitado permanece, e o select mantém a escolha.
+    assert _controle(soup, "input", "rf")["value"] == "930241"
+    escolhida = soup.find("option", attrs={"value": str(unidade.pk)})
+    assert isinstance(escolhida, Tag)
+    assert escolhida.has_attr("selected")
+    assert not Perfil.objects.filter(rf="930241").exists()
 
 
 # ---------------------------------------------------------------------------

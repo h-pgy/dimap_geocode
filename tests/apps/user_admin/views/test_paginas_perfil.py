@@ -12,6 +12,7 @@ import base64
 from datetime import timedelta
 from pathlib import Path
 
+from bs4 import BeautifulSoup
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
@@ -164,12 +165,15 @@ def test_selects_da_lotacao_usam_o_componente_de_vidro(client: Client) -> None:
     )
 
     html = client.get(reverse("user_admin:criar_perfil")).content.decode()
+    soup = BeautifulSoup(html, "html.parser")
 
+    # Pelos atributos, e não pelo markup literal: o `class=` do controle ainda recebe o realce da
+    # recusa (SPEC formularios/001), e o que este teste fixa é o componente, não o texto da linha.
     for campo in ("unidade", "cargo_base", "cargo_comissao"):
-        assert (
-            f'<select name="{campo}" class="select select-glass" data-select-onsen>'
-            in html
-        )
+        select = soup.find("select", attrs={"name": campo})
+        assert select is not None, f"a tela não trouxe o select de {campo}"
+        assert "select-glass" in select["class"]
+        assert select.has_attr("data-select-onsen")
     assert "DIMAP-1 · Divisão de Avaliação" in html
     assert "Analista de Ordenamento Territorial" in html
     assert "CDA-II · Diretor de Divisão" in html

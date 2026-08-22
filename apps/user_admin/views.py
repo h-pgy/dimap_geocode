@@ -34,7 +34,7 @@ from apps.user_admin.context import (
     contexto_unidade,
 )
 from apps.user_admin.models import Perfil, Unidade
-from apps.user_admin.schemas import NovoServidor, SelecaoUnidadePai, consulta_de_servidores
+from apps.user_admin.schemas import SelecaoUnidadePai, consulta_de_servidores
 
 TEMPLATE_FORMULARIO = "user_admin/perfil_form.html"
 TEMPLATE_FORMULARIO_RECUSADO = "user_admin/partials/_formulario_servidor.html"
@@ -71,23 +71,32 @@ def criar_perfil(request: HttpRequest) -> HttpResponse:
 @acao_protegida(ACAO_CRIAR_SERVIDOR)
 @require_POST
 def gravar_servidor(request: HttpRequest) -> HttpResponse:
-    novo = NovoServidor(
-        rf=request.POST["rf"],
-        nome=request.POST["nome"],
-        sobrenome=request.POST["sobrenome"],
-        email=request.POST["email"],
-        unidade_id=request.POST["unidade"],  # type: ignore[arg-type]
-        cargo_base_id=request.POST["cargo_base"],  # type: ignore[arg-type]
-        cargo_comissao_id=request.POST["cargo_comissao"],  # type: ignore[arg-type]
+    # A view traduz nome de controle em nome de campo e NÃO constrói o DTO: quem o constrói é o
+    # ato, porque a recusa dele volta como o próprio formulário, não como página de erro (SPEC
+    # formularios/001). `.get(..., "")` porque só `unidade` tem rede — o decorator já devolve 400
+    # quando ela falta; nos demais, chave ausente daria 500 justamente na rota que existe para
+    # transformar entrada ruim em recusa na tela.
+    valores = {
+        "rf": request.POST.get("rf", ""),
+        "nome": request.POST.get("nome", ""),
+        "sobrenome": request.POST.get("sobrenome", ""),
+        "email": request.POST.get("email", ""),
+        "unidade_id": request.POST.get("unidade", ""),
+        "cargo_base_id": request.POST.get("cargo_base", ""),
+        "cargo_comissao_id": request.POST.get("cargo_comissao", ""),
         # O host de onde o convite parte é da orquestração, não do formulário.
-        url_acesso=request.build_absolute_uri("/"),  # type: ignore[arg-type]
-    )
-    desfecho = criar_servidor(novo, foto=request.FILES.get("foto"))
+        "url_acesso": request.build_absolute_uri("/"),
+    }
+    desfecho = criar_servidor(valores, foto=request.FILES.get("foto"))
     if desfecho.perfil is None:
         return render(
             request,
             TEMPLATE_FORMULARIO_RECUSADO,
-            contexto_cadastro_recusado(novo, desfecho.erros, alcance_do_perfil(_autor(request))),
+            contexto_cadastro_recusado(
+                valores,
+                desfecho.recusa,
+                alcance_do_perfil(_autor(request)),
+            ),
             status=422,
         )
     # A view NUNCA grava a execução: deixa o recado e quem persiste é o decorator, depois do return.

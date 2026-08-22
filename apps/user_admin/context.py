@@ -38,7 +38,6 @@ from apps.user_admin.models import (
 )
 from apps.user_admin.models.titularidade import cargo_titulariza
 from apps.user_admin.paleta import TINTA_AVATAR, hex_da_cor, tons_da_paleta
-from apps.user_admin.schemas import NovoServidor
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.autorizacao import VarianteIcone
 from services.domain.avatar import ImagemPerfilOutput, resolver_imagem_perfil
@@ -50,8 +49,11 @@ from services.domain.servidores_listagem import (
     listar_servidores,
 )
 from services.domain.titularidade import Direcao, EstadoDaDirecao, avaliar_direcao
+from services.utils.erros_formulario import RecusaDeFormulario
 
 SEM_CARGO_COMISSAO = "—"
+# Os campos do formulário de servidor que o `selected` do select compara com um `pk`.
+CAMPOS_DE_ID = ("unidade_id", "cargo_base_id", "cargo_comissao_id")
 # O organograma fala em padrão de cargo, não em número de nível (SPEC user_admin/016).
 ROTULO_ALTA_ADMINISTRACAO = "Alta administração"
 # Selo do exercício: o vermelho é da unidade sem direção (SPEC 016), nunca da pessoa.
@@ -100,16 +102,37 @@ def contexto_criar_perfil(ids_permitidos: Collection[int]) -> dict[str, Any]:
 
 
 def contexto_cadastro_recusado(
-    novo: NovoServidor,
-    erros: Sequence[str],
+    valores: Mapping[str, Any],
+    recusa: RecusaDeFormulario,
     ids_permitidos: Collection[int],
 ) -> dict[str, Any]:
-    """O que volta é o mesmo formulário: o e-mail e a lotação escolhidos permanecem, a foto não —
-    arquivo de upload não se reconstrói de uma resposta de servidor."""
+    """O que volta é o mesmo formulário: o digitado permanece, a foto não — arquivo de upload não
+    se reconstrói de uma resposta de servidor.
+
+    Repopula do formulário cru, e não do DTO: na recusa do próprio DTO não existe DTO algum para
+    repopular. Recebe a recusa já desembrulhada porque a do desfecho é opcional, e desembrulhá-la
+    aqui obrigaria este módulo a importar `cadastro.py` só para isso (SPEC criacao_usuarios/004)."""
+    # A chave continua sendo `perfil`: é o nome que as seções do formulário já leem.
     return contexto_criar_perfil(ids_permitidos) | {
-        "perfil": novo,
-        "erros": erros,
+        "perfil": _valores_do_formulario(valores),
+        # `mensagens` alimenta a tarja; `realce`, a classe de cada controle — os dois já prontos
+        # pela SPEC formularios/001, sem o template precisar de condicional.
+        "erros": recusa.mensagens,
+        "realce": recusa.realce,
     }
+
+
+def _valores_do_formulario(valores: Mapping[str, Any]) -> dict[str, Any]:
+    """O `selected` do select compara com `unidade.pk`: id que voltasse como texto não seria
+    reconhecido, e o campo perderia a escolha justamente na tela que pede para corrigi-la. Só os
+    ids são convertidos — RF com zero à esquerda não sobreviveria a um `int()`."""
+    lidos = dict(valores)
+    for campo in CAMPOS_DE_ID:
+        bruto = lidos.get(campo)
+        if not isinstance(bruto, str) or not bruto.isdigit():
+            continue
+        lidos[campo] = int(bruto)
+    return lidos
 
 
 def contexto_cadastro_concluido(perfil: Perfil) -> dict[str, Any]:

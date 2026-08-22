@@ -5,7 +5,9 @@ conclui (Caveats). A política de e-mail institucional é conferida antes de ger
 conversa com o SMTP; o banco não a conhece.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -13,9 +15,12 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from pydantic import HttpUrl, SecretStr
 
+from apps.core.erros_formulario import de_validation_error
+from apps.user_admin.formularios import ler_novo_servidor, traduzir_recusa
 from apps.user_admin.models import Perfil
 from apps.user_admin.schemas import NovoServidor
 from services.domain.email import EmailAcessoInput, montar_email_acesso, montar_mensagem
+from services.utils.erros_formulario import ErroBruto, RecusaDeFormulario
 from services.utils.senha import gerar_senha_temporaria
 from services.utils.smtp import EnviadorSmtp, SmtpEnvioError, build_smtp_config, build_smtp_retry_policy
 
@@ -30,17 +35,29 @@ class DesfechoCadastro:
     próprio model gravado — mesma natureza do `_RegistroAto` da SPEC autorizacao/004."""
 
     perfil: Perfil | None
-    erros: tuple[str, ...] = ()
+    # Não opcional: `perfil is None` já é a etiqueta do desfecho, e uma recusa sempre-presente
+    # poupa quem lê de desembrulhar um Optional que o sucesso nunca preenche.
+    recusa: RecusaDeFormulario = RecusaDeFormulario()
 
 
-def criar_servidor(novo: NovoServidor, foto: UploadedFile | None = None) -> DesfechoCadastro:
+def criar_servidor(
+    valores: Mapping[str, Any],
+    foto: UploadedFile | None = None,
+) -> DesfechoCadastro:
     """Quem fica cadastrado é quem recebeu como entrar: o envio acontece dentro da transação, e a
     falha dele derruba a gravação junto.
 
-    O `try` mora aqui, e não na view: é este módulo que sabe o que cada falha significa para o
-    cadastro."""
+    Recebe o formulário cru e delega a leitura ao `LeitorDeFormulario`: construir o DTO na view
+    entregaria a recusa ao `PydanticValidationMiddleware`, cuja resposta, no alvo do form, apaga o
+    formulário inteiro (SPEC formularios/001). O `try` do banco e do SMTP mora aqui pelo mesmo
+    motivo de sempre: é este módulo que sabe o que cada falha significa para o cadastro."""
+    leitura = ler_novo_servidor(valores)
+    novo = leitura.dto
+    if novo is None:
+        # Sem DTO a leitura traz a recusa; o `or` é só o que o tipo pede, não um caso real.
+        return DesfechoCadastro(perfil=None, recusa=leitura.recusa or RecusaDeFormulario())
     if _dominio_recusado(novo.email):
-        return DesfechoCadastro(perfil=None, erros=(ERRO_DOMINIO,))
+        return DesfechoCadastro(perfil=None, recusa=_recusa_do_dominio())
     senha = gerar_senha_temporaria()
     try:
         with transaction.atomic():
@@ -48,11 +65,25 @@ def criar_servidor(novo: NovoServidor, foto: UploadedFile | None = None) -> Desf
             _entregar_senha(perfil, senha, novo.url_acesso)
     except ValidationError as recusa:
         # RF e e-mail repetidos chegam aqui pelo full_clean: conferir antes com um SELECT abriria
-        # janela entre a consulta e o INSERT, e a unicidade é do banco.
-        return DesfechoCadastro(perfil=None, erros=_mensagens(recusa))
+        # janela entre a consulta e o INSERT, e a unicidade é do banco. A ponte de `apps/core`
+        # preserva o `code`, que é o que faz a mensagem do model chegar realçada no campo certo.
+        return DesfechoCadastro(perfil=None, recusa=traduzir_recusa(de_validation_error(recusa)))
     except SmtpEnvioError:
-        return DesfechoCadastro(perfil=None, erros=(ERRO_ENVIO.format(email=novo.email),))
+        return DesfechoCadastro(perfil=None, recusa=_recusa_da_entrega(novo.email))
     return DesfechoCadastro(perfil=perfil)
+
+
+def _recusa_do_dominio() -> RecusaDeFormulario:
+    # Recusa que não vem de fonte nenhuma: é política desta rota, e o controle a realçar é o
+    # e-mail, porque é o endereço que precisa mudar. `tipo` fora de REGRAS_PADRAO é de propósito —
+    # a mensagem já vem escrita e vence a do catálogo; do tipo só se aproveita o tom, que é erro.
+    return traduzir_recusa((ErroBruto(controle="email", tipo="dominio", mensagem=ERRO_DOMINIO),))
+
+
+def _recusa_da_entrega(email: str) -> RecusaDeFormulario:
+    return traduzir_recusa(
+        (ErroBruto(controle="email", tipo="entrega", mensagem=ERRO_ENVIO.format(email=email)),)
+    )
 
 
 def _gravar(novo: NovoServidor, senha: SecretStr, foto: UploadedFile | None) -> Perfil:
@@ -106,10 +137,3 @@ def _dominio_recusado(email: str) -> bool:
     _, _, dominio = email.rpartition("@")
     return dominio.lower() not in DOMINIOS_INSTITUCIONAIS
 
-
-def _mensagens(recusa: ValidationError) -> tuple[str, ...]:
-    return tuple(
-        mensagem
-        for mensagens_do_campo in recusa.message_dict.values()
-        for mensagem in mensagens_do_campo
-    )
