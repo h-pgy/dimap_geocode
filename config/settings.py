@@ -209,6 +209,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "apps.core",
+    "apps.users",
     "apps.user_admin",
     "apps.competencias",
     "apps.search",

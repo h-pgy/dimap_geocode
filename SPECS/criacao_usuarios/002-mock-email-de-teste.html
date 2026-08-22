@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC criacao_usuarios/002 — E-mail em blocos (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Esta SPEC NÃO cria token, átomo nem molécula no design system do sistema: o e-mail é um
+       documento de estilo inline, e o que ele usa é transcrição dos tokens que já existem
+       (§7 da SPEC). O que a página abaixo precisa de pele é só moldura de exposição. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .moldura-caixa — moldura de EXPOSIÇÃO do mock: simula a área de leitura do
+         cliente de e-mail. Não é peça do projeto e não vai para o tema. */
+      .moldura-caixa { @apply rounded-2xl overflow-hidden ring-1 ring-rocha-300/60 shadow-[0_10px_30px_-12px_rgba(7,58,84,0.35)]; }
+      /* .prova-cor — a caixa partida ao meio: metade pintada pelo TOKEN do tema, metade pelo
+         HEX que o e-mail escreve. Divergência aparece como emenda visível. */
+      .prova-cor { @apply h-14 rounded-lg overflow-hidden flex ring-1 ring-rocha-950/10; }
+      .prova-cor > * { @apply w-1/2 h-full; }
+    }
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+
+<body class="text-base-content">
+
+  <!-- Canvas: a água límpida sob luz fria. Sem Leaflet — o e-mail não é UI sobre o mapa,
+       e um mapa vivo aqui seria ruído. As camadas da lente ficam (§6 da skill). -->
+  <div class="fixed inset-0 z-0 bg-[#dff0f7]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC criacao_usuarios/002 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">O e-mail do sistema, em blocos</h1>
+      <p class="mt-4 max-w-3xl text-base-content/80 leading-relaxed">
+        O e-mail não compõe o design system: cliente de e-mail não tem Tailwind, daisyUI,
+        <span class="text-code">var()</span> nem blur, e o gelo fosco simplesmente não existe lá. O que
+        se aprova aqui é a <strong>tradução</strong> — a placa branca sólida sobre a água clara, e cada
+        cor transcrita de um token. Tudo abaixo está renderizado com o <strong>estilo inline real</strong>
+        que os escritores produzem: nenhum bloco desta página usa classe.
+      </p>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          <strong>1 · Tokens</strong> prova a fidelidade do porte, cor a cor. <strong>2 · Átomos</strong>
+          mostra cada bloco isolado, nos seus estados. <strong>3 · Organismo</strong> é o envelope que os
+          embrulha. <strong>4 · Telas</strong> monta os e-mails inteiros, com a versão em texto puro ao
+          lado — e o e-mail mínimo, para se ver que bloco ausente não deixa buraco.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · TOKENS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Tokens — a paleta do e-mail</h2>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · Prova de fidelidade</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Cada caixa está partida ao meio: a metade da <strong>esquerda</strong> é pintada pela classe do
+            tema (<span class="text-code">bg-agua-600</span>), a da <strong>direita</strong> pelo hex que o
+            e-mail escreve. Emenda visível = transcrição errada.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div>
+            <div class="prova-cor"><div class="bg-base-200"></div><div style="background:#E3EFF5"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">fundo<br>base-200 · E3EFF5</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-base-300"></div><div style="background:#CFE2EB"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">aresta<br>base-300 · CFE2EB</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-agua-600"></div><div style="background:#0096C7"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">faixa<br>agua-600 · 0096C7</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-madeira-700"></div><div style="background:#5E412F"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">título<br>madeira-700 · 5E412F</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-rocha-900"></div><div style="background:#1B263B"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">texto<br>rocha-900 · 1B263B</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-base-100"></div><div style="background:#F2F8FB"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">poço<br>base-100 · F2F8FB</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-rocha-700"></div><div style="background:#415A77"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">overline<br>rocha-700 · 415A77</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-agua-700"></div><div style="background:#0077B6"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">valor<br>agua-700 · 0077B6</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-agua-400"></div><div style="background:#48CAE4"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">botão (fundo)<br>agua-400 · 48CAE4</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-agua-800"></div><div style="background:#023E8A"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">botão (tinta)<br>agua-800 · 023E8A</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-rocha-600"></div><div style="background:#5B7290"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">rodapé<br>rocha-600 · 5B7290</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-white"></div><div style="background:#FFFFFF"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">placa<br>branco · FFFFFF</p>
+          </div>
+        </div>
+
+        <div class="card-well p-4">
+          <p class="text-overline mb-2">O que o e-mail perde na tradução</p>
+          <ul class="text-sm text-base-content/80 leading-relaxed list-disc pl-5 space-y-1">
+            <li>O <strong>gelo fosco</strong> vira placa branca sólida: <span class="text-code">backdrop-filter</span> não existe em cliente de e-mail.</li>
+            <li>O <strong>gradiente</strong> do <span class="text-code">.btn-onsen</span> vira fundo chapado <span class="text-code">agua-400</span>.</li>
+            <li>A <strong>sombra em duas camadas</strong> e o brilho de quina saem: sobra a aresta <span class="text-code">base-300</span>.</li>
+            <li>A <strong>gravação</strong> (<span class="text-code">.etched</span>) não vai — depende de filtro SVG.</li>
+            <li><strong>Roboto</strong> é pedida, mas o stack cai para Arial quando a webfont é bloqueada.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Átomos — os blocos</h2>
+      <p class="px-2 text-sm text-base-content/70 -mt-4">
+        Cada bloco na sua condição real de uso: sobre a placa branca, com o estilo inline que o escritor
+        produz. O corpo de um e-mail é uma sequência destes.
+      </p>
+
+      <!-- 2.1 Texto -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">2.1 · Título, subtítulo e parágrafo</h3>
+          <p class="text-sm text-base-content/70 mt-1">A hierarquia do §4 do design system: título em madeira, o resto em rocha. Peso e tamanho fazem a escada — nunca contraste rebaixado.</p>
+        </div>
+        <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <div style="padding:28px;">
+            <h1 style="margin:0 0 16px;color:#5E412F;font-size:24px;font-weight:700;">Título do e-mail</h1>
+            <p style="margin:0 0 12px;color:#1B263B;font-size:15px;line-height:1.6;">Parágrafo do corpo, na medida de leitura do e-mail. Quinze pixels e entrelinha 1.6, para aguentar bloco de texto sem cansar.</p>
+            <h2 style="margin:24px 0 8px;color:#1B263B;font-size:18px;font-weight:700;">Subtítulo de seção</h2>
+            <p style="margin:0 0 12px;color:#1B263B;font-size:15px;line-height:1.6;">O subtítulo abre respiro em cima e cola no parágrafo que ele nomeia — o espaçamento é que agrupa, não a régua.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.2 Destaque -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">2.2 · Destaque <span class="text-sm font-normal text-base-content/60">— o poço do <span class="text-code">.card-well</span> traduzido</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">O que o e-mail quer que se leia primeiro. Monoespaçado quando o valor é para ser copiado à mão — é assim que a senha temporária vai chegar.</p>
+        </div>
+        <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <div style="padding:28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Unidade de exercício</span><br>
+                <span style="color:#0077B6;font-size:17px;">DIMAP-1 — Divisão de Avaliação</span>
+              </td></tr>
+            </table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Senha temporária</span><br>
+                <span style="color:#0077B6;font-size:17px;font-family:'Roboto Mono',Consolas,monospace;">7Kq-42vP-hZ9</span>
+              </td></tr>
+            </table>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60 px-1">Acima: <span class="text-code">monoespacado=False</span> e <span class="text-code">monoespacado=True</span>. São peças distintas no tema (<span class="text-code">valor</span> / <span class="text-code">valor_mono</span>) porque um elemento só tem um <span class="text-code">style</span>.</p>
+      </div>
+
+      <!-- 2.3 Tabela -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">2.3 · Tabela <span class="text-sm font-normal text-base-content/60">— com e sem cabeçalho</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">A tabela de vidro não atravessa: sobra a régua em luz. Cabeçalho em overline sobre linha <span class="text-code">base-300</span>; separação entre linhas em <span class="text-code">base-200</span>, mais clara ainda. Sem zebra.</p>
+        </div>
+        <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <div style="padding:28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #CFE2EB;color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;text-align:left;">Unidade</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #CFE2EB;color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;text-align:left;">Cargo</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #CFE2EB;color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;text-align:left;">Desde</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">DIMAP-1</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">Assistente</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">14/03/2024</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">DIMAP-2</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">Titular</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">02/09/2025</td>
+              </tr>
+            </table>
+
+            <hr style="border:0;border-top:1px solid #CFE2EB;margin:24px 0;">
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">Login</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">a.pereira</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">Validade da senha</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">48 horas</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60 px-1">Entre as duas, o bloco <strong>divisor</strong>. Sem cabeçalho, a tabela vira lista de pares — mesma peça, nenhum campo a mais.</p>
+      </div>
+
+      <!-- 2.4 Imagem -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">2.4 · Imagem <span class="text-sm font-normal text-base-content/60">— carregada × bloqueada</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Bloquear imagem é o default de vários clientes. O texto alternativo é obrigatório porque, na metade das caixas, é ele que a pessoa vai ler.</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-5">
+          <div>
+            <p class="text-overline mb-2">Carregada</p>
+            <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+              <div style="padding:28px;">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='544' height='150'><rect width='544' height='150' fill='%23CAF0F8'/><path d='M0 110 L120 70 L260 105 L400 55 L544 92 L544 150 L0 150 Z' fill='%2390E0EF'/><circle cx='272' cy='62' r='16' fill='%230096C7'/><text x='272' y='128' font-family='Arial' font-size='13' fill='%23023E8A' text-anchor='middle'>região do imóvel</text></svg>"
+                     alt="Mapa da região do imóvel" width="544" style="display:block;max-width:100%;border:0;">
+              </div>
+            </div>
+          </div>
+          <div>
+            <p class="text-overline mb-2">Bloqueada pelo cliente <span class="normal-case tracking-normal">(o estado de falta)</span></p>
+            <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+              <div style="padding:28px;">
+                <div style="border:1px dashed #CFE2EB;padding:24px;color:#5B7290;font-size:14px;">Mapa da região do imóvel</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60 px-1">A moldura tracejada à direita é <strong>simulação</strong> do que o cliente desenha sozinho — não é peça nossa. A URL é sempre absoluta: e-mail não tem base de onde resolver caminho relativo.</p>
+      </div>
+
+      <!-- 2.5 Botão e divisor -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">2.5 · Botão e divisor</h3>
+          <p class="text-sm text-base-content/70 mt-1">O <span class="text-code">.btn-onsen</span> sem gradiente e sem glow: fundo chapado <span class="text-code">agua-400</span>, tinta <span class="text-code">agua-800</span>. Sem <span class="text-code">:hover</span> — estilo inline não tem seletor.</p>
+        </div>
+        <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <div style="padding:28px;">
+            <a href="#" style="display:inline-block;background:#48CAE4;color:#023E8A;border-radius:8px;font-weight:700;text-decoration:none;padding:12px 24px;">Definir minha senha</a>
+            <hr style="border:0;border-top:1px solid #CFE2EB;margin:24px 0;">
+            <p style="margin:0;color:#1B263B;font-size:15px;line-height:1.6;">Abaixo do divisor, o assunto muda.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · ORGANISMO ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">3 · Organismo — o envelope</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">3.1 · Água, placa, faixa e rodapé</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            O que embrulha os blocos, e a única parte do e-mail que não é bloco. A faixa carrega a marca —
+            selo branco com o monograma sobre <span class="text-code">agua-600</span>, o único lugar do
+            e-mail com tinta clara sobre fundo escuro.
+          </p>
+        </div>
+        <div class="moldura-caixa">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E3EFF5;padding:32px 12px;">
+            <tr><td align="center">
+              <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid #CFE2EB;border-radius:16px;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+                <tr><td style="background:#0096C7;border-radius:16px 16px 0 0;padding:20px 28px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" style="background:#FFFFFF;border-radius:8px;color:#0096C7;font-size:18px;font-weight:900;text-align:center;height:32px;">D</td>
+                    <td style="padding-left:12px;color:#FFFFFF;font-size:15px;font-weight:700;">DIMAP GeoCoder</td>
+                  </tr></table>
+                </td></tr>
+                <tr><td style="padding:28px;">
+                  <p style="margin:0;color:#5B7290;font-size:13px;">— aqui entram os blocos do conteúdo —</p>
+                </td></tr>
+                <tr><td style="padding:0 28px 24px;color:#5B7290;font-size:13px;">Mensagem automática do DIMAP GeoCoder. Não é necessário responder.</td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </div>
+        <p class="text-xs text-base-content/60 px-1">
+          Largura e alinhamento são <strong>atributo</strong> de tabela, não CSS — é o que sobrevive em
+          qualquer cliente. Aninhamento de tabela no lugar de flex, pelo mesmo motivo.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 4 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">4 · Telas montadas</h2>
+
+      <!-- 4.1 O e-mail de teste -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">4.1 · O e-mail de teste <span class="text-sm font-normal text-base-content/60">— o que esta SPEC entrega</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Título, dois parágrafos e o destaque que identifica o disparo. Sem botão: não há para onde mandar quem recebe.</p>
+        </div>
+        <div class="moldura-caixa">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E3EFF5;padding:32px 12px;">
+            <tr><td align="center">
+              <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid #CFE2EB;border-radius:16px;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+                <tr><td style="background:#0096C7;border-radius:16px 16px 0 0;padding:20px 28px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" style="background:#FFFFFF;border-radius:8px;color:#0096C7;font-size:18px;font-weight:900;text-align:center;height:32px;">D</td>
+                    <td style="padding-left:12px;color:#FFFFFF;font-size:15px;font-weight:700;">DIMAP GeoCoder</td>
+                  </tr></table>
+                </td></tr>
+                <tr><td style="padding:28px;">
+                  <h1 style="margin:0 0 16px;color:#5E412F;font-size:24px;font-weight:700;">O envio de e-mail está funcionando</h1>
+                  <p style="margin:0 0 12px;color:#1B263B;font-size:15px;line-height:1.6;">Esta mensagem foi disparada para provar a configuração de envio do DIMAP GeoCoder.</p>
+                  <p style="margin:0 0 12px;color:#1B263B;font-size:15px;line-height:1.6;">Se ela chegou legível na sua caixa, a conta, a senha de app e o desenho da mensagem estão certos.</p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                    <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                      <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Ambiente e momento do disparo</span><br>
+                      <span style="color:#0077B6;font-size:17px;font-family:'Roboto Mono',Consolas,monospace;">geocoder.dimap.local · 21/08/2026 14:32:07</span>
+                    </td></tr>
+                  </table>
+                </td></tr>
+                <tr><td style="padding:0 28px 24px;color:#5B7290;font-size:13px;">Mensagem automática do DIMAP GeoCoder. Não é necessário responder.</td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4.2 Versão em texto puro -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">4.2 · A mesma mensagem em texto puro</h3>
+          <p class="text-sm text-base-content/70 mt-1">Sai do mesmo conteúdo, bloco a bloco. Quem lê sem HTML recebe a mesma informação — o destaque vira <span class="text-code">rótulo: valor</span>.</p>
+        </div>
+        <div class="card-well p-5">
+          <pre class="text-[13px] leading-relaxed text-base-content/85 whitespace-pre-wrap font-mono">O envio de e-mail está funcionando
+
+Esta mensagem foi disparada para provar a configuração de envio do DIMAP GeoCoder.
+
+Se ela chegou legível na sua caixa, a conta, a senha de app e o desenho da mensagem estão certos.
+
+Ambiente e momento do disparo: geocoder.dimap.local · 21/08/2026 14:32:07
+
+Mensagem automática do DIMAP GeoCoder. Não é necessário responder.</pre>
+        </div>
+      </div>
+
+      <!-- 4.3 Conteúdo mínimo -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">4.3 · Conteúdo mínimo <span class="text-sm font-normal text-base-content/60">— o estado de falta</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Um título e um parágrafo. Bloco ausente não deixa espaço reservado: o e-mail encolhe, não fica com buraco.</p>
+        </div>
+        <div class="moldura-caixa">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E3EFF5;padding:32px 12px;">
+            <tr><td align="center">
+              <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid #CFE2EB;border-radius:16px;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+                <tr><td style="background:#0096C7;border-radius:16px 16px 0 0;padding:20px 28px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" style="background:#FFFFFF;border-radius:8px;color:#0096C7;font-size:18px;font-weight:900;text-align:center;height:32px;">D</td>
+                    <td style="padding-left:12px;color:#FFFFFF;font-size:15px;font-weight:700;">DIMAP GeoCoder</td>
+                  </tr></table>
+                </td></tr>
+                <tr><td style="padding:28px;">
+                  <h1 style="margin:0 0 16px;color:#5E412F;font-size:24px;font-weight:700;">Sua unidade mudou de titular</h1>
+                  <p style="margin:0;color:#1B263B;font-size:15px;line-height:1.6;">A partir de hoje, a DIMAP-2 passa a ser dirigida por Ana Pereira.</p>
+                </td></tr>
+                <tr><td style="padding:0 28px 24px;color:#5B7290;font-size:13px;">Mensagem automática do DIMAP GeoCoder. Não é necessário responder.</td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4.4 E-mail composto -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">4.4 · Todos os blocos juntos <span class="text-sm font-normal text-base-content/60">— a forma que a senha temporária vai ter</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Não é entregável desta SPEC: está aqui para provar que os oito blocos compõem sem inventar peça nova.</p>
+        </div>
+        <div class="moldura-caixa">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E3EFF5;padding:32px 12px;">
+            <tr><td align="center">
+              <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid #CFE2EB;border-radius:16px;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+                <tr><td style="background:#0096C7;border-radius:16px 16px 0 0;padding:20px 28px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" style="background:#FFFFFF;border-radius:8px;color:#0096C7;font-size:18px;font-weight:900;text-align:center;height:32px;">D</td>
+                    <td style="padding-left:12px;color:#FFFFFF;font-size:15px;font-weight:700;">DIMAP GeoCoder</td>
+                  </tr></table>
+                </td></tr>
+                <tr><td style="padding:28px;">
+                  <h1 style="margin:0 0 16px;color:#5E412F;font-size:24px;font-weight:700;">Sua conta foi criada</h1>
+                  <p style="margin:0 0 12px;color:#1B263B;font-size:15px;line-height:1.6;">Ana, sua conta no DIMAP GeoCoder já existe. Use a senha temporária abaixo no primeiro acesso — ela vale por 48 horas.</p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                    <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                      <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Senha temporária</span><br>
+                      <span style="color:#0077B6;font-size:17px;font-family:'Roboto Mono',Consolas,monospace;">7Kq-42vP-hZ9</span>
+                    </td></tr>
+                  </table>
+                  <p style="margin:16px 0 12px;color:#1B263B;font-size:15px;line-height:1.6;">&nbsp;</p>
+                  <a href="#" style="display:inline-block;background:#48CAE4;color:#023E8A;border-radius:8px;font-weight:700;text-decoration:none;padding:12px 24px;">Definir minha senha</a>
+
+                  <hr style="border:0;border-top:1px solid #CFE2EB;margin:24px 0;">
+
+                  <h2 style="margin:24px 0 8px;color:#1B263B;font-size:18px;font-weight:700;">Seu vínculo</h2>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding:8px 12px;border-bottom:1px solid #CFE2EB;color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;text-align:left;">Unidade</td>
+                      <td style="padding:8px 12px;border-bottom:1px solid #CFE2EB;color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;text-align:left;">Cargo</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">DIMAP-1</td>
+                      <td style="padding:8px 12px;border-bottom:1px solid #E3EFF5;color:#1B263B;font-size:14px;">Assistente de avaliação</td>
+                    </tr>
+                  </table>
+                </td></tr>
+                <tr><td style="padding:0 28px 24px;color:#5B7290;font-size:13px;">Mensagem automática do DIMAP GeoCoder. Não é necessário responder.</td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4.5 Tela estreita -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">4.5 · Tela estreita <span class="text-sm font-normal text-base-content/60">— o custo do inline</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Sem media query, a placa fica em 600px fixos. Na moldura de 340px abaixo, o que sobra é o que o
+            cliente faz sozinho: no celular, o app do Gmail escala a mensagem para caber; num cliente que
+            não escala, sobra a rolagem lateral que se vê aqui.
+          </p>
+        </div>
+        <div class="moldura-caixa mx-auto" style="width:340px;overflow-x:auto;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E3EFF5;padding:16px 8px;">
+            <tr><td align="center">
+              <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid #CFE2EB;border-radius:16px;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+                <tr><td style="background:#0096C7;border-radius:16px 16px 0 0;padding:20px 28px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" style="background:#FFFFFF;border-radius:8px;color:#0096C7;font-size:18px;font-weight:900;text-align:center;height:32px;">D</td>
+                    <td style="padding-left:12px;color:#FFFFFF;font-size:15px;font-weight:700;">DIMAP GeoCoder</td>
+                  </tr></table>
+                </td></tr>
+                <tr><td style="padding:28px;">
+                  <h1 style="margin:0 0 16px;color:#5E412F;font-size:24px;font-weight:700;">O envio de e-mail está funcionando</h1>
+                  <p style="margin:0;color:#1B263B;font-size:15px;line-height:1.6;">Esta mensagem foi disparada para provar a configuração de envio do DIMAP GeoCoder.</p>
+                </td></tr>
+                <tr><td style="padding:0 28px 24px;color:#5B7290;font-size:13px;">Mensagem automática do DIMAP GeoCoder.</td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="glass-panel p-6 text-sm text-base-content/70">
+      Mock de validação da SPEC <span class="text-code">criacao_usuarios/002</span>. Aprovado o desenho,
+      as peças viram <span class="text-code">TEMA_EMAIL</span> e os escritores de
+      <span class="text-code">services/domain/email/</span> — não há template de e-mail a portar.
+    </footer>
+
+  </main>
+</body>
+</html>
