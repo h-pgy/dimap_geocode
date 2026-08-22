@@ -2,7 +2,7 @@
 spec: criacao_usuarios/001
 versao: v6
 atualizado_em: 2026-08-21
-testes_tdd: false
+testes_tdd: true
 implementado: false
 changelog:
   - v1: versão inicial
