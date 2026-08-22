@@ -52,6 +52,10 @@ O mock **não duplica o design system**. Ele faz `fetch` de `static/src/tema-dim
   pelo loader dentro do MESMO bloco `text/tailwindcss`**. Bloco separado é processado sem o `@theme`
   do tema: as escalas `agua`/`rocha`/`madeira`/`sakura` viram "unknown utility class" no `@apply` e a
   folha inteira cai.
+- **`@apply` só aceita utility.** Classe de `@layer components` — `.card-well`, `.glass-panel`,
+  `.btn-onsen` — **não** é utility, nem estando no mesmo arquivo: `@apply card-well` derruba a folha
+  do mesmo jeito, e o sintoma é a página abrir com o CSS pela metade. Peça do tema se **compõe no
+  HTML** (`class="card-well quadro-glifo"`), nunca dentro do `@apply`.
 
 ---
 

@@ -344,8 +344,12 @@ isso que faz a validação humana acontecer antes da implementação, e não dep
 - Alvo natural é `services/` — domínio puro, sem Django. View só quando o que se fixa é o contrato
   HTTP/partial.
 - Se algum teste carrega marker, diga quais — e liste o marker em `markers_obrigatorios`.
+- **Teste de segurança de ação administrativa não entra no teto.** SPEC que inscreve uma ação (§3.5
+  do CLAUDE.md) carrega a bateria da skill `acao-administrativa` — negativa registrada, alvo fora do
+  alcance, perfil fora de exercício, alvo forjado — **além** dos testes de comportamento. Liste os
+  dois grupos na §8; o teto de 10 vale só para o comportamento.
 
-**Teto:** 10.
+**Teto:** 10 — os testes de segurança da ação ficam de fora da contagem.
 
 ---
 
