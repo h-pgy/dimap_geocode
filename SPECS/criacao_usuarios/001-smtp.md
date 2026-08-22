@@ -3,7 +3,7 @@ spec: criacao_usuarios/001
 versao: v6
 atualizado_em: 2026-08-21
 testes_tdd: true
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: o envio ganha política de retry configurável e o corpo HTML passa por um validador próprio
@@ -21,22 +21,22 @@ por conta autenticada do Gmail, com contrato tipado nas duas pontas, resiliênci
 sem vazar `smtplib` para quem chama.
 
 ## 2 · Condições de pronto
-- [ ] Uma mensagem com destinatário, assunto e corpo em texto sai pelo SMTP do Gmail, autenticada por
+- [x] Uma mensagem com destinatário, assunto e corpo em texto sai pelo SMTP do Gmail, autenticada por
       senha de app, com o remetente exibindo **nome**, e chega na caixa do destinatário.
-- [ ] Mensagem com corpo HTML chega com **as duas versões**: um cliente sem HTML lê o texto puro.
-- [ ] Host, porta, conta, senha, nome de exibição e política de retry vêm do `.env` pela orquestração —
+- [x] Mensagem com corpo HTML chega com **as duas versões**: um cliente sem HTML lê o texto puro.
+- [x] Host, porta, conta, senha, nome de exibição e política de retry vêm do `.env` pela orquestração —
       nenhum deles escrito no código do enviador.
-- [ ] Falha **transitória** (conexão, timeout, resposta 4xx do servidor) é repetida até o limite da
+- [x] Falha **transitória** (conexão, timeout, resposta 4xx do servidor) é repetida até o limite da
       política, com espera entre as tentativas; **falha de autenticação não é repetida**.
-- [ ] Esgotadas as tentativas — ou diante de falha definitiva — quem chamou recebe uma **exceção do
+- [x] Esgotadas as tentativas — ou diante de falha definitiva — quem chamou recebe uma **exceção do
       projeto**; nenhuma exceção de `smtplib` atravessa a fronteira.
-- [ ] Destinatário **recusado** pelo servidor aparece nomeado no resultado do envio, sem erro — os
+- [x] Destinatário **recusado** pelo servidor aparece nomeado no resultado do envio, sem erro — os
       demais destinatários da mesma mensagem seguem entregues.
-- [ ] Com o envio **desligado por configuração**, nenhuma conexão é aberta, a mensagem é registrada no
+- [x] Com o envio **desligado por configuração**, nenhuma conexão é aberta, a mensagem é registrada no
       stdout e o resultado diz que ela não foi entregue ao servidor.
-- [ ] Corpo HTML **malformado** — tag não fechada, fechamento sem abertura, fechamento fora de ordem —
+- [x] Corpo HTML **malformado** — tag não fechada, fechamento sem abertura, fechamento fora de ordem —
       recusa a mensagem na construção dela, com a tag e a linha do erro.
-- [ ] O validador aceita **texto sem marcação** e **elementos vazios** (`<br>`, `<img>`) sem exigir
+- [x] O validador aceita **texto sem marcação** e **elementos vazios** (`<br>`, `<img>`) sem exigir
       fechamento.
 
 ## 3 · Domínio

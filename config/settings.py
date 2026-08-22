@@ -96,6 +96,25 @@ class _Settings(BaseSettings):
         alias="DTIME_ATUALIZACAO_ARQUIVOS",
     )
 
+    # Prefixo EMAIL_SMTP_ evita os nomes que o Django reserva para o send_mail dele
+    # (EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER...), que o projeto não usa.
+    email_smtp_host: str = Field(default="smtp.gmail.com", alias="EMAIL_SMTP_HOST")
+    email_smtp_porta: int = Field(default=587, alias="EMAIL_SMTP_PORTA")
+    email_smtp_usuario: str = Field(default="", alias="EMAIL_SMTP_USUARIO")
+    email_smtp_senha: str = Field(default="", alias="EMAIL_SMTP_SENHA")
+    email_remetente_nome: str = Field(default="DIMAP GeoCoder", alias="EMAIL_REMETENTE_NOME")
+    email_envio_habilitado: bool = Field(default=False, alias="EMAIL_ENVIO_HABILITADO")
+    email_smtp_timeout_seconds: float = Field(default=30.0, alias="EMAIL_SMTP_TIMEOUT_SECONDS")
+    email_smtp_max_retries: int = Field(default=2, alias="EMAIL_SMTP_MAX_RETRIES")
+    email_smtp_retry_wait_min_seconds: float = Field(
+        default=1.0,
+        alias="EMAIL_SMTP_RETRY_WAIT_MIN_SECONDS",
+    )
+    email_smtp_retry_wait_max_seconds: float = Field(
+        default=5.0,
+        alias="EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS",
+    )
+
 
 _env = _Settings()
 
@@ -165,6 +184,18 @@ MAP_ZOOM_FUNDO_ADMIN = 15
 
 # Horário do dia (fuso de TIME_ZONE) em que o daemon reextrai os parquets de data/.
 DTIME_ATUALIZACAO_ARQUIVOS = _env.dtime_atualizacao_arquivos
+
+# E-mail — SMTP do Gmail (services.utils.smtp).
+EMAIL_SMTP_HOST = _env.email_smtp_host
+EMAIL_SMTP_PORTA = _env.email_smtp_porta
+EMAIL_SMTP_USUARIO = _env.email_smtp_usuario
+EMAIL_SMTP_SENHA = _env.email_smtp_senha
+EMAIL_REMETENTE_NOME = _env.email_remetente_nome
+EMAIL_ENVIO_HABILITADO = _env.email_envio_habilitado
+EMAIL_SMTP_TIMEOUT_SECONDS = _env.email_smtp_timeout_seconds
+EMAIL_SMTP_MAX_RETRIES = _env.email_smtp_max_retries
+EMAIL_SMTP_RETRY_WAIT_MIN_SECONDS = _env.email_smtp_retry_wait_min_seconds
+EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS = _env.email_smtp_retry_wait_max_seconds
 
 
 # Application definition
