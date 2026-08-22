@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC criacao_usuarios/004 — Criar servidor (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- O que nasce nesta SPEC: o GLIFO da ação (arquivo em static/, não CSS) e o ÁTOMO do campo em
+       realce, nas quatro tonalidades semânticas. O resto da tela é composição de peça já portada
+       (.glass-panel, .card-well, .form-field, .upload-well, .tarja-vinculo, .icon-bubble,
+       .icone-acao, .btn-onsen). -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== ÁTOMO · CONTROLE EM REALCE ====================
+         O halo semântico no CONTROLE — o poço que se preenche —, nunca no campo inteiro: rótulo
+         fora do realce mantém a linha alinhada com os vizinhos da grade. A receita é a do
+         .input-glass:focus, com a cor do estado no lugar do ciano; os rgba são a transcrição dos
+         tokens semânticos, como nos demais halos do tema. */
+      .campo-realce-erro    { @apply border-error/60;   --halo-realce: 220, 38, 38; }
+      .campo-realce-alerta  { @apply border-warning/60; --halo-realce: 180, 83, 9; }
+      .campo-realce-info    { @apply border-info/60;    --halo-realce: 2, 132, 199; }
+      .campo-realce-sucesso { @apply border-success/60; --halo-realce: 5, 150, 105; }
+      .campo-realce-erro, .campo-realce-alerta, .campo-realce-info, .campo-realce-sucesso {
+        box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.18), 0 0 20px rgba(var(--halo-realce), 0.35);
+      }
+      /* O foco não apaga o estado: mesma receita mais acesa, no lugar do ciano do .input-glass:focus. */
+      .campo-realce-erro:focus, .campo-realce-alerta:focus, .campo-realce-info:focus, .campo-realce-sucesso:focus {
+        box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.28), 0 0 22px rgba(var(--halo-realce), 0.45);
+      }
+
+      /* .quadro-glifo — vitrine de EXPOSIÇÃO do glifo. Não é peça do projeto, não vai para o tema.
+         Só utilities: o poço vem do .card-well composto no HTML, porque @apply de classe de
+         @layer components não é utility e derruba a folha inteira. */
+      .quadro-glifo { @apply p-5 flex flex-col items-center justify-center gap-3 text-center; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual. -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <!-- Filtros da gravação (SPEC user_admin/013) — na aplicação vêm de partials/_filtros_gravacao.html -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sombraInterna"/><feMergeNode in="luzInterna"/></feMerge>
+      </filter>
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sombraInterna"/><feMergeNode in="luzInterna"/></feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC criacao_usuarios/004 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Cadastrar servidor</h1>
+      <p class="mt-4 max-w-3xl text-base-content/80 leading-relaxed">
+        A tela de cadastro que já existe passa a ter destino: ganha o campo de <strong>e-mail</strong>, o
+        <strong>glifo</strong> da ação e os dois desfechos do submit — a recusa que volta no formulário e
+        a conclusão que diz para onde a senha foi. Nenhuma classe nova entra no design system: tudo aqui
+        é composição de peça portada.
+      </p>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          <strong>1 · Átomos</strong> traz o glifo novo nas duas medidas e nos seus estados.
+          <strong>2 · Telas</strong> monta o formulário nos quatro estados — vazio, sem unidade alcançada,
+          recusado e concluído — e a listagem com e sem a porta de entrada.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Átomos — o glifo da ação</h2>
+      <p class="px-2 text-sm text-base-content/70 -mt-4">
+        Silhueta e sinal, no traço de 1.75 que o <span class="text-code">.icone-acao</span> aplica: o
+        arquivo não escreve cor nem espessura. A silhueta é a mesma dos glifos de titular e substituto —
+        muda o que vem ao lado dela.
+      </p>
+
+      <!-- 1.1 medidas e estados -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · As duas medidas, gravado e aceso</h3>
+          <p class="text-sm text-base-content/70 mt-1">Pequeno é a linha de menu; grande é o cartão. Em repouso o glifo é gravação no gelo; no hover ele acende em ciano.</p>
+        </div>
+        <div class="grid sm:grid-cols-4 gap-4">
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-pequeno text-agua-700">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M18.5 6.5v5"/><path d="M16 9h5"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">pequeno · 20px</p>
+          </div>
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-700">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M18.5 6.5v5"/><path d="M16 9h5"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">grande · 48px</p>
+          </div>
+          <!-- estado: gravado -->
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-700/85" style="filter:url(#etched-onsen-lg)">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M18.5 6.5v5"/><path d="M16 9h5"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">gravado · repouso</p>
+          </div>
+          <!-- estado: aceso -->
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)]">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M18.5 6.5v5"/><path d="M16 9h5"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">aceso · hover</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.2 a família da silhueta -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.2 · A família <span class="text-sm font-normal text-base-content/60">— a mesma pessoa, o sinal muda</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Ao lado dos glifos que já existem na página do servidor: cabeça e ombros idênticos, e o que se lê é o que está à direita deles.</p>
+        </div>
+        <div class="grid grid-cols-3 gap-4 max-w-md">
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-700">
+              <svg viewBox="0 0 24 24"><circle cx="9.5" cy="8" r="3.2"/><path d="M4 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="m18.4 3.6 1.1 2.2 2.5.36-1.8 1.75.42 2.47-2.22-1.17-2.22 1.17.43-2.47-1.8-1.75 2.48-.36z"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">titular<br>(já existe)</p>
+          </div>
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-700">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">substituto<br>(já existe)</p>
+          </div>
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-700">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M18.5 6.5v5"/><path d="M16 9h5"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-agua-800">criar servidor<br>(nasce aqui)</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.4 campo em realce -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.4 · Campo em realce <span class="text-sm font-normal text-base-content/60">— as quatro tonalidades</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Dentro do poço da seção, o campo chamado à atenção fica cavado um degrau abaixo, com o halo
+            O halo fica no controle — a parte que se preenche —, e não em volta do rótulo: assim o campo
+            realçado não perde a linha dos vizinhos. Só o <strong>erro</strong> tem uso hoje; as outras
+            três nascem para a próxima tela não inventar a sua.
+          </p>
+        </div>
+        <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+          <label class="form-field">
+            <span class="text-overline">Erro</span>
+            <input type="text" class="input input-glass campo-realce-erro" value="812.345-6" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Alerta</span>
+            <input type="text" class="input input-glass campo-realce-alerta" value="Cargo sem chefia compatível" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Info</span>
+            <input type="text" class="input input-glass campo-realce-info" value="Herdado da unidade superior" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Sucesso</span>
+            <input type="text" class="input input-glass campo-realce-sucesso" value="ana.ramos@sp.gov.br" />
+          </label>
+        </div>
+      </div>
+
+      <!-- 1.3 em uso -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.3 · Na linha de menu <span class="text-sm font-normal text-base-content/60">— onde o glifo pequeno vive</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Passe o cursor: o item acende o glifo junto com o texto.</p>
+        </div>
+        <div class="max-w-xs flex flex-col gap-2">
+          <button type="button" class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M18.5 6.5v5"/><path d="M16 9h5"/></svg>
+            </span>
+            Novo servidor
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Telas montadas</h2>
+
+      <!-- 2.1 formulário vazio -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">2.1 · O formulário <span class="text-sm font-normal text-base-content/60">— com o campo de e-mail</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">A tela de hoje, com o e-mail em linha própria sob a identificação: é o único campo novo, e é para onde a senha vai.</p>
+        </div>
+
+        <!-- página: user_admin/perfil_form.html -->
+        <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Novo servidor</h1>
+            <p class="text-sm text-base-content/70 mt-1">O cadastro registra a competência administrativa: cargo e unidade definem o que a pessoa poderá praticar.</p>
+          </div>
+
+          <!-- partial: user_admin/partials/_secao_identificacao.html -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Identificação</p>
+            <div class="grid sm:grid-cols-3 gap-4">
+              <label class="form-field">
+                <span class="text-overline">RF</span>
+                <input type="text" name="rf" placeholder="812.345-6" class="input input-glass" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Nome</span>
+                <input type="text" name="nome" placeholder="Ana" class="input input-glass" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Sobrenome</span>
+                <input type="text" name="sobrenome" placeholder="Ramos" class="input input-glass" />
+              </label>
+            </div>
+            <label class="form-field">
+              <span class="text-overline">E-mail</span>
+              <input type="email" name="email" placeholder="ana.ramos@prefeitura.sp.gov.br" class="input input-glass" />
+              <span class="form-field-hint">Para cá vai a senha de primeiro acesso. Sem e-mail não há como entregar o acesso.</span>
+            </label>
+          </div>
+          <!-- /partial -->
+
+          <!-- partial: user_admin/partials/_secao_lotacao.html -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Lotação</p>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div class="form-field">
+                <span class="text-overline">Unidade</span>
+                <div class="form-field-inline-action">
+                  <select name="unidade" class="select select-glass" data-select-onsen>
+                    <option>DIMAP-1 · Divisão de Avaliação</option>
+                    <option>DIMAP-2 · Divisão de Cadastro</option>
+                    <option>DIMAP-3 · Divisão de Tributação</option>
+                  </select>
+                  <label class="btn btn-circle btn-criar-inline tooltip tooltip-left" data-tip="Cadastrar unidade que falta">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+                  </label>
+                </div>
+                <span class="form-field-hint">Só as unidades que você dirige, e as de baixo.</span>
+              </div>
+              <label class="form-field">
+                <span class="text-overline">Cargo base</span>
+                <select name="cargo_base" class="select select-glass" data-select-onsen>
+                  <option>Assistente de Gestão de Políticas Públicas</option>
+                  <option>Analista de Planejamento e Desenvolvimento Organizacional</option>
+                </select>
+              </label>
+              <label class="form-field sm:col-span-2">
+                <span class="text-overline">Cargo em comissão</span>
+                <select name="cargo_comissao" class="select select-glass" data-select-onsen>
+                  <option value="">— sem cargo em comissão —</option>
+                  <option>CDA-II · Diretor de Divisão</option>
+                </select>
+                <span class="form-field-hint">Opcional. A chefia é o que abre as ações privativas da unidade.</span>
+              </label>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <!-- partial: user_admin/partials/_campo_upload_foto.html -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Foto</p>
+            <label class="upload-well cursor-pointer">
+              <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2L8 5h8l1.5 2h2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.2"/></svg>
+              </span>
+              <span class="text-sm font-medium">Arraste a foto ou clique para escolher</span>
+              <input type="file" name="foto" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs" />
+              <span class="form-field-hint">JPG ou PNG. Sem foto, o sistema desenha o avatar com as iniciais na cor da unidade.</span>
+            </label>
+          </div>
+          <!-- /partial -->
+
+          <!-- fica na página: só arranjo, nunca é trocado sozinho -->
+          <div class="flex justify-end gap-3 pt-1">
+            <a href="#" class="btn btn-ghost btn-glass">Cancelar</a>
+            <button type="button" class="btn btn-onsen">Salvar servidor</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 2.2 estado de falta -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">2.2 · Estado de falta <span class="text-sm font-normal text-base-content/60">— quem tem a ação e não dirige nada</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">O alcance sai das unidades dirigidas: sem nenhuma, não há onde lotar, e a tela diz isso em vez de oferecer lista vazia.</p>
+        </div>
+        <div class="glass-panel p-6 sm:p-8">
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Lotação</p>
+            <div class="form-field">
+              <span class="text-overline">Unidade</span>
+              <p class="text-[15px] text-base-content/60 py-1.5">— nenhuma unidade ao seu alcance —</p>
+              <span class="form-field-hint">Você exerce a ação, mas não responde pela direção de unidade alguma. Peça a quem dirige.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.3 recusado -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">2.3 · Cadastro recusado <span class="text-sm font-normal text-base-content/60">— o formulário volta preenchido</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">A tarja entra no topo, com o motivo; o que foi digitado permanece. Nada foi gravado.</p>
+        </div>
+
+        <!-- partial: user_admin/partials/_formulario_servidor.html — alvo do hx-post de gravar -->
+        <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Novo servidor</h1>
+          </div>
+
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+            <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+            <div>
+              <p class="text-[13px] font-semibold text-base-content/90">Cadastro não concluído</p>
+              <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                <li>Já existe servidor cadastrado com o RF <span class="text-code">812.345-6</span>.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Identificação</p>
+            <div class="grid sm:grid-cols-3 gap-4">
+              <label class="form-field">
+                <span class="text-overline">RF</span>
+                <!-- estado: o controle que a recusa nomeia -->
+                <input type="text" name="rf" value="812.345-6" class="input input-glass campo-realce-erro" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Nome</span>
+                <input type="text" name="nome" value="Ana" class="input input-glass" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Sobrenome</span>
+                <input type="text" name="sobrenome" value="Ramos" class="input input-glass" />
+              </label>
+            </div>
+            <label class="form-field">
+              <span class="text-overline">E-mail</span>
+              <input type="email" name="email" value="ana.ramos@prefeitura.sp.gov.br" class="input input-glass" />
+            </label>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-1">
+            <a href="#" class="btn btn-ghost btn-glass">Cancelar</a>
+            <button type="button" class="btn btn-onsen">Salvar servidor</button>
+          </div>
+        </form>
+        <!-- /partial -->
+      </div>
+
+      <!-- 2.4 concluído -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">2.4 · Cadastro concluído <span class="text-sm font-normal text-base-content/60">— e para onde a senha foi</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">O formulário sai de cena e dá lugar ao desfecho. A senha não aparece aqui: ela existe só na caixa de quem recebeu.</p>
+        </div>
+
+        <!-- partial: user_admin/partials/_cadastro_concluido.html — resposta do hx-post no lugar do formulário -->
+        <div class="glass-panel p-8 flex flex-col items-center gap-4 text-center">
+          <span class="icon-bubble w-16 h-16 bg-agua-500/15 border-agua-600/30 text-agua-700">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
+          </span>
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Servidor cadastrado</h2>
+            <p class="text-sm text-base-content/75 mt-1">
+              Ana Ramos · RF <span class="text-code">812.345-6</span> — a senha de primeiro acesso foi
+              enviada para <span class="text-code">ana.ramos@prefeitura.sp.gov.br</span>.
+            </p>
+          </div>
+          <div class="flex flex-wrap justify-center gap-3 pt-1">
+            <a href="#" class="btn btn-glass btn-sm">Cadastrar outro</a>
+            <a href="#" class="btn btn-onsen btn-sm">Abrir a página do servidor</a>
+          </div>
+        </div>
+        <!-- /partial -->
+      </div>
+
+      <!-- 2.5 a porta de entrada -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">2.5 · A listagem <span class="text-sm font-normal text-base-content/60">— com e sem a porta de entrada</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">O botão só existe para quem pode criar. Esconder é UX: quem forçar a URL bate no 403 da rota.</p>
+        </div>
+
+        <!-- página: user_admin/servidores_list.html -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+          <!-- fica na página: o cabeçalho da listagem -->
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Servidores</h1>
+              <p class="text-sm text-base-content/70 mt-1">18 cadastrados. Clique num cabeçalho para filtrar; na seta, para ordenar.</p>
+            </div>
+            <div class="flex items-center gap-4">
+              <button type="button" class="btn-etched etched">✕ limpar filtros</button>
+              <a href="#" class="btn btn-onsen btn-sm gap-2">
+                <span class="icone-acao icone-acao-pequeno">
+                  <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M18.5 6.5v5"/><path d="M16 9h5"/></svg>
+                </span>
+                Novo servidor
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- estado: quem não exerce a ação -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Servidores</h1>
+              <p class="text-sm text-base-content/70 mt-1">18 cadastrados. Clique num cabeçalho para filtrar; na seta, para ordenar.</p>
+            </div>
+            <button type="button" class="btn-etched etched">✕ limpar filtros</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="glass-panel p-6 text-sm text-base-content/70">
+      Mock de validação da SPEC <span class="text-code">criacao_usuarios/004</span>. Aprovado o desenho, o
+      glifo vira <span class="text-code">static/src/acoes/user_admin/criar_servidor/icones/{pequeno,grande}.svg</span>
+      e as quatro tonalidades do <span class="text-code">.campo-realce</span> vão para
+      <span class="text-code">static/src/tema-dimap.dev.css</span> e para o styleguide, antes de
+      qualquer template usá-las. O resto é composição de peça já portada.
+    </footer>
+
+  </div>
+
+  <!-- Sem este módulo os selects seguem nativos: o componente de vidro (SPEC user_admin/011) é
+       opt-in por atributo e depende do módulo carregado, na aplicação e aqui. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+
+  <script>
+    // Fundo à deriva (SPEC user_admin/007), reproduzido aqui porque o mock não passa pelo Django.
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
+        ultimoFrame = agora;
+        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
+        mapa.setView(
+          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
+          ZOOM,
+          { animate: false },
+        );
+      }
+      requestAnimationFrame(derivar);
+    }
+    requestAnimationFrame(derivar);
+  </script>
+</body>
+</html>
