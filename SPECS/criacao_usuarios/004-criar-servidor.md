@@ -2,7 +2,7 @@
 spec: criacao_usuarios/004
 versao: v1
 atualizado_em: 2026-08-22
-testes_tdd: false
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
