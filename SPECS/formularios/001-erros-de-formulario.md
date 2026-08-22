@@ -3,7 +3,7 @@ spec: formularios/001
 versao: v1
 atualizado_em: 2026-08-22
 testes_tdd: true
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
 ---
