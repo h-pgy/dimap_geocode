@@ -2,7 +2,7 @@
 spec: formularios/001
 versao: v1
 atualizado_em: 2026-08-22
-testes_tdd: false
+testes_tdd: true
 implementado: false
 changelog:
   - v1: versão inicial
@@ -172,7 +172,7 @@ Os comentários abaixo são didáticos, para a leitura da SPEC — **não são p
 # redeclarar "preencha o campo" — só o que for particular dele.
 REGRAS_PADRAO: Mapping[str, RegraDeErro] = {
     "missing": RegraDeErro(mensagem="Preencha o campo {rotulo}."),
-    "string_too_short": RegraDeErro(mensagem="Preencha o campo {rotulo}."),
+    "string_too_short": RegraDeErro(mensagem="Preencha o campo {rotulo} com a quantidade mínima de caracteres."),
     "string_too_long": RegraDeErro(mensagem="{rotulo}: texto longo demais."),
     "int_parsing": RegraDeErro(mensagem="{rotulo}: escolha uma opção da lista."),
     "value_error": RegraDeErro(mensagem="{rotulo}: valor inválido."),
