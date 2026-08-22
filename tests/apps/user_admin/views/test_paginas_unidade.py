@@ -15,7 +15,8 @@ from django.urls import reverse
 
 import pytest
 
-from apps.user_admin.models import CorUnidade, TipoUnidade, Unidade
+from apps.user_admin.models import CargoBase, CargoComissao, CorUnidade, Perfil, TipoUnidade, Unidade
+from apps.user_admin.titularidade import definir_titular
 
 banco = pytest.mark.banco
 
@@ -36,6 +37,27 @@ def _unidade_gravada(cor: str) -> Unidade:
         tipo=tipo,
         cor=cor,
     )
+
+
+def _dirigente_de(unidade: Unidade) -> Perfil:
+    # Criar servidor é ação protegida (SPEC criacao_usuarios/004): as duas telas abaixo que
+    # abrem `criar_perfil` (e o modal de unidade dentro dela) precisam de quem dirige.
+    cargo_base, _ = CargoBase.objects.get_or_create(
+        nome="Analista de Ordenamento Territorial", defaults={"sigla": "AOT"}
+    )
+    perfil = Perfil.objects.create_user(
+        rf="900098",
+        nome="Dirigente",
+        sobrenome="Modal Unidade",
+        password="segredo123",
+        cargo_base=cargo_base,
+        unidade=unidade,
+        cargo_comissao=CargoComissao.objects.create(
+            sigla="CDM", nivel=1, e_chefia=True, nome="Diretor Modal Unidade"
+        ),
+    )
+    definir_titular(perfil)
+    return perfil
 
 
 def _radio_do_tom(slug: str) -> str:
@@ -71,6 +93,7 @@ def test_pagina_de_criar_perfil_traz_o_modal_de_unidade(client: Client) -> None:
     # vazio. O modal de EDITAR servidor passou a montar o cadastro de unidade como painel dentro de
     # si mesmo (SPEC user_admin/017) — testado em test_pagina_do_servidor.py.
     unidade = _unidade_gravada(cor=CorUnidade.ROCHA_700)
+    client.force_login(_dirigente_de(unidade))
 
     html = client.get(reverse("user_admin:criar_perfil")).content.decode()
 
@@ -88,7 +111,8 @@ def test_pagina_de_criar_perfil_traz_o_modal_de_unidade(client: Client) -> None:
 @banco
 @pytest.mark.django_db
 def test_modal_de_unidade_nao_aninha_formulario(client: Client) -> None:
-    _unidade_gravada(cor=CorUnidade.ROCHA_700)
+    unidade = _unidade_gravada(cor=CorUnidade.ROCHA_700)
+    client.force_login(_dirigente_de(unidade))
 
     html = client.get(reverse("user_admin:criar_perfil")).content.decode()
 

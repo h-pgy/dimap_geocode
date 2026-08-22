@@ -115,6 +115,10 @@ class _Settings(BaseSettings):
         alias="EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS",
     )
 
+    # Fecha o cadastro de servidor (SPEC criacao_usuarios/004) aos domínios institucionais. O
+    # banco não conhece esta regra — só a rota de cadastro por tela.
+    enforce_prefeitura_email: bool = Field(default=True, alias="ENFORCE_PREFEITURA_EMAIL")
+
 
 _env = _Settings()
 
@@ -197,6 +201,9 @@ EMAIL_SMTP_MAX_RETRIES = _env.email_smtp_max_retries
 EMAIL_SMTP_RETRY_WAIT_MIN_SECONDS = _env.email_smtp_retry_wait_min_seconds
 EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS = _env.email_smtp_retry_wait_max_seconds
 
+# Cadastro de servidor (apps.user_admin.cadastro) — desligue só em ambiente de teste.
+ENFORCE_PREFEITURA_EMAIL = _env.enforce_prefeitura_email
+
 
 # Application definition
 
@@ -209,7 +216,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "apps.core",
-    "apps.users",
     "apps.user_admin",
     "apps.competencias",
     "apps.search",

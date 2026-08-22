@@ -1,14 +1,15 @@
 """
-DTOs das páginas administrativas (SPEC user_admin/012 e 013) e dos atos de exercício
-(SPEC user_admin/015). A view constrói o DTO e deixa o PydanticValidationMiddleware interceptar o
-ValidationError — nunca try/except na view (§7.2).
+DTOs das páginas administrativas (SPEC user_admin/012 e 013), dos atos de exercício
+(SPEC user_admin/015) e do cadastro de servidor (SPEC criacao_usuarios/004). A view constrói o DTO
+e deixa o PydanticValidationMiddleware interceptar o ValidationError — nunca try/except na view
+(§7.2).
 """
 
 from collections.abc import Mapping
 from datetime import date
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, HttpUrl
 
 from services.domain.servidores_listagem import (
     ColunaServidor,
@@ -25,6 +26,8 @@ def _vazio_para_nulo(valor: object) -> object:
 PaiOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
 # Campo de data em branco tem o mesmo significado dos models: prazo indeterminado.
 DataOpcional = Annotated[date | None, BeforeValidator(_vazio_para_nulo)]
+# O select do cargo em comissão manda "" na opção vazia; para o cadastro, isso é ausência de cargo.
+CargoOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
 
 PARAMETRO_ORDENAR_POR = "ordenar_por"
 PARAMETRO_DESCENDENTE = "descendente"
@@ -38,6 +41,24 @@ class NovoImpedimento(BaseModel):
     tipo: int
     data_inicio: date
     data_fim: DataOpcional = None
+
+
+class NovoServidor(BaseModel):
+    """Construído na view, que deixa o `PydanticValidationMiddleware` interceptar o
+    `ValidationError` — e-mail torto e id não-numérico morrem aqui, antes de virar consulta."""
+
+    model_config = ConfigDict(frozen=True)
+
+    rf: str = Field(min_length=1, max_length=20)
+    nome: str = Field(min_length=1, max_length=100)
+    sobrenome: str = Field(min_length=1, max_length=150)
+    email: EmailStr
+    unidade_id: int
+    cargo_base_id: int
+    cargo_comissao_id: CargoOpcional = None
+    # Resolvida na orquestração a partir do request: nem o domínio nem o cadastro sabem em que host
+    # o sistema roda.
+    url_acesso: HttpUrl
 
 
 class NovaSubstituicao(BaseModel):

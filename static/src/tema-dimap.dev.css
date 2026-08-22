@@ -279,6 +279,20 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco);
   }
 
+  /* Controle em realce (SPEC criacao_usuarios/004): o halo semântico no CONTROLE, não no campo
+     inteiro — rótulo fora do realce mantém a linha alinhada com os vizinhos da grade. Mesma
+     receita do .input-glass:focus, com a cor do estado no lugar do ciano. */
+  .campo-realce-erro    { @apply border-error/60;   --halo-realce: 220, 38, 38; }
+  .campo-realce-alerta  { @apply border-warning/60; --halo-realce: 180, 83, 9; }
+  .campo-realce-info    { @apply border-info/60;    --halo-realce: 2, 132, 199; }
+  .campo-realce-sucesso { @apply border-success/60; --halo-realce: 5, 150, 105; }
+  .campo-realce-erro, .campo-realce-alerta, .campo-realce-info, .campo-realce-sucesso {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.18), 0 0 20px rgba(var(--halo-realce), 0.35);
+  }
+  .campo-realce-erro:focus, .campo-realce-alerta:focus, .campo-realce-info:focus, .campo-realce-sucesso:focus {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.28), 0 0 22px rgba(var(--halo-realce), 0.45);
+  }
+
   /* Cavidade de tinta: a tinta "molhada" vem em --tinta (hex resolvido na borda do app). */
   .paint-well {
     @apply w-9 h-9 rounded-full border border-white/70 shadow-[inset_0_2px_5px_rgba(7,58,84,0.45),0_1px_0_rgba(255,255,255,0.6)] cursor-pointer transition-all duration-300 hover:scale-110;

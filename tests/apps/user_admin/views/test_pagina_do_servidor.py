@@ -216,7 +216,22 @@ def test_pagina_do_servidor_mantem_a_secao_de_exercicio(client: Client) -> None:
 
 @banco
 @pytest.mark.django_db
-def test_criar_servidor_segue_em_formulario_aberto(client: Client) -> None:
+def test_criar_servidor_mantem_a_mesma_estrutura_de_formulario(client: Client) -> None:
+    # Criar servidor virou ação protegida na SPEC criacao_usuarios/004 — quem exerce a
+    # autenticação e a autorização é `tests/apps/user_admin/views/test_criar_servidor.py`; aqui
+    # só se fixa que a estrutura do formulário em si não mudou.
+    dirigente = _perfil(
+        _unidade("SRV-CRIAR"),
+        "900099",
+        "Dirigente",
+        "Criar Servidor",
+        cargo_comissao=CargoComissao.objects.create(
+            sigla="CDC", nivel=1, e_chefia=True, nome="Diretor Criar Servidor Aberto"
+        ),
+    )
+    definir_titular(dirigente)
+    client.force_login(dirigente)
+
     html = client.get(reverse("user_admin:criar_perfil")).content.decode()
 
     assert "Identificação" in html

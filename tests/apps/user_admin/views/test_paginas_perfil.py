@@ -32,6 +32,7 @@ from apps.user_admin.models import (
 )
 from apps.user_admin.paleta import HEX_POR_COR
 from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento
+from apps.user_admin.titularidade import definir_titular
 
 banco = pytest.mark.banco
 
@@ -41,7 +42,7 @@ PNG_MINIMO = base64.b64decode(
 )
 
 
-def _perfil_gravado(cor: str, com_foto: bool) -> Perfil:
+def _perfil_gravado(cor: str, com_foto: bool, dirigente: bool = False) -> Perfil:
     tipo_unidade = TipoUnidade.objects.create(
         nome="Divisão",
         nivel=10,
@@ -68,12 +69,24 @@ def _perfil_gravado(cor: str, com_foto: bool) -> Perfil:
     )
     if com_foto:
         perfil.foto.save("retrato.png", SimpleUploadedFile("retrato.png", PNG_MINIMO))
+    if dirigente:
+        # `criar_perfil` é ação estrutural protegida (SPEC criacao_usuarios/004): só quem dirige a
+        # unidade abre a tela.
+        perfil.cargo_comissao = CargoComissao.objects.create(
+            nome="Diretor Estrutural Páginas Perfil", sigla="CDE", nivel=1, e_chefia=True
+        )
+        perfil.save(update_fields=["cargo_comissao"])
+        definir_titular(perfil)
     return perfil
 
 
 @banco
 @pytest.mark.django_db
 def test_pagina_criar_perfil_renderiza_o_formulario(client: Client) -> None:
+    # Criar servidor é ação protegida (SPEC criacao_usuarios/004): só quem dirige a abre.
+    dirigente = _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=False, dirigente=True)
+    client.force_login(dirigente)
+
     resposta = client.get(reverse("user_admin:criar_perfil"))
     html = resposta.content.decode()
 
@@ -89,6 +102,9 @@ def test_pagina_criar_perfil_renderiza_o_formulario(client: Client) -> None:
 @banco
 @pytest.mark.django_db
 def test_pagina_admin_nao_carrega_o_wms_do_geosampa(client: Client) -> None:
+    dirigente = _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=False, dirigente=True)
+    client.force_login(dirigente)
+
     html = client.get(reverse("user_admin:criar_perfil")).content.decode()
 
     assert 'id="map-admin"' in html
@@ -138,7 +154,8 @@ def test_editar_perfil_com_foto_mostra_a_foto(
 @banco
 @pytest.mark.django_db
 def test_selects_da_lotacao_usam_o_componente_de_vidro(client: Client) -> None:
-    _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=False)
+    dirigente = _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=False, dirigente=True)
+    client.force_login(dirigente)
     CargoComissao.objects.create(
         nome="Diretor de Divisão",
         sigla="CDA",

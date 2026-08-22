@@ -10,6 +10,10 @@ urlpatterns = [
     # o que devolver é a URL, como no resto do projeto.
     path("servidores/corpo/", views.corpo_servidores, name="corpo_servidores"),
     path("servidores/novo/", views.criar_perfil, name="criar_perfil"),
+    # Rota de escrita apartada da que mostra o formulário (SPEC criacao_usuarios/004): é essa
+    # separação que faz "abrir a tela não cadastra ninguém" ser estrutural, e não uma flag no
+    # formulário.
+    path("servidores/novo/gravar/", views.gravar_servidor, name="gravar_servidor"),
     # Duas rotas para o mesmo servidor, e é a segunda que o épico `autorizacao` vai proteger: ler é
     # a página, editar é o modal (SPEC user_admin/017).
     path("servidores/<int:pk>/", views.pagina_perfil, name="pagina_perfil"),

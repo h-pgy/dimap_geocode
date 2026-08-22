@@ -6,7 +6,7 @@ from django.core.management import call_command
 from pydantic import ValidationError
 from pytest_django.fixtures import SettingsWrapper
 
-from apps.users.management.commands import enviar_email_teste as comando
+from apps.user_admin.management.commands import enviar_email_teste as comando
 from services.utils.smtp import MensagemEmail, ResultadoEnvio
 
 

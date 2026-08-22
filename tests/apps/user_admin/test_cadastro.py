@@ -5,7 +5,7 @@ envio desligado por configuração o conclui. A política de e-mail instituciona
 gerar senha ou abrir conversa com o SMTP.
 
 O enviador é sempre um fake (monkeypatch de `cadastro.EnviadorSmtp`, no molde de
-`tests/apps/users/test_enviar_email_teste.py`): nenhum destes testes abre conexão real. Todos levam
+`tests/apps/user_admin/test_enviar_email_teste.py`): nenhum destes testes abre conexão real. Todos levam
 o marker `banco`: o cadastro grava `Perfil`.
 """
 

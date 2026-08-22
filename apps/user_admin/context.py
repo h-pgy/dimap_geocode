@@ -1,18 +1,20 @@
 """
 Contexto das páginas administrativas de servidor (SPEC user_admin/007), de unidade
-(SPEC user_admin/012), da listagem de servidores (SPEC user_admin/013) e da seção de exercício
-(SPEC user_admin/015). Orquestração: traduz o model para o que o template consome — o hex da cor, a
-imagem já resolvida pelo domínio, os catálogos dos selects, as linhas que o domínio filtra e ordena
-e a régua da calha. Nenhuma regra de negócio.
+(SPEC user_admin/012), da listagem de servidores (SPEC user_admin/013), da seção de exercício
+(SPEC user_admin/015) e do cadastro de servidor (SPEC criacao_usuarios/004). Orquestração: traduz o
+model para o que o template consome — o hex da cor, a imagem já resolvida pelo domínio, os
+catálogos dos selects, as linhas que o domínio filtra e ordena e a régua da calha. Nenhuma regra de
+negócio.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from datetime import date
 from typing import Any
 
 from django.utils import timezone
 
 from apps.mapping.context import contexto_fundo_admin
+from apps.user_admin.acoes_declaradas import ACAO_CRIAR_SERVIDOR
 from apps.user_admin.consulta import posicao_de
 from apps.user_admin.exercicio import (
     candidatos_a_substituto,
@@ -36,7 +38,9 @@ from apps.user_admin.models import (
 )
 from apps.user_admin.models.titularidade import cargo_titulariza
 from apps.user_admin.paleta import TINTA_AVATAR, hex_da_cor, tons_da_paleta
+from apps.user_admin.schemas import NovoServidor
 from services.domain.arvore_hierarquica import NoHierarquia
+from services.domain.autorizacao import VarianteIcone
 from services.domain.avatar import ImagemPerfilOutput, resolver_imagem_perfil
 from services.domain.exercicio import Periodo, Trecho, vigente_em
 from services.domain.servidores_listagem import (
@@ -83,12 +87,33 @@ ROTULO_DA_COLUNA = {
 }
 
 
-def contexto_criar_perfil() -> dict[str, Any]:
+def contexto_criar_perfil(ids_permitidos: Collection[int]) -> dict[str, Any]:
+    # O recorte desce por `_catalogos_de_lotacao` até o catálogo de unidades — nenhuma consulta
+    # nova: o alcance de quem abre a tela é o que o formulário oferece (SPEC criacao_usuarios/004).
+    # POR ÚLTIMO: os dois catálogos dividem a chave "unidades" (o select de lotação e o de unidade
+    # pai do modal, sem destino ainda), e é o recorte quem tem que vencer o merge.
     return (
         contexto_fundo_admin()
-        | _catalogos_de_lotacao()
         | _contexto_do_modal_de_unidade()
+        | _catalogos_de_lotacao(ids_permitidos)
     )
+
+
+def contexto_cadastro_recusado(
+    novo: NovoServidor,
+    erros: Sequence[str],
+    ids_permitidos: Collection[int],
+) -> dict[str, Any]:
+    """O que volta é o mesmo formulário: o e-mail e a lotação escolhidos permanecem, a foto não —
+    arquivo de upload não se reconstrói de uma resposta de servidor."""
+    return contexto_criar_perfil(ids_permitidos) | {
+        "perfil": novo,
+        "erros": erros,
+    }
+
+
+def contexto_cadastro_concluido(perfil: Perfil) -> dict[str, Any]:
+    return {"perfil": perfil}
 
 
 def contexto_pagina_perfil(perfil: Perfil) -> dict[str, Any]:
@@ -157,6 +182,11 @@ def contexto_listagem_servidores(consulta: ConsultaServidores) -> dict[str, Any]
             # Os campos ocultos que viajam com os filtros: a ordem sobrevive à troca do corpo.
             "ordenar_por": consulta.ordenar_por or "",
             "descendente": DESCENDENTE_LIGADO if consulta.descendente else DESCENDENTE_DESLIGADO,
+            # O botão só existe para quem `perms` libera (SPEC criacao_usuarios/004); o slug e a
+            # variante vão prontos para o `icone_acao` do template — o svg em si só se resolve lá,
+            # porque o resolvedor mora em apps.competencias, que este módulo não pode importar.
+            "acao_criar_servidor": ACAO_CRIAR_SERVIDOR.acao,
+            "variante_icone_pequena": VarianteIcone.PEQUENO,
         }
     )
 
@@ -600,8 +630,8 @@ def _contexto_do_modal_de_unidade() -> dict[str, Any]:
     return _catalogos_de_unidade() | contexto_cor_sugerida(None)
 
 
-def _catalogos_de_lotacao() -> dict[str, Any]:
-    return _catalogo_de_unidades() | {
+def _catalogos_de_lotacao(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
+    return _catalogo_de_unidades(ids_permitidos) | {
         "cargos_base": CargoBase.objects.order_by("nome"),
         "cargos_comissao": CargoComissao.objects.order_by("nome"),
     }
@@ -614,9 +644,17 @@ def _catalogos_de_unidade() -> dict[str, Any]:
     }
 
 
-def _catalogo_de_unidades() -> dict[str, Any]:
-    # A mesma lista serve à lotação do servidor e à unidade superior do formulário de unidade.
-    return {"unidades": Unidade.objects.select_related("tipo").order_by("sigla")}
+def _catalogo_de_unidades(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
+    """`ids_permitidos` recorta o catálogo ao alcance de quem abre a tela (SPEC
+    criacao_usuarios/004). Sem ele, todas — que é o que o formulário de unidade e o modal de edição
+    continuam pedindo.
+
+    Recebe ids, e não o perfil: este módulo não pode importar `apps.competencias`, que já importa
+    `apps.user_admin.context` (SPEC autorizacao/003). Quem resolve o alcance é a view."""
+    unidades = Unidade.objects.select_related("tipo").order_by("sigla")
+    if ids_permitidos is not None:
+        unidades = unidades.filter(pk__in=ids_permitidos)
+    return {"unidades": unidades}
 
 
 def _linhas_de_servidores() -> list[LinhaServidor]:

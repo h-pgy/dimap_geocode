@@ -297,11 +297,16 @@ def test_perfil_fora_de_exercicio_nao_exerce(client: Client) -> None:
     client.force_login(_fresco(impedido))
     assert client.get(_url_form()).status_code == 403
 
+    # Exonerado não é "autenticado sem competência": `is_active=False` já significa "inclusive não
+    # entrar" desde a SPEC user_admin/001 (Perfil.exonerado) — o ModelBackend do Django derruba a
+    # sessão a cada request, e o exonerado chega ao decorator como anônimo, não como Perfil.
     exonerado = _dirigente(_unidade("CRS-EXONERADO"), "930151", "Titular Exonerado")
     exonerado.is_active = False
     exonerado.save(update_fields=["is_active"])
     client.force_login(exonerado)
-    assert client.get(_url_form()).status_code == 403
+    resposta = client.get(_url_form())
+    assert resposta.status_code == 302
+    assert resposta["Location"].startswith(str(django_settings.LOGIN_URL))
 
 
 # ---------------------------------------------------------------------------

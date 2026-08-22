@@ -1,12 +1,14 @@
 ---
 spec: criacao_usuarios/004
-versao: v1
+versao: v2
 atualizado_em: 2026-08-22
-testes_tdd: true
+testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: a recusa passa pelo contrato de erros de formulário, e a constraint do e-mail nomeia o campo
+    que violou
 ---
 
 # SPEC criacao_usuarios/004 — Criar servidor: ato protegido, senha temporária e o e-mail de acesso
@@ -33,6 +35,9 @@ por mensagem.
       `@prefeitura.sp.gov.br` e `@sf.prefeitura.sp.gov.br` —, e o endereço de fora volta recusado no
       formulário; desligado, qualquer endereço passa. **O banco não tem essa regra**: `createsuperuser`,
       shell e management command seguem gravando o que quiserem.
+- [ ] **Toda** recusa devolve **o mesmo formulário preenchido**, com o motivo em português na tarja e
+      o **controle recusado em realce** — campo obrigatório em branco, e-mail torto, RF ou e-mail
+      repetido, domínio não institucional. Nenhuma delas troca o formulário por uma página de erro.
 - [ ] Cadastro que não se conclui **não deixa rastro**: RF ou e-mail já cadastrado e falha na entrega
       da senha — servidor SMTP indisponível ou destinatário recusado — devolvem o motivo na tela sem
       gravar servidor algum; envio **desligado por configuração** conclui o cadastro.
@@ -52,7 +57,13 @@ existe entre a gravação e a caixa de entrada — em lugar nenhum além disso.
 **`apps/user_admin/models/user.py`**
 ```python
 class Perfil(AbstractBaseUser, PermissionsMixin):
-    rf = models.CharField(max_length=20, unique=True)
+    # ALTERADO na v2: a mensagem da unicidade, no mesmo tom da do e-mail — o default do Django
+    # nomeia o model ("Perfil com este RF já existe"), e quem cadastra pensa em servidor.
+    rf = models.CharField(
+        max_length=20,
+        unique=True,
+        error_messages={"unique": "Já existe servidor cadastrado com este RF."},
+    )
     ...
     # ALTERADO nesta SPEC: campo novo. Em branco para o cadastro anterior à criação por tela; a
     # unicidade vale só sobre os preenchidos.
@@ -74,6 +85,11 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
                 fields=["email"],
                 condition=~Q(email=""),
                 name="email_unico_quando_preenchido",
+                # ALTERADO na v2: sem o code `unique`, o Django joga a violação em `__all__` e a
+                # tela não sabe qual controle realçar; sem a mensagem, quem lê recebe o nome da
+                # constraint. Constraint com `condition` não herda nem um nem outro.
+                violation_error_code="unique",
+                violation_error_message="Já existe servidor cadastrado com este e-mail.",
             ),
         ]
 ```
@@ -132,6 +148,9 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   `montar_mensagem`: o conteúdo do e-mail de acesso e a mensagem pronta para o enviador.
 - `@services/utils/smtp` → `EnviadorSmtp`, `build_smtp_config`, `build_smtp_retry_policy`,
   `SmtpEnvioError`.
+- `@services/utils/erros_formulario` (SPEC [formularios/001](../formularios/001-erros-de-formulario.md))
+  → `Formulario`, `CampoDeFormulario`, `RegraDeErro`, `LeitorDeFormulario`, `RecusaDeFormulario`; e
+  `@apps/core/erros_formulario.py` → `de_validation_error`: a ponte do `ValidationError` do model.
 - `@apps/user_admin/models/impedimentos.py` → `TipoImpedimento.Meta.constraints`: `UniqueConstraint`
   com `condition`.
 - `secrets` (biblioteca padrão, sem dependência a instalar) → `choice`: o sorteio criptográfico da
@@ -197,8 +216,9 @@ CargoOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
 
 
 class NovoServidor(BaseModel):
-    """Construído na view, que deixa o `PydanticValidationMiddleware` interceptar o
-    `ValidationError` — e-mail torto e id não-numérico morrem aqui, antes de virar consulta."""
+    """ALTERADO na v2: quem o constrói é o `LeitorDeFormulario` da SPEC formularios/001, e não a view
+    — e-mail torto e id não-numérico morrem aqui, antes de virar consulta, e a recusa volta como o
+    próprio formulário."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -239,7 +259,30 @@ class GeradorSenhaTemporaria:
 gerar_senha_temporaria = GeradorSenhaTemporaria()
 ```
 
-**`apps/user_admin/cadastro.py`** — o ato: gravar e entregar a senha são a mesma transação.
+**`apps/user_admin/formularios.py`** — o catálogo do formulário, no contrato de `formularios/001`.
+```python
+FORMULARIO_SERVIDOR = Formulario(
+    campos=(
+        CampoDeFormulario(controle="rf", rotulo="RF"),
+        CampoDeFormulario(controle="nome", rotulo="Nome"),
+        CampoDeFormulario(controle="sobrenome", rotulo="Sobrenome"),
+        CampoDeFormulario(
+            controle="email",
+            rotulo="E-mail",
+            # A única regra particular desta tela: as demais recusas se dizem bem com as padrão.
+            regras={"value_error": RegraDeErro(mensagem="E-mail inválido: confira o endereço.")},
+        ),
+        CampoDeFormulario(controle="unidade", rotulo="Unidade"),
+        CampoDeFormulario(controle="cargo_base", rotulo="Cargo base"),
+        CampoDeFormulario(controle="cargo_comissao", rotulo="Cargo em comissão"),
+    )
+)
+
+ler_novo_servidor = LeitorDeFormulario(NovoServidor, FORMULARIO_SERVIDOR)
+traduzir_recusa = TradutorDeRecusa(FORMULARIO_SERVIDOR)
+```
+
+**`apps/user_admin/cadastro.py`** — o ato: ler o formulário, gravar e entregar a senha.
 ```python
 ERRO_ENVIO = "Cadastro não concluído: não foi possível entregar a senha temporária em {email}."
 
@@ -250,15 +293,29 @@ class DesfechoCadastro:
     próprio model gravado — mesma natureza do `_RegistroAto` da SPEC autorizacao/004."""
 
     perfil: Perfil | None
-    erros: tuple[str, ...] = ()
+    # ALTERADO na v2: a recusa deixa de ser tupla de frases e passa a ser a da SPEC formularios/001,
+    # que já sabe qual controle realçar.
+    recusa: RecusaDeFormulario | None = None
 
 
-def criar_servidor(novo: NovoServidor, foto: UploadedFile | None = None) -> DesfechoCadastro:
+def criar_servidor(
+    valores: Mapping[str, Any],
+    foto: UploadedFile | None = None,
+) -> DesfechoCadastro:
     """Quem fica cadastrado é quem recebeu como entrar: o envio acontece dentro da transação, e a
     falha dele derruba a gravação junto.
 
-    O `try` mora aqui, e não na view: é este módulo que sabe o que cada falha significa para o
+    ALTERADO na v2: recebe o formulário cru e delega a leitura ao `LeitorDeFormulario`. Construir o
+    DTO na view entregaria a recusa ao `PydanticValidationMiddleware`, cuja resposta, no alvo do
+    form, apaga o formulário inteiro (SPEC formularios/001, Caveats). O `try` do banco e do SMTP
+    segue aqui pelo mesmo motivo de sempre: é este módulo que sabe o que cada falha significa para o
     cadastro."""
+    leitura = ler_novo_servidor(valores)
+    if leitura.recusa is not None:
+        return DesfechoCadastro(perfil=None, recusa=leitura.recusa)
+    novo = leitura.dto
+    if _dominio_recusado(novo.email):
+        return DesfechoCadastro(perfil=None, recusa=_recusa_do_dominio())
     senha = gerar_senha_temporaria()
     try:
         with transaction.atomic():
@@ -266,11 +323,24 @@ def criar_servidor(novo: NovoServidor, foto: UploadedFile | None = None) -> Desf
             _entregar_senha(perfil, senha, novo.url_acesso)
     except ValidationError as recusa:
         # RF e e-mail repetidos chegam aqui pelo full_clean: conferir antes com um SELECT abriria
-        # janela entre a consulta e o INSERT, e a unicidade é do banco.
-        return DesfechoCadastro(perfil=None, erros=_mensagens(recusa))
+        # janela entre a consulta e o INSERT, e a unicidade é do banco. A ponte de `apps/core`
+        # preserva o `code`, que é o que faz a mensagem do model chegar realçada no campo certo.
+        return DesfechoCadastro(perfil=None, recusa=traduzir_recusa(de_validation_error(recusa)))
     except SmtpEnvioError:
-        return DesfechoCadastro(perfil=None, erros=(ERRO_ENVIO.format(email=novo.email),))
+        return DesfechoCadastro(perfil=None, recusa=_recusa_da_entrega(novo.email))
     return DesfechoCadastro(perfil=perfil)
+
+
+def _recusa_do_dominio() -> RecusaDeFormulario:
+    # Recusa que não vem de fonte nenhuma: é política desta rota, e o controle a realçar é o e-mail,
+    # porque é o endereço que precisa mudar.
+    return traduzir_recusa((ErroBruto(controle="email", tipo="dominio", mensagem=ERRO_DOMINIO),))
+
+
+def _recusa_da_entrega(email: str) -> RecusaDeFormulario:
+    return traduzir_recusa(
+        (ErroBruto(controle="email", tipo="entrega", mensagem=ERRO_ENVIO.format(email=email)),)
+    )
 
 
 def _gravar(novo: NovoServidor, senha: SecretStr, foto: UploadedFile | None) -> Perfil:
@@ -333,6 +403,41 @@ def contexto_criar_perfil(ids_permitidos: Collection[int]) -> dict[str, Any]:
         | _catalogos_de_lotacao(ids_permitidos)
         | _contexto_do_modal_de_unidade()
     )
+
+
+def contexto_cadastro_recusado(
+    valores: Mapping[str, Any],
+    desfecho: DesfechoCadastro,
+    ids_permitidos: Collection[int],
+) -> dict[str, Any]:
+    """O que volta é o mesmo formulário: o digitado permanece, a foto não — arquivo de upload não se
+    reconstrói de uma resposta de servidor.
+
+    ALTERADO na v2: repopula do formulário cru, e não do DTO — na recusa do próprio DTO não existe
+    DTO algum para repopular."""
+    return contexto_criar_perfil(ids_permitidos) | {
+        "perfil": _valores_do_formulario(valores),
+        # `mensagens` alimenta a tarja; `realce`, a classe de cada controle — os dois já prontos
+        # pela SPEC formularios/001, sem o template precisar de condicional.
+        "erros": desfecho.recusa.mensagens,
+        "realce": desfecho.recusa.realce,
+    }
+
+
+CAMPOS_DE_ID = ("unidade_id", "cargo_base_id", "cargo_comissao_id")
+
+
+def _valores_do_formulario(valores: Mapping[str, Any]) -> dict[str, Any]:
+    """O `selected` do select compara com `unidade.pk`: id que voltasse como texto não seria
+    reconhecido, e o campo perderia a escolha justamente na tela que pede para corrigi-la. Só os
+    ids são convertidos — RF com zero à esquerda não sobreviveria a um `int()`."""
+    lidos = dict(valores)
+    for campo in CAMPOS_DE_ID:
+        bruto = lidos.get(campo)
+        if not isinstance(bruto, str) or not bruto.isdigit():
+            continue
+        lidos[campo] = int(bruto)
+    return lidos
 ```
 
 **`config/settings.py`** e **`.env.example`** — a chave da política, no molde das demais.
@@ -363,13 +468,8 @@ def _dominio_recusado(email: str) -> bool:
     return dominio.lower() not in DOMINIOS_INSTITUCIONAIS
 ```
 
-O `criar_servidor` a confere **antes de abrir a transação** — endereço de fora não chega a gerar senha
-nem a abrir conversa com o SMTP:
-```python
-    if _dominio_recusado(novo.email):
-        return DesfechoCadastro(perfil=None, erros=(ERRO_DOMINIO,))
-    senha = gerar_senha_temporaria()
-```
+O `criar_servidor` a confere **depois de ler o formulário e antes de abrir a transação** — endereço de
+fora não chega a gerar senha nem a abrir conversa com o SMTP, e volta realçando o controle do e-mail.
 
 **`apps/user_admin/views.py`** — a view chega com competência e alvo conferidos, e resolve na
 orquestração o que a autorização recorta.
@@ -384,23 +484,25 @@ def criar_perfil(request: HttpRequest) -> HttpResponse:
 @acao_protegida(ACAO_CRIAR_SERVIDOR)
 @require_POST
 def gravar_servidor(request: HttpRequest) -> HttpResponse:
-    novo = NovoServidor(
-        rf=request.POST["rf"],
-        nome=request.POST["nome"],
-        sobrenome=request.POST["sobrenome"],
-        email=request.POST["email"],
-        unidade_id=request.POST["unidade"],
-        cargo_base_id=request.POST["cargo_base"],
-        cargo_comissao_id=request.POST["cargo_comissao"],
+    # ALTERADO na v2: a view traduz nome de controle em nome de campo e para de construir o DTO.
+    # Quem o constrói é o ato — a recusa dele volta como formulário, não como página de erro.
+    valores = {
+        "rf": request.POST["rf"],
+        "nome": request.POST["nome"],
+        "sobrenome": request.POST["sobrenome"],
+        "email": request.POST["email"],
+        "unidade_id": request.POST["unidade"],
+        "cargo_base_id": request.POST["cargo_base"],
+        "cargo_comissao_id": request.POST["cargo_comissao"],
         # O host de onde o convite parte é da orquestração, não do formulário.
-        url_acesso=request.build_absolute_uri("/"),
-    )
-    desfecho = criar_servidor(novo, foto=request.FILES.get("foto"))
+        "url_acesso": request.build_absolute_uri("/"),
+    }
+    desfecho = criar_servidor(valores, foto=request.FILES.get("foto"))
     if desfecho.perfil is None:
         return render(
             request,
             TEMPLATE_FORMULARIO_RECUSADO,
-            contexto_cadastro_recusado(novo, desfecho.erros, alcance_do_perfil(request.user)),
+            contexto_cadastro_recusado(valores, desfecho, alcance_do_perfil(request.user)),
             status=422,
         )
     # A view NUNCA grava a execução: deixa o recado e quem persiste é o decorator, depois do return.
@@ -426,7 +528,8 @@ mesmo: a recusa devolve o formulário preenchido, o sucesso devolve o painel de 
 
 **`static/src/tema-dimap.dev.css`** — o átomo do controle em realce, nas quatro tonalidades
 semânticas. Só a de erro tem consumidor nesta SPEC; as outras três nascem para a próxima tela não
-inventar a sua.
+inventar a sua. Quem escolhe qual tonalidade vestir é o `TomDeRealce` da SPEC
+[formularios/001](../formularios/001-erros-de-formulario.md).
 ```css
 /* O halo é do CONTROLE, não do campo: rótulo fora do realce mantém a linha alinhada com os vizinhos
    da grade. A receita é a do `.input-glass:focus`, com a cor do estado no lugar do ciano. */
@@ -437,6 +540,16 @@ inventar a sua.
 .campo-realce-erro, .campo-realce-alerta, .campo-realce-info, .campo-realce-sucesso {
   box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.18), 0 0 20px rgba(var(--halo-realce), 0.35);
 }
+```
+
+**`templates/user_admin/partials/_secao_identificacao.html`** e **`_secao_lotacao.html`** — quem
+*aplica* o átomo. Cada controle pergunta pelo próprio nome, e nada mais.
+```html
+{# O realce é do CONTROLE, não do `.form-field`: o rótulo fora dele mantém a linha alinhada com os #}
+{# vizinhos da grade. Controle sem recusa devolve string vazia e a classe some.                    #}
+<input type="text" name="rf" value="{{ perfil.rf|default:'' }}"
+       class="input input-glass {{ realce.rf }}" />
+<select name="unidade" class="select select-glass {{ realce.unidade }}" data-select-onsen>
 ```
 
 **`templates/user_admin/servidores_list.html`** — a porta de entrada da tela, aberta a quem pode.
@@ -479,6 +592,16 @@ admin do Django.
 do ato, e é este módulo que sabe o que cada um significa para o cadastro. Custo: `criar_servidor`
 acumula gravar, entregar e traduzir falha, e uma exceção nova precisa ser lembrada aqui.
 
+**`criar_servidor` recebe o formulário cru, e não o DTO pronto.** Quem monta o `NovoServidor` é o
+`LeitorDeFormulario`, porque construí-lo na view entregaria a recusa ao `PydanticValidationMiddleware`
+— cuja resposta, no alvo do form, apaga a tela (SPEC formularios/001). Custo: a assinatura do ato
+deixa de ser tipada na entrada, e a tradução de nome de controle para nome de campo do DTO passa a
+morar na view.
+
+**Falha de entrega e e-mail fora do domínio realçam o campo do e-mail.** Nenhuma das duas vem de uma
+recusa de campo, mas as duas se resolvem trocando o endereço. Custo: a causa real — SMTP fora do ar —
+fica apontando para um controle que pode estar correto.
+
 **`DesfechoCadastro` é dataclass, não DTO Pydantic.** Ele carrega o `Perfil` gravado e não cruza
 fronteira de serviço — passa de uma função para a view do mesmo app, como o `_RegistroAto` da SPEC
 `autorizacao/004`. Custo: uma estrutura de retorno fora do padrão Pydantic das fronteiras.
@@ -516,8 +639,11 @@ testar uma porta. Quase todos exigem `Perfil` gravado e carregam o marker `banco
 - `test_email_fora_do_dominio_e_recusado_com_a_politica_ligada` — endereço de outro domínio volta
   recusado no formulário e não gera senha nem envio; com `ENFORCE_PREFEITURA_EMAIL` desligado, o mesmo
   endereço é aceito. *(marker `banco`)*
-- `test_rf_ou_email_repetido_e_recusado_sem_gravar` — os dois casos devolvem o formulário com o motivo,
-  e o cadastro existente segue intocado. *(marker `banco`)*
+- `test_rf_ou_email_repetido_e_recusado_sem_gravar` — os dois casos devolvem o formulário com o motivo
+  e com o **controle repetido realçado**, e o cadastro existente segue intocado. *(marker `banco`)*
+- `test_campo_invalido_devolve_o_formulario_realcado` — nome em branco e e-mail torto voltam no mesmo
+  formulário, com o motivo em português e `campo-realce-erro` no controle recusado; o que já estava
+  digitado permanece, o select mantém a escolha e nenhum servidor é gravado. *(marker `banco`)*
 - `test_listagem_so_oferece_novo_servidor_a_quem_pode` — quem dirige vê o botão; quem não exerce a ação
   não o recebe no HTML. *(marker `banco`)*
 - `test_senha_temporaria_respeita_a_politica` — a senha sai com os oito dígitos da política, sem

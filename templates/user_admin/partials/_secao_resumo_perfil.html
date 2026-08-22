@@ -1,6 +1,6 @@
-{# Seção de resumo do servidor (SPEC user_admin/017): RF, nome, unidade, cargo base e cargo em     #}
-{# comissão em leitura — nenhum campo de formulário do cadastro fora do modal. O que o servidor não #}
-{# tem se lê aqui em vez de sumir da tela (Caveats).                                                #}
+{# Seção de resumo do servidor (SPEC user_admin/017): RF, nome, e-mail (SPEC criacao_usuarios/004), #}
+{# unidade, cargo base e cargo em comissão em leitura — nenhum campo de formulário do cadastro fora #}
+{# do modal. O que o servidor não tem se lê aqui em vez de sumir da tela (Caveats).                 #}
 <div class="card-well p-5 flex flex-col gap-4">
   <p class="text-overline">Resumo</p>
 
@@ -12,6 +12,13 @@
     <div class="min-w-0">
       <p class="text-overline">Nome</p>
       <p class="text-[15px] text-base-content/90 mt-0.5">{{ perfil.nome }} {{ perfil.sobrenome }}</p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">E-mail</p>
+      {# Cadastro anterior à criação por tela não tem e-mail (SPEC criacao_usuarios/004, Caveats). #}
+      <p class="text-[15px] {% if perfil.email %}text-base-content/90{% else %}text-base-content/40{% endif %} mt-0.5">
+        {{ perfil.email|default:"— sem e-mail cadastrado —" }}
+      </p>
     </div>
     <div class="min-w-0">
       <p class="text-overline">Unidade</p>

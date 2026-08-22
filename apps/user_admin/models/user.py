@@ -2,7 +2,7 @@
 Perfil do servidor da DIMAP (SPEC user_admin/001): autentica pelo RF (não por `username`),
 com cargo base e unidade obrigatórios e cargo em comissão opcional. Nome e sobrenome em campos
 separados, foto opcional e a cor da unidade vinculada expostos via `cor_unidade` (SPEC
-user_admin/006).
+user_admin/006). E-mail e a marca de senha provisória entram na SPEC criacao_usuarios/004.
 """
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
@@ -65,6 +65,12 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
         null=True,
         blank=True,
     )
+    # Em branco para o cadastro anterior à criação por tela (SPEC criacao_usuarios/004); a
+    # unicidade vale só sobre os preenchidos, na constraint abaixo.
+    email = models.EmailField(blank=True)
+    # A senha em vigor é a temporária emitida no cadastro, que vale uma vez; quem lê a marca para
+    # exigir a troca e derrubá-la é a SPEC de login.
+    senha_provisoria = models.BooleanField(default=False)
     cargo_base = models.ForeignKey(
         CargoBase,
         on_delete=models.PROTECT,
@@ -101,6 +107,12 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
                 fields=["unidade"],
                 condition=Q(e_titular=True),
                 name="unidade_tem_um_titular",
+            ),
+            # No molde de TipoImpedimento.sigla: vários sem e-mail convivem, dois com o mesmo não.
+            models.UniqueConstraint(
+                fields=["email"],
+                condition=~Q(email=""),
+                name="email_unico_quando_preenchido",
             ),
         ]
 

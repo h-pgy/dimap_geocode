@@ -1,11 +1,13 @@
 {# Molécula: campo de upload em poço rebaixado. O nome do arquivo escolhido é escrito pelo próprio #}
 {# navegador (file-input nativo) e soltar arquivo sobre ele funciona por comportamento nativo —    #}
 {# prévia local e realce de arraste exigiriam JS de estado (§7.2). Na edição, a prévia mostrada é  #}
-{# a imagem já gravada, servida pelo servidor.                                                     #}
+{# a imagem já gravada, servida pelo servidor. `imagem`, e não `perfil` — o cadastro recusado      #}
+{# (SPEC criacao_usuarios/004) reaproveita esta seção com um `perfil` que não é model nenhum, e     #}
+{# sem foto gravada para mostrar.                                                                  #}
 <div class="card-well p-5 flex flex-col gap-4">
   <p class="text-overline">Foto</p>
   <label class="upload-well cursor-pointer">
-    {% if perfil %}
+    {% if imagem %}
       {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-16 h-16" %}
       <span class="text-sm font-medium">Substituir a foto atual</span>
     {% else %}

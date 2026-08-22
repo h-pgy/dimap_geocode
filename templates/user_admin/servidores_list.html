@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load icones %}
 
 {% block title %}Servidores · DIMAP GeoCoder{% endblock %}
 
@@ -17,7 +18,19 @@
               {{ total_servidores }} cadastrado{{ total_servidores|pluralize:"s" }}. Clique num cabeçalho para filtrar; na seta, para ordenar.
             </p>
           </div>
-          <button type="button" class="btn-etched etched" data-limpar-filtros="#tabela-servidores">✕ limpar filtros</button>
+          <div class="flex items-center gap-4">
+            <button type="button" class="btn-etched etched" data-limpar-filtros="#tabela-servidores">✕ limpar filtros</button>
+            {# `perms` vem do context processor do auth, servido pelo backend de competência (SPEC  #}
+            {# autorizacao/003): esconder o botão não custa nada ao contexto da view, e quem barra   #}
+            {# de verdade é o `acao_protegida` da rota (SPEC criacao_usuarios/004).                  #}
+            {% if perms.user_admin.criar_servidor %}
+              {% icone_acao acao_criar_servidor.slug variante_icone_pequena as svg %}
+              <a href="{% url 'user_admin:criar_perfil' %}" class="btn btn-onsen btn-sm gap-2">
+                <span class="icone-acao icone-acao-pequeno">{{ svg|safe }}</span>
+                Novo servidor
+              </a>
+            {% endif %}
+          </div>
         </div>
 
         {% include "user_admin/partials/_tabela_servidores.html" %}

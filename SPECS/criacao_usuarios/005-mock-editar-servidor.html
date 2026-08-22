@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC criacao_usuarios/005 — Editar servidor (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Nenhuma peça nova nasce nesta SPEC: o modal, o campo que abre no lápis, a tarja e o painel de
+       leitura já estão no tema, e o `.campo-realce` vem da SPEC 004 — repetido abaixo só porque o
+       tema ainda não o tem. `@apply` só de utilities: classe de @layer components se compõe no
+       HTML, nunca aqui dentro. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ÁTOMO DA SPEC 004 · CONTROLE EM REALCE — repetido aqui porque o tema ainda não o tem; quem o
+         porta é a 004. Só a tonalidade de erro tem uso nesta tela. */
+      .campo-realce-erro { @apply border-error/60; --halo-realce: 220, 38, 38; }
+      .campo-realce-erro {
+        box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.18), 0 0 20px rgba(var(--halo-realce), 0.35);
+      }
+      .campo-realce-erro:focus {
+        box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.28), 0 0 22px rgba(var(--halo-realce), 0.45);
+      }
+
+      /* .banca-estados — barra de EXPOSIÇÃO com os gatilhos dos estados do modal. Não é peça do
+         projeto e não vai para o tema. */
+      .banca-estados { @apply flex flex-wrap items-center gap-3; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual. -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <!-- Glifos da página do servidor (SPEC user_admin/017) — na aplicação vêm de _glifos_servidor.html -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-lapis"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="m14.5 5.5 4 4"/></g>
+      <g id="glifo-alerta"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC criacao_usuarios/005 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Editar servidor</h1>
+      <p class="mt-4 max-w-3xl text-base-content/80 leading-relaxed">
+        O modal já existe e não muda de forma. O que se aprova aqui são os <strong>estados novos</strong>
+        dele — o campo de e-mail, a recusa que volta com o motivo e o campo culpado aberto, e o desfecho
+        do sucesso, em que o modal desaparece e a página do servidor se atualiza sozinha.
+      </p>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          A página do servidor está montada abaixo, como contexto. Os <strong>três estados do modal</strong>
+          abrem pelos gatilhos da banca — um de cada vez, sobre a página, que é como eles aparecem de
+          verdade. O último bloco mostra a página <strong>depois</strong> da gravação.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Telas montadas</h2>
+
+      <!-- 1.1 a página, e o botão que só existe para quem pode -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">1.1 · A página do servidor <span class="text-sm font-normal text-base-content/60">— com e sem o botão</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">O e-mail entra no resumo, em leitura. O botão de editar só existe para quem tem a competência e o alcance sobre este servidor.</p>
+        </div>
+
+        <!-- página: user_admin/perfil.html -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+          <!-- partial: user_admin/partials/_secao_resumo_perfil.html — trocado por hx-swap-oob depois de gravar -->
+          <div id="painel-servidor" class="flex flex-col gap-6">
+            <div class="flex items-center gap-4">
+              <span class="w-16 h-16 rounded-full grid place-items-center text-xl font-bold text-white shrink-0" style="background:#0096C7">AR</span>
+              <div class="min-w-0">
+                <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Ana Ramos</h1>
+                <p class="text-sm text-base-content/70">RF 812.345-6 · DIMAP-1</p>
+              </div>
+            </div>
+            <div class="card-well p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+              <div><p class="text-overline etched-rotulo">Unidade</p><p class="text-[15px] mt-0.5">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação</span></p></div>
+              <div><p class="text-overline etched-rotulo">Cargo base</p><p class="text-[15px] mt-0.5">Assistente de Gestão de Políticas Públicas</p></div>
+              <div><p class="text-overline etched-rotulo">Cargo em comissão</p><p class="text-[15px] mt-0.5 text-base-content/60">— sem cargo em comissão —</p></div>
+              <div><p class="text-overline etched-rotulo">E-mail</p><p class="text-[15px] mt-0.5 text-code">ana.ramos@prefeitura.sp.gov.br</p></div>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <!-- fica na página: o gatilho da edição -->
+          <div class="flex justify-center pt-2">
+            <label for="modal-lido" class="btn btn-onsen btn-lg gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+              Editar servidor
+            </label>
+          </div>
+        </div>
+
+        <!-- estado: quem não tem competência ou alcance sobre este servidor -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+          <div class="flex items-center gap-4">
+            <span class="w-16 h-16 rounded-full grid place-items-center text-xl font-bold text-white shrink-0" style="background:#0096C7">AR</span>
+            <div class="min-w-0">
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Ana Ramos</h1>
+              <p class="text-sm text-base-content/70">RF 812.345-6 · DIMAP-1</p>
+            </div>
+          </div>
+          <p class="text-sm text-base-content/60 text-center">Sem o botão: a página segue inteira, e nada denuncia que existe uma edição possível.</p>
+        </div>
+      </div>
+
+      <!-- 1.2 os estados do modal -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">1.2 · Os estados do modal <span class="text-sm font-normal text-base-content/60">— um de cada vez, sobre a página</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">É assim que eles aparecem: em cima de tudo, com o gelo espesso e o fundo recuado.</p>
+        </div>
+        <div class="glass-panel p-6 banca-estados">
+          <label for="modal-lido" class="btn btn-glass btn-sm">A · como chega</label>
+          <label for="modal-aberto" class="btn btn-glass btn-sm">B · e-mail aberto no lápis</label>
+          <label for="modal-recusado" class="btn btn-glass btn-sm">C · recusado</label>
+        </div>
+      </div>
+
+      <!-- 1.3 o desfecho -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">1.3 · Depois de gravar <span class="text-sm font-normal text-base-content/60">— o modal some, a página se atualiza</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            A resposta não devolve modal nenhum — o poço volta vazio e o toggle sai do documento com ele.
+            O painel abaixo chega no mesmo pacote, por <span class="text-code">hx-swap-oob</span>, já com
+            o e-mail e o cargo novos.
+          </p>
+        </div>
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+          <div class="flex items-center gap-4">
+            <span class="w-16 h-16 rounded-full grid place-items-center text-xl font-bold text-white shrink-0" style="background:#0096C7">AR</span>
+            <div class="min-w-0">
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Ana Ramos</h1>
+              <p class="text-sm text-base-content/70">RF 812.345-6 · DIMAP-1</p>
+            </div>
+          </div>
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div><p class="text-overline etched-rotulo">Unidade</p><p class="text-[15px] mt-0.5">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação</span></p></div>
+            <div><p class="text-overline etched-rotulo">Cargo base</p><p class="text-[15px] mt-0.5">Assistente de Gestão de Políticas Públicas</p></div>
+            <div><p class="text-overline etched-rotulo">Cargo em comissão</p><p class="text-[15px] mt-0.5">CDA-II <span class="text-base-content/50">· Diretor de Divisão</span></p></div>
+            <div><p class="text-overline etched-rotulo">E-mail</p><p class="text-[15px] mt-0.5 text-code">ana.ramos@sp.gov.br</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="glass-panel p-6 text-sm text-base-content/70">
+      Mock de validação da SPEC <span class="text-code">criacao_usuarios/005</span>. Nenhuma peça nova
+      nasce nesta SPEC: o modal, o campo que abre no lápis, a tarja crítica e o painel de leitura já
+      estão portados, e o <span class="text-code">.campo-realce</span> chega pela SPEC 004 — aqui eles
+      só ganham estados.
+    </footer>
+
+  </div>
+
+  <!-- ==================== MODAL · ESTADO A: COMO CHEGA ====================
+       partial: user_admin/partials/_modal_editar_perfil.html — chega por hx-get no poço; no mock
+       quem abre é o checkbox, porque não há servidor. -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-lido" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+        <form class="flex flex-col gap-6">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+            <p class="text-sm text-base-content/70 mt-1">Ana Ramos · RF 812.345-6</p>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Identificação</p>
+            <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+              <div class="campo-onsen">
+                <input type="checkbox" id="a-rf" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">RF</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor text-code">812.345-6</p>
+                  <div class="campo-onsen-campo"><input type="text" class="input input-glass" value="812.345-6" /></div>
+                  <label for="a-rf" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o RF">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+              <div class="campo-onsen">
+                <input type="checkbox" id="a-nome" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">Nome</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor">Ana</p>
+                  <div class="campo-onsen-campo"><input type="text" class="input input-glass" value="Ana" /></div>
+                  <label for="a-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+              <!-- o campo novo desta SPEC, em leitura como os demais -->
+              <div class="campo-onsen sm:col-span-2">
+                <input type="checkbox" id="a-email" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">E-mail</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor text-code">ana.ramos@prefeitura.sp.gov.br</p>
+                  <div class="campo-onsen-campo"><input type="email" class="input input-glass" value="ana.ramos@prefeitura.sp.gov.br" /></div>
+                  <label for="a-email" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o e-mail">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Lotação</p>
+            <div class="campo-onsen">
+              <input type="checkbox" id="a-unidade" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">Unidade</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação</span></p>
+                <div class="campo-onsen-campo">
+                  <select class="select select-glass" data-select-onsen>
+                    <option>DIMAP-1 · Divisão de Avaliação</option>
+                    <option>DIMAP-11 · Seção de Ofertas</option>
+                  </select>
+                </div>
+                <label for="a-unidade" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a unidade">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-action">
+            <label for="modal-lido" class="btn btn-glass btn-sm">Cancelar</label>
+            <button type="button" class="btn btn-onsen btn-sm">Salvar alterações</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" for="modal-lido">Fechar</label>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL · ESTADO B: E-MAIL ABERTO NO LÁPIS ==================== -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-aberto" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+        <form class="flex flex-col gap-6">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+            <p class="text-sm text-base-content/70 mt-1">Ana Ramos · RF 812.345-6</p>
+          </div>
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Identificação</p>
+            <div class="campo-onsen">
+              <!-- estado: aberto — o toggle marcado é o que troca o valor pelo campo -->
+              <input type="checkbox" id="b-email" class="campo-onsen-toggle" checked />
+              <span class="text-overline etched-rotulo">E-mail</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor text-code">ana.ramos@prefeitura.sp.gov.br</p>
+                <div class="campo-onsen-campo">
+                  <input type="email" class="input input-glass" value="ana.ramos@sp.gov.br" />
+                  <span class="form-field-hint">Trocar o endereço não avisa ninguém — nem o antigo, nem o novo.</span>
+                </div>
+                <label for="b-email" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Fechar">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-action">
+            <label for="modal-aberto" class="btn btn-glass btn-sm">Cancelar</label>
+            <button type="button" class="btn btn-onsen btn-sm">Salvar alterações</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" for="modal-aberto">Fechar</label>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL · ESTADO C: RECUSADO ====================
+       estado: a tarja no topo diz o motivo, e o campo culpado volta ABERTO — erro que aponta para um
+       valor escondido atrás do lápis não tem como ser corrigido sem procurar. -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-recusado" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+        <form class="flex flex-col gap-6">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+            <p class="text-sm text-base-content/70 mt-1">Ana Ramos · RF 812.345-6</p>
+          </div>
+
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+            <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <div>
+              <p class="text-[13px] font-semibold text-base-content/90">Alterações não gravadas</p>
+              <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                <li>O RF <span class="text-code">999.111-2</span> já é de outro servidor.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Identificação</p>
+            <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+              <div class="campo-onsen">
+                <!-- o campo culpado volta aberto, com o que foi digitado, e o controle acende em vermelho -->
+                <input type="checkbox" id="c-rf" class="campo-onsen-toggle" checked />
+                <span class="text-overline etched-rotulo">RF</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor text-code">812.345-6</p>
+                  <div class="campo-onsen-campo"><input type="text" class="input input-glass campo-realce-erro" value="999.111-2" /></div>
+                  <label for="c-rf" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Fechar">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+              <div class="campo-onsen">
+                <input type="checkbox" id="c-nome" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">Nome</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor">Ana</p>
+                  <div class="campo-onsen-campo"><input type="text" class="input input-glass" value="Ana" /></div>
+                  <label for="c-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-action">
+            <label for="modal-recusado" class="btn btn-glass btn-sm">Cancelar</label>
+            <button type="button" class="btn btn-onsen btn-sm">Salvar alterações</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" for="modal-recusado">Fechar</label>
+    </div>
+  </div>
+
+  <!-- Sem este módulo os selects seguem nativos: o componente de vidro (SPEC user_admin/011) é
+       opt-in por atributo e depende do módulo carregado, na aplicação e aqui. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+
+  <script>
+    // Fundo à deriva (SPEC user_admin/007), reproduzido aqui porque o mock não passa pelo Django.
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
+        ultimoFrame = agora;
+        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
+        mapa.setView(
+          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
+          ZOOM,
+          { animate: false },
+        );
+      }
+      requestAnimationFrame(derivar);
+    }
+    requestAnimationFrame(derivar);
+  </script>
+</body>
+</html>
