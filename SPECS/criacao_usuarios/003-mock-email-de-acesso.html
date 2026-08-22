@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC criacao_usuarios/003 — OTP e e-mail de acesso (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Como na SPEC 002, o e-mail não cria peça no design system do sistema: o que nasce aqui são
+       duas chaves do TEMA_EMAIL. O que a página precisa de pele é só moldura de exposição. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .moldura-caixa — moldura de EXPOSIÇÃO do mock: simula a área de leitura do
+         cliente de e-mail. Não é peça do projeto e não vai para o tema. */
+      .moldura-caixa { @apply rounded-2xl overflow-hidden ring-1 ring-rocha-300/60 shadow-[0_10px_30px_-12px_rgba(7,58,84,0.35)]; }
+      /* .prova-cor — a caixa partida ao meio: metade pintada pelo TOKEN do tema, metade pelo
+         HEX que o e-mail escreve. Divergência aparece como emenda visível. */
+      .prova-cor { @apply h-14 rounded-lg overflow-hidden flex ring-1 ring-rocha-950/10; }
+      .prova-cor > * { @apply w-1/2 h-full; }
+      /* .regua-medida — cota de exposição sobre a fileira de caixas. Não é peça do projeto. */
+      .regua-medida { @apply text-[10px] font-mono text-agua-800/70 text-center; }
+    }
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+
+<body class="text-base-content">
+
+  <div class="fixed inset-0 z-0 bg-[#dff0f7]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC criacao_usuarios/003 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">O código em caixas, e o e-mail que entrega o acesso</h1>
+      <p class="mt-4 max-w-3xl text-base-content/80 leading-relaxed">
+        Um bloco novo no vocabulário do e-mail: a senha temporária deixa de ser uma linha monoespaçada e
+        passa a ser <strong>uma caixa por caractere</strong>, na forma do campo de OTP do daisyUI —
+        reproduzida em tabela com estilo inline, porque cliente de e-mail não tem componente nenhum.
+        Tudo abaixo está renderizado com o <strong>estilo inline real</strong> que os escritores produzem:
+        nenhum bloco desta página usa classe.
+      </p>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          <strong>1 · Tokens</strong> prova a cor e mostra a medida das caixas. <strong>2 · Átomos</strong>
+          traz o bloco nos seus comprimentos, ao lado do destaque que ele substitui, e no cliente que não
+          arredonda canto. <strong>3 · Telas</strong> monta o e-mail de acesso inteiro, com a versão em
+          texto puro e a leitura em tela estreita.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · TOKENS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Tokens — a caixa do código</h2>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · Prova de fidelidade</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Metade da <strong>esquerda</strong> pintada pela classe do tema, metade da <strong>direita</strong>
+            pelo hex que o e-mail escreve. A caixa é branca sobre o poço, para se destacar do fundo em que está.
+          </p>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div>
+            <div class="prova-cor"><div class="bg-white"></div><div style="background:#FFFFFF"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">fundo da caixa<br>branco · FFFFFF</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-base-300"></div><div style="background:#CFE2EB"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">aresta<br>base-300 · CFE2EB</p>
+          </div>
+          <div>
+            <div class="prova-cor"><div class="bg-agua-700"></div><div style="background:#0077B6"></div></div>
+            <p class="text-[10px] font-mono text-center mt-1.5 text-base-content/60">dígito<br>agua-700 · 0077B6</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">1.2 · A medida <span class="text-sm font-normal text-base-content/60">— por que o código para em dez</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Caixa de <span class="text-code">40px</span> e vão de <span class="text-code">8px</span>. Dentro do
+            poço, sobram <span class="text-code">510px</span> de linha: dez caixas ocupam
+            <span class="text-code">488px</span> e cabem; onze pedem <span class="text-code">536px</span> e não cabem.
+          </p>
+        </div>
+        <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <div style="padding:28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                <table role="presentation" cellpadding="0" cellspacing="8" style="margin-top:0;"><tr>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">4</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">8</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">1</td>
+                </tr></table>
+              </td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-4 max-w-md">
+          <p class="regua-medida">largura<br><span class="text-agua-800">40px</span></p>
+          <p class="regua-medida">vão (cellspacing)<br><span class="text-agua-800">8px</span></p>
+          <p class="regua-medida">corpo<br><span class="text-agua-800">22px mono</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Átomos — o bloco de OTP</h2>
+      <p class="px-2 text-sm text-base-content/70 -mt-4">
+        Na condição real de uso: sobre a placa branca, dentro do poço, com o rótulo em overline por cima —
+        a mesma moldura do destaque. O que muda é a forma do valor.
+      </p>
+
+      <!-- 2.1 comprimentos -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">2.1 · Comprimentos <span class="text-sm font-normal text-base-content/60">— oito dígitos, código curto e o limite</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">A senha do cadastro tem oito. O bloco serve a qualquer código, do mais curto até o teto de dez.</p>
+        </div>
+        <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <div style="padding:28px;">
+
+            <!-- estado: oito dígitos (a senha temporária) -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Senha temporária</span>
+                <table role="presentation" cellpadding="0" cellspacing="8" style="margin-top:10px;"><tr>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">4</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">8</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">1</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">5</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">3</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">7</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">2</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">6</td>
+                </tr></table>
+              </td></tr>
+            </table>
+
+            <!-- estado: código curto -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Código de confirmação</span>
+                <table role="presentation" cellpadding="0" cellspacing="8" style="margin-top:10px;"><tr>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">9</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">2</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">0</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">4</td>
+                </tr></table>
+              </td></tr>
+            </table>
+
+            <!-- estado: o limite — dez caixas, a fileira cheia -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">O teto: dez caracteres</span>
+                <table role="presentation" cellpadding="0" cellspacing="8" style="margin-top:10px;"><tr>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">A</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">7</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">K</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">3</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">Q</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">9</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">M</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">2</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">5</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">X</td>
+                </tr></table>
+              </td></tr>
+            </table>
+
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60 px-1">Dígito estreito e letra larga ocupam a mesma caixa: a largura é fixa, não se ajusta ao caractere.</p>
+      </div>
+
+      <!-- 2.2 estado de falta -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">2.2 · Estado de falta <span class="text-sm font-normal text-base-content/60">— o código que não cabe</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Onze caracteres estouram a linha e a fileira quebra em duas — o código deixa de se ler como um só.
+            É o que a recusa na construção do bloco impede: abaixo, o que <strong>não</strong> vai existir.
+          </p>
+        </div>
+        <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;opacity:.55;">
+          <div style="padding:28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Onze caracteres</span>
+                <table role="presentation" cellpadding="0" cellspacing="8" style="margin-top:10px;table-layout:fixed;width:100%;"><tr>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">A</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">7</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">K</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">3</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">Q</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">9</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">M</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">2</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">5</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">X</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">B</td>
+                </tr></table>
+              </td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.3 OTP × destaque -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">2.3 · OTP × destaque monoespaçado <span class="text-sm font-normal text-base-content/60">— a mesma senha nas duas formas</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">O destaque continua para o valor que se lê; o OTP é para o valor que se digita.</p>
+        </div>
+        <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <div style="padding:28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Senha temporária — destaque</span><br>
+                <span style="color:#0077B6;font-size:17px;font-family:'Roboto Mono',Consolas,monospace;">48153726</span>
+              </td></tr>
+            </table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Senha temporária — OTP</span>
+                <table role="presentation" cellpadding="0" cellspacing="8" style="margin-top:10px;"><tr>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">4</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">8</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">1</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">5</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">3</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">7</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">2</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">6</td>
+                </tr></table>
+              </td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.4 cliente sem border-radius -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">2.4 · Cliente que não arredonda <span class="text-sm font-normal text-base-content/60">— o Outlook</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">O motor do Word ignora <span class="text-code">border-radius</span>: as caixas saem de canto reto, e o poço em volta também.</p>
+        </div>
+        <div class="moldura-caixa" style="background:#FFFFFF;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <div style="padding:28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;padding:16px;">
+                <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Senha temporária</span>
+                <table role="presentation" cellpadding="0" cellspacing="8" style="margin-top:10px;"><tr>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">4</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">8</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">1</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">5</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">3</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">7</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">2</td>
+                  <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">6</td>
+                </tr></table>
+              </td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">3 · Telas montadas</h2>
+
+      <!-- 3.1 o e-mail de acesso -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">3.1 · O e-mail de acesso <span class="text-sm font-normal text-base-content/60">— o que esta SPEC entrega</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Saudação, o RF no destaque, a senha no OTP, a instrução e o botão. O RF se lê; a senha se digita.</p>
+        </div>
+        <div class="moldura-caixa">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E3EFF5;padding:32px 12px;">
+            <tr><td align="center">
+              <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid #CFE2EB;border-radius:16px;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+                <tr><td style="background:#0096C7;border-radius:16px 16px 0 0;padding:20px 28px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" style="background:#FFFFFF;border-radius:8px;color:#0096C7;font-size:18px;font-weight:900;text-align:center;height:32px;">D</td>
+                    <td style="padding-left:12px;color:#FFFFFF;font-size:15px;font-weight:700;">DIMAP GeoCoder</td>
+                  </tr></table>
+                </td></tr>
+                <tr><td style="padding:28px;">
+                  <h1 style="margin:0 0 16px;color:#5E412F;font-size:24px;font-weight:700;">Sua conta no DIMAP GeoCoder já existe</h1>
+                  <p style="margin:0 0 12px;color:#1B263B;font-size:15px;line-height:1.6;">Ana, entre com o seu RF e a senha temporária abaixo.</p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+                    <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                      <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">RF</span><br>
+                      <span style="color:#0077B6;font-size:17px;font-family:'Roboto Mono',Consolas,monospace;">812.345-6</span>
+                    </td></tr>
+                  </table>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+                    <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                      <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Senha temporária</span>
+                      <table role="presentation" cellpadding="0" cellspacing="8" style="margin-top:10px;"><tr>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">4</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">8</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">1</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">5</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">3</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">7</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">2</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">6</td>
+                      </tr></table>
+                    </td></tr>
+                  </table>
+                  <p style="margin:0 0 12px;color:#1B263B;font-size:15px;line-height:1.6;">Troque a senha assim que entrar.</p>
+                  <a href="https://geocoder.dimap.local/" style="display:inline-block;background:#48CAE4;color:#023E8A;border-radius:8px;font-weight:700;text-decoration:none;padding:12px 24px;">Acessar o DIMAP GeoCoder</a>
+                </td></tr>
+                <tr><td style="padding:0 28px 24px;color:#5B7290;font-size:13px;">Mensagem automática do DIMAP GeoCoder. Não é necessário responder.</td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3.2 texto puro -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">3.2 · A mesma mensagem em texto puro</h3>
+          <p class="text-sm text-base-content/70 mt-1">Sem caixas: o OTP vira <span class="text-code">rótulo: valor</span>, como o destaque.</p>
+        </div>
+        <div class="card-well p-5">
+          <pre class="text-[13px] leading-relaxed text-base-content/85 whitespace-pre-wrap font-mono">Sua conta no DIMAP GeoCoder já existe
+
+Ana, entre com o seu RF e a senha temporária abaixo.
+
+RF: 812.345-6
+
+Senha temporária: 48153726
+
+Troque a senha assim que entrar.
+
+Acessar o DIMAP GeoCoder: https://geocoder.dimap.local/
+
+Mensagem automática do DIMAP GeoCoder. Não é necessário responder.</pre>
+        </div>
+      </div>
+
+      <!-- 3.3 tela estreita -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h3 class="text-lg font-bold">3.3 · Tela estreita <span class="text-sm font-normal text-base-content/60">— a fileira em 340px</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">A placa segue em 600px fixos, e a fileira acompanha: quem escala a mensagem lê as caixas menores; quem não escala, rola.</p>
+        </div>
+        <div class="moldura-caixa mx-auto" style="width:340px;overflow-x:auto;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E3EFF5;padding:16px 8px;">
+            <tr><td align="center">
+              <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid #CFE2EB;border-radius:16px;font-family:Roboto,'Helvetica Neue',Arial,sans-serif;">
+                <tr><td style="background:#0096C7;border-radius:16px 16px 0 0;padding:20px 28px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" style="background:#FFFFFF;border-radius:8px;color:#0096C7;font-size:18px;font-weight:900;text-align:center;height:32px;">D</td>
+                    <td style="padding-left:12px;color:#FFFFFF;font-size:15px;font-weight:700;">DIMAP GeoCoder</td>
+                  </tr></table>
+                </td></tr>
+                <tr><td style="padding:28px;">
+                  <h1 style="margin:0 0 16px;color:#5E412F;font-size:24px;font-weight:700;">Sua conta no DIMAP GeoCoder já existe</h1>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                    <tr><td style="background:#F2F8FB;border:1px solid #CFE2EB;border-radius:12px;padding:16px;">
+                      <span style="color:#415A77;font-size:11px;text-transform:uppercase;letter-spacing:.14em;">Senha temporária</span>
+                      <table role="presentation" cellpadding="0" cellspacing="8" style="margin-top:10px;"><tr>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">4</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">8</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">1</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">5</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">3</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">7</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">2</td>
+                        <td style="width:40px;background:#FFFFFF;border:1px solid #CFE2EB;border-radius:8px;padding:10px 0;color:#0077B6;font-size:22px;font-weight:700;font-family:'Roboto Mono',Consolas,monospace;text-align:center;">6</td>
+                      </tr></table>
+                    </td></tr>
+                  </table>
+                </td></tr>
+                <tr><td style="padding:0 28px 24px;color:#5B7290;font-size:13px;">Mensagem automática do DIMAP GeoCoder.</td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="glass-panel p-6 text-sm text-base-content/70">
+      Mock de validação da SPEC <span class="text-code">criacao_usuarios/003</span>. Aprovado o desenho, as
+      duas chaves novas viram <span class="text-code">TEMA_EMAIL["otp_fileira"]</span> e
+      <span class="text-code">TEMA_EMAIL["otp_caixa"]</span>, e a fileira vira o
+      <span class="text-code">EscritorOtp</span> de <span class="text-code">services/domain/email/</span> —
+      não há template de e-mail nem classe do design system a portar.
+    </footer>
+
+  </main>
+</body>
+</html>
