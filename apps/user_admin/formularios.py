@@ -15,23 +15,50 @@ from services.utils.erros_formulario import (
 
 FORMULARIO_SERVIDOR = Formulario(
     campos=(
-        CampoDeFormulario(controle="rf", rotulo="RF"),
-        CampoDeFormulario(controle="nome", rotulo="Nome"),
-        CampoDeFormulario(controle="sobrenome", rotulo="Sobrenome"),
+        CampoDeFormulario(
+            controle="rf",
+            rotulo="RF",
+            # `string_pattern_mismatch` é um tipo só para todos os campos com formato: é aqui, por
+            # controle, que ele vira a frase que ensina o formato daquele campo.
+            regras={
+                "string_pattern_mismatch": RegraDeErro(
+                    mensagem="RF: sete dígitos, com ou sem pontuação (812.345-6)."
+                )
+            },
+        ),
+        CampoDeFormulario(
+            controle="nome",
+            rotulo="Nome",
+            regras={
+                "string_pattern_mismatch": RegraDeErro(
+                    mensagem="Nome: só letras, espaço, hífen e apóstrofo."
+                )
+            },
+        ),
+        CampoDeFormulario(
+            controle="sobrenome",
+            rotulo="Sobrenome",
+            regras={
+                "string_pattern_mismatch": RegraDeErro(
+                    mensagem="Sobrenome: só letras, espaço, hífen e apóstrofo."
+                )
+            },
+        ),
         CampoDeFormulario(
             controle="email",
             rotulo="E-mail",
-            # A única regra particular desta tela: as demais recusas se dizem bem com as padrão.
             regras={"value_error": RegraDeErro(mensagem="E-mail inválido: confira o endereço.")},
         ),
         CampoDeFormulario(controle="unidade", rotulo="Unidade"),
         CampoDeFormulario(controle="cargo_base", rotulo="Cargo base"),
         CampoDeFormulario(controle="cargo_comissao", rotulo="Cargo em comissão"),
+        # A foto não vinha no catálogo porque nada a recusava; agora tamanho e formato recusam.
+        CampoDeFormulario(controle="foto", rotulo="Foto"),
     )
 )
 
 ler_novo_servidor = LeitorDeFormulario(NovoServidor, FORMULARIO_SERVIDOR)
 traduzir_recusa = TradutorDeRecusa(FORMULARIO_SERVIDOR)
-# Mesmos sete controles, mesmos rótulos, mesmas frases: o que muda entre criar e editar é o DTO
-# lido, não como a recusa se diz. Um catálogo irmão seria a mesma tabela com outro nome.
+# Mesmos controles, mesmos rótulos, mesmas frases: o que muda entre criar e editar é o DTO lido,
+# não como a recusa se diz. Um catálogo irmão seria a mesma tabela com outro nome.
 ler_edicao_servidor = LeitorDeFormulario(EdicaoServidor, FORMULARIO_SERVIDOR)

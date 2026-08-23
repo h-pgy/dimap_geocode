@@ -114,11 +114,13 @@
                 <p class="text-sm text-base-content/70">RF 812.345-6 · DIMAP-1</p>
               </div>
             </div>
+            <!-- min-w-0 na célula + .valor-leitura no valor: sem os dois, o e-mail longo estoura a
+                 coluna do grid e passa por cima do rótulo vizinho. -->
             <div class="card-well p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
-              <div><p class="text-overline etched-rotulo">Unidade</p><p class="text-[15px] mt-0.5">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação</span></p></div>
-              <div><p class="text-overline etched-rotulo">Cargo base</p><p class="text-[15px] mt-0.5">Assistente de Gestão de Políticas Públicas</p></div>
-              <div><p class="text-overline etched-rotulo">Cargo em comissão</p><p class="text-[15px] mt-0.5 text-base-content/60">— sem cargo em comissão —</p></div>
-              <div><p class="text-overline etched-rotulo">E-mail</p><p class="text-[15px] mt-0.5 text-code">ana.ramos@prefeitura.sp.gov.br</p></div>
+              <div class="min-w-0"><p class="text-overline etched-rotulo">Unidade</p><p class="valor-leitura">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação</span></p></div>
+              <div class="min-w-0"><p class="text-overline etched-rotulo">Cargo base</p><p class="valor-leitura">Assistente de Gestão de Políticas Públicas</p></div>
+              <div class="min-w-0"><p class="text-overline etched-rotulo">Cargo em comissão</p><p class="valor-leitura text-base-content/60">— sem cargo em comissão —</p></div>
+              <div class="min-w-0"><p class="text-overline etched-rotulo">E-mail</p><p class="valor-leitura text-code">ana.carolina.ramos.avaliacao@prefeitura.sp.gov.br</p></div>
             </div>
           </div>
           <!-- /partial -->
@@ -177,20 +179,22 @@
             </div>
           </div>
           <div class="card-well p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
-            <div><p class="text-overline etched-rotulo">Unidade</p><p class="text-[15px] mt-0.5">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação</span></p></div>
-            <div><p class="text-overline etched-rotulo">Cargo base</p><p class="text-[15px] mt-0.5">Assistente de Gestão de Políticas Públicas</p></div>
-            <div><p class="text-overline etched-rotulo">Cargo em comissão</p><p class="text-[15px] mt-0.5">CDA-II <span class="text-base-content/50">· Diretor de Divisão</span></p></div>
-            <div><p class="text-overline etched-rotulo">E-mail</p><p class="text-[15px] mt-0.5 text-code">ana.ramos@sp.gov.br</p></div>
+            <div class="min-w-0"><p class="text-overline etched-rotulo">Unidade</p><p class="valor-leitura">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação</span></p></div>
+            <div class="min-w-0"><p class="text-overline etched-rotulo">Cargo base</p><p class="valor-leitura">Assistente de Gestão de Políticas Públicas</p></div>
+            <div class="min-w-0"><p class="text-overline etched-rotulo">Cargo em comissão</p><p class="valor-leitura">CDA-II <span class="text-base-content/50">· Diretor de Divisão</span></p></div>
+            <div class="min-w-0"><p class="text-overline etched-rotulo">E-mail</p><p class="valor-leitura text-code">ana.ramos@sp.gov.br</p></div>
           </div>
         </div>
       </div>
     </section>
 
     <footer class="glass-panel p-6 text-sm text-base-content/70">
-      Mock de validação da SPEC <span class="text-code">criacao_usuarios/005</span>. Nenhuma peça nova
-      nasce nesta SPEC: o modal, o campo que abre no lápis, a tarja crítica e o painel de leitura já
-      estão portados, e o <span class="text-code">.campo-realce</span> chega pela SPEC 004 — aqui eles
-      só ganham estados.
+      Mock de validação da SPEC <span class="text-code">criacao_usuarios/005</span>. O modal, o campo
+      que abre no lápis, a tarja crítica e o painel de leitura já estão portados, e o
+      <span class="text-code">.campo-realce</span> chega pela SPEC 004 — aqui eles só ganham estados.
+      A peça nova é o <span class="text-code">.valor-leitura</span>, o valor de um par rótulo/valor em
+      leitura; o <span class="text-code">.campo-onsen-valor</span> ganha a mesma quebra, por alteração
+      com aval.
     </footer>
 
   </div>
@@ -238,8 +242,8 @@
                 <input type="checkbox" id="a-email" class="campo-onsen-toggle" />
                 <span class="text-overline etched-rotulo">E-mail</span>
                 <div class="campo-onsen-linha">
-                  <p class="campo-onsen-valor text-code">ana.ramos@prefeitura.sp.gov.br</p>
-                  <div class="campo-onsen-campo"><input type="email" class="input input-glass" value="ana.ramos@prefeitura.sp.gov.br" /></div>
+                  <p class="campo-onsen-valor text-code">ana.carolina.ramos.avaliacao@prefeitura.sp.gov.br</p>
+                  <div class="campo-onsen-campo"><input type="email" class="input input-glass" value="ana.carolina.ramos.avaliacao@prefeitura.sp.gov.br" /></div>
                   <label for="a-email" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o e-mail">
                     <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
                   </label>
@@ -295,7 +299,7 @@
               <input type="checkbox" id="b-email" class="campo-onsen-toggle" checked />
               <span class="text-overline etched-rotulo">E-mail</span>
               <div class="campo-onsen-linha">
-                <p class="campo-onsen-valor text-code">ana.ramos@prefeitura.sp.gov.br</p>
+                <p class="campo-onsen-valor text-code">ana.carolina.ramos.avaliacao@prefeitura.sp.gov.br</p>
                 <div class="campo-onsen-campo">
                   <input type="email" class="input input-glass" value="ana.ramos@sp.gov.br" />
                   <span class="form-field-hint">Trocar o endereço não avisa ninguém — nem o antigo, nem o novo.</span>

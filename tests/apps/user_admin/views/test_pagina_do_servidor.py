@@ -143,10 +143,8 @@ def test_rota_do_modal_devolve_so_o_partial_preenchido(client: Client) -> None:
         f'<option value="{unidade.pk}" selected>{unidade.sigla} · {unidade.nome}</option>'
         in html
     )
-    assert (
-        f'<option value="{outra_unidade.pk}">{outra_unidade.sigla} · {outra_unidade.nome}</option>'
-        in html
-    )
+    # Fora do alcance de quem edita, e por isso fora do select (SPEC criacao_usuarios/006).
+    assert f"{outra_unidade.sigla} · {outra_unidade.nome}" not in html
     assert f'<option value="{perfil.cargo_base_id}" selected>' in html
     assert (
         f'<option value="{cargo_comissao.pk}" selected>{cargo_comissao.padrao} · {cargo_comissao.nome}</option>'

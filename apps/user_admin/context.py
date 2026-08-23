@@ -90,13 +90,12 @@ ROTULO_DA_COLUNA = {
 
 
 def contexto_criar_perfil(ids_permitidos: Collection[int]) -> dict[str, Any]:
-    # O recorte desce por `_catalogos_de_lotacao` até o catálogo de unidades — nenhuma consulta
-    # nova: o alcance de quem abre a tela é o que o formulário oferece (SPEC criacao_usuarios/004).
-    # POR ÚLTIMO: os dois catálogos dividem a chave "unidades" (o select de lotação e o de unidade
-    # pai do modal, sem destino ainda), e é o recorte quem tem que vencer o merge.
+    # Os dois catálogos de unidade recortados na fonte, e não um deles pela ordem do merge: o
+    # select de lotação e o de unidade superior do painel dividem a chave "unidades" (SPEC
+    # criacao_usuarios/006).
     return (
         contexto_fundo_admin()
-        | _contexto_do_modal_de_unidade()
+        | _contexto_do_modal_de_unidade(ids_permitidos)
         | _catalogos_de_lotacao(ids_permitidos)
     )
 
@@ -155,7 +154,11 @@ def contexto_pagina_perfil(perfil: Perfil) -> dict[str, Any]:
     )
 
 
-def contexto_modal_perfil(perfil: Perfil, valores: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def contexto_modal_perfil(
+    perfil: Perfil,
+    ids_permitidos: Collection[int],
+    valores: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """O que o modal preenche: o perfil, os catálogos dos três selects e os do painel de unidade,
     que vem fechado dentro dele.
 
@@ -167,8 +170,8 @@ def contexto_modal_perfil(perfil: Perfil, valores: Mapping[str, Any] | None = No
     `perfil` continua sendo o model, e não um dicionário como no formulário de criação: o lado lido
     pede `unidade.sigla`, `cargo_base.nome`, o avatar e a tarja de titular."""
     return (
-        _catalogos_de_lotacao()
-        | _contexto_do_modal_de_unidade()
+        _contexto_do_modal_de_unidade(ids_permitidos)
+        | _catalogos_de_lotacao(ids_permitidos)
         | {
             "perfil": perfil,
             "valores": valores if valores is not None else _valores_do_perfil(perfil),
@@ -194,12 +197,13 @@ def _valores_do_perfil(perfil: Perfil) -> dict[str, Any]:
 
 def contexto_edicao_recusada(
     perfil: Perfil,
+    ids_permitidos: Collection[int],
     valores: Mapping[str, Any],
     recusa: RecusaDeFormulario,
 ) -> dict[str, Any]:
     # `perfil` vem do banco INTOCADO: `editar_servidor` altera a instância dele em memória antes do
     # `full_clean`, e reaproveitá-la mostraria no lado lido o valor que a recusa impediu de gravar.
-    return contexto_modal_perfil(perfil, _valores_do_formulario(valores)) | {
+    return contexto_modal_perfil(perfil, ids_permitidos, _valores_do_formulario(valores)) | {
         "erros": recusa.mensagens,
         "realce": recusa.realce,
     }
@@ -682,11 +686,13 @@ def _imagem_do_perfil(perfil: Perfil) -> ImagemPerfilOutput:
     )
 
 
-def _contexto_do_modal_de_unidade() -> dict[str, Any]:
+def _contexto_do_modal_de_unidade(
+    ids_permitidos: Collection[int] | None = None,
+) -> dict[str, Any]:
     # O modal de nova unidade é renderizado com a página, em criar e em editar (SPEC 012): os
     # catálogos dele custam uma consulta e dispensam rota e hx-get de abertura. Sem isto o disco de
     # paleta nasce sem tons e o select de tipo, vazio.
-    return _catalogos_de_unidade() | contexto_cor_sugerida(None)
+    return _catalogos_de_unidade(ids_permitidos) | contexto_cor_sugerida(None)
 
 
 def _catalogos_de_lotacao(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
@@ -696,10 +702,13 @@ def _catalogos_de_lotacao(ids_permitidos: Collection[int] | None = None) -> dict
     }
 
 
-def _catalogos_de_unidade() -> dict[str, Any]:
+def _catalogos_de_unidade(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
     # Nível decrescente: a lista de tipos desce da mais abrangente para a mais específica.
-    return _catalogo_de_unidades() | {
+    return _catalogo_de_unidades(ids_permitidos) | {
         "tipos_unidade": TipoUnidade.objects.order_by("-nivel", "nome"),
+        # Raiz não tem pai e por isso não cai no alcance de ninguém: quem a criasse não a teria de
+        # volta na lista (SPEC criacao_usuarios/006).
+        "permite_raiz": ids_permitidos is None,
     }
 
 

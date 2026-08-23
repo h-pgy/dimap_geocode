@@ -18,6 +18,7 @@ from pydantic import HttpUrl, SecretStr
 
 from apps.core.erros_formulario import de_validation_error
 from apps.user_admin.formularios import ler_edicao_servidor, ler_novo_servidor, traduzir_recusa
+from apps.user_admin.foto import conferir_foto
 from apps.user_admin.models import Perfil
 from apps.user_admin.schemas import EdicaoServidor, NovoServidor
 from services.domain.email import EmailAcessoInput, montar_email_acesso, montar_mensagem
@@ -57,8 +58,9 @@ def criar_servidor(
     if novo is None:
         # Sem DTO a leitura traz a recusa; o `or` é só o que o tipo pede, não um caso real.
         return DesfechoCadastro(perfil=None, recusa=leitura.recusa or RecusaDeFormulario())
-    if _dominio_recusado(novo.email):
-        return DesfechoCadastro(perfil=None, recusa=_recusa_do_dominio())
+    politica = _recusa_de_politica(novo.email, foto)
+    if politica is not None:
+        return DesfechoCadastro(perfil=None, recusa=politica)
     senha = gerar_senha_temporaria()
     try:
         with transaction.atomic():
@@ -74,11 +76,23 @@ def criar_servidor(
     return DesfechoCadastro(perfil=perfil)
 
 
-def _recusa_do_dominio() -> RecusaDeFormulario:
+def _recusa_de_politica(email: str, foto: UploadedFile | None) -> RecusaDeFormulario | None:
+    """O que o DTO não pode conferir: o domínio institucional depende de settings, e a foto é um
+    objeto de upload do Django. Nenhum dos dois desce para o model — gravar pelo shell, pelo
+    `createsuperuser` ou por um comando continua livre (SPEC criacao_usuarios/006)."""
+    erros = tuple(
+        erro for erro in (_erro_de_dominio(email), conferir_foto(foto)) if erro is not None
+    )
+    return traduzir_recusa(erros) if erros else None
+
+
+def _erro_de_dominio(email: str) -> ErroBruto | None:
     # Recusa que não vem de fonte nenhuma: é política desta rota, e o controle a realçar é o
     # e-mail, porque é o endereço que precisa mudar. `tipo` fora de REGRAS_PADRAO é de propósito —
     # a mensagem já vem escrita e vence a do catálogo; do tipo só se aproveita o tom, que é erro.
-    return traduzir_recusa((ErroBruto(controle="email", tipo="dominio", mensagem=ERRO_DOMINIO),))
+    if not _dominio_recusado(email):
+        return None
+    return ErroBruto(controle="email", tipo="dominio", mensagem=ERRO_DOMINIO)
 
 
 def _recusa_da_entrega(email: str) -> RecusaDeFormulario:
@@ -140,6 +154,10 @@ def editar_servidor(
     if edicao is None:
         # O `or` é só o que o tipo pede, não um caso real.
         return DesfechoCadastro(perfil=None, recusa=leitura.recusa or RecusaDeFormulario())
+    # A MESMA linha da criação: é a ausência dela aqui que deixava a edição gravar @gmail.com.
+    politica = _recusa_de_politica(edicao.email, foto)
+    if politica is not None:
+        return DesfechoCadastro(perfil=None, recusa=politica)
     perfil = get_object_or_404(Perfil, pk=edicao.servidor_id)
     _aplicar(perfil, edicao, foto)
     try:

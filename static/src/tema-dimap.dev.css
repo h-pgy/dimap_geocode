@@ -357,6 +357,11 @@ html[data-theme="dimap"] {
   .icon-glow     { @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)]; }
   .text-overline { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
   .text-code     { @apply font-mono text-agua-700; }
+  /* O valor de um par rótulo/valor em leitura, par do .text-overline (SPEC criacao_usuarios/005).
+     `wrap-anywhere` quebra DENTRO da palavra: e-mail é um token sem espaço, e `break-words` só
+     quebra onde já há oportunidade. Sem cor — quem compõe tem três (presente, ausente e o RF em
+     monoespaçada) e o átomo venceria o .text-code. */
+  .valor-leitura { @apply text-[15px] mt-0.5 wrap-anywhere; }
 
   .badge-ponto    { @apply border border-agua-600/40 bg-agua-500/15 text-agua-700 font-medium; }
   .badge-linha    { @apply border border-accent/40 bg-accent/10 text-accent font-medium; }
@@ -900,7 +905,9 @@ html[data-theme="dimap"] {
   .campo-onsen { @apply flex flex-col gap-1.5; }
   .campo-onsen-toggle { @apply sr-only; }
   .campo-onsen-linha { @apply flex items-center gap-2 min-w-0; }
-  .campo-onsen-valor { @apply flex-1 min-w-0 text-[15px] text-base-content/90 py-1.5; }
+  /* wrap-anywhere (SPEC criacao_usuarios/005): o min-w-0 deixa a célula encolher, e sem a quebra
+     o e-mail longo sai dela por cima do lápis. */
+  .campo-onsen-valor { @apply flex-1 min-w-0 text-[15px] text-base-content/90 py-1.5 wrap-anywhere; }
   .campo-onsen-campo { @apply hidden flex-1 min-w-0; }
   .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-valor { @apply hidden; }
   .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-campo { @apply block; }

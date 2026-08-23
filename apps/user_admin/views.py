@@ -128,7 +128,13 @@ def editar_perfil(request: HttpRequest, servidor: int) -> HttpResponse:
     # Só o partial do modal: a página de leitura não o carrega, e os catálogos dos selects só são
     # consultados quando alguém abre o lápis. Nenhuma conferência de lotação escrita aqui: o
     # contrato da ação declara o alcance pela pessoa, e o decorator já resolveu a unidade dela.
-    return render(request, TEMPLATE_MODAL_PERFIL, contexto_modal_perfil(_perfil(servidor)))
+    # Oferecer destino que o decorator vai recusar no POST é convidar ao 403 — que o HTMX não troca
+    # na tela: a lista sai do mesmo alcance que a barreira confere, como em `criar_perfil`.
+    return render(
+        request,
+        TEMPLATE_MODAL_PERFIL,
+        contexto_modal_perfil(_perfil(servidor), alcance_do_perfil(_autor(request))),
+    )
 
 
 @acao_protegida(ACAO_EDITAR_SERVIDOR)
@@ -154,7 +160,12 @@ def gravar_edicao(request: HttpRequest, servidor: int) -> HttpResponse:
         return render(
             request,
             TEMPLATE_MODAL_PERFIL,
-            contexto_edicao_recusada(_perfil(servidor), valores, desfecho.recusa),
+            contexto_edicao_recusada(
+                _perfil(servidor),
+                alcance_do_perfil(_autor(request)),
+                valores,
+                desfecho.recusa,
+            ),
             status=422,
         )
     registrar_ato(

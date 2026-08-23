@@ -1,6 +1,6 @@
 ---
 spec: criacao_usuarios/005
-versao: v2
+versao: v4
 atualizado_em: 2026-08-22
 testes_tdd: true
 implementado: false
@@ -9,6 +9,8 @@ changelog:
   - v1: versão inicial
   - v2: a recusa passa pelo contrato de erros de formulário — mensagem em português, controle em
     realce e o lápis do campo recusado já aberto
+  - v3: o valor do Resumo ganha átomo próprio e passa a quebrar dentro da célula
+  - v4: o valor lido do `.campo-onsen` quebra junto, por alteração do átomo
 ---
 
 # SPEC criacao_usuarios/005 — Editar servidor: o cadastro alterado por quem responde pela unidade
@@ -37,7 +39,9 @@ de quem trabalha ali reflita a realidade sem passar pelo admin do Django.
 - [ ] O **lápis do controle recusado chega aberto**: no padrão `.campo-onsen` o input fica escondido
       atrás do toggle, e realçar um campo que ninguém vê não corrige nada.
 - [ ] Gravado, o **modal fecha** e a página do servidor passa a mostrar o cadastro novo **sem
-      recarregar**.
+      recarregar**, com cada valor do Resumo contido na **própria célula**: e-mail longo, que é um
+      token sem espaço, quebra em vez de invadir o rótulo e o valor vizinhos, em uma coluna ou em
+      duas. O **lado lido do modal**, que mostra o mesmo cadastro, cabe do mesmo jeito.
 - [ ] Editar é **ato registrado** (SPEC [autorizacao/004](../autorizacao/004-protecao-de-rota-e-registro-de-execucao.md)),
       com a operação e o RF do servidor como alvo, distinguível de criar.
 - [ ] O sistema **sobe** com a ação declarada, cuja rota recebe o id do servidor no caminho: o
@@ -45,10 +49,12 @@ de quem trabalha ali reflita a realidade sem passar pelo admin do Django.
       argumento.
 - [ ] O design foi aprovado no **mock**, e peça nova foi portada para `static/src/tema-dimap.dev.css` e
       renderizada no styleguide antes de qualquer template da aplicação usá-la.
-- [ ] **Nenhum átomo nasce aqui**: os `.campo-realce-*` já estão no tema (SPEC
-      [formularios/001](../formularios/001-erros-de-formulario.md)), e a única peça nova é a molécula
-      `_tarja_recusa.html`, **extraída** da que já existe em `_formulario_servidor.html` e composta
-      dos átomos `.tarja-vinculo` + `.tarja-vinculo-critica`.
+- [ ] **Duas peças novas e um átomo alterado**: a molécula `_tarja_recusa.html`, **extraída** da que
+      já existe em `_formulario_servidor.html` e composta dos átomos `.tarja-vinculo` +
+      `.tarja-vinculo-critica`; o átomo `.valor-leitura`, o valor de um par rótulo/valor em leitura,
+      par do `.text-overline` que já existe; e o `.campo-onsen-valor`, que passa a quebrar — peça
+      implementada, alterada com aval explícito do usuário (§3.4). Os `.campo-realce-*` do tema (SPEC
+      [formularios/001](../formularios/001-erros-de-formulario.md)) são consumidos como estão.
 
 ## 3 · Domínio
 Nenhum model novo: o cadastro é o da SPEC [004](004-criar-servidor.md), aqui alterado em vez de criado.
@@ -135,7 +141,8 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - `@templates/user_admin/partials/_formulario_servidor.html` → a tarja de recusa, hoje inline, que
   esta SPEC extrai para partial e as duas telas passam a incluir.
 - `@static/src/tema-dimap.dev.css` → `.campo-realce-erro` e irmãos, o átomo do controle em realce, já
-  portado e no styleguide; `.tarja-vinculo` + `.tarja-vinculo-critica`, os da tarja.
+  portado e no styleguide; `.tarja-vinculo` + `.tarja-vinculo-critica`, os da tarja; `.text-overline`
+  e `.text-code`, os do par rótulo/valor do Resumo.
 - Skills: `erros-de-formulario` (o padrão desta tela; `pydantic-validation-errors` cobre o caso
   contrário — rota que não é formulário), `componentes-frontend`, `daisyui`, `htmx`, `mock`,
   `escrever-testes`, `test-django-views`.
@@ -505,6 +512,33 @@ e a página trocada fora de banda.
 </div>
 ```
 
+**`static/src/tema-dimap.dev.css`** — o átomo do valor em leitura, par do `.text-overline`.
+```css
+/* O Resumo repete `text-[15px] ... mt-0.5` em seis células e nenhuma delas quebra: o e-mail é um
+   token sem espaço, estoura a coluna do grid e passa por cima do rótulo vizinho. `wrap-anywhere`
+   quebra DENTRO da palavra — `break-words` só quebra onde já há oportunidade, e aqui não há.
+   Sem cor: o Resumo tem três (valor presente, valor ausente e o RF em monoespaçada), e embuti-las
+   aqui exigiria um modificador por cor ou faria o átomo vencer o `.text-code` que já existe. */
+.valor-leitura { @apply text-[15px] mt-0.5 wrap-anywhere; }
+
+/* ALTERAÇÃO (SPEC criacao_usuarios/005): o mesmo e-mail no lado lido do campo que se abre. Aqui o
+   `min-w-0` já deixava a célula encolher, e era só isso que faltava para o texto acompanhar. */
+.campo-onsen-valor { @apply flex-1 min-w-0 text-[15px] text-base-content/90 py-1.5 wrap-anywhere; }
+```
+
+**`templates/user_admin/partials/_secao_resumo_perfil.html`** — cada célula compõe o átomo e mantém
+a cor que já declara.
+```html
+{# `min-w-0` na célula deixa a coluna do grid encolher; sem o átomo no valor, quem encolhe é a #}
+{# coluna e o texto continua saindo dela.                                                      #}
+<div class="min-w-0">
+  <p class="text-overline">E-mail</p>
+  <p class="valor-leitura {% if perfil.email %}text-base-content/90{% else %}text-base-content/40{% endif %}">
+    {{ perfil.email|default:"— sem e-mail cadastrado —" }}
+  </p>
+</div>
+```
+
 ## 7 · Caveats
 **O alcance passa a nomear uma tupla de alvos, e o subtipo é quem sabe convertê-los em unidade.** Sem
 o segundo alvo, mover alguém para fora do próprio ramo passaria pela barreira — a origem estaria no
@@ -553,6 +587,16 @@ memória antes do `full_clean`.
 que não é controle desta tela — o que precisa mudar é o cargo em comissão ou a unidade de destino, e
 o contrato não adivinha qual dos dois. Custo: a única recusa do model que não realça campo algum é
 justamente a mais difícil de entender, e quem a recebe lê a frase e procura o campo sozinho.
+
+**O átomo do valor em leitura carrega tipo e quebra, não cor.** O Resumo tem três cores de valor — o
+presente, o ausente e o RF em monoespaçada —, e nenhuma delas cabe num átomo só sem um modificador por
+cor ou sem sobrescrever o `.text-code`. Custo: célula nova pode nascer com o átomo e sem cor alguma,
+herdando a do contêiner sem que nada acuse.
+
+**O `.campo-onsen-valor` é alterado, e não composto.** Envolver o valor lido numa peça nova só para
+quebrar duplicaria o átomo que já existe, e a alteração tem aval explícito do usuário (§3.4). Custo: a
+quebra chega junto ao modal da página da unidade, que compõe o mesmo átomo e não foi olhado nesta
+iteração.
 
 **Recusa que só nomeia `servidor_id` sai muda.** O campo não tem input, então o tradutor o manda para
 `gerais` — e ali descarta erro sem mensagem, que é o caso de todo erro do Pydantic. Risco baixo: o id

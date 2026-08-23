@@ -189,7 +189,7 @@
       <div class="card-well p-5 flex flex-col gap-4">
         <p class="text-overline">Foto</p>
         <div class="campo-onsen items-center">
-          <input type="checkbox" id="editar-campo-foto" class="campo-onsen-toggle" />
+          <input type="checkbox" id="editar-campo-foto" class="campo-onsen-toggle"{% if realce.foto %} checked{% endif %} />
           <div class="avatar-editavel">
             {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-28 h-28" %}
             <label for="editar-campo-foto" class="btn btn-circle btn-foto campo-onsen-lapis" title="Trocar a foto">
@@ -205,7 +205,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
               </span>
               <span class="text-sm font-medium">Arraste a nova foto ou clique para escolher</span>
-              <input type="file" name="foto" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs" />
+              <input type="file" name="foto" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs {{ realce.foto }}" />
               <span class="form-field-hint">JPG ou PNG. Sem foto, o sistema desenha o avatar com as iniciais na cor da unidade.</span>
             </label>
           </div>

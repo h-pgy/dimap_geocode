@@ -5,6 +5,7 @@ e deixa o PydanticValidationMiddleware interceptar o ValidationError — nunca t
 (§7.2).
 """
 
+import re
 from collections.abc import Mapping
 from datetime import date
 from typing import Annotated
@@ -29,8 +30,45 @@ DataOpcional = Annotated[date | None, BeforeValidator(_vazio_para_nulo)]
 # O select do cargo em comissão manda "" na opção vazia; para o cadastro, isso é ausência de cargo.
 CargoOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
 
+PADRAO_RF = r"^\d{7}$"
+# Letra unicode dos dois lados de cada separador: sem isso "Ana " e "-Ana" passariam.
+PADRAO_NOME = r"^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$"
+
 PARAMETRO_ORDENAR_POR = "ordenar_por"
 PARAMETRO_DESCENDENTE = "descendente"
+
+
+def _so_digitos(valor: object) -> object:
+    return re.sub(r"\D", "", valor) if isinstance(valor, str) else valor
+
+
+def _espacos_colapsados(valor: object) -> object:
+    return " ".join(valor.split()) if isinstance(valor, str) else valor
+
+
+def _caixa_baixa(valor: object) -> object:
+    return valor.strip().lower() if isinstance(valor, str) else valor
+
+
+# O RF é o USERNAME_FIELD: a forma guardada é a única que o login vai poder pedir.
+RegistroFuncional = Annotated[
+    str,
+    BeforeValidator(_so_digitos),
+    Field(min_length=1, pattern=PADRAO_RF),
+]
+NomeDePessoa = Annotated[
+    str,
+    BeforeValidator(_espacos_colapsados),
+    Field(min_length=1, max_length=100, pattern=PADRAO_NOME),
+]
+SobrenomeDePessoa = Annotated[
+    str,
+    BeforeValidator(_espacos_colapsados),
+    Field(min_length=1, max_length=150, pattern=PADRAO_NOME),
+]
+# Duas grafias do mesmo endereço não podem conviver como dois cadastros: a unicidade é do banco, e
+# ela compara texto.
+EmailDeServidor = Annotated[EmailStr, BeforeValidator(_caixa_baixa)]
 
 
 class SelecaoUnidadePai(BaseModel):
@@ -50,10 +88,10 @@ class NovoServidor(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    rf: str = Field(min_length=1, max_length=20)
-    nome: str = Field(min_length=1, max_length=100)
-    sobrenome: str = Field(min_length=1, max_length=150)
-    email: EmailStr
+    rf: RegistroFuncional
+    nome: NomeDePessoa
+    sobrenome: SobrenomeDePessoa
+    email: EmailDeServidor
     unidade_id: int
     cargo_base_id: int
     cargo_comissao_id: CargoOpcional = None
@@ -71,13 +109,29 @@ class EdicaoServidor(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     servidor_id: int
-    rf: str = Field(min_length=1, max_length=20)
-    nome: str = Field(min_length=1, max_length=100)
-    sobrenome: str = Field(min_length=1, max_length=150)
-    email: EmailStr
+    rf: RegistroFuncional
+    nome: NomeDePessoa
+    sobrenome: SobrenomeDePessoa
+    email: EmailDeServidor
     unidade_id: int
     cargo_base_id: int
     cargo_comissao_id: CargoOpcional = None
+
+
+class NovoSuperusuario(BaseModel):
+    """Nomeia unidade e cargos por sigla, e não por id: quem digita na linha de comando não tem id
+    em mãos (SPEC criacao_usuarios/006)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    rf: RegistroFuncional
+    nome: NomeDePessoa
+    sobrenome: SobrenomeDePessoa
+    email: EmailDeServidor
+    unidade_sigla: str
+    cargo_base_sigla: str
+    cargo_comissao_nome: str
+    e_titular: bool = False
 
 
 class NovaSubstituicao(BaseModel):

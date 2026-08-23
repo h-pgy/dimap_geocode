@@ -178,12 +178,22 @@ def _lapis_aberto(soup: BeautifulSoup, campo: str) -> bool:
     return toggle.has_attr("checked")
 
 
-def _siglas_do_select(soup: BeautifulSoup) -> set[str]:
-    """O select da LOTAÇÃO. O painel de nova unidade tem o seu, chamado `pai`, e o recorte dele é
-    de outra SPEC."""
-    select = soup.find("select", attrs={"name": "unidade"})
-    assert select is not None, "o modal não trouxe o select de unidade"
-    return {opcao.get_text(strip=True).split(" · ")[0] for opcao in select.find_all("option")}
+def _siglas_do_select(soup: BeautifulSoup, nome: str) -> set[str]:
+    """As siglas que o select oferece. Opção sem valor fica de fora: ela é ausência de unidade, não
+    unidade — quem a confere é `_oferece_raiz`."""
+    select = soup.find("select", attrs={"name": nome})
+    assert select is not None, f"a tela não trouxe o select de {nome}"
+    return {
+        opcao.get_text(strip=True).split(" · ")[0]
+        for opcao in select.find_all("option")
+        if opcao.get("value")
+    }
+
+
+def _oferece_raiz(soup: BeautifulSoup) -> bool:
+    select = soup.find("select", attrs={"name": "pai"})
+    assert select is not None, "a tela não trouxe o select de unidade superior"
+    return any(not opcao.get("value") for opcao in select.find_all("option"))
 
 
 # ---------------------------------------------------------------------------
@@ -825,13 +835,13 @@ def test_foto_invalida_e_recusada_sem_gravar_o_cadastro(
 
 
 # ---------------------------------------------------------------------------
-# O select do modal oferece só o alcance de quem edita
+# Os selects de unidade das duas telas oferecem só o alcance de quem preenche
 # ---------------------------------------------------------------------------
 
 
 @banco
 @pytest.mark.django_db
-def test_modal_so_oferece_unidades_do_alcance(client: Client) -> None:
+def test_selects_de_unidade_so_oferecem_o_alcance(client: Client) -> None:
     raiz = _unidade("EDT-ALCANCE-RAIZ")
     meio = _unidade("EDT-ALCANCE-MEIO", pai=raiz)
     _unidade("EDT-ALCANCE-BAIXO", pai=meio)
@@ -839,8 +849,22 @@ def test_modal_so_oferece_unidades_do_alcance(client: Client) -> None:
     _unidade("EDT-ALCANCE-FORA")
     dirigente = _dirigente(meio, "9403300")
     alvo = _perfil(meio, "9403310", "Alvo Alcance")
+    alcance = {"EDT-ALCANCE-MEIO", "EDT-ALCANCE-BAIXO"}
 
     client.force_login(_fresco(dirigente))
-    soup = BeautifulSoup(client.get(_url_abrir(alvo.pk)).content.decode(), "html.parser")
+    modal = BeautifulSoup(client.get(_url_abrir(alvo.pk)).content.decode(), "html.parser")
+    formulario = BeautifulSoup(
+        client.get(reverse("user_admin:criar_perfil")).content.decode(), "html.parser"
+    )
 
-    assert _siglas_do_select(soup) == {"EDT-ALCANCE-MEIO", "EDT-ALCANCE-BAIXO"}
+    for tela in (modal, formulario):
+        assert _siglas_do_select(tela, "unidade") == alcance
+        # O painel de nova unidade: criar fora do alcance produziria unidade que quem criou não
+        # teria de volta na lista de lotação.
+        assert _siglas_do_select(tela, "pai") == alcance
+        assert not _oferece_raiz(tela)
+
+    pagina_de_unidade = BeautifulSoup(
+        client.get(reverse("user_admin:criar_unidade")).content.decode(), "html.parser"
+    )
+    assert _oferece_raiz(pagina_de_unidade)

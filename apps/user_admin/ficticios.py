@@ -32,8 +32,8 @@ from apps.user_admin.models.titularidade import cargo_titulariza
 from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento
 from apps.user_admin.titularidade import definir_titular
 
-# Longe de qualquer RF real: seis dígitos altos que a Prefeitura não emite.
-RF_INICIAL_FICTICIO = 999900
+# Longe de qualquer RF real: sete dígitos altos que a Prefeitura não emite.
+RF_INICIAL_FICTICIO = 9999000
 QUANTIDADE_FICTICIOS = 20
 FAIXA_RF_FICTICIA = [
     str(rf)

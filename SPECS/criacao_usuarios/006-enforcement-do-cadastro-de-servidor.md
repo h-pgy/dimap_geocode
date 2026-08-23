@@ -1,12 +1,13 @@
 ---
 spec: criacao_usuarios/006
-versao: v1
+versao: v2
 atualizado_em: 2026-08-22
 testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: o painel de nova unidade das duas telas passa a oferecer só unidades do alcance
 ---
 
 # SPEC criacao_usuarios/006 — Enforcement do cadastro de servidor: a mesma regra nas duas telas
@@ -31,8 +32,11 @@ duas telas, recusada na própria tela quando não obedecem.
       controle da foto e nenhum outro campo do cadastro gravado.
 - [ ] **Campo em branco continua dizendo "preencha"**: recusa de obrigatoriedade não se confunde com
       recusa de formato em nenhum dos controles.
-- [ ] O **select de unidade do modal de edição só oferece unidades do alcance** de quem edita, como
-      o formulário de criação já faz.
+- [ ] **Todo select de unidade das duas telas só oferece unidades do alcance** de quem preenche: o de
+      lotação e o de unidade superior do painel de nova unidade.
+- [ ] O **painel de nova unidade não oferece criar unidade raiz**: unidade sem pai não cai no alcance
+      de ninguém, e quem a criasse não a teria de volta na lista. A página de cadastro de unidade
+      continua oferecendo.
 - [ ] **Criar superusuário pela linha de comando produz servidor gravável**: com lotação, cargo base,
       cargo em comissão e, quando pedido, titularidade da unidade.
 - [ ] O **banco de desenvolvimento não tem servidor com RF fora do formato**: a faixa fictícia ocupa
@@ -133,7 +137,8 @@ class NovoSuperusuario(BaseModel):
 - Formato de RF exigido no model, no `createsuperuser` e no shell — sem dono; gravar por fora das
   telas segue livre.
 - Lista de domínios institucionais variável por unidade — sem dono ainda.
-- Recorte do que o **painel de nova unidade** do modal oferece — SPEC de criação de unidade.
+- **Recusar no servidor** a unidade cujo pai está fora do alcance de quem a cria: aqui o painel deixa
+  de oferecê-la, e nada confere o que chega — SPEC de criação de unidade.
 
 ## 5 · Peças de referência a compor
 - `@services/utils/erros_formulario` → `LeitorDeFormulario` e `TradutorDeRecusa`: POST cru vira DTO
@@ -302,7 +307,7 @@ def editar_servidor(valores, foto=None) -> DesfechoCadastro:
     ...
 ```
 
-### O recorte do select depende de duas coisas, não de uma
+### Os dois catálogos de unidade são recortados, e não só o do select de lotação
 
 **`apps/user_admin/context.py`**
 ```python
@@ -311,12 +316,11 @@ def contexto_modal_perfil(
     ids_permitidos: Collection[int],
     valores: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    # DUAS mudanças, e a segunda é a que importa: `_contexto_do_modal_de_unidade()` carrega TODAS as
-    # unidades na mesma chave "unidades", então passar os ids sem inverter a ordem do merge não
-    # recortaria nada — o catálogo aberto venceria. O recorte tem que vir POR ÚLTIMO, como já vem
-    # em `contexto_criar_perfil`.
+    # O painel de nova unidade e o select de lotação dividem a chave "unidades": recortar um só não
+    # recorta nada — quem vencesse o merge decidiria o que a tela oferece. Recortados os dois na
+    # fonte, a ordem do merge deixa de ser regra escondida.
     return (
-        _contexto_do_modal_de_unidade()
+        _contexto_do_modal_de_unidade(ids_permitidos)
         | _catalogos_de_lotacao(ids_permitidos)
         | {
             "perfil": perfil,
@@ -325,6 +329,30 @@ def contexto_modal_perfil(
             "cor_unidade_hex": hex_da_cor(perfil.cor_unidade),
         }
     )
+
+
+def contexto_criar_perfil(ids_permitidos: Collection[int]) -> dict[str, Any]:
+    # O mesmo painel, na tela de criação: o recorte desce pelos dois caminhos aqui também.
+    return (
+        contexto_fundo_admin()
+        | _contexto_do_modal_de_unidade(ids_permitidos)
+        | _catalogos_de_lotacao(ids_permitidos)
+    )
+
+
+def _contexto_do_modal_de_unidade(
+    ids_permitidos: Collection[int] | None = None,
+) -> dict[str, Any]:
+    return _catalogos_de_unidade(ids_permitidos) | contexto_cor_sugerida(None)
+
+
+def _catalogos_de_unidade(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
+    return _catalogo_de_unidades(ids_permitidos) | {
+        "tipos_unidade": TipoUnidade.objects.order_by("-nivel", "nome"),
+        # Raiz não tem pai e por isso não está no alcance de ninguém. Quem chama sem recorte — a
+        # página de cadastro de unidade (SPEC user_admin/012) — continua oferecendo.
+        "permite_raiz": ids_permitidos is None,
+    }
 
 
 def contexto_edicao_recusada(
@@ -337,6 +365,12 @@ def contexto_edicao_recusada(
         "erros": recusa.mensagens,
         "realce": recusa.realce,
     }
+```
+
+**`templates/user_admin/partials/_campos_unidade.html`**
+```html
+{# Chave ausente é falso: painel incluído sem recorte declarado não oferece raiz. #}
+{% if permite_raiz %}<option value="">— sem unidade superior (raiz) —</option>{% endif %}
 ```
 
 **`apps/user_admin/views.py`**
@@ -478,6 +512,11 @@ de existir na interface, e um POST que ainda o alcance é forjado ou disputa uma
 alcance mudou com o modal aberto. O custo é que nesses dois casos a tela congela sem dizer nada — a
 negativa fica só no registro de execução.
 
+`_campos_unidade.html` passa a decidir pelo contexto se oferece a opção de raiz, e o mesmo partial
+serve o painel dos dois formulários de servidor e a página de cadastro de unidade. Um partial irmão
+só para o painel duplicaria os cinco campos e a coreografia da cor sugerida. O custo é que uma tela
+nova que o inclua sem declarar `permite_raiz` esconde a opção em silêncio, sem nada acusar.
+
 A foto é lida duas vezes: uma pelo `verify()`, outra pela gravação. Ler uma vez exigiria segurar o
 arquivo inteiro em memória para reaproveitá-lo. O custo é um seek e uma releitura por upload, em
 arquivo que já está limitado a 2 MB.
@@ -504,8 +543,10 @@ arquivo que já está limitado a 2 MB.
   criação, e o cadastro segue como estava.
 - `test_foto_invalida_e_recusada_sem_gravar_o_cadastro` — arquivo que não é imagem e arquivo acima
   de 2 MB voltam 422, e nem a foto nem os demais campos mudam.
-- `test_modal_so_oferece_unidades_do_alcance` — o select de unidade do modal não traz unidade fora
-  do alcance de quem edita.
+- `test_selects_de_unidade_so_oferecem_o_alcance` — no modal de edição e no formulário de criação,
+  nem o select de lotação nem o de unidade superior do painel trazem unidade fora do alcance de quem
+  preenche, e o painel não traz a opção de raiz — que a página de cadastro de unidade continua
+  trazendo.
 
 **Comando** — `tests/apps/user_admin/test_superusuario.py`, marker `banco`:
 
