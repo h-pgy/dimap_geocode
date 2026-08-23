@@ -1,5 +1,5 @@
 """
-DTOs das páginas administrativas (SPEC user_admin/012 e 013), dos atos de exercício
+DTOs das páginas administrativas de servidor (SPEC user_admin/013), dos atos de exercício
 (SPEC user_admin/015) e do cadastro de servidor (SPEC criacao_usuarios/004). A view constrói o DTO
 e deixa o PydanticValidationMiddleware interceptar o ValidationError — nunca try/except na view
 (§7.2).
@@ -20,11 +20,10 @@ from services.domain.servidores_listagem import (
 
 
 def _vazio_para_nulo(valor: object) -> object:
-    # O select da unidade superior manda "" na opção raiz; para o domínio, raiz é ausência de pai.
+    # Controle em branco é ausência, e não o texto vazio: é o que os campos opcionais abaixo leem.
     return None if valor == "" else valor
 
 
-PaiOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
 # Campo de data em branco tem o mesmo significado dos models: prazo indeterminado.
 DataOpcional = Annotated[date | None, BeforeValidator(_vazio_para_nulo)]
 # O select do cargo em comissão manda "" na opção vazia; para o cadastro, isso é ausência de cargo.
@@ -69,10 +68,6 @@ SobrenomeDePessoa = Annotated[
 # Duas grafias do mesmo endereço não podem conviver como dois cadastros: a unicidade é do banco, e
 # ela compara texto.
 EmailDeServidor = Annotated[EmailStr, BeforeValidator(_caixa_baixa)]
-
-
-class SelecaoUnidadePai(BaseModel):
-    pai: PaiOpcional = None
 
 
 class NovoImpedimento(BaseModel):

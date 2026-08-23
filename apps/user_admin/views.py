@@ -1,14 +1,13 @@
 """
-Páginas administrativas de servidor (SPEC user_admin/007), de unidade (SPEC user_admin/012), a
-listagem de servidores (SPEC user_admin/013), a página própria da unidade (SPEC user_admin/016), a
-página própria do servidor (SPEC user_admin/017), o cadastro de servidor (SPEC criacao_usuarios/004)
-e a edição dele (SPEC criacao_usuarios/005): ver um servidor ou uma unidade é página, e editar os
-dois é modal, buscado por rota própria. Criar unidade segue em formulário aberto; criar e editar
-servidor são atos administrativos — `criar_perfil`/`editar_perfil` só abrem a tela, e são
-`gravar_servidor`/`gravar_edicao` quem gravam (§3.5).
+Páginas administrativas de servidor (SPEC user_admin/007), a listagem de servidores
+(SPEC user_admin/013), a página própria do servidor (SPEC user_admin/017), o cadastro de servidor
+(SPEC criacao_usuarios/004) e a edição dele (SPEC criacao_usuarios/005): ver um servidor é página
+e editar é modal, buscado por rota própria. Criar e editar servidor são atos administrativos —
+`criar_perfil`/`editar_perfil` só abrem a tela, e são `gravar_servidor`/`gravar_edicao` quem
+gravam (§3.5).
 
-As rotas de LEITURA de servidor e unidade nascem ABERTAS, exceção declarada nas SPECs 013, 016 e 017
-nos termos do §3.5: a proteção por perfil de administrador entra com a SPEC de autenticação.
+As rotas de LEITURA de servidor nascem ABERTAS, exceção declarada nas SPECs 013 e 017 nos termos
+do §3.5: a proteção por perfil de administrador entra com a SPEC de autenticação.
 """
 
 from typing import cast
@@ -25,18 +24,14 @@ from apps.user_admin.context import (
     contexto_cadastro_concluido,
     contexto_cadastro_recusado,
     contexto_corpo_servidores,
-    contexto_cor_sugerida,
     contexto_criar_perfil,
-    contexto_criar_unidade,
     contexto_edicao_recusada,
     contexto_listagem_servidores,
     contexto_modal_perfil,
-    contexto_organograma,
     contexto_pagina_perfil,
-    contexto_unidade,
 )
-from apps.user_admin.models import Perfil, Unidade
-from apps.user_admin.schemas import SelecaoUnidadePai, consulta_de_servidores
+from apps.user_admin.models import Perfil
+from apps.user_admin.schemas import consulta_de_servidores
 
 TEMPLATE_FORMULARIO = "user_admin/perfil_form.html"
 TEMPLATE_FORMULARIO_RECUSADO = "user_admin/partials/_formulario_servidor.html"
@@ -44,12 +39,8 @@ TEMPLATE_CADASTRO_CONCLUIDO = "user_admin/partials/_cadastro_concluido.html"
 TEMPLATE_PAGINA_PERFIL = "user_admin/perfil.html"
 TEMPLATE_MODAL_PERFIL = "user_admin/partials/_modal_editar_perfil.html"
 TEMPLATE_EDICAO_CONCLUIDA = "user_admin/partials/_edicao_concluida.html"
-TEMPLATE_UNIDADE = "user_admin/unidade_form.html"
-TEMPLATE_PAGINA_UNIDADE = "user_admin/unidade.html"
-TEMPLATE_CAMPO_COR = "user_admin/partials/_campo_cor_unidade.html"
 TEMPLATE_LISTAGEM = "user_admin/servidores_list.html"
 TEMPLATE_CORPO_SERVIDORES = "user_admin/partials/_corpo_servidores.html"
-TEMPLATE_ARVORE = "user_admin/arvore_unidades.html"
 
 
 def listar_servidores(request: HttpRequest) -> HttpResponse:
@@ -189,23 +180,3 @@ def _perfil(pk: int) -> Perfil:
 def _autor(request: HttpRequest) -> Perfil:
     # AUTH_USER_MODEL é Perfil: autenticado aqui É um Perfil — o decorator já barrou o anônimo.
     return cast(Perfil, request.user)
-
-
-def criar_unidade(request: HttpRequest) -> HttpResponse:
-    return render(request, TEMPLATE_UNIDADE, contexto_criar_unidade())
-
-
-def cor_sugerida_unidade(request: HttpRequest) -> HttpResponse:
-    selecao = SelecaoUnidadePai.model_validate(request.GET.dict())
-    return render(request, TEMPLATE_CAMPO_COR, contexto_cor_sugerida(selecao.pai))
-
-
-def pagina_unidade(request: HttpRequest, pk: int) -> HttpResponse:
-    unidade = get_object_or_404(Unidade.objects.select_related("tipo", "pai"), pk=pk)
-    return render(request, TEMPLATE_PAGINA_UNIDADE, contexto_unidade(unidade))
-
-
-def arvore_de_unidades(request: HttpRequest) -> HttpResponse:
-    """Rota de leitura, como a página da unidade. Sem unidade em foco: a página do organograma
-    abre no topo."""
-    return render(request, TEMPLATE_ARVORE, contexto_organograma(None))

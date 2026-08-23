@@ -10,7 +10,8 @@ import pytest
 from apps.competencias.resolucao import slugs_liberados
 from apps.competencias.schemas import RegistroAcoes
 from apps.competencias.utils import instanciar_acao
-from apps.user_admin.models import CargoBase, Perfil, TipoUnidade, Unidade
+from apps.unidades.models import TipoUnidade, Unidade
+from apps.user_admin.models import CargoBase, Perfil
 
 banco = pytest.mark.banco
 

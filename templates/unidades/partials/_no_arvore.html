@@ -1,0 +1,48 @@
+{# Um nível do organograma (SPEC user_admin/018): inclui a si mesmo por nível, sem passar         #}
+{# profundidade — quem decide o que revelar é o CSS a partir das classes que o servidor grava      #}
+{# aqui. `raiz`: sem a barra e o fio que ligam o card à linha do nível do pai — o topo da árvore    #}
+{# não tem parente com quem casar. `raiz=False` explícito no `with` da recursão, porque `include`  #}
+{# sem `only` herda o contexto do nível de cima e faria a marca vazar para os filhos.               #}
+{# `com_link`/`com_irmas`/`abrir_o_ego` (SPEC autorizacao/007): a tela de atribuições reusa este    #}
+{# organograma como seletor de alvo — sem elo para a página, sem chamado das irmãs, e já aberto no  #}
+{# ego. Os defaults (True/True/False) mantêm as duas telas da SPEC 018 como estão hoje.             #}
+{# `data-unidade-id`: inerte para as duas telas da 018 — só o seletor de alvo o lê, para resolver   #}
+{# o card clicado num id sem tocar em `arvore_hierarquica.js`.                                      #}
+<div class="no-arvore
+            {% if forloop.first %}no-arvore-primeiro{% endif %}
+            {% if forloop.last %}no-arvore-ultimo{% endif %}
+            {% if no.no_caminho %}no-arvore-caminho{% endif %}
+            {% if no.em_foco %}no-arvore-ego{% endif %}
+            {% if no.em_foco and abrir_o_ego %}no-arvore-aberto{% endif %}"
+     data-unidade-id="{{ no.unidade.pk }}"
+     {% if no.em_foco %}data-ego-inicial{% endif %}>
+  {% if not raiz %}
+    <span class="etched-line no-arvore-barra"></span>
+    <span class="etched-line no-arvore-fio"></span>
+  {% endif %}
+  <div class="card-unidade {% if no.no_caminho or no.em_foco %}card-unidade-poco{% else %}card-unidade-repouso glass-panel{% endif %}{% if no.em_foco %} card-unidade-ego{% endif %}">
+    <button class="card-unidade-gatilho" type="button" title="{{ no.unidade.sigla }} · {{ no.unidade.nome }}">
+      <span class="dot-unidade w-9 h-9" style="--cor-unidade:{{ no.cor_hex }}"></span>
+      <span class="card-unidade-sigla">{{ no.unidade.sigla }}</span>
+      <span class="card-unidade-nome">{{ no.unidade.nome }}</span>
+    </button>
+    {% if com_link %}
+    <a class="card-unidade-pagina" href="{% url 'unidades:pagina_unidade' no.unidade.pk %}" title="Abrir a página de {{ no.unidade.sigla }}">
+      <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-link"/></svg>
+    </a>
+    {% endif %}
+  </div>
+  {% if com_irmas %}
+  <button class="no-arvore-irmas etched-deeper" type="button" title="Mostrar as unidades irmãs">&rsaquo;</button>
+  {% endif %}
+  <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+  {% if no.filhas %}
+    <div class="no-arvore-filhas">
+      {% for filha in no.filhas %}
+        {% include "unidades/partials/_no_arvore.html" with no=filha raiz=False %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+  {% endif %}
+</div>

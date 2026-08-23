@@ -31,7 +31,8 @@ from apps.competencias.context import (
 )
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao
 from apps.competencias.protecao import acao_protegida, registrar_ato
-from apps.user_admin.models import Perfil, Unidade
+from apps.unidades.models import Unidade
+from apps.user_admin.models import Perfil
 
 TEMPLATE_TELA = "competencias/definir_atribuicao.html"
 TEMPLATE_PAINEL = "competencias/partials/_painel_atribuicoes.html"

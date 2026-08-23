@@ -8,7 +8,7 @@ import pytest
 
 from apps.competencias.catalogo import acoes_oferecidas
 from apps.competencias.models import Acao, AtribuicaoUnidade
-from apps.user_admin.models import TipoUnidade, Unidade
+from apps.unidades.models import TipoUnidade, Unidade
 
 banco = pytest.mark.banco
 

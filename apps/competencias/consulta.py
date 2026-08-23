@@ -6,10 +6,11 @@ custo fixo, independente de quantas ações serão perguntadas depois (SPEC auto
 
 from apps.competencias.models import Concessao
 from apps.competencias.registro import REGISTRO
-from apps.user_admin.consulta import posicao_de
-from apps.user_admin.context import _estado_da_direcao
+from apps.unidades.consulta import posicao_de
+from apps.unidades.direcao import estado_da_direcao
+from apps.unidades.models import Unidade
 from apps.user_admin.exercicio import substituicao_que_exerce, substituicao_vigente
-from apps.user_admin.models import Perfil, Unidade
+from apps.user_admin.models import Perfil
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.autorizacao import (
     AvaliacaoCompetenciaInput,
@@ -62,7 +63,7 @@ def dirige(perfil: Perfil, unidade: Unidade) -> bool:
     titular = unidade.titular
     substituicao = substituicao_vigente(titular) if titular else None
     substituto = substituicao.substituto if substituicao else None
-    direcao = avaliar_direcao(_estado_da_direcao(titular, substituto))
+    direcao = avaliar_direcao(estado_da_direcao(titular, substituto))
     if direcao == Direcao.TITULAR:
         return titular is not None and titular.pk == perfil.pk
     if direcao == Direcao.SUBSTITUTO:

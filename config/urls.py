@@ -9,6 +9,7 @@ urlpatterns: list[URLResolver | URLPattern] = [
     path("admin/", admin.site.urls),
     path("", include("apps.core.urls")),
     path("gestao/", include("apps.user_admin.urls")),
+    path("gestao/unidades/", include("apps.unidades.urls")),
     path("competencias/", include("apps.competencias.urls")),
     path("", include("apps.search.urls")),
     path("logradouro/", include("apps.logradouro_matcher.urls")),

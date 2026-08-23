@@ -2,7 +2,7 @@
 
 from django.db.models import QuerySet
 
-from apps.user_admin.models import Unidade
+from apps.unidades.models import Unidade
 
 from .models import Acao
 

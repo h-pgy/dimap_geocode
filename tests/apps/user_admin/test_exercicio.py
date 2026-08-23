@@ -23,6 +23,7 @@ from apps.user_admin.exercicio import (
     substituicoes_do_impedimento,
     trocar_substituto,
 )
+from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.models import (
     CargoBase,
     CargoComissao,
@@ -30,11 +31,9 @@ from apps.user_admin.models import (
     Perfil,
     Substituicao,
     TipoImpedimento,
-    TipoUnidade,
-    Unidade,
 )
 from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento, TrocaDeSubstituto
-from apps.user_admin.titularidade import definir_titular
+from apps.unidades.titularidade import definir_titular
 from services.domain.titularidade import Direcao, EstadoDaDirecao, avaliar_direcao
 
 banco = pytest.mark.banco

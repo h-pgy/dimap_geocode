@@ -19,6 +19,8 @@ from django.utils import timezone
 
 from pydantic import BaseModel
 
+from apps.unidades.models import Unidade, cargo_titulariza
+from apps.unidades.titularidade import definir_titular
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
 from apps.user_admin.models import (
     CargoBase,
@@ -26,11 +28,8 @@ from apps.user_admin.models import (
     Impedimento,
     Perfil,
     TipoImpedimento,
-    Unidade,
 )
-from apps.user_admin.models.titularidade import cargo_titulariza
 from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento
-from apps.user_admin.titularidade import definir_titular
 
 # Longe de qualquer RF real: sete dígitos altos que a Prefeitura não emite.
 RF_INICIAL_FICTICIO = 9999000

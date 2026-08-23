@@ -8,9 +8,10 @@ gravável.
 from django.db import transaction
 from pydantic import SecretStr
 
-from apps.user_admin.models import CargoBase, CargoComissao, Perfil, Unidade
+from apps.unidades.models import Unidade
+from apps.unidades.titularidade import definir_titular
+from apps.user_admin.models import CargoBase, CargoComissao, Perfil
 from apps.user_admin.schemas import NovoSuperusuario
-from apps.user_admin.titularidade import definir_titular
 
 
 def criar_superusuario(novo: NovoSuperusuario, senha: SecretStr) -> Perfil:

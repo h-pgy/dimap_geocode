@@ -9,7 +9,8 @@ from django.db import IntegrityError, transaction
 import pytest
 
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao
-from apps.user_admin.models import CargoBase, CargoComissao, TipoUnidade, Unidade
+from apps.unidades.models import TipoUnidade, Unidade
+from apps.user_admin.models import CargoBase, CargoComissao
 
 banco = pytest.mark.banco
 

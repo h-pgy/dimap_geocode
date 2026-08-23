@@ -18,7 +18,7 @@
          hx-swap="outerHTML"
          hx-vals="js:{unidade: event.target.closest('.no-arvore').dataset.unidadeId}">
       {% for ramo in ramos %}
-        {% include "user_admin/partials/_no_arvore.html" with no=ramo raiz=True %}
+        {% include "unidades/partials/_no_arvore.html" with no=ramo raiz=True %}
       {% endfor %}
     </div>
   </div>

@@ -12,10 +12,10 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from apps.unidades.models import Unidade, cargo_titulariza
+
 from .cargos import CargoBase, CargoComissao
 from .periodo import q_vigente_em
-from .titularidade import cargo_titulariza
-from .unidade import Unidade
 
 ERRO_TITULAR_SEM_CARGO_COMPATIVEL = "O titular precisa de cargo em comissão de chefia compatível com o porte da unidade."
 

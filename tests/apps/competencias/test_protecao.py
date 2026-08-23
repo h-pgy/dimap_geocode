@@ -27,16 +27,10 @@ from apps.competencias.protecao import acao_protegida, registrar_ato
 from apps.competencias.registro import REGISTRO
 from apps.competencias.schemas import AcaoImplementada, RegistroAcoes
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
-from apps.user_admin.models import (
-    CargoBase,
-    CargoComissao,
-    Perfil,
-    TipoImpedimento,
-    TipoUnidade,
-    Unidade,
-)
+from apps.unidades.models import TipoUnidade, Unidade
+from apps.user_admin.models import CargoBase, CargoComissao, Perfil, TipoImpedimento
 from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento
-from apps.user_admin.titularidade import definir_titular
+from apps.unidades.titularidade import definir_titular
 from services.domain.autorizacao import Acao as AcaoDominio
 from services.domain.autorizacao import TipoAlcance, UnidadesSubordinadas
 

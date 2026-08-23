@@ -201,13 +201,13 @@ A tela montada diz **o que vira partial e o que fica na página**, com o caminho
 permite implementar lendo o mock, em vez de redecidir o recorte na hora:
 
 ```html
-<!-- página: user_admin/unidade_detail.html -->
+<!-- página: unidades/unidade.html -->
 <main>
-  <!-- partial: user_admin/partials/_identidade_unidade.html -->
+  <!-- partial: unidades/partials/_identidade_unidade.html -->
   <header>…</header>
   <!-- /partial -->
 
-  <!-- partial: user_admin/partials/_secao_direcao.html — alvo de hx-swap ao designar substituto -->
+  <!-- partial: unidades/partials/_secao_direcao.html — alvo de hx-swap ao designar substituto -->
   <section>…</section>
   <!-- /partial -->
 

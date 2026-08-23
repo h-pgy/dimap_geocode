@@ -9,10 +9,10 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 
+from services.domain.titularidade import NIVEL_MAXIMO, NIVEL_MINIMO
+
 ROTULO_CHEFIA = "Chefia"
 ROTULO_ASSESSORAMENTO = "Assessoramento"
-NIVEL_MINIMO = 1
-NIVEL_MAXIMO = 6
 ERRO_ALTA_ADM_SEM_CHEFIA = "Alta administração só se aplica a cargo de chefia."
 ERRO_ALTA_ADM_COM_NIVEL = "Cargo da alta administração não tem nível."
 ERRO_NIVEL_OBRIGATORIO = "Cargo em comissão fora da alta administração exige nível."

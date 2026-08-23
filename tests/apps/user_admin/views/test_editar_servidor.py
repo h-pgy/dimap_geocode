@@ -24,16 +24,10 @@ from pytest_django.fixtures import SettingsWrapper
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, ExecucaoAcao
 from apps.user_admin.cadastro import ERRO_DOMINIO
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
-from apps.user_admin.models import (
-    CargoBase,
-    CargoComissao,
-    Perfil,
-    TipoImpedimento,
-    TipoUnidade,
-    Unidade,
-)
+from apps.unidades.models import TipoUnidade, Unidade
+from apps.user_admin.models import CargoBase, CargoComissao, Perfil, TipoImpedimento
 from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento
-from apps.user_admin.titularidade import definir_titular
+from apps.unidades.titularidade import definir_titular
 
 banco = pytest.mark.banco
 
@@ -865,6 +859,6 @@ def test_selects_de_unidade_so_oferecem_o_alcance(client: Client) -> None:
         assert not _oferece_raiz(tela)
 
     pagina_de_unidade = BeautifulSoup(
-        client.get(reverse("user_admin:criar_unidade")).content.decode(), "html.parser"
+        client.get(reverse("unidades:criar_unidade")).content.decode(), "html.parser"
     )
     assert _oferece_raiz(pagina_de_unidade)

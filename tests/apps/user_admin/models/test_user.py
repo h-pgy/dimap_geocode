@@ -18,15 +18,13 @@ from django.utils import timezone
 
 import pytest
 
+from apps.unidades.models import CorUnidade, TipoUnidade, Unidade
 from apps.user_admin.models import (
     CargoBase,
     CargoComissao,
-    CorUnidade,
     Impedimento,
     Perfil,
     TipoImpedimento,
-    TipoUnidade,
-    Unidade,
 )
 
 AUTH_USER_MODEL_ESPERADO = "user_admin.Perfil"

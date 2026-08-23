@@ -6,7 +6,8 @@ cargo, unidade e a cobertura, se houve —, não o que o cadastro do autor diz h
 from django.conf import settings
 from django.db import models
 
-from apps.user_admin.models import CargoBase, CargoComissao, Unidade
+from apps.unidades.models import Unidade
+from apps.user_admin.models import CargoBase, CargoComissao
 
 from .acao import Acao
 

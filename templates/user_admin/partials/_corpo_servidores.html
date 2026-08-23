@@ -9,7 +9,7 @@
       <td><span class="text-code">{{ linha.rf }}</span></td>
       <td>
         {# O hex chega resolvido da borda do app: classe montada no template o Tailwind não vê. #}
-        <a href="{% url 'user_admin:pagina_unidade' linha.unidade_pk %}" class="inline-flex items-center gap-2 hover:text-agua-700 transition-colors">
+        <a href="{% url 'unidades:pagina_unidade' linha.unidade_pk %}" class="inline-flex items-center gap-2 hover:text-agua-700 transition-colors">
           <span class="dot-unidade" style="--cor-unidade: {{ linha.cor_unidade }}"></span>
           <span class="text-code">{{ linha.unidade }}</span>
         </a>

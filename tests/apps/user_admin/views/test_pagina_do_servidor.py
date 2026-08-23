@@ -15,16 +15,10 @@ from django.utils import timezone
 import pytest
 
 from apps.user_admin.exercicio import registrar_impedimento
-from apps.user_admin.models import (
-    CargoBase,
-    CargoComissao,
-    Perfil,
-    TipoImpedimento,
-    TipoUnidade,
-    Unidade,
-)
+from apps.unidades.models import TipoUnidade, Unidade
+from apps.user_admin.models import CargoBase, CargoComissao, Perfil, TipoImpedimento
 from apps.user_admin.schemas import NovoImpedimento
-from apps.user_admin.titularidade import definir_titular
+from apps.unidades.titularidade import definir_titular
 
 banco = pytest.mark.banco
 
@@ -88,7 +82,7 @@ def test_pagina_do_servidor_traz_o_resumo_em_leitura(client: Client) -> None:
     assert unidade.sigla in html
     assert perfil.cargo_base.nome in html
     assert "CDA-II · Diretora de Divisão SRV1" in html
-    assert reverse("user_admin:pagina_unidade", kwargs={"pk": unidade.pk}) in html
+    assert reverse("unidades:pagina_unidade", kwargs={"pk": unidade.pk}) in html
     # Resumo é leitura: nenhum campo de formulário do cadastro fora do modal.
     assert 'name="rf"' not in html
 
@@ -270,7 +264,7 @@ def test_caminhos_levam_a_pagina_do_servidor(client: Client) -> None:
     assert reverse("user_admin:editar_perfil", kwargs={"servidor": titular.pk}) not in html_listagem
 
     html_unidade = client.get(
-        reverse("user_admin:pagina_unidade", kwargs={"pk": unidade.pk})
+        reverse("unidades:pagina_unidade", kwargs={"pk": unidade.pk})
     ).content.decode()
     assert reverse("user_admin:pagina_perfil", kwargs={"pk": titular.pk}) in html_unidade
     assert reverse("user_admin:editar_perfil", kwargs={"servidor": titular.pk}) not in html_unidade

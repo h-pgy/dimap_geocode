@@ -17,7 +17,8 @@ from pytest_django.fixtures import SettingsWrapper
 
 from apps.user_admin import cadastro
 from apps.user_admin.cadastro import ERRO_DOMINIO, ERRO_ENVIO, criar_servidor
-from apps.user_admin.models import CargoBase, Perfil, TipoUnidade, Unidade
+from apps.unidades.models import TipoUnidade, Unidade
+from apps.user_admin.models import CargoBase, Perfil
 from services.utils.smtp import MensagemEmail, ResultadoEnvio, SmtpEnvioError
 
 banco = pytest.mark.banco

@@ -7,6 +7,12 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
+# A escala do cargo em comissão, fechada em 1..6. Mora aqui porque é sobre ela que a adequação
+# compara o nível do cargo com o mínimo do tipo da unidade, e os dois lados — o cargo, em
+# `user_admin`, e o tipo de unidade, em `unidades` — a declaram como validador de campo.
+NIVEL_MINIMO = 1
+NIVEL_MAXIMO = 6
+
 
 class Direcao(StrEnum):
     TITULAR = "titular"

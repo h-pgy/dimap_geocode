@@ -1,21 +1,23 @@
 """
-Contexto das páginas administrativas de servidor (SPEC user_admin/007), de unidade
-(SPEC user_admin/012), da listagem de servidores (SPEC user_admin/013), da seção de exercício
-(SPEC user_admin/015) e do cadastro de servidor (SPEC criacao_usuarios/004). Orquestração: traduz o
-model para o que o template consome — o hex da cor, a imagem já resolvida pelo domínio, os
+Contexto das páginas administrativas de servidor (SPEC user_admin/007), da listagem de servidores
+(SPEC user_admin/013), da seção de exercício (SPEC user_admin/015) e do cadastro de servidor
+(SPEC criacao_usuarios/004). Orquestração: traduz o model para o que o template consome — os
 catálogos dos selects, as linhas que o domínio filtra e ordena e a régua da calha. Nenhuma regra de
 negócio.
 """
 
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Collection, Mapping
 from datetime import date
 from typing import Any
 
 from django.utils import timezone
 
 from apps.mapping.context import contexto_fundo_admin
+from apps.unidades.context import catalogo_de_unidades, contexto_do_modal_de_unidade
+from apps.unidades.direcao import alarme_sem_direcao, estado_da_direcao
+from apps.unidades.paleta import hex_da_cor
 from apps.user_admin.acoes_declaradas import ACAO_CRIAR_SERVIDOR
-from apps.user_admin.consulta import posicao_de
+from apps.user_admin.apresentacao import imagem_do_perfil, selo_do_exercicio
 from apps.user_admin.exercicio import (
     candidatos_a_substituto,
     impedimentos_em_aberto,
@@ -33,14 +35,8 @@ from apps.user_admin.models import (
     Perfil,
     Substituicao,
     TipoImpedimento,
-    TipoUnidade,
-    Unidade,
 )
-from apps.user_admin.models.titularidade import cargo_titulariza
-from apps.user_admin.paleta import TINTA_AVATAR, hex_da_cor, tons_da_paleta
-from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.autorizacao import VarianteIcone
-from services.domain.avatar import ImagemPerfilOutput, resolver_imagem_perfil
 from services.domain.exercicio import Periodo, Trecho, vigente_em
 from services.domain.servidores_listagem import (
     ColunaServidor,
@@ -48,18 +44,12 @@ from services.domain.servidores_listagem import (
     LinhaServidor,
     listar_servidores,
 )
-from services.domain.titularidade import Direcao, EstadoDaDirecao, avaliar_direcao
+from services.domain.titularidade import Direcao, avaliar_direcao
 from services.utils.erros_formulario import RecusaDeFormulario
 
 SEM_CARGO_COMISSAO = "—"
 # Os campos do formulário de servidor que o `selected` do select compara com um `pk`.
 CAMPOS_DE_ID = ("unidade_id", "cargo_base_id", "cargo_comissao_id")
-# O organograma fala em padrão de cargo, não em número de nível (SPEC user_admin/016).
-ROTULO_ALTA_ADMINISTRACAO = "Alta administração"
-# Selo do exercício: o vermelho é da unidade sem direção (SPEC 016), nunca da pessoa.
-SELO_EM_EXERCICIO = ("Em exercício", "badge-success")
-SELO_AFASTADO = ("Afastado", "badge-warning")
-SELO_EXONERADO = ("Exonerado", "badge-warning")
 ROTULO_UM_SUBSTITUTO = "Substituído por"
 ROTULO_VARIOS_SUBSTITUTOS = "Substituições"
 ROTULO_SEM_SUBSTITUTO = "Sem substituto"
@@ -95,7 +85,7 @@ def contexto_criar_perfil(ids_permitidos: Collection[int]) -> dict[str, Any]:
     # criacao_usuarios/006).
     return (
         contexto_fundo_admin()
-        | _contexto_do_modal_de_unidade(ids_permitidos)
+        | contexto_do_modal_de_unidade(ids_permitidos)
         | _catalogos_de_lotacao(ids_permitidos)
     )
 
@@ -145,7 +135,7 @@ def contexto_pagina_perfil(perfil: Perfil) -> dict[str, Any]:
         | contexto_exercicio(perfil)
         | {
             "perfil": perfil,
-            "imagem": _imagem_do_perfil(perfil),
+            "imagem": imagem_do_perfil(perfil),
             "cor_unidade_hex": hex_da_cor(perfil.cor_unidade),
             # Titularidade é atributo do perfil, e a unidade dirigida é sempre a de lotação:
             # perguntar de novo ao banco por Unidade.titular seria refazer o que já está em mãos.
@@ -170,12 +160,12 @@ def contexto_modal_perfil(
     `perfil` continua sendo o model, e não um dicionário como no formulário de criação: o lado lido
     pede `unidade.sigla`, `cargo_base.nome`, o avatar e a tarja de titular."""
     return (
-        _contexto_do_modal_de_unidade(ids_permitidos)
+        contexto_do_modal_de_unidade(ids_permitidos)
         | _catalogos_de_lotacao(ids_permitidos)
         | {
             "perfil": perfil,
             "valores": valores if valores is not None else _valores_do_perfil(perfil),
-            "imagem": _imagem_do_perfil(perfil),
+            "imagem": imagem_do_perfil(perfil),
             "cor_unidade_hex": hex_da_cor(perfil.cor_unidade),
         }
     )
@@ -217,7 +207,7 @@ def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
     universos = _universos_de_candidatos(perfil) if tem_cargo_comissao else {}
     return {
         "exercicio": {
-            "selo": _selo_do_exercicio(perfil),
+            "selo": selo_do_exercicio(perfil),
             "exonerado": perfil.exonerado,
             "afastado": perfil.esta_impedido,
             "tem_cargo_comissao": tem_cargo_comissao,
@@ -262,171 +252,6 @@ def contexto_corpo_servidores(consulta: ConsultaServidores) -> dict[str, Any]:
     }
 
 
-def contexto_criar_unidade() -> dict[str, Any]:
-    return (
-        contexto_fundo_admin() | _catalogos_de_unidade() | contexto_cor_sugerida(None)
-    )
-
-
-def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
-    """Uma passagem só: quem a tela carrega para desenhar é quem ela usa para decidir."""
-    titular = unidade.titular
-    # A vigente vem da SPEC 015: o predicado de data não se copia por tela.
-    substituicao = substituicao_vigente(titular) if titular else None
-    substituto = substituicao.substituto if substituicao else None
-    direcao = avaliar_direcao(_estado_da_direcao(titular, substituto))
-    return (
-        contexto_fundo_admin()
-        | _catalogos_de_unidade()
-        | contexto_organograma(unidade)
-        | {
-            "unidade": unidade,
-            "unidade_cor_hex": hex_da_cor(unidade.cor),
-            "pai_cor_hex": hex_da_cor(unidade.pai.cor) if unidade.pai else None,
-            "titular": titular,
-            "titular_selo": _selo_do_exercicio(titular) if titular else None,
-            "titular_imagem": _imagem_do_perfil(titular) if titular else None,
-            "titular_cor_unidade_hex": hex_da_cor(titular.cor_unidade) if titular else None,
-            "substituto": substituto,
-            "substituto_imagem": _imagem_do_perfil(substituto) if substituto else None,
-            "substituto_cor_unidade_hex": (
-                hex_da_cor(substituto.cor_unidade) if substituto else None
-            ),
-            # O template acende selo e alarme pelo enum; a causa é decidida no domínio.
-            "direcao": direcao,
-            "alarme_sem_titular": _alarme_sem_titular(unidade),
-            "alarme_sem_direcao": _alarme_sem_direcao(unidade, titular) if titular else "",
-            "candidatos": candidatos_a_titular(unidade),
-            "cargo_minimo": _rotulo_do_minimo(unidade.tipo),
-            "total_lotados": unidade.perfis.count(),
-        }
-    )
-
-
-def contexto_organograma(
-    unidade_em_foco: Unidade | None,
-    *,
-    arvores: Sequence[NoHierarquia] | None = None,
-    com_link: bool = True,
-    com_irmas: bool = True,
-    abrir_o_ego: bool = False,
-) -> dict[str, Any]:
-    """A seção da página da unidade (caminho aberto até `unidade_em_foco`) e a página da árvore
-    inteira (`unidade_em_foco=None`) nascem da mesma regra: a posição da raiz é o organograma
-    inteiro, e o caminho que abre é a posição da unidade da página.
-
-    `arvores` recorta o organograma ao que o chamador alcança; sem elas, a hierarquia inteira.
-    Recebe a árvore pronta, e não as raízes, porque quem tem o recorte já a percorreu para saber
-    qual é (SPEC autorizacao/007)."""
-    # A regra devolve ids; o template precisa de unidades. Casar as duas coisas aqui é o que impede
-    # o domínio de conhecer `Unidade` e o template de conhecer id solto.
-    ramos = (
-        list(arvores)
-        if arvores is not None
-        else [posicao_de(raiz.pk).ego for raiz in Unidade.objects.filter(pai__isnull=True)]
-    )
-    por_id = Unidade.objects.in_bulk(
-        frozenset(unidade_id for ramo in ramos for unidade_id in ramo.ids)
-    )
-    caminho = frozenset(posicao_de(unidade_em_foco.pk).acima) if unidade_em_foco else frozenset()
-    # Ordenar aqui, e não na origem: sigla é da `Unidade`, e é o `in_bulk` desta função que a tem
-    # em mãos. `unidades_dirigidas` devolve conjunto — sem isto a árvore trocaria de ordem entre
-    # duas aberturas da mesma tela.
-    ramos = sorted(ramos, key=lambda ramo: por_id[ramo.unidade_id].sigla)
-    return {
-        "ramos": [_ramo(ramo, por_id, caminho, unidade_em_foco) for ramo in ramos],
-        "unidade_em_foco": unidade_em_foco,
-        # As três SEMPRE no contexto, mesmo no default: variável ausente é falsa no template, e as
-        # telas da 018 perderiam o elo e a seta em silêncio.
-        "com_link": com_link,
-        "com_irmas": com_irmas,
-        "abrir_o_ego": abrir_o_ego,
-    }
-
-
-def _ramo(
-    no: NoHierarquia,
-    por_id: Mapping[int, Unidade],
-    caminho: frozenset[int],
-    em_foco: Unidade | None,
-) -> dict[str, Any]:
-    """O card sai daqui já sabendo o que é: fora do caminho, no caminho, ou em foco. Quem decide o
-    estado inicial é o servidor; o JS só o move a partir dali."""
-    unidade = por_id[no.unidade_id]
-    return {
-        "unidade": unidade,
-        "cor_hex": hex_da_cor(unidade.cor),
-        "no_caminho": no.unidade_id in caminho,
-        "em_foco": em_foco is not None and no.unidade_id == em_foco.pk,
-        "filhas": [_ramo(filha, por_id, caminho, em_foco) for filha in no.filhas],
-    }
-
-
-def candidatos_a_titular(unidade: Unidade) -> list[Perfil]:
-    """Quem a unidade pode titularizar: o filtro estreita, o domínio decide."""
-    lotados = Perfil.objects.filter(
-        unidade=unidade,
-        cargo_comissao__isnull=False,
-    ).select_related("cargo_comissao")
-    return [
-        perfil
-        for perfil in lotados
-        if cargo_titulariza(
-            perfil.cargo_comissao,
-            exige_alta_administracao=unidade.tipo.exige_alta_administracao,
-            nivel_minimo=unidade.tipo.nivel_minimo_titular,
-        )
-    ]
-
-
-def contexto_cor_sugerida(pai_pk: int | None) -> dict[str, Any]:
-    pai = Unidade.objects.filter(pk=pai_pk).first() if pai_pk else None
-    # Instância não gravada só para não repetir aqui o default que o model já decide.
-    cor = Unidade(pai=pai).cor_sugerida
-    return {
-        "tons": tons_da_paleta(cor),
-        "cor_hex": hex_da_cor(cor),
-    }
-
-
-def _estado_da_direcao(
-    titular: Perfil | None,
-    substituto: Perfil | None,
-) -> EstadoDaDirecao:
-    return EstadoDaDirecao(
-        tem_titular=titular is not None,
-        titular_em_exercicio=bool(titular and titular.em_exercicio),
-        # O substituto fora de exercício não cobre ninguém: a unidade fica sem direção.
-        substituto_do_titular_em_exercicio=bool(substituto and substituto.em_exercicio),
-    )
-
-
-def _rotulo_do_minimo(tipo: TipoUnidade) -> str:
-    # O organograma fala em padrão de cargo, não em número de nível.
-    if tipo.exige_alta_administracao:
-        return ROTULO_ALTA_ADMINISTRACAO
-    cargo = CargoComissao.objects.filter(
-        e_chefia=True,
-        nivel=tipo.nivel_minimo_titular,
-    ).first()
-    return cargo.padrao if cargo else ""
-
-
-def _alarme_sem_titular(unidade: Unidade) -> str:
-    return (
-        f"A {unidade.sigla} está sem titular. Nenhum servidor titulariza esta unidade — "
-        "é preciso nomear um titular."
-    )
-
-
-def _alarme_sem_direcao(unidade: Unidade, titular: Perfil) -> str:
-    return (
-        f"A {unidade.sigla} está sem quem responda por ela. {titular.nome} {titular.sobrenome} "
-        "é o titular, está afastado e não há substituto designado — designe um substituto na "
-        "página dele."
-    )
-
-
 def _alarme_sem_direcao_do_titular(perfil: Perfil) -> str:
     # Só o titular puxa o alarme para a própria página: o afastado sem cargo de direção não
     # deixa unidade nenhuma sem quem responda por ela.
@@ -434,24 +259,9 @@ def _alarme_sem_direcao_do_titular(perfil: Perfil) -> str:
         return ""
     substituicao = substituicao_vigente(perfil)
     substituto = substituicao.substituto if substituicao else None
-    if avaliar_direcao(_estado_da_direcao(perfil, substituto)) != Direcao.SEM_DIRECAO:
+    if avaliar_direcao(estado_da_direcao(perfil, substituto)) != Direcao.SEM_DIRECAO:
         return ""
-    return _alarme_sem_direcao(perfil.unidade, perfil)
-
-
-def _selo_do_exercicio(perfil: Perfil) -> dict[str, str]:
-    # O selo descreve a PESSOA e nunca fica vermelho: afastado e exonerado dividem o âmbar, e o
-    # que os separa é a palavra. Vermelho é da unidade sem direção (SPEC 016).
-    if perfil.exonerado:
-        rotulo, classe = SELO_EXONERADO
-    elif perfil.em_exercicio:
-        rotulo, classe = SELO_EM_EXERCICIO
-    else:
-        rotulo, classe = SELO_AFASTADO
-    return {
-        "rotulo": rotulo,
-        "classe": classe,
-    }
+    return alarme_sem_direcao(perfil.unidade, perfil)
 
 
 def _cartao_do_impedimento(
@@ -504,7 +314,7 @@ def _item_de_substituicao(
     return {
         "substituicao": substituicao,
         "perfil": substituicao.substituto,
-        "imagem": _imagem_do_perfil(substituicao.substituto),
+        "imagem": imagem_do_perfil(substituicao.substituto),
         "cor_unidade_hex": hex_da_cor(substituicao.substituto.cor_unidade),
         "periodo": _texto_periodo_curto(periodo),
         "vigente": vigente,
@@ -566,7 +376,7 @@ def _substituindo(perfil: Perfil) -> dict[str, Any] | None:
     substituido = substituicao.impedimento.perfil
     return {
         "perfil": substituido,
-        "imagem": _imagem_do_perfil(substituido),
+        "imagem": imagem_do_perfil(substituido),
         "cor_unidade_hex": hex_da_cor(substituido.cor_unidade),
         "periodo": _texto_periodo_curto(periodo_de(substituicao)),
         # O do afastamento aparece junto de propósito: é ele que explica por que a substituição
@@ -676,53 +486,11 @@ def _texto_periodo_corrido(periodo: Periodo) -> str:
     return f"de {inicio} a {periodo.fim.strftime(FORMATO_CURTO)}"
 
 
-def _imagem_do_perfil(perfil: Perfil) -> ImagemPerfilOutput:
-    return resolver_imagem_perfil(
-        nome=perfil.nome,
-        sobrenome=perfil.sobrenome,
-        cor_fundo=hex_da_cor(perfil.cor_unidade),
-        cor_tinta=TINTA_AVATAR,
-        foto_url=_foto_url(perfil),
-    )
-
-
-def _contexto_do_modal_de_unidade(
-    ids_permitidos: Collection[int] | None = None,
-) -> dict[str, Any]:
-    # O modal de nova unidade é renderizado com a página, em criar e em editar (SPEC 012): os
-    # catálogos dele custam uma consulta e dispensam rota e hx-get de abertura. Sem isto o disco de
-    # paleta nasce sem tons e o select de tipo, vazio.
-    return _catalogos_de_unidade(ids_permitidos) | contexto_cor_sugerida(None)
-
-
 def _catalogos_de_lotacao(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
-    return _catalogo_de_unidades(ids_permitidos) | {
+    return catalogo_de_unidades(ids_permitidos) | {
         "cargos_base": CargoBase.objects.order_by("nome"),
         "cargos_comissao": CargoComissao.objects.order_by("nome"),
     }
-
-
-def _catalogos_de_unidade(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
-    # Nível decrescente: a lista de tipos desce da mais abrangente para a mais específica.
-    return _catalogo_de_unidades(ids_permitidos) | {
-        "tipos_unidade": TipoUnidade.objects.order_by("-nivel", "nome"),
-        # Raiz não tem pai e por isso não cai no alcance de ninguém: quem a criasse não a teria de
-        # volta na lista (SPEC criacao_usuarios/006).
-        "permite_raiz": ids_permitidos is None,
-    }
-
-
-def _catalogo_de_unidades(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
-    """`ids_permitidos` recorta o catálogo ao alcance de quem abre a tela (SPEC
-    criacao_usuarios/004). Sem ele, todas — que é o que o formulário de unidade e o modal de edição
-    continuam pedindo.
-
-    Recebe ids, e não o perfil: este módulo não pode importar `apps.competencias`, que já importa
-    `apps.user_admin.context` (SPEC autorizacao/003). Quem resolve o alcance é a view."""
-    unidades = Unidade.objects.select_related("tipo").order_by("sigla")
-    if ids_permitidos is not None:
-        unidades = unidades.filter(pk__in=ids_permitidos)
-    return {"unidades": unidades}
 
 
 def _linhas_de_servidores() -> list[LinhaServidor]:
@@ -768,15 +536,3 @@ def _ordem_da_coluna(coluna: ColunaServidor, consulta: ConsultaServidores) -> st
     if consulta.ordenar_por != coluna:
         return ""
     return ORDEM_DESCENDENTE if consulta.descendente else ORDEM_ASCENDENTE
-
-
-def _foto_url(perfil: Perfil) -> str | None:
-    # Registro órfão (arquivo apagado do storage) viraria <img> quebrado: sem arquivo em disco, o
-    # avatar de iniciais assume. A checagem é daqui, não do resolver — ele é domínio puro e não
-    # conhece Django nem I/O (SPEC user_admin/006).
-    nome_arquivo = perfil.foto.name
-    if not nome_arquivo:
-        return None
-    if not perfil.foto.storage.exists(nome_arquivo):
-        return None
-    return perfil.foto.url

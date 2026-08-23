@@ -19,15 +19,13 @@ from apps.user_admin.ficticios import (
     criar_servidores_ficticios,
     remover_servidores_ficticios,
 )
+from apps.unidades.models import CorUnidade, TipoUnidade, Unidade
 from apps.user_admin.models import (
     CargoBase,
     CargoComissao,
-    CorUnidade,
     Impedimento,
     Perfil,
     TipoImpedimento,
-    TipoUnidade,
-    Unidade,
 )
 
 banco = pytest.mark.banco

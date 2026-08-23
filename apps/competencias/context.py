@@ -14,9 +14,10 @@ from apps.competencias.catalogo import acoes_oferecidas
 from apps.competencias.comandos import ComandoAtribuicao
 from apps.competencias.consulta import ramos_do_alcance
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao
-from apps.user_admin.context import contexto_organograma
-from apps.user_admin.models import CargoBase, CargoComissao, Perfil, Unidade
-from apps.user_admin.paleta import hex_da_cor
+from apps.unidades.context import contexto_organograma
+from apps.unidades.models import Unidade
+from apps.unidades.paleta import hex_da_cor
+from apps.user_admin.models import CargoBase, CargoComissao, Perfil
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.autorizacao import VarianteIcone
 

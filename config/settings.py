@@ -216,6 +216,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "apps.core",
+    # Antes de user_admin: o Perfil é lotado numa unidade, e a dependência é de mão única.
+    "apps.unidades",
     "apps.user_admin",
     "apps.competencias",
     "apps.search",

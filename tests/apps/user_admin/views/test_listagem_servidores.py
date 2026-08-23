@@ -12,7 +12,8 @@ from django.urls import reverse
 
 import pytest
 
-from apps.user_admin.models import CargoBase, CorUnidade, Perfil, TipoUnidade, Unidade
+from apps.unidades.models import CorUnidade, TipoUnidade, Unidade
+from apps.user_admin.models import CargoBase, Perfil
 
 banco = pytest.mark.banco
 

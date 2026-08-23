@@ -20,12 +20,4 @@ urlpatterns = [
     path("servidores/<int:pk>/", views.pagina_perfil, name="pagina_perfil"),
     path("servidores/<int:servidor>/editar/", views.editar_perfil, name="editar_perfil"),
     path("servidores/<int:servidor>/gravar/", views.gravar_edicao, name="gravar_edicao"),
-    path("unidades/nova/", views.criar_unidade, name="criar_unidade"),
-    path(
-        "unidades/cor-sugerida/",
-        views.cor_sugerida_unidade,
-        name="cor_sugerida_unidade",
-    ),
-    path("unidades/arvore/", views.arvore_de_unidades, name="arvore_de_unidades"),
-    path("unidades/<int:pk>/", views.pagina_unidade, name="pagina_unidade"),
 ]
