@@ -5,7 +5,7 @@ opera sobre os models deste app.
 """
 
 from apps.competencias.utils import instanciar_acao
-from services.domain.autorizacao import UnidadesSubordinadas, VarianteIcone
+from services.domain.autorizacao import LotacaoAtualEDestino, UnidadesSubordinadas, VarianteIcone
 
 ACAO_CRIAR_SERVIDOR = instanciar_acao(
     slug="user_admin.criar_servidor",
@@ -20,4 +20,19 @@ ACAO_CRIAR_SERVIDOR = instanciar_acao(
     estrutural=True,
     # A unidade-alvo é a que o formulário escolhe, e o parâmetro já é o default do alcance.
     alcance=UnidadesSubordinadas(),
+)
+
+ACAO_EDITAR_SERVIDOR = instanciar_acao(
+    slug="user_admin.editar_servidor",
+    nome="Editar cadastro de servidor",
+    nome_curto="Editar servidor",
+    tooltip="Altera identificação, lotação, cargos e foto de um servidor.",
+    url_name="user_admin:editar_perfil",
+    partial="competencias/partials/_item_menu.html",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    estrutural=True,
+    # Duas incidências, não uma: o ato tira alguém de uma unidade e o põe em outra, e as duas
+    # precisam estar no alcance de quem assina. Os nomes dos parâmetros já são o default do alcance
+    # — `servidor` vem do caminho da rota, `unidade` vem do formulário (SPEC criacao_usuarios/005).
+    alcance=LotacaoAtualEDestino(),
 )

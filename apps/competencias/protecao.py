@@ -5,11 +5,12 @@ registrar deixaria o rastro dependente de disciplina de quem escreve a view; con
 de cada view deixaria a declaração do contrato sem quem a cumprisse.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from functools import wraps
 from typing import cast
 
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import BadRequest, PermissionDenied
 from django.http import HttpRequest, HttpResponse
@@ -19,7 +20,7 @@ from apps.competencias.registro_execucao import gravar_execucao
 from apps.competencias.schemas import AcaoImplementada
 from apps.user_admin.models import Perfil
 from services.domain.autorizacao import Acao as AcaoDominio
-from services.domain.autorizacao import UnidadesSubordinadas
+from services.domain.autorizacao import LotacaoAtualEDestino, TipoAlcance, UnidadesSubordinadas
 
 ViewFunc = Callable[..., HttpResponse]
 
@@ -48,7 +49,7 @@ def acao_protegida(acao: AcaoImplementada) -> Callable[[ViewFunc], ViewFunc]:
                 gravar_execucao(perfil, acao, autorizado=False)
                 raise PermissionDenied
             try:
-                conferir_alvo(request, perfil, acao.acao)
+                conferir_alvo(request, perfil, acao.acao, kwargs)
             except PermissionDenied:
                 gravar_execucao(perfil, acao, autorizado=False)
                 raise
@@ -76,7 +77,12 @@ def acao_protegida(acao: AcaoImplementada) -> Callable[[ViewFunc], ViewFunc]:
     return decorator
 
 
-def conferir_alvo(request: HttpRequest, perfil: Perfil, acao: AcaoDominio) -> None:
+def conferir_alvo(
+    request: HttpRequest,
+    perfil: Perfil,
+    acao: AcaoDominio,
+    kwargs_da_rota: Mapping[str, object],
+) -> None:
     """Segunda barreira do decorator, e a que faz `alcance` valer alguma coisa. Levanta ou passa —
     quem precisa do alvo é a view, que o relê do próprio request.
 
@@ -87,45 +93,92 @@ def conferir_alvo(request: HttpRequest, perfil: Perfil, acao: AcaoDominio) -> No
     # territorial. Nada a conferir.
     if acao.alcance is None:
         return
-    id_bruto = _valor_do_parametro(request, acao.alcance.parametro_id_unidade_alvo)
-    if id_bruto is None:
-        # A ausência tem duas leituras, e é aqui que elas se separam: em leitura é a tela ainda sem
-        # alvo escolhido; em requisição que altera estado é alvo faltando, e sem este ramo um POST
-        # que omitisse o parâmetro escaparia da conferência inteira.
-        if request.method in METODOS_QUE_ALTERAM:
-            raise BadRequest(
-                f"Parâmetro obrigatório ausente: '{acao.alcance.parametro_id_unidade_alvo}'."
-            )
+    valores = _valores_dos_alvos(request, acao.alcance, kwargs_da_rota)
+    # Leitura sem alvo escolhido: a tela abre e escolhe depois. Em requisição que altera estado a
+    # ausência já virou 400 lá dentro.
+    if not valores:
         return
-    if not id_bruto.isdigit():
-        # Id malformado é 400, não 500: o valor vem do cliente e nunca chega ao `int()` sem passar
-        # por aqui.
-        raise BadRequest(
-            f"Id malformado para '{acao.alcance.parametro_id_unidade_alvo}': '{id_bruto}'."
-        )
-    id_unidade_alvo = int(id_bruto)
-    # Despacha pelo subtipo concreto de `alcance` — cada um tem sua própria regra de pertencimento,
-    # e é por isso que `TipoAlcance` é herança e não enum. Alcance novo sem ramo aqui não passa
-    # batido: `NotImplementedError` aponta exatamente este ponto de extensão.
-    if isinstance(acao.alcance, UnidadesSubordinadas):
-        if not _unidade_esta_subordinada(perfil, id_unidade_alvo):
-            # Mesmo tratamento da falta de competência: 403 e linha de negativa. Alvo de outro ramo
-            # é tentativa de praticar ato onde não se responde, e é isso que o histórico precisa
-            # mostrar.
-            raise PermissionDenied
-    else:
-        raise NotImplementedError(
-            f"conferência de alvo não implementada para {type(acao.alcance).__name__}"
-        )
+    # Uma passagem só pela árvore, e não uma por alvo: o alcance é o mesmo para os dois.
+    alcance = alcance_do_perfil(perfil)
+    if not all(unidade in alcance for unidade in _unidades_alvo(acao.alcance, valores)):
+        raise PermissionDenied
 
 
-def _unidade_esta_subordinada(perfil: Perfil, id_unidade_alvo: int) -> bool:
-    return id_unidade_alvo in alcance_do_perfil(perfil)
+def _valores_dos_alvos(
+    request: HttpRequest,
+    alcance: TipoAlcance,
+    kwargs_da_rota: Mapping[str, object],
+) -> dict[str, int]:
+    """Cada parâmetro declarado, procurado no caminho da rota, no corpo e na query string. Ausência
+    tem duas leituras, e é aqui que elas se separam: em leitura é a tela ainda sem alvo escolhido;
+    em requisição que altera estado é alvo faltando, e sem este ramo um POST que omitisse o
+    parâmetro escaparia da conferência inteira."""
+    valores: dict[str, int] = {}
+    for parametro in alcance.parametros_alvo:
+        id_bruto = _valor_do_parametro(request, parametro, kwargs_da_rota)
+        if id_bruto is None:
+            if request.method in METODOS_QUE_ALTERAM:
+                raise BadRequest(f"Parâmetro obrigatório ausente: '{parametro}'.")
+            continue
+        if not id_bruto.isdigit():
+            # Id malformado é 400, não 500: o valor vem do cliente e nunca chega ao `int()` sem
+            # passar por aqui.
+            raise BadRequest(f"Id malformado para '{parametro}': '{id_bruto}'.")
+        id_alvo = int(id_bruto)
+        valores[parametro] = id_alvo
+    return valores
 
 
-def _valor_do_parametro(request: HttpRequest, parametro: str) -> str | None:
-    """POST antes de GET, e string vazia conta como ausente: `select` sem escolha manda o campo com
-    valor vazio, que não é um id."""
+def _unidades_alvo(alcance: TipoAlcance, valores: Mapping[str, int]) -> tuple[int, ...]:
+    """Despacha pelo subtipo concreto: é ele que sabe se o número é uma unidade ou a pessoa lotada
+    nela. A regra de pertencimento é a mesma para todos e fica escrita uma vez só, em
+    `conferir_alvo`; alcance novo sem ramo aqui estoura em vez de passar batido."""
+    if isinstance(alcance, UnidadesSubordinadas):
+        return (valores["unidade"],)
+    if isinstance(alcance, LotacaoAtualEDestino):
+        # A origem é lida no banco, nunca recebida do cliente: aceitá-la do request deixaria
+        # qualquer um editar quem quisesse, bastando mandar a própria unidade.
+        origem = _lotacao_de(valores["servidor"])
+        destino = valores.get("unidade")
+        return (origem,) if destino is None else (origem, destino)
+    raise NotImplementedError(f"alcance sem conferência: {type(alcance).__name__}")
+
+
+def _lotacao_de(id_servidor: int) -> int:
+    """Servidor inexistente não tem lotação e por isso não está no alcance de ninguém: 403, e não
+    404 — a rota protegida não confirma quem existe."""
+    lotacao = Perfil.objects.filter(pk=id_servidor).values_list("unidade_id", flat=True).first()
+    if lotacao is None:
+        raise PermissionDenied
+    return lotacao
+
+
+def pode_executar(
+    usuario: Perfil | AnonymousUser,
+    acao: AcaoImplementada,
+    id_unidade_alvo: int | None = None,
+) -> bool:
+    """A mesma dupla conferência do decorator, na forma de que a TELA precisa: responde em vez de
+    levantar. O router filtra e a rota decide (§3.5) — esconder o botão é UX, e a barreira segue
+    sendo o `acao_protegida`."""
+    if not usuario.has_perm(acao.acao.slug):
+        return False
+    if acao.acao.alcance is None or id_unidade_alvo is None:
+        return True
+    return id_unidade_alvo in alcance_do_perfil(cast(Perfil, usuario))
+
+
+def _valor_do_parametro(
+    request: HttpRequest,
+    parametro: str,
+    kwargs_da_rota: Mapping[str, object],
+) -> str | None:
+    """O caminho da rota vence: é o único que a view não pode forjar — vem do `<int:...>` que o
+    Django já converteu. POST antes de GET, e string vazia conta como ausente: `select` sem
+    escolha manda o campo com valor vazio, que não é um id."""
+    bruto = kwargs_da_rota.get(parametro)
+    if bruto is not None:
+        return str(bruto)
     valor = request.POST.get(parametro) or request.GET.get(parametro)
     return valor or None
 

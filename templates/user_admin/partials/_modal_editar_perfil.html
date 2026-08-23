@@ -1,26 +1,35 @@
-{# Modal de edição do servidor (SPEC user_admin/017) — o partial que a rota de edição devolve. Chega #}
-{# com o toggle já marcado: abrir é chegar, fechar é o <label> desmarcando, sem JS de estado. Os     #}
-{# campos vêm preenchidos e LIDOS — cada um só vira campo ao abrir o lápis ao lado (.campo-onsen).   #}
-{# Nenhuma rota de escrita nasce aqui: o submit não tem destino (Caveats).                           #}
+{# Modal de edição do servidor (SPEC user_admin/017, gravação na SPEC criacao_usuarios/005) — o     #}
+{# partial que a rota de edição devolve. Chega com o toggle já marcado: abrir é chegar, fechar é o  #}
+{# <label> desmarcando, sem JS de estado. Cada `.campo-onsen` lê DUAS faces do servidor: o lado LIDO #}
+{# (`perfil.*`, sempre o que está gravado) e o campo atrás do lápis (`valores.*`, o que foi          #}
+{# digitado — na abertura os dois coincidem; na recusa, divergem). hx-encoding: sem isto a foto não  #}
+{# sobe — o HTMX manda urlencoded por padrão. O alvo é o próprio poço: a recusa o remonta aberto, o  #}
+{# sucesso o esvazia (é isso que fecha o modal).                                                     #}
 <input type="checkbox" id="modal-editar-perfil" class="modal-toggle" checked />
 <div class="modal modal-glass" role="dialog">
   <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
-    <form class="flex flex-col gap-6">
+    <form hx-post="{% url 'user_admin:gravar_edicao' perfil.pk %}"
+          hx-encoding="multipart/form-data"
+          hx-target="#poco-modal"
+          hx-swap="innerHTML"
+          class="flex flex-col gap-6">
       <div>
         <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
         <p class="text-sm text-base-content/70 mt-1">{{ perfil.nome }} {{ perfil.sobrenome }} · RF {{ perfil.rf }}</p>
       </div>
 
+      {% include "user_admin/partials/_tarja_recusa.html" with titulo="Alterações não gravadas" %}
+
       <div class="card-well p-5 flex flex-col gap-4">
         <p class="text-overline">Identificação</p>
         <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-rf" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-rf" class="campo-onsen-toggle"{% if realce.rf %} checked{% endif %} />
             <span class="text-overline etched-rotulo">RF</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor text-code">{{ perfil.rf }}</p>
               <div class="campo-onsen-campo">
-                <input type="text" name="rf" class="input input-glass" value="{{ perfil.rf }}" />
+                <input type="text" name="rf" class="input input-glass {{ realce.rf }}" value="{{ valores.rf }}" />
               </div>
               <label for="editar-campo-rf" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o RF">
                 <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
@@ -28,12 +37,12 @@
             </div>
           </div>
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-nome" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-nome" class="campo-onsen-toggle"{% if realce.nome %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Nome</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">{{ perfil.nome }}</p>
               <div class="campo-onsen-campo">
-                <input type="text" name="nome" class="input input-glass" value="{{ perfil.nome }}" />
+                <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome }}" />
               </div>
               <label for="editar-campo-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
                 <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
@@ -41,14 +50,28 @@
             </div>
           </div>
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-sobrenome" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-sobrenome" class="campo-onsen-toggle"{% if realce.sobrenome %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Sobrenome</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">{{ perfil.sobrenome }}</p>
               <div class="campo-onsen-campo">
-                <input type="text" name="sobrenome" class="input input-glass" value="{{ perfil.sobrenome }}" />
+                <input type="text" name="sobrenome" class="input input-glass {{ realce.sobrenome }}" value="{{ valores.sobrenome }}" />
               </div>
               <label for="editar-campo-sobrenome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o sobrenome">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+          <div class="campo-onsen">
+            <input type="checkbox" id="editar-campo-email" class="campo-onsen-toggle"{% if realce.email %} checked{% endif %} />
+            <span class="text-overline etched-rotulo">E-mail</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor text-code">{{ perfil.email|default:"— sem e-mail cadastrado —" }}</p>
+              <div class="campo-onsen-campo">
+                <input type="email" name="email" class="input input-glass {{ realce.email }}" value="{{ valores.email }}" />
+                <span class="form-field-hint">Trocar o endereço não avisa ninguém — nem o antigo, nem o novo.</span>
+              </div>
+              <label for="editar-campo-email" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o e-mail">
                 <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
               </label>
             </div>
@@ -60,14 +83,14 @@
         <p class="text-overline">Lotação</p>
         <div class="grid gap-x-8 gap-y-4">
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-unidade" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-unidade" class="campo-onsen-toggle"{% if realce.unidade %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Unidade</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">{{ perfil.unidade.sigla }} <span class="text-base-content/50">· {{ perfil.unidade.nome }}</span></p>
               <div class="campo-onsen-campo">
-                <select name="unidade" class="select select-glass" data-select-onsen>
+                <select name="unidade" class="select select-glass {{ realce.unidade }}" data-select-onsen>
                   {% for unidade in unidades %}
-                    <option value="{{ unidade.pk }}"{% if unidade.pk == perfil.unidade_id %} selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
+                    <option value="{{ unidade.pk }}"{% if unidade.pk == valores.unidade_id %} selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
                   {% endfor %}
                 </select>
                 {% if perfil.e_titular %}
@@ -116,14 +139,14 @@
           </div>
 
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-base" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-base" class="campo-onsen-toggle"{% if realce.cargo_base %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Cargo base</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">{{ perfil.cargo_base.nome }}</p>
               <div class="campo-onsen-campo">
-                <select name="cargo_base" class="select select-glass" data-select-onsen>
+                <select name="cargo_base" class="select select-glass {{ realce.cargo_base }}" data-select-onsen>
                   {% for cargo in cargos_base %}
-                    <option value="{{ cargo.pk }}"{% if cargo.pk == perfil.cargo_base_id %} selected{% endif %}>{{ cargo.nome }}</option>
+                    <option value="{{ cargo.pk }}"{% if cargo.pk == valores.cargo_base_id %} selected{% endif %}>{{ cargo.nome }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -135,17 +158,17 @@
 
           {# Só quem é titular carrega a recusa: é o clean() que cruza cargo → unidade → tipo. #}
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-comissao" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-comissao" class="campo-onsen-toggle"{% if realce.cargo_comissao %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Cargo em comissão</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">
                 {% if perfil.cargo_comissao %}{{ perfil.cargo_comissao.padrao }} · {{ perfil.cargo_comissao.nome }}{% else %}— sem cargo em comissão —{% endif %}
               </p>
               <div class="campo-onsen-campo">
-                <select name="cargo_comissao" class="select select-glass" data-select-onsen>
+                <select name="cargo_comissao" class="select select-glass {{ realce.cargo_comissao }}" data-select-onsen>
                   <option value="">— sem cargo em comissão —</option>
                   {% for cargo in cargos_comissao %}
-                    <option value="{{ cargo.pk }}"{% if cargo.pk == perfil.cargo_comissao_id %} selected{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>
+                    <option value="{{ cargo.pk }}"{% if cargo.pk == valores.cargo_comissao_id %} selected{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>
                   {% endfor %}
                 </select>
                 {% if perfil.e_titular %}
@@ -191,7 +214,7 @@
 
       <div class="modal-action">
         <label for="modal-editar-perfil" class="btn btn-glass btn-sm">Cancelar</label>
-        <label for="modal-editar-perfil" class="btn btn-onsen btn-sm">Salvar alterações</label>
+        <button type="submit" class="btn btn-onsen btn-sm">Salvar alterações</button>
       </div>
     </form>
 

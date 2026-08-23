@@ -116,10 +116,13 @@ def test_pagina_admin_nao_carrega_o_wms_do_geosampa(client: Client) -> None:
 @banco
 @pytest.mark.django_db
 def test_editar_perfil_sem_foto_mostra_avatar_de_iniciais(client: Client) -> None:
-    perfil = _perfil_gravado(cor=CorUnidade.SAKURA_600, com_foto=False)
+    # Editar servidor é ação protegida (SPEC criacao_usuarios/005): quem dirige a própria unidade
+    # abre o próprio cadastro sem concessão gravada.
+    perfil = _perfil_gravado(cor=CorUnidade.SAKURA_600, com_foto=False, dirigente=True)
+    client.force_login(perfil)
 
     html = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": perfil.pk})
+        reverse("user_admin:editar_perfil", kwargs={"servidor": perfil.pk})
     ).content.decode()
 
     assert ">FT<" in html
@@ -135,10 +138,11 @@ def test_editar_perfil_com_foto_mostra_a_foto(
 ) -> None:
     # A foto vai para um MEDIA_ROOT descartável: a view só oferece o arquivo que existe no storage.
     settings.MEDIA_ROOT = tmp_path
-    perfil = _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=True)
+    perfil = _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=True, dirigente=True)
+    client.force_login(perfil)
 
     html = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": perfil.pk})
+        reverse("user_admin:editar_perfil", kwargs={"servidor": perfil.pk})
     ).content.decode()
 
     assert perfil.foto.url in html
@@ -183,10 +187,11 @@ def test_selects_da_lotacao_usam_o_componente_de_vidro(client: Client) -> None:
 @banco
 @pytest.mark.django_db
 def test_select_de_unidade_mantem_a_opcao_selecionada_na_edicao(client: Client) -> None:
-    perfil = _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=False)
+    perfil = _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=False, dirigente=True)
+    client.force_login(perfil)
 
     html = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": perfil.pk})
+        reverse("user_admin:editar_perfil", kwargs={"servidor": perfil.pk})
     ).content.decode()
 
     # É da <option selected> que a casca lê o rótulo inicial do gatilho.

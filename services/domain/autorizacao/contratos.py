@@ -19,23 +19,34 @@ class VarianteIcone(StrEnum):
 
 
 class TipoAlcance(BaseModel):
-    """O que todo alcance é: até onde a ação pode incidir, e o parâmetro do request que carrega o
-    id da unidade-alvo. Abstrato — cada alcance concreto é um subtipo, nunca uma instância desta
-    classe. Alcance sobre lote, logradouro ou endereço não é subtipo desta classe: é regra de
-    domínio de cada ação (SPEC autorizacao/004, §4)."""
+    """O que todo alcance é: até onde a ação pode incidir, e os parâmetros do request que carregam
+    os alvos. Abstrato — cada alcance concreto é um subtipo, nunca uma instância desta classe.
+    Alcance sobre lote, logradouro ou endereço não é subtipo desta classe: é regra de domínio de
+    cada ação (SPEC autorizacao/004, §4)."""
 
     model_config = ConfigDict(frozen=True)
 
-    # O NOME do parâmetro na assinatura da view/formulário — não um id de unidade real. Fixo no
-    # código porque é parte da assinatura da ação; o id concreto (de qualquer unidade) só existe em
-    # tempo de requisição, e nada aqui pode depender do dado do banco.
-    parametro_id_unidade_alvo: str
+    # Os NOMES dos parâmetros na assinatura da view/formulário — não ids de unidade reais. Fixos no
+    # código porque são parte da assinatura da ação; o id concreto (de qualquer unidade) só existe
+    # em tempo de requisição, e nada aqui pode depender do dado do banco. Tupla porque um ato pode
+    # incidir sobre mais de uma unidade, e todas precisam cair no alcance (SPEC criacao_usuarios/005).
+    parametros_alvo: tuple[str, ...]
 
 
 class UnidadesSubordinadas(TipoAlcance):
-    """O alcance de quem dirige: as unidades que o perfil dirige e todas abaixo delas."""
+    """O alcance de quem dirige: as unidades que o perfil dirige e todas abaixo delas. O parâmetro
+    carrega o id da unidade-alvo."""
 
-    parametro_id_unidade_alvo: str = "unidade"
+    parametros_alvo: tuple[str, ...] = ("unidade",)
+
+
+class LotacaoAtualEDestino(TipoAlcance):
+    """O mesmo alcance de `UnidadesSubordinadas`, com dois alvos: a unidade em que o servidor está,
+    lida da lotação dele, e a unidade para a qual o formulário o manda (SPEC criacao_usuarios/005) —
+    mover alguém para fora do próprio ramo precisa recusar tanto quanto abrir o cadastro de quem já
+    está fora dele."""
+
+    parametros_alvo: tuple[str, ...] = ("servidor", "unidade")
 
 
 class Acao(BaseModel):

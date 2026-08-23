@@ -1,12 +1,14 @@
 ---
 spec: criacao_usuarios/005
-versao: v1
-atualizado_em: 2026-08-21
-testes_tdd: false
+versao: v2
+atualizado_em: 2026-08-22
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: a recusa passa pelo contrato de erros de formulário — mensagem em português, controle em
+    realce e o lápis do campo recusado já aberto
 ---
 
 # SPEC criacao_usuarios/005 — Editar servidor: o cadastro alterado por quem responde pela unidade
@@ -28,9 +30,12 @@ de quem trabalha ali reflita a realidade sem passar pelo admin do Django.
 - [ ] O **botão de editar** só aparece a quem tem a competência **e** o alcance sobre aquele servidor.
 - [ ] A gravação altera identificação, e-mail, lotação, cargos e foto **num ato só**, e o que não foi
       tocado permanece como estava — inclusive a foto, quando nenhuma nova é enviada.
-- [ ] Recusa do cadastro — RF ou e-mail já usado por outro, titular com cargo incompatível com a
-      unidade de destino — volta com o motivo no **modal, que segue aberto e preenchido**, sem gravar
-      nada.
+- [ ] **Toda** recusa — campo obrigatório em branco, e-mail torto, RF ou e-mail já usado por outro,
+      titular com cargo incompatível com a unidade de destino — volta no **modal, que segue aberto**,
+      com o motivo em português na tarja e o **controle recusado em realce**; o que foi digitado
+      permanece nos campos e nada é gravado.
+- [ ] O **lápis do controle recusado chega aberto**: no padrão `.campo-onsen` o input fica escondido
+      atrás do toggle, e realçar um campo que ninguém vê não corrige nada.
 - [ ] Gravado, o **modal fecha** e a página do servidor passa a mostrar o cadastro novo **sem
       recarregar**.
 - [ ] Editar é **ato registrado** (SPEC [autorizacao/004](../autorizacao/004-protecao-de-rota-e-registro-de-execucao.md)),
@@ -40,6 +45,10 @@ de quem trabalha ali reflita a realidade sem passar pelo admin do Django.
       argumento.
 - [ ] O design foi aprovado no **mock**, e peça nova foi portada para `static/src/tema-dimap.dev.css` e
       renderizada no styleguide antes de qualquer template da aplicação usá-la.
+- [ ] **Nenhum átomo nasce aqui**: os `.campo-realce-*` já estão no tema (SPEC
+      [formularios/001](../formularios/001-erros-de-formulario.md)), e a única peça nova é a molécula
+      `_tarja_recusa.html`, **extraída** da que já existe em `_formulario_servidor.html` e composta
+      dos átomos `.tarja-vinculo` + `.tarja-vinculo-critica`.
 
 ## 3 · Domínio
 Nenhum model novo: o cadastro é o da SPEC [004](004-criar-servidor.md), aqui alterado em vez de criado.
@@ -88,6 +97,9 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
   titulariza a unidade de destino?"; a recusa é do model, e esta SPEC só a leva ao modal.
 - [`contexto_modal_perfil`](../user_admin/017-pagina-do-servidor.md) — o modal já montado e preenchido,
   que aqui ganha destino de submit.
+- [`FORMULARIO_SERVIDOR` e `LeitorDeFormulario`](../formularios/001-erros-de-formulario.md) — "como
+  esta recusa se diz, e qual controle ela realça?"; o catálogo é o **mesmo** da criação, porque os
+  controles são os mesmos — só o DTO lido muda.
 
 **Mock:** [005-mock-editar-servidor.html](005-mock-editar-servidor.html) — leia a skill `mock`.
 
@@ -107,13 +119,25 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - `@apps/competencias/consulta.py` → `alcance_do_perfil`: as unidades alcançadas, em conjunto de ids.
 - `@apps/competencias/utils.py` → `instanciar_acao`; `@apps/competencias/registro.py` →
   `_construir_registro`: onde a ação nova se inscreve.
-- `@apps/user_admin/cadastro.py` (SPEC 004) → `DesfechoCadastro` e o tratamento de recusa do model.
+- `@apps/user_admin/cadastro.py` (SPEC 004) → `DesfechoCadastro`, `criar_servidor` e o tratamento de
+  recusa do model: o molde do ato irmão, do formulário cru ao desfecho.
 - `@apps/user_admin/schemas.py` (SPEC 004) → `NovoServidor` e `CargoOpcional`: o DTO irmão e o select
   vazio como ausência.
-- `@apps/user_admin/context.py` → `contexto_modal_perfil`, `contexto_pagina_perfil`.
+- `@apps/user_admin/formularios.py` (SPEC 004) → `FORMULARIO_SERVIDOR` e `traduzir_recusa`: o catálogo
+  **reusado como está** — mesmos sete controles, mesmos rótulos.
+- `@services/utils/erros_formulario` (SPEC [formularios/001](../formularios/001-erros-de-formulario.md))
+  → `LeitorDeFormulario`, `RecusaDeFormulario`; e `@apps/core/erros_formulario.py` →
+  `de_validation_error`: a ponte do `ValidationError` do model.
+- `@apps/user_admin/context.py` → `contexto_modal_perfil`, `contexto_pagina_perfil`,
+  `_valores_do_formulario` (SPEC 004): a conversão dos ids que o `selected` do select compara.
 - `@templates/user_admin/partials/_modal_editar_perfil.html` → o modal preenchido, com os campos que
   só viram campo ao abrir o lápis.
-- Skills: `componentes-frontend`, `daisyui`, `htmx`, `mock`, `pydantic-validation-errors`,
+- `@templates/user_admin/partials/_formulario_servidor.html` → a tarja de recusa, hoje inline, que
+  esta SPEC extrai para partial e as duas telas passam a incluir.
+- `@static/src/tema-dimap.dev.css` → `.campo-realce-erro` e irmãos, o átomo do controle em realce, já
+  portado e no styleguide; `.tarja-vinculo` + `.tarja-vinculo-critica`, os da tarja.
+- Skills: `erros-de-formulario` (o padrão desta tela; `pydantic-validation-errors` cobre o caso
+  contrário — rota que não é formulário), `componentes-frontend`, `daisyui`, `htmx`, `mock`,
   `escrever-testes`, `test-django-views`.
 
 ## 6 · Snippets
@@ -254,8 +278,10 @@ urlpatterns = [
 **`apps/user_admin/schemas.py`** — o DTO do ato, ao lado do `NovoServidor`.
 ```python
 class EdicaoServidor(BaseModel):
-    """Construído na view, que deixa o `PydanticValidationMiddleware` interceptar o
-    `ValidationError`. Sem `url_acesso`: editar não manda e-mail nenhum."""
+    """ALTERADO na v2: quem o constrói é o `LeitorDeFormulario`, e não a view — construí-lo aqui
+    entregaria a recusa ao `PydanticValidationMiddleware`, cuja resposta o HTMX troca no alvo da
+    requisição, que é o poço do modal (SPEC formularios/001, Caveats). Sem `url_acesso`: editar não
+    manda e-mail nenhum."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -269,13 +295,30 @@ class EdicaoServidor(BaseModel):
     cargo_comissao_id: CargoOpcional = None
 ```
 
+**`apps/user_admin/formularios.py`** — o leitor da edição, ao lado do da criação. O catálogo **não é
+declarado de novo**.
+```python
+# Mesmos sete controles, mesmos rótulos, mesmas frases: o que muda entre criar e editar é o DTO
+# lido, não como a recusa se diz. Um catálogo irmão seria a mesma tabela com outro nome.
+ler_edicao_servidor = LeitorDeFormulario(EdicaoServidor, FORMULARIO_SERVIDOR)
+```
+
 **`apps/user_admin/cadastro.py`** — o ato, no mesmo módulo do cadastro e com o mesmo desfecho.
 ```python
-def editar_servidor(edicao: EdicaoServidor, foto: UploadedFile | None = None) -> DesfechoCadastro:
+def editar_servidor(
+    valores: Mapping[str, Any],
+    foto: UploadedFile | None = None,
+) -> DesfechoCadastro:
     """Um ato só: ou o cadastro inteiro passa pela validação do model, ou nada muda.
 
-    O `try` mora aqui, e não na view, pelo mesmo motivo de `criar_servidor`: é este módulo que sabe
-    o que a recusa significa para o cadastro."""
+    ALTERADO na v2: recebe o formulário cru e delega a leitura ao `LeitorDeFormulario`, como o
+    `criar_servidor`. O `try` mora aqui, e não na view, pelo mesmo motivo: é este módulo que sabe o
+    que a recusa significa para o cadastro."""
+    leitura = ler_edicao_servidor(valores)
+    edicao = leitura.dto
+    if edicao is None:
+        # O `or` é só o que o tipo pede, não um caso real.
+        return DesfechoCadastro(perfil=None, recusa=leitura.recusa or RecusaDeFormulario())
     perfil = get_object_or_404(Perfil, pk=edicao.servidor_id)
     _aplicar(perfil, edicao, foto)
     try:
@@ -283,8 +326,10 @@ def editar_servidor(edicao: EdicaoServidor, foto: UploadedFile | None = None) ->
         perfil.save()
     except ValidationError as recusa:
         # RF e e-mail já usados por outro, e o titular cujo cargo não titulariza a unidade de
-        # destino: as três recusas são do model, e chegam juntas por aqui.
-        return DesfechoCadastro(perfil=None, erros=_mensagens(recusa))
+        # destino: as três recusas são do model, e chegam juntas por aqui. A ponte de `apps/core`
+        # preserva o `code`, que é o que faz o RF e o e-mail realçarem o controle certo; a do
+        # titular nomeia `e_titular`, que não é controle desta tela, e por isso cai na tarja.
+        return DesfechoCadastro(perfil=None, recusa=traduzir_recusa(de_validation_error(recusa)))
     return DesfechoCadastro(perfil=perfil)
 
 
@@ -302,6 +347,55 @@ def _aplicar(perfil: Perfil, edicao: EdicaoServidor, foto: UploadedFile | None) 
         perfil.foto = foto
 ```
 
+**`apps/user_admin/context.py`** — o modal passa a separar o que se **lê** do que se **digita**.
+```python
+def contexto_modal_perfil(perfil: Perfil, valores: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """ALTERADO na v2: ganha `valores`. O modal tem duas faces do mesmo servidor — o lado LIDO do
+    `.campo-onsen`, que mostra o que está gravado, e o input atrás do lápis, que mostra o que a
+    pessoa digitou. Na abertura os dois coincidem e `valores` sai do próprio perfil; na recusa eles
+    divergem, e é essa divergência que deixa a pessoa comparar o que tentou com o que vale.
+
+    Por isso `perfil` continua sendo o model, e não um dicionário como no formulário de criação: o
+    lado lido pede `unidade.sigla`, `cargo_base.nome`, o avatar e a tarja de titular."""
+    return (
+        _catalogos_de_lotacao()
+        | _contexto_do_modal_de_unidade()
+        | {
+            "perfil": perfil,
+            "valores": valores if valores is not None else _valores_do_perfil(perfil),
+            "imagem": _imagem_do_perfil(perfil),
+            "cor_unidade_hex": hex_da_cor(perfil.cor_unidade),
+        }
+    )
+
+
+def _valores_do_perfil(perfil: Perfil) -> dict[str, Any]:
+    """A abertura do modal, dita na mesma língua da recusa: os ids já como inteiros, que é o que o
+    `selected` do select compara."""
+    return {
+        "rf": perfil.rf,
+        "nome": perfil.nome,
+        "sobrenome": perfil.sobrenome,
+        "email": perfil.email,
+        "unidade_id": perfil.unidade_id,
+        "cargo_base_id": perfil.cargo_base_id,
+        "cargo_comissao_id": perfil.cargo_comissao_id,
+    }
+
+
+def contexto_edicao_recusada(
+    perfil: Perfil,
+    valores: Mapping[str, Any],
+    recusa: RecusaDeFormulario,
+) -> dict[str, Any]:
+    # `perfil` vem do banco INTOCADO: `editar_servidor` altera a instância dele em memória antes do
+    # `full_clean`, e reaproveitá-la mostraria no lado lido o valor que a recusa impediu de gravar.
+    return contexto_modal_perfil(perfil, _valores_do_formulario(valores)) | {
+        "erros": recusa.mensagens,
+        "realce": recusa.realce,
+    }
+```
+
 **`apps/user_admin/views.py`** — a view chega com competência, origem e destino já conferidos.
 ```python
 @acao_protegida(ACAO_EDITAR_SERVIDOR)
@@ -316,22 +410,27 @@ def editar_perfil(request: HttpRequest, servidor: int) -> HttpResponse:
 @acao_protegida(ACAO_EDITAR_SERVIDOR)
 @require_POST
 def gravar_edicao(request: HttpRequest, servidor: int) -> HttpResponse:
-    edicao = EdicaoServidor(
-        servidor_id=servidor,
-        rf=request.POST["rf"],
-        nome=request.POST["nome"],
-        sobrenome=request.POST["sobrenome"],
-        email=request.POST["email"],
-        unidade_id=request.POST["unidade"],
-        cargo_base_id=request.POST["cargo_base"],
-        cargo_comissao_id=request.POST["cargo_comissao"],
-    )
-    desfecho = editar_servidor(edicao, foto=request.FILES.get("foto"))
+    # ALTERADO na v2: a view traduz nome de controle em nome de campo e NÃO constrói o DTO — quem o
+    # constrói é o ato. `.get(..., "")` porque só `unidade` tem rede (o decorator devolve 400 quando
+    # ela falta); nos demais, chave ausente daria 500 na rota que existe para transformar entrada
+    # ruim em recusa na tela.
+    valores = {
+        # Do caminho da rota, nunca do corpo: é o mesmo id que o decorator conferiu.
+        "servidor_id": servidor,
+        "rf": request.POST.get("rf", ""),
+        "nome": request.POST.get("nome", ""),
+        "sobrenome": request.POST.get("sobrenome", ""),
+        "email": request.POST.get("email", ""),
+        "unidade_id": request.POST.get("unidade", ""),
+        "cargo_base_id": request.POST.get("cargo_base", ""),
+        "cargo_comissao_id": request.POST.get("cargo_comissao", ""),
+    }
+    desfecho = editar_servidor(valores, foto=request.FILES.get("foto"))
     if desfecho.perfil is None:
         return render(
             request,
             TEMPLATE_MODAL_PERFIL,
-            contexto_modal_perfil(_perfil(servidor)) | {"erros": desfecho.erros},
+            contexto_edicao_recusada(_perfil(servidor), valores, desfecho.recusa),
             status=422,
         )
     registrar_ato(
@@ -356,6 +455,21 @@ def pagina_perfil(request: HttpRequest, pk: int) -> HttpResponse:
     )
 ```
 
+**`templates/user_admin/partials/_tarja_recusa.html`** — a molécula extraída do que já existe inline
+em `_formulario_servidor.html`; as duas telas passam a incluí-la, e ela não inventa átomo nenhum.
+```html
+{# Composta de `.tarja-vinculo` + `.tarja-vinculo-critica`, que já estão no tema. Lê `erros`, que é #}
+{# sempre `recusa.mensagens` — inclusive as gerais, que não realçam controle algum.                #}
+{% if erros %}
+  <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+    ...
+    <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+      {% for erro in erros %}<li>{{ erro }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+```
+
 **`templates/user_admin/partials/_modal_editar_perfil.html`** — o modal ganha destino, e o alvo é o
 próprio poço: a recusa o remonta aberto, o sucesso o esvazia.
 ```html
@@ -364,7 +478,20 @@ próprio poço: a recusa o remonta aberto, o sucesso o esvazia.
       hx-encoding="multipart/form-data"
       hx-target="#poco-modal"
       hx-swap="innerHTML">
-  {% if erros %}{% include "user_admin/partials/_tarja_recusa.html" %}{% endif %}
+  {% include "user_admin/partials/_tarja_recusa.html" %}
+```
+
+E cada `.campo-onsen` passa a ler três coisas: o valor gravado no lado lido, o digitado no input, e o
+realce — que também **abre o lápis**.
+```html
+{# O toggle chega marcado quando o controle foi recusado: o input do `.campo-onsen` fica escondido #}
+{# atrás dele, e realçar um campo que ninguém vê não corrige nada. Sem recusa, `realce.rf` é       #}
+{# string vazia e o `{% if %}` não marca — o modal abre como sempre abriu.                         #}
+<input type="checkbox" id="editar-campo-rf" class="campo-onsen-toggle"{% if realce.rf %} checked{% endif %} />
+...
+{# O lado LIDO segue no perfil gravado; só o input recebe o digitado. #}
+<p class="campo-onsen-valor text-code">{{ perfil.rf }}</p>
+<input type="text" name="rf" class="input input-glass {{ realce.rf }}" value="{{ valores.rf }}" />
 ```
 
 **`templates/user_admin/partials/_edicao_concluida.html`** — a resposta do sucesso: nada para o poço,
@@ -409,21 +536,47 @@ entrar e sem como ser avisada, e o conserto é outra edição.
 gravação, e tratá-lo como valor apagaria a foto de quem editasse o nome. Custo: não existe caminho
 para remover a foto e voltar ao avatar de iniciais.
 
-**`DesfechoCadastro` serve aos dois atos.** Criar e editar têm o mesmo desfecho — o perfil ou os
-motivos da recusa —, e um tipo por ato seria a mesma estrutura com dois nomes. Custo: o nome fala de
-cadastro e é usado também na alteração, e um dos dois atos ganhando desfecho próprio quebra o outro.
+**`DesfechoCadastro` serve aos dois atos.** Criar e editar têm o mesmo desfecho — o perfil, ou a
+`RecusaDeFormulario` que diz o motivo e o controle —, e um tipo por ato seria a mesma estrutura com
+dois nomes. Custo: o nome fala de cadastro e é usado também na alteração, e um dos dois atos ganhando
+desfecho próprio quebra o outro.
+
+**O modal precisa de duas leituras do mesmo servidor, e por isso não repopula como o formulário de
+criação.** Lá o contexto troca o `perfil` por um dicionário do que foi digitado; aqui o lado lido do
+`.campo-onsen` pede `unidade.sigla`, `cargo_base.nome`, o avatar e a tarja de titular, que só o model
+tem. Então `perfil` continua sendo o model e o digitado entra por `valores`. Custo: o template lê de
+duas fontes e é possível trocá-las por engano, mostrando no lado lido o que a recusa impediu de
+gravar — e o `perfil` da recusa tem de vir de uma consulta nova, porque o do ato já foi alterado em
+memória antes do `full_clean`.
+
+**A recusa do titular cai na tarja, sem realçar nada.** O `clean()` a levanta nomeando `e_titular`,
+que não é controle desta tela — o que precisa mudar é o cargo em comissão ou a unidade de destino, e
+o contrato não adivinha qual dos dois. Custo: a única recusa do model que não realça campo algum é
+justamente a mais difícil de entender, e quem a recebe lê a frase e procura o campo sozinho.
+
+**Recusa que só nomeia `servidor_id` sai muda.** O campo não tem input, então o tradutor o manda para
+`gerais` — e ali descarta erro sem mensagem, que é o caso de todo erro do Pydantic. Risco baixo: o id
+vem do caminho da rota, já convertido pelo `<int:...>` e conferido pelo decorator. Custo: existe uma
+recusa possível que não se explica em tela, a mesma da `url_acesso` na SPEC 004.
 
 ## 8 · Testes (TDD)
 Dois grupos. O **comportamento** obedece ao teto de 10; a **bateria de segurança** da skill
 `acao-administrativa` vem além dele. Quase todos exigem `Perfil` gravado e carregam o marker `banco`;
 o do system check é puro.
 
+A tradução em si — regra declarada, tom, sufixo `_id`, ponte do Django — já é fixada pelos testes da
+SPEC [formularios/001](../formularios/001-erros-de-formulario.md); os daqui param no modal.
+
 **Comportamento**
 
 - `test_gravacao_altera_o_cadastro_num_ato_so` — identificação, e-mail, lotação e cargos mudam juntos;
   a foto de quem não enviou arquivo novo permanece. *(marker `banco`)*
-- `test_recusa_do_model_volta_no_modal_sem_gravar` — RF ou e-mail já usado por outro e titular com
-  cargo incompatível com a unidade de destino devolvem o modal com o motivo, e nada é gravado.
+- `test_recusa_volta_no_modal_realcada_sem_gravar` — RF ou e-mail já usado por outro devolvem o modal
+  com o motivo em português, `campo-realce-erro` no controle repetido e **o lápis dele aberto**; o
+  digitado permanece no input e o lado lido segue mostrando o que está gravado. Campo em branco e
+  e-mail torto fazem o mesmo caminho, e nada é gravado em nenhum dos casos. *(marker `banco`)*
+- `test_recusa_do_titular_vai_para_a_tarja` — cargo incompatível com a unidade de destino devolve o
+  motivo na tarja e não realça controle algum, porque o campo que a recusa nomeia não é um deles.
   *(marker `banco`)*
 - `test_sucesso_fecha_o_modal_e_atualiza_a_pagina` — a resposta não devolve modal algum e traz o painel
   do servidor em swap fora de banda, com os dados novos. *(marker `banco`)*

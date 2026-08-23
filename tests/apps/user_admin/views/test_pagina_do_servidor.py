@@ -126,9 +126,13 @@ def test_rota_do_modal_devolve_so_o_partial_preenchido(client: Client) -> None:
         sigla="CDA", nivel=3, e_chefia=True, nome="Diretora de Divisão SRV4"
     )
     perfil = _perfil(unidade, "900004", "Helena", "Prado", cargo_comissao=cargo_comissao)
+    # Editar servidor é ação protegida (SPEC criacao_usuarios/005): quem dirige a própria unidade
+    # abre o próprio cadastro sem concessão gravada.
+    definir_titular(perfil)
+    client.force_login(perfil)
 
     html = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": perfil.pk})
+        reverse("user_admin:editar_perfil", kwargs={"servidor": perfil.pk})
     ).content.decode()
 
     assert '<input type="checkbox" id="modal-editar-perfil" class="modal-toggle" checked />' in html
@@ -153,14 +157,20 @@ def test_rota_do_modal_devolve_so_o_partial_preenchido(client: Client) -> None:
 @banco
 @pytest.mark.django_db
 def test_pagina_do_servidor_nao_carrega_o_modal(client: Client) -> None:
-    perfil = _perfil(_unidade("SRV6"), "900006", "Sem", "Modal")
+    cargo_comissao = CargoComissao.objects.create(
+        sigla="CDA", nivel=1, e_chefia=True, nome="Diretora de Divisão SRV6"
+    )
+    perfil = _perfil(_unidade("SRV6"), "900006", "Sem", "Modal", cargo_comissao=cargo_comissao)
+    # O botão de editar (e o link por trás dele) só aparece a quem tem a competência e o alcance.
+    definir_titular(perfil)
+    client.force_login(perfil)
 
     html = client.get(
         reverse("user_admin:pagina_perfil", kwargs={"pk": perfil.pk})
     ).content.decode()
 
     assert '<div id="poco-modal" class="poco-modal"></div>' in html
-    assert reverse("user_admin:editar_perfil", kwargs={"pk": perfil.pk}) in html
+    assert reverse("user_admin:editar_perfil", kwargs={"servidor": perfil.pk}) in html
     assert 'name="rf"' not in html
     assert 'id="modal-editar-perfil"' not in html
 
@@ -172,10 +182,15 @@ def test_modal_traz_o_painel_de_unidade_fechado_e_com_formulario_proprio(
 ) -> None:
     unidade = _unidade("SRV7")
     _tipo("SRV8")
-    perfil = _perfil(unidade, "900007", "Painel", "Fechado")
+    cargo_comissao = CargoComissao.objects.create(
+        sigla="CDA", nivel=1, e_chefia=True, nome="Diretora de Divisão SRV7"
+    )
+    perfil = _perfil(unidade, "900007", "Painel", "Fechado", cargo_comissao=cargo_comissao)
+    definir_titular(perfil)
+    client.force_login(perfil)
 
     html = client.get(
-        reverse("user_admin:editar_perfil", kwargs={"pk": perfil.pk})
+        reverse("user_admin:editar_perfil", kwargs={"servidor": perfil.pk})
     ).content.decode()
 
     assert "Tipo SRV8" in html
@@ -254,10 +269,10 @@ def test_caminhos_levam_a_pagina_do_servidor(client: Client) -> None:
 
     html_listagem = client.get(reverse("user_admin:listar_servidores")).content.decode()
     assert reverse("user_admin:pagina_perfil", kwargs={"pk": titular.pk}) in html_listagem
-    assert reverse("user_admin:editar_perfil", kwargs={"pk": titular.pk}) not in html_listagem
+    assert reverse("user_admin:editar_perfil", kwargs={"servidor": titular.pk}) not in html_listagem
 
     html_unidade = client.get(
         reverse("user_admin:pagina_unidade", kwargs={"pk": unidade.pk})
     ).content.decode()
     assert reverse("user_admin:pagina_perfil", kwargs={"pk": titular.pk}) in html_unidade
-    assert reverse("user_admin:editar_perfil", kwargs={"pk": titular.pk}) not in html_unidade
+    assert reverse("user_admin:editar_perfil", kwargs={"servidor": titular.pk}) not in html_unidade

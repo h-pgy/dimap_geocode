@@ -3,7 +3,7 @@ from collections import Counter
 from django.apps import apps
 from django.contrib.staticfiles import finders
 from django.core.checks import Error
-from django.urls import NoReverseMatch, reverse
+from django.urls import get_resolver
 
 from .schemas import RegistroAcoes
 
@@ -49,9 +49,7 @@ def validar_registro(registro: RegistroAcoes) -> list[Error]:
                     )
                 )
 
-        try:
-            reverse(item.url_name)
-        except NoReverseMatch:
+        if not _rota_existe(item.url_name):
             erros.append(
                 Error(
                     f"url_name '{item.url_name}' da ação '{acao.slug}' não resolve.",
@@ -60,6 +58,20 @@ def validar_registro(registro: RegistroAcoes) -> list[Error]:
             )
 
     return erros
+
+
+def _rota_existe(url_name: str) -> bool:
+    """`reverse` cru só resolve rota SEM parâmetro, e ação que incide sobre um objeto tem o id no
+    caminho. O que o check precisa provar é que o nome existe — montar a URL é da view, que tem o
+    argumento em mãos."""
+    namespace, _, nome = url_name.rpartition(":")
+    resolver = get_resolver()
+    if namespace:
+        try:
+            resolver = resolver.namespace_dict[namespace][1]
+        except KeyError:
+            return False
+    return nome in resolver.reverse_dict
 
 
 def checar_registro_de_acoes(app_configs: object, **kwargs: object) -> list[Error]:

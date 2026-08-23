@@ -12,20 +12,24 @@
   <div class="admin-shell">
     <div class="max-w-3xl mx-auto px-4 py-24">
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
-        {% include "user_admin/partials/_identidade_perfil.html" %}
-        {% include "user_admin/partials/_secao_resumo_perfil.html" %}
+        <div id="painel-servidor">
+          {% include "user_admin/partials/_identidade_perfil.html" %}
+          {% include "user_admin/partials/_secao_resumo_perfil.html" %}
+        </div>
         {% include "user_admin/partials/_secao_exercicio.html" %}
 
-        <div class="flex justify-center pt-2">
-          <button type="button"
-                  hx-get="{% url 'user_admin:editar_perfil' perfil.pk %}"
-                  hx-target="#poco-modal"
-                  hx-swap="innerHTML settle:150ms"
-                  class="btn btn-onsen btn-lg gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
-            Editar servidor
-          </button>
-        </div>
+        {% if pode_editar %}
+          <div class="flex justify-center pt-2">
+            <button type="button"
+                    hx-get="{% url 'user_admin:editar_perfil' perfil.pk %}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms"
+                    class="btn btn-onsen btn-lg gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+              Editar servidor
+            </button>
+          </div>
+        {% endif %}
       </div>
     </div>
   </div>

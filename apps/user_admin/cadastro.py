@@ -13,12 +13,13 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from pydantic import HttpUrl, SecretStr
 
 from apps.core.erros_formulario import de_validation_error
-from apps.user_admin.formularios import ler_novo_servidor, traduzir_recusa
+from apps.user_admin.formularios import ler_edicao_servidor, ler_novo_servidor, traduzir_recusa
 from apps.user_admin.models import Perfil
-from apps.user_admin.schemas import NovoServidor
+from apps.user_admin.schemas import EdicaoServidor, NovoServidor
 from services.domain.email import EmailAcessoInput, montar_email_acesso, montar_mensagem
 from services.utils.erros_formulario import ErroBruto, RecusaDeFormulario
 from services.utils.senha import gerar_senha_temporaria
@@ -123,6 +124,48 @@ def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> No
     resultado = enviador(mensagem)
     if resultado.destinatarios_recusados:
         raise SmtpEnvioError(f"Destinatário recusado: {perfil.email}.")
+
+
+def editar_servidor(
+    valores: Mapping[str, Any],
+    foto: UploadedFile | None = None,
+) -> DesfechoCadastro:
+    """Um ato só: ou o cadastro inteiro passa pela validação do model, ou nada muda.
+
+    Recebe o formulário cru e delega a leitura ao `LeitorDeFormulario`, como o `criar_servidor`. O
+    `try` mora aqui, e não na view, pelo mesmo motivo: é este módulo que sabe o que a recusa
+    significa para o cadastro (SPEC criacao_usuarios/005)."""
+    leitura = ler_edicao_servidor(valores)
+    edicao = leitura.dto
+    if edicao is None:
+        # O `or` é só o que o tipo pede, não um caso real.
+        return DesfechoCadastro(perfil=None, recusa=leitura.recusa or RecusaDeFormulario())
+    perfil = get_object_or_404(Perfil, pk=edicao.servidor_id)
+    _aplicar(perfil, edicao, foto)
+    try:
+        perfil.full_clean(exclude=["password"])
+        perfil.save()
+    except ValidationError as recusa:
+        # RF e e-mail já usados por outro, e o titular cujo cargo não titulariza a unidade de
+        # destino: as três recusas são do model, e chegam juntas por aqui. A ponte de `apps/core`
+        # preserva o `code`, que é o que faz o RF e o e-mail realçarem o controle certo; a do
+        # titular nomeia `e_titular`, que não é controle desta tela, e por isso cai na tarja.
+        return DesfechoCadastro(perfil=None, recusa=traduzir_recusa(de_validation_error(recusa)))
+    return DesfechoCadastro(perfil=perfil)
+
+
+def _aplicar(perfil: Perfil, edicao: EdicaoServidor, foto: UploadedFile | None) -> None:
+    """Foto sem arquivo novo é campo não tocado, não foto apagada: o formulário manda o `input`
+    vazio a cada gravação, e sobrescrever com ele limparia o que já está lá."""
+    perfil.rf = edicao.rf
+    perfil.nome = edicao.nome
+    perfil.sobrenome = edicao.sobrenome
+    perfil.email = edicao.email
+    perfil.unidade_id = edicao.unidade_id
+    perfil.cargo_base_id = edicao.cargo_base_id
+    perfil.cargo_comissao_id = edicao.cargo_comissao_id
+    if foto is not None:
+        perfil.foto = foto
 
 
 def _dominio_recusado(email: str) -> bool:

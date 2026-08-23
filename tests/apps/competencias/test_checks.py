@@ -1,19 +1,22 @@
-"""Testes de apps/competencias/checks.py (SPEC autorizacao/001).
+"""Testes de apps/competencias/checks.py (SPEC autorizacao/001; url_name, SPEC criacao_usuarios/005).
 
-Cobre: validar_registro detecta slug duplicado, prefixo de app inexistente,
-variante de ícone sem arquivo e url_name que não resolve.
-Os patches em django.contrib.staticfiles.finders.find e apps.competencias.checks.reverse
-permitem rodar sem staticfiles real e sem rotas cadastradas.
+Cobre: validar_registro detecta slug duplicado, prefixo de app inexistente, variante de ícone sem
+arquivo e url_name que não resolve. `_rota_existe` (SPEC 005) confere o NOME da rota contra o
+resolver de verdade — não monta URL —, então os testes de url_name usam nomes reais do projeto em
+vez de mockar `reverse`. O patch em django.contrib.staticfiles.finders.find permite rodar sem
+staticfiles real.
 """
 
 from unittest.mock import patch
-
-from django.urls import NoReverseMatch
 
 from services.domain.autorizacao.contratos import VarianteIcone
 from apps.competencias.schemas import AcaoImplementada, RegistroAcoes
 from apps.competencias.utils import instanciar_acao
 from apps.competencias.checks import validar_registro
+
+# "search:rotear_busca" existe de verdade e não recebe argumento — âncora neutra para os testes
+# que não são sobre resolução de rota.
+URL_NAME_REAL = "search:rotear_busca"
 
 
 # ---------------------------------------------------------------------------
@@ -25,7 +28,7 @@ def _acao_implementada(
     slug: str = "search.exportar_csv",
     nome: str = "Exportar CSV",
     tooltip: str = "Exporta os resultados em CSV",
-    url_name: str = "search:exportar_csv",
+    url_name: str = URL_NAME_REAL,
     partial: str = "_exportar_csv.html",
     variantes_icone: frozenset[VarianteIcone] = frozenset(),
 ) -> AcaoImplementada:
@@ -52,10 +55,7 @@ def test_check_acusa_slug_duplicado() -> None:
         )
     )
 
-    with (
-        patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("apps.competencias.checks.reverse", return_value="/fake/"),
-    ):
+    with patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"):
         erros = validar_registro(registro)
 
     assert any(
@@ -72,10 +72,7 @@ def test_check_slugs_distintos_nao_geram_erro_de_duplicidade() -> None:
         )
     )
 
-    with (
-        patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("apps.competencias.checks.reverse", return_value="/fake/"),
-    ):
+    with patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"):
         erros = validar_registro(registro)
 
     assert not any("duplicad" in e.msg.lower() for e in erros)
@@ -91,10 +88,7 @@ def test_check_acusa_prefixo_de_app_inexistente() -> None:
         acoes=(_acao_implementada(slug="appfantasma.acao", url_name="appfantasma:acao"),)
     )
 
-    with (
-        patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("apps.competencias.checks.reverse", return_value="/fake/"),
-    ):
+    with patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"):
         erros = validar_registro(registro)
 
     assert any(
@@ -107,10 +101,7 @@ def test_check_prefixo_instalado_nao_gera_erro_de_app() -> None:
     # 'search' está em INSTALLED_APPS como 'apps.search'.
     registro = RegistroAcoes(acoes=(_acao_implementada(),))
 
-    with (
-        patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("apps.competencias.checks.reverse", return_value="/fake/"),
-    ):
+    with patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"):
         erros = validar_registro(registro)
 
     assert not any("app" in e.msg.lower() and "instalad" in e.msg.lower() for e in erros)
@@ -127,10 +118,7 @@ def test_check_acusa_variante_de_icone_sem_arquivo() -> None:
     )
 
     # finders.find devolve None → SVG não encontrado.
-    with (
-        patch("django.contrib.staticfiles.finders.find", return_value=None),
-        patch("apps.competencias.checks.reverse", return_value="/fake/"),
-    ):
+    with patch("django.contrib.staticfiles.finders.find", return_value=None):
         erros = validar_registro(registro)
 
     assert any(
@@ -146,12 +134,9 @@ def test_check_variante_com_svg_presente_nao_gera_erro() -> None:
         acoes=(_acao_implementada(variantes_icone=frozenset({VarianteIcone.PEQUENO})),)
     )
 
-    with (
-        patch(
-            "django.contrib.staticfiles.finders.find",
-            return_value="/static/acoes/search/exportar_csv/icones/pequeno.svg",
-        ),
-        patch("apps.competencias.checks.reverse", return_value="/fake/"),
+    with patch(
+        "django.contrib.staticfiles.finders.find",
+        return_value="/static/acoes/search/exportar_csv/icones/pequeno.svg",
     ):
         erros = validar_registro(registro)
 
@@ -165,10 +150,7 @@ def test_check_variante_nao_declarada_nao_e_cobrada() -> None:
     # Ação sem variantes: o check não deve consultar nenhum SVG.
     registro = RegistroAcoes(acoes=(_acao_implementada(),))
 
-    with (
-        patch("django.contrib.staticfiles.finders.find", return_value=None),
-        patch("apps.competencias.checks.reverse", return_value="/fake/"),
-    ):
+    with patch("django.contrib.staticfiles.finders.find", return_value=None):
         erros = validar_registro(registro)
 
     assert not any(
@@ -189,10 +171,7 @@ def test_check_caminho_do_svg_segue_gabarito() -> None:
         caminhos_consultados.append(caminho)
         return "/fake/" + caminho
 
-    with (
-        patch("django.contrib.staticfiles.finders.find", side_effect=finder_espiao),
-        patch("apps.competencias.checks.reverse", return_value="/fake/"),
-    ):
+    with patch("django.contrib.staticfiles.finders.find", side_effect=finder_espiao):
         validar_registro(registro)
 
     assert any(
@@ -211,10 +190,7 @@ def test_check_acusa_url_name_que_nao_resolve() -> None:
         acoes=(_acao_implementada(url_name="search:rota_que_nao_existe"),)
     )
 
-    with (
-        patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("apps.competencias.checks.reverse", side_effect=NoReverseMatch("não resolve")),
-    ):
+    with patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"):
         erros = validar_registro(registro)
 
     assert any(
@@ -224,16 +200,42 @@ def test_check_acusa_url_name_que_nao_resolve() -> None:
     )
 
 
+def test_check_acusa_namespace_inexistente() -> None:
+    registro = RegistroAcoes(
+        acoes=(_acao_implementada(url_name="namespace_fantasma:rota"),)
+    )
+
+    with patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"):
+        erros = validar_registro(registro)
+
+    assert any(
+        "namespace_fantasma:rota" in e.msg
+        and ("url" in e.msg.lower() or "rota" in e.msg.lower() or "resolve" in e.msg.lower())
+        for e in erros
+    )
+
+
 def test_check_url_name_valido_nao_gera_erro() -> None:
     registro = RegistroAcoes(acoes=(_acao_implementada(),))
 
-    with (
-        patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"),
-        patch("apps.competencias.checks.reverse", return_value="/search/exportar/"),
-    ):
+    with patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"):
         erros = validar_registro(registro)
 
     assert not any(
-        "search:exportar_csv" in e.msg or "url" in e.msg.lower() or "rota" in e.msg.lower() or "resolve" in e.msg.lower()
+        "url" in e.msg.lower() or "rota" in e.msg.lower() or "resolve" in e.msg.lower()
+        for e in erros
+    )
+
+
+def test_check_aceita_rota_com_argumento() -> None:
+    # `reverse` cru não resolve rota que exige id no caminho; o check precisa provar só que o
+    # NOME existe — quem monta a URL com o argumento em mãos é a view (SPEC criacao_usuarios/005).
+    registro = RegistroAcoes(acoes=(_acao_implementada(url_name="user_admin:editar_perfil"),))
+
+    with patch("django.contrib.staticfiles.finders.find", return_value="/fake/path.svg"):
+        erros = validar_registro(registro)
+
+    assert not any(
+        "url" in e.msg.lower() or "rota" in e.msg.lower() or "resolve" in e.msg.lower()
         for e in erros
     )

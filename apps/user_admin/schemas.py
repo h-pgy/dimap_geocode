@@ -62,6 +62,24 @@ class NovoServidor(BaseModel):
     url_acesso: HttpUrl
 
 
+class EdicaoServidor(BaseModel):
+    """Quem o constrói é o `LeitorDeFormulario`, e não a view — construí-lo aqui entregaria a
+    recusa ao `PydanticValidationMiddleware`, cuja resposta o HTMX troca no alvo da requisição, que
+    é o poço do modal (SPEC formularios/001, Caveats). Sem `url_acesso`: editar não manda e-mail
+    nenhum (SPEC criacao_usuarios/005)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    servidor_id: int
+    rf: str = Field(min_length=1, max_length=20)
+    nome: str = Field(min_length=1, max_length=100)
+    sobrenome: str = Field(min_length=1, max_length=150)
+    email: EmailStr
+    unidade_id: int
+    cargo_base_id: int
+    cargo_comissao_id: CargoOpcional = None
+
+
 class NovaSubstituicao(BaseModel):
     substituto: int
     # A tela manda as datas já propostas; em branco continua valendo, porque é assim que o andaime

@@ -155,18 +155,54 @@ def contexto_pagina_perfil(perfil: Perfil) -> dict[str, Any]:
     )
 
 
-def contexto_modal_perfil(perfil: Perfil) -> dict[str, Any]:
+def contexto_modal_perfil(perfil: Perfil, valores: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """O que o modal preenche: o perfil, os catálogos dos três selects e os do painel de unidade,
-    que vem fechado dentro dele."""
+    que vem fechado dentro dele.
+
+    O modal tem duas faces do mesmo servidor — o lado LIDO do `.campo-onsen`, que mostra o que está
+    gravado, e o input atrás do lápis, que mostra o que a pessoa digitou. Na abertura os dois
+    coincidem e `valores` sai do próprio perfil; na recusa eles divergem, e é essa divergência que
+    deixa a pessoa comparar o que tentou com o que vale (SPEC criacao_usuarios/005).
+
+    `perfil` continua sendo o model, e não um dicionário como no formulário de criação: o lado lido
+    pede `unidade.sigla`, `cargo_base.nome`, o avatar e a tarja de titular."""
     return (
         _catalogos_de_lotacao()
         | _contexto_do_modal_de_unidade()
         | {
             "perfil": perfil,
+            "valores": valores if valores is not None else _valores_do_perfil(perfil),
             "imagem": _imagem_do_perfil(perfil),
             "cor_unidade_hex": hex_da_cor(perfil.cor_unidade),
         }
     )
+
+
+def _valores_do_perfil(perfil: Perfil) -> dict[str, Any]:
+    """A abertura do modal, dita na mesma língua da recusa: os ids já como inteiros, que é o que o
+    `selected` do select compara."""
+    return {
+        "rf": perfil.rf,
+        "nome": perfil.nome,
+        "sobrenome": perfil.sobrenome,
+        "email": perfil.email,
+        "unidade_id": perfil.unidade_id,
+        "cargo_base_id": perfil.cargo_base_id,
+        "cargo_comissao_id": perfil.cargo_comissao_id,
+    }
+
+
+def contexto_edicao_recusada(
+    perfil: Perfil,
+    valores: Mapping[str, Any],
+    recusa: RecusaDeFormulario,
+) -> dict[str, Any]:
+    # `perfil` vem do banco INTOCADO: `editar_servidor` altera a instância dele em memória antes do
+    # `full_clean`, e reaproveitá-la mostraria no lado lido o valor que a recusa impediu de gravar.
+    return contexto_modal_perfil(perfil, _valores_do_formulario(valores)) | {
+        "erros": recusa.mensagens,
+        "realce": recusa.realce,
+    }
 
 
 def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
