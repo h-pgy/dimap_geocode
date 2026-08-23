@@ -83,7 +83,7 @@ def _cargo_base(**overrides: object) -> CargoBase:
 def _novo_servidor(unidade: Unidade, cargo_base: CargoBase, **overrides: object) -> dict[str, Any]:
     """O formulário cru, como o POST o entrega: quem monta o DTO é o `LeitorDeFormulario`."""
     dados: dict[str, Any] = {
-        "rf": "920100",
+        "rf": "9201000",
         "nome": "Fulano",
         "sobrenome": "de Cadastro",
         "email": "fulano.cadastro@prefeitura.sp.gov.br",
@@ -124,12 +124,12 @@ def test_cadastro_grava_o_servidor(
     cargo = _cargo_base()
 
     desfecho = criar_servidor(
-        _novo_servidor(unidade, cargo, rf="920101", email="ciclano@prefeitura.sp.gov.br")
+        _novo_servidor(unidade, cargo, rf="9201010", email="ciclano@prefeitura.sp.gov.br")
     )
 
     assert desfecho.recusa.mensagens == ()
     assert desfecho.perfil is not None
-    perfil = Perfil.objects.get(rf="920101")
+    perfil = Perfil.objects.get(rf="9201010")
     assert perfil.email == "ciclano@prefeitura.sp.gov.br"
     assert perfil.check_password(SENHA_FIXA.get_secret_value())
     assert perfil.senha_provisoria is True
@@ -148,13 +148,13 @@ def test_senha_temporaria_sai_no_email_do_servidor(
 
     criar_servidor(
         _novo_servidor(
-            unidade, cargo, rf="920102", nome="Beltrano", email="beltrano@prefeitura.sp.gov.br"
+            unidade, cargo, rf="9201020", nome="Beltrano", email="beltrano@prefeitura.sp.gov.br"
         )
     )
 
     mensagem = enviador.mensagens[0]
     assert mensagem.destinatarios == ("beltrano@prefeitura.sp.gov.br",)
-    assert "920102" in mensagem.corpo_texto
+    assert "9201020" in mensagem.corpo_texto
     assert SENHA_FIXA.get_secret_value() in mensagem.corpo_texto
 
 
@@ -174,7 +174,7 @@ def test_falha_na_entrega_desfaz_o_cadastro(
 
     _preparar(monkeypatch, settings, EnviadorFake(erro=SmtpEnvioError("servidor fora do ar")))
     indisponivel = criar_servidor(
-        _novo_servidor(unidade, cargo, rf="920103", email="indisponivel@prefeitura.sp.gov.br")
+        _novo_servidor(unidade, cargo, rf="9201030", email="indisponivel@prefeitura.sp.gov.br")
     )
     assert indisponivel.perfil is None
     assert indisponivel.recusa.mensagens == (
@@ -182,7 +182,7 @@ def test_falha_na_entrega_desfaz_o_cadastro(
     )
     # Falha de entrega realça o e-mail: é o endereço que precisa mudar (SPEC 004, Caveats).
     assert indisponivel.recusa.realce["email"] == "campo-realce-erro"
-    assert not Perfil.objects.filter(rf="920103").exists()
+    assert not Perfil.objects.filter(rf="9201030").exists()
 
     _preparar(
         monkeypatch,
@@ -190,18 +190,18 @@ def test_falha_na_entrega_desfaz_o_cadastro(
         EnviadorFake(_resultado(destinatarios_recusados=("recusado@prefeitura.sp.gov.br",))),
     )
     recusado = criar_servidor(
-        _novo_servidor(unidade, cargo, rf="920104", email="recusado@prefeitura.sp.gov.br")
+        _novo_servidor(unidade, cargo, rf="9201040", email="recusado@prefeitura.sp.gov.br")
     )
     assert recusado.perfil is None
-    assert not Perfil.objects.filter(rf="920104").exists()
+    assert not Perfil.objects.filter(rf="9201040").exists()
 
     _preparar(monkeypatch, settings, EnviadorFake(_resultado(entregue_ao_servidor=False)))
     desligado = criar_servidor(
-        _novo_servidor(unidade, cargo, rf="920105", email="desligado@prefeitura.sp.gov.br")
+        _novo_servidor(unidade, cargo, rf="9201050", email="desligado@prefeitura.sp.gov.br")
     )
     assert desligado.recusa.mensagens == ()
     assert desligado.perfil is not None
-    assert Perfil.objects.filter(rf="920105").exists()
+    assert Perfil.objects.filter(rf="9201050").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -221,15 +221,15 @@ def test_email_fora_do_dominio_e_recusado_com_a_politica_ligada(
     cargo = _cargo_base()
     settings.ENFORCE_PREFEITURA_EMAIL = True
 
-    recusado = criar_servidor(_novo_servidor(unidade, cargo, rf="920106", email="fulano@gmail.com"))
+    recusado = criar_servidor(_novo_servidor(unidade, cargo, rf="9201060", email="fulano@gmail.com"))
     assert recusado.perfil is None
     assert recusado.recusa.mensagens == (ERRO_DOMINIO,)
     assert recusado.recusa.realce["email"] == "campo-realce-erro"
     assert enviador.mensagens == []
-    assert not Perfil.objects.filter(rf="920106").exists()
+    assert not Perfil.objects.filter(rf="9201060").exists()
 
     settings.ENFORCE_PREFEITURA_EMAIL = False
-    aceito = criar_servidor(_novo_servidor(unidade, cargo, rf="920107", email="fulano2@gmail.com"))
+    aceito = criar_servidor(_novo_servidor(unidade, cargo, rf="9201070", email="fulano2@gmail.com"))
     assert aceito.recusa.mensagens == ()
     assert aceito.perfil is not None
 
@@ -249,21 +249,21 @@ def test_rf_ou_email_repetido_e_recusado_sem_gravar(
     unidade = _unidade()
     cargo = _cargo_base()
     existente = criar_servidor(
-        _novo_servidor(unidade, cargo, rf="920108", email="existente@prefeitura.sp.gov.br")
+        _novo_servidor(unidade, cargo, rf="9201080", email="existente@prefeitura.sp.gov.br")
     ).perfil
     assert existente is not None
 
     rf_repetido = criar_servidor(
-        _novo_servidor(unidade, cargo, rf="920108", email="outro@prefeitura.sp.gov.br")
+        _novo_servidor(unidade, cargo, rf="9201080", email="outro@prefeitura.sp.gov.br")
     )
     assert rf_repetido.perfil is None
     # A mensagem é a do model, e o realce cai no controle que repetiu — não na tarja do `__all__`.
     assert rf_repetido.recusa.mensagens == ("Já existe servidor cadastrado com este RF.",)
     assert rf_repetido.recusa.realce == {"rf": "campo-realce-erro"}
-    assert Perfil.objects.filter(rf="920108").count() == 1
+    assert Perfil.objects.filter(rf="9201080").count() == 1
 
     email_repetido = criar_servidor(
-        _novo_servidor(unidade, cargo, rf="920109", email="existente@prefeitura.sp.gov.br")
+        _novo_servidor(unidade, cargo, rf="9201090", email="existente@prefeitura.sp.gov.br")
     )
     assert email_repetido.perfil is None
     assert email_repetido.recusa.mensagens == ("Já existe servidor cadastrado com este e-mail.",)

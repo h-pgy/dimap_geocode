@@ -22,6 +22,7 @@ import pytest
 from pytest_django.fixtures import SettingsWrapper
 
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, ExecucaoAcao
+from apps.user_admin.cadastro import ERRO_DOMINIO
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
 from apps.user_admin.models import (
     CargoBase,
@@ -177,6 +178,14 @@ def _lapis_aberto(soup: BeautifulSoup, campo: str) -> bool:
     return toggle.has_attr("checked")
 
 
+def _siglas_do_select(soup: BeautifulSoup) -> set[str]:
+    """O select da LOTAÇÃO. O painel de nova unidade tem o seu, chamado `pai`, e o recorte dele é
+    de outra SPEC."""
+    select = soup.find("select", attrs={"name": "unidade"})
+    assert select is not None, "o modal não trouxe o select de unidade"
+    return {opcao.get_text(strip=True).split(" · ")[0] for opcao in select.find_all("option")}
+
+
 # ---------------------------------------------------------------------------
 # A gravação altera o cadastro num ato só, e a foto sem arquivo novo permanece
 # ---------------------------------------------------------------------------
@@ -191,16 +200,16 @@ def test_gravacao_altera_o_cadastro_num_ato_so(
     raiz = _unidade("EDT-RAIZ")
     origem = _unidade("EDT-ORIGEM", pai=raiz)
     destino = _unidade("EDT-DESTINO", pai=raiz)
-    dirigente = _dirigente(raiz, "940100")
+    dirigente = _dirigente(raiz, "9401000")
     novo_cargo = _cargo_base(nome="Cargo Novo Ato", sigla="CNA")
-    alvo = _perfil(origem, "940101", "Antigo")
+    alvo = _perfil(origem, "9401010", "Antigo")
     alvo.foto.save("retrato.png", SimpleUploadedFile("retrato.png", PNG_MINIMO))
     nome_arquivo = alvo.foto.name
 
     client.force_login(_fresco(dirigente))
     resposta = client.post(
         _url_gravar(alvo.pk),
-        _payload(destino, novo_cargo, "940101", "novo@prefeitura.sp.gov.br", nome="Novo"),
+        _payload(destino, novo_cargo, "9401010", "novo@prefeitura.sp.gov.br", nome="Novo"),
     )
 
     assert resposta.status_code == 200
@@ -223,9 +232,9 @@ def test_gravacao_altera_o_cadastro_num_ato_so(
 def test_recusa_volta_no_modal_realcada_sem_gravar(client: Client) -> None:
     unidade = _unidade("EDT-REALCE")
     cargo = _cargo_base()
-    dirigente = _dirigente(unidade, "940110")
-    outro = _perfil(unidade, "940111", "Outro")
-    alvo = _perfil(unidade, "940112", "Alvo Realce")
+    dirigente = _dirigente(unidade, "9401100")
+    outro = _perfil(unidade, "9401110", "Outro")
+    alvo = _perfil(unidade, "9401120", "Alvo Realce")
 
     client.force_login(_fresco(dirigente))
 
@@ -248,24 +257,24 @@ def test_recusa_volta_no_modal_realcada_sem_gravar(client: Client) -> None:
     assert valor_lido is not None
     assert valor_lido.get_text(strip=True) == alvo.rf
     alvo.refresh_from_db()
-    assert alvo.rf == "940112"
+    assert alvo.rf == "9401120"
 
     # Campo em branco e e-mail torto seguem o mesmo caminho: nada é gravado.
-    payload_invalido = _payload(unidade, cargo, "940113", "isto não é e-mail")
+    payload_invalido = _payload(unidade, cargo, "9401130", "isto não é e-mail")
     payload_invalido["nome"] = ""
     resposta = client.post(_url_gravar(alvo.pk), payload_invalido)
     html = resposta.content.decode()
     soup = BeautifulSoup(html, "html.parser")
 
     assert resposta.status_code == 422
-    assert "Preencha o campo Nome com a quantidade mínima de caracteres." in html
+    assert "Preencha o campo Nome." in html
     assert "E-mail inválido: confira o endereço." in html
     assert "campo-realce-erro" in _controle(soup, "input", "nome")["class"]
     assert "campo-realce-erro" in _controle(soup, "input", "email")["class"]
     assert _lapis_aberto(soup, "nome")
     assert _lapis_aberto(soup, "email")
     alvo.refresh_from_db()
-    assert alvo.rf == "940112"
+    assert alvo.rf == "9401120"
     assert alvo.nome == "Alvo Realce"
 
 
@@ -287,9 +296,9 @@ def test_recusa_do_titular_vai_para_a_tarja(client: Client) -> None:
         nivel_minimo_titular=None,
     )
     destino = Unidade.objects.create(nome="Destino Alta", sigla="EDT-TIT-DEST", tipo=tipo_alta, pai=raiz)
-    dirigente = _dirigente(raiz, "940120")
+    dirigente = _dirigente(raiz, "9401200")
     cargo_normal = _cargo_chefia("Diretor Titular Editar")
-    titular = _perfil(origem, "940121", "Titular Editado", cargo_comissao=cargo_normal)
+    titular = _perfil(origem, "9401210", "Titular Editado", cargo_comissao=cargo_normal)
     definir_titular(titular)
 
     client.force_login(_fresco(dirigente))
@@ -327,7 +336,7 @@ def test_recusa_do_titular_vai_para_a_tarja(client: Client) -> None:
 def test_sucesso_fecha_o_modal_e_atualiza_a_pagina(client: Client) -> None:
     unidade = _unidade("EDT-SUCESSO")
     cargo = _cargo_base()
-    dirigente = _dirigente(unidade, "940130")
+    dirigente = _dirigente(unidade, "9401300")
 
     client.force_login(_fresco(dirigente))
     resposta = client.post(
@@ -335,7 +344,7 @@ def test_sucesso_fecha_o_modal_e_atualiza_a_pagina(client: Client) -> None:
         _payload(
             unidade,
             cargo,
-            "940130",
+            "9401300",
             "atualizado@prefeitura.sp.gov.br",
             nome="Atualizado",
             cargo_comissao=str(dirigente.cargo_comissao_id),
@@ -360,8 +369,8 @@ def test_sucesso_fecha_o_modal_e_atualiza_a_pagina(client: Client) -> None:
 def test_botao_de_editar_so_aparece_para_quem_pode(client: Client) -> None:
     unidade = _unidade("EDT-BOTAO")
     outro_ramo = _unidade("EDT-BOTAO-FORA")
-    dirigente = _dirigente(unidade, "940140")
-    sem_direcao = _perfil(outro_ramo, "940141", "Sem Direção")
+    dirigente = _dirigente(unidade, "9401400")
+    sem_direcao = _perfil(outro_ramo, "9401410", "Sem Direção")
 
     client.force_login(_fresco(dirigente))
     html = client.get(reverse("user_admin:pagina_perfil", kwargs={"pk": dirigente.pk})).content.decode()
@@ -382,7 +391,7 @@ def test_botao_de_editar_so_aparece_para_quem_pode(client: Client) -> None:
 @banco
 @pytest.mark.django_db
 def test_anonimo_vai_para_o_login_sem_deixar_linha(client: Client) -> None:
-    alvo = _perfil(_unidade("EDT-ANON"), "940150", "Alvo Anônimo")
+    alvo = _perfil(_unidade("EDT-ANON"), "9401500", "Alvo Anônimo")
 
     resposta = client.get(_url_abrir(alvo.pk))
 
@@ -395,8 +404,8 @@ def test_anonimo_vai_para_o_login_sem_deixar_linha(client: Client) -> None:
 @pytest.mark.django_db
 def test_autenticado_sem_competencia_recebe_403_registrado(client: Client) -> None:
     unidade = _unidade("EDT-403")
-    perfil = _perfil(unidade, "940160", "Sem Competência")
-    alvo = _perfil(_unidade("EDT-403-ALVO"), "940161", "Alvo 403")
+    perfil = _perfil(unidade, "9401600", "Sem Competência")
+    alvo = _perfil(_unidade("EDT-403-ALVO"), "9401610", "Alvo 403")
 
     client.force_login(perfil)
     resposta = client.get(_url_abrir(alvo.pk))
@@ -415,9 +424,9 @@ def test_autenticado_sem_competencia_recebe_403_registrado(client: Client) -> No
 @pytest.mark.django_db
 def test_estrutural_libera_quem_dirige_sem_concessao(client: Client) -> None:
     unidade = _unidade("EDT-ESTR")
-    titular = _dirigente(unidade, "940170", "Titular Estrutural")
+    titular = _dirigente(unidade, "9401700", "Titular Estrutural")
     outra = _unidade("EDT-ESTR-OUTRA")
-    substituto = _perfil(outra, "940171", "Substituto Estrutural")
+    substituto = _perfil(outra, "9401710", "Substituto Estrutural")
 
     client.force_login(titular)
     assert client.get(_url_abrir(titular.pk)).status_code == 200
@@ -437,7 +446,7 @@ def test_concessao_em_outra_unidade_nao_libera(client: Client) -> None:
     superior = _unidade("EDT-CONC-SUP")
     subordinada = _unidade("EDT-CONC-SUB", pai=superior)
     cargo = _cargo_base(nome="Cargo Concessão Alheia Editar", sigla="CCAE")
-    perfil = _perfil(subordinada, "940180", "Concessão Alheia", cargo_base=cargo)
+    perfil = _perfil(subordinada, "9401800", "Concessão Alheia", cargo_base=cargo)
     # A mesma ação, concedida ao mesmo cargo — mas na unidade superior, não na do perfil.
     _conceder(superior, cargo)
 
@@ -453,7 +462,7 @@ def test_concessao_em_outra_unidade_nao_libera(client: Client) -> None:
 @banco
 @pytest.mark.django_db
 def test_perfil_fora_de_exercicio_nao_exerce(client: Client) -> None:
-    impedido = _dirigente(_unidade("EDT-IMPEDIDO"), "940190", "Titular Impedido")
+    impedido = _dirigente(_unidade("EDT-IMPEDIDO"), "9401900", "Titular Impedido")
     tipo, _ = TipoImpedimento.objects.get_or_create(nome="Licença Sem Cobertura Editar Servidor")
     registrar_impedimento(
         impedido,
@@ -464,7 +473,7 @@ def test_perfil_fora_de_exercicio_nao_exerce(client: Client) -> None:
     client.force_login(_fresco(impedido))
     assert client.get(_url_abrir(impedido.pk)).status_code == 403
 
-    exonerado = _dirigente(_unidade("EDT-EXONERADO"), "940191", "Titular Exonerado")
+    exonerado = _dirigente(_unidade("EDT-EXONERADO"), "9401910", "Titular Exonerado")
     exonerado.is_active = False
     exonerado.save(update_fields=["is_active"])
     client.force_login(exonerado)
@@ -483,9 +492,9 @@ def test_perfil_fora_de_exercicio_nao_exerce(client: Client) -> None:
 def test_alcance_vem_da_lotacao_do_servidor(client: Client) -> None:
     dirigida = _unidade("EDT-ALC-DIRIGIDA")
     fora = _unidade("EDT-ALC-FORA")
-    dirigente = _dirigente(dirigida, "940200")
-    dentro = _perfil(dirigida, "940201", "Dentro do Alcance")
-    de_fora = _perfil(fora, "940202", "Fora do Alcance")
+    dirigente = _dirigente(dirigida, "9402000")
+    dentro = _perfil(dirigida, "9402010", "Dentro do Alcance")
+    de_fora = _perfil(fora, "9402020", "Fora do Alcance")
 
     client.force_login(_fresco(dirigente))
     assert client.get(_url_abrir(dentro.pk)).status_code == 200
@@ -502,15 +511,15 @@ def test_unidade_forjada_no_request_nao_abre_servidor_alheio(client: Client) -> 
     dirigida = _unidade("EDT-FORJA-DIRIGIDA")
     fora = _unidade("EDT-FORJA-FORA")
     cargo = _cargo_base()
-    dirigente = _dirigente(dirigida, "940210")
-    de_fora = _perfil(fora, "940211", "Alheio Forjado")
+    dirigente = _dirigente(dirigida, "9402100")
+    de_fora = _perfil(fora, "9402110", "Alheio Forjado")
 
     client.force_login(_fresco(dirigente))
     # Manda a PRÓPRIA unidade — dentro do alcance de quem grava — mas o alvo continua sendo o
     # servidor de fora: a origem é lida do banco, e mandar o destino certo não muda isso.
     resposta = client.post(
         _url_gravar(de_fora.pk),
-        _payload(dirigida, cargo, "940211", "forjado@prefeitura.sp.gov.br"),
+        _payload(dirigida, cargo, "9402110", "forjado@prefeitura.sp.gov.br"),
     )
 
     assert resposta.status_code == 403
@@ -529,7 +538,7 @@ def test_mover_para_fora_do_alcance_e_recusado(client: Client) -> None:
     dirigida = _unidade("EDT-MOVER-DIRIGIDA")
     fora = _unidade("EDT-MOVER-FORA")
     cargo = _cargo_base()
-    dirigente = _dirigente(dirigida, "940220")
+    dirigente = _dirigente(dirigida, "9402200")
 
     client.force_login(_fresco(dirigente))
     resposta = client.post(
@@ -546,7 +555,7 @@ def test_mover_para_fora_do_alcance_e_recusado(client: Client) -> None:
 @pytest.mark.django_db
 def test_gravar_sem_o_parametro_do_alvo_e_400(client: Client) -> None:
     dirigida = _unidade("EDT-400")
-    dirigente = _dirigente(dirigida, "940230")
+    dirigente = _dirigente(dirigida, "9402300")
     payload = _payload(dirigida, dirigente.cargo_base, dirigente.rf, "quatrocentos@prefeitura.sp.gov.br")
     del payload["unidade"]
 
@@ -574,7 +583,7 @@ def test_acao_inativa_nao_libera_ninguem() -> None:
     com concessão (sem dirigir unidade alguma) nunca teria como satisfazer nesta ação."""
     unidade = _unidade("EDT-INATIVA")
     cargo = _cargo_base(nome="Cargo Concessão Inativa Editar", sigla="CCIE")
-    perfil = _perfil(unidade, "940240", "Concessão Sem Direção Editar", cargo_base=cargo)
+    perfil = _perfil(unidade, "9402400", "Concessão Sem Direção Editar", cargo_base=cargo)
     _conceder(unidade, cargo)
 
     assert _fresco(perfil).has_perm(SLUG_ACAO) is True
@@ -595,7 +604,7 @@ def test_acao_inativa_nao_libera_ninguem() -> None:
 def test_execucao_registrada_com_a_lotacao_do_momento(client: Client) -> None:
     origem = _unidade("EDT-REG-ORIGEM")
     destino = _unidade("EDT-REG-DESTINO")
-    dirigente = _dirigente(origem, "940250")
+    dirigente = _dirigente(origem, "9402500")
 
     client.force_login(_fresco(dirigente))
     resposta = client.post(
@@ -627,8 +636,8 @@ def test_execucao_registrada_com_a_lotacao_do_momento(client: Client) -> None:
 def test_ato_em_substituicao_diz_por_quem_responde(client: Client) -> None:
     unidade_titular = _unidade("EDT-SUBST-TITULAR")
     unidade_substituto = _unidade("EDT-SUBST-SUBSTITUTO")
-    titular = _dirigente(unidade_titular, "940260", "Titular Substituído Editar")
-    substituto = _dirigente(unidade_substituto, "940261", "Substituto Que Também Dirige Editar")
+    titular = _dirigente(unidade_titular, "9402600", "Titular Substituído Editar")
+    substituto = _dirigente(unidade_substituto, "9402610", "Substituto Que Também Dirige Editar")
 
     # Por competência própria: age sobre o próprio cadastro.
     client.force_login(substituto)
@@ -670,8 +679,8 @@ def test_ato_em_substituicao_diz_por_quem_responde(client: Client) -> None:
 def test_abrir_o_modal_nao_vira_registro(client: Client) -> None:
     unidade = _unidade("EDT-LEITURA")
     outra = _unidade("EDT-LEITURA-OUTRA")
-    dirigente = _dirigente(unidade, "940270")
-    sem_competencia = _perfil(outra, "940271", "Sem Competência Leitura Editar")
+    dirigente = _dirigente(unidade, "9402700")
+    sem_competencia = _perfil(outra, "9402710", "Sem Competência Leitura Editar")
 
     client.force_login(_fresco(dirigente))
     assert client.get(_url_abrir(dirigente.pk)).status_code == 200
@@ -691,7 +700,7 @@ def test_abrir_o_modal_nao_vira_registro(client: Client) -> None:
 @pytest.mark.django_db
 def test_gravacao_so_por_post(client: Client) -> None:
     unidade = _unidade("EDT-SOPOST")
-    dirigente = _dirigente(unidade, "940280")
+    dirigente = _dirigente(unidade, "9402800")
 
     client.force_login(_fresco(dirigente))
     resposta = client.get(_url_gravar(dirigente.pk), {"unidade": str(unidade.pk)})
@@ -700,3 +709,138 @@ def test_gravacao_so_por_post(client: Client) -> None:
     assert ExecucaoAcao.objects.count() == 0
     dirigente.refresh_from_db()
     assert dirigente.unidade_id == unidade.pk
+
+
+# ---------------------------------------------------------------------------
+# Cada formato erra com a frase do seu campo, também no modal
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_recusa_de_formato_volta_realcada_no_controle_certo(client: Client) -> None:
+    unidade = _unidade("EDT-FORMATO")
+    cargo = _cargo_base()
+    dirigente = _dirigente(unidade, "9403000")
+    alvo = _perfil(unidade, "9403010", "Alvo Formato")
+
+    client.force_login(_fresco(dirigente))
+    # RF de seis dígitos e nome numérico passam pela obrigatoriedade: é o formato que os recusa.
+    resposta = client.post(
+        _url_gravar(alvo.pk),
+        _payload(unidade, cargo, "940301", "formato@prefeitura.sp.gov.br", nome="12345"),
+    )
+    html = resposta.content.decode()
+    soup = BeautifulSoup(html, "html.parser")
+
+    assert resposta.status_code == 422
+    assert "RF: sete dígitos, com ou sem pontuação (812.345-6)." in html
+    assert "Nome: só letras, espaço, hífen e apóstrofo." in html
+    assert "campo-realce-erro" in _controle(soup, "input", "rf")["class"]
+    assert "campo-realce-erro" in _controle(soup, "input", "nome")["class"]
+    assert "campo-realce-erro" not in _controle(soup, "input", "sobrenome")["class"]
+    assert _lapis_aberto(soup, "rf")
+    assert _lapis_aberto(soup, "nome")
+    alvo.refresh_from_db()
+    assert alvo.rf == "9403010"
+    assert alvo.nome == "Alvo Formato"
+
+
+# ---------------------------------------------------------------------------
+# A política de e-mail institucional vale nas duas telas
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_edicao_recusa_email_nao_institucional(
+    client: Client, settings: SettingsWrapper
+) -> None:
+    settings.ENFORCE_PREFEITURA_EMAIL = True
+    unidade = _unidade("EDT-DOMINIO")
+    cargo = _cargo_base()
+    dirigente = _dirigente(unidade, "9403100")
+    alvo = _perfil(unidade, "9403110", "Alvo Domínio", email="alvo@prefeitura.sp.gov.br")
+
+    client.force_login(_fresco(dirigente))
+    resposta = client.post(
+        _url_gravar(alvo.pk),
+        _payload(unidade, cargo, alvo.rf, "particular@gmail.com"),
+    )
+    html = resposta.content.decode()
+    soup = BeautifulSoup(html, "html.parser")
+
+    assert resposta.status_code == 422
+    # A MESMA frase da criação: a política é uma só, e é a ausência dela aqui que a edição burlava.
+    assert ERRO_DOMINIO in html
+    assert "campo-realce-erro" in _controle(soup, "input", "email")["class"]
+    assert _lapis_aberto(soup, "email")
+    alvo.refresh_from_db()
+    assert alvo.email == "alvo@prefeitura.sp.gov.br"
+    assert alvo.nome == "Alvo Domínio"
+
+
+# ---------------------------------------------------------------------------
+# A foto é conferida antes de virar arquivo no disco
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_foto_invalida_e_recusada_sem_gravar_o_cadastro(
+    client: Client, settings: SettingsWrapper, tmp_path: Path
+) -> None:
+    settings.MEDIA_ROOT = tmp_path
+    unidade = _unidade("EDT-FOTO")
+    cargo = _cargo_base()
+    dirigente = _dirigente(unidade, "9403200")
+    alvo = _perfil(unidade, "9403210", "Alvo Foto", email="foto@prefeitura.sp.gov.br")
+    alvo.foto.save("retrato.png", SimpleUploadedFile("retrato.png", PNG_MINIMO))
+    nome_arquivo = alvo.foto.name
+    payload = _payload(unidade, cargo, alvo.rf, "foto@prefeitura.sp.gov.br", nome="Renomeado")
+
+    client.force_login(_fresco(dirigente))
+    nao_e_imagem = SimpleUploadedFile("retrato.png", b"isto e texto", content_type="image/png")
+    resposta = client.post(_url_gravar(alvo.pk), {**payload, "foto": nao_e_imagem})
+    html = resposta.content.decode()
+    soup = BeautifulSoup(html, "html.parser")
+
+    assert resposta.status_code == 422
+    assert "O arquivo enviado não é uma imagem." in html
+    assert "campo-realce-erro" in _controle(soup, "input", "foto")["class"]
+
+    acima_do_limite = SimpleUploadedFile(
+        "retrato.png",
+        b"\0" * (2 * 1024 * 1024 + 1),
+        content_type="image/png",
+    )
+    resposta = client.post(_url_gravar(alvo.pk), {**payload, "foto": acima_do_limite})
+
+    assert resposta.status_code == 422
+    assert "Foto acima de 2 MB: envie uma imagem menor." in resposta.content.decode()
+    # Nem a foto nem os demais campos do cadastro mudam.
+    alvo.refresh_from_db()
+    assert alvo.foto.name == nome_arquivo
+    assert alvo.nome == "Alvo Foto"
+
+
+# ---------------------------------------------------------------------------
+# O select do modal oferece só o alcance de quem edita
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_modal_so_oferece_unidades_do_alcance(client: Client) -> None:
+    raiz = _unidade("EDT-ALCANCE-RAIZ")
+    meio = _unidade("EDT-ALCANCE-MEIO", pai=raiz)
+    _unidade("EDT-ALCANCE-BAIXO", pai=meio)
+    _unidade("EDT-ALCANCE-TIA", pai=raiz)
+    _unidade("EDT-ALCANCE-FORA")
+    dirigente = _dirigente(meio, "9403300")
+    alvo = _perfil(meio, "9403310", "Alvo Alcance")
+
+    client.force_login(_fresco(dirigente))
+    soup = BeautifulSoup(client.get(_url_abrir(alvo.pk)).content.decode(), "html.parser")
+
+    assert _siglas_do_select(soup) == {"EDT-ALCANCE-MEIO", "EDT-ALCANCE-BAIXO"}
