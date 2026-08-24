@@ -6,17 +6,10 @@ e deixa o PydanticValidationMiddleware interceptar o ValidationError — nunca t
 """
 
 import re
-from collections.abc import Mapping
 from datetime import date
 from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, HttpUrl
-
-from services.domain.servidores_listagem import (
-    ColunaServidor,
-    ConsultaServidores,
-    FiltroColuna,
-)
 
 
 def _vazio_para_nulo(valor: object) -> object:
@@ -32,10 +25,6 @@ CargoOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
 PADRAO_RF = r"^\d{7}$"
 # Letra unicode dos dois lados de cada separador: sem isso "Ana " e "-Ana" passariam.
 PADRAO_NOME = r"^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$"
-
-PARAMETRO_ORDENAR_POR = "ordenar_por"
-PARAMETRO_DESCENDENTE = "descendente"
-
 
 def _so_digitos(valor: object) -> object:
     return re.sub(r"\D", "", valor) if isinstance(valor, str) else valor
@@ -142,22 +131,3 @@ class TrocaDeSubstituto(BaseModel):
     # "Assume em" — obrigatório, porque é a véspera dela que encerra a substituição que sai.
     data_inicio: date
     data_fim: DataOpcional = None
-
-
-def consulta_de_servidores(parametros: Mapping[str, str]) -> ConsultaServidores:
-    """Traduz a query string da listagem no DTO do domínio: um filtro por coluna que respondeu."""
-    filtros = [
-        FiltroColuna(coluna=coluna, termo=parametros[coluna])
-        for coluna in ColunaServidor
-        if parametros.get(coluna, "").strip()
-    ]
-    # model_validate porque os valores chegam como texto: coluna inválida vira ValidationError e o
-    # PydanticValidationMiddleware responde por ela.
-    return ConsultaServidores.model_validate(
-        {
-            "filtros": filtros,
-            # Cabeçalho em repouso manda campo vazio; para o domínio, é ausência de ordenação.
-            "ordenar_por": parametros.get(PARAMETRO_ORDENAR_POR) or None,
-            "descendente": parametros.get(PARAMETRO_DESCENDENTE) or False,
-        }
-    )

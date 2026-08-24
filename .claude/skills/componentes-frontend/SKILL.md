@@ -141,6 +141,15 @@ preenche, o que muda de estado é o **fio** no fundo dela, e a régua é o **cal
 no domínio. Prazo indeterminado **dissolve** a ponta (`.calha-cobertura-aberta`) em vez de desenhar
 um fim que não existe. Sem cor semântica no fio: quem *nomeia* o buraco é o rótulo em âmbar.
 
+**Linha pinçada** (`.table-flutuante-clone`, `.linha-pincada`, SPEC user_admin/021): escolhida uma
+unidade, a linha dela sobe até o topo da tabela. Quem desliza é um **clone** em `.glass-panel-thick`
+posicionado no `.table-onsen-poco` — `<tr>` não aceita `transform` sem desmontar a grade da tabela —
+e a original **apaga no lugar** (`.linha-pincada`), sem sair do fluxo: removê-la faria a tabela
+inteira pular sob o clone em movimento. Raio `--radius-placa`. Par com
+`static/src/js/ui/sincronia_unidades.js`, que escreve **só medida** em custom properties
+(`--topo-pincagem`, `--altura-pincagem`, `--duracao-pincagem`, `--largura-coluna`) — nenhuma
+declaração de pele sai do JS.
+
 **Barra de rolagem gravada** (`.scroll-etched`, `.scroll-etched-thumb`, `.scroll-etched-ativa`,
 `.scroll-etched-ociosa`): trilho sulcado e polegar de água, para **qualquer** `.card-well` rolável.
 Opt-in por `data-scroll-etched` no poço, com `[data-rolador]`, `[data-barra]`, `[data-polegar]` e
@@ -232,11 +241,11 @@ brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `references/des
 | Material | Uso | Tinta |
 |---|---|---|
 | `.glass-panel` | painel flutuante padrão (fino, 10px — **sobre o mapa**) | escura |
-| `.glass-panel-thick` | segunda espessura (blur 20px, gelo mais leitoso) — **vidro sobre interface**, onde o fino deixa passar demais. Primitivos `.glass-blur-thick` / `.glass-bg-thick` | escura |
+| `.glass-panel-thick` | segunda espessura (blur 28px, 97%→88%, aresta `white/80`) — **vidro sobre interface**, onde o fino deixa passar demais. Primitivos `.glass-blur-thick` / `.glass-bg-thick` | escura |
 | `.glass-drawer-panel` | gaveta lateral (texto denso; blur 12px, mais opaco) | escura |
 | `.card-well` | poço rebaixado: sub-cards dentro de painéis (stats, metadados) | escura |
 | `.glass-panel-deep` | variante escura **pontual**: tooltips, contraste invertido | clara (`rocha-100`, acentos `agua-300`/`madeira-300`) |
-| `.modal-glass` + `.modal-box-glass` | modal: a cena **embaça** o fundo (nunca escurece) e a caixa compõe `.glass-panel-thick`. Abre/fecha por `checkbox` nativo | escura |
+| `.modal-glass` + `.modal-box-glass` | modal: a cena **embaça** o fundo a 16px (nunca escurece) e a caixa compõe `.glass-panel-thick`. Abre/fecha por `checkbox` nativo | escura |
 
 Regras:
 - Blur fraco (2px) é proibido: não separa figura do fundo. O mapa continua legível com 10px.
@@ -301,6 +310,7 @@ arquivo. Três consumidores:
 Cuidados que já quebraram build/render:
 - `@apply` **só de utilities** (nunca classes daisyUI) — ver §2.1.
 - `shadow-inner` não existe no Tailwind 4; use `shadow-[inset_...]` arbitrária.
+- **`!important` no CSS é proibido** (CLAUDE.md §3.4) — salvo se pré-aprovado e estritamente necessário. Nunca use em `style` inline.
 - Sintaxe de important no Tailwind 4 é sufixo: `bg-transparent!` (não `!bg-transparent`).
 - O CDN `@tailwindcss/browser` só processa `<style type="text/tailwindcss">` **inline** (não
   suporta `<link>`) — por isso o include (aplicação) e o fetch+inject (mocks). CSS de mock que

@@ -1,20 +1,22 @@
 """
 Páginas de unidade: o formulário de cadastro (SPEC user_admin/012), a página própria
-(SPEC user_admin/016), o organograma (SPEC user_admin/018) e os três atos que mantêm o organograma
-(SPEC user_admin/020) — criar, editar e criar raiz.
+(SPEC user_admin/016), o organograma (SPEC user_admin/018), a listagem com organograma integrado
+(SPEC user_admin/021) e os três atos que mantêm o organograma (SPEC user_admin/020) — criar, editar
+e criar raiz.
 
-As rotas de LEITURA seguem ABERTAS (exceção declarada nas SPECs 016 e 018, §3.5); as de ESCRITA e
-as duas de abertura de formulário de ato (`criar_unidade`, `criar_unidade_raiz`, `editar_unidade`)
-são protegidas.
+As rotas de LEITURA seguem ABERTAS (exceção declarada nas SPECs 016, 018 e 021, §3.5); as de
+ESCRITA e as duas de abertura de formulário de ato (`criar_unidade`, `criar_unidade_raiz`,
+`editar_unidade`) são protegidas.
 """
 
 from typing import cast
 
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.competencias.consulta import alcance_do_perfil
+from apps.core.tabela import consulta_da_listagem
 from apps.competencias.protecao import acao_protegida, pode_executar, registrar_ato
 from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE,
@@ -23,18 +25,20 @@ from apps.unidades.acoes_declaradas import (
 )
 from apps.unidades.cadastro import alterar_unidade, cadastrar_unidade
 from apps.unidades.context import (
+    contexto_corpo_unidades,
     contexto_cor_sugerida,
     contexto_criacao_recusada,
     contexto_criar_unidade,
     contexto_edicao_recusada,
+    contexto_listagem_unidades,
     contexto_modal_unidade,
-    contexto_organograma,
     contexto_unidade,
     contexto_unidade_selecionada,
 )
 from apps.unidades.models import Unidade
-from apps.unidades.schemas import SelecaoUnidadePai
+from apps.unidades.schemas import ConsultaDeUnidades, SelecaoUnidadePai
 from apps.user_admin.models import Perfil
+from services.domain.listagem_gestao import ColunaUnidade
 
 TEMPLATE_UNIDADE = "unidades/unidade_form.html"
 TEMPLATE_UNIDADE_FORM = "unidades/partials/_formulario_unidade.html"
@@ -45,7 +49,8 @@ TEMPLATE_MODAL_UNIDADE = "unidades/partials/_modal_editar_unidade.html"
 TEMPLATE_EDICAO_CONCLUIDA = "unidades/partials/_edicao_unidade_concluida.html"
 TEMPLATE_PAGINA_UNIDADE = "unidades/unidade.html"
 TEMPLATE_CAMPO_COR = "unidades/partials/_campo_cor_unidade.html"
-TEMPLATE_ARVORE = "unidades/arvore_unidades.html"
+TEMPLATE_LISTAGEM_UNIDADES = "unidades/unidades_list.html"
+TEMPLATE_CORPO_UNIDADES = "unidades/partials/_corpo_unidades.html"
 
 
 @acao_protegida(ACAO_CRIAR_UNIDADE)
@@ -195,10 +200,32 @@ def gravar_edicao_unidade(request: HttpRequest, unidade: int) -> HttpResponse:
     return render(request, TEMPLATE_EDICAO_CONCLUIDA, contexto_unidade(desfecho.unidade))
 
 
+def listar_unidades(request: HttpRequest) -> HttpResponse:
+    """Rota de leitura: a tabela filtrável com o organograma no topo. `?foco=<pk>` é como a seção
+    de hierarquia da página da unidade chega aqui — a unidade já situada na árvore e no topo da
+    tabela."""
+    consulta = consulta_da_listagem(request.GET.dict(), ColunaUnidade)
+    foco = ConsultaDeUnidades.model_validate(request.GET.dict()).foco
+    unidade_em_foco = Unidade.objects.filter(pk=foco).first() if foco else None
+    return render(
+        request,
+        TEMPLATE_LISTAGEM_UNIDADES,
+        contexto_listagem_unidades(consulta, unidade_em_foco),
+    )
+
+
+def corpo_unidades(request: HttpRequest) -> HttpResponse:
+    # Alvo do swap do HTMX: só o <tbody>. Trocar o <thead> junto destruiria, a cada tecla, o campo
+    # em que se está digitando.
+    consulta = consulta_da_listagem(request.GET.dict(), ColunaUnidade)
+    return render(request, TEMPLATE_CORPO_UNIDADES, contexto_corpo_unidades(consulta))
+
+
 def arvore_de_unidades(request: HttpRequest) -> HttpResponse:
-    """Rota de leitura, como a página da unidade. Sem unidade em foco: a página do organograma
-    abre no topo."""
-    return render(request, TEMPLATE_ARVORE, contexto_organograma(None))
+    """A página só do organograma foi absorvida pela listagem, que traz a mesma árvore com a tabela
+    ao lado (SPEC user_admin/021). A rota sobrevive como redirect porque ela circulou: link velho
+    não pode virar 404."""
+    return redirect("unidades:listar_unidades")
 
 
 def _unidade(pk: int) -> Unidade:

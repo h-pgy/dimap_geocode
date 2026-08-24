@@ -9,6 +9,8 @@ const MINIMO_PARA_FILTRO = 6;
 const FOLGA_PX = 8;
 const ALTURA_CONFORTAVEL_PX = 220;
 const PASSO_DA_SETA = { ArrowDown: 1, ArrowUp: -1 };
+// O realce semântico vem no <select> que o servidor renderizou; quem aparece na tela é o gatilho.
+const PREFIXO_REALCE = "campo-realce-";
 
 let sequencia = 0;
 
@@ -30,6 +32,12 @@ function montarTrigger(casca, select) {
   const trigger = document.createElement("button");
   trigger.type = "button";
   trigger.className = "select select-glass select-onsen-trigger";
+  // Sem isto o halo do campo recusado (ou em alerta) morreria no <select> escondido: o servidor
+  // marca o controle, e o controle visível é este.
+  const realce = [...select.classList].find((classe) => classe.startsWith(PREFIXO_REALCE));
+  if (realce) {
+    trigger.classList.add(realce);
+  }
   trigger.setAttribute("aria-haspopup", "listbox");
   trigger.setAttribute("aria-expanded", "false");
   const rotulo = document.createElement("span");

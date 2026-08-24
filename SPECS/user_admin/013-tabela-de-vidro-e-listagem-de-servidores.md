@@ -1,7 +1,7 @@
 ---
 spec: user_admin/013
-versao: v4
-atualizado_em: 2026-08-06
+versao: v5
+atualizado_em: 2026-08-18
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
@@ -12,6 +12,8 @@ changelog:
   - v3: comando de servidores fictícios (criar e remover) — sem ele a listagem nasce vazia e não há
         como exercitá-la no sistema
   - v4: faixa de RF dos fictícios sobe para 999900-999919, longe de qualquer RF real
+  - v5: afordância de clique na listagem — micro-zoom no nome do servidor (.link-tabela-onsen) e
+        micro-zoom com brilho ciano na sigla da secretaria/unidade (.link-sigla-onsen)
 ---
 
 # SPEC user_admin/013 — Tabela de vidro, gravação no gelo e a listagem de servidores
@@ -41,6 +43,9 @@ e sem depender do admin do Django.
       entra ao rolar e **escorre de volta** quando o gesto acaba.
 - [x] O corpo separa as linhas **em luz** (aresta branca), **não tem zebra**, e o hover **acende** o
       gelo sem mudar de cor.
+- [x] Na tabela, tanto o **nome do servidor** (`.link-tabela-onsen`) quanto a **sigla da unidade/secretaria**
+      (`.link-sigla-onsen`) possuem micro-zoom no hover (`scale-[1.06]`) para indicar afordância no clique;
+      a sigla da unidade/secretaria brilha em ciano (`drop-shadow-[0_0_6px_rgba(72,202,228,0.8)]`).
 - [x] A **célula de cabeçalho filtrável afunda no poço** e revela o campo de texto. O estado é
       **"a coluna tem filtro"**, não "alguém clicou": a coluna continua afundada depois que o foco
       sai, e o relevo passa a indicar filtro ativo. O rótulo **permanece** na célula afundada.
@@ -156,6 +161,7 @@ detalhe e mais quebra em silêncio.
 | Bandeja de cabeçalho | `.th-onsen-bandeja` | a superfície de vidro sob as peças de coluna, na forma fora-de-tabela |
 | Célula de cabeçalho | `.th-onsen` `.th-onsen-campo` `.th-onsen-input` `.th-onsen-gravado` | a peça que afunda e vira campo, e a variante sem peça para coluna que não responde |
 | Tabela de vidro | `.table-onsen` `.table-onsen-wrap` `.table-onsen-poco` | o poço que rola, a âncora da barra e a pele das linhas |
+| Link de sigla na tabela | `.link-sigla-onsen` | a sigla da unidade com ponto de cor e código; micro-zoom e brilho ciano no hover |
 
 O módulo `scroll_etched.js` segue o padrão do `select_onsen.js`: opt-in por atributo no markup,
 montado em todo poço marcado, redesenhado no `htmx:afterSwap` pelo mesmo observador de tamanho que
@@ -174,8 +180,9 @@ o `tema-dimap.dev.css`. Não duplicar lá.
 ## Peças de referência a compor
 
 - `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel-thick`, `.icon-glow`,
-  `.text-overline`, `.text-code`, `.btn-glass`, `.paint-well`: o poço, a placa, a tinta e o disco de
-  cor já existem — a tabela é composição deles, não material novo.
+  `.text-overline`, `.text-code`, `.btn-glass`, `.paint-well`, `.link-tabela-onsen`, `.link-sigla-onsen`:
+  o poço, a placa, a tinta, os links com afordância e o disco de cor já existem — a tabela é composição
+  deles, não material novo.
 - `@static/src/js/ui/select_onsen.js` → o padrão de módulo de UI opt-in por atributo, que a barra
   gravada repete.
 - `@apps/mapping` → `contexto_fundo_admin`: o fundo à deriva da SPEC 007, igual ao das páginas de
@@ -276,7 +283,7 @@ Exige servidor com root na raiz do projeto (Live Server); via `file://` o fetch 
 
 ## Testes (TDD)
 
-Os três primeiros são domínio puro, sem banco. Os três últimos carregam o marker `banco` (nem a
+Os três primeiros são domínio puro, sem banco. Os quatro últimos carregam o marker `banco` (nem a
 listagem nem o comando existem sem Postgres) — declarado em `markers_obrigatorios`. O que é visual —
 o relevo, a bandeja, o comportamento da barra — se valida no mock, não em teste.
 
@@ -289,6 +296,8 @@ o relevo, a bandeja, o comportamento da barra — se valida no mock, não em tes
   partial do `<tbody>`, não a página; é o que protege o campo em foco.
 - `test_filtro_sem_correspondencia_devolve_estado_vazio` *(marker `banco`)* — o corpo volta com a
   linha de vazio, não com uma tabela sem linhas.
+- `test_links_de_servidor_e_unidade_possuem_classes_de_afordancia` *(marker `banco`)* — o nome do
+  servidor usa `link-tabela-onsen` e a sigla da unidade usa `link-sigla-onsen` para afordância de clique.
 - `test_remover_ficticios_poupa_os_servidores_reais` *(marker `banco`)* — a remoção apaga a faixa de
   RF reservada e **nada além dela**; é a borda que protege o banco de quem rodar o comando distraído.
 

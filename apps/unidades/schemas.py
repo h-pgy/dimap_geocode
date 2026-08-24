@@ -1,5 +1,6 @@
 """
-DTOs das telas de unidade (SPEC user_admin/012, user_admin/020). A view constrói o DTO e deixa o
+DTOs das telas de unidade (SPEC user_admin/012, user_admin/020, user_admin/021). A view constrói o
+DTO e deixa o
 PydanticValidationMiddleware interceptar o ValidationError — nunca try/except na view (§7.2). Os
 dois atos que gravam (`NovaUnidade`, `EdicaoUnidade`) fogem dessa regra de propósito: a recusa
 deles volta como o próprio formulário, e é por isso que passam pelo `LeitorDeFormulario` em vez do
@@ -20,13 +21,27 @@ def _vazio_para_nulo(valor: object) -> object:
     return None if valor == "" else valor
 
 
+def _pk_ou_nulo(valor: object) -> object:
+    return valor if isinstance(valor, str) and valor.isdigit() else None
+
+
 PaiOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
+# Foco é conveniência de navegação: link velho ou parâmetro forjado abre a listagem inteira, em vez
+# de derrubar a página numa tela de erro de validação.
+FocoOpcional = Annotated[int | None, BeforeValidator(_pk_ou_nulo)]
 NomeDeUnidade = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 SiglaDeUnidade = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
 
 
 class SelecaoUnidadePai(BaseModel):
     pai: PaiOpcional = None
+
+
+class ConsultaDeUnidades(BaseModel):
+    """O `?foco=<pk>` com que a página da unidade chega à listagem. Só ele: filtros e ordenação
+    vêm da `ConsultaListagem` do domínio, que já lê o `request.GET` inteiro."""
+
+    foco: FocoOpcional = None
 
 
 class NovaUnidade(BaseModel):

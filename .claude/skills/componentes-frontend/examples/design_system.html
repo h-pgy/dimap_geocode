@@ -341,7 +341,7 @@
             </div>
           </div>
           <div class="flex flex-col gap-2">
-            <p class="text-overline">.glass-panel-thick · blur 20px (sobre interface)</p>
+            <p class="text-overline">.glass-panel-thick · blur 28px (sobre interface)</p>
             <div class="relative h-40 rounded-2xl overflow-hidden border border-white/45">
               <div class="absolute inset-0 flex">
                 <div class="flex-1 bg-agua-500"></div>
@@ -359,7 +359,7 @@
           <p class="text-overline mb-2">Regras do material</p>
           <ul class="text-sm text-base-content/80 flex flex-col gap-1 list-disc list-inside">
             <li>Blur do gelo: <span class="text-code">10px</span> (gaveta densa: 12px). Blur fraco não separa figura do fundo.</li>
-            <li><strong>Duas espessuras</strong> (SPEC <span class="text-code">user_admin/011</span>): fino sobre o mapa, <strong>espesso sobre interface</strong> — <span class="text-code">.glass-blur-thick .glass-bg-thick .glass-panel-thick</span> (blur 20px, gelo mais leitoso, sombra mais funda). Mesma receita em outro grau, não material novo.</li>
+            <li><strong>Duas espessuras</strong> (SPECs <span class="text-code">user_admin/011</span> e <span class="text-code">design/008</span>): fino sobre o mapa, <strong>espesso sobre interface</strong> — <span class="text-code">.glass-blur-thick .glass-bg-thick .glass-panel-thick</span> (blur 28px, gradiente 97%→88%, aresta white/80, sombra funda). Mesma receita em outro grau, não material novo.</li>
             <li>Sombra em duas camadas: azul-fria <span class="text-code">rgba(7,58,84,.25)</span> dá a separação; ciana <span class="text-code">rgba(72,202,228,.25)</span> dá a vida.</li>
             <li>Aresta superior iluminada via <span class="text-code">inset 0 1px 0 white/80</span> — o brilho de gelo na quina.</li>
             <li>Foco de tela: <span class="text-code">.cinematic-blur-layer</span> (desfoque), jamais overlay preto.</li>
@@ -1114,6 +1114,47 @@
         </div>
       </div>
 
+      <!-- Linha pinçada da tabela de unidades (SPEC user_admin/021) -->
+      <div class="glass-panel p-6 flex flex-col gap-4 lg:col-span-2">
+        <div>
+          <p class="text-overline">Linha pinçada (<span class="text-code">.table-flutuante-clone</span> · <span class="text-code">.linha-pincada</span>)</p>
+          <p class="text-sm text-base-content/70 mt-1">Escolhida uma unidade — no organograma ou na própria tabela —, a linha dela <strong>sobe até o topo</strong>. Quem desliza é um <strong>clone em gelo espesso</strong> (<span class="text-code">.glass-panel-thick</span>), porque <span class="text-code">&lt;tr&gt;</span> não aceita <span class="text-code">transform</span> sem desmontar a grade da tabela; a original <strong>apaga no lugar</strong> (<span class="text-code">.linha-pincada</span>) e reaparece já no topo ao fim do trajeto — apagar, e não remover, é o que impede a tabela inteira de pular sob o clone em movimento. Abaixo, o clone congelado no meio do caminho.</p>
+          <p class="text-xs text-base-content/60">O JS (<span class="text-code">static/src/js/ui/sincronia_unidades.js</span>) escreve só <strong>medida</strong>, em custom properties: <span class="text-code">--topo-pincagem</span>, <span class="text-code">--altura-pincagem</span>, <span class="text-code">--duracao-pincagem</span> e <span class="text-code">--largura-coluna</span> por célula. Nenhuma declaração de pele sai de lá.</p>
+        </div>
+        <div class="card-well p-2 table-onsen-poco">
+          <div class="table-onsen-wrap">
+            <table class="table table-onsen">
+              <tbody>
+                <tr class="linha-pincada" data-ativo="true">
+                  <td><span class="link-tabela-onsen">DIMAP</span></td>
+                  <td><p class="td-nome-unidade">Divisão de Mapeamento</p></td>
+                  <td><span class="dot-unidade" style="--cor-unidade:#0077B6"></span></td>
+                </tr>
+                <tr>
+                  <td><span class="link-tabela-onsen">DICAD</span></td>
+                  <td><p class="td-nome-unidade">Divisão de Cadastro</p></td>
+                  <td><span class="dot-unidade" style="--cor-unidade:#9C6644"></span></td>
+                </tr>
+                <tr>
+                  <td><span class="link-tabela-onsen">DIAVA</span></td>
+                  <td><p class="td-nome-unidade">Divisão de Avaliações</p></td>
+                  <td><span class="dot-unidade" style="--cor-unidade:#0F766E"></span></td>
+                </tr>
+              </tbody>
+            </table>
+            <table class="table table-onsen table-flutuante-clone glass-panel-thick" style="--topo-pincagem:1.25rem; --altura-pincagem:3.25rem; --duracao-pincagem:500ms">
+              <tbody>
+                <tr data-ativo="true">
+                  <td style="--largura-coluna:33%"><span class="link-tabela-onsen">DIMAP</span></td>
+                  <td style="--largura-coluna:44%"><p class="td-nome-unidade">Divisão de Mapeamento</p></td>
+                  <td style="--largura-coluna:23%"><span class="dot-unidade" style="--cor-unidade:#0077B6"></span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- Moléculas do exercício e da substituição (SPEC user_admin/015) -->
       <div class="glass-panel p-6 flex flex-col gap-5">
         <div>
@@ -1722,22 +1763,22 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td class="font-medium text-madeira-700">Henrique Pougy</td>
-                    <td><span class="inline-flex items-center gap-2"><span class="dot-unidade" style="--cor-unidade:#0077b6"></span><span class="text-code">DIMAP-1</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Henrique Pougy</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0077b6"></span><span class="text-code">DIMAP-1</span></a></td>
                     <td class="text-base-content/80">Analista de Ordenamento Territorial</td>
                     <td><span class="badge badge-success badge-soft badge-sm">Ativo</span></td>
                     <td class="text-right"><button class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><span class="etched icon-etched">✎</span></button></td>
                   </tr>
                   <tr>
-                    <td class="font-medium text-madeira-700">Íris Sant'Anna</td>
-                    <td><span class="inline-flex items-center gap-2"><span class="dot-unidade" style="--cor-unidade:#7f5539"></span><span class="text-code">DIMAP-2</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Íris Sant'Anna</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#7f5539"></span><span class="text-code">DIMAP-2</span></a></td>
                     <td class="text-base-content/80">Arquiteto</td>
                     <td><span class="badge badge-warning badge-soft badge-sm">Impedido</span></td>
                     <td class="text-right"><button class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><span class="etched icon-etched">✎</span></button></td>
                   </tr>
                   <tr>
-                    <td class="font-medium text-madeira-700">Antônia Nóbrega</td>
-                    <td><span class="inline-flex items-center gap-2"><span class="dot-unidade" style="--cor-unidade:#bc3a67"></span><span class="text-code">DIMAP-3</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Antônia Nóbrega</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#bc3a67"></span><span class="text-code">DIMAP-3</span></a></td>
                     <td class="text-base-content/80">Engenheiro</td>
                     <td><span class="badge badge-success badge-soft badge-sm">Ativo</span></td>
                     <td class="text-right"><button class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><span class="etched icon-etched">✎</span></button></td>

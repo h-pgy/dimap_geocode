@@ -1,8 +1,8 @@
 """
 Testes da árvore hierárquica (SPEC user_admin/018): a seção da página da unidade traz o organograma
 inteiro com o caminho e o ego marcados pelo servidor (`no-arvore-caminho`/`no-arvore-ego` — o
-contrato com o JS de abrir/fechar), cada card leva à página da sua unidade, e a página do
-organograma abre sem nenhuma unidade em foco.
+contrato com o JS de abrir/fechar), cada card leva à página da sua unidade, e a rota do
+organograma abre a listagem (SPEC user_admin/021) sem nenhuma unidade em foco.
 
 Todos levam o marker `banco`: a posição é montada a partir das tabelas.
 """
@@ -139,7 +139,7 @@ def test_cada_card_leva_a_pagina_da_sua_unidade(client: Client) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Página do organograma inteiro
+# A rota do organograma inteiro, hoje absorvida pela listagem
 # ---------------------------------------------------------------------------
 
 
@@ -148,7 +148,7 @@ def test_cada_card_leva_a_pagina_da_sua_unidade(client: Client) -> None:
 def test_pagina_da_arvore_abre_no_topo(client: Client) -> None:
     unidades = _organograma()
 
-    resposta = client.get(reverse("unidades:arvore_de_unidades"))
+    resposta = client.get(reverse("unidades:arvore_de_unidades"), follow=True)
     html = resposta.content.decode()
     soup = BeautifulSoup(html, "html.parser")
 

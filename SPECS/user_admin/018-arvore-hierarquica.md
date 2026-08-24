@@ -1,7 +1,7 @@
 ---
 spec: user_admin/018
-versao: v3
-atualizado_em: 2026-08-17
+versao: v4
+atualizado_em: 2026-08-23
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
@@ -11,6 +11,8 @@ changelog:
         organograma inteiro ganha página própria
   - v3: a seção passa a ser o organograma inteiro com o caminho marcado pelo servidor, abrir e
         fechar viram JS de estado visual, e `ao_lado` sai do domínio junto com a rota do partial
+  - v4: a página só do organograma é absorvida pela listagem de unidades (SPEC 021) e a rota dela
+        vira redirect
 ---
 
 # SPEC user_admin/018 — Árvore hierárquica: o caminho até uma unidade, e o organograma inteiro
@@ -34,8 +36,10 @@ e para os lados até a unidade que procura, para chegar nela sem voltar à lista
 - [ ] Dá para **chamar as irmãs** de qualquer unidade do caminho, e recolhê-las de volta.
 - [ ] Unidade **sem subordinadas** em foco diz que não há nenhuma, em vez de abrir um nível vazio.
 - [ ] **Voltar** devolve a seção ao estado de partida: foco na unidade da página e o resto recolhido.
-- [ ] Existe uma **página da árvore hierárquica**, em rota aberta de leitura, com o organograma
-      inteiro; ela abre no topo e tem **"ver toda a árvore"**, que expande todos os níveis de uma vez.
+- [ ] Existe uma **página com o organograma inteiro**, em rota aberta de leitura; ela abre no topo
+      e tem **"ver toda a árvore"**, que expande todos os níveis de uma vez. Desde a SPEC 021 essa
+      página é a **listagem de unidades** (`/gestao/unidades/`), que traz o mesmo organograma com a
+      tabela abaixo; `/gestao/unidades/arvore/` sobrevive como redirect para ela.
 - [ ] O design foi aprovado no **mock**, e as peças novas foram portadas para
       `static/src/tema-dimap.dev.css` e renderizadas no styleguide antes de qualquer template da
       aplicação usá-las.
@@ -125,7 +129,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - `@apps/user_admin/context.py` (SPEC 016) → `contexto_unidade`: a montagem do contexto da página.
 - `@apps/user_admin/paleta.py` → `hex_da_cor`: o slug da cor vira o hex do ponto.
 - `@templates/user_admin/unidade.html` (SPEC 016) → a página que recebe a seção.
-- `@services/domain/servidores_listagem/__init__.py` → o padrão de reexport dos contratos do submódulo.
+- `@services/domain/listagem_gestao/__init__.py` → o padrão de reexport dos contratos do submódulo.
 - `@static/src/tema-dimap.dev.css` → `.card-well`, `.glass-panel`, `.dot-unidade`, `.etched-line`,
   `.etched-deeper`, `.icon-glow`, `.text-overline`.
 - `@templates/partials/_filtros_gravacao.html` → os `defs` sem os quais a gravação não desenha.

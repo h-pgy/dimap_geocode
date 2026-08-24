@@ -1,0 +1,53 @@
+{# Tabela de unidades em vidro (SPEC user_admin/021): poço rebaixado e cabeçalho em placa #}
+<div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+  <div class="table-onsen-wrap" data-rolador id="rolador-unidades">
+    <table id="tabela-unidades"
+           class="table table-onsen"
+           data-tabela-onsen
+           hx-get="{% url 'unidades:corpo_unidades' %}"
+           hx-trigger="input delay:300ms, ordenacao"
+           hx-target="#corpo-unidades"
+           hx-swap="outerHTML"
+           hx-include="find thead">
+      <thead data-cabecalho>
+        <tr>
+          {% for coluna in colunas %}
+            <th>
+              <div class="th-onsen" data-coluna="{{ coluna.slug }}"{% if coluna.ordem %} aria-sort="{{ coluna.ordem }}"{% endif %}>
+                <label class="th-onsen-campo">
+                  <span class="text-overline">{{ coluna.rotulo }}</span>
+                  <input class="th-onsen-input" name="{{ coluna.slug }}" value="{{ coluna.termo }}" placeholder="filtrar…" autocomplete="off">
+                </label>
+                <button type="button" class="sort-etched etched" aria-label="Ordenar por {{ coluna.rotulo }}">▲</button>
+              </div>
+              {% if forloop.first %}
+                <input type="hidden" name="ordenar_por" value="{{ ordenar_por }}" data-ordenar-por>
+                <input type="hidden" name="descendente" value="{{ descendente }}" data-descendente>
+              {% endif %}
+            </th>
+            {% if coluna.slug == "tipo" %}
+              {# Colunas de Alta Adm. e Cor logo após Tipo #}
+              <th class="w-28">
+                <div class="th-onsen th-onsen-gravado">
+                  <span class="text-overline etched etched-rotulo">Alta Adm.</span>
+                </div>
+              </th>
+              <th class="w-16">
+                <div class="th-onsen th-onsen-gravado">
+                  <span class="text-overline etched etched-rotulo">Cor</span>
+                </div>
+              </th>
+            {% endif %}
+          {% endfor %}
+          <th class="w-14">
+            <div class="th-onsen th-onsen-gravado"></div>
+          </th>
+        </tr>
+      </thead>
+      {% include "unidades/partials/_corpo_unidades.html" %}
+    </table>
+  </div>
+  <div class="scroll-etched" data-barra aria-hidden="true">
+    <div class="scroll-etched-thumb" data-polegar></div>
+  </div>
+</div>

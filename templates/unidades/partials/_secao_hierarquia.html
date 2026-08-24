@@ -8,7 +8,7 @@
       <button class="btn btn-glass btn-xs" type="button" data-voltar="#organograma-unidade">
         Voltar para {{ unidade.sigla }}
       </button>
-      <a class="btn btn-glass btn-xs gap-1.5" href="{% url 'unidades:arvore_de_unidades' %}">
+      <a class="btn btn-glass btn-xs gap-1.5" href="{% url 'unidades:listar_unidades' %}?foco={{ unidade.pk }}">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
         Organograma inteiro
       </a>

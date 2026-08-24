@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/019 — Lista de unidades com organograma integrado (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Carrega o tema do projeto e concatena as peças novas desta SPEC no mesmo bloco text/tailwindcss. -->
+  <script>
+    (async function carregarTema() {
+      const caminhos = [
+        "/static/src/tema-dimap.dev.css",
+        "../../static/src/tema-dimap.dev.css",
+        "../static/src/tema-dimap.dev.css"
+      ];
+      let css = null;
+      for (const caminho of caminhos) {
+        try {
+          const r = await fetch(caminho);
+          if (r.ok) {
+            css = await r.text();
+            break;
+          }
+        } catch (_) {}
+      }
+      if (css) {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-019").textContent;
+        document.head.appendChild(s);
+      } else {
+        (document.body || document.documentElement).insertAdjacentHTML(
+          "afterbegin",
+          "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — certifique-se de servir a raiz do projeto (Live Server) para permitir o fetch do CSS.</p>"
+        );
+      }
+    })();
+  </script>
+
+  <!-- PEÇAS DESTA SPEC (apenas o que é novo e ainda não foi para o tema base) -->
+  <script type="text/css" id="tokens-spec-019">
+    @layer components {
+      /* Âncora relativa do poço da tabela para conter elementos flutuantes */
+      .table-onsen-wrap {
+        position: relative !important;
+      }
+
+      /* ==================== ÁTOMO · CÉLULA DE NOME COM QUEBRA ==================== */
+      .td-nome-unidade {
+        @apply max-w-xs break-words whitespace-normal text-sm leading-snug;
+        color: rgba(13, 27, 42, 0.85);
+      }
+
+      /* ==================== ÁTOMO · LINK DE TABELA COM AFORDÂNCIA ==================== */
+      /* Fonte em madeira-700 e micro-zoom ao passar o cursor (afordância tátil) */
+      .link-tabela-onsen {
+        @apply inline-flex items-center gap-1 font-medium text-madeira-700 transition-all duration-200 origin-left;
+      }
+      .link-tabela-onsen:hover {
+        @apply text-agua-700 scale-[1.06];
+      }
+
+      /* Linha da tabela: cursor pointer e destaque clássico no hover */
+      .table-onsen tbody tr {
+        @apply cursor-pointer;
+      }
+      .table-onsen tbody tr:not([data-ativo="true"]):hover td {
+        background-color: rgba(255, 255, 255, 0.65) !important;
+      }
+
+      /* Destaque ciano de foco ativo: mesma linguagem visual do select-onsen-option[data-ativo="true"] */
+      .table-onsen tbody tr[data-ativo="true"] td {
+        background-color: rgba(72, 202, 228, 0.35) !important;
+        color: #0d1b2a;
+        box-shadow: inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
+      }
+      .table-onsen tbody tr[data-ativo="true"] td:first-child {
+        box-shadow: inset 1px 0 0 rgba(0, 150, 199, 0.5), inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
+      }
+      .table-onsen tbody tr[data-ativo="true"] td:last-child {
+        box-shadow: inset -1px 0 0 rgba(0, 150, 199, 0.5), inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
+      }
+      .table-onsen tbody tr[data-ativo="true"] .link-tabela-onsen,
+      .table-onsen tbody tr[data-ativo="true"] a {
+        @apply text-agua-800 font-bold;
+      }
+
+      /* Animações de micro-degrau (subida passo a passo) */
+      @keyframes degrauSubida {
+        0% {
+          transform: translateY(24px);
+          background-color: rgba(72, 202, 228, 0.6) !important;
+        }
+        100% {
+          transform: translateY(0);
+          background-color: rgba(72, 202, 228, 0.35) !important;
+        }
+      }
+      @keyframes degrauDescida {
+        0% {
+          transform: translateY(-24px);
+        }
+        100% {
+          transform: translateY(0);
+        }
+      }
+      .table-onsen tbody tr.linha-subindo td {
+        animation: degrauSubida var(--duracao-passo, 160ms) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .table-onsen tbody tr.linha-descendo td {
+        animation: degrauDescida var(--duracao-passo, 160ms) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen bg-base-100 text-base-content antialiased">
+  <!-- Filtros SVG de gravação no gelo e glifos do sistema -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-20%" y="-20%" width="140%" height="140%">
+        <feColorMatrix type="matrix" values="0 0 0 0 0.027  0 0 0 0 0.227  0 0 0 0 0.329  1 0 0 0 0" result="ink"/>
+        <feOffset dx="0" dy="1.5" in="SourceAlpha" result="shadowOffset"/>
+        <feGaussianBlur stdDeviation="1.2" in="shadowOffset" result="shadowBlur"/>
+        <feComposite operator="in" in="ink" in2="shadowBlur" result="topShadow"/>
+        <feOffset dx="0" dy="-1" in="SourceAlpha" result="lightOffset"/>
+        <feGaussianBlur stdDeviation="0.8" in="lightOffset" result="lightBlur"/>
+        <feComponentTransfer in="lightBlur" result="bottomLight">
+          <feFuncA type="linear" slope="0.85"/>
+        </feComponentTransfer>
+        <feMerge>
+          <feMergeNode in="topShadow"/>
+          <feMergeNode in="bottomLight"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+
+      <g id="glifo-hierarquia"><path d="M4 6h16M4 12h10M4 18h6M16 10l4 4-4 4"/></g>
+      <g id="glifo-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></g>
+      <g id="glifo-lapis"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></g>
+    </defs>
+  </svg>
+
+  <div class="p-8 max-w-6xl mx-auto flex flex-col gap-16">
+    <header class="border-b border-base-200 pb-4">
+      <p class="text-overline text-agua-700">Mock de Validação</p>
+      <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC user_admin/019 — Lista de Unidades com Organograma</h1>
+      <p class="text-sm text-base-content/70 mt-1">Validação do Atomic Design (átomos, moléculas, organismos) e coreografia bidirecional da tela montada.</p>
+    </header>
+
+    <!-- 2 · ÁTOMOS -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">2 · Átomos</h2>
+        <p class="text-xs text-base-content/70">Célula de nome quebrando linha, badge de alta administração e marcadores de cor.</p>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-wrap items-center gap-8">
+        <!-- Célula de nome com quebra -->
+        <div class="flex flex-col gap-1.5 max-w-xs">
+          <span class="text-overline">.td-nome-unidade (texto longo)</span>
+          <div class="p-3 bg-white/40 rounded-xl border border-white/60">
+            <p class="td-nome-unidade">Divisão de Gestão de Informações e Mapeamento Territorial</p>
+          </div>
+        </div>
+
+        <!-- Badges Alta Administração -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">Alta Administração (estados)</span>
+          <div class="flex items-center gap-3">
+            <span class="badge badge-info badge-soft badge-sm font-medium">Alta adm.</span>
+            <span class="text-xs text-base-content/50">—</span>
+          </div>
+        </div>
+
+        <!-- Cores das unidades -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">Ponto de cor da unidade (.dot-unidade)</span>
+          <div class="flex items-center gap-3">
+            <span class="dot-unidade" style="--cor-unidade:#0077b6" title="agua-700"></span>
+            <span class="dot-unidade" style="--cor-unidade:#073a54" title="rocha-700"></span>
+            <span class="dot-unidade" style="--cor-unidade:#8b4513" title="madeira-700"></span>
+            <span class="dot-unidade" style="--cor-unidade:#e06666" title="sakura-700"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · MOLÉCULAS -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">3 · Moléculas</h2>
+        <p class="text-xs text-base-content/70">Linhas interativas da tabela nos estados: repouso, hover, ativa (destaque ciano) e estado de falta.</p>
+      </div>
+
+      <div class="card-well p-4 table-onsen-poco">
+        <table class="table table-onsen w-full">
+          <thead>
+            <tr>
+              <th><div class="th-onsen"><span class="text-overline">Sigla</span></div></th>
+              <th><div class="th-onsen"><span class="text-overline">Unidade</span></div></th>
+              <th><div class="th-onsen"><span class="text-overline">Tipo</span></div></th>
+              <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Alta Adm.</span></div></th>
+              <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Cor</span></div></th>
+              <th><div class="th-onsen"><span class="text-overline">Titular</span></div></th>
+              <th><div class="th-onsen"><span class="text-overline">Subordinação</span></div></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Repouso -->
+            <tr>
+              <td><a href="#" class="link-tabela-onsen">SF</a></td>
+              <td><p class="td-nome-unidade">Secretaria Municipal da Fazenda</p></td>
+              <td class="text-base-content/80">Secretaria</td>
+              <td><span class="badge badge-info badge-soft badge-sm">Alta adm.</span></td>
+              <td><span class="dot-unidade" style="--cor-unidade:#0077b6"></span></td>
+              <td><a href="#" class="link-tabela-onsen">Carlos Alberto</a></td>
+              <td class="text-base-content/50">— (Raiz)</td>
+            </tr>
+
+            <!-- Ativo (Destaque Ciano) -->
+            <tr data-ativo="true">
+              <td><a href="#" class="link-tabela-onsen">DIMAP</a></td>
+              <td><p class="td-nome-unidade">Divisão de Mapeamento</p></td>
+              <td class="text-base-content/80">Divisão</td>
+              <td class="text-base-content/50">—</td>
+              <td><span class="dot-unidade" style="--cor-unidade:#8b4513"></span></td>
+              <td><a href="#" class="link-tabela-onsen">Beatriz Silva</a></td>
+              <td><a href="#" class="link-tabela-onsen">DECAD</a></td>
+            </tr>
+
+            <!-- Estado de falta (sem titular / vaga) -->
+            <tr>
+              <td><a href="#" class="link-tabela-onsen">DICAD-2</a></td>
+              <td><p class="td-nome-unidade">Setor de Atendimento</p></td>
+              <td class="text-base-content/80">Setor</td>
+              <td class="text-base-content/50">—</td>
+              <td><span class="dot-unidade" style="--cor-unidade:#e06666"></span></td>
+              <td class="text-base-content/50">— (Vaga)</td>
+              <td><a href="#" class="link-tabela-onsen">DICAD</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 5 · TELA MONTADA -->
+    <section id="tela" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">5 · Tela Montada (Experiência Real Interativa)</h2>
+        <p class="text-xs text-base-content/70">
+          Interaja ao vivo: <strong>clique em qualquer linha da tabela</strong> para ativar o nó correspondente na árvore superior; 
+          ou <strong>clique em um card na árvore</strong> para mover a linha correspondente para a 1ª posição da tabela com destaque ciano!
+        </p>
+      </div>
+
+      <!-- Canvas Administrativo com Mapa de Fundo -->
+      <div class="relative min-h-[920px] rounded-3xl overflow-hidden border border-white/40 shadow-2xl">
+        <div id="mapa-mock" class="absolute inset-0 z-0"></div>
+
+        <!-- Moldura administrativa (admin-shell) -->
+        <div class="relative z-10 w-full p-6 sm:p-10 flex flex-col gap-6">
+          <div class="max-w-6xl mx-auto w-full glass-panel p-6 sm:p-8 flex flex-col gap-6">
+            
+            <!-- Cabeçalho da página -->
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Unidades</h1>
+                <p class="text-sm text-base-content/70 mt-1" id="contagem-unidades">
+                  10 unidades cadastradas. Clique na linha da tabela para situar na árvore, ou no nó para destacar na lista.
+                </p>
+              </div>
+              <div class="flex items-center gap-3">
+                <button type="button" class="btn btn-glass btn-xs gap-1.5"
+                        data-abrir-tudo="#organograma-unidades"
+                        data-rotulo-recolher="Recolher a árvore">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+                  Ver toda a árvore
+                </button>
+                <button type="button" class="btn-etched etched" id="btn-limpar-filtros">✕ limpar filtros</button>
+              </div>
+            </div>
+
+            <!-- Controle Interativo de Velocidade e Modo da Pinçagem (Validação de UX) -->
+            <div class="glass-panel p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-agua-300/40 bg-white/50 shadow-sm">
+              <div class="flex flex-col gap-1">
+                <span class="text-xs font-bold uppercase tracking-wider text-madeira-700">⚙️ Configuração da Animação de Pinçagem</span>
+                <span class="text-xs text-base-content/70">Aprovado: <strong>Deslizamento Contínuo em 500ms</strong> (com Thick Glass). Experimente também as outras opções:</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <!-- Seletor de Modo -->
+                <div class="flex items-center gap-1 p-1 bg-white/80 rounded-xl border border-white/90 shadow-xs" id="seletor-modo">
+                  <button type="button" class="btn-modo-pincagem px-3 py-1 text-xs rounded-lg font-bold transition-all bg-agua-600 text-white shadow-sm" data-modo="continuo">🌊 Deslizamento Contínuo (Aprovado)</button>
+                  <button type="button" class="btn-modo-pincagem px-3 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-modo="passo">🪜 Posição a Posição (Degraus)</button>
+                </div>
+
+                <!-- Seletor de Duração -->
+                <div class="flex items-center gap-1 p-1 bg-white/80 rounded-xl border border-white/90 shadow-xs" id="seletor-duracao">
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-bold transition-all bg-agua-600 text-white shadow-sm" data-ms="500">500 ms (Aprovado)</button>
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-ms="800">800 ms</button>
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-ms="1000">1.0 s</button>
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-ms="1500">1.5 s</button>
+                  <button type="button" class="btn-velocidade-pincagem px-2.5 py-1 text-xs rounded-lg font-medium transition-all bg-white/50 text-madeira-700 hover:bg-white/80" data-ms="2000">2.0 s</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ORGANISMO SUPERIOR: Organograma Hierárquico -->
+            <!-- partial: user_admin/partials/_no_arvore.html -->
+            <div class="glass-panel rounded-2xl overflow-x-auto p-4 transition-all duration-300" id="container-organograma">
+              <div class="organograma" id="organograma-unidades">
+                
+                <!-- Raiz: SF -->
+                <div class="no-arvore no-arvore-primeiro no-arvore-ultimo no-arvore-caminho no-arvore-aberto" data-unidade-sigla="SF">
+                  <div class="card-unidade card-unidade-poco">
+                    <button class="card-unidade-gatilho" type="button" title="SF · Secretaria Municipal da Fazenda">
+                      <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                      <span class="card-unidade-sigla">SF</span>
+                      <span class="card-unidade-nome">Secretaria Municipal da Fazenda</span>
+                    </button>
+                    <a class="card-unidade-pagina" href="#" title="Abrir página de SF">
+                      <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-link"/></svg>
+                    </a>
+                  </div>
+                  <button class="no-arvore-irmas etched-deeper" type="button" title="Mostrar as unidades irmãs">&rsaquo;</button>
+                  <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+
+                  <!-- Filhas de SF -->
+                  <div class="no-arvore-filhas">
+                    <!-- SUREM -->
+                    <div class="no-arvore no-arvore-primeiro no-arvore-caminho no-arvore-aberto" data-unidade-sigla="SUREM">
+                      <span class="etched-line no-arvore-barra"></span>
+                      <span class="etched-line no-arvore-fio"></span>
+                      <div class="card-unidade card-unidade-poco">
+                        <button class="card-unidade-gatilho" type="button" title="SUREM · Subsecretaria da Receita Municipal">
+                          <span class="dot-unidade w-9 h-9" style="--cor-unidade:#073a54"></span>
+                          <span class="card-unidade-sigla">SUREM</span>
+                          <span class="card-unidade-nome">Subsecretaria da Receita Municipal</span>
+                        </button>
+                        <a class="card-unidade-pagina" href="#" title="Abrir página de SUREM">
+                          <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-link"/></svg>
+                        </a>
+                      </div>
+                      <button class="no-arvore-irmas etched-deeper" type="button">&rsaquo;</button>
+                      <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+
+                      <!-- Filhas de SUREM -->
+                      <div class="no-arvore-filhas">
+                        <!-- DECAD -->
+                        <div class="no-arvore no-arvore-primeiro no-arvore-caminho no-arvore-aberto" data-unidade-sigla="DECAD">
+                          <span class="etched-line no-arvore-barra"></span>
+                          <span class="etched-line no-arvore-fio"></span>
+                          <div class="card-unidade card-unidade-poco">
+                            <button class="card-unidade-gatilho" type="button" title="DECAD · Coordenação de Cadastro">
+                              <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                              <span class="card-unidade-sigla">DECAD</span>
+                            </button>
+                            <a class="card-unidade-pagina" href="#" title="Abrir página de DECAD">
+                              <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-link"/></svg>
+                            </a>
+                          </div>
+                          <button class="no-arvore-irmas etched-deeper" type="button">&rsaquo;</button>
+                          <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+
+                          <!-- Filhas de DECAD -->
+                          <div class="no-arvore-filhas">
+                            <!-- DIMAP (Ego Inicial) -->
+                            <div class="no-arvore no-arvore-primeiro no-arvore-ego no-arvore-aberto" data-unidade-sigla="DIMAP">
+                              <span class="etched-line no-arvore-barra"></span>
+                              <span class="etched-line no-arvore-fio"></span>
+                              <div class="card-unidade card-unidade-poco card-unidade-ego">
+                                <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão de Mapeamento">
+                                  <span class="dot-unidade w-9 h-9" style="--cor-unidade:#8b4513"></span>
+                                  <span class="card-unidade-sigla">DIMAP</span>
+                                </button>
+                                <a class="card-unidade-pagina" href="#" title="Abrir página de DIMAP">
+                                  <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-link"/></svg>
+                                </a>
+                              </div>
+                              <button class="no-arvore-irmas etched-deeper" type="button">&rsaquo;</button>
+                              <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                              
+                              <!-- Filhas de DIMAP -->
+                              <div class="no-arvore-filhas">
+                                <div class="no-arvore no-arvore-primeiro" data-unidade-sigla="DIMAP-1">
+                                  <span class="etched-line no-arvore-barra"></span>
+                                  <span class="etched-line no-arvore-fio"></span>
+                                  <div class="card-unidade card-unidade-repouso glass-panel">
+                                    <button class="card-unidade-gatilho" type="button" title="DIMAP-1 · Setor de Geocodificação">
+                                      <span class="dot-unidade w-9 h-9" style="--cor-unidade:#8b4513"></span>
+                                      <span class="card-unidade-sigla">DIMAP-1</span>
+                                    </button>
+                                  </div>
+                                </div>
+                                <div class="no-arvore no-arvore-ultimo" data-unidade-sigla="DIMAP-2">
+                                  <span class="etched-line no-arvore-barra"></span>
+                                  <span class="etched-line no-arvore-fio"></span>
+                                  <div class="card-unidade card-unidade-repouso glass-panel">
+                                    <button class="card-unidade-gatilho" type="button" title="DIMAP-2 · Setor de Cartografia">
+                                      <span class="dot-unidade w-9 h-9" style="--cor-unidade:#8b4513"></span>
+                                      <span class="card-unidade-sigla">DIMAP-2</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- DICAD -->
+                            <div class="no-arvore no-arvore-ultimo" data-unidade-sigla="DICAD">
+                              <span class="etched-line no-arvore-barra"></span>
+                              <span class="etched-line no-arvore-fio"></span>
+                              <div class="card-unidade card-unidade-repouso glass-panel">
+                                <button class="card-unidade-gatilho" type="button" title="DICAD · Divisão de Cadastro">
+                                  <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                                  <span class="card-unidade-sigla">DICAD</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- DITEC -->
+                        <div class="no-arvore no-arvore-ultimo" data-unidade-sigla="DITEC">
+                          <span class="etched-line no-arvore-barra"></span>
+                          <span class="etched-line no-arvore-fio"></span>
+                          <div class="card-unidade card-unidade-repouso glass-panel">
+                            <button class="card-unidade-gatilho" type="button" title="DITEC · Divisão de Tecnologia">
+                              <span class="dot-unidade w-9 h-9" style="--cor-unidade:#073a54"></span>
+                              <span class="card-unidade-sigla">DITEC</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- SUTEM -->
+                    <div class="no-arvore no-arvore-ultimo" data-unidade-sigla="SUTEM">
+                      <span class="etched-line no-arvore-barra"></span>
+                      <span class="etched-line no-arvore-fio"></span>
+                      <div class="card-unidade card-unidade-repouso glass-panel">
+                        <button class="card-unidade-gatilho" type="button" title="SUTEM · Subsecretaria do Tesouro">
+                          <span class="dot-unidade w-9 h-9" style="--cor-unidade:#e06666"></span>
+                          <span class="card-unidade-sigla">SUTEM</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- ORGANISMO INFERIOR: Tabela de Vidro de Unidades -->
+            <!-- partial: user_admin/partials/_tabela_unidades.html -->
+            <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+              <div class="table-onsen-wrap" data-rolador id="rolador-tabela">
+                <table id="tabela-unidades" class="table table-onsen" data-tabela-onsen>
+                  <thead data-cabecalho>
+                    <tr>
+                      <!-- 1. Sigla -->
+                      <th>
+                        <div class="th-onsen" data-coluna="sigla">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Sigla</span>
+                            <input class="th-onsen-input" data-filtro="sigla" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por Sigla">▲</button>
+                        </div>
+                      </th>
+
+                      <!-- 2. Nome -->
+                      <th>
+                        <div class="th-onsen" data-coluna="nome">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Unidade</span>
+                            <input class="th-onsen-input" data-filtro="nome" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por Nome">▲</button>
+                        </div>
+                      </th>
+
+                      <!-- 3. Tipo -->
+                      <th>
+                        <div class="th-onsen" data-coluna="tipo">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Tipo</span>
+                            <input class="th-onsen-input" data-filtro="tipo" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por Tipo">▲</button>
+                        </div>
+                      </th>
+
+                      <!-- 4. Alta Adm (Gravado) -->
+                      <th class="w-28">
+                        <div class="th-onsen th-onsen-gravado">
+                          <span class="text-overline etched etched-rotulo">Alta Adm.</span>
+                        </div>
+                      </th>
+
+                      <!-- 5. Cor (Gravado) -->
+                      <th class="w-16">
+                        <div class="th-onsen th-onsen-gravado">
+                          <span class="text-overline etched etched-rotulo">Cor</span>
+                        </div>
+                      </th>
+
+                      <!-- 6. Titular -->
+                      <th>
+                        <div class="th-onsen" data-coluna="titular">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Titular</span>
+                            <input class="th-onsen-input" data-filtro="titular" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por Titular">▲</button>
+                        </div>
+                      </th>
+
+                      <!-- 7. Subordinação -->
+                      <th>
+                        <div class="th-onsen" data-coluna="pai">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Subordinação</span>
+                            <input class="th-onsen-input" data-filtro="pai" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por Pai">▲</button>
+                        </div>
+                      </th>
+
+                      <!-- 8. Ações (Gravado) -->
+                      <th class="w-14">
+                        <div class="th-onsen th-onsen-gravado"></div>
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <!-- partial: user_admin/partials/_corpo_unidades.html — alvo de hx-swap na busca e ordenação -->
+                  <tbody id="corpo-unidades">
+                    <!-- Linha 1: DIMAP (Inicialmente Ativa) -->
+                    <tr data-ativo="true" data-unidade-sigla="DIMAP" data-sigla="DIMAP" data-nome="Divisão de Informações e Mapeamento Territorial" data-tipo="Divisão" data-titular="Beatriz Silva" data-pai="DECAD">
+                      <td>
+                        <a href="#" class="link-tabela-onsen link-interno">DIMAP</a>
+                      </td>
+                      <td><p class="td-nome-unidade">Divisão de Informações e Mapeamento Territorial</p></td>
+                      <td class="text-base-content/80">Divisão</td>
+                      <td class="text-base-content/50">—</td>
+                      <td><span class="dot-unidade" style="--cor-unidade:#8b4513"></span></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">Beatriz Silva</a></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">DECAD</a></td>
+                      <td class="text-right">
+                        <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+                          <span class="etched icon-etched">✎</span>
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Linha 2: SF -->
+                    <tr data-unidade-sigla="SF" data-sigla="SF" data-nome="Secretaria Municipal da Fazenda" data-tipo="Secretaria" data-titular="Carlos Alberto" data-pai="">
+                      <td>
+                        <a href="#" class="link-tabela-onsen link-interno">SF</a>
+                      </td>
+                      <td><p class="td-nome-unidade">Secretaria Municipal da Fazenda</p></td>
+                      <td class="text-base-content/80">Secretaria</td>
+                      <td><span class="badge badge-info badge-soft badge-sm">Alta adm.</span></td>
+                      <td><span class="dot-unidade" style="--cor-unidade:#0077b6"></span></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">Carlos Alberto</a></td>
+                      <td class="text-base-content/50">— (Raiz)</td>
+                      <td class="text-right">
+                        <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+                          <span class="etched icon-etched">✎</span>
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Linha 3: SUREM -->
+                    <tr data-unidade-sigla="SUREM" data-sigla="SUREM" data-nome="Subsecretaria da Receita Municipal" data-tipo="Subsecretaria" data-titular="Mariana Costa" data-pai="SF">
+                      <td>
+                        <a href="#" class="link-tabela-onsen link-interno">SUREM</a>
+                      </td>
+                      <td><p class="td-nome-unidade">Subsecretaria da Receita Municipal</p></td>
+                      <td class="text-base-content/80">Subsecretaria</td>
+                      <td><span class="badge badge-info badge-soft badge-sm">Alta adm.</span></td>
+                      <td><span class="dot-unidade" style="--cor-unidade:#073a54"></span></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">Mariana Costa</a></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">SF</a></td>
+                      <td class="text-right">
+                        <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+                          <span class="etched icon-etched">✎</span>
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Linha 4: DECAD -->
+                    <tr data-unidade-sigla="DECAD" data-sigla="DECAD" data-nome="Coordenadoria de Cadastro e Lançamento" data-tipo="Coordenadoria" data-titular="Fernando Lima" data-pai="SUREM">
+                      <td>
+                        <a href="#" class="link-tabela-onsen link-interno">DECAD</a>
+                      </td>
+                      <td><p class="td-nome-unidade">Coordenadoria de Cadastro e Lançamento</p></td>
+                      <td class="text-base-content/80">Coordenadoria</td>
+                      <td class="text-base-content/50">—</td>
+                      <td><span class="dot-unidade" style="--cor-unidade:#0077b6"></span></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">Fernando Lima</a></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">SUREM</a></td>
+                      <td class="text-right">
+                        <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+                          <span class="etched icon-etched">✎</span>
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Linha 5: DICAD -->
+                    <tr data-unidade-sigla="DICAD" data-sigla="DICAD" data-nome="Divisão de Cadastro de Imóveis" data-tipo="Divisão" data-titular="Renata Oliveira" data-pai="DECAD">
+                      <td>
+                        <a href="#" class="link-tabela-onsen link-interno">DICAD</a>
+                      </td>
+                      <td><p class="td-nome-unidade">Divisão de Cadastro de Imóveis</p></td>
+                      <td class="text-base-content/80">Divisão</td>
+                      <td class="text-base-content/50">—</td>
+                      <td><span class="dot-unidade" style="--cor-unidade:#0077b6"></span></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">Renata Oliveira</a></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">DECAD</a></td>
+                      <td class="text-right">
+                        <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+                          <span class="etched icon-etched">✎</span>
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Linha 6: DIMAP-1 -->
+                    <tr data-unidade-sigla="DIMAP-1" data-sigla="DIMAP-1" data-nome="Setor de Geoprocessamento e Dados" data-tipo="Setor" data-titular="Lucas Mendes" data-pai="DIMAP">
+                      <td>
+                        <a href="#" class="link-tabela-onsen link-interno">DIMAP-1</a>
+                      </td>
+                      <td><p class="td-nome-unidade">Setor de Geoprocessamento e Dados</p></td>
+                      <td class="text-base-content/80">Setor</td>
+                      <td class="text-base-content/50">—</td>
+                      <td><span class="dot-unidade" style="--cor-unidade:#8b4513"></span></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">Lucas Mendes</a></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">DIMAP</a></td>
+                      <td class="text-right">
+                        <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+                          <span class="etched icon-etched">✎</span>
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Linha 7: DIMAP-2 -->
+                    <tr data-unidade-sigla="DIMAP-2" data-sigla="DIMAP-2" data-nome="Setor de Cadastro Gráfico e Cartografia" data-tipo="Setor" data-titular="" data-pai="DIMAP">
+                      <td>
+                        <a href="#" class="link-tabela-onsen link-interno">DIMAP-2</a>
+                      </td>
+                      <td><p class="td-nome-unidade">Setor de Cadastro Gráfico e Cartografia</p></td>
+                      <td class="text-base-content/80">Setor</td>
+                      <td class="text-base-content/50">—</td>
+                      <td><span class="dot-unidade" style="--cor-unidade:#8b4513"></span></td>
+                      <td class="text-base-content/50">— (Vaga)</td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">DIMAP</a></td>
+                      <td class="text-right">
+                        <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+                          <span class="etched icon-etched">✎</span>
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Linha 8: DITEC -->
+                    <tr data-unidade-sigla="DITEC" data-sigla="DITEC" data-nome="Divisão de Tecnologia e Sistemas Tributários" data-tipo="Divisão" data-titular="Juliana Prado" data-pai="SUREM">
+                      <td>
+                        <a href="#" class="link-tabela-onsen link-interno">DITEC</a>
+                      </td>
+                      <td><p class="td-nome-unidade">Divisão de Tecnologia e Sistemas Tributários</p></td>
+                      <td class="text-base-content/80">Divisão</td>
+                      <td class="text-base-content/50">—</td>
+                      <td><span class="dot-unidade" style="--cor-unidade:#073a54"></span></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">Juliana Prado</a></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">SUREM</a></td>
+                      <td class="text-right">
+                        <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+                          <span class="etched icon-etched">✎</span>
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Linha 9: SUTEM -->
+                    <tr data-unidade-sigla="SUTEM" data-sigla="SUTEM" data-nome="Subsecretaria do Tesouro Municipal" data-tipo="Subsecretaria" data-titular="Thiago Ramos" data-pai="SF">
+                      <td>
+                        <a href="#" class="link-tabela-onsen link-interno">SUTEM</a>
+                      </td>
+                      <td><p class="td-nome-unidade">Subsecretaria do Tesouro Municipal</p></td>
+                      <td class="text-base-content/80">Subsecretaria</td>
+                      <td><span class="badge badge-info badge-soft badge-sm">Alta adm.</span></td>
+                      <td><span class="dot-unidade" style="--cor-unidade:#e06666"></span></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">Thiago Ramos</a></td>
+                      <td><a href="#" class="link-tabela-onsen link-interno">SF</a></td>
+                      <td class="text-right">
+                        <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle link-interno" title="Ver unidade">
+                          <span class="etched icon-etched">✎</span>
+                        </a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <!-- /partial -->
+
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Script da coreografia interativa (Mapa, Árvore, Tabela, Busca, Ordenação e Sincronia Bidirecional) -->
+  <script>
+    // 1. Inicializar mapa administrativo de fundo (derivando suavemente)
+    const map = L.map("mapa-mock", {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+    }).setView([-23.5505, -46.6333], 13);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      opacity: 0.65
+    }).addTo(map);
+
+    let angle = 0;
+    setInterval(() => {
+      angle += 0.0005;
+      map.panTo([-23.5505 + Math.sin(angle) * 0.003, -46.6333 + Math.cos(angle) * 0.003], { animate: true, duration: 1 });
+    }, 1000);
+
+    // 2. Motor canônico da árvore hierárquica (static/src/js/ui/arvore_hierarquica.js)
+    function paiDoNo(no) {
+      return no.parentElement.closest(".no-arvore");
+    }
+
+    function vestir(no) {
+      const card = no.querySelector(":scope > .card-unidade");
+      if (!card) return;
+      const escavado = no.classList.contains("no-arvore-caminho") || no.classList.contains("no-arvore-ego");
+      card.classList.toggle("card-unidade-repouso", !escavado);
+      card.classList.toggle("glass-panel", !escavado);
+      card.classList.toggle("card-unidade-poco", escavado);
+      card.classList.toggle("card-unidade-ego", no.classList.contains("no-arvore-ego"));
+    }
+
+    function moverEgo(organograma, alvo, alternar = true) {
+      if (!alvo) return;
+      const jaEraEgo = alvo.classList.contains("no-arvore-ego");
+      const caminho = new Set();
+      for (let no = alvo; no; no = paiDoNo(no)) caminho.add(no);
+
+      organograma.querySelectorAll(".no-arvore").forEach((no) => {
+        no.classList.remove("no-arvore-caminho", "no-arvore-ego");
+        // Ramo abandonado se fecha; o que já estava aberto no caminho continua.
+        if (!caminho.has(no)) no.classList.remove("no-arvore-aberto");
+      });
+
+      // Clicar de novo no ego é fechá-lo: o segundo clique é o que recolhe o nível.
+      const abrir = alternar ? (jaEraEgo ? !alvo.classList.contains("no-arvore-aberto") : true) : false;
+      alvo.classList.add("no-arvore-ego");
+      alvo.classList.toggle("no-arvore-aberto", abrir);
+
+      for (let acima = paiDoNo(alvo); acima; acima = paiDoNo(acima)) {
+        acima.classList.add("no-arvore-caminho");
+        acima.classList.add("no-arvore-aberto");
+      }
+
+      organograma.querySelectorAll(".no-arvore").forEach(vestir);
+      alvo.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+
+    function abrirTudo(organograma, abrir) {
+      organograma.querySelectorAll(".no-arvore").forEach((no) => {
+        no.classList.toggle("no-arvore-aberto", abrir);
+        vestir(no);
+      });
+    }
+
+    function voltarAoInicio(organograma) {
+      organograma.querySelectorAll(".no-arvore").forEach((no) => no.classList.remove("no-arvore-aberto"));
+      moverEgo(organograma, organograma.querySelector("[data-ego-inicial]"), false);
+    }
+
+    function vestirOrganogramas() {
+      document.querySelectorAll(".organograma .no-arvore").forEach(vestir);
+    }
+
+    // 3. Sincronização Bidirecional, Animação Contínua (Ghost Glide) & Degraus
+    let duracaoPincagemMs = 500;
+    let modoPincagem = "continuo";
+    let timeoutsPincagem = [];
+
+    // Seletor de Modo (Contínuo vs Passo a Passo)
+    document.querySelectorAll(".btn-modo-pincagem").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        modoPincagem = btn.dataset.modo || "continuo";
+        document.querySelectorAll(".btn-modo-pincagem").forEach((b) => {
+          b.classList.remove("bg-agua-600", "text-white", "font-bold", "shadow-sm");
+          b.classList.add("bg-white/50", "text-madeira-700", "font-medium");
+        });
+        btn.classList.add("bg-agua-600", "text-white", "font-bold", "shadow-sm");
+        btn.classList.remove("bg-white/50", "text-madeira-700", "font-medium");
+      });
+    });
+
+    // Seletor de Duração
+    document.querySelectorAll(".btn-velocidade-pincagem").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        duracaoPincagemMs = parseInt(btn.dataset.ms, 10) || 800;
+        document.querySelectorAll(".btn-velocidade-pincagem").forEach((b) => {
+          b.classList.remove("bg-agua-600", "text-white", "font-bold", "shadow-sm");
+          b.classList.add("bg-white/50", "text-madeira-700", "font-medium");
+        });
+        btn.classList.add("bg-agua-600", "text-white", "font-bold", "shadow-sm");
+        btn.classList.remove("bg-white/50", "text-madeira-700", "font-medium");
+      });
+    });
+
+    function limparAnimacoesEmCurso() {
+      timeoutsPincagem.forEach((t) => clearTimeout(t));
+      timeoutsPincagem = [];
+      document.querySelectorAll(".table-flutuante-clone").forEach((c) => c.remove());
+      const tbody = document.getElementById("corpo-unidades");
+      if (tbody) {
+        tbody.querySelectorAll("tr").forEach((tr) => {
+          tr.classList.remove("linha-subindo", "linha-descendo");
+          tr.style.opacity = "";
+          tr.style.transition = "";
+          tr.style.transform = "";
+          tr.style.zIndex = "";
+          tr.style.position = "";
+          tr.style.boxShadow = "";
+        });
+      }
+    }
+
+    function destacarLinhaNaTabela(sigla) {
+      const tbody = document.getElementById("corpo-unidades");
+      if (!tbody) return;
+      const linha = tbody.querySelector(`tr[data-unidade-sigla="${sigla}"]`);
+      if (!linha) return;
+
+      limparAnimacoesEmCurso();
+
+      // Marca a linha com destaque ativo ciano
+      tbody.querySelectorAll("tr").forEach((tr) => tr.removeAttribute("data-ativo"));
+      linha.setAttribute("data-ativo", "true");
+
+      // Se já está na primeira linha, apenas rola suavemente ao topo
+      if (linha === tbody.firstElementChild) {
+        const rolador = document.getElementById("rolador-tabela");
+        if (rolador) rolador.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      if (modoPincagem === "continuo") {
+        executarDeslizamentoContinuo(tbody, linha, duracaoPincagemMs);
+      } else {
+        executarSubidaPassoAPasso(tbody, linha, duracaoPincagemMs);
+      }
+    }
+
+    // MODO 1 (PADRÃO): Deslizamento Contínuo Delimitado dentro da Tabela (Thick Glass)
+    function executarDeslizamentoContinuo(tbody, linha, duracaoTotal) {
+      const rolador = document.getElementById("rolador-tabela");
+      if (!rolador) return;
+
+      const primeiraLinha = tbody.querySelector("tr:not([style*='display: none'])");
+      if (!primeiraLinha || primeiraLinha === linha) {
+        tbody.querySelectorAll("tr").forEach((tr) => tr.removeAttribute("data-ativo"));
+        linha.setAttribute("data-ativo", "true");
+        rolador.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      const thead = rolador.querySelector("thead");
+      const theadHeight = thead ? thead.offsetHeight : 40;
+      const topInicial = linha.offsetTop;
+      const topFinal = theadHeight;
+
+      // Cria a tabela flutuante delimitada rigorosamente ao rolador
+      const cloneTable = document.createElement("table");
+      cloneTable.className = "table table-onsen table-flutuante-clone glass-panel-thick";
+      cloneTable.style.position = "absolute";
+      cloneTable.style.top = `${topInicial}px`;
+      cloneTable.style.left = "0";
+      cloneTable.style.width = "100%";
+      cloneTable.style.maxWidth = "100%";
+      cloneTable.style.height = `${linha.offsetHeight}px`;
+      cloneTable.style.boxSizing = "border-box";
+      cloneTable.style.zIndex = "40";
+      cloneTable.style.pointerEvents = "none";
+      cloneTable.style.tableLayout = "fixed";
+      cloneTable.style.borderRadius = "10px";
+      cloneTable.style.overflow = "hidden";
+      cloneTable.style.backdropFilter = "blur(28px)";
+      cloneTable.style.background = "linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(220, 245, 255, 0.92) 50%, rgba(200, 235, 250, 0.88) 100%)";
+      cloneTable.style.border = "1px solid rgba(255, 255, 255, 0.85)";
+      cloneTable.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,1), 0 12px 30px rgba(7,58,84,0.3), 0 0 28px rgba(72,202,228,0.3)";
+      cloneTable.style.transition = `top ${duracaoTotal}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+
+      const cloneTbody = document.createElement("tbody");
+      const cloneTr = linha.cloneNode(true);
+      cloneTr.setAttribute("data-ativo", "true");
+      cloneTr.style.background = "transparent";
+
+      const tabela = tbody.closest("table");
+      const ths = tabela ? tabela.querySelectorAll("thead th") : [];
+      const cloneTds = cloneTr.querySelectorAll("td");
+      cloneTds.forEach((td, i) => {
+        const refEl = (ths[i]) || linha.querySelectorAll("td")[i];
+        if (refEl) {
+          const w = refEl.getBoundingClientRect().width;
+          td.style.width = `${w}px`;
+          td.style.minWidth = `${w}px`;
+          td.style.maxWidth = `${w}px`;
+          td.style.boxSizing = "border-box";
+        }
+      });
+
+      cloneTbody.appendChild(cloneTr);
+      cloneTable.appendChild(cloneTbody);
+      rolador.appendChild(cloneTable);
+
+      // Linha original translúcida enquanto o clone viaja
+      linha.style.opacity = "0.15";
+
+      // Força reflow síncrono
+      void cloneTable.offsetHeight;
+
+      // Desliza suavemente até o topo exato da área de dados
+      cloneTable.style.top = `${topFinal}px`;
+
+      // Rola o poço da tabela suavemente ao topo
+      rolador.scrollTo({ top: 0, behavior: "smooth" });
+
+      // Ao completar o percurso, acomoda a linha no topo do DOM e descarta o clone
+      const t = setTimeout(() => {
+        tbody.prepend(linha);
+        linha.style.opacity = "1";
+        tbody.querySelectorAll("tr").forEach((tr) => tr.removeAttribute("data-ativo"));
+        linha.setAttribute("data-ativo", "true");
+        cloneTable.remove();
+        rolador.scrollTo({ top: 0, behavior: "smooth" });
+        limparAnimacoesEmCurso();
+      }, duracaoTotal);
+      timeoutsPincagem.push(t);
+    }
+
+    // MODO 2: Subida física posição a posição (degrau por degrau)
+    function executarSubidaPassoAPasso(tbody, linha, duracaoTotal) {
+      let posicoes = 0;
+      let aux = linha;
+      while (aux.previousElementSibling) {
+        posicoes++;
+        aux = aux.previousElementSibling;
+      }
+      if (posicoes === 0) return;
+
+      const tempoPorPasso = Math.max(70, Math.floor(duracaoTotal / posicoes));
+      document.documentElement.style.setProperty("--duracao-passo", `${tempoPorPasso}ms`);
+
+      function subirUmDegrau() {
+        const anterior = linha.previousElementSibling;
+        if (!anterior) {
+          const rolador = document.getElementById("rolador-tabela");
+          if (rolador) rolador.scrollTo({ top: 0, behavior: "smooth" });
+          limparAnimacoesEmCurso();
+          linha.setAttribute("data-ativo", "true");
+          return;
+        }
+
+        linha.classList.remove("linha-subindo");
+        anterior.classList.remove("linha-descendo");
+        void linha.offsetWidth;
+
+        linha.classList.add("linha-subindo");
+        anterior.classList.add("linha-descendo");
+
+        tbody.insertBefore(linha, anterior);
+        linha.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+        const t = setTimeout(() => {
+          subirUmDegrau();
+        }, tempoPorPasso);
+        timeoutsPincagem.push(t);
+      }
+
+      subirUmDegrau();
+    }
+
+    document.addEventListener("click", (evento) => {
+      // Botão "Voltar ao início"
+      const volta = evento.target.closest("[data-voltar]");
+      if (volta) {
+        voltarAoInicio(document.querySelector(volta.dataset.voltar));
+        return;
+      }
+
+      // Botão "Ver toda a árvore / Recolher a árvore"
+      const tudo = evento.target.closest("[data-abrir-tudo]");
+      if (tudo) {
+        const abrir = tudo.dataset.aberta !== "1";
+        abrirTudo(document.querySelector(tudo.dataset.abrirTudo), abrir);
+        tudo.dataset.aberta = abrir ? "1" : "0";
+        tudo.lastChild.textContent = abrir ? ` ${tudo.dataset.rotuloRecolher} ` : " Ver toda a árvore ";
+        return;
+      }
+
+      // Setinha de irmãs (siblingship)
+      const chamado = evento.target.closest(".no-arvore-irmas");
+      if (chamado) {
+        const pai = paiDoNo(chamado.closest(".no-arvore"));
+        if (pai) pai.classList.toggle("no-arvore-aberto");
+        return;
+      }
+
+      // Clique no nó da árvore -> Move ego e pina com animação na tabela
+      const gatilho = evento.target.closest(".card-unidade-gatilho");
+      if (gatilho) {
+        const no = gatilho.closest(".no-arvore");
+        const organograma = no.closest(".organograma");
+        moverEgo(organograma, no);
+        const sigla = no.dataset.unidadeSigla;
+        if (sigla) destacarLinhaNaTabela(sigla);
+        return;
+      }
+
+      // Clique na linha da tabela -> Ativa nó na árvore E pina com animação na tabela
+      const linha = evento.target.closest("#corpo-unidades tr");
+      if (linha) {
+        // Se clicou em link ou botão de ação, navega normalmente
+        if (evento.target.closest(".link-interno") || evento.target.closest("a") || evento.target.closest("button")) {
+          return;
+        }
+        const sigla = linha.dataset.unidadeSigla;
+        const organograma = document.getElementById("organograma-unidades");
+        const no = organograma.querySelector(`.no-arvore[data-unidade-sigla="${sigla}"]`);
+        if (no) {
+          moverEgo(organograma, no);
+        }
+        if (sigla) destacarLinhaNaTabela(sigla);
+      }
+    });
+
+    // 4. Filtro e Ordenação Client-Side (Simulando HTMX no Mock)
+    function normalizar(texto) {
+      return (texto || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+    }
+
+    function aplicarFiltros() {
+      const inputs = document.querySelectorAll(".th-onsen-input");
+      const filtros = {};
+      inputs.forEach((input) => {
+        const val = normalizar(input.value);
+        if (val) filtros[input.dataset.filtro] = val;
+      });
+
+      const linhas = document.querySelectorAll("#corpo-unidades tr");
+      let visiveis = 0;
+      linhas.forEach((linha) => {
+        let match = true;
+        for (const [col, termo] of Object.entries(filtros)) {
+          const val = normalizar(linha.dataset[col]);
+          if (!val.includes(termo)) {
+            match = false;
+            break;
+          }
+        }
+        linha.style.display = match ? "" : "none";
+        if (match) visiveis++;
+      });
+
+      document.getElementById("contagem-unidades").textContent = `${visiveis} unidade${visiveis === 1 ? "" : "s"} correspondente${visiveis === 1 ? "" : "s"} aos filtros.`;
+    }
+
+    document.querySelectorAll(".th-onsen-input").forEach((input) => {
+      input.addEventListener("input", aplicarFiltros);
+    });
+
+    // Limpar filtros
+    document.getElementById("btn-limpar-filtros").addEventListener("click", () => {
+      document.querySelectorAll(".th-onsen-input").forEach((input) => (input.value = ""));
+      aplicarFiltros();
+    });
+
+    // Ordenação
+    document.querySelectorAll(".sort-etched").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const th = e.target.closest(".th-onsen");
+        const col = th.dataset.coluna;
+        const atual = th.getAttribute("aria-sort") || "";
+        const proxima = atual === "" ? "ascending" : atual === "ascending" ? "descending" : "";
+
+        document.querySelectorAll(".th-onsen").forEach((t) => t.removeAttribute("aria-sort"));
+        if (proxima) th.setAttribute("aria-sort", proxima);
+
+        const tbody = document.getElementById("corpo-unidades");
+        const linhas = Array.from(tbody.querySelectorAll("tr"));
+
+        if (proxima) {
+          linhas.sort((a, b) => {
+            const valA = normalizar(a.dataset[col]);
+            const valB = normalizar(b.dataset[col]);
+            const comp = valA.localeCompare(valB);
+            return proxima === "ascending" ? comp : -comp;
+          });
+          linhas.forEach((l) => tbody.appendChild(l));
+        }
+      });
+    });
+
+    // Inicialização
+    vestirOrganogramas();
+  </script>
+</body>
+</html>

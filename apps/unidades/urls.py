@@ -5,6 +5,9 @@ from apps.unidades import views
 app_name = "unidades"
 
 urlpatterns = [
+    path("", views.listar_unidades, name="listar_unidades"),
+    # Alvo do swap do HTMX da tabela: só o <tbody>.
+    path("corpo/", views.corpo_unidades, name="corpo_unidades"),
     path("nova/", views.criar_unidade, name="criar_unidade"),
     # A escrita é rota apartada da que mostra o formulário: é essa separação que faz "abrir a tela
     # não cadastra nada" ser estrutural, e não uma flag no formulário.

@@ -142,6 +142,7 @@ Toda a interface é construída **dentro** do design system do projeto ("Onsen d
   inferior.
 - Nenhum componente introduz cor, espaçamento, tipografia, sombra ou animação **fora dos tokens do
   design system**. Não se resolve falta de peça com CSS ad hoc.
+- **`!important` no CSS é proibido** — salvo se pré-aprovado e estrita e absolutamente necessário (ex.: resets de GPU/daisyUI no tema). Nunca use em `style` inline.
 
 **Peça já implementada não se altera sem aval explícito do usuário.** Token, átomo e molécula que já
 existem são intocáveis por conta própria — cria-se peça nova ou compõe-se com a existente. Se a única

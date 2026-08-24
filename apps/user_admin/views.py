@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
 
 from apps.competencias.consulta import alcance_do_perfil
+from apps.core.tabela import consulta_da_listagem
 from apps.competencias.protecao import acao_protegida, pode_executar, registrar_ato
 from apps.user_admin.acoes_declaradas import ACAO_CRIAR_SERVIDOR, ACAO_EDITAR_SERVIDOR
 from apps.user_admin.cadastro import criar_servidor, editar_servidor
@@ -31,7 +32,7 @@ from apps.user_admin.context import (
     contexto_pagina_perfil,
 )
 from apps.user_admin.models import Perfil
-from apps.user_admin.schemas import consulta_de_servidores
+from services.domain.listagem_gestao import ColunaServidor
 
 TEMPLATE_FORMULARIO = "user_admin/perfil_form.html"
 TEMPLATE_FORMULARIO_RECUSADO = "user_admin/partials/_formulario_servidor.html"
@@ -44,14 +45,14 @@ TEMPLATE_CORPO_SERVIDORES = "user_admin/partials/_corpo_servidores.html"
 
 
 def listar_servidores(request: HttpRequest) -> HttpResponse:
-    consulta = consulta_de_servidores(request.GET.dict())
+    consulta = consulta_da_listagem(request.GET.dict(), ColunaServidor)
     return render(request, TEMPLATE_LISTAGEM, contexto_listagem_servidores(consulta))
 
 
 def corpo_servidores(request: HttpRequest) -> HttpResponse:
     # Alvo do swap do HTMX: só o <tbody>. Trocar o <thead> junto destruiria, a cada tecla, o campo
     # em que se está digitando.
-    consulta = consulta_de_servidores(request.GET.dict())
+    consulta = consulta_da_listagem(request.GET.dict(), ColunaServidor)
     return render(request, TEMPLATE_CORPO_SERVIDORES, contexto_corpo_servidores(consulta))
 
 

@@ -12,6 +12,7 @@ from typing import Any
 
 from django.utils import timezone
 
+from apps.core.tabela import colunas_da_tabela, marca_descendente
 from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.context import catalogo_de_unidades, contexto_do_modal_de_unidade
 from apps.unidades.direcao import alarme_sem_direcao, estado_da_direcao
@@ -38,7 +39,7 @@ from apps.user_admin.models import (
 )
 from services.domain.autorizacao import VarianteIcone
 from services.domain.exercicio import Periodo, Trecho, vigente_em
-from services.domain.servidores_listagem import (
+from services.domain.listagem_gestao import (
     ColunaServidor,
     ConsultaServidores,
     LinhaServidor,
@@ -63,12 +64,6 @@ FORMATO_CURTO = "%d/%m"
 # dissolve sob a máscara da calha.
 FRACAO_REGUA_ABERTA = 72.0
 LARGURA_TOTAL = 100.0
-# Valores do aria-sort (WAI-ARIA); o relevo da seta é afordância e não carrega a semântica sozinho.
-ORDEM_ASCENDENTE = "ascending"
-ORDEM_DESCENDENTE = "descending"
-# O par que o campo oculto do cabeçalho carrega — o mesmo que o JavaScript da seta escreve.
-DESCENDENTE_LIGADO = "1"
-DESCENDENTE_DESLIGADO = "0"
 # O rótulo da coluna é da interface, não do domínio: o DTO carrega o dado, não o nome da vitrine.
 ROTULO_DA_COLUNA = {
     ColunaServidor.NOME: "Servidor",
@@ -77,7 +72,6 @@ ROTULO_DA_COLUNA = {
     ColunaServidor.CARGO: "Cargo base",
     ColunaServidor.COMISSAO: "Em comissão",
 }
-
 
 def contexto_criar_perfil(ids_permitidos: Collection[int]) -> dict[str, Any]:
     # Os dois catálogos de unidade recortados na fonte, e não um deles pela ordem do merge: o
@@ -231,10 +225,10 @@ def contexto_listagem_servidores(consulta: ConsultaServidores) -> dict[str, Any]
         contexto_fundo_admin()
         | contexto_corpo_servidores(consulta)
         | {
-            "colunas": _colunas(consulta),
+            "colunas": colunas_da_tabela(consulta, ColunaServidor, ROTULO_DA_COLUNA),
             # Os campos ocultos que viajam com os filtros: a ordem sobrevive à troca do corpo.
             "ordenar_por": consulta.ordenar_por or "",
-            "descendente": DESCENDENTE_LIGADO if consulta.descendente else DESCENDENTE_DESLIGADO,
+            "descendente": marca_descendente(consulta),
             # O botão só existe para quem `perms` libera (SPEC criacao_usuarios/004); o slug e a
             # variante vão prontos para o `icone_acao` do template — o svg em si só se resolve lá,
             # porque o resolvedor mora em apps.competencias, que este módulo não pode importar.
@@ -516,23 +510,3 @@ def _linha_do_perfil(perfil: Perfil) -> LinhaServidor:
         comissao=perfil.cargo_comissao.nome if perfil.cargo_comissao else SEM_CARGO_COMISSAO,
         impedido=perfil.esta_impedido,
     )
-
-
-def _colunas(consulta: ConsultaServidores) -> list[dict[str, Any]]:
-    termos = {filtro.coluna: filtro.termo for filtro in consulta.filtros}
-    return [
-        {
-            "slug": coluna.value,
-            "rotulo": ROTULO_DA_COLUNA[coluna],
-            "termo": termos.get(coluna, ""),
-            "ordem": _ordem_da_coluna(coluna, consulta),
-        }
-        for coluna in ColunaServidor
-    ]
-
-
-def _ordem_da_coluna(coluna: ColunaServidor, consulta: ConsultaServidores) -> str:
-    # Vazio = sem ordem; o template só escreve aria-sort quando há ordenação nesta coluna.
-    if consulta.ordenar_por != coluna:
-        return ""
-    return ORDEM_DESCENDENTE if consulta.descendente else ORDEM_ASCENDENTE

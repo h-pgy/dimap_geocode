@@ -146,11 +146,12 @@ html[data-theme="dimap"] {
   .glass-shadow  { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)]; }
   .glass-glow    { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_32px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.5)]; }
 
-  /* Segunda espessura (SPEC user_admin/011): a espessura do gelo depende do que está ATRÁS. Sobre o
-     mapa (água clara) o fino de 10px separa figura do fundo; sobre interface — formulário com tinta
-     escura, campos, poços — ele deixa passar demais e a leitura sofre. Mesma receita, outro grau. */
-  .glass-blur-thick { @apply backdrop-blur-[20px]; }
-  .glass-bg-thick   { @apply bg-gradient-to-br from-white/85 via-white/75 to-white/65; }
+  /* Segunda espessura (SPEC user_admin/011, recalibrada na SPEC design/008): a espessura do gelo depende
+     do que está ATRÁS. Sobre o mapa (água clara) o fino de 10px separa figura do fundo; sobre interface —
+     formulário com tinta escura, selects, poços, toasts — o espesso denso (97%→88%, blur 28px) bloqueia
+     a poluição de fundo sem perder a luminosidade de gelo. */
+  .glass-blur-thick { @apply backdrop-blur-[28px]; }
+  .glass-bg-thick   { @apply bg-gradient-to-br from-white/97 via-white/93 to-white/88; }
 
   /* Gravação no gelo (SPEC user_admin/013): o registro oposto ao .icon-glow — onde ele acende, este
      escava. O relevo vem de filtro SVG porque box-shadow: inset só existe em caixa retangular e aqui
@@ -188,7 +189,7 @@ html[data-theme="dimap"] {
     @apply rounded-2xl backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
   }
   .glass-panel-thick {
-    @apply rounded-2xl backdrop-blur-[20px] bg-gradient-to-br from-white/85 via-white/75 to-white/65 border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_40px_rgba(7,58,84,0.3),0_0_28px_rgba(72,202,228,0.28)];
+    @apply rounded-2xl backdrop-blur-[28px] bg-gradient-to-br from-white/97 via-white/93 to-white/88 border border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
   }
   .glass-panel-deep {
     @apply rounded-2xl backdrop-blur-[8px] bg-gradient-to-br from-rocha-950/80 to-rocha-900/70 border border-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(7,58,84,0.35),0_0_24px_rgba(72,202,228,0.25)] text-rocha-100;
@@ -201,13 +202,24 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco);
   }
 
-  /* Modal de vidro (SPEC user_admin/012): o fundo EMBAÇA, nunca escurece (§6 do design system) —
-     a mesma língua da .cinematic-blur-layer. O bg-transparent! derruba o véu escuro que o daisyUI
-     põe em .modal e o base-100 opaco de .modal-box; important é sufixo no Tailwind 4. */
-  .modal-glass { @apply bg-transparent! backdrop-blur-[6px]; }
+  /* Modal de vidro (SPEC user_admin/012, recalibrado na SPEC design/008): o fundo EMBAÇA a 16px,
+     dissolvendo formulários densos e toasts sem escurecer a cena (§6 do design system).
+     O bg-transparent! derruba o véu escuro que o daisyUI põe em .modal e o base-100 opaco de .modal-box;
+     important é sufixo no Tailwind 4. */
+  .modal-glass { @apply bg-transparent! backdrop-blur-[16px]; }
   /* A placa é o .glass-panel-thick, composto no HTML: atrás dela há formulário, não mapa. Aqui fica
      só o que é do modal — recopiar a receita faria a espessura divergir da SPEC que a define. */
   .modal-box-glass { @apply bg-transparent! max-h-[85vh] overflow-y-auto; }
+
+  /* Neutralização de artefato de GPU (SPEC design/007): quando o modal está fechado
+     (toggle desmarcado ou ausência de .modal-open/[open]), força o descarte do backdrop-filter
+     em toda a subárvore para impedir retenção da textura de blur na memória de vídeo (Chromium/Windows). */
+  .modal-toggle:not(:checked) + .modal,
+  .modal-toggle:not(:checked) + .modal *,
+  .modal:not(.modal-open):not([open]):not(:has(.modal-toggle:checked)),
+  .modal:not(.modal-open):not([open]):not(:has(.modal-toggle:checked)) * {
+    backdrop-filter: none !important;
+  }
 
   /* Casca da área administrativa (SPEC user_admin/007): o fundo à deriva fica parado atrás e o
      conteúdo rola aqui dentro — a viewport travada do base.html existe porque a página do produto
@@ -459,7 +471,7 @@ html[data-theme="dimap"] {
      e altura máxima vêm do gatilho, escritas pelo JS; o inset: auto derruba o inset: 0 que o
      navegador dá a todo popover. */
   .select-onsen-panel {
-    @apply fixed m-0 p-2 overflow-hidden rounded-2xl backdrop-blur-[20px] bg-transparent bg-gradient-to-br from-white/85 via-white/75 to-white/65 border border-white/70 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_40px_rgba(7,58,84,0.3),0_0_28px_rgba(72,202,228,0.28)];
+    @apply fixed m-0 p-2 overflow-hidden rounded-2xl backdrop-blur-[28px] bg-transparent bg-gradient-to-br from-white/97 via-white/93 to-white/88 border border-white/80 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
     inset: auto;
   }
   .select-onsen-panel:popover-open { @apply flex flex-col gap-2; }
@@ -514,7 +526,7 @@ html[data-theme="dimap"] {
      overflow acontece na padding box e o cabeçalho grudento pararia a exata medida dele acima da
      linha de corte, deixando aparecer uma faixa de linha nítida. */
   .table-onsen-wrap {
-    @apply overflow-auto overscroll-contain max-h-[32rem] rounded-2xl;
+    @apply relative overflow-auto overscroll-contain max-h-[32rem] rounded-2xl;
     /* A coluna da barra gravada: como é padding do rolador, a bandeja também para aqui. */
     padding-right: 1.125rem;
     scrollbar-width: none;
@@ -641,6 +653,76 @@ html[data-theme="dimap"] {
       0 0 10px color-mix(in srgb, var(--color-agua-400) 25%, transparent);
   }
   .table-onsen-vazio { @apply px-4 py-10 text-center text-sm text-base-content/60; }
+
+  /* Célula de nome quebrando linha (SPEC user_admin/019): quebra em palavras para preservar a largura da tabela */
+  .td-nome-unidade {
+    @apply max-w-xs break-words whitespace-normal text-sm leading-snug;
+    color: rgba(13, 27, 42, 0.85);
+  }
+
+  /* Link destacado de tabela com micro-zoom de afordância no hover (SPEC user_admin/019) */
+  .link-tabela-onsen {
+    @apply inline-flex items-center gap-1 font-medium text-madeira-700 transition-all duration-200 origin-left;
+  }
+  .link-tabela-onsen:hover {
+    @apply text-agua-700 scale-[1.06];
+  }
+
+  /* Link de sigla/unidade na tabela com micro-zoom de afordância e brilho ciano no hover (SPEC user_admin/013 v5) */
+  .link-sigla-onsen {
+    @apply inline-flex items-center gap-2 transition-all duration-200 origin-left;
+  }
+  .link-sigla-onsen:hover {
+    @apply scale-[1.06] drop-shadow-[0_0_6px_rgba(72,202,228,0.8)];
+  }
+  .link-sigla-onsen:hover .text-code {
+    @apply text-agua-600;
+  }
+
+  /* Linha em foco ativo (SPEC user_admin/021): destaque ciano suave com anel interno de água.
+     Sem important: as duas regras já ganham do hover comum por especificidade — o :not() carrega a
+     do atributo — e vêm depois dele no arquivo. */
+  .table-onsen tbody tr {
+    @apply cursor-pointer;
+  }
+  .table-onsen tbody tr:not([data-ativo="true"]):hover td {
+    @apply bg-white/65;
+  }
+  .table-onsen tbody tr[data-ativo="true"] td {
+    @apply bg-agua-400/35 text-rocha-950;
+    box-shadow: inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
+  }
+  .table-onsen tbody tr[data-ativo="true"] td:first-child {
+    box-shadow: inset 1px 0 0 rgba(0, 150, 199, 0.5), inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
+  }
+  .table-onsen tbody tr[data-ativo="true"] td:last-child {
+    box-shadow: inset -1px 0 0 rgba(0, 150, 199, 0.5), inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
+  }
+  .table-onsen tbody tr[data-ativo="true"] .link-tabela-onsen,
+  .table-onsen tbody tr[data-ativo="true"] .link-sigla-onsen,
+  .table-onsen tbody tr[data-ativo="true"] a {
+    @apply text-agua-800 font-bold;
+  }
+
+  /* Linha pinçada (SPEC user_admin/021): escolhida uma unidade — no organograma ou na própria
+     tabela —, a linha dela sobe até o topo. Quem desliza é um CLONE em gelo espesso, porque <tr>
+     não aceita transform sem desmontar a grade da tabela; a original apaga no lugar e reaparece já
+     no topo ao fim do trajeto. Apaga, e não sai do fluxo: removê-la faria a tabela inteira pular
+     sob o clone em movimento.
+     O JS escreve só MEDIDA — a posição, a altura e a largura de cada coluna, que ele lê do DOM em
+     px, e a duração. A pele é toda daqui, e o material é o mesmo .glass-panel-thick que o clone
+     compõe no markup. */
+  .table-flutuante-clone {
+    @apply absolute left-0 w-full max-w-full z-40 overflow-hidden pointer-events-none;
+    box-sizing: border-box;
+    table-layout: fixed;
+    border-radius: var(--radius-placa);
+    top: var(--topo-pincagem);
+    height: var(--altura-pincagem);
+    transition: top var(--duracao-pincagem) cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .table-flutuante-clone tbody td { width: var(--largura-coluna); }
+  .table-onsen tbody tr.linha-pincada td { @apply opacity-15; }
 
   /* Célula de cabeçalho: peça de gelo assentada na bandeja. As peças têm a mesma altura por
      CONSTRUÇÃO — rótulo em uma linha e campo abrindo em todas ao mesmo tempo —, e é assim que o

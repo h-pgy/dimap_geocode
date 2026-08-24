@@ -1,13 +1,16 @@
 """
 Contexto das telas de unidade: o formulário de cadastro (SPEC user_admin/012), a página própria
-(SPEC user_admin/016), o organograma (SPEC user_admin/018) e os dois atos que mantêm o organograma
-(SPEC user_admin/020). Orquestração: traduz o model para o que o template consome — o hex da cor,
-os catálogos dos selects e os ramos da árvore já casados com as unidades. Nenhuma regra de negócio.
+(SPEC user_admin/016), o organograma (SPEC user_admin/018), a listagem com organograma integrado
+(SPEC user_admin/021) e os dois atos que mantêm o organograma (SPEC user_admin/020). Orquestração:
+traduz o model para o que o template consome — o hex da cor, os catálogos dos selects, as linhas
+que o domínio filtra e ordena e os ramos da árvore já casados com as unidades. Nenhuma regra de
+negócio.
 """
 
 from collections.abc import Collection, Mapping, Sequence
 from typing import Any
 
+from apps.core.tabela import colunas_da_tabela, marca_descendente
 from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.consulta import posicao_de
 from apps.unidades.direcao import (
@@ -22,8 +25,23 @@ from apps.unidades.titularidade import candidatos_a_titular
 from apps.user_admin.apresentacao import imagem_do_perfil, selo_do_exercicio
 from apps.user_admin.exercicio import substituicao_vigente
 from services.domain.arvore_hierarquica import NoHierarquia
+from services.domain.listagem_gestao import (
+    ColunaUnidade,
+    ConsultaUnidades,
+    LinhaUnidade,
+    listar_unidades,
+)
 from services.domain.titularidade import avaliar_direcao
 from services.utils.erros_formulario import RecusaDeFormulario
+
+# O rótulo da coluna é da interface, não do domínio: o DTO carrega o dado, não o nome da vitrine.
+ROTULO_COLUNAS_UNIDADE = {
+    ColunaUnidade.SIGLA: "Sigla",
+    ColunaUnidade.NOME: "Unidade",
+    ColunaUnidade.TIPO: "Tipo",
+    ColunaUnidade.TITULAR: "Titular",
+    ColunaUnidade.PAI: "Subordinação",
+}
 
 
 def contexto_criar_unidade(
@@ -37,6 +55,36 @@ def contexto_criar_unidade(
         | contexto_cor_sugerida(None)
         | {"raiz": raiz}
     )
+
+
+def contexto_listagem_unidades(
+    consulta: ConsultaUnidades,
+    unidade_em_foco: Unidade | None = None,
+) -> dict[str, Any]:
+    return (
+        contexto_fundo_admin()
+        | contexto_organograma(unidade_em_foco)
+        | contexto_corpo_unidades(consulta, unidade_em_foco)
+        | {
+            "colunas": colunas_da_tabela(consulta, ColunaUnidade, ROTULO_COLUNAS_UNIDADE),
+            # Os campos ocultos que viajam com os filtros: a ordem sobrevive à troca do corpo.
+            "ordenar_por": consulta.ordenar_por or "",
+            "descendente": marca_descendente(consulta),
+        }
+    )
+
+
+def contexto_corpo_unidades(
+    consulta: ConsultaUnidades,
+    unidade_em_foco: Unidade | None = None,
+) -> dict[str, Any]:
+    linhas = _linhas_de_unidades()
+    processadas = listar_unidades(linhas, consulta)
+    return {
+        "linhas": _foco_no_topo(processadas, unidade_em_foco),
+        "total_unidades": len(linhas),
+        "unidade_foco_pk": unidade_em_foco.pk if unidade_em_foco else None,
+    }
 
 
 def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
@@ -215,6 +263,41 @@ def catalogo_de_unidades(ids_permitidos: Collection[int] | None = None) -> dict[
     if ids_permitidos is not None:
         unidades = unidades.filter(pk__in=ids_permitidos)
     return {"unidades": unidades}
+
+
+def _foco_no_topo(
+    linhas: Sequence[LinhaUnidade],
+    unidade_em_foco: Unidade | None,
+) -> list[LinhaUnidade]:
+    """Chegar pela seção de hierarquia (`?foco=`) já abre a tabela com a unidade na primeira
+    posição — o mesmo lugar em que o deslizamento do JS a deixaria se ela tivesse sido clicada."""
+    if unidade_em_foco is None:
+        return list(linhas)
+    no_topo = [linha for linha in linhas if linha.pk == unidade_em_foco.pk]
+    return no_topo + [linha for linha in linhas if linha.pk != unidade_em_foco.pk]
+
+
+def _linhas_de_unidades() -> list[LinhaUnidade]:
+    unidades = (
+        Unidade.objects.select_related("tipo", "pai").prefetch_related("perfis").order_by("sigla")
+    )
+    return [_linha_da_unidade(unidade) for unidade in unidades]
+
+
+def _linha_da_unidade(unidade: Unidade) -> LinhaUnidade:
+    titular = unidade.titular
+    return LinhaUnidade(
+        pk=unidade.pk,
+        sigla=unidade.sigla,
+        nome=unidade.nome,
+        tipo=unidade.tipo.nome,
+        exige_alta_administracao=unidade.tipo.exige_alta_administracao,
+        cor_hex=hex_da_cor(unidade.cor),
+        titular_pk=titular.pk if titular else None,
+        titular_nome=f"{titular.nome} {titular.sobrenome}" if titular else None,
+        pai_pk=unidade.pai.pk if unidade.pai else None,
+        pai_sigla=unidade.pai.sigla if unidade.pai else None,
+    )
 
 
 def _ramo(
