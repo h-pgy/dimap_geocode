@@ -1,3 +1,8 @@
+from apps.unidades.acoes_declaradas import (
+    ACAO_CRIAR_UNIDADE,
+    ACAO_CRIAR_UNIDADE_RAIZ,
+    ACAO_EDITAR_UNIDADE,
+)
 from apps.user_admin.acoes_declaradas import ACAO_CRIAR_SERVIDOR, ACAO_EDITAR_SERVIDOR
 
 from .acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
@@ -8,7 +13,15 @@ def _construir_registro() -> RegistroAcoes:
     """Ponto único de montagem: inscrever ação é acrescentar uma linha aqui.
     Privado — quem consome o catálogo entra pela constante `REGISTRO`."""
     return RegistroAcoes(
-        acoes=(ACAO_DEFINIR_ATRIBUICAO, ACAO_CONCEDER, ACAO_CRIAR_SERVIDOR, ACAO_EDITAR_SERVIDOR)
+        acoes=(
+            ACAO_DEFINIR_ATRIBUICAO,
+            ACAO_CONCEDER,
+            ACAO_CRIAR_SERVIDOR,
+            ACAO_EDITAR_SERVIDOR,
+            ACAO_CRIAR_UNIDADE,
+            ACAO_EDITAR_UNIDADE,
+            ACAO_CRIAR_UNIDADE_RAIZ,
+        )
     )
 
 

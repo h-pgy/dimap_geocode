@@ -17,5 +17,6 @@ REGRAS_PADRAO: Mapping[str, RegraDeErro] = {
     "too_long": RegraDeErro(mensagem="{rotulo}: texto longo demais."),
     "int_parsing": RegraDeErro(mensagem="{rotulo}: escolha uma opção da lista."),
     "value_error": RegraDeErro(mensagem="{rotulo}: valor inválido."),
+    "enum": RegraDeErro(mensagem="{rotulo}: escolha uma opção da lista."),
 }
 REGRA_DESCONHECIDA = RegraDeErro(mensagem="{rotulo}: valor inválido.")

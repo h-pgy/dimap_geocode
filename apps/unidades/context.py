@@ -1,8 +1,8 @@
 """
 Contexto das telas de unidade: o formulário de cadastro (SPEC user_admin/012), a página própria
-(SPEC user_admin/016) e o organograma (SPEC user_admin/018). Orquestração: traduz o model para o
-que o template consome — o hex da cor, os catálogos dos selects e os ramos da árvore já casados
-com as unidades. Nenhuma regra de negócio.
+(SPEC user_admin/016), o organograma (SPEC user_admin/018) e os dois atos que mantêm o organograma
+(SPEC user_admin/020). Orquestração: traduz o model para o que o template consome — o hex da cor,
+os catálogos dos selects e os ramos da árvore já casados com as unidades. Nenhuma regra de negócio.
 """
 
 from collections.abc import Collection, Mapping, Sequence
@@ -16,18 +16,26 @@ from apps.unidades.direcao import (
     estado_da_direcao,
     rotulo_do_minimo,
 )
-from apps.unidades.models import TipoUnidade, Unidade
+from apps.unidades.models import CorUnidade, TipoUnidade, Unidade
 from apps.unidades.paleta import hex_da_cor, tons_da_paleta
 from apps.unidades.titularidade import candidatos_a_titular
 from apps.user_admin.apresentacao import imagem_do_perfil, selo_do_exercicio
 from apps.user_admin.exercicio import substituicao_vigente
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.titularidade import avaliar_direcao
+from services.utils.erros_formulario import RecusaDeFormulario
 
 
-def contexto_criar_unidade() -> dict[str, Any]:
+def contexto_criar_unidade(
+    ids_permitidos: Collection[int] | None = None,
+    *,
+    raiz: bool = False,
+) -> dict[str, Any]:
     return (
-        contexto_fundo_admin() | _catalogos_de_unidade() | contexto_cor_sugerida(None)
+        contexto_fundo_admin()
+        | _catalogos_de_unidade(ids_permitidos)
+        | contexto_cor_sugerida(None)
+        | {"raiz": raiz}
     )
 
 
@@ -107,14 +115,21 @@ def contexto_organograma(
     }
 
 
-def contexto_cor_sugerida(pai_pk: int | None) -> dict[str, Any]:
-    pai = Unidade.objects.filter(pk=pai_pk).first() if pai_pk else None
-    # Instância não gravada só para não repetir aqui o default que o model já decide.
-    cor = Unidade(pai=pai).cor_sugerida
+def contexto_da_paleta(cor: str) -> dict[str, Any]:
+    """Recebe o valor CRU do POST para repopular a tela recusada — por isso `str`, e não o enum:
+    slug forjado cai no default em vez de estourar o template, e quem o recusa é o DTO."""
+    tinta = cor if cor in CorUnidade.values else CorUnidade.AGUA_700
     return {
-        "tons": tons_da_paleta(cor),
-        "cor_hex": hex_da_cor(cor),
+        "tons": tons_da_paleta(tinta),
+        "cor_hex": hex_da_cor(tinta),
     }
+
+
+def contexto_cor_sugerida(pai_pk: int | None) -> dict[str, Any]:
+    # Continua sendo a resposta do hx-get do select de pai — e só do CADASTRO: na edição a cor é
+    # escolha gravada, e resugerir repintaria a unidade sem que ninguém pedisse.
+    pai = Unidade.objects.filter(pk=pai_pk).first() if pai_pk else None
+    return contexto_da_paleta(Unidade(pai=pai).cor_sugerida)
 
 
 def contexto_do_modal_de_unidade(
@@ -126,10 +141,73 @@ def contexto_do_modal_de_unidade(
     return _catalogos_de_unidade(ids_permitidos) | contexto_cor_sugerida(None)
 
 
+def contexto_criacao_recusada(
+    valores: Mapping[str, Any],
+    recusa: RecusaDeFormulario,
+    ids_permitidos: Collection[int] | None = None,
+    *,
+    raiz: bool = False,
+) -> dict[str, Any]:
+    return (
+        _catalogos_de_unidade(ids_permitidos)
+        | contexto_da_paleta(str(valores.get("cor", "")))
+        | {
+            "valores": valores,
+            "realce": recusa.realce,
+            "erros": recusa.mensagens,
+            "raiz": raiz,
+        }
+    )
+
+
+def contexto_unidade_selecionada(
+    unidade: Unidade,
+    ids_permitidos: Collection[int] | None = None,
+) -> dict[str, Any]:
+    return {"unidade": unidade, "selecionado": unidade.pk} | catalogo_de_unidades(ids_permitidos)
+
+
+def contexto_modal_unidade(unidade: Unidade) -> dict[str, Any]:
+    """Abertura do modal de edição: `valores` nasce igual ao que já está gravado — na recusa os
+    dois divergem, e é `contexto_edicao_recusada` quem os separa. Sem recorte de alcance: o destino
+    da transferência pode ficar fora dele de propósito (SPEC, §7) — recortar o select impediria a
+    própria transferência que o ato existe para permitir."""
+    return (
+        _catalogos_de_unidade()
+        | contexto_da_paleta(unidade.cor)
+        | {
+            "unidade": unidade,
+            "valores": _valores_de(unidade),
+            "realce": {},
+            "erros": (),
+            "exige_confirmacao": False,
+        }
+    )
+
+
+def contexto_edicao_recusada(
+    unidade: Unidade,
+    valores: Mapping[str, Any],
+    recusa: RecusaDeFormulario,
+    *,
+    exige_confirmacao: bool = False,
+) -> dict[str, Any]:
+    return (
+        _catalogos_de_unidade()
+        | contexto_da_paleta(str(valores.get("cor", "")))
+        | {
+            "unidade": unidade,
+            "valores": valores,
+            "realce": recusa.realce,
+            "erros": recusa.mensagens,
+            "exige_confirmacao": exige_confirmacao,
+        }
+    )
+
+
 def catalogo_de_unidades(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
     """`ids_permitidos` recorta o catálogo ao alcance de quem abre a tela (SPEC
-    criacao_usuarios/004). Sem ele, todas — que é o que o formulário de unidade e o modal de edição
-    continuam pedindo.
+    criacao_usuarios/004). Sem ele, todas — que é o que o modal de edição continua pedindo.
 
     Recebe ids, e não o perfil: este módulo não pode importar `apps.competencias`, que já importa
     o contexto daqui (SPEC autorizacao/003). Quem resolve o alcance é a view."""
@@ -161,7 +239,14 @@ def _catalogos_de_unidade(ids_permitidos: Collection[int] | None = None) -> dict
     # Nível decrescente: a lista de tipos desce da mais abrangente para a mais específica.
     return catalogo_de_unidades(ids_permitidos) | {
         "tipos_unidade": TipoUnidade.objects.order_by("-nivel", "nome"),
-        # Raiz não tem pai e por isso não cai no alcance de ninguém: quem a criasse não a teria de
-        # volta na lista (SPEC criacao_usuarios/006).
-        "permite_raiz": ids_permitidos is None,
+    }
+
+
+def _valores_de(unidade: Unidade) -> dict[str, Any]:
+    return {
+        "nome": unidade.nome,
+        "sigla": unidade.sigla,
+        "tipo_id": unidade.tipo_id,
+        "pai_id": unidade.pai_id,
+        "cor": unidade.cor,
     }

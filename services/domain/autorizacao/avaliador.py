@@ -17,7 +17,11 @@ class AvaliadorCompetencia:
         if not entrada.perfil.em_exercicio:
             return AvaliacaoCompetenciaOutput(slugs_liberados=frozenset())
         return AvaliacaoCompetenciaOutput(
-            slugs_liberados=self._por_concessao(entrada) | self._por_direcao(entrada),
+            # Subtrair no fim, e não filtrar cada fonte: quem chega aqui NUNCA é superusuário — o
+            # `PermissionsMixin.has_perm` responde True antes de consultar backend algum —, então
+            # tirar o slug do conjunto é exatamente dizer "só ele exerce" (SPEC user_admin/020).
+            slugs_liberados=(self._por_concessao(entrada) | self._por_direcao(entrada))
+            - entrada.slugs_exclusivos,
         )
 
     def _por_concessao(self, entrada: AvaliacaoCompetenciaInput) -> frozenset[str]:

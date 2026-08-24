@@ -47,6 +47,9 @@ class AvaliacaoCompetenciaInput(BaseModel):
     concessoes: tuple[ConcessaoVigente, ...]
     # Vêm do registro em código: o domínio não conhece o catálogo do app.
     slugs_estruturais: frozenset[str] = frozenset()
+    # SPEC user_admin/020: slugs, e não o contrato inteiro — o avaliador decide sobre conjuntos, e
+    # é o que o mantém sem saber o que é uma `Acao`.
+    slugs_exclusivos: frozenset[str] = frozenset()
 
 
 class AvaliacaoCompetenciaOutput(BaseModel):

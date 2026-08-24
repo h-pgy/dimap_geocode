@@ -32,6 +32,7 @@ ERRO_MINIMO_TITULAR_OBRIGATORIO = (
 ERRO_TIPO_INCOMPATIVEL_COM_TITULAR = (
     "O titular atual não satisfaz o mínimo de cargo deste tipo."
 )
+ERRO_TIPO_DESSUBORDINA_FILHA = "O tipo novo deixaria {siglas} sem subordinação."
 
 
 class CorUnidade(models.TextChoices):
@@ -158,6 +159,7 @@ class Unidade(models.Model):
     def clean(self) -> None:
         self._checar_titular()
         self._checar_hierarquia()
+        self._checar_filhas()
 
     def _checar_titular(self) -> None:
         # O outro lado da mesma adequação: mudar o tipo quebra o que o cargo do titular satisfazia.
@@ -187,6 +189,17 @@ class Unidade(models.Model):
             raise ValidationError({"pai": ERRO_NIVEL_NAO_SUBORDINA})
         if tipo_pai.tipos_filhos_vedados.filter(pk=self.tipo.pk).exists():
             raise ValidationError({"pai": ERRO_TIPO_FILHO_VEDADO})
+
+    def _checar_filhas(self) -> None:
+        """Criar não alcança esta regra — unidade nova não tem filhas. Editar, sim: baixar o nível
+        do tipo deixaria as filhas de nível igual ou maior penduradas em quem já não as
+        subordina, e `_checar_hierarquia` só olha para cima."""
+        if self.pk is None or not hasattr(self, "tipo"):
+            return
+        dessubordinadas = self.filhas.filter(tipo__nivel__gte=self.tipo.nivel)
+        if dessubordinadas.exists():
+            siglas = ", ".join(dessubordinadas.values_list("sigla", flat=True))
+            raise ValidationError({"tipo": ERRO_TIPO_DESSUBORDINA_FILHA.format(siglas=siglas)})
 
     # Valor inicial oferecido ao formulário de cadastro; a unidade grava a cor que escolher.
     @property

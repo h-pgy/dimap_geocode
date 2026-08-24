@@ -1,0 +1,20 @@
+{# Alvo do hx-post de gravar (SPEC user_admin/020): a recusa devolve este mesmo partial preenchido, #}
+{# com o motivo na tarja; o sucesso troca o formulário inteiro por `_unidade_criada.html`, no mesmo  #}
+{# alvo. `raiz` decide a rota de gravação — mesma tela, contrato de competência diferente.           #}
+<form id="form-nova-unidade"
+      hx-post="{% if raiz %}{% url 'unidades:gravar_unidade_raiz' %}{% else %}{% url 'unidades:gravar_unidade' %}{% endif %}"
+      hx-target="#form-nova-unidade"
+      hx-swap="outerHTML"
+      class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-madeira-700">{% if raiz %}Nova unidade raiz{% else %}Nova unidade{% endif %}</h1>
+    <p class="text-sm text-base-content/70 mt-1">A unidade é o eixo da competência administrativa: é ela que, com o cargo, define o que cada servidor pode praticar.</p>
+  </div>
+
+  {% include "unidades/partials/_campos_unidade.html" %}
+
+  <div class="flex justify-end gap-3 pt-1">
+    <a href="{% url 'core:home' %}" class="btn btn-ghost btn-glass">Cancelar</a>
+    <button type="submit" class="btn btn-onsen">Salvar unidade</button>
+  </div>
+</form>

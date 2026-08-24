@@ -71,7 +71,10 @@ def _radio_do_tom(slug: str) -> str:
 @banco
 @pytest.mark.django_db
 def test_pagina_criar_unidade_renderiza_o_formulario(client: Client) -> None:
-    _unidade_gravada(cor=CorUnidade.ROCHA_700)
+    # Criar unidade é ação estrutural protegida desde a SPEC user_admin/020: quem abre a tela
+    # precisa dirigir alguma unidade.
+    unidade = _unidade_gravada(cor=CorUnidade.ROCHA_700)
+    client.force_login(_dirigente_de(unidade))
 
     resposta = client.get(reverse("unidades:criar_unidade"))
     html = resposta.content.decode()

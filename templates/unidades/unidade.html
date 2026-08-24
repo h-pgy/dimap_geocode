@@ -12,25 +12,37 @@
   <div class="admin-shell">
     <div class="max-w-3xl mx-auto px-4 py-24">
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
-        {% include "unidades/partials/_identidade_unidade.html" %}
-        {% include "unidades/partials/_secao_resumo_unidade.html" %}
-        {% include "unidades/partials/_secao_direcao.html" %}
-        {% include "unidades/partials/_secao_hierarquia.html" %}
-
-        <div class="flex justify-center pt-2">
-          <label for="modal-editar-unidade" class="btn btn-onsen btn-lg gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
-            Editar unidade
-          </label>
+        <div id="painel-unidade">
+          {% include "unidades/partials/_identidade_unidade.html" %}
+          {% include "unidades/partials/_secao_resumo_unidade.html" %}
+          {% include "unidades/partials/_secao_direcao.html" %}
+          {% include "unidades/partials/_secao_hierarquia.html" %}
         </div>
+
+        {% if pode_editar %}
+          <div class="flex justify-center pt-2">
+            <button type="button"
+                    hx-get="{% url 'unidades:editar_unidade' unidade.pk %}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms"
+                    class="btn btn-onsen btn-lg gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+              Editar unidade
+            </button>
+          </div>
+        {% endif %}
       </div>
     </div>
   </div>
 
+  {# Poço do modal, irmão do conteúdo e nunca dentro dele: formulário aninhado é HTML inválido, e    #}
+  {# aqui fora ele escapa do contexto de empilhamento da .admin-shell. Nasce vazio — a rota o monta   #}
+  {# (SPEC user_admin/020).                                                                          #}
+  <div id="poco-modal" class="poco-modal"></div>
+
   {# Irmãos do conteúdo, nunca dentro dele: formulário aninhado é HTML inválido e o navegador       #}
-  {# descarta o interno. Nenhuma rota de escrita nasce nesta SPEC — os quatro modais renderizam com #}
-  {# o submit sem destino; os atos seguem sendo as funções da SPEC 014 (Caveats).                   #}
-  {% include "unidades/partials/_modal_editar_unidade.html" %}
+  {# descarta o interno. Os três modais de titularidade seguem renderizando com o submit sem        #}
+  {# destino — os atos continuam sendo as funções da SPEC 014 (Caveats).                            #}
   {% include "unidades/partials/_modal_definir_titular.html" %}
   {% include "unidades/partials/_modal_trocar_titular.html" %}
   {% include "unidades/partials/_modal_destituir_titular.html" %}
@@ -39,7 +51,8 @@
 {% block scripts %}
   {# Fundo à deriva — só existe onde existe o canvas administrativo #}
   <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
-  {# Sem este módulo os selects seguem nativos: marcar o campo não carrega o componente #}
+  {# O modal de edição chega por HTMX depois: sem este módulo já carregado, os selects que ele traz #}
+  {# não são aprimorados — select_onsen.js reage a htmx:afterSwap (SPEC user_admin/011).            #}
   <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
   {# Percorrer o organograma é estado visual do controle — sem este módulo a árvore fica no estado #}
   {# que o servidor entregou (SPEC user_admin/018 §7).                                             #}

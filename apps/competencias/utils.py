@@ -12,6 +12,7 @@ def instanciar_acao(
     nome_curto: str | None = None,
     variantes_icone: frozenset[VarianteIcone] = frozenset(),
     estrutural: bool = False,
+    exclusiva_superusuario: bool = False,
     alcance: TipoAlcance | None = None,
 ) -> AcaoImplementada:
     """Achata a composição no ponto de declaração: o app da ação escreve plano, o contrato guarda
@@ -24,6 +25,7 @@ def instanciar_acao(
             nome_curto=nome_curto,
             variantes_icone=variantes_icone,
             estrutural=estrutural,
+            exclusiva_superusuario=exclusiva_superusuario,
             alcance=alcance,
         ),
         url_name=url_name,

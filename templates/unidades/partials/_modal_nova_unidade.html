@@ -5,11 +5,14 @@
 <input type="checkbox" id="modal-nova-unidade" class="modal-toggle" />
 <div class="modal modal-glass" role="dialog">
   <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
-    {# Gravar unidade é ato administrativo e entra com autenticação, autorização e registro na SPEC #}
-    {# seguinte (§3.5): aqui o formulário só renderiza, e o submit não tem destino. O id é o mesmo   #}
-    {# que _campos_unidade.html declara em cada campo (SPEC user_admin/017) — aqui ele é ambiente,   #}
-    {# então o atributo só reafirma a associação implícita.                                         #}
-    <form id="form-nova-unidade" class="flex flex-col gap-6">
+    {# Gravar unidade é ato administrativo, registrado (SPEC user_admin/020): a recusa/sucesso troca #}
+    {# só o bloco `#campos-nova-unidade` que `_campos_unidade.html` já declara — o resto do modal    #}
+    {# (título, botões) fica parado. O id é o mesmo que cada campo aponta via `form=`.               #}
+    <form id="form-nova-unidade"
+          hx-post="{% url 'unidades:gravar_unidade_e_selecionar' %}"
+          hx-target="#campos-nova-unidade"
+          hx-swap="outerHTML"
+          class="flex flex-col gap-6">
       <div>
         <h2 class="text-xl font-bold tracking-tight text-madeira-700">Nova unidade</h2>
         <p class="text-sm text-base-content/70 mt-1">A unidade cadastrada aqui fica disponível para a lotação do servidor.</p>

@@ -858,7 +858,11 @@ def test_selects_de_unidade_so_oferecem_o_alcance(client: Client) -> None:
         assert _siglas_do_select(tela, "pai") == alcance
         assert not _oferece_raiz(tela)
 
+    # SPEC user_admin/020: criar unidade passou a ser ação estrutural protegida — a página própria
+    # recorta o select de pai pelo MESMO alcance dos painéis, e "sem unidade superior" sai de toda
+    # tela de criar unidade (raiz é quem nasce raiz, por `unidades:criar_unidade_raiz`).
     pagina_de_unidade = BeautifulSoup(
         client.get(reverse("unidades:criar_unidade")).content.decode(), "html.parser"
     )
-    assert _oferece_raiz(pagina_de_unidade)
+    assert _siglas_do_select(pagina_de_unidade, "pai") == alcance
+    assert not _oferece_raiz(pagina_de_unidade)

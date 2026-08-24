@@ -1,26 +1,35 @@
-{# Modal de edição da unidade (SPEC user_admin/016): irmão do formulário, nunca dentro dele. Os    #}
-{# campos vêm preenchidos e LIDOS — cada um só vira campo ao abrir o lápis ao lado (.campo-onsen).  #}
-{# Nenhuma rota de escrita nasce aqui: o submit não tem destino (Caveats). O lápis também fecha no  #}
-{# hover — alteração da SPEC user_admin/017.                                                        #}
-<input type="checkbox" id="modal-editar-unidade" class="modal-toggle" />
+{# Modal de edição da unidade (SPEC user_admin/016, gravação na SPEC user_admin/020) — o partial que #}
+{# a rota de edição devolve. Chega com o toggle já marcado: abrir é chegar, fechar é o poço vazio     #}
+{# (`_edicao_unidade_concluida.html`). Cada `.campo-onsen` lê DUAS faces da unidade: o lado LIDO      #}
+{# (`unidade.*`, sempre o que está gravado) e o campo atrás do lápis (`valores.*`, o que foi          #}
+{# digitado — na abertura os dois coincidem; na recusa ou no aviso de transferência, divergem). O     #}
+{# campo aberto por `{% if realce.X %} checked{% endif %}` vale tanto para erro quanto para alerta:   #}
+{# campo fechado no `.campo-onsen` esconderia a própria recusa. O alvo é o próprio poço: a recusa e o #}
+{# aviso o remontam aberto, o sucesso o esvazia (é isso que fecha o modal).                           #}
+<input type="checkbox" id="modal-editar-unidade" class="modal-toggle" checked />
 <div class="modal modal-glass" role="dialog">
   <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
-    <form class="flex flex-col gap-6">
+    <form hx-post="{% url 'unidades:gravar_edicao_unidade' unidade.pk %}"
+          hx-target="#poco-modal"
+          hx-swap="innerHTML"
+          class="flex flex-col gap-6">
       <div>
         <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar unidade</h2>
         <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {{ unidade.nome }}</p>
       </div>
 
+      {% include "partials/_tarja_recusa.html" with titulo="Alterações não gravadas" %}
+
       <div class="card-well p-5 flex flex-col gap-4">
         <p class="text-overline">Identificação</p>
         <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-nome" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-nome" class="campo-onsen-toggle"{% if realce.nome %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Nome</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">{{ unidade.nome }}</p>
               <div class="campo-onsen-campo">
-                <input type="text" name="nome" class="input input-glass" value="{{ unidade.nome }}" />
+                <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome }}" />
               </div>
               <label for="editar-campo-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
                 <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
@@ -28,12 +37,12 @@
             </div>
           </div>
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-sigla" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-sigla" class="campo-onsen-toggle"{% if realce.sigla %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Sigla</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">{{ unidade.sigla }}</p>
               <div class="campo-onsen-campo">
-                <input type="text" name="sigla" class="input input-glass" value="{{ unidade.sigla }}" />
+                <input type="text" name="sigla" class="input input-glass {{ realce.sigla }}" value="{{ valores.sigla }}" />
               </div>
               <label for="editar-campo-sigla" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a sigla">
                 <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
@@ -47,19 +56,19 @@
         <p class="text-overline">Hierarquia</p>
         <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-tipo" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-tipo" class="campo-onsen-toggle"{% if realce.tipo %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Tipo</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">{{ unidade.tipo.nome }} <span class="text-base-content/50">· nível {{ unidade.tipo.nivel }}</span></p>
               <div class="campo-onsen-campo">
-                <select name="tipo" class="select select-glass" data-select-onsen>
+                <select name="tipo" class="select select-glass {{ realce.tipo }}" data-select-onsen>
                   {% for tipo in tipos_unidade %}
-                    <option value="{{ tipo.pk }}"{% if tipo.pk == unidade.tipo_id %} selected{% endif %}>{{ tipo.nome }}</option>
+                    <option value="{{ tipo.pk }}"{% if tipo.pk == valores.tipo_id %} selected{% endif %}>{{ tipo.nome }}</option>
                   {% endfor %}
                 </select>
                 <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
                   <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
-                  <p class="text-[13px] text-base-content/80">Mudar para um tipo que o titular não satisfaça é <strong>recusado na validação</strong>: a unidade não fica com titular inválido gravado.</p>
+                  <p class="text-[13px] text-base-content/80">É <strong>recusado na validação</strong> quando o titular atual não satisfaz o novo tipo, ou quando alguma filha deixaria de ser subordinada.</p>
                 </div>
               </div>
               <label for="editar-campo-tipo" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o tipo">
@@ -68,24 +77,26 @@
             </div>
           </div>
           <div class="campo-onsen">
-            <input type="checkbox" id="editar-campo-pai" class="campo-onsen-toggle" />
+            <input type="checkbox" id="editar-campo-pai" class="campo-onsen-toggle"{% if realce.pai %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Unidade superior</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">
                 {% if unidade.pai %}{{ unidade.pai.sigla }} <span class="text-base-content/50">· {{ unidade.pai.nome }}</span>{% else %}— sem unidade superior (raiz) —{% endif %}
               </p>
               <div class="campo-onsen-campo">
-                <select name="pai" class="select select-glass" data-select-onsen>
-                  <option value=""{% if not unidade.pai_id %} selected{% endif %}>— sem unidade superior (raiz) —</option>
+                <select name="pai" class="select select-glass {{ realce.pai }}" data-select-onsen>
+                  {# Só para a unidade que JÁ é raiz, que sem a opção não teria como continuar sendo #}
+                  {# o que é. Ninguém TORNA raiz por aqui: a opção não existe para quem tem superior. #}
+                  {% if not unidade.pai_id %}<option value="" selected>— sem unidade superior (raiz) —</option>{% endif %}
                   {% for outra in unidades %}
                     {% if outra.pk != unidade.pk %}
-                      <option value="{{ outra.pk }}"{% if outra.pk == unidade.pai_id %} selected{% endif %}>{{ outra.sigla }} · {{ outra.nome }}</option>
+                      <option value="{{ outra.pk }}"{% if outra.pk == valores.pai_id %} selected{% endif %}>{{ outra.sigla }} · {{ outra.nome }}</option>
                     {% endif %}
                   {% endfor %}
                 </select>
                 <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
                   <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
-                  <p class="text-[13px] text-base-content/80">É <strong>recusado na validação</strong> quando o nível não subordina ou quando o tipo do pai veda este filho.</p>
+                  <p class="text-[13px] text-base-content/80">Trocar a unidade superior é uma <strong>transferência</strong>: pede confirmação antes de gravar.</p>
                 </div>
               </div>
               <label for="editar-campo-pai" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a unidade superior">
@@ -96,9 +107,30 @@
         </div>
       </div>
 
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Identidade visual</p>
+        <div class="campo-onsen">
+          <input type="checkbox" id="editar-campo-cor" class="campo-onsen-toggle"{% if realce.cor %} checked{% endif %} />
+          <span class="text-overline etched-rotulo">Cor</span>
+          <div class="campo-onsen-linha">
+            {# `inline-block`: dentro do `.campo-onsen-valor`, que é bloco comum, o span fica inline #}
+            {# e `w-8 h-8` não pegam — nos outros usos o poço blockifica por ser filho de `.btn` ou  #}
+            {# absoluto.                                                                             #}
+            <p class="campo-onsen-valor"><span class="paint-well-atual inline-block align-middle w-8 h-8" style="--tinta: {{ cor_hex }}"></span></p>
+            <div class="campo-onsen-campo">{% include "unidades/partials/_disco_de_paleta.html" %}</div>
+            <label for="editar-campo-cor" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a cor">
+              <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {% if exige_confirmacao %}<input type="hidden" name="confirmar_transferencia" value="1" />{% endif %}
       <div class="modal-action">
         <label for="modal-editar-unidade" class="btn btn-glass btn-sm">Cancelar</label>
-        <label for="modal-editar-unidade" class="btn btn-onsen btn-sm">Salvar alterações</label>
+        <button type="submit" class="btn btn-onsen btn-sm">
+          {% if exige_confirmacao %}Confirmar transferência{% else %}Salvar alterações{% endif %}
+        </button>
       </div>
     </form>
   </div>

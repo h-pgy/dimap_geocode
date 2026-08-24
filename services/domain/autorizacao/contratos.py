@@ -62,6 +62,11 @@ class Acao(BaseModel):
     # Competência que decorre de dirigir a unidade (titularidade/001); não passa por atribuição
     # nem concessão. Permite à projeção (SPEC 002) excluir a ação da oferta em tela.
     estrutural: bool = False
+    # ALTERADO na SPEC user_admin/020: booleano ao lado de `estrutural`, não um enum de regime —
+    # os dois se excluem na prática e nada no código os cruza. Exclusividade não é alcance (que
+    # responde SOBRE QUAL unidade) nem concessão (que ela recusa mesmo gravada): é a terceira
+    # resposta a "quem exerce".
+    exclusiva_superusuario: bool = False
     # Ausente, a ação não incide sobre unidade e não há alvo a conferir — é o caso das que recebem
     # uma entidade territorial. Tipado pelo alcance abstrato: um alcance novo entra como subtipo de
     # `TipoAlcance`, sem mexer neste campo (SPEC autorizacao/004).

@@ -1,0 +1,9 @@
+{# Resposta do hx-post de gravar a edição (SPEC user_admin/020), no lugar do #poco-modal. O poço     #}
+{# fica vazio — este partial não escreve nada nele —, e é isso que fecha o modal: o toggle sai do    #}
+{# documento junto com a caixa. O painel de leitura entra pelo hx-swap-oob, no lugar dele.           #}
+<div id="painel-unidade" hx-swap-oob="outerHTML">
+  {% include "unidades/partials/_identidade_unidade.html" %}
+  {% include "unidades/partials/_secao_resumo_unidade.html" %}
+  {% include "unidades/partials/_secao_direcao.html" %}
+  {% include "unidades/partials/_secao_hierarquia.html" %}
+</div>

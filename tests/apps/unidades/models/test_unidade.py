@@ -59,16 +59,22 @@ def test_unidade_filha_exige_nivel_menor_que_o_do_pai() -> None:
     tipo_nivel_menor = _tipo(nome="Divisão", nivel=10)
     pai = _unidade(nome="Departamento", sigla="DPTO", tipo=tipo_pai)
 
-    filha_nivel_menor = Unidade(nome="Divisão", sigla="DIV", tipo=tipo_nivel_menor, pai=pai)
+    filha_nivel_menor = Unidade(
+        nome="Divisão", sigla="DIV", tipo=tipo_nivel_menor, pai=pai
+    )
     filha_nivel_menor.full_clean()
     filha_nivel_menor.save()
     assert filha_nivel_menor.pai == pai
 
-    filha_nivel_igual = Unidade(nome="Depto Igual", sigla="DPTOI", tipo=tipo_nivel_igual, pai=pai)
+    filha_nivel_igual = Unidade(
+        nome="Depto Igual", sigla="DPTOI", tipo=tipo_nivel_igual, pai=pai
+    )
     with pytest.raises(ValidationError):
         filha_nivel_igual.full_clean()
 
-    filha_nivel_maior = Unidade(nome="Secretaria", sigla="SEC", tipo=tipo_nivel_maior, pai=pai)
+    filha_nivel_maior = Unidade(
+        nome="Secretaria", sigla="SEC", tipo=tipo_nivel_maior, pai=pai
+    )
     with pytest.raises(ValidationError):
         filha_nivel_maior.full_clean()
 
@@ -81,7 +87,9 @@ def test_tipo_pai_recusa_filha_de_tipo_vedado() -> None:
     tipo_divisao = _tipo(nome="Divisão", nivel=10)
     tipo_coordenadoria.tipos_filhos_vedados.add(tipo_divisao)
 
-    coordenadoria = _unidade(nome="Coordenadoria", sigla="COORD", tipo=tipo_coordenadoria)
+    coordenadoria = _unidade(
+        nome="Coordenadoria", sigla="COORD", tipo=tipo_coordenadoria
+    )
     departamento = _unidade(nome="Departamento", sigla="DPTO", tipo=tipo_departamento)
 
     divisao_sob_coordenadoria = Unidade(
@@ -115,7 +123,9 @@ def test_tipo_nao_raiz_exige_pai() -> None:
     with pytest.raises(ValidationError):
         divisao_sem_pai.full_clean()
 
-    divisao_com_pai = Unidade(nome="Divisão", sigla="DIV", tipo=tipo_divisao, pai=secretaria)
+    divisao_com_pai = Unidade(
+        nome="Divisão", sigla="DIV", tipo=tipo_divisao, pai=secretaria
+    )
     divisao_com_pai.full_clean()
     divisao_com_pai.save()
     assert divisao_com_pai.pai == secretaria
@@ -147,10 +157,14 @@ def test_filhas_lista_as_unidades_subordinadas() -> None:
     tipo_departamento = _tipo(nome="Departamento", nivel=20)
     tipo_divisao = _tipo(nome="Divisão", nivel=10)
     departamento = _unidade(nome="Departamento", sigla="DPTO", tipo=tipo_departamento)
-    divisao_1 = Unidade(nome="Divisão 1", sigla="DIV1", tipo=tipo_divisao, pai=departamento)
+    divisao_1 = Unidade(
+        nome="Divisão 1", sigla="DIV1", tipo=tipo_divisao, pai=departamento
+    )
     divisao_1.full_clean()
     divisao_1.save()
-    divisao_2 = Unidade(nome="Divisão 2", sigla="DIV2", tipo=tipo_divisao, pai=departamento)
+    divisao_2 = Unidade(
+        nome="Divisão 2", sigla="DIV2", tipo=tipo_divisao, pai=departamento
+    )
     divisao_2.full_clean()
     divisao_2.save()
     outra_raiz = _unidade(nome="Outra Raiz", sigla="RAIZ2", tipo=tipo_departamento)
@@ -174,6 +188,26 @@ def test_unidade_recusa_cor_fora_da_paleta_e_nasce_com_a_padrao() -> None:
     )
     with pytest.raises(ValidationError):
         cor_invalida.full_clean()
+
+
+@banco
+@pytest.mark.django_db
+def test_tipo_que_dessubordina_filha_e_recusado() -> None:
+    """SPEC user_admin/020: baixar o nível do tipo deixaria a filha pendurada em quem já não a
+    subordina — a regra de nível só olhava para cima, e passa a olhar para baixo também."""
+    tipo_alto = _tipo(nome="Departamento Dessubordina", nivel=20)
+    tipo_baixo = _tipo(nome="Divisão Dessubordina", nivel=10)
+    pai = _unidade(nome="Departamento Dessubordina", sigla="DPTODES", tipo=tipo_alto)
+    filha = Unidade(
+        nome="Divisão Dessubordina", sigla="DIVDES", tipo=tipo_baixo, pai=pai
+    )
+    filha.full_clean()
+    filha.save()
+
+    pai.tipo = tipo_baixo
+    with pytest.raises(ValidationError) as excinfo:
+        pai.full_clean()
+    assert "DIVDES" in str(excinfo.value)
 
 
 @banco

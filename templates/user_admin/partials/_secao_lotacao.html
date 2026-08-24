@@ -9,11 +9,7 @@
     <div class="form-field">
       <span class="text-overline">Unidade</span>
       <div class="form-field-inline-action">
-        <select name="unidade" class="select select-glass {{ realce.unidade }}" data-select-onsen>
-          {% for unidade in unidades %}
-            <option value="{{ unidade.pk }}" {% if unidade.pk == perfil.unidade_id %}selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
-          {% endfor %}
-        </select>
+        {% include "unidades/partials/_campo_unidade_lotacao.html" with selecionado=perfil.unidade_id %}
         <label for="modal-nova-unidade"
                class="btn btn-circle btn-criar-inline tooltip tooltip-left"
                data-tip="Cadastrar unidade que falta">

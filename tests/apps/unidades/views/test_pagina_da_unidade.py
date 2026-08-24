@@ -36,7 +36,9 @@ def _tipo_unidade(**overrides: object) -> TipoUnidade:
     return TipoUnidade.objects.create(**dados)  # type: ignore[arg-type]
 
 
-def _unidade(sigla: str, tipo: TipoUnidade | None = None, **overrides: object) -> Unidade:
+def _unidade(
+    sigla: str, tipo: TipoUnidade | None = None, **overrides: object
+) -> Unidade:
     dados: dict[str, object] = {
         "nome": f"Divisão {sigla}",
         "sigla": sigla,
@@ -147,10 +149,15 @@ def test_pagina_distingue_as_duas_faltas(client: Client) -> None:
     definir_titular(titular)
     registrar_impedimento(
         titular,
-        NovoImpedimento(tipo=tipo_impedimento.pk, data_inicio=inicio_afastamento, data_fim=None),
+        NovoImpedimento(
+            tipo=tipo_impedimento.pk, data_inicio=inicio_afastamento, data_fim=None
+        ),
     )
     html_sem_direcao = client.get(_url_unidade(unidade_sem_direcao)).content.decode()
-    assert f"A {unidade_sem_direcao.sigla} está sem quem responda por ela" in html_sem_direcao
+    assert (
+        f"A {unidade_sem_direcao.sigla} está sem quem responda por ela"
+        in html_sem_direcao
+    )
     assert "está sem titular" not in html_sem_direcao
 
     # O mesmo titular afastado, agora com substituto vigente: nenhuma das duas.
@@ -171,20 +178,36 @@ def test_pagina_distingue_as_duas_faltas(client: Client) -> None:
 
 @banco
 @pytest.mark.django_db
-def test_modal_de_edicao_vem_preenchido_e_sem_destino(client: Client) -> None:
-    pai = _unidade("PAI-R", tipo=_tipo_unidade(nome="Departamento Modal Edição", nivel=20))
+def test_modal_de_edicao_vem_preenchido_e_com_destino(client: Client) -> None:
+    """SPEC user_admin/020: editar unidade passa a ser ato registrado — o modal só existe atrás da
+    rota protegida (`unidades:editar_unidade`), e não mais estático na página para qualquer
+    visitante (ver `test_botao_de_editar_so_aparece_para_quem_alcanca_a_unidade`)."""
+    pai = _unidade(
+        "PAI-R", tipo=_tipo_unidade(nome="Departamento Modal Edição", nivel=20)
+    )
     tipo = _tipo_unidade(nome="Divisão Modal Edição", nivel=10)
     unidade = _unidade("FILHA-R", tipo=tipo, pai=pai)
+    dirigente = _perfil(
+        pai,
+        "700760",
+        "Dirigente Modal Edição",
+        cargo_comissao=_cargo_chefia("Diretor Modal Edição", 4),
+    )
+    definir_titular(dirigente)
 
-    html = client.get(_url_unidade(unidade)).content.decode()
+    client.force_login(dirigente)
+    html = client.get(
+        reverse("unidades:editar_unidade", kwargs={"unidade": unidade.pk})
+    ).content.decode()
 
     assert f'value="{unidade.nome}"' in html
     assert f'value="{unidade.sigla}"' in html
     assert f'<option value="{tipo.pk}" selected>{tipo.nome}</option>' in html
-    assert f'<option value="{pai.pk}" selected>{pai.sigla} · {pai.nome}</option>' in html
-    # Nenhuma rota de escrita nasce nesta SPEC: os quatro modais renderizam sem destino de submit.
-    assert "hx-post" not in html
-    assert "hx-put" not in html
+    assert (
+        f'<option value="{pai.pk}" selected>{pai.sigla} · {pai.nome}</option>' in html
+    )
+    # O modal É a rota de gravação agora — a SPEC 016 renderizava o mesmo HTML sem destino.
+    assert "hx-post" in html
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +255,9 @@ def test_modal_lista_so_quem_pode_titularizar(client: Client) -> None:
     assert f'value="{de_outra_unidade.pk}"' not in html
 
     # Sem nenhum candidato, o modal diz o que falta em vez de abrir um campo vazio.
-    tipo_sem_candidato = _tipo_unidade(nome="Seção Sem Candidato", nivel=5, nivel_minimo_titular=6)
+    tipo_sem_candidato = _tipo_unidade(
+        nome="Seção Sem Candidato", nivel=5, nivel_minimo_titular=6
+    )
     unidade_sem_candidato = _unidade("SEMCAND-R", tipo=tipo_sem_candidato)
     _perfil(
         unidade_sem_candidato,
@@ -242,10 +267,46 @@ def test_modal_lista_so_quem_pode_titularizar(client: Client) -> None:
     )
     _perfil(unidade_sem_candidato, "700731", "SemCargoComissao")
 
-    html_sem_candidato = client.get(_url_unidade(unidade_sem_candidato)).content.decode()
+    html_sem_candidato = client.get(
+        _url_unidade(unidade_sem_candidato)
+    ).content.decode()
 
-    assert f"Nenhum servidor da {unidade_sem_candidato.sigla} pode titularizar" in html_sem_candidato
+    assert (
+        f"Nenhum servidor da {unidade_sem_candidato.sigla} pode titularizar"
+        in html_sem_candidato
+    )
     assert '<select name="titular"' not in html_sem_candidato
+
+
+# ---------------------------------------------------------------------------
+# O botão de editar só aparece a quem tem a competência e o alcance (SPEC user_admin/020)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_botao_de_editar_so_aparece_para_quem_alcanca_a_unidade(client: Client) -> None:
+    unidade = _unidade("BOTAO-R")
+    outro_ramo = _unidade("BOTAO-FORA-R")
+    dirigente = _perfil(
+        unidade,
+        "700750",
+        "Dirigente Botão",
+        cargo_comissao=_cargo_chefia("Diretor Botão", nivel=4),
+    )
+    definir_titular(dirigente)
+    sem_direcao = _perfil(outro_ramo, "700751", "Sem Direção Botão")
+    url_editar = reverse("unidades:editar_unidade", kwargs={"unidade": unidade.pk})
+
+    client.force_login(dirigente)
+    html = client.get(_url_unidade(unidade)).content.decode()
+    assert "Editar unidade" in html
+    assert url_editar in html
+
+    client.force_login(sem_direcao)
+    html_sem = client.get(_url_unidade(unidade)).content.decode()
+    assert "Editar unidade" not in html_sem
+    assert url_editar not in html_sem
 
 
 # ---------------------------------------------------------------------------

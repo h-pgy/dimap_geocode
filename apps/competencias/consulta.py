@@ -42,6 +42,7 @@ def montar_avaliacao(perfil: Perfil) -> AvaliacaoCompetenciaInput:
         perfil=PerfilCompetencia(em_exercicio=perfil.em_exercicio, canetas=canetas),
         concessoes=concessoes,
         slugs_estruturais=_slugs_estruturais(),
+        slugs_exclusivos=_slugs_exclusivos(),
     )
 
 
@@ -92,6 +93,13 @@ def ramos_do_alcance(perfil: Perfil) -> tuple[NoHierarquia, ...]:
     """As subárvores que o perfil alcança — uma por unidade dirigida que não pende de outra dirigida.
     Cobrir o titular de uma subordinada é dirigir duas unidades do mesmo ramo: a de baixo já está
     dentro da de cima, e mantê-la seria percorrer e desenhar duas vezes a parte comum."""
+    if perfil.is_superuser:
+        # O organograma inteiro, na MESMA forma que o recorte já devolve (SPEC user_admin/020):
+        # assim `alcance_do_perfil`, a árvore da tela e os selects ficam certos de uma vez, sem
+        # `is_superuser` espalhado em cada um.
+        return tuple(
+            posicao_de(raiz.pk).ego for raiz in Unidade.objects.filter(pai__isnull=True)
+        )
     arvores = {dirigida: posicao_de(dirigida).ego for dirigida in unidades_dirigidas(perfil)}
     return tuple(
         arvore
@@ -109,4 +117,12 @@ def alcance_do_perfil(perfil: Perfil) -> frozenset[int]:
 def _slugs_estruturais() -> frozenset[str]:
     return frozenset(
         implementada.acao.slug for implementada in REGISTRO.todas() if implementada.acao.estrutural
+    )
+
+
+def _slugs_exclusivos() -> frozenset[str]:
+    return frozenset(
+        implementada.acao.slug
+        for implementada in REGISTRO.todas()
+        if implementada.acao.exclusiva_superusuario
     )

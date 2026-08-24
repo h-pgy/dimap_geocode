@@ -18,7 +18,7 @@
         <p class="text-sm text-base-content/70 mt-1">{{ perfil.nome }} {{ perfil.sobrenome }} · RF {{ perfil.rf }}</p>
       </div>
 
-      {% include "user_admin/partials/_tarja_recusa.html" with titulo="Alterações não gravadas" %}
+      {% include "partials/_tarja_recusa.html" with titulo="Alterações não gravadas" %}
 
       <div class="card-well p-5 flex flex-col gap-4">
         <p class="text-overline">Identificação</p>
@@ -88,11 +88,7 @@
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">{{ perfil.unidade.sigla }} <span class="text-base-content/50">· {{ perfil.unidade.nome }}</span></p>
               <div class="campo-onsen-campo">
-                <select name="unidade" class="select select-glass {{ realce.unidade }}" data-select-onsen>
-                  {% for unidade in unidades %}
-                    <option value="{{ unidade.pk }}"{% if unidade.pk == valores.unidade_id %} selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
-                  {% endfor %}
-                </select>
+                {% include "unidades/partials/_campo_unidade_lotacao.html" with selecionado=valores.unidade_id %}
                 {% if perfil.e_titular %}
                   <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
                     <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
@@ -220,8 +216,14 @@
 
     {# O formulário do cadastro de unidade nasce VAZIO e irmão do de cima. Os campos dele moram lá  #}
     {# dentro, ao pé da lotação, e se ligam aqui pelo atributo `form` — é o que deixa o painel      #}
-    {# crescer onde a pergunta nasceu sem produzir formulário aninhado, que é HTML inválido.        #}
-    <form id="form-nova-unidade" class="hidden"></form>
+    {# crescer onde a pergunta nasceu sem produzir formulário aninhado, que é HTML inválido. Grava  #}
+    {# e seleciona é ato administrativo, registrado (SPEC user_admin/020): a recusa/sucesso troca só #}
+    {# o bloco `#campos-nova-unidade` que `_campos_unidade.html` já declara, dentro do painel.       #}
+    <form id="form-nova-unidade"
+          hx-post="{% url 'unidades:gravar_unidade_e_selecionar' %}"
+          hx-target="#campos-nova-unidade"
+          hx-swap="outerHTML"
+          class="hidden"></form>
   </div>
   <label class="modal-backdrop" for="modal-editar-perfil">Fechar</label>
 </div>

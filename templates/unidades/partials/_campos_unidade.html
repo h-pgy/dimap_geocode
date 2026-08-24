@@ -1,54 +1,73 @@
-{# Campos da unidade: as três seções em poço compartilhadas pela página própria, pelo modal antigo   #}
-{# e pelo painel dentro do modal do servidor (SPEC user_admin/012, user_admin/017). Cada campo       #}
-{# declara o formulário a que pertence — `id="form-nova-unidade"` sempre presente em quem inclui     #}
-{# este partial — porque o painel da SPEC 017 o mantém FORA do formulário do servidor.               #}
-<div class="card-well p-5 flex flex-col gap-4">
-  <p class="text-overline">Identificação</p>
-  <div class="grid sm:grid-cols-3 gap-4">
-    <label class="form-field sm:col-span-2">
-      <span class="text-overline">Nome</span>
-      <input type="text" name="nome" form="form-nova-unidade" class="input input-glass" placeholder="Divisão de Avaliação Imobiliária" />
-    </label>
-    <label class="form-field">
-      <span class="text-overline">Sigla</span>
-      <input type="text" name="sigla" form="form-nova-unidade" class="input input-glass" placeholder="DIMAP-1" />
-    </label>
-  </div>
-</div>
+{# Campos da unidade: as três seções em poço compartilhadas pela página de cadastro, pelo modal da   #}
+{# tela de criar servidor e pelo painel dentro do modal de editar servidor (SPEC user_admin/012,     #}
+{# user_admin/017, user_admin/020). Cada campo declara o formulário a que pertence —                 #}
+{# `id="form-nova-unidade"` sempre presente em quem inclui este partial — porque o painel da SPEC    #}
+{# 017 o mantém FORA do formulário do servidor. `contents` para que o invólucro não vire um item do  #}
+{# flex do formulário e as três seções em poço percam o espaçamento entre si. É este bloco que as    #}
+{# telas em painel trocam na recusa e na conclusão.                                                  #}
+<div id="campos-nova-unidade" class="contents">
+  {% include "partials/_tarja_recusa.html" with titulo="Unidade não cadastrada" %}
 
-<div class="card-well p-5 flex flex-col gap-4">
-  <p class="text-overline">Hierarquia</p>
-  <div class="grid sm:grid-cols-2 gap-4">
-    <div class="form-field">
-      <span class="text-overline">Tipo</span>
-      <select name="tipo" form="form-nova-unidade" class="select select-glass" data-select-onsen>
-        {% for tipo in tipos_unidade %}
-          <option value="{{ tipo.pk }}">{{ tipo.nome }}</option>
-        {% endfor %}
-      </select>
-      <span class="form-field-hint">O tipo carrega o nível: é ele que diz o que pode subordinar o quê.</span>
-    </div>
-    <div class="form-field">
-      {# A cor nasce da unidade superior: quem sabe a regra é o servidor (Unidade.cor_sugerida). #}
-      {# O HTMX ouve o próprio select: a casca da SPEC 011 escreve nele e dispara change.        #}
-      <span class="text-overline">Unidade superior</span>
-      <select name="pai" form="form-nova-unidade" class="select select-glass" data-select-onsen
-              hx-get="{% url 'unidades:cor_sugerida_unidade' %}"
-              hx-trigger="change"
-              hx-target="#campo-cor-unidade"
-              hx-swap="outerHTML">
-        {# Chave ausente é falso: painel sem recorte declarado não oferece raiz. #}
-        {% if permite_raiz %}<option value="">— sem unidade superior (raiz) —</option>{% endif %}
-        {% for unidade in unidades %}
-          <option value="{{ unidade.pk }}">{{ unidade.sigla }} · {{ unidade.nome }}</option>
-        {% endfor %}
-      </select>
-      <span class="form-field-hint">Só tipo marcado como raiz dispensa unidade superior. Trocar aqui sugere a cor.</span>
+  <div class="card-well p-5 flex flex-col gap-4">
+    <p class="text-overline">Identificação</p>
+    <div class="grid sm:grid-cols-3 gap-4">
+      <label class="form-field sm:col-span-2">
+        <span class="text-overline">Nome</span>
+        <input type="text" name="nome" form="form-nova-unidade" class="input input-glass {{ realce.nome }}" value="{{ valores.nome }}" placeholder="Divisão de Avaliação Imobiliária" />
+      </label>
+      <label class="form-field">
+        <span class="text-overline">Sigla</span>
+        <input type="text" name="sigla" form="form-nova-unidade" class="input input-glass {{ realce.sigla }}" value="{{ valores.sigla }}" placeholder="DIMAP-1" />
+      </label>
     </div>
   </div>
-</div>
 
-<div class="card-well p-5 flex flex-col gap-4">
-  <p class="text-overline">Identidade visual</p>
-  {% include "unidades/partials/_campo_cor_unidade.html" %}
+  <div class="card-well p-5 flex flex-col gap-4">
+    <p class="text-overline">Hierarquia</p>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="form-field">
+        <span class="text-overline">Tipo</span>
+        <select name="tipo" form="form-nova-unidade" class="select select-glass {{ realce.tipo }}" data-select-onsen>
+          {% for tipo in tipos_unidade %}
+            <option value="{{ tipo.pk }}"{% if tipo.pk == valores.tipo_id %} selected{% endif %}>{{ tipo.nome }}</option>
+          {% endfor %}
+        </select>
+        <span class="form-field-hint">O tipo carrega o nível: é ele que diz o que pode subordinar o quê.</span>
+      </div>
+      {# Raiz: gravação NO LUGAR do controle, e não um controle desabilitado — `disabled` ainda    #}
+      {# teria cara de select, e `.select-glass` declara `text-base-content` e venceria             #}
+      {# `.etched-rotulo` por vir depois no tema. Sem `<select name="pai">` no DOM, também não há o  #}
+      {# que postar. Nenhum átomo novo: os dois já existem.                                         #}
+      <div class="form-field">
+        <span class="text-overline">Unidade superior</span>
+        {% if raiz %}
+          <p class="etched etched-rotulo text-[15px] py-2.5">— sem unidade superior (raiz) —</p>
+          <div class="tarja-vinculo flex items-start gap-2 mt-2">
+            <svg class="w-5 h-5 shrink-0 text-info" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><use href="#glifo-raiz"/></svg>
+            <p class="text-[13px] text-base-content/80">
+              Unidade <strong>raiz</strong>: não responde a nenhuma outra, e é dela que o organograma
+              começa. Só quem administra o sistema pode criar uma.
+            </p>
+          </div>
+        {% else %}
+          {# Sem `{% if permite_raiz %}`: a opção "sem unidade superior" deixa de existir nesta tela. #}
+          <select name="pai" form="form-nova-unidade" class="select select-glass {{ realce.pai }}" data-select-onsen
+                  hx-get="{% url 'unidades:cor_sugerida_unidade' %}"
+                  hx-trigger="change"
+                  hx-target="#campo-cor-unidade"
+                  hx-swap="outerHTML">
+            {% for unidade in unidades %}
+              <option value="{{ unidade.pk }}"{% if unidade.pk == valores.pai_id %} selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">Só tipo marcado como raiz dispensa unidade superior. Trocar aqui sugere a cor.</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card-well p-5 flex flex-col gap-4">
+    <p class="text-overline">Identidade visual</p>
+    {% include "unidades/partials/_campo_cor_unidade.html" %}
+  </div>
 </div>

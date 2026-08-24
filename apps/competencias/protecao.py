@@ -93,6 +93,12 @@ def conferir_alvo(
     # territorial. Nada a conferir.
     if acao.alcance is None:
         return
+    # SPEC user_admin/020: alcançar tudo é o que `is_superuser` já significa no `has_perm` do
+    # Django — mantê-lo preso ao alcance deixaria o administrador sem poder criar a primeira
+    # unidade de um ramo. A saída existe para as ações COM alvo; criar raiz não passa por aqui,
+    # porque a ação dela declara `alcance=None` e já retornou acima.
+    if perfil.is_superuser:
+        return
     valores = _valores_dos_alvos(request, acao.alcance, kwargs_da_rota)
     # Leitura sem alvo escolhido: a tela abre e escolhe depois. Em requisição que altera estado a
     # ausência já virou 400 lá dentro.
@@ -134,7 +140,10 @@ def _unidades_alvo(alcance: TipoAlcance, valores: Mapping[str, int]) -> tuple[in
     nela. A regra de pertencimento é a mesma para todos e fica escrita uma vez só, em
     `conferir_alvo`; alcance novo sem ramo aqui estoura em vez de passar batido."""
     if isinstance(alcance, UnidadesSubordinadas):
-        return (valores["unidade"],)
+        # Cada parâmetro declarado carrega uma unidade. O `if` é o mesmo caso de leitura sem alvo
+        # escolhido que `_valores_dos_alvos` já deixou passar: em POST a ausência virou 400 lá
+        # (SPEC user_admin/020).
+        return tuple(valores[parametro] for parametro in alcance.parametros_alvo if parametro in valores)
     if isinstance(alcance, LotacaoAtualEDestino):
         # A origem é lida no banco, nunca recebida do cliente: aceitá-la do request deixaria
         # qualquer um editar quem quisesse, bastando mandar a própria unidade.
