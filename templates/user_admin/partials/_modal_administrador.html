@@ -1,0 +1,40 @@
+{% load icones %}
+{# A rota direta da ação (SPEC user_admin/022), pinçada pelo MENU_ADMINISTRADOR: escolhe-se a       #}
+{# unidade, depois o servidor dentro dela, e o mesmo `_botao_administrador.html` pratica o ato.      #}
+{% icone_acao acao_tornar_administrador.slug variante_icone_grande as svg %}
+<input type="checkbox" id="modal-administrador" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+    <div class="flex flex-col gap-6">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">{{ svg|safe }}</span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Tornar administrador</h2>
+          <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor.</p>
+        </div>
+      </div>
+
+      <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+        <label class="form-field">
+          <span class="text-overline">Unidade</span>
+          <select name="unidade" class="select select-glass" data-select-onsen
+                  hx-get="{% url 'user_admin:opcoes_administrador' %}"
+                  hx-target="#campo-servidor-administrador"
+                  hx-swap="innerHTML">
+            <option value="">— escolha —</option>
+            {% for unidade in unidades %}
+              <option value="{{ unidade.pk }}">{{ unidade.sigla }} · {{ unidade.nome }}</option>
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">Todas as unidades: administrador alcança o organograma inteiro.</span>
+        </label>
+        <label class="form-field" id="campo-servidor-administrador">
+          {% include "user_admin/partials/_opcoes_servidor.html" %}
+        </label>
+      </div>
+
+      <div id="administrador-alvo"></div>
+    </div>
+  </div>
+  <label class="modal-backdrop" for="modal-administrador">Fechar</label>
+</div>

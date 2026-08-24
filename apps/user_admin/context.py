@@ -17,7 +17,7 @@ from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.context import catalogo_de_unidades, contexto_do_modal_de_unidade
 from apps.unidades.direcao import alarme_sem_direcao, estado_da_direcao
 from apps.unidades.paleta import hex_da_cor
-from apps.user_admin.acoes_declaradas import ACAO_CRIAR_SERVIDOR
+from apps.user_admin.acoes_declaradas import ACAO_CRIAR_SERVIDOR, ACAO_TORNAR_ADMINISTRADOR
 from apps.user_admin.apresentacao import imagem_do_perfil, selo_do_exercicio
 from apps.user_admin.exercicio import (
     candidatos_a_substituto,
@@ -73,14 +73,20 @@ ROTULO_DA_COLUNA = {
     ColunaServidor.COMISSAO: "Em comissão",
 }
 
-def contexto_criar_perfil(ids_permitidos: Collection[int]) -> dict[str, Any]:
+def contexto_criar_perfil(
+    ids_permitidos: Collection[int],
+    pode_administrador: bool = False,
+) -> dict[str, Any]:
     # Os dois catálogos de unidade recortados na fonte, e não um deles pela ordem do merge: o
     # select de lotação e o de unidade superior do painel dividem a chave "unidades" (SPEC
-    # criacao_usuarios/006).
+    # criacao_usuarios/006). `pode_administrador` (SPEC user_admin/022) é o mesmo `has_perm` da
+    # barreira, resolvido pela view — nunca uma segunda regra escrita na tela.
     return (
         contexto_fundo_admin()
         | contexto_do_modal_de_unidade(ids_permitidos)
         | _catalogos_de_lotacao(ids_permitidos)
+        | _icone_administrador()
+        | {"pode_administrador": pode_administrador}
     )
 
 
@@ -88,6 +94,7 @@ def contexto_cadastro_recusado(
     valores: Mapping[str, Any],
     recusa: RecusaDeFormulario,
     ids_permitidos: Collection[int],
+    pode_administrador: bool = False,
 ) -> dict[str, Any]:
     """O que volta é o mesmo formulário: o digitado permanece, a foto não — arquivo de upload não
     se reconstrói de uma resposta de servidor.
@@ -96,7 +103,7 @@ def contexto_cadastro_recusado(
     repopular. Recebe a recusa já desembrulhada porque a do desfecho é opcional, e desembrulhá-la
     aqui obrigaria este módulo a importar `cadastro.py` só para isso (SPEC criacao_usuarios/004)."""
     # A chave continua sendo `perfil`: é o nome que as seções do formulário já leem.
-    return contexto_criar_perfil(ids_permitidos) | {
+    return contexto_criar_perfil(ids_permitidos, pode_administrador) | {
         "perfil": _valores_do_formulario(valores),
         # `mensagens` alimenta a tarja; `realce`, a classe de cada controle — os dois já prontos
         # pela SPEC formularios/001, sem o template precisar de condicional.
@@ -127,6 +134,7 @@ def contexto_pagina_perfil(perfil: Perfil) -> dict[str, Any]:
     return (
         contexto_fundo_admin()
         | contexto_exercicio(perfil)
+        | _icone_administrador()
         | {
             "perfil": perfil,
             "imagem": imagem_do_perfil(perfil),
@@ -142,6 +150,7 @@ def contexto_modal_perfil(
     perfil: Perfil,
     ids_permitidos: Collection[int],
     valores: Mapping[str, Any] | None = None,
+    pode_administrador: bool = False,
 ) -> dict[str, Any]:
     """O que o modal preenche: o perfil, os catálogos dos três selects e os do painel de unidade,
     que vem fechado dentro dele.
@@ -156,11 +165,14 @@ def contexto_modal_perfil(
     return (
         contexto_do_modal_de_unidade(ids_permitidos)
         | _catalogos_de_lotacao(ids_permitidos)
+        | _icone_administrador()
         | {
             "perfil": perfil,
             "valores": valores if valores is not None else _valores_do_perfil(perfil),
             "imagem": imagem_do_perfil(perfil),
             "cor_unidade_hex": hex_da_cor(perfil.cor_unidade),
+            # SPEC user_admin/022: o mesmo `has_perm` da barreira, resolvido pela view.
+            "pode_administrador": pode_administrador,
         }
     )
 
@@ -176,6 +188,9 @@ def _valores_do_perfil(perfil: Perfil) -> dict[str, Any]:
         "unidade_id": perfil.unidade_id,
         "cargo_base_id": perfil.cargo_base_id,
         "cargo_comissao_id": perfil.cargo_comissao_id,
+        # SPEC user_admin/022 v3: a marca é campo do formulário, e o que ela mostra na abertura é o
+        # que está gravado.
+        "administrador": perfil.is_superuser,
     }
 
 
@@ -184,12 +199,58 @@ def contexto_edicao_recusada(
     ids_permitidos: Collection[int],
     valores: Mapping[str, Any],
     recusa: RecusaDeFormulario,
+    pode_administrador: bool = False,
 ) -> dict[str, Any]:
     # `perfil` vem do banco INTOCADO: `editar_servidor` altera a instância dele em memória antes do
     # `full_clean`, e reaproveitá-la mostraria no lado lido o valor que a recusa impediu de gravar.
-    return contexto_modal_perfil(perfil, ids_permitidos, _valores_do_formulario(valores)) | {
+    return contexto_modal_perfil(
+        perfil, ids_permitidos, _valores_do_formulario(valores), pode_administrador
+    ) | {
         "erros": recusa.mensagens,
         "realce": recusa.realce,
+    }
+
+
+# ---------------------------------------------------------------------------
+# O botão de administrador do sistema e o modal da rota direta (SPEC user_admin/022)
+# ---------------------------------------------------------------------------
+
+
+def contexto_botao_administrador(perfil: Perfil) -> dict[str, Any]:
+    return {"perfil": perfil} | _icone_administrador()
+
+
+def contexto_administrador_recusado(
+    perfil: Perfil,
+    recusa: RecusaDeFormulario,
+) -> dict[str, Any]:
+    return {
+        "perfil": perfil,
+        "erros": recusa.mensagens,
+        "realce": recusa.realce,
+    } | _icone_administrador()
+
+
+def contexto_modal_administrador() -> dict[str, Any]:
+    return catalogo_de_unidades() | _icone_administrador()
+
+
+def _icone_administrador() -> dict[str, Any]:
+    # O slug e a variante vão prontos para o `icone_acao` do template — o svg em si só se resolve
+    # lá, porque o resolvedor mora em `apps.competencias`, que este módulo não pode importar
+    # (mesmo molde de `acao_criar_servidor` em `contexto_listagem_servidores`).
+    return {
+        "acao_tornar_administrador": ACAO_TORNAR_ADMINISTRADOR.acao,
+        "variante_icone_pequena": VarianteIcone.PEQUENO,
+        "variante_icone_grande": VarianteIcone.GRANDE,
+    }
+
+
+def contexto_opcoes_administrador(unidade_id: int | None) -> dict[str, Any]:
+    if unidade_id is None:
+        return {"servidores": Perfil.objects.none()}
+    return {
+        "servidores": Perfil.objects.filter(unidade_id=unidade_id).order_by("nome", "sobrenome")
     }
 
 

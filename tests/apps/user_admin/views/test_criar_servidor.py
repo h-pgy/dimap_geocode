@@ -111,6 +111,17 @@ def _cobrir(substituto: Perfil, titular: Perfil) -> None:
     )
 
 
+def _superusuario(rf: str) -> Perfil:
+    return Perfil.objects.create_superuser(
+        rf=rf,
+        nome="Super",
+        sobrenome="Usuário",
+        password="segredo123",
+        unidade=_unidade(f"CRS-SU-{rf}"),
+        cargo_base=_cargo_base(),
+    )
+
+
 def _conceder(unidade: Unidade, cargo_base: CargoBase) -> Acao:
     acao, _ = Acao.objects.get_or_create(
         slug=SLUG_ACAO,
@@ -617,3 +628,40 @@ def test_foto_invalida_e_recusada_sem_gravar_o_cadastro(
     assert resposta.status_code == 422
     assert "Foto acima de 2 MB: envie uma imagem menor." in resposta.content.decode()
     assert not Perfil.objects.filter(rf="9302710").exists()
+
+
+# ---------------------------------------------------------------------------
+# A marca de administrador registra operação própria (SPEC user_admin/022)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_cadastro_com_marca_registra_operacao_propria(
+    client: Client, settings: SettingsWrapper
+) -> None:
+    _desligar_envio(settings)
+    unidade = _unidade("CRS-ADMIN")
+    cargo = _cargo_base()
+    superusuario = _superusuario("9302800")
+
+    client.force_login(superusuario)
+    resposta = client.post(
+        _url_gravar(),
+        {
+            **_payload(unidade, cargo, "9302810", "novo.admin@prefeitura.sp.gov.br"),
+            "administrador": "1",
+        },
+    )
+    assert resposta.status_code == 200
+    execucao_admin = ExecucaoAcao.objects.get(alvo_identificador="9302810")
+    assert execucao_admin.operacao == "criar_administrador"
+    assert Perfil.objects.get(rf="9302810").is_superuser is True
+
+    resposta_comum = client.post(
+        _url_gravar(), _payload(unidade, cargo, "9302820", "comum@prefeitura.sp.gov.br")
+    )
+    assert resposta_comum.status_code == 200
+    execucao_comum = ExecucaoAcao.objects.get(alvo_identificador="9302820")
+    assert execucao_comum.operacao == "criar"
+    assert Perfil.objects.get(rf="9302820").is_superuser is False

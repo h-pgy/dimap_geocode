@@ -1,3 +1,5 @@
+{% load icones %}
+{% icone_acao acao_tornar_administrador.slug variante_icone_pequena as svg_administrador %}
 {# Seção de resumo do servidor (SPEC user_admin/017): RF, nome, e-mail (SPEC criacao_usuarios/004), #}
 {# unidade, cargo base e cargo em comissão em leitura — nenhum campo de formulário do cadastro fora #}
 {# do modal. O que o servidor não tem se lê aqui em vez de sumir da tela (Caveats).                 #}
@@ -64,5 +66,17 @@
         <div class="stat-desc">Não é titular de unidade alguma.</div>
       {% endif %}
     </div>
+    {# SPEC user_admin/022. Célula afirmativa, ao contrário das duas de cima: ela só existe quando #}
+    {# há o que afirmar — "não é administrador" é o caso comum, e não notícia.                     #}
+    {% if perfil.is_superuser %}
+      <div class="stat card-well">
+        <div class="stat-figure">
+          <span class="icone-acao icone-acao-pequeno">{{ svg_administrador|safe }}</span>
+        </div>
+        <div class="stat-title">Administrador do Sistema</div>
+        <div class="stat-value">Sim</div>
+        <div class="stat-desc">Pratica ações para além da unidade em que está lotado(a), inclusive de alta administração.</div>
+      </div>
+    {% endif %}
   </div>
 </div>

@@ -16,7 +16,7 @@ import pytest
 from pytest_django.fixtures import SettingsWrapper
 
 from apps.user_admin import cadastro
-from apps.user_admin.cadastro import ERRO_DOMINIO, ERRO_ENVIO, criar_servidor
+from apps.user_admin.cadastro import ERRO_DOMINIO, ERRO_ENVIO, ERRO_SEM_CANETA, criar_servidor
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.models import CargoBase, Perfil
 from services.utils.smtp import MensagemEmail, ResultadoEnvio, SmtpEnvioError
@@ -270,3 +270,58 @@ def test_rf_ou_email_repetido_e_recusado_sem_gravar(
     assert email_repetido.recusa.mensagens == ("Já existe servidor cadastrado com este e-mail.",)
     assert email_repetido.recusa.realce == {"email": "campo-realce-erro"}
     assert Perfil.objects.filter(email="existente@prefeitura.sp.gov.br").count() == 1
+
+
+# ---------------------------------------------------------------------------
+# A marca de administrador (SPEC user_admin/022): nasce junto do cadastro, e só com a caneta
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_cadastro_com_marca_nasce_administrador(
+    monkeypatch: pytest.MonkeyPatch,
+    settings: SettingsWrapper,
+) -> None:
+    _preparar(monkeypatch, settings, EnviadorFake(_resultado()))
+    unidade = _unidade()
+    cargo = _cargo_base()
+
+    desfecho = criar_servidor(
+        _novo_servidor(
+            unidade, cargo, rf="9202000", email="admin.novo@prefeitura.sp.gov.br", administrador="true"
+        ),
+        administrador_permitido=True,
+    )
+
+    assert desfecho.recusa.mensagens == ()
+    assert desfecho.perfil is not None
+    assert desfecho.perfil.is_superuser is True
+    perfil = Perfil.objects.get(rf="9202000")
+    assert perfil.is_superuser is True
+
+
+@banco
+@pytest.mark.django_db
+def test_cadastro_com_marca_sem_caneta_recusa_tudo(
+    monkeypatch: pytest.MonkeyPatch,
+    settings: SettingsWrapper,
+) -> None:
+    enviador = EnviadorFake(_resultado())
+    _preparar(monkeypatch, settings, enviador)
+    unidade = _unidade()
+    cargo = _cargo_base()
+
+    desfecho = criar_servidor(
+        _novo_servidor(
+            unidade, cargo, rf="9202010", email="sem.caneta@prefeitura.sp.gov.br", administrador="true"
+        ),
+        administrador_permitido=False,
+    )
+
+    assert desfecho.perfil is None
+    assert desfecho.recusa.mensagens == (ERRO_SEM_CANETA,)
+    assert desfecho.recusa.realce == {"administrador": "campo-realce-erro"}
+    assert not Perfil.objects.filter(rf="9202010").exists()
+    # Nada tenta sair pela rede: a recusa acontece antes da senha e do envio.
+    assert enviador.mensagens == []

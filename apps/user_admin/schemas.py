@@ -82,6 +82,10 @@ class NovoServidor(BaseModel):
     # Resolvida na orquestração a partir do request: nem o domínio nem o cadastro sabem em que host
     # o sistema roda.
     url_acesso: HttpUrl
+    # SPEC user_admin/022. Default `False` porque o controle é um botão de dois estados: em
+    # repouso ele não manda nada, e ausência é "não". Quem pode armá-lo é conferido no ato, não
+    # aqui — o DTO não conhece quem assina.
+    administrador: bool = False
 
 
 class EdicaoServidor(BaseModel):
@@ -100,6 +104,10 @@ class EdicaoServidor(BaseModel):
     unidade_id: int
     cargo_base_id: int
     cargo_comissao_id: CargoOpcional = None
+    # SPEC user_admin/022 v3: a marca viaja com o formulário, como no cadastro — é o que amarra a
+    # concessão à validação do resto. Default `False` pelo mesmo motivo de lá: o controle é um
+    # botão de dois estados, e ausência é "não".
+    administrador: bool = False
 
 
 class NovoSuperusuario(BaseModel):
@@ -131,3 +139,18 @@ class TrocaDeSubstituto(BaseModel):
     # "Assume em" — obrigatório, porque é a véspera dela que encerra a substituição que sai.
     data_inicio: date
     data_fim: DataOpcional = None
+
+
+class MudancaDeAdministrador(BaseModel):
+    """O ato sobre um servidor que JÁ existe (SPEC user_admin/022) — o das duas telas de servidor e
+    o do modal direto."""
+
+    model_config = ConfigDict(frozen=True)
+
+    servidor_id: int
+    # Explícito, e não alternância lida do estado atual: dois cliques concorrentes sobre o mesmo
+    # servidor decidiriam coisas diferentes, e a operação registrada é o que se quer inequívoco.
+    tornar: bool
+    # O autor resolvido pela orquestração, nunca o `request`: é contra ele que a recusa de revogar
+    # a si mesmo é escrita.
+    autor_id: int

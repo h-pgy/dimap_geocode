@@ -29,6 +29,9 @@
       </div>
     </div>
   {% endif %}
+  {% if pode_administrador %}
+    {% include "user_admin/partials/_campo_administrador.html" with prefixo="cad" %}
+  {% endif %}
   {% include "user_admin/partials/_campo_upload_foto.html" %}
 
   <div class="flex justify-end gap-3 pt-1">

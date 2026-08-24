@@ -19,19 +19,29 @@ from django.views.decorators.http import require_POST
 from apps.competencias.consulta import alcance_do_perfil
 from apps.core.tabela import consulta_da_listagem
 from apps.competencias.protecao import acao_protegida, pode_executar, registrar_ato
-from apps.user_admin.acoes_declaradas import ACAO_CRIAR_SERVIDOR, ACAO_EDITAR_SERVIDOR
+from apps.user_admin.acoes_declaradas import (
+    ACAO_CRIAR_SERVIDOR,
+    ACAO_EDITAR_SERVIDOR,
+    ACAO_TORNAR_ADMINISTRADOR,
+)
+from apps.user_admin.administrador import mudar_administrador
 from apps.user_admin.cadastro import criar_servidor, editar_servidor
 from apps.user_admin.context import (
+    contexto_administrador_recusado,
+    contexto_botao_administrador,
     contexto_cadastro_concluido,
     contexto_cadastro_recusado,
     contexto_corpo_servidores,
     contexto_criar_perfil,
     contexto_edicao_recusada,
     contexto_listagem_servidores,
+    contexto_modal_administrador,
     contexto_modal_perfil,
+    contexto_opcoes_administrador,
     contexto_pagina_perfil,
 )
 from apps.user_admin.models import Perfil
+from apps.user_admin.schemas import MudancaDeAdministrador
 from services.domain.listagem_gestao import ColunaServidor
 
 TEMPLATE_FORMULARIO = "user_admin/perfil_form.html"
@@ -42,6 +52,9 @@ TEMPLATE_MODAL_PERFIL = "user_admin/partials/_modal_editar_perfil.html"
 TEMPLATE_EDICAO_CONCLUIDA = "user_admin/partials/_edicao_concluida.html"
 TEMPLATE_LISTAGEM = "user_admin/servidores_list.html"
 TEMPLATE_CORPO_SERVIDORES = "user_admin/partials/_corpo_servidores.html"
+TEMPLATE_MODAL_ADMINISTRADOR = "user_admin/partials/_modal_administrador.html"
+TEMPLATE_OPCOES_SERVIDOR = "user_admin/partials/_opcoes_servidor.html"
+TEMPLATE_BOTAO_ADMINISTRADOR = "user_admin/partials/_botao_administrador.html"
 
 
 def listar_servidores(request: HttpRequest) -> HttpResponse:
@@ -60,7 +73,12 @@ def corpo_servidores(request: HttpRequest) -> HttpResponse:
 def criar_perfil(request: HttpRequest) -> HttpResponse:
     # Oferecer o que o decorator vai recusar no POST é convidar ao 403: a lista sai do mesmo
     # alcance que a barreira confere.
-    return render(request, TEMPLATE_FORMULARIO, contexto_criar_perfil(alcance_do_perfil(_autor(request))))
+    autor = _autor(request)
+    return render(
+        request,
+        TEMPLATE_FORMULARIO,
+        contexto_criar_perfil(alcance_do_perfil(autor), pode_executar(autor, ACAO_TORNAR_ADMINISTRADOR)),
+    )
 
 
 @acao_protegida(ACAO_CRIAR_SERVIDOR)
@@ -71,6 +89,7 @@ def gravar_servidor(request: HttpRequest) -> HttpResponse:
     # formularios/001). `.get(..., "")` porque só `unidade` tem rede — o decorator já devolve 400
     # quando ela falta; nos demais, chave ausente daria 500 justamente na rota que existe para
     # transformar entrada ruim em recusa na tela.
+    autor = _autor(request)
     valores = {
         "rf": request.POST.get("rf", ""),
         "nome": request.POST.get("nome", ""),
@@ -81,8 +100,13 @@ def gravar_servidor(request: HttpRequest) -> HttpResponse:
         "cargo_comissao_id": request.POST.get("cargo_comissao", ""),
         # O host de onde o convite parte é da orquestração, não do formulário.
         "url_acesso": request.build_absolute_uri("/"),
+        # SPEC user_admin/022: bool explícito, não string crua — o mesmo molde de
+        # `confirmar_transferencia` em `unidades/views.py`.
+        "administrador": request.POST.get("administrador") == "1",
     }
-    desfecho = criar_servidor(valores, foto=request.FILES.get("foto"))
+    # Quem pode armar a marca é resolvido aqui, na orquestração, e desce como dado — o mesmo
+    # desenho de `raiz_permitida` em `unidades.gravar_unidade`.
+    desfecho = criar_servidor(valores, foto=request.FILES.get("foto"), administrador_permitido=autor.is_superuser)
     if desfecho.perfil is None:
         return render(
             request,
@@ -90,14 +114,17 @@ def gravar_servidor(request: HttpRequest) -> HttpResponse:
             contexto_cadastro_recusado(
                 valores,
                 desfecho.recusa,
-                alcance_do_perfil(_autor(request)),
+                alcance_do_perfil(autor),
+                pode_executar(autor, ACAO_TORNAR_ADMINISTRADOR),
             ),
             status=422,
         )
     # A view NUNCA grava a execução: deixa o recado e quem persiste é o decorator, depois do return.
     registrar_ato(
         request,
-        operacao="criar",
+        # SPEC user_admin/022: operação própria — cadastrar alguém já administrador não é o
+        # mesmo ato que cadastrar um servidor comum, e o histórico precisa separá-los.
+        operacao="criar_administrador" if desfecho.perfil.is_superuser else "criar",
         alvo_tipo="servidor",
         alvo_identificador=desfecho.perfil.rf,
     )
@@ -122,10 +149,15 @@ def editar_perfil(request: HttpRequest, servidor: int) -> HttpResponse:
     # contrato da ação declara o alcance pela pessoa, e o decorator já resolveu a unidade dela.
     # Oferecer destino que o decorator vai recusar no POST é convidar ao 403 — que o HTMX não troca
     # na tela: a lista sai do mesmo alcance que a barreira confere, como em `criar_perfil`.
+    autor = _autor(request)
     return render(
         request,
         TEMPLATE_MODAL_PERFIL,
-        contexto_modal_perfil(_perfil(servidor), alcance_do_perfil(_autor(request))),
+        contexto_modal_perfil(
+            _perfil(servidor),
+            alcance_do_perfil(autor),
+            pode_administrador=pode_executar(autor, ACAO_TORNAR_ADMINISTRADOR),
+        ),
     )
 
 
@@ -146,29 +178,101 @@ def gravar_edicao(request: HttpRequest, servidor: int) -> HttpResponse:
         "unidade_id": request.POST.get("unidade", ""),
         "cargo_base_id": request.POST.get("cargo_base", ""),
         "cargo_comissao_id": request.POST.get("cargo_comissao", ""),
+        # SPEC user_admin/022 v3: bool explícito, não string crua — o mesmo molde de
+        # `gravar_servidor`. A marca viaja com o formulário e é gravada pelo mesmo ato.
+        "administrador": request.POST.get("administrador") == "1",
     }
-    desfecho = editar_servidor(valores, foto=request.FILES.get("foto"))
+    autor = _autor(request)
+    pode_administrador = pode_executar(autor, ACAO_TORNAR_ADMINISTRADOR)
+    desfecho = editar_servidor(
+        valores,
+        autor_id=autor.pk,
+        foto=request.FILES.get("foto"),
+        administrador_permitido=pode_administrador,
+    )
     if desfecho.perfil is None:
         return render(
             request,
             TEMPLATE_MODAL_PERFIL,
             contexto_edicao_recusada(
                 _perfil(servidor),
-                alcance_do_perfil(_autor(request)),
+                alcance_do_perfil(autor),
                 valores,
                 desfecho.recusa,
+                pode_administrador,
             ),
             status=422,
         )
     registrar_ato(
         request,
-        operacao="editar",
+        # SPEC user_admin/022 v3: operação própria — a edição que dá ou tira a condição não é o
+        # mesmo ato que a edição comum, e o histórico precisa separá-los.
+        operacao="editar_administrador" if desfecho.marca_alterada else "editar",
         alvo_tipo="servidor",
         alvo_identificador=desfecho.perfil.rf,
     )
     # O poço volta vazio — é assim que o modal fecha — e a página se atualiza pelo swap fora de
     # banda que o partial carrega.
     return render(request, TEMPLATE_EDICAO_CONCLUIDA, contexto_pagina_perfil(desfecho.perfil))
+
+
+@acao_protegida(ACAO_TORNAR_ADMINISTRADOR)
+def modal_administrador(request: HttpRequest) -> HttpResponse:
+    """A rota direta da ação (SPEC user_admin/022), pinçada pelo `MENU_ADMINISTRADOR`: escolhe-se a
+    unidade e, dentro dela, o servidor — sem recorte de alcance, porque só o superusuário chega
+    aqui e ele alcança tudo."""
+    return render(request, TEMPLATE_MODAL_ADMINISTRADOR, contexto_modal_administrador())
+
+
+@acao_protegida(ACAO_TORNAR_ADMINISTRADOR)
+def opcoes_administrador(request: HttpRequest) -> HttpResponse:
+    # A lista de servidores da unidade escolhida, recarregada por HTMX quando o primeiro select
+    # muda. Leitura protegida pela mesma ação, e sem registro: é navegação dentro da tela do ato.
+    unidade = request.GET.get("unidade", "")
+    return render(
+        request,
+        TEMPLATE_OPCOES_SERVIDOR,
+        contexto_opcoes_administrador(int(unidade) if unidade.isdigit() else None),
+    )
+
+
+@acao_protegida(ACAO_TORNAR_ADMINISTRADOR)
+def estado_administrador(request: HttpRequest) -> HttpResponse:
+    """O botão do servidor escolhido no modal direto — mesmo partial que `gravar_administrador`
+    devolve, só que sem gravar nada: é a segunda metade do gesto de escolher (unidade, depois
+    servidor), sem registro."""
+    servidor = request.GET.get("servidor", "")
+    if not servidor.isdigit():
+        return HttpResponse("")
+    return render(request, TEMPLATE_BOTAO_ADMINISTRADOR, contexto_botao_administrador(_perfil(int(servidor))))
+
+
+@acao_protegida(ACAO_TORNAR_ADMINISTRADOR)
+@require_POST
+def gravar_administrador(request: HttpRequest, servidor: int) -> HttpResponse:
+    # DTO na fronteira; malformado morre no PydanticValidationMiddleware. `servidor` vem do caminho
+    # da rota, e o autor do request — nenhum dos dois do corpo, que o cliente escreve.
+    mudanca = MudancaDeAdministrador(
+        servidor_id=servidor,
+        tornar=request.POST.get("tornar") == "1",
+        autor_id=_autor(request).pk,
+    )
+    desfecho = mudar_administrador(mudanca)
+    if desfecho.perfil is None:
+        return render(
+            request,
+            TEMPLATE_BOTAO_ADMINISTRADOR,
+            contexto_administrador_recusado(_perfil(servidor), desfecho.recusa),
+            status=422,
+        )
+    # Duas operações, uma ação: é o que torna conceder e revogar distinguíveis no histórico.
+    registrar_ato(
+        request,
+        operacao="tornar" if mudanca.tornar else "revogar",
+        alvo_tipo="servidor",
+        alvo_identificador=desfecho.perfil.rf,
+    )
+    return render(request, TEMPLATE_BOTAO_ADMINISTRADOR, contexto_botao_administrador(desfecho.perfil))
 
 
 def _perfil(pk: int) -> Perfil:

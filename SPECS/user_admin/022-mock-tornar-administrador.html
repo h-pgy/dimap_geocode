@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/022 — Tornar administrador (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- O que nasce nesta SPEC: o ÁTOMO da aura, a MOLÉCULA do botão de ato grave e o GLIFO da ação
+       (arquivo em static/, não CSS). O resto é composição de peça já portada (.glass-panel,
+       .card-well, .btn-onsen, .modal-glass, .tarja-vinculo, .select-onsen, .icone-acao). -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== ÁTOMO · AURA ====================
+         A `aura` do daisyUI fica empilhada no HTML: @apply de classe daisyUI derruba a folha
+         inteira. Aqui vai só a pele — a água da escala do DS e o tempo da volta. */
+      .aura-onsen { @apply text-agua-500 bg-agua-200 duration-3000 rounded-xl; }
+
+      /* ==================== MOLÉCULA · BOTÃO DE ATO GRAVE ====================
+         Duas faces no DOM; quem escolhe é o estado no invólucro. Nenhuma face é redeclarada:
+         .btn-onsen e .card-well entram empilhados no HTML. */
+      .botao-aura > .botao-aura-acionado { @apply hidden; }
+      .botao-aura-ligado > .botao-aura-repouso,
+      .botao-aura-estado-ligado:checked ~ .botao-aura > .botao-aura-repouso { @apply hidden; }
+      .botao-aura-ligado > .botao-aura-acionado,
+      .botao-aura-estado-ligado:checked ~ .botao-aura > .botao-aura-acionado { @apply inline-flex; }
+      /* Acionado é estado consumado: a aura para de chamar quem já entrou. */
+      .botao-aura-ligado,
+      .botao-aura-estado-ligado:checked ~ .botao-aura { @apply bg-transparent text-transparent; }
+
+      /* A face afundada é o .card-well em corpo de botão: o gradiente sai, o poço fica. */
+      .botao-aura-acionado { @apply bg-none font-bold text-base-content/80; }
+      .botao-aura-acionado:hover { @apply bg-white/45; }
+
+      /* Estado local, onde não há alvo no servidor para consultar: um grupo de rádios irmão manda
+         na peça e nos avisos. Onde o estado vem do servidor, nada disto existe — é a classe
+         .botao-aura-ligado no invólucro. */
+      .botao-aura-estado { @apply hidden; }
+      /* O aviso é overlay próprio, e não o .modal do daisyUI: sem .modal-open nem .modal-toggle
+         irmão, o reset de GPU do tema (SPEC design/007) apagaria o backdrop-filter dele. Mesmo
+         material — a placa é o .glass-panel-thick, composto no HTML. */
+      .botao-aura-aviso,
+      .botao-aura-aviso-revogar { @apply fixed inset-0 z-50 hidden items-center justify-center p-4 backdrop-blur-[16px]; }
+      .botao-aura-pergunta:checked ~ .botao-aura-aviso { @apply flex; }
+      .botao-aura-pergunta-revogar:checked ~ .botao-aura-aviso-revogar { @apply flex; }
+
+      /* .quadro-glifo — vitrine de EXPOSIÇÃO. Não é peça do projeto, não vai para o tema. */
+      .quadro-glifo { @apply p-5 flex flex-col items-center justify-center gap-3 text-center; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual. -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC user_admin/022 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Tornar administrador</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          <strong>1 · Átomos</strong> traz a aura e o glifo da ação.
+          <strong>2 · Moléculas</strong> traz o botão de ato grave nas duas faces e o gesto completo, ao vivo.
+          <strong>3 · Telas</strong> põe o botão onde ele fica: no formulário de cadastro, no modal de edição
+          e no modal da rota direta. O formulário e o modal são os das SPECs criacao_usuarios/004 e 005,
+          reusados — o que muda neles está marcado.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Átomos</h2>
+
+      <!-- 1.1 .aura-onsen -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · A aura <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.aura-onsen</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            A luz que dá a volta na peça, na água da escala do DS. Ela veste qualquer coisa: aqui, o
+            <span class="text-code">.btn-onsen</span> que já existe, sem uma linha de pele nova nele.
+          </p>
+        </div>
+        <div class="card-well p-6 flex flex-wrap items-center gap-8">
+          <!-- estado: acesa -->
+          <div class="flex flex-col items-center gap-3">
+            <div class="aura aura-onsen">
+              <button type="button" class="btn btn-onsen">Ato de peso</button>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60">acesa</p>
+          </div>
+          <!-- estado: apagada -->
+          <div class="flex flex-col items-center gap-3">
+            <div class="aura aura-onsen bg-transparent text-transparent">
+              <button type="button" class="btn btn-onsen">Ato de peso</button>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60">apagada</p>
+          </div>
+          <!-- medida: a mesma aura em corpo maior -->
+          <div class="flex flex-col items-center gap-3">
+            <div class="aura aura-onsen aura-lg">
+              <button type="button" class="btn btn-onsen btn-lg gap-2">Ato de peso</button>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60">aura-lg</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.2 o glifo -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.2 · O glifo da ação <span class="text-sm font-normal text-base-content/60">— escudo e estrela</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            O escudo é forma nova; a estrela dentro dele é a de <span class="text-code">#glifo-titular</span>,
+            reduzida e centrada. Traço de 1.75, sem cor no arquivo.
+          </p>
+        </div>
+        <div class="grid sm:grid-cols-4 gap-4">
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-pequeno text-agua-700">
+              <svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">pequeno · 20px</p>
+          </div>
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-700">
+              <svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">grande · 48px</p>
+          </div>
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)]">
+              <svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">aceso · hover</p>
+          </div>
+          <!-- estado: na linha de menu, que é o único lugar onde o pequeno vive -->
+          <div class="card-well p-4 flex items-center">
+            <button type="button" class="item-menu w-full">
+              <span class="icone-acao icone-acao-pequeno icone-acao-acende">
+                <svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg>
+              </span>
+              Administrador
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============ 2 · MOLÉCULAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Moléculas — o botão de ato grave</h2>
+      <p class="px-2 text-sm text-base-content/70 -mt-4">
+        <span class="text-code">.botao-aura</span> — a aura vestindo as duas faces do controle. Peça
+        genérica: serve a qualquer ato de peso do sistema, não só a este.
+      </p>
+
+      <!-- 2.1 as duas faces -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">2.1 · As duas faces <span class="text-sm font-normal text-base-content/60">— relevo e poço</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Em repouso a peça salta para fora e a aura chama; acionada, ela afunda no poço e a aura
+            se apaga. As duas faces existem no DOM ao mesmo tempo — cada uma manda uma coisa diferente.
+          </p>
+        </div>
+        <div class="card-well p-6 flex flex-wrap items-center gap-10">
+          <!-- estado: repouso -->
+          <div class="flex flex-col items-center gap-3">
+            <div class="aura aura-onsen botao-aura">
+              <button type="button" class="btn btn-onsen botao-aura-repouso gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                Tornar administrador
+              </button>
+              <button type="button" class="btn card-well botao-aura-acionado gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                É administrador
+              </button>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60">repouso</p>
+          </div>
+          <!-- estado: acionado -->
+          <div class="flex flex-col items-center gap-3">
+            <div class="aura aura-onsen botao-aura botao-aura-ligado">
+              <button type="button" class="btn btn-onsen botao-aura-repouso gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                Tornar administrador
+              </button>
+              <button type="button" class="btn card-well botao-aura-acionado gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                É administrador
+              </button>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60">acionado · <span class="text-code">.botao-aura-ligado</span></p>
+          </div>
+          <!-- estado de falta: quem não tem a caneta não recebe a peça -->
+          <div class="flex flex-col items-center gap-3">
+            <div class="px-4 py-2 text-[15px] text-base-content/50 italic">— sem peça na tela —</div>
+            <p class="text-[10px] font-mono text-base-content/60">quem não é administrador</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.2 o gesto completo, ao vivo -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">2.2 · O gesto completo <span class="text-sm font-normal text-base-content/60">— clique para percorrer</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Ida e volta, com confirmação nos dois sentidos. É este o comportamento do botão onde o
+            estado é local; onde ele vem do servidor, o invólucro já chega com a classe.
+          </p>
+        </div>
+        <div class="card-well p-6 flex justify-center">
+          <div class="relative inline-flex">
+            <!-- o grupo de estado: repouso · perguntando · ligado · perguntando a revogação -->
+            <input type="radio" name="demo-ato" id="demo-repouso" class="botao-aura-estado" checked />
+            <input type="radio" name="demo-ato" id="demo-pergunta" class="botao-aura-estado botao-aura-pergunta" />
+            <input type="radio" name="demo-ato" id="demo-ligado" class="botao-aura-estado botao-aura-estado-ligado" />
+            <input type="radio" name="demo-ato" id="demo-pergunta-revogar" class="botao-aura-estado botao-aura-estado-ligado botao-aura-pergunta-revogar" />
+
+            <div class="aura aura-onsen botao-aura">
+              <label for="demo-pergunta" class="btn btn-onsen botao-aura-repouso gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                Tornar administrador
+              </label>
+              <label for="demo-pergunta-revogar" class="btn card-well botao-aura-acionado gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                É administrador
+              </label>
+            </div>
+
+            <!-- estado: perguntando a concessão -->
+            <div class="botao-aura-aviso" role="dialog">
+              <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+                <div class="flex items-start gap-3">
+                  <span class="icon-bubble w-11 h-11 shrink-0 bg-warning/15 border-warning/30 text-warning">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+                  </span>
+                  <div>
+                    <h3 class="text-lg font-bold text-madeira-700">Dar plenos poderes?</h3>
+                    <p class="text-sm text-base-content/80 mt-1 leading-relaxed">
+                      <strong>Ana Ramos</strong> passa a ter plenos poderes no sistema: pratica ações para
+                      além da unidade a que está vinculada, inclusive ações de alta administração.
+                      O ato fica registrado no seu nome.
+                    </p>
+                  </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-5">
+                  <label for="demo-repouso" class="btn btn-glass btn-sm">Cancelar</label>
+                  <label for="demo-ligado" class="btn btn-onsen btn-sm">Ok, tornar administrador</label>
+                </div>
+              </div>
+              <label class="absolute inset-0 -z-10 cursor-pointer" for="demo-repouso"><span class="sr-only">Fechar</span></label>
+            </div>
+
+            <!-- estado: perguntando a revogação -->
+            <div class="botao-aura-aviso-revogar" role="dialog">
+              <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+                <div class="flex items-start gap-3">
+                  <span class="icon-bubble w-11 h-11 shrink-0 bg-error/15 border-error/30 text-error">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+                  </span>
+                  <div>
+                    <h3 class="text-lg font-bold text-madeira-700">Retirar os plenos poderes?</h3>
+                    <p class="text-sm text-base-content/80 mt-1 leading-relaxed">
+                      <strong>Ana Ramos</strong> perde os plenos poderes e volta a exercer só o que o cargo e
+                      a unidade dela permitem. O ato fica registrado no seu nome.
+                    </p>
+                  </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-5">
+                  <label for="demo-ligado" class="btn btn-glass btn-sm">Cancelar</label>
+                  <label for="demo-repouso" class="btn btn-onsen btn-sm">Ok, revogar</label>
+                </div>
+              </div>
+              <label class="absolute inset-0 -z-10 cursor-pointer" for="demo-ligado"><span class="sr-only">Fechar</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">3 · Telas montadas</h2>
+
+      <!-- 3.1 o formulário de cadastro -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">3.1 · No formulário de cadastro <span class="text-sm font-normal text-base-content/60">— onde o botão fica</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            A tela da SPEC criacao_usuarios/004, reusada. O que muda é o poço novo entre a lotação e a
+            foto: aqui não há alvo ainda, e o botão arma o cadastro. Clique nele.
+          </p>
+        </div>
+
+        <!-- página: user_admin/perfil_form.html -->
+        <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Novo servidor</h1>
+            <p class="text-sm text-base-content/70 mt-1">O cadastro registra a competência administrativa: cargo e unidade definem o que a pessoa poderá praticar.</p>
+          </div>
+
+          <!-- partial: user_admin/partials/_secao_identificacao.html — sem alteração -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Identificação</p>
+            <div class="grid sm:grid-cols-3 gap-4">
+              <label class="form-field">
+                <span class="text-overline">RF</span>
+                <input type="text" name="rf" value="812.345-6" class="input input-glass" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Nome</span>
+                <input type="text" name="nome" value="Ana" class="input input-glass" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Sobrenome</span>
+                <input type="text" name="sobrenome" value="Ramos" class="input input-glass" />
+              </label>
+            </div>
+            <label class="form-field">
+              <span class="text-overline">E-mail</span>
+              <input type="email" name="email" value="ana.ramos@prefeitura.sp.gov.br" class="input input-glass" />
+            </label>
+          </div>
+          <!-- /partial -->
+
+          <!-- partial: user_admin/partials/_secao_lotacao.html — sem alteração -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Lotação</p>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select name="unidade" class="select select-glass" data-select-onsen>
+                  <option>DIMAP-1 · Divisão de Avaliação</option>
+                  <option>DIMAP-2 · Divisão de Cadastro</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Cargo base</span>
+                <select name="cargo_base" class="select select-glass" data-select-onsen>
+                  <option>Assistente de Gestão de Políticas Públicas</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <!-- partial: user_admin/partials/_campo_administrador.html — nasce nesta SPEC -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Plenos poderes</p>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <p class="text-sm text-base-content/70 max-w-md">
+                O servidor nasce com plenos poderes no sistema, praticando ações para além da unidade a
+                que está vinculado, inclusive ações de alta administração. Só quem já é administrador
+                arma esta marca.
+              </p>
+              <div class="relative inline-flex">
+                <input type="radio" name="cad-ato" id="cad-repouso" class="botao-aura-estado" checked />
+                <input type="radio" name="cad-ato" id="cad-pergunta" class="botao-aura-estado botao-aura-pergunta" />
+                <input type="radio" name="cad-ato" id="cad-ligado" class="botao-aura-estado botao-aura-estado-ligado" />
+                <input type="radio" name="cad-ato" id="cad-pergunta-revogar" class="botao-aura-estado botao-aura-estado-ligado botao-aura-pergunta-revogar" />
+
+                <div class="aura aura-onsen botao-aura">
+                  <label for="cad-pergunta" class="btn btn-onsen botao-aura-repouso gap-2">
+                    <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                    Tornar administrador
+                  </label>
+                  <label for="cad-pergunta-revogar" class="btn card-well botao-aura-acionado gap-2">
+                    <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                    Nasce administrador
+                  </label>
+                </div>
+
+                <div class="botao-aura-aviso" role="dialog">
+                  <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+                    <div class="flex items-start gap-3">
+                      <span class="icon-bubble w-11 h-11 shrink-0 bg-warning/15 border-warning/30 text-warning">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+                      </span>
+                      <div>
+                        <h3 class="text-lg font-bold text-madeira-700">Cadastrar já com plenos poderes?</h3>
+                        <p class="text-sm text-base-content/80 mt-1 leading-relaxed">
+                          Ao salvar, o servidor passa a ter plenos poderes no sistema: pratica ações para
+                          além da unidade a que está vinculado, inclusive ações de alta administração.
+                          O ato fica registrado no seu nome.
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex justify-end gap-3 pt-5">
+                      <label for="cad-repouso" class="btn btn-glass btn-sm">Cancelar</label>
+                      <label for="cad-ligado" class="btn btn-onsen btn-sm">Ok, com plenos poderes</label>
+                    </div>
+                  </div>
+                  <label class="absolute inset-0 -z-10 cursor-pointer" for="cad-repouso"><span class="sr-only">Fechar</span></label>
+                </div>
+
+                <div class="botao-aura-aviso-revogar" role="dialog">
+                  <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+                    <div class="flex items-start gap-3">
+                      <span class="icon-bubble w-11 h-11 shrink-0 bg-error/15 border-error/30 text-error">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+                      </span>
+                      <div>
+                        <h3 class="text-lg font-bold text-madeira-700">Tirar a marca?</h3>
+                        <p class="text-sm text-base-content/80 mt-1 leading-relaxed">
+                          O servidor será cadastrado sem plenos poderes, exercendo só o que o cargo e a
+                          unidade a que está vinculado permitem.
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex justify-end gap-3 pt-5">
+                      <label for="cad-ligado" class="btn btn-glass btn-sm">Cancelar</label>
+                      <label for="cad-repouso" class="btn btn-onsen btn-sm">Ok, tirar</label>
+                    </div>
+                  </div>
+                  <label class="absolute inset-0 -z-10 cursor-pointer" for="cad-ligado"><span class="sr-only">Fechar</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <!-- fica na página: só arranjo, nunca é trocado sozinho -->
+          <div class="flex justify-end gap-3 pt-1">
+            <a href="#" class="btn btn-ghost btn-glass">Cancelar</a>
+            <button type="button" class="btn btn-onsen">Salvar servidor</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 3.2 cadastro recusado: marca sem caneta -->
+      <div class="flex flex-col gap-4">
+        <div class="px-2">
+          <h3 class="text-lg font-bold">3.2 · Marca sem caneta <span class="text-sm font-normal text-base-content/60">— estado: recusado</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">A tarja diz o motivo e o poço da seção é que fica em realce: o controle recusado é o botão, não um campo.</p>
+        </div>
+
+        <!-- partial: user_admin/partials/_formulario_servidor.html — alvo do hx-post de gravar -->
+        <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Novo servidor</h1>
+          </div>
+
+          <!-- partial: partials/_tarja_recusa.html — sem alteração -->
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+            <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+            <div>
+              <p class="text-[13px] font-semibold text-base-content/90">Cadastro não concluído</p>
+              <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                <li>Só um administrador pode cadastrar outro administrador.</li>
+              </ul>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <div class="card-well campo-realce-erro p-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p class="text-overline">Plenos poderes</p>
+              <p class="text-sm text-base-content/70 mt-1 max-w-md">Nada foi gravado — nem o cadastro.</p>
+            </div>
+            <div class="aura aura-onsen botao-aura botao-aura-ligado">
+              <button type="button" class="btn btn-onsen botao-aura-repouso">Tornar administrador</button>
+              <button type="button" class="btn card-well botao-aura-acionado gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                Nasce administrador
+              </button>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-1">
+            <a href="#" class="btn btn-ghost btn-glass">Cancelar</a>
+            <button type="button" class="btn btn-onsen">Salvar servidor</button>
+          </div>
+        </form>
+        <!-- /partial -->
+      </div>
+    </section>
+
+  </div>
+
+  <!-- partial: user_admin/partials/_modal_editar_perfil.html — o modal da SPEC criacao_usuarios/005,
+       reusado; o que nasce aqui é o poço do fim. No mock quem abre é o checkbox, porque não há rota. -->
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 pb-14 flex flex-col gap-10">
+
+    <!-- 3.3 -->
+    <div class="flex flex-col gap-4">
+      <div class="px-2">
+        <h3 class="text-lg font-bold">3.3 · No modal de editar servidor <span class="text-sm font-normal text-base-content/60">— o alvo existe, o botão pratica</span></h3>
+        <p class="text-sm text-base-content/70 mt-1">
+          É o modal do lápis, da SPEC criacao_usuarios/005, com um poço novo depois dos campos. Aqui o
+          botão não arma nada e não espera o "Salvar alterações": o alvo já existe, então ele posta a
+          rota da ação e volta com o estado gravado. Por isso fica apartado dos campos.
+        </p>
+      </div>
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Abra cada estado</p>
+        <div class="flex flex-wrap gap-3">
+          <label for="modal-edicao" class="btn btn-glass btn-sm">1 · Servidor comum <span class="text-base-content/50">— botão em relevo</span></label>
+          <label for="modal-edicao-admin" class="btn btn-glass btn-sm">2 · Já é administrador <span class="text-base-content/50">— botão afundado</span></label>
+          <label for="modal-edicao-confirmando" class="btn btn-glass btn-sm">3 · Confirmando <span class="text-base-content/50">— o corpo do modal é substituído</span></label>
+        </div>
+        <p class="text-sm text-base-content/70">
+          O terceiro é o que mostra a regra: o aviso <strong>toma o lugar do conteúdo do modal</strong>,
+          em vez de abrir um segundo modal por cima dele.
+        </p>
+      </div>
+    </div>
+
+    <!-- 3.4 -->
+    <div class="flex flex-col gap-4">
+      <div class="px-2">
+        <h3 class="text-lg font-bold">3.4 · O modal da rota direta <span class="text-sm font-normal text-base-content/60">— o caminho sem passar pelo servidor</span></h3>
+        <p class="text-sm text-base-content/70 mt-1">
+          A tela própria da ação, pinçada pelo menu de administração: escolhe-se a unidade, depois o
+          servidor dentro dela, e o mesmo botão pratica o ato.
+        </p>
+      </div>
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Abra cada estado</p>
+        <div class="flex flex-wrap gap-3">
+          <label for="modal-direto" class="btn btn-glass btn-sm">1 · Nada escolhido <span class="text-base-content/50">— botão inerte</span></label>
+          <label for="modal-direto-escolhido" class="btn btn-glass btn-sm">2 · Servidor escolhido <span class="text-base-content/50">— com a tarja do aviso</span></label>
+          <label for="modal-direto-vazio" class="btn btn-glass btn-sm">3 · Unidade sem ninguém <span class="text-base-content/50">— estado de falta</span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- estado: servidor comum -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-edicao" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+            <p class="text-sm text-base-content/70 mt-1">Ana Ramos · RF 812.345-6</p>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Identificação</p>
+            <div class="campo-onsen">
+              <input type="checkbox" id="e-rf" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">RF</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor text-code">812.345-6</p>
+                <div class="campo-onsen-campo"><input type="text" class="input input-glass" value="812.345-6" /></div>
+                <label for="e-rf" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o RF">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- partial: user_admin/partials/_botao_administrador.html — alvo do hx-post da ação -->
+          <div class="card-well p-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p class="text-overline">Plenos poderes</p>
+              <p class="text-sm text-base-content/70 mt-1 max-w-sm">Ana exerce só o que o cargo e a unidade a que está vinculada permitem.</p>
+            </div>
+            <div class="aura aura-onsen botao-aura">
+              <button type="button" class="btn btn-onsen botao-aura-repouso gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                Tornar administrador
+              </button>
+              <button type="button" class="btn card-well botao-aura-acionado">É administrador</button>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <div class="modal-action">
+            <label for="modal-edicao" class="btn btn-glass btn-sm">Cancelar</label>
+            <button type="button" class="btn btn-onsen btn-sm">Salvar alterações</button>
+          </div>
+        </div>
+      </div>
+      <label class="modal-backdrop" for="modal-edicao">Fechar</label>
+    </div>
+  </div>
+
+  <!-- estado: já é administrador -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-edicao-admin" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+            <p class="text-sm text-base-content/70 mt-1">Ana Ramos · RF 812.345-6</p>
+          </div>
+          <div class="card-well p-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p class="text-overline">Plenos poderes</p>
+              <p class="text-sm text-base-content/70 mt-1 max-w-sm">Ana tem plenos poderes no sistema. Clicar retira.</p>
+            </div>
+            <div class="aura aura-onsen botao-aura botao-aura-ligado">
+              <button type="button" class="btn btn-onsen botao-aura-repouso">Tornar administrador</button>
+              <button type="button" class="btn card-well botao-aura-acionado gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                É administrador
+              </button>
+            </div>
+          </div>
+          <div class="modal-action">
+            <label for="modal-edicao-admin" class="btn btn-glass btn-sm">Cancelar</label>
+            <button type="button" class="btn btn-onsen btn-sm">Salvar alterações</button>
+          </div>
+        </div>
+      </div>
+      <label class="modal-backdrop" for="modal-edicao-admin">Fechar</label>
+    </div>
+  </div>
+
+  <!-- estado: confirmando — o corpo do modal é substituído, nunca um modal dentro de outro -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-edicao-confirmando" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+        <!-- partial: user_admin/partials/_confirmar_administrador.html — chega por hx-get no corpo do modal -->
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icon-bubble w-12 h-12 shrink-0 bg-warning/15 border-warning/30 text-warning">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Dar plenos poderes a Ana Ramos?</h2>
+              <p class="text-sm text-base-content/80 mt-2 leading-relaxed max-w-lg">
+                Ela passa a ter plenos poderes no sistema: pratica ações para além da unidade a que está
+                vinculada, inclusive ações de alta administração. O ato fica registrado no seu nome.
+              </p>
+            </div>
+          </div>
+          <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+            <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01"/><path d="M11 12h1v4h1"/></svg>
+            <p class="text-[13px] text-base-content/80">Você não poderá retirar os seus próprios plenos poderes depois — só outro administrador pode.</p>
+          </div>
+          <div class="modal-action">
+            <label for="modal-edicao-confirmando" class="btn btn-glass btn-sm">Cancelar</label>
+            <div class="aura aura-onsen">
+              <button type="button" class="btn btn-onsen btn-sm">Ok, tornar administrador</button>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+      </div>
+      <label class="modal-backdrop" for="modal-edicao-confirmando">Fechar</label>
+    </div>
+  </div>
+
+  <!-- partial: user_admin/partials/_modal_administrador.html — a tela da ação, chega por hx-get -->
+
+  <!-- estado: nada escolhido -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-direto" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Tornar administrador</h2>
+              <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor.</p>
+            </div>
+          </div>
+
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <!-- partial: nenhum — o select da unidade fica na página do modal -->
+              <select name="unidade" class="select select-glass" data-select-onsen>
+                <option value="">— escolha —</option>
+                <option>DIMAP · Departamento de Mapeamento</option>
+                <option>DIMAP-1 · Divisão de Avaliação</option>
+                <option>DIMAP-2 · Divisão de Cadastro</option>
+              </select>
+              <span class="form-field-hint">Todas as unidades: administrador alcança o organograma inteiro.</span>
+            </label>
+            <!-- partial: user_admin/partials/_opcoes_servidor.html — alvo do hx-get ao trocar a unidade -->
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select name="servidor" class="select select-glass" disabled>
+                <option value="">— escolha a unidade primeiro —</option>
+              </select>
+            </label>
+            <!-- /partial -->
+          </div>
+
+          <div class="flex justify-end">
+            <div class="aura aura-onsen botao-aura opacity-40 pointer-events-none">
+              <button type="button" class="btn btn-onsen botao-aura-repouso" disabled>Tornar administrador</button>
+              <button type="button" class="btn card-well botao-aura-acionado">É administrador</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <label class="modal-backdrop" for="modal-direto">Fechar</label>
+    </div>
+  </div>
+
+  <!-- estado: servidor escolhido -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-direto-escolhido" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Tornar administrador</h2>
+              <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor.</p>
+            </div>
+          </div>
+
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select name="unidade" class="select select-glass" data-select-onsen>
+                <option>DIMAP-1 · Divisão de Avaliação</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select name="servidor" class="select select-glass" data-select-onsen>
+                <option>Ana Ramos · RF 812.345-6</option>
+                <option>Bruno Tavares · RF 733.101-2</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+            <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+            <p class="text-[13px] text-base-content/80">
+              Quem recebe plenos poderes pratica ações para além da unidade a que está vinculado,
+              inclusive ações de alta administração. O ato fica registrado no seu nome.
+            </p>
+          </div>
+
+          <div class="flex justify-end">
+            <div class="aura aura-onsen botao-aura">
+              <button type="button" class="btn btn-onsen botao-aura-repouso gap-2">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                Tornar administrador
+              </button>
+              <button type="button" class="btn card-well botao-aura-acionado">É administrador</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <label class="modal-backdrop" for="modal-direto-escolhido">Fechar</label>
+    </div>
+  </div>
+
+  <!-- estado de falta: unidade sem servidor lotado -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-direto-vazio" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Tornar administrador</h2>
+            <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor.</p>
+          </div>
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select name="unidade" class="select select-glass" data-select-onsen>
+                <option>DIMAP-4 · Divisão de Geoprocessamento</option>
+              </select>
+            </label>
+            <div class="form-field">
+              <span class="text-overline">Servidor</span>
+              <p class="text-[15px] text-base-content/60 py-1.5">— nenhum servidor lotado aqui —</p>
+              <span class="form-field-hint">Cadastre alguém na unidade antes de dar plenos poderes.</span>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <div class="aura aura-onsen botao-aura opacity-40 pointer-events-none">
+              <button type="button" class="btn btn-onsen botao-aura-repouso" disabled>Tornar administrador</button>
+              <button type="button" class="btn card-well botao-aura-acionado">É administrador</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <label class="modal-backdrop" for="modal-direto-vazio">Fechar</label>
+    </div>
+  </div>
+
+  <!-- Sem este módulo os selects seguem nativos: o componente de vidro (SPEC user_admin/011) é
+       opt-in por atributo e depende do módulo carregado, na aplicação e aqui. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+
+  <script>
+    // Fundo à deriva (SPEC user_admin/007), reproduzido aqui porque o mock não passa pelo Django.
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
+        ultimoFrame = agora;
+        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
+        mapa.setView(
+          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
+          ZOOM,
+          { animate: false },
+        );
+      }
+      requestAnimationFrame(derivar);
+    }
+    requestAnimationFrame(derivar);
+  </script>
+</body>
+</html>

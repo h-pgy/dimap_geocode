@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404
 from pydantic import HttpUrl, SecretStr
 
 from apps.core.erros_formulario import de_validation_error
+from apps.user_admin.administrador import recusa_de_auto_revogacao
 from apps.user_admin.formularios import ler_edicao_servidor, ler_novo_servidor, traduzir_recusa
 from apps.user_admin.foto import conferir_foto
 from apps.user_admin.models import Perfil
@@ -29,6 +30,11 @@ from services.utils.smtp import EnviadorSmtp, SmtpEnvioError, build_smtp_config,
 DOMINIOS_INSTITUCIONAIS = ("prefeitura.sp.gov.br", "sf.prefeitura.sp.gov.br")
 ERRO_DOMINIO = "O e-mail precisa ser institucional: @" + ", @".join(DOMINIOS_INSTITUCIONAIS) + "."
 ERRO_ENVIO = "Cadastro não concluído: não foi possível entregar a senha temporária em {email}."
+# SPEC user_admin/022.
+ERRO_SEM_CANETA = "Só um administrador pode cadastrar outro administrador."
+ERRO_SEM_CANETA_EDICAO = (
+    "Só um administrador pode tornar outro servidor administrador do sistema."
+)
 
 
 @dataclass(frozen=True)
@@ -40,11 +46,15 @@ class DesfechoCadastro:
     # Não opcional: `perfil is None` já é a etiqueta do desfecho, e uma recusa sempre-presente
     # poupa quem lê de desembrulhar um Optional que o sucesso nunca preenche.
     recusa: RecusaDeFormulario = RecusaDeFormulario()
+    # SPEC user_admin/022 v3: a edição que mexe na caneta não é o mesmo ato que a edição comum, e é
+    # a view que precisa saber disso para nomear a operação registrada.
+    marca_alterada: bool = False
 
 
 def criar_servidor(
     valores: Mapping[str, Any],
     foto: UploadedFile | None = None,
+    administrador_permitido: bool = False,
 ) -> DesfechoCadastro:
     """Quem fica cadastrado é quem recebeu como entrar: o envio acontece dentro da transação, e a
     falha dele derruba a gravação junto.
@@ -52,12 +62,21 @@ def criar_servidor(
     Recebe o formulário cru e delega a leitura ao `LeitorDeFormulario`: construir o DTO na view
     entregaria a recusa ao `PydanticValidationMiddleware`, cuja resposta, no alvo do form, apaga o
     formulário inteiro (SPEC formularios/001). O `try` do banco e do SMTP mora aqui pelo mesmo
-    motivo de sempre: é este módulo que sabe o que cada falha significa para o cadastro."""
+    motivo de sempre: é este módulo que sabe o que cada falha significa para o cadastro.
+
+    `administrador_permitido` (SPEC user_admin/022) é resolvido pela orquestração — quem pode
+    armar a marca é conferido aqui dentro, e não no decorator, que só conhece a ação que protege
+    a rota de cadastro."""
     leitura = ler_novo_servidor(valores)
     novo = leitura.dto
     if novo is None:
         # Sem DTO a leitura traz a recusa; o `or` é só o que o tipo pede, não um caso real.
         return DesfechoCadastro(perfil=None, recusa=leitura.recusa or RecusaDeFormulario())
+    if novo.administrador and not administrador_permitido:
+        # Recusa, e não 403: o controle existe na tela e a marca veio de um formulário — quem
+        # preencheu tem que ver o motivo no lugar em que ele nasceu. Nada é gravado, nem o
+        # cadastro.
+        return DesfechoCadastro(perfil=None, recusa=_recusa_sem_caneta(ERRO_SEM_CANETA))
     politica = _recusa_de_politica(novo.email, foto)
     if politica is not None:
         return DesfechoCadastro(perfil=None, recusa=politica)
@@ -111,6 +130,9 @@ def _gravar(novo: NovoServidor, senha: SecretStr, foto: UploadedFile | None) -> 
         cargo_base_id=novo.cargo_base_id,
         cargo_comissao_id=novo.cargo_comissao_id,
         foto=foto,
+        # SPEC user_admin/022: nasce administrador no mesmo POST do cadastro. `is_staff` fica de
+        # fora de propósito — o /admin do Django não abre por aqui (SPEC, §4).
+        is_superuser=novo.administrador,
     )
     # A senha nasce hasheada: nem o banco, nem o log, nem um traceback guardam o texto claro.
     perfil.set_password(senha.get_secret_value())
@@ -142,9 +164,14 @@ def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> No
 
 def editar_servidor(
     valores: Mapping[str, Any],
+    autor_id: int,
     foto: UploadedFile | None = None,
+    administrador_permitido: bool = False,
 ) -> DesfechoCadastro:
-    """Um ato só: ou o cadastro inteiro passa pela validação do model, ou nada muda.
+    """Um ato só: ou o cadastro inteiro passa pela validação do model, ou nada muda — e isso passou
+    a valer também para a condição de administrador do sistema (SPEC user_admin/022 v3), escrita
+    aqui, no fim,
+    e não por um ato à parte que gravava mesmo com o formulário recusado.
 
     Recebe o formulário cru e delega a leitura ao `LeitorDeFormulario`, como o `criar_servidor`. O
     `try` mora aqui, e não na view, pelo mesmo motivo: é este módulo que sabe o que a recusa
@@ -159,7 +186,16 @@ def editar_servidor(
     if politica is not None:
         return DesfechoCadastro(perfil=None, recusa=politica)
     perfil = get_object_or_404(Perfil, pk=edicao.servidor_id)
+    if edicao.administrador and not administrador_permitido:
+        return DesfechoCadastro(perfil=None, recusa=_recusa_sem_caneta(ERRO_SEM_CANETA_EDICAO))
+    marca = _marca_pretendida(perfil, edicao, administrador_permitido)
+    alterou_marca = marca != perfil.is_superuser
+    if alterou_marca:
+        recusa_da_marca = recusa_de_auto_revogacao(edicao.servidor_id, autor_id, marca)
+        if recusa_da_marca is not None:
+            return DesfechoCadastro(perfil=None, recusa=recusa_da_marca)
     _aplicar(perfil, edicao, foto)
+    perfil.is_superuser = marca
     try:
         perfil.full_clean(exclude=["password"])
         perfil.save()
@@ -169,7 +205,25 @@ def editar_servidor(
         # preserva o `code`, que é o que faz o RF e o e-mail realçarem o controle certo; a do
         # titular nomeia `e_titular`, que não é controle desta tela, e por isso cai na tarja.
         return DesfechoCadastro(perfil=None, recusa=traduzir_recusa(de_validation_error(recusa)))
-    return DesfechoCadastro(perfil=perfil)
+    return DesfechoCadastro(perfil=perfil, marca_alterada=alterou_marca)
+
+
+def _marca_pretendida(
+    perfil: Perfil,
+    edicao: EdicaoServidor,
+    administrador_permitido: bool,
+) -> bool:
+    """Sem o controle na tela o POST não manda a marca, e ler essa ausência como "revogar" tiraria
+    a caneta de um administrador a cada edição feita por quem apenas edita servidor."""
+    return edicao.administrador if administrador_permitido else perfil.is_superuser
+
+
+def _recusa_sem_caneta(mensagem: str) -> RecusaDeFormulario:
+    # Recusa, e não 403: o controle existe na tela e a marca veio de um formulário — quem preencheu
+    # tem que ver o motivo no lugar em que ele nasceu. Nada é gravado, nem o resto do cadastro.
+    return traduzir_recusa(
+        (ErroBruto(controle="administrador", tipo="sem_caneta", mensagem=mensagem),)
+    )
 
 
 def _aplicar(perfil: Perfil, edicao: EdicaoServidor, foto: UploadedFile | None) -> None:

@@ -67,3 +67,26 @@ def test_atribuicao_de_outra_unidade_nao_tira_a_acao_da_oferta() -> None:
     AtribuicaoUnidade.objects.create(unidade=vizinha, acao=acao)
 
     assert acao in set(acoes_oferecidas(unidade))
+
+
+# ---------------------------------------------------------------------------
+# Ação exclusiva do superusuário nunca entra na oferta (SPEC user_admin/022)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_catalogo_nao_oferece_acao_exclusiva_do_superusuario() -> None:
+    """O recorte é do registro em código (`slugs_exclusivos`), não de um campo projetado — `Acao`
+    não sabe que é exclusiva. Por isso as linhas usam os slugs REAIS do registro, e não um booleano
+    inventado no builder."""
+    unidade = _unidade("CAT-EXCLUSIVA")
+    tornar_administrador = _acao("user_admin.tornar_administrador")
+    criar_unidade_raiz = _acao("unidades.criar_unidade_raiz")
+    comum = _acao("competencias.cat_comum_exclusividade")
+
+    oferecidas = set(acoes_oferecidas(unidade))
+
+    assert tornar_administrador not in oferecidas
+    assert criar_unidade_raiz not in oferecidas
+    assert comum in oferecidas

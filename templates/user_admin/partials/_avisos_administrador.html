@@ -1,0 +1,49 @@
+{# Avisos do poço de administrador do sistema (SPEC user_admin/022 v4): irmãos do controle, e não #}
+{# filhos dele. Dentro de um modal o `backdrop-filter` do `.modal-box` o torna containing block do  #}
+{# `fixed`, e a placa nasceria ancorada no topo do formulário — longe de quem rolou até o botão.    #}
+{# Por isso o aviso é incluído FORA do `.modal-box`, e quem religa os dois é o `.escopo-aura` do    #}
+{# ancestral comum, via `:has()`. `prefixo` é o mesmo do controle: são os ids que se conversam.     #}
+<div class="botao-aura-aviso" role="dialog">
+  <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+    <div class="flex items-start gap-3">
+      <span class="icon-bubble w-11 h-11 shrink-0 bg-warning/15 border-warning/30 text-warning">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+      </span>
+      <div>
+        <h3 class="text-lg font-bold text-madeira-700">Tornar administrador do sistema?</h3>
+        <p class="text-sm text-base-content/80 mt-1 leading-relaxed">
+          Ao salvar, o servidor passa a ser administrador do sistema: pratica ações para além
+          da unidade a que está vinculado, inclusive ações de alta administração. O ato fica
+          registrado no seu nome.
+        </p>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 pt-5">
+      <label for="{{ prefixo }}-administrador-repouso" class="btn btn-glass btn-sm">Cancelar</label>
+      <label for="{{ prefixo }}-administrador-ligado" class="btn btn-onsen btn-sm">Ok, tornar administrador</label>
+    </div>
+  </div>
+  <label class="absolute inset-0 -z-10 cursor-pointer" for="{{ prefixo }}-administrador-repouso"><span class="sr-only">Fechar</span></label>
+</div>
+
+<div class="botao-aura-aviso-revogar" role="dialog">
+  <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+    <div class="flex items-start gap-3">
+      <span class="icon-bubble w-11 h-11 shrink-0 bg-error/15 border-error/30 text-error">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+      </span>
+      <div>
+        <h3 class="text-lg font-bold text-madeira-700">Tirar a marca?</h3>
+        <p class="text-sm text-base-content/80 mt-1 leading-relaxed">
+          Ao salvar, o servidor deixa de ser administrador do sistema, exercendo só o que o cargo e a
+          unidade a que está vinculado permitem.
+        </p>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 pt-5">
+      <label for="{{ prefixo }}-administrador-ligado" class="btn btn-glass btn-sm">Cancelar</label>
+      <label for="{{ prefixo }}-administrador-repouso" class="btn btn-onsen btn-sm">Ok, tirar</label>
+    </div>
+  </div>
+  <label class="absolute inset-0 -z-10 cursor-pointer" for="{{ prefixo }}-administrador-ligado"><span class="sr-only">Fechar</span></label>
+</div>

@@ -1,0 +1,20 @@
+{# Alvo do hx-get de `opcoes_administrador` (SPEC user_admin/022): recarrega a lista de servidores  #}
+{# da unidade escolhida sem recarregar a tela. `servidores` ausente (tela ainda sem unidade         #}
+{# escolhida) cai no mesmo estado de "nenhum servidor" — o `select` some de qualquer jeito.          #}
+<span class="text-overline">Servidor</span>
+{% if servidores %}
+  <select name="servidor" class="select select-glass" data-select-onsen
+          hx-get="{% url 'user_admin:estado_administrador' %}"
+          hx-target="#administrador-alvo"
+          hx-swap="innerHTML">
+    <option value="">— escolha —</option>
+    {% for servidor in servidores %}
+      <option value="{{ servidor.pk }}">{{ servidor.nome }} {{ servidor.sobrenome }} · RF {{ servidor.rf }}</option>
+    {% endfor %}
+  </select>
+{% else %}
+  <select class="select select-glass" disabled>
+    <option value="">— escolha a unidade primeiro —</option>
+  </select>
+  <span class="form-field-hint">Cadastre alguém na unidade antes de tornar administrador.</span>
+{% endif %}

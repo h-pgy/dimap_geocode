@@ -19,6 +19,13 @@
   {# Fora da .admin-shell, que é contexto de empilhamento (z-10): dentro dela os chips fixos do   #}
   {# base.html (z-20) passariam por cima da placa.                                                #}
   {% include "unidades/partials/_modal_nova_unidade.html" %}
+
+  {# Mesma razão do modal acima, e mais uma: `.glass-panel` do formulário tem `backdrop-filter`, e  #}
+  {# ancestral filtrado vira containing block de `fixed` — dentro dele a placa nasceria ancorada no #}
+  {# topo do formulário. Aqui fora ela é da tela. Quem a liga ao controle é o `:has()` do tema.     #}
+  {% if pode_administrador %}
+    {% include "user_admin/partials/_avisos_administrador.html" with prefixo="cad" %}
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}

@@ -54,6 +54,10 @@ FORMULARIO_SERVIDOR = Formulario(
         CampoDeFormulario(controle="cargo_comissao", rotulo="Cargo em comissão"),
         # A foto não vinha no catálogo porque nada a recusava; agora tamanho e formato recusam.
         CampoDeFormulario(controle="foto", rotulo="Foto"),
+        # SPEC user_admin/022: a mensagem já vem escrita da fonte (`ERRO_SEM_CANETA`,
+        # `ERRO_AUTO_REVOGACAO`) — o catálogo existe aqui só para o controle ser reconhecido e
+        # realçado, não para fornecer frase.
+        CampoDeFormulario(controle="administrador", rotulo="Administrador do Sistema"),
     )
 )
 

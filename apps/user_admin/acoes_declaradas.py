@@ -36,3 +36,21 @@ ACAO_EDITAR_SERVIDOR = instanciar_acao(
     # — `servidor` vem do caminho da rota, `unidade` vem do formulário (SPEC criacao_usuarios/005).
     alcance=LotacaoAtualEDestino(),
 )
+
+ACAO_TORNAR_ADMINISTRADOR = instanciar_acao(
+    slug="user_admin.tornar_administrador",
+    nome="Tornar administrador",
+    nome_curto="Administrador",
+    tooltip="Torna um servidor administrador do sistema — e desfaz.",
+    # Precisa reverter sem argumento (`competencias.E004`): é a rota do modal direto, e não a de
+    # gravação, que recebe o servidor no caminho.
+    url_name="user_admin:modal_administrador",
+    partial="competencias/partials/_item_menu.html",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    # Mesmo regime de criar unidade raiz: dirigir unidade não dá esta caneta, e conceder também
+    # não. Só quem já a tem a passa adiante.
+    estrutural=False,
+    exclusiva_superusuario=True,
+    # Sem alcance: o ato não incide sobre unidade, e o superusuário alcança o organograma inteiro.
+    alcance=None,
+)

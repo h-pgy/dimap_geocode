@@ -207,10 +207,16 @@
           </div>
         </div>
       </div>
+      {# O MESMO campo do cadastro (SPEC user_admin/022 v3): a marca é controle deste formulário e  #}
+      {# é gravada pelo "Salvar alterações", junto com o resto — formulário recusado não concede.   #}
+      {% if pode_administrador %}
+        {% include "user_admin/partials/_campo_administrador.html" with prefixo="edit" %}
+      {% endif %}
 
+      {# O que grava é a última coisa da tela: gravar é o que se faz por último. #}
       <div class="modal-action">
         <label for="modal-editar-perfil" class="btn btn-glass btn-sm">Cancelar</label>
-        <button type="submit" class="btn btn-onsen btn-sm">Salvar alterações</button>
+        <button type="submit" class="btn btn-onsen">Salvar alterações</button>
       </div>
     </form>
 
@@ -227,3 +233,11 @@
   </div>
   <label class="modal-backdrop" for="modal-editar-perfil">Fechar</label>
 </div>
+
+{# Irmão do `.modal`, nunca dentro do `.modal-box`: `backdrop-filter` no box o tornaria containing #}
+{# block do `fixed`, e a placa nasceria ancorada no topo do formulário — quem rolou até o botão   #}
+{# teria de rolar de volta para achá-la. Aqui fora ela é da tela. O `:has()` do tema religa os     #}
+{# dois pelos ids do `prefixo`.                                                                    #}
+{% if pode_administrador %}
+  {% include "user_admin/partials/_avisos_administrador.html" with prefixo="edit" %}
+{% endif %}

@@ -705,6 +705,26 @@
           </div>
           <p class="text-xs text-base-content/60">O SVG entra <strong>inline</strong> e herda <span class="text-code">currentColor</span>: sem <span class="text-code">color</span> declarado no átomo, quem tinge é a pele empilhada (<span class="text-code">.icon-glow</span>, <span class="text-code">.icon-etched</span>) ou o contexto. Arquivo ausente cai no fallback genérico — nunca um buraco no menu.</p>
         </div>
+
+        <!-- Átomo da aura (SPEC user_admin/022) -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">.aura-onsen</p>
+          <div class="card-well p-6 flex flex-wrap items-center gap-8">
+            <div class="flex flex-col items-center gap-3">
+              <div class="aura aura-onsen">
+                <button type="button" class="btn btn-onsen">Ato de peso</button>
+              </div>
+              <p class="text-[10px] font-mono text-base-content/60">acesa</p>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="aura aura-onsen bg-transparent text-transparent">
+                <button type="button" class="btn btn-onsen">Ato de peso</button>
+              </div>
+              <p class="text-[10px] font-mono text-base-content/60">apagada</p>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">A luz que dá a volta na peça, na água da escala do DS: veste qualquer coisa, sem uma linha de pele nova nela. A <span class="text-code">aura</span> do daisyUI fica empilhada no HTML — <span class="text-code">@apply</span> de classe daisyUI derruba a folha inteira.</p>
+        </div>
       </div>
     </section>
 
@@ -712,6 +732,34 @@
     <section class="flex flex-col gap-8">
       <h2 class="section-title px-2">3 · Moléculas</h2>
       <div class="grid lg:grid-cols-2 gap-6">
+
+        <!-- Botão de ato grave (SPEC user_admin/022) -->
+        <div class="glass-panel p-6 flex flex-col gap-4">
+          <p class="text-overline">.botao-aura <span class="font-normal text-base-content/60">— reusável por qualquer ato de peso</span></p>
+          <div class="card-well p-6 flex flex-wrap items-center gap-10">
+            <div class="flex flex-col items-center gap-3">
+              <div class="aura aura-onsen botao-aura">
+                <button type="button" class="btn btn-onsen botao-aura-repouso gap-2">
+                  <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                  Tornar administrador
+                </button>
+                <button type="button" class="btn card-well botao-aura-acionado gap-2">É administrador</button>
+              </div>
+              <p class="text-[10px] font-mono text-base-content/60">repouso</p>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="aura aura-onsen botao-aura botao-aura-ligado">
+                <button type="button" class="btn btn-onsen botao-aura-repouso gap-2">Tornar administrador</button>
+                <button type="button" class="btn card-well botao-aura-acionado gap-2">
+                  <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>
+                  É administrador
+                </button>
+              </div>
+              <p class="text-[10px] font-mono text-base-content/60">acionado · <span class="text-code">.botao-aura-ligado</span></p>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">Duas faces no DOM; quem escolhe é o estado no invólucro — a classe <span class="text-code">.botao-aura-ligado</span> quando vem do servidor, um grupo de rádios/checkbox irmão quando o estado é local (sem alvo a consultar). Nenhuma face é redeclarada: <span class="text-code">.btn-onsen</span> e <span class="text-code">.card-well</span> entram empilhados no HTML.</p>
+        </div>
 
         <!-- Grupo de busca -->
         <div class="glass-panel p-6 flex flex-col gap-4">

@@ -1,0 +1,91 @@
+{% load icones %}
+{# Botão de ato grave (SPEC user_admin/022): alvo do hx-post de `gravar_administrador` — a resposta #}
+{# é este mesmo partial, no estado novo. `.botao-aura-ligado` no invólucro é quem decide a face, e  #}
+{# vem sempre do servidor: em repouso ele não manda nada, ligado é o que está gravado agora. Um     #}
+{# único checkbox revela o aviso do lado que falta confirmar, e some do DOM depois de gravar (a      #}
+{# resposta troca o partial inteiro).                                                                #}
+{% icone_acao acao_tornar_administrador.slug variante_icone_pequena as svg %}
+<div id="administrador-{{ perfil.pk }}" class="card-well{% if realce.administrador %} {{ realce.administrador }}{% endif %} p-5 flex flex-wrap items-center justify-between gap-4">
+  {% if erros %}
+    <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2 basis-full">
+      <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+      <p class="text-[13px] text-base-content/80">{{ erros.0 }}</p>
+    </div>
+  {% endif %}
+  <div>
+    <p class="text-overline">Administrador do Sistema</p>
+    {% if perfil.is_superuser %}
+      <p class="text-sm text-base-content/70 mt-1 max-w-sm">{{ perfil.nome }} é administrador do sistema. Clicar retira.</p>
+    {% else %}
+      <p class="text-sm text-base-content/70 mt-1 max-w-sm">{{ perfil.nome }} exerce só o que o cargo e a unidade a que está vinculado(a) permitem.</p>
+    {% endif %}
+  </div>
+
+  <div class="relative inline-flex">
+    <input type="checkbox" id="administrador-pergunta-{{ perfil.pk }}" class="botao-aura-estado {% if perfil.is_superuser %}botao-aura-pergunta-revogar{% else %}botao-aura-pergunta{% endif %}" />
+
+    <div class="aura aura-onsen botao-aura{% if perfil.is_superuser %} botao-aura-ligado{% endif %}">
+      <label for="administrador-pergunta-{{ perfil.pk }}" class="btn btn-onsen botao-aura-repouso gap-2">
+        <span class="icone-acao icone-acao-pequeno">{{ svg|safe }}</span>
+        Tornar administrador
+      </label>
+      <label for="administrador-pergunta-{{ perfil.pk }}" class="btn card-well botao-aura-acionado gap-2">
+        <span class="icone-acao icone-acao-pequeno">{{ svg|safe }}</span>
+        É administrador
+      </label>
+    </div>
+
+    {% if perfil.is_superuser %}
+      <div class="botao-aura-aviso-revogar" role="dialog">
+        <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+          <div class="flex items-start gap-3">
+            <span class="icon-bubble w-11 h-11 shrink-0 bg-error/15 border-error/30 text-error">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            </span>
+            <div>
+              <h3 class="text-lg font-bold text-madeira-700">Deixar de ser administrador do sistema?</h3>
+              <p class="text-sm text-base-content/80 mt-1 leading-relaxed">
+                <strong>{{ perfil.nome }} {{ perfil.sobrenome }}</strong> deixa de ser administrador do sistema e volta a exercer só o que o
+                cargo e a unidade a que está vinculado(a) permitem. O ato fica registrado no seu nome.
+              </p>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 pt-5">
+            <label for="administrador-pergunta-{{ perfil.pk }}" class="btn btn-glass btn-sm">Cancelar</label>
+            <button type="submit" form="form-administrador-{{ perfil.pk }}" name="tornar" value="0" class="btn btn-onsen btn-sm">Ok, revogar</button>
+          </div>
+        </div>
+        <label class="absolute inset-0 -z-10 cursor-pointer" for="administrador-pergunta-{{ perfil.pk }}"><span class="sr-only">Fechar</span></label>
+      </div>
+    {% else %}
+      <div class="botao-aura-aviso" role="dialog">
+        <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+          <div class="flex items-start gap-3">
+            <span class="icon-bubble w-11 h-11 shrink-0 bg-warning/15 border-warning/30 text-warning">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            </span>
+            <div>
+              <h3 class="text-lg font-bold text-madeira-700">Tornar administrador do sistema?</h3>
+              <p class="text-sm text-base-content/80 mt-1 leading-relaxed">
+                <strong>{{ perfil.nome }} {{ perfil.sobrenome }}</strong> passa a ser administrador do sistema: pratica ações
+                para além da unidade a que está vinculado(a), inclusive ações de alta administração. O ato fica registrado no
+                seu nome.
+              </p>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 pt-5">
+            <label for="administrador-pergunta-{{ perfil.pk }}" class="btn btn-glass btn-sm">Cancelar</label>
+            <button type="submit" form="form-administrador-{{ perfil.pk }}" name="tornar" value="1" class="btn btn-onsen btn-sm">Ok, tornar administrador</button>
+          </div>
+        </div>
+        <label class="absolute inset-0 -z-10 cursor-pointer" for="administrador-pergunta-{{ perfil.pk }}"><span class="sr-only">Fechar</span></label>
+      </div>
+    {% endif %}
+  </div>
+
+  <form id="form-administrador-{{ perfil.pk }}"
+        hx-post="{% url 'user_admin:gravar_administrador' perfil.pk %}"
+        hx-target="#administrador-{{ perfil.pk }}"
+        hx-swap="outerHTML"
+        class="hidden"></form>
+</div>

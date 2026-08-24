@@ -1,0 +1,35 @@
+{% load icones %}
+{# Poço de administrador do sistema (SPEC user_admin/022 v3): o MESMO campo no cadastro e na edição — a     #}
+{# marca é controle do formulário, e quem a grava é o ato que grava o resto. Estado local ao        #}
+{# navegador, num grupo de rádios encadeado (skill componentes-frontend, §7.2) que É o próprio      #}
+{# controle `administrador`: `value` de quem estiver marcado é o que viaja no POST, sem hidden nem  #}
+{# JS. Só entra na tela de quem já é administrador (`pode_administrador`). `prefixo` separa os ids  #}
+{# das duas telas.                                                                                  #}
+{% icone_acao acao_tornar_administrador.slug variante_icone_pequena as svg %}
+<div class="card-well{% if realce.administrador %} {{ realce.administrador }}{% endif %} p-5 flex flex-col gap-4">
+  <p class="text-overline">Administrador do Sistema</p>
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <p class="text-sm text-base-content/70 max-w-md">
+      Como administrador do sistema, o servidor pratica ações para além da unidade a que está vinculado,
+      inclusive ações de alta administração. A marca só vale depois de salvar — formulário recusado
+      não dá caneta a ninguém —, e só quem já é administrador a arma.
+    </p>
+    <div class="relative inline-flex">
+      <input type="radio" name="administrador" id="{{ prefixo }}-administrador-repouso" class="botao-aura-estado" value="0"{% if not valores.administrador %} checked{% endif %} />
+      <input type="radio" name="administrador" id="{{ prefixo }}-administrador-pergunta" class="botao-aura-estado botao-aura-pergunta" value="0" />
+      <input type="radio" name="administrador" id="{{ prefixo }}-administrador-ligado" class="botao-aura-estado botao-aura-estado-ligado" value="1"{% if valores.administrador %} checked{% endif %} />
+      <input type="radio" name="administrador" id="{{ prefixo }}-administrador-pergunta-revogar" class="botao-aura-estado botao-aura-estado-ligado botao-aura-pergunta-revogar" value="1" />
+
+      <div class="aura aura-onsen botao-aura">
+        <label for="{{ prefixo }}-administrador-pergunta" class="btn btn-onsen botao-aura-repouso gap-2">
+          <span class="icone-acao icone-acao-pequeno">{{ svg|safe }}</span>
+          Tornar administrador
+        </label>
+        <label for="{{ prefixo }}-administrador-pergunta-revogar" class="btn card-well botao-aura-acionado gap-2">
+          <span class="icone-acao icone-acao-pequeno">{{ svg|safe }}</span>
+          Será administrador do sistema
+        </label>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC autorizacao/009 — Delegação (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Nenhuma peça nasce nesta SPEC. A aura é o átomo da SPEC user_admin/022, ainda não portado
+       para o tema — enquanto ela não for implementada, ele viaja aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .aura-onsen — átomo, SPEC user_admin/022 */
+      .aura-onsen { @apply text-agua-500 bg-agua-200 duration-3000 rounded-xl; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual. -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <!-- defs da gravação (SPEC user_admin/013) e glifos de cartão (SPEC autorizacao/007) — repetidos
+       aqui só para o mock renderizar sozinho; na aplicação vêm do base.html e dos partials. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-servidores">
+        <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/>
+        <path d="M16 5.5a3.2 3.2 0 0 1 0 5"/><path d="M17.5 14.5a5.5 5.5 0 0 1 3 5.5"/>
+      </g>
+      <g id="glifo-unidade">
+        <path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/>
+      </g>
+      <g id="glifo-certidao">
+        <path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+        <path d="M14 3v5h5"/><path d="M8 13h8"/><path d="M8 17h5"/>
+      </g>
+      <g id="glifo-mais"><path d="M12 5v14"/><path d="M5 12h14"/></g>
+      <g id="glifo-lixeira">
+        <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-10">
+
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC autorizacao/009 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Delegação</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          Duas peças da tela de conceder da SPEC autorizacao/008: o <strong>poço de atribuições</strong>,
+          que muda conforme quem olha, e o <strong>modal</strong>, em três estados. O grosso desta SPEC
+          não tem tela — é o alcance que a concessão passa a carregar. O que se aprova aqui é a face de
+          delegação, o passo de confirmação e o cartão bloqueado.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ TELA MONTADA ============ -->
+    <section class="flex flex-col gap-4">
+      <h2 class="section-title px-2">Tela montada — o poço de atribuições</h2>
+
+      <!-- estado: quem responde pela direção da unidade -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline">Quem dirige a DIMAP-1</p>
+
+        <!-- partial: competencias/partials/_poco_concessoes.html — alvo do swap de conceder e revogar -->
+        <div id="poco-concessoes" class="card-well p-4 flex flex-col gap-3">
+          <div class="flex flex-col gap-1">
+            <p class="text-overline">Atribuições da unidade · 3</p>
+            <p class="text-[13px] text-base-content/70">Quem exerce cada uma. Para acrescentar uma atribuição nova, use <em>Definir atribuições</em>.</p>
+          </div>
+          <div class="flex flex-col gap-3">
+
+            <!-- partial: competencias/partials/_card_concessoes.html -->
+            <!-- estado: oferece · estrutural com um cargo -->
+            <article class="card-atribuicao">
+              <div class="card-atribuicao-cabeca">
+                <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg></span>
+                <div class="flex-1 min-w-0">
+                  <p class="card-atribuicao-nome">Cadastrar servidor</p>
+                  <p class="card-atribuicao-descricao">Cadastra um servidor e entrega a ele a senha de primeiro acesso.</p>
+                </div>
+                <label for="modal-delegacao" class="btn btn-glass btn-sm btn-circle" aria-label="Delegar a um cargo">
+                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+                </label>
+              </div>
+              <div class="card-atribuicao-corpo">
+                <div class="card-well p-2 w-full table-onsen-poco" data-scroll-etched>
+                  <div class="table-onsen-wrap tabela-onsen-simples" data-rolador>
+                    <table class="table table-onsen">
+                      <tbody>
+                        <tr>
+                          <td>Assistente de Gestão de Políticas Públicas</td>
+                          <td class="w-10">
+                            <button type="button" class="lata-concessao" aria-label="Revogar">
+                              <span class="icone-acao icone-acao-pequeno etched etched-deeper"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="scroll-etched scroll-etched-ociosa" data-barra aria-hidden="true">
+                    <div class="scroll-etched-thumb" data-polegar></div>
+                  </div>
+                </div>
+              </div>
+            </article>
+            <!-- /partial -->
+
+            <!-- estado de falta: estrutural sem nenhum cargo designado -->
+            <article class="card-atribuicao">
+              <div class="card-atribuicao-cabeca">
+                <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-unidade"/></svg></span>
+                <div class="flex-1 min-w-0">
+                  <p class="card-atribuicao-nome">Editar unidade</p>
+                  <p class="card-atribuicao-descricao">Altera nome, sigla, tipo e unidade superior de uma unidade.</p>
+                </div>
+                <label for="modal-delegacao" class="btn btn-glass btn-sm btn-circle" aria-label="Delegar a um cargo">
+                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+                </label>
+              </div>
+              <div class="card-atribuicao-corpo">
+                <span class="card-atribuicao-vazio">Nenhum cargo designado ainda.</span>
+              </div>
+            </article>
+
+            <!-- estado: oferece · não estrutural -->
+            <article class="card-atribuicao">
+              <div class="card-atribuicao-cabeca">
+                <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <div class="flex-1 min-w-0">
+                  <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                  <p class="card-atribuicao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+                </div>
+                <label for="modal-comum" class="btn btn-glass btn-sm btn-circle" aria-label="Conceder a um cargo">
+                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+                </label>
+              </div>
+              <div class="card-atribuicao-corpo">
+                <div class="card-well p-2 w-full table-onsen-poco" data-scroll-etched>
+                  <div class="table-onsen-wrap tabela-onsen-simples" data-rolador>
+                    <table class="table table-onsen">
+                      <tbody>
+                        <tr>
+                          <td>CDA-II · Diretor de Divisão</td>
+                          <td class="w-10">
+                            <button type="button" class="lata-concessao" aria-label="Revogar">
+                              <span class="icone-acao icone-acao-pequeno etched etched-deeper"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="scroll-etched scroll-etched-ociosa" data-barra aria-hidden="true">
+                    <div class="scroll-etched-thumb" data-polegar></div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+          </div>
+        </div>
+        <!-- /partial -->
+      </div>
+
+      <!-- estado: quem recebeu a competência por delegação e não dirige nada -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline">Quem recebeu por delegação</p>
+        <div class="card-well p-4 flex flex-col gap-3">
+          <div class="flex flex-col gap-1">
+            <p class="text-overline">Atribuições da unidade · 3</p>
+            <p class="text-[13px] text-base-content/70">Quem exerce cada uma. Para acrescentar uma atribuição nova, use <em>Definir atribuições</em>.</p>
+          </div>
+          <div class="flex flex-col gap-3">
+
+            <!-- estado: bloqueada · estrutural com um cargo — sem o mais e sem a lata -->
+            <article class="card-atribuicao">
+              <div class="card-atribuicao-cabeca">
+                <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg></span>
+                <div class="flex-1 min-w-0">
+                  <p class="card-atribuicao-nome">Cadastrar servidor</p>
+                  <p class="card-atribuicao-descricao">Cadastra um servidor e entrega a ele a senha de primeiro acesso.</p>
+                </div>
+              </div>
+              <div class="card-atribuicao-corpo">
+                <div class="card-well p-2 w-full table-onsen-poco" data-scroll-etched>
+                  <div class="table-onsen-wrap tabela-onsen-simples" data-rolador>
+                    <table class="table table-onsen">
+                      <tbody>
+                        <tr><td>Assistente de Gestão de Políticas Públicas</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="scroll-etched scroll-etched-ociosa" data-barra aria-hidden="true">
+                    <div class="scroll-etched-thumb" data-polegar></div>
+                  </div>
+                </div>
+                <span class="card-atribuicao-vazio">Competência de quem dirige a unidade.</span>
+              </div>
+            </article>
+
+            <!-- estado: bloqueada · estrutural sem cargo — a nota ocupa o lugar do estado de falta -->
+            <article class="card-atribuicao">
+              <div class="card-atribuicao-cabeca">
+                <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-unidade"/></svg></span>
+                <div class="flex-1 min-w-0">
+                  <p class="card-atribuicao-nome">Editar unidade</p>
+                  <p class="card-atribuicao-descricao">Altera nome, sigla, tipo e unidade superior de uma unidade.</p>
+                </div>
+              </div>
+              <div class="card-atribuicao-corpo">
+                <span class="card-atribuicao-vazio">Competência de quem dirige a unidade.</span>
+              </div>
+            </article>
+
+            <!-- estado: oferece · não estrutural, o que ele de fato distribui -->
+            <article class="card-atribuicao">
+              <div class="card-atribuicao-cabeca">
+                <span class="icone-acao icone-acao-grande"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <div class="flex-1 min-w-0">
+                  <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                  <p class="card-atribuicao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+                </div>
+                <label for="modal-comum" class="btn btn-glass btn-sm btn-circle" aria-label="Conceder a um cargo">
+                  <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+                </label>
+              </div>
+              <div class="card-atribuicao-corpo">
+                <div class="card-well p-2 w-full table-onsen-poco" data-scroll-etched>
+                  <div class="table-onsen-wrap tabela-onsen-simples" data-rolador>
+                    <table class="table table-onsen">
+                      <tbody>
+                        <tr>
+                          <td>CDA-II · Diretor de Divisão</td>
+                          <td class="w-10">
+                            <button type="button" class="lata-concessao" aria-label="Revogar">
+                              <span class="icone-acao icone-acao-pequeno etched etched-deeper"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="scroll-etched scroll-etched-ociosa" data-barra aria-hidden="true">
+                    <div class="scroll-etched-thumb" data-polegar></div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="flex flex-col gap-4">
+      <h2 class="section-title px-2">Tela montada — o modal de conceder</h2>
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Abra cada estado</p>
+        <div class="flex flex-wrap gap-3">
+          <label for="modal-comum" class="btn btn-glass btn-sm">1 · Concessão comum <span class="text-base-content/50">— como hoje</span></label>
+          <label for="modal-delegacao" class="btn btn-glass btn-sm">2 · Delegação <span class="text-base-content/50">— competência estrutural</span></label>
+          <label for="modal-confirmando" class="btn btn-glass btn-sm">3 · Confirmando <span class="text-base-content/50">— o corpo é substituído</span></label>
+        </div>
+        <p class="text-sm text-base-content/70">
+          A diferença entre 1 e 2 é decidida por <span class="text-code">acao.estrutural</span>, que já
+          está no banco. O 3 é o que o primeiro clique em <strong>Delegar</strong> devolve — nada foi
+          gravado ainda, e o cargo escolhido volta preenchido.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <!-- estado: concessão comum — a tela de hoje, intocada -->
+  <!-- partial: competencias/partials/_modal_conceder.html — chega por hx-get no poço -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-comum" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+        <form class="flex flex-col gap-5" data-chave-condicional>
+          <div>
+            <p class="text-overline">Conceder competência</p>
+            <p class="text-[18px] font-bold text-rocha-950">Emitir certidão de lançamento</p>
+            <p class="text-[13px] text-base-content/70">DIMAP-1 · Divisão de Avaliação</p>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-2">
+              <span class="text-overline">Natureza do cargo</span>
+              <div class="card-well chave-onsen">
+                <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+                <label class="chave-onsen-opcao">
+                  <input type="radio" name="natureza-1" value="base" class="sr-only" checked />
+                  <span class="chave-onsen-rotulo etched etched-deeper">Cargo base</span>
+                </label>
+                <label class="chave-onsen-opcao">
+                  <input type="radio" name="natureza-1" value="comissao" class="sr-only" />
+                  <span class="chave-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+                </label>
+              </div>
+            </div>
+            <label class="form-field" data-mostra-se="base">
+              <span class="text-overline">Cargo</span>
+              <select name="cargo_base" class="select select-glass w-full" data-select-onsen>
+                <option value="">— selecione —</option>
+                <option>Assistente de Gestão de Políticas Públicas</option>
+                <option>Analista de Planejamento e Desenvolvimento Organizacional</option>
+              </select>
+            </label>
+            <label class="form-field" data-mostra-se="comissao" hidden>
+              <span class="text-overline">Cargo</span>
+              <select name="cargo_comissao" class="select select-glass w-full" data-select-onsen>
+                <option value="">— selecione —</option>
+                <option>CDA-II · Diretor de Divisão</option>
+              </select>
+            </label>
+          </div>
+
+          <p class="text-[13px] text-base-content/70">
+            A concessão vale para <strong>todos</strong> os servidores deste cargo na unidade, e passa a
+            valer no próximo acesso deles.
+          </p>
+
+          <div class="modal-action">
+            <label for="modal-comum" class="btn btn-glass btn-sm">Cancelar</label>
+            <button type="button" class="btn btn-onsen btn-sm">Conceder</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" for="modal-comum">Fechar</label>
+    </div>
+  </div>
+  <!-- /partial -->
+
+  <!-- estado: delegação — mesma estrutura, outra face -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-delegacao" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+        <form class="flex flex-col gap-5" data-chave-condicional>
+          <div>
+            <p class="text-overline">Delegar competência</p>
+            <p class="text-[18px] font-bold text-rocha-950">Cadastrar servidor</p>
+            <p class="text-[13px] text-base-content/70">DIMAP-1 · Divisão de Avaliação</p>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-2">
+              <span class="text-overline">Natureza do cargo</span>
+              <div class="card-well chave-onsen">
+                <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+                <label class="chave-onsen-opcao">
+                  <input type="radio" name="natureza-2" value="base" class="sr-only" checked />
+                  <span class="chave-onsen-rotulo etched etched-deeper">Cargo base</span>
+                </label>
+                <label class="chave-onsen-opcao">
+                  <input type="radio" name="natureza-2" value="comissao" class="sr-only" />
+                  <span class="chave-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+                </label>
+              </div>
+            </div>
+            <label class="form-field" data-mostra-se="base">
+              <span class="text-overline">Cargo</span>
+              <select name="cargo_base" class="select select-glass w-full" data-select-onsen>
+                <option value="">— selecione —</option>
+                <option>Assistente de Gestão de Políticas Públicas</option>
+                <option>Analista de Planejamento e Desenvolvimento Organizacional</option>
+              </select>
+            </label>
+            <label class="form-field" data-mostra-se="comissao" hidden>
+              <span class="text-overline">Cargo</span>
+              <select name="cargo_comissao" class="select select-glass w-full" data-select-onsen>
+                <option value="">— selecione —</option>
+                <option>CDA-II · Diretor de Divisão</option>
+              </select>
+            </label>
+          </div>
+
+          <p class="text-[13px] text-base-content/70">
+            Esta competência é sua por dirigir a unidade. Delegá-la deixa que este cargo a exerça no
+            seu lugar — e vale para <strong>todos</strong> os servidores dele na unidade, a partir do
+            próximo acesso.
+          </p>
+
+          <div class="modal-action">
+            <label for="modal-delegacao" class="btn btn-glass btn-sm">Cancelar</label>
+            <div class="aura aura-onsen">
+              <button type="button" class="btn btn-onsen btn-sm">Delegar</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" for="modal-delegacao">Fechar</label>
+    </div>
+  </div>
+
+  <!-- estado: confirmando — o corpo do modal é substituído, nunca um modal dentro de outro -->
+  <div class="poco-modal">
+    <input type="checkbox" id="modal-confirmando" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+        <form class="flex flex-col gap-5">
+          <div class="flex items-start gap-3">
+            <span class="icon-bubble w-12 h-12 shrink-0 bg-warning/15 border-warning/30 text-warning">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+            </span>
+            <div>
+              <p class="text-overline">Delegar competência</p>
+              <p class="text-[18px] font-bold text-rocha-950">Cadastrar servidor</p>
+              <p class="text-[13px] text-base-content/70">DIMAP-1 · Divisão de Avaliação</p>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-2">
+            <p class="text-overline">Para o cargo</p>
+            <p class="text-[15px] font-medium">Assistente de Gestão de Políticas Públicas</p>
+            <p class="text-[13px] text-base-content/70">Todos os servidores deste cargo na DIMAP-1.</p>
+          </div>
+
+          <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+            <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+            <p class="text-[13px] text-base-content/80">
+              Quem receber vai poder executar esta atividade na <strong>DIMAP-1</strong> e em
+              <strong>todas as unidades subordinadas a ela</strong>, sem dirigir nenhuma. O ato fica
+              registrado no seu nome.
+            </p>
+          </div>
+
+          <div class="modal-action">
+            <label for="modal-confirmando" class="btn btn-glass btn-sm">Cancelar</label>
+            <div class="aura aura-onsen">
+              <button type="button" class="btn btn-onsen btn-sm">Ok, delegar</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" for="modal-confirmando">Fechar</label>
+    </div>
+  </div>
+
+  <!-- Os módulos que a tela de conceder já carrega: sem eles a chave não troca o campo, os selects
+       seguem nativos e a barra gravada dos poços não desenha. -->
+  <script type="module" src="/static/src/js/ui/chave_condicional.js"></script>
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+  <script type="module" src="/static/src/js/ui/scroll_etched.js"></script>
+
+  <script>
+    // Fundo à deriva (SPEC user_admin/007), reproduzido aqui porque o mock não passa pelo Django.
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
+        ultimoFrame = agora;
+        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
+        mapa.setView(
+          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
+          ZOOM,
+          { animate: false },
+        );
+      }
+      requestAnimationFrame(derivar);
+    }
+    requestAnimationFrame(derivar);
+  </script>
+</body>
+</html>

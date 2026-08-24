@@ -20,4 +20,15 @@ urlpatterns = [
     path("servidores/<int:pk>/", views.pagina_perfil, name="pagina_perfil"),
     path("servidores/<int:servidor>/editar/", views.editar_perfil, name="editar_perfil"),
     path("servidores/<int:servidor>/gravar/", views.gravar_edicao, name="gravar_edicao"),
+    # A ação "tornar administrador" (SPEC user_admin/022): a tela da rota direta, a lista de
+    # servidores que ela recarrega, o botão do servidor escolhido e a gravação — que incide sobre o
+    # servidor já existente, vindo do caminho da rota, e não da tela direta ou da dos dois modais.
+    path("servidores/administrador/", views.modal_administrador, name="modal_administrador"),
+    path("servidores/administrador/opcoes/", views.opcoes_administrador, name="opcoes_administrador"),
+    path("servidores/administrador/estado/", views.estado_administrador, name="estado_administrador"),
+    path(
+        "servidores/<int:servidor>/administrador/",
+        views.gravar_administrador,
+        name="gravar_administrador",
+    ),
 ]

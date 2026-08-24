@@ -1071,6 +1071,43 @@ html[data-theme="dimap"] {
     @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)];
   }
 
+  /* ÁTOMO · AURA (SPEC user_admin/022). A `aura` do daisyUI fica empilhada no HTML — `@apply` de
+     classe daisyUI derruba a folha inteira (skill componentes-frontend, §2.1). Aqui vai só a pele:
+     a água da escala do DS e o tempo da volta. */
+  .aura-onsen { @apply text-agua-500 bg-agua-200 duration-3000 rounded-xl; }
+
+  /* MOLÉCULA · BOTÃO DE ATO GRAVE (SPEC user_admin/022). Reusável por qualquer ação de peso do
+     sistema. O controle tem DUAS faces no DOM — quem escolhe é o estado no invólucro. Duas faces,
+     e não uma que troca de classe, porque cada uma manda uma coisa diferente e porque é o que
+     permite ao estado vir tanto do servidor (classe `.botao-aura-ligado` direto no invólucro)
+     quanto de um controle local (grupo de rádios irmão), sem o CSS saber a diferença. Nenhuma face
+     é redeclarada aqui: `.btn-onsen` e `.card-well` entram empilhados no HTML, intocados. */
+  .botao-aura > .botao-aura-acionado { @apply hidden; }
+  .botao-aura-ligado > .botao-aura-repouso,
+  .botao-aura-estado-ligado:checked ~ .botao-aura > .botao-aura-repouso { @apply hidden; }
+  .botao-aura-ligado > .botao-aura-acionado,
+  .botao-aura-estado-ligado:checked ~ .botao-aura > .botao-aura-acionado { @apply inline-flex; }
+  /* Acionado é estado consumado: a aura para de chamar quem já entrou. */
+  .botao-aura-ligado,
+  .botao-aura-estado-ligado:checked ~ .botao-aura { @apply bg-transparent text-transparent; }
+  /* A face afundada é o .card-well em corpo de botão: o gradiente sai, o poço fica. */
+  .botao-aura-acionado { @apply bg-none font-bold text-base-content/80; }
+  .botao-aura-acionado:hover { @apply bg-white/45; }
+
+  /* O estado (rádio ou checkbox, conforme o contexto) fica fora de vista — só ele decide,
+     nenhum JS de estado visual (§7.2). O aviso é overlay próprio, e não o `.modal` do daisyUI: sem
+     `.modal-open` nem `.modal-toggle` irmão, o reset de GPU do tema apagaria o `backdrop-filter`
+     dele. Mesmo material — a placa é o `.glass-panel-thick`, composto no HTML. */
+  .botao-aura-estado { @apply hidden; }
+  .botao-aura-aviso,
+  .botao-aura-aviso-revogar { @apply fixed inset-0 z-[1001] hidden items-center justify-center p-4 backdrop-blur-[16px]; }
+  /* `:has()` no documento, e não o combinador de irmão: ancestral com `backdrop-filter` — o
+     `.glass-panel` do formulário, o `.modal-box` do modal — vira containing block de `fixed`, e a
+     placa presa lá dentro nasce ancorada no topo do conteúdo, fora da vista de quem rolou até o
+     botão. O aviso mora, então, fora desses ramos, e é daqui que o estado do controle o alcança. */
+  :root:has(.botao-aura-pergunta:checked) .botao-aura-aviso { @apply flex; }
+  :root:has(.botao-aura-pergunta-revogar:checked) .botao-aura-aviso-revogar { @apply flex; }
+
   /* Item de menu (SPEC autorizacao/006): a forma compacta. */
   .item-menu {
     @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-(--radius-field)

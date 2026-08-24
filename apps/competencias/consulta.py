@@ -42,7 +42,7 @@ def montar_avaliacao(perfil: Perfil) -> AvaliacaoCompetenciaInput:
         perfil=PerfilCompetencia(em_exercicio=perfil.em_exercicio, canetas=canetas),
         concessoes=concessoes,
         slugs_estruturais=_slugs_estruturais(),
-        slugs_exclusivos=_slugs_exclusivos(),
+        slugs_exclusivos=slugs_exclusivos(),
     )
 
 
@@ -120,7 +120,10 @@ def _slugs_estruturais() -> frozenset[str]:
     )
 
 
-def _slugs_exclusivos() -> frozenset[str]:
+def slugs_exclusivos() -> frozenset[str]:
+    """Público (SPEC user_admin/022): o MESMO conjunto que o avaliador subtrai é o que recorta o
+    catálogo de atribuir — um segundo lugar computando "quais são as exclusivas" seria a
+    divergência esperando para acontecer."""
     return frozenset(
         implementada.acao.slug
         for implementada in REGISTRO.todas()
