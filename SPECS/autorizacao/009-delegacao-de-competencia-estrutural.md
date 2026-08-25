@@ -43,9 +43,7 @@ titularidade nem as demais competências da cadeira.
       do ato e fica no histórico; delegação futura que ainda não iniciou é apagada.
 - [ ] **Ato registrado com operação própria**: delegar e revogar registram execuções com operações
       distinguíveis (`delegar` e `revogar`), com o **RF do delegado** e o slug da ação como alvo.
-- [ ] O design foi aprovado no **mock**: o cartão de competência estrutural com a lista de delegados
-      nominais, o modal de delegar com a `.aura-onsen`, o select de servidores do ramo e o cartão
-      bloqueado para quem não dirige a unidade.
+- [ ] O design foi aprovado no **mock**: o cartão de competência estrutural com o badge/toast de **"Estrutural"** em cor `success` (`badge badge-success badge-soft badge-sm`) ao lado do nome da ação, a lista de delegados nominais com o badge/toast de **"Delegada"** em cor `info` (`badge badge-info badge-soft badge-sm`) na linha do servidor, o modal de delegar com a `.aura-onsen`, o select de servidores do ramo e o cartão bloqueado para quem não dirige a unidade.
 
 ## 3 · Domínio
 A competência estrutural decorre da direção da unidade, e delegá-la é transferir o exercício de um ato
@@ -397,11 +395,27 @@ def _exigir_direcao_para_delegar(unidade: Unidade, perfil: Perfil) -> None:
 
 **`templates/competencias/partials/_card_concessoes.html`** — cartão distinguindo ação estrutural (delegados nominais) de comum (cargos).
 ```django
+<div class="flex-1 min-w-0">
+  <div class="flex items-center gap-2">
+    <p class="card-atribuicao-nome">{{ item.acao.nome }}</p>
+    {% if item.acao.estrutural %}
+      <span class="badge badge-success badge-soft badge-sm font-medium">Estrutural</span>
+    {% endif %}
+  </div>
+  <p class="card-atribuicao-descricao">{{ item.acao.tooltip }}</p>
+</div>
+...
 {% if item.acao.estrutural %}
   {% if item.delegacoes %}
     {% for delegacao in item.delegacoes %}
       <tr>
-        <td>{{ delegacao.delegado.nome_completo }} <span class="text-xs text-base-content/60">({{ delegacao.delegado.unidade.sigla }})</span></td>
+        <td>
+          <div class="flex items-center gap-2">
+            <span>{{ delegacao.delegado.nome_completo }}</span>
+            <span class="text-xs text-base-content/60">({{ delegacao.delegado.unidade.sigla }})</span>
+            <span class="badge badge-info badge-soft badge-sm font-medium">Delegada</span>
+          </div>
+        </td>
         <td class="w-10">
           {% if pode_delegar %}
             <button type="button" class="lata-concessao" hx-post="{% url 'competencias:revogar_delegacao' %}"
