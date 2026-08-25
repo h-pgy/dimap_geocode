@@ -1,6 +1,22 @@
-from pydantic import BaseModel, ConfigDict
+from datetime import date
 
+from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
+
+from apps.user_admin.schemas import DataOpcional, conferir_fim
 from services.domain.autorizacao import Acao
+
+
+class NovaDelegacao(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    delegado: int
+    data_inicio: date
+    data_fim: DataOpcional = None
+
+    @field_validator("data_fim")
+    @classmethod
+    def _fim_nao_antecede_inicio(cls, fim: date | None, info: ValidationInfo) -> date | None:
+        return conferir_fim(fim, info.data.get("data_inicio"), "Fim da delegação não pode anteceder o início.")
 
 
 class AcaoImplementada(BaseModel):

@@ -8,6 +8,7 @@ from services.domain.autorizacao.models import (
     AvaliacaoCompetenciaOutput,
     Caneta,
     ConcessaoVigente,
+    DelegacaoVigente,
 )
 
 
@@ -16,26 +17,37 @@ class AvaliadorCompetencia:
         # Pré-condição, não terceira fonte: competência é do cargo exercido.
         if not entrada.perfil.em_exercicio:
             return AvaliacaoCompetenciaOutput(slugs_liberados=frozenset())
+
+        concessoes_batidas = self._concessoes_que_batem(entrada)
+        delegacoes_batidas = self._delegacoes_que_batem(entrada)
+
+        slugs_concedidos = frozenset(c.acao_slug for c in concessoes_batidas)
+        slugs_delegados = frozenset(d.acao_slug for d in delegacoes_batidas)
+        slugs_direcao = self._por_direcao(entrada)
+
         return AvaliacaoCompetenciaOutput(
             # Subtrair no fim, e não filtrar cada fonte: quem chega aqui NUNCA é superusuário — o
             # `PermissionsMixin.has_perm` responde True antes de consultar backend algum —, então
             # tirar o slug do conjunto é exatamente dizer "só ele exerce" (SPEC user_admin/020).
-            slugs_liberados=(self._por_concessao(entrada) | self._por_direcao(entrada))
+            slugs_liberados=(slugs_concedidos | slugs_delegados | slugs_direcao)
             - entrada.slugs_exclusivos,
+            unidades_delegadas=frozenset(d.unidade_id for d in delegacoes_batidas),
         )
 
-    def _por_concessao(self, entrada: AvaliacaoCompetenciaInput) -> frozenset[str]:
-        """O cruzamento das duas listas: as canetas do perfil (uma, ou duas quando ele cobre
-        alguém) contra as concessões das unidades dessas canetas.
-
-        A estrutural entra por aqui como qualquer outra — o que a distingue é já vir liberada a
-        quem dirige, não ser exclusiva dele."""
-        return frozenset(
-            concessao.acao_slug
-            for concessao in entrada.concessoes
-            if concessao.acao_ativa
-            and any(self._caneta_bate(caneta, concessao) for caneta in entrada.perfil.canetas)
+    def _concessoes_que_batem(
+        self, entrada: AvaliacaoCompetenciaInput
+    ) -> tuple[ConcessaoVigente, ...]:
+        return tuple(
+            c
+            for c in entrada.concessoes
+            if c.acao_ativa
+            and any(self._caneta_bate(caneta, c) for caneta in entrada.perfil.canetas)
         )
+
+    def _delegacoes_que_batem(
+        self, entrada: AvaliacaoCompetenciaInput
+    ) -> tuple[DelegacaoVigente, ...]:
+        return tuple(d for d in entrada.delegacoes if d.acao_ativa)
 
     def _por_direcao(self, entrada: AvaliacaoCompetenciaInput) -> frozenset[str]:
         """O atalho de quem responde pela direção: `dirige_a_unidade` é o campo que só a caneta

@@ -20,7 +20,7 @@ from django.utils import timezone
 
 import pytest
 
-from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, ExecucaoAcao
+from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, Delegacao, ExecucaoAcao
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.models import CargoBase, CargoComissao, Perfil, TipoImpedimento
@@ -564,3 +564,605 @@ def test_menu_administrador_mostra_a_acao_so_para_quem_pode(client: Client) -> N
 
     assert ACAO_CONCEDER.acao.slug in {item.slug for item in resolvido_dirigente.itens}
     assert ACAO_CONCEDER.acao.slug not in {item.slug for item in resolvido_sem_direcao.itens}
+
+
+def _delegar(
+    atribuicao: AtribuicaoUnidade,
+    delegante: Perfil,
+    delegado: Perfil,
+    **overrides: object,
+) -> Delegacao:
+    from apps.competencias.models.delegacao import Delegacao
+
+    dados: dict[str, object] = {
+        "acao": atribuicao.acao,
+        "unidade": atribuicao.unidade,
+        "delegante": delegante,
+        "delegado": delegado,
+        "data_inicio": timezone.localdate(),
+        "data_fim": None,
+    }
+    dados.update(overrides)
+    return Delegacao.objects.create(**dados)
+
+
+# ---------------------------------------------------------------------------
+# SPEC autorizacao/009 — Delegação nominal de competência estrutural: Comportamento
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_delegacao_nominal_libera_acao_ao_servidor() -> None:
+    unidade = _unidade("DEL-NOM-UNIDADE")
+    titular = _dirigente(unidade, "910400", "Titular Delegante")
+    delegado = _perfil(unidade, "910401", "Servidor Delegado")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+
+    assert not delegado.has_perm(acao.slug)
+
+    _delegar(atribuicao, delegante=titular, delegado=delegado)
+
+    fresco = Perfil.objects.get(pk=delegado.pk)
+    assert fresco.has_perm(acao.slug)
+
+
+@banco
+@pytest.mark.django_db
+def test_delegacao_carrega_alcance_da_unidade_delegante() -> None:
+    from apps.competencias.consulta import alcance_do_perfil
+
+    raiz = _unidade("DEL-ALC-RAIZ")
+    meio = _unidade("DEL-ALC-MEIO", pai=raiz)
+    baixo = _unidade("DEL-ALC-BAIXO", pai=meio)
+    irmao = _unidade("DEL-ALC-IRMAO", pai=raiz)
+
+    titular_meio = _dirigente(meio, "910410", "Dirigente Meio")
+    delegado = _perfil(baixo, "910411", "Delegado Baixo")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(meio, acao)
+
+    assert alcance_do_perfil(delegado) == frozenset()
+
+    _delegar(atribuicao, delegante=titular_meio, delegado=delegado)
+
+    alcance = alcance_do_perfil(delegado)
+    assert meio.pk in alcance
+    assert baixo.pk in alcance
+    assert raiz.pk not in alcance
+    assert irmao.pk not in alcance
+
+
+@banco
+@pytest.mark.django_db
+def test_delegado_pratica_ato_estrutural_no_ramo(client: Client) -> None:
+    raiz = _unidade("DEL-PRAT-RAIZ")
+    meio = _unidade("DEL-PRAT-MEIO", pai=raiz)
+    baixo = _unidade("DEL-PRAT-BAIXO", pai=meio)
+
+    titular = _dirigente(meio, "910420", "Dirigente Meio Pratica")
+    delegado = _perfil(baixo, "910421", "Delegado Pratica")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(meio, acao)
+    acao_a_atribuir = _acao("competencias.acao_praticada", estrutural=False)
+
+    _delegar(atribuicao, delegante=titular, delegado=delegado)
+
+    client.force_login(delegado)
+    resposta = client.post(
+        reverse("competencias:atribuir"),
+        {"unidade": str(baixo.pk), "acao": acao_a_atribuir.slug},
+    )
+
+    assert resposta.status_code == 200
+    assert AtribuicaoUnidade.objects.filter(unidade=baixo, acao=acao_a_atribuir).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_delegado_nao_herda_outras_competencias_nem_direcao() -> None:
+    from apps.competencias.consulta import dirige, unidades_dirigidas
+
+    unidade = _unidade("DEL-ISOL-UNIDADE")
+    titular = _dirigente(unidade, "910430", "Dirigente Titular Isol")
+    delegado = _perfil(unidade, "910431", "Delegado Isol")
+    acao_delegada = _acao("competencias.definir_atribuicao", estrutural=True)
+    acao_nao_delegada = _acao("competencias.conceder", estrutural=True)
+    atribuicao = _atribuir(unidade, acao_delegada)
+    _atribuir(unidade, acao_nao_delegada)
+
+    _delegar(atribuicao, delegante=titular, delegado=delegado)
+
+    fresco = Perfil.objects.get(pk=delegado.pk)
+    assert fresco.has_perm(acao_delegada.slug)
+    assert not fresco.has_perm(acao_nao_delegada.slug)
+    assert not dirige(fresco, unidade)
+    assert unidade.pk not in unidades_dirigidas(fresco)
+
+
+@banco
+@pytest.mark.django_db
+def test_delegado_pode_ser_de_unidade_subordinada(client: Client) -> None:
+    from apps.competencias.models.delegacao import Delegacao
+
+    raiz = _unidade("DEL-SUB-RAIZ")
+    sub = _unidade("DEL-SUB-SUBORDINADA", pai=raiz)
+
+    titular_raiz = _dirigente(raiz, "910440", "Dirigente Raiz")
+    delegado_sub = _perfil(sub, "910441", "Servidor Subordinada")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(raiz, acao)
+
+    client.force_login(titular_raiz)
+    hoje = timezone.localdate()
+    resposta = client.post(
+        reverse("competencias:delegar_servidor"),
+        {
+            "unidade": str(raiz.pk),
+            "atribuicao": str(atribuicao.pk),
+            "delegado": str(delegado_sub.pk),
+            "data_inicio": hoje.isoformat(),
+        },
+    )
+
+    assert resposta.status_code == 200
+    assert Delegacao.objects.filter(
+        unidade=raiz,
+        acao=acao,
+        delegante=titular_raiz,
+        delegado=delegado_sub,
+    ).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_candidato_fora_do_alcance_e_recusado(client: Client) -> None:
+    from apps.competencias.models.delegacao import Delegacao
+
+    ramo_a = _unidade("DEL-FORA-A")
+    ramo_b = _unidade("DEL-FORA-B")
+
+    titular_a = _dirigente(ramo_a, "910450", "Dirigente Ramo A")
+    servidor_b = _perfil(ramo_b, "910451", "Servidor Ramo B")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(ramo_a, acao)
+
+    client.force_login(titular_a)
+    hoje = timezone.localdate()
+    resposta = client.post(
+        reverse("competencias:delegar_servidor"),
+        {
+            "unidade": str(ramo_a.pk),
+            "atribuicao": str(atribuicao.pk),
+            "delegado": str(servidor_b.pk),
+            "data_inicio": hoje.isoformat(),
+        },
+    )
+
+    assert resposta.status_code in (200, 422)
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+    assert soup.find(class_="erro-formulario") is not None or "delegado" in resposta.content.decode()
+    assert not Delegacao.objects.filter(delegado=servidor_b).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_delegacao_com_periodo_futuro_nao_libera_hoje() -> None:
+    from apps.competencias.consulta import alcance_do_perfil
+
+    unidade = _unidade("DEL-FUT-UNIDADE")
+    titular = _dirigente(unidade, "910460", "Dirigente Futuro")
+    delegado = _perfil(unidade, "910461", "Delegado Futuro")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+
+    hoje = timezone.localdate()
+    _delegar(
+        atribuicao,
+        delegante=titular,
+        delegado=delegado,
+        data_inicio=hoje + timedelta(days=5),
+    )
+
+    fresco = Perfil.objects.get(pk=delegado.pk)
+    assert not fresco.has_perm(acao.slug)
+    assert unidade.pk not in alcance_do_perfil(fresco)
+
+
+@banco
+@pytest.mark.django_db
+def test_revogar_delegacao_encerra_vigencia_ou_apaga(client: Client) -> None:
+    from apps.competencias.models.delegacao import Delegacao
+
+    unidade = _unidade("DEL-REV-UNIDADE")
+    titular = _dirigente(unidade, "910470", "Dirigente Revogar")
+    delegado1 = _perfil(unidade, "910471", "Delegado 1")
+    delegado2 = _perfil(unidade, "910472", "Delegado 2")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+
+    hoje = timezone.localdate()
+    del1 = _delegar(
+        atribuicao,
+        delegante=titular,
+        delegado=delegado1,
+        data_inicio=hoje - timedelta(days=2),
+    )
+    del2 = _delegar(
+        atribuicao,
+        delegante=titular,
+        delegado=delegado2,
+        data_inicio=hoje + timedelta(days=2),
+    )
+
+    client.force_login(titular)
+
+    resp1 = client.post(
+        reverse("competencias:revogar_delegacao"),
+        {"unidade": str(unidade.pk), "delegacao": str(del1.pk)},
+    )
+    assert resp1.status_code == 200
+    del1.refresh_from_db()
+    assert del1.data_fim == hoje
+
+    resp2 = client.post(
+        reverse("competencias:revogar_delegacao"),
+        {"unidade": str(unidade.pk), "delegacao": str(del2.pk)},
+    )
+    assert resp2.status_code == 200
+    assert not Delegacao.objects.filter(pk=del2.pk).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_substituto_do_titular_delega_durante_impedimento(client: Client) -> None:
+    from apps.competencias.models.delegacao import Delegacao
+
+    unidade = _unidade("DEL-SUBST-UNIDADE")
+    titular = _dirigente(unidade, "910480", "Titular Impedido")
+    substituto = _perfil(unidade, "910481", "Substituto do Titular")
+    servidor = _perfil(unidade, "910482", "Servidor Designado")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+
+    _cobrir(substituto, titular)
+
+    client.force_login(substituto)
+    hoje = timezone.localdate()
+    resposta = client.post(
+        reverse("competencias:delegar_servidor"),
+        {
+            "unidade": str(unidade.pk),
+            "atribuicao": str(atribuicao.pk),
+            "delegado": str(servidor.pk),
+            "data_inicio": hoje.isoformat(),
+        },
+    )
+
+    assert resposta.status_code == 200
+    assert Delegacao.objects.filter(
+        unidade=unidade,
+        acao=acao,
+        delegante=substituto,
+        delegado=servidor,
+    ).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_delegacao_registra_operacoes_distintas(client: Client) -> None:
+    from apps.competencias.models.delegacao import Delegacao
+
+    unidade = _unidade("DEL-REG-UNIDADE")
+    titular = _dirigente(unidade, "910490", "Dirigente Registro")
+    delegado = _perfil(unidade, "910491", "Delegado Registro")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+
+    client.force_login(titular)
+    hoje = timezone.localdate()
+
+    resp_delegar = client.post(
+        reverse("competencias:delegar_servidor"),
+        {
+            "unidade": str(unidade.pk),
+            "atribuicao": str(atribuicao.pk),
+            "delegado": str(delegado.pk),
+            "data_inicio": hoje.isoformat(),
+        },
+    )
+    assert resp_delegar.status_code == 200
+
+    del_criada = Delegacao.objects.get(
+        unidade=unidade, acao=acao, delegado=delegado
+    )
+
+    resp_revogar = client.post(
+        reverse("competencias:revogar_delegacao"),
+        {"unidade": str(unidade.pk), "delegacao": str(del_criada.pk)},
+    )
+    assert resp_revogar.status_code == 200
+
+    registros = {
+        execucao.operacao: execucao
+        for execucao in ExecucaoAcao.objects.filter(
+            autorizado=True, perfil_id=titular.pk, alvo_tipo="acao_servidor"
+        )
+    }
+    assert "delegar" in registros
+    assert "revogar" in registros
+
+    assert registros["delegar"].alvo_identificador == f"{acao.slug}:{delegado.rf}"
+    assert registros["revogar"].alvo_identificador == f"{acao.slug}:{delegado.rf}"
+
+
+# ---------------------------------------------------------------------------
+# SPEC autorizacao/009 — Delegação nominal de competência estrutural: Segurança da ação
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_anonimo_vai_ao_login_sem_registrar(client: Client) -> None:
+    unidade = _unidade("DEL-ANON-UNIDADE")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+
+    resp_delegar = client.post(
+        reverse("competencias:delegar_servidor"),
+        {"unidade": str(unidade.pk), "atribuicao": str(atribuicao.pk)},
+    )
+    assert resp_delegar.status_code == 302
+    assert "/login" in resp_delegar["Location"]
+
+    resp_revogar = client.post(
+        reverse("competencias:revogar_delegacao"),
+        {"unidade": str(unidade.pk), "delegacao": "1"},
+    )
+    assert resp_revogar.status_code == 302
+    assert "/login" in resp_revogar["Location"]
+
+    assert ExecucaoAcao.objects.count() == 0
+
+
+@banco
+@pytest.mark.django_db
+def test_sem_competencia_recebe_403_registrado(client: Client) -> None:
+    unidade = _unidade("DEL-SEM-COMP-UNIDADE")
+    sem_direcao = _perfil(unidade, "910500", "Sem Direcao")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+
+    client.force_login(sem_direcao)
+    resposta = client.post(
+        reverse("competencias:delegar_servidor"),
+        {
+            "unidade": str(unidade.pk),
+            "atribuicao": str(atribuicao.pk),
+            "delegado": str(sem_direcao.pk),
+            "data_inicio": timezone.localdate().isoformat(),
+        },
+    )
+
+    assert resposta.status_code == 403
+    assert ExecucaoAcao.objects.filter(
+        autorizado=False, perfil_id=sem_direcao.pk
+    ).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_delegado_nao_re_delega_estrutural(client: Client) -> None:
+    unidade = _unidade("DEL-RE-DEL-UNIDADE")
+    titular = _dirigente(unidade, "910510", "Titular ReDel")
+    delegado = _perfil(unidade, "910511", "Delegado ReDel")
+    terceiro = _perfil(unidade, "910512", "Terceiro ReDel")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+
+    _delegar(atribuicao, delegante=titular, delegado=delegado)
+
+    client.force_login(delegado)
+    resposta = client.post(
+        reverse("competencias:delegar_servidor"),
+        {
+            "unidade": str(unidade.pk),
+            "atribuicao": str(atribuicao.pk),
+            "delegado": str(terceiro.pk),
+            "data_inicio": timezone.localdate().isoformat(),
+        },
+    )
+
+    assert resposta.status_code == 403
+    assert ExecucaoAcao.objects.filter(
+        autorizado=False, perfil_id=delegado.pk
+    ).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_delegado_nao_revoga_delegacao_de_outrem(client: Client) -> None:
+    unidade = _unidade("DEL-REV-OUTREM-UNID")
+    titular = _dirigente(unidade, "910520", "Titular RevOutrem")
+    delegado1 = _perfil(unidade, "910521", "Delegado 1 RevOutrem")
+    delegado2 = _perfil(unidade, "910522", "Delegado 2 RevOutrem")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+
+    _delegar(atribuicao, delegante=titular, delegado=delegado1)
+    del2 = _delegar(atribuicao, delegante=titular, delegado=delegado2)
+
+    client.force_login(delegado1)
+    resposta = client.post(
+        reverse("competencias:revogar_delegacao"),
+        {"unidade": str(unidade.pk), "delegacao": str(del2.pk)},
+    )
+
+    assert resposta.status_code == 403
+    assert ExecucaoAcao.objects.filter(
+        autorizado=False, perfil_id=delegado1.pk
+    ).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_delegado_fora_do_exercicio_nao_exerce(client: Client) -> None:
+    unidade = _unidade("DEL-EXERC-UNIDADE")
+    titular = _dirigente(unidade, "910530", "Titular Exerc")
+    delegado_impedido = _perfil(unidade, "910531", "Delegado Imp")
+    delegado_exonerado = _perfil(unidade, "910532", "Delegado Exon", is_active=False)
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao = _atribuir(unidade, acao)
+    acao_teste = _acao("competencias.acao_teste_exerc", estrutural=False)
+
+    _delegar(atribuicao, delegante=titular, delegado=delegado_impedido)
+    _delegar(atribuicao, delegante=titular, delegado=delegado_exonerado)
+
+    tipo_imp, _ = TipoImpedimento.objects.get_or_create(nome="Licenca Delegado")
+    registrar_impedimento(
+        delegado_impedido,
+        NovoImpedimento(
+            tipo=tipo_imp.pk,
+            data_inicio=timezone.localdate() - timedelta(days=1),
+            data_fim=None,
+        ),
+    )
+
+    client.force_login(delegado_impedido)
+    resp_imp = client.post(
+        reverse("competencias:atribuir"),
+        {"unidade": str(unidade.pk), "acao": acao_teste.slug},
+    )
+    assert resp_imp.status_code == 403
+    assert ExecucaoAcao.objects.filter(
+        autorizado=False, perfil_id=delegado_impedido.pk
+    ).exists()
+
+    client.force_login(delegado_exonerado)
+    resp_exon = client.post(
+        reverse("competencias:atribuir"),
+        {"unidade": str(unidade.pk), "acao": acao_teste.slug},
+    )
+    assert resp_exon.status_code == 302
+    assert "/login" in resp_exon["Location"]
+
+
+@banco
+@pytest.mark.django_db
+def test_delegado_nao_alcanca_unidade_superior(client: Client) -> None:
+    raiz = _unidade("DEL-SUP-RAIZ")
+    filha = _unidade("DEL-SUP-FILHA", pai=raiz)
+
+    titular_filha = _dirigente(filha, "910540", "Titular Filha")
+    delegado = _perfil(filha, "910541", "Delegado Filha")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao_filha = _atribuir(filha, acao)
+    acao_teste = _acao("competencias.acao_teste_sup", estrutural=False)
+
+    _delegar(atribuicao_filha, delegante=titular_filha, delegado=delegado)
+
+    client.force_login(delegado)
+    resposta = client.post(
+        reverse("competencias:atribuir"),
+        {"unidade": str(raiz.pk), "acao": acao_teste.slug},
+    )
+
+    assert resposta.status_code == 403
+    assert ExecucaoAcao.objects.filter(
+        autorizado=False, perfil_id=delegado.pk
+    ).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_delegado_nao_alcanca_ramo_irmao(client: Client) -> None:
+    raiz = _unidade("DEL-IRM-RAIZ")
+    filha1 = _unidade("DEL-IRM-FILHA1", pai=raiz)
+    filha2 = _unidade("DEL-IRM-FILHA2", pai=raiz)
+
+    titular_filha1 = _dirigente(filha1, "910550", "Titular Filha 1")
+    delegado = _perfil(filha1, "910551", "Delegado Filha 1")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True)
+    atribuicao1 = _atribuir(filha1, acao)
+    acao_teste = _acao("competencias.acao_teste_irm", estrutural=False)
+
+    _delegar(atribuicao1, delegante=titular_filha1, delegado=delegado)
+
+    client.force_login(delegado)
+    resposta = client.post(
+        reverse("competencias:atribuir"),
+        {"unidade": str(filha2.pk), "acao": acao_teste.slug},
+    )
+
+    assert resposta.status_code == 403
+    assert ExecucaoAcao.objects.filter(
+        autorizado=False, perfil_id=delegado.pk
+    ).exists()
+
+
+@banco
+@pytest.mark.django_db
+def test_acao_inativa_nao_libera_delegado(client: Client) -> None:
+    unidade = _unidade("DEL-INAT-UNIDADE")
+    titular = _dirigente(unidade, "910560", "Titular Inativa")
+    delegado = _perfil(unidade, "910561", "Delegado Inativa")
+    acao = _acao("competencias.definir_atribuicao", estrutural=True, ativa=False)
+    atribuicao = _atribuir(unidade, acao)
+    acao_teste = _acao("competencias.acao_teste_inat", estrutural=False)
+
+    _delegar(atribuicao, delegante=titular, delegado=delegado)
+
+    fresco = Perfil.objects.get(pk=delegado.pk)
+    assert not fresco.has_perm(acao.slug)
+
+    client.force_login(delegado)
+    resposta = client.post(
+        reverse("competencias:atribuir"),
+        {"unidade": str(unidade.pk), "acao": acao_teste.slug},
+    )
+    assert resposta.status_code == 403
+
+
+@banco
+@pytest.mark.django_db
+def test_cartao_estrutural_bloqueado_para_quem_nao_dirige(client: Client) -> None:
+    unidade = _unidade("DEL-CARD-UNIDADE")
+    titular = _dirigente(unidade, "910570", "Titular Card")
+    servidor_comum = _perfil(unidade, "910571", "Servidor Comum Card")
+    acao_estrutural = _acao("competencias.definir_atribuicao", estrutural=True)
+    acao_conceder = _acao("competencias.conceder", estrutural=True)
+    atribuicao = _atribuir(unidade, acao_estrutural)
+    atr_conceder = _atribuir(unidade, acao_conceder)
+
+    _delegar(atribuicao, delegante=titular, delegado=servidor_comum)
+    _delegar(atr_conceder, delegante=titular, delegado=servidor_comum)
+
+    client.force_login(servidor_comum)
+    resposta = client.get(
+        reverse("competencias:painel_concessoes"),
+        {"unidade": str(unidade.pk)},
+    )
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    assert soup.find(string=lambda t: bool(t) and "Estrutural" in t) is not None
+
+    assert soup.find(class_="lata-concessao") is None
+    assert soup.find(class_="btn-delegar") is None or "modal-delegar" not in str(soup)
+
+
+@banco
+@pytest.mark.django_db
+def test_escrita_so_por_post(client: Client) -> None:
+    unidade = _unidade("DEL-POST-UNIDADE")
+    titular = _dirigente(unidade, "910580", "Titular Post")
+
+    client.force_login(titular)
+
+    resp_delegar = client.get(reverse("competencias:delegar_servidor"))
+    assert resp_delegar.status_code == 405
+
+    resp_revogar = client.get(reverse("competencias:revogar_delegacao"))
+    assert resp_revogar.status_code == 405
+

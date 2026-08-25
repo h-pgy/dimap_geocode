@@ -40,6 +40,17 @@ class ConcessaoVigente(BaseModel):
     cargo_comissao_id: int | None = None
 
 
+class DelegacaoVigente(BaseModel):
+    """Uma competência estrutural delegada nominalmente a um servidor, com o ramo de onde parte o alcance."""
+
+    model_config = ConfigDict(frozen=True)
+
+    acao_slug: str
+    acao_ativa: bool
+    unidade_id: int
+    delegado_id: int
+
+
 class AvaliacaoCompetenciaInput(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -50,9 +61,11 @@ class AvaliacaoCompetenciaInput(BaseModel):
     # SPEC user_admin/020: slugs, e não o contrato inteiro — o avaliador decide sobre conjuntos, e
     # é o que o mantém sem saber o que é uma `Acao`.
     slugs_exclusivos: frozenset[str] = frozenset()
+    delegacoes: tuple[DelegacaoVigente, ...] = ()
 
 
 class AvaliacaoCompetenciaOutput(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     slugs_liberados: frozenset[str]
+    unidades_delegadas: frozenset[int] = frozenset()

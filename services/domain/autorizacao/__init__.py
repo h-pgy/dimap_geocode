@@ -17,6 +17,7 @@ from .models import (
     AvaliacaoCompetenciaOutput,
     Caneta,
     ConcessaoVigente,
+    DelegacaoVigente,
     PerfilCompetencia,
 )
 
@@ -32,6 +33,7 @@ __all__ = [
     "AvaliadorCompetencia",
     "Caneta",
     "ConcessaoVigente",
+    "DelegacaoVigente",
     "LotacaoAtualEDestino",
     "LotacaoDoServidor",
     "PerfilCompetencia",

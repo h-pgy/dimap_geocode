@@ -159,3 +159,7 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
     @property
     def cor_unidade(self) -> str:
         return self.unidade.cor
+
+    @property
+    def nome_completo(self) -> str:
+        return f"{self.nome} {self.sobrenome}"

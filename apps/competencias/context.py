@@ -3,23 +3,26 @@
 já exerce — a segunda troca só o que está no poço e como cada atribuição se resume. Orquestração —
 nenhuma regra de negócio."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.competencias.atribuicao import cargos_que_perdem
 from apps.competencias.catalogo import acoes_oferecidas
 from apps.competencias.comandos import ComandoAtribuicao
-from apps.competencias.consulta import ramos_do_alcance
-from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao
+from apps.competencias.consulta import alcance_do_perfil, dirige, ramos_do_alcance
+from apps.competencias.delegacao import candidatos_a_delegado
+from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, Delegacao
 from apps.unidades.context import contexto_organograma
 from apps.unidades.models import Unidade
 from apps.unidades.paleta import hex_da_cor
 from apps.user_admin.models import CargoBase, CargoComissao, Perfil
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.autorizacao import VarianteIcone
+from services.utils.erros_formulario import RecusaDeFormulario
 
 DESCRICAO_SEM_CARGO = "nenhum cargo ainda"
 
@@ -106,13 +109,16 @@ def contexto_da_tela_conceder(perfil: Perfil, unidade_alvo: Unidade | None = Non
             com_irmas=False,
             abrir_o_ego=True,
         )
-        | contexto_painel_concessoes(alvo)
+        | contexto_painel_concessoes(alvo, perfil=perfil)
         | _rotas_do_seletor("competencias:painel_concessoes", "#painel-concessoes")
     )
 
 
 def contexto_painel_concessoes(
-    unidade_alvo: Unidade | None, *, fechar_modal: bool = False
+    unidade_alvo: Unidade | None,
+    perfil: Perfil | None = None,
+    *,
+    fechar_modal: bool = False,
 ) -> dict[str, Any]:
     """O que `_painel_concessoes.html` consome sozinho — alvo do hx-get ao trocar de unidade na
     árvore, que não reenvia o organograma. `fechar_modal` fecha o de conceder que a unidade
@@ -122,20 +128,27 @@ def contexto_painel_concessoes(
         "unidade_alvo": unidade_alvo,
         "subtitulo_alvo": _subtitulo_unidade(unidade_alvo) if unidade_alvo else "",
         "cor_alvo_hex": hex_da_cor(unidade_alvo.cor) if unidade_alvo else "",
-    } | contexto_poco_concessoes(unidade_alvo, fechar_modal=fechar_modal)
+    } | contexto_poco_concessoes(unidade_alvo, perfil=perfil, fechar_modal=fechar_modal)
 
 
 def contexto_poco_concessoes(
-    unidade_alvo: Unidade | None, *, fechar_modal: bool = False
+    unidade_alvo: Unidade | None,
+    perfil: Perfil | None = None,
+    *,
+    fechar_modal: bool = False,
 ) -> dict[str, Any]:
-    """O que `_poco_concessoes.html` consome sozinho — alvo do swap de conceder e revogar.
+    """O que `_poco_concessoes.html` consome sozinho — alvo do swap de conceder, revogar e delegar.
     `fechar_modal` liga o checkbox OOB que fecha `#modal-conceder`: só quando esta renderização É
     a resposta de um ato que precisa fechá-lo — nunca na carga inicial da página, sob pena de dois
     elementos com o mesmo id (Caveats)."""
+    pode_delegar = False
+    if perfil is not None and unidade_alvo is not None:
+        pode_delegar = perfil.is_superuser or dirige(perfil, unidade_alvo)
     return {
         "unidade_alvo": unidade_alvo,
         "atribuicoes": _atribuicoes_com_concessoes(unidade_alvo),
         "fechar_modal": fechar_modal,
+        "pode_delegar": pode_delegar,
     }
 
 
@@ -145,6 +158,47 @@ def contexto_modal_conceder(atribuicao: AtribuicaoUnidade) -> dict[str, Any]:
         "unidade_alvo": atribuicao.unidade,
         "cargos_base": CargoBase.objects.order_by("nome"),
         "cargos_comissao": CargoComissao.objects.order_by("nome"),
+    }
+
+
+def contexto_modal_delegar(
+    atribuicao: AtribuicaoUnidade,
+    perfil: Perfil,
+    valores: Mapping[str, Any] | None = None,
+    recusa: RecusaDeFormulario | None = None,
+) -> dict[str, Any]:
+    alcance = alcance_do_perfil(perfil)
+    candidatos = candidatos_a_delegado(atribuicao.unidade, alcance)
+    hoje = timezone.localdate()
+
+    candidatos_propria = [c for c in candidatos if c.unidade_id == atribuicao.unidade_id]
+    candidatos_subordinadas = [c for c in candidatos if c.unidade_id != atribuicao.unidade_id]
+
+    candidatos_agrupados: list[dict[str, Any]] = []
+    if candidatos_propria:
+        candidatos_agrupados.append({
+            "rotulo": f"{atribuicao.unidade.sigla} (Própria unidade)",
+            "servidores": candidatos_propria,
+        })
+    subordinadas_map: dict[int, list[Perfil]] = {}
+    for c in candidatos_subordinadas:
+        subordinadas_map.setdefault(c.unidade_id, []).append(c)
+    for unid_id, servs in subordinadas_map.items():
+        unid_sigla = servs[0].unidade.sigla
+        candidatos_agrupados.append({
+            "rotulo": f"{unid_sigla} (Subordinada)",
+            "servidores": servs,
+        })
+
+    return {
+        "atribuicao": atribuicao,
+        "unidade_alvo": atribuicao.unidade,
+        "candidatos_agrupados": candidatos_agrupados,
+        "candidatos": candidatos,
+        "hoje": hoje.isoformat(),
+        "valores": valores or {},
+        "erros": recusa.mensagens if recusa else (),
+        "realce": recusa.realce if recusa else {},
     }
 
 
@@ -189,6 +243,13 @@ def _atribuicoes_com_concessoes(unidade: Unidade | None) -> list[dict[str, Any]]
         .prefetch_related("concessoes__cargo_base", "concessoes__cargo_comissao")
         .order_by("acao__nome")
     )
+    hoje = timezone.localdate()
+    delegacoes = list(
+        Delegacao.objects.filter(unidade=unidade)
+        .filter(Q(data_fim__isnull=True) | Q(data_fim__gte=hoje))
+        .select_related("delegado", "delegado__unidade", "acao")
+        .order_by("delegado__nome", "delegado__sobrenome")
+    )
     return [
         {
             "atribuicao": atribuicao,
@@ -198,6 +259,7 @@ def _atribuicoes_com_concessoes(unidade: Unidade | None) -> list[dict[str, Any]]
                 {"concessao": concessao, "rotulo": _rotulo_cargo(concessao)}
                 for concessao in atribuicao.concessoes.all()
             ],
+            "delegacoes": [d for d in delegacoes if d.acao_id == atribuicao.acao_id],
         }
         for atribuicao in atribuicoes
     ]

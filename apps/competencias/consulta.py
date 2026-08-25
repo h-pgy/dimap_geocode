@@ -4,6 +4,9 @@ canetas do perfil, as concessões das unidades delas e os slugs estruturais, num
 custo fixo, independente de quantas ações serão perguntadas depois (SPEC autorizacao/003, Caveats).
 """
 
+from django.db.models import Q
+from django.utils import timezone
+
 from apps.competencias.models import Concessao
 from apps.competencias.registro import REGISTRO
 from apps.unidades.consulta import posicao_de
@@ -16,14 +19,15 @@ from services.domain.autorizacao import (
     AvaliacaoCompetenciaInput,
     Caneta,
     ConcessaoVigente,
+    DelegacaoVigente,
     PerfilCompetencia,
+    avaliar_competencia,
 )
 from services.domain.titularidade import Direcao, avaliar_direcao
 
 
 def montar_avaliacao(perfil: Perfil) -> AvaliacaoCompetenciaInput:
-    """Canetas do perfil, concessões das unidades dessas canetas e os slugs estruturais — custo
-    fixo, independente de quantas ações serão perguntadas depois."""
+    """Canetas do perfil, concessões das unidades dessas canetas, slugs estruturais e delegações nominais vigentes."""
     canetas = canetas_do_perfil(perfil)
     unidades_das_canetas = frozenset(caneta.unidade_id for caneta in canetas)
     concessoes = tuple(
@@ -38,11 +42,29 @@ def montar_avaliacao(perfil: Perfil) -> AvaliacaoCompetenciaInput:
             atribuicao__unidade_id__in=unidades_das_canetas
         ).select_related("atribuicao__acao")
     )
+    hoje = timezone.localdate()
+    from apps.competencias.models.delegacao import Delegacao
+
+    delegacoes = tuple(
+        DelegacaoVigente(
+            acao_slug=d.acao.slug,
+            acao_ativa=d.acao.ativa,
+            unidade_id=d.unidade_id,
+            delegado_id=d.delegado_id,
+        )
+        for d in Delegacao.objects.filter(
+            delegado=perfil,
+            data_inicio__lte=hoje,
+        )
+        .filter(Q(data_fim__isnull=True) | Q(data_fim__gte=hoje))
+        .select_related("acao")
+    )
     return AvaliacaoCompetenciaInput(
         perfil=PerfilCompetencia(em_exercicio=perfil.em_exercicio, canetas=canetas),
         concessoes=concessoes,
         slugs_estruturais=_slugs_estruturais(),
         slugs_exclusivos=slugs_exclusivos(),
+        delegacoes=delegacoes,
     )
 
 
@@ -89,6 +111,10 @@ def _caneta_de(quem_exerce: Perfil, dono_do_cargo: Perfil) -> Caneta:
     )
 
 
+def unidades_delegadas(perfil: Perfil) -> frozenset[int]:
+    return avaliar_competencia(montar_avaliacao(perfil)).unidades_delegadas
+
+
 def ramos_do_alcance(perfil: Perfil) -> tuple[NoHierarquia, ...]:
     """As subárvores que o perfil alcança — uma por unidade dirigida que não pende de outra dirigida.
     Cobrir o titular de uma subordinada é dirigir duas unidades do mesmo ramo: a de baixo já está
@@ -100,11 +126,12 @@ def ramos_do_alcance(perfil: Perfil) -> tuple[NoHierarquia, ...]:
         return tuple(
             posicao_de(raiz.pk).ego for raiz in Unidade.objects.filter(pai__isnull=True)
         )
-    arvores = {dirigida: posicao_de(dirigida).ego for dirigida in unidades_dirigidas(perfil)}
+    partidas = unidades_dirigidas(perfil) | unidades_delegadas(perfil)
+    arvores = {partida: posicao_de(partida).ego for partida in partidas}
     return tuple(
         arvore
-        for dirigida, arvore in arvores.items()
-        if not any(outra != dirigida and dirigida in arvores[outra].ids for outra in arvores)
+        for partida, arvore in arvores.items()
+        if not any(outra != partida and partida in arvores[outra].ids for outra in arvores)
     )
 
 

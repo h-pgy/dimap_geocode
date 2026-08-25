@@ -24,6 +24,9 @@ urlpatterns = [
     path("conceder/", views.conceder, name="conceder"),
     path("conceder/painel/", views.painel_concessoes, name="painel_concessoes"),
     path("conceder/modal/", views.modal_conceder, name="modal_conceder"),
+    path("conceder/modal-delegar/", views.modal_delegar, name="modal_delegar"),
     path("conceder/conceder/", views.conceder_cargo, name="conceder_cargo"),
     path("conceder/revogar/", views.revogar_cargo, name="revogar_cargo"),
+    path("conceder/delegar/", views.delegar_servidor, name="delegar_servidor"),
+    path("conceder/revogar-delegacao/", views.revogar_delegacao, name="revogar_delegacao"),
 ]

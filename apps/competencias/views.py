@@ -18,21 +18,26 @@ from apps.competencias.comandos import ComandoAtribuicao, ComandoConcessao, Coma
 from apps.competencias.concessao import conceder as conceder_cargo_dominio
 from apps.competencias.concessao import identificador_cargo
 from apps.competencias.concessao import revogar as revogar_concessao
+from apps.competencias.consulta import alcance_do_perfil, dirige
 from apps.competencias.context import (
     contexto_catalogo,
     contexto_confirmar_remocao,
     contexto_da_tela,
     contexto_da_tela_conceder,
     contexto_modal_conceder,
+    contexto_modal_delegar,
     contexto_painel,
     contexto_painel_concessoes,
     contexto_poco,
     contexto_poco_concessoes,
 )
-from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao
+from apps.competencias.delegacao import delegar_competencia, encerrar_delegacao
+from apps.competencias.formularios import ler_nova_delegacao
+from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, Delegacao
 from apps.competencias.protecao import acao_protegida, registrar_ato
 from apps.unidades.models import Unidade
 from apps.user_admin.models import Perfil
+from services.utils.erros_formulario import RecusaDeFormulario
 
 TEMPLATE_TELA = "competencias/definir_atribuicao.html"
 TEMPLATE_PAINEL = "competencias/partials/_painel_atribuicoes.html"
@@ -42,6 +47,7 @@ TEMPLATE_MODAL_REMOVER = "competencias/partials/_modal_remover.html"
 TEMPLATE_TELA_CONCEDER = "competencias/conceder_competencia.html"
 TEMPLATE_PAINEL_CONCESSOES = "competencias/partials/_painel_concessoes.html"
 TEMPLATE_MODAL_CONCEDER = "competencias/partials/_modal_conceder.html"
+TEMPLATE_MODAL_DELEGAR = "competencias/partials/_modal_delegar.html"
 TEMPLATE_POCO_CONCESSOES = "competencias/partials/_poco_concessoes.html"
 
 
@@ -130,7 +136,9 @@ def painel_concessoes(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         TEMPLATE_PAINEL_CONCESSOES,
-        contexto_painel_concessoes(_unidade_do_request(request), fechar_modal=True),
+        contexto_painel_concessoes(
+            _unidade_do_request(request), _perfil(request), fechar_modal=True
+        ),
     )
 
 
@@ -138,6 +146,17 @@ def painel_concessoes(request: HttpRequest) -> HttpResponse:
 def modal_conceder(request: HttpRequest) -> HttpResponse:
     atribuicao = get_object_or_404(AtribuicaoUnidade, pk=request.GET.get("atribuicao"))
     return render(request, TEMPLATE_MODAL_CONCEDER, contexto_modal_conceder(atribuicao))
+
+
+@acao_protegida(ACAO_CONCEDER)
+def modal_delegar(request: HttpRequest) -> HttpResponse:
+    atribuicao = get_object_or_404(AtribuicaoUnidade, pk=request.GET.get("atribuicao"))
+    _exigir_direcao_para_delegar(atribuicao.unidade, _perfil(request))
+    return render(
+        request,
+        TEMPLATE_MODAL_DELEGAR,
+        contexto_modal_delegar(atribuicao, _perfil(request)),
+    )
 
 
 @acao_protegida(ACAO_CONCEDER)
@@ -163,7 +182,7 @@ def conceder_cargo(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         TEMPLATE_POCO_CONCESSOES,
-        contexto_poco_concessoes(atribuicao.unidade, fechar_modal=True),
+        contexto_poco_concessoes(atribuicao.unidade, _perfil(request), fechar_modal=True),
     )
 
 
@@ -182,7 +201,88 @@ def revogar_cargo(request: HttpRequest) -> HttpResponse:
         request, operacao="revogar", alvo_tipo="acao_cargo", alvo_identificador=identificador
     )
     return render(
-        request, TEMPLATE_POCO_CONCESSOES, contexto_poco_concessoes(unidade, fechar_modal=True)
+        request,
+        TEMPLATE_POCO_CONCESSOES,
+        contexto_poco_concessoes(unidade, _perfil(request), fechar_modal=True),
+    )
+
+
+@acao_protegida(ACAO_CONCEDER)
+@require_POST
+def delegar_servidor(request: HttpRequest) -> HttpResponse:
+    unidade_id = int(request.POST["unidade"])
+    atribuicao_id = int(request.POST["atribuicao"])
+    atribuicao = _atribuicao_no_alvo(atribuicao_id, unidade_id)
+    _exigir_direcao_para_delegar(atribuicao.unidade, _perfil(request))
+
+    leitura = ler_nova_delegacao(request.POST)
+    alcance = alcance_do_perfil(_perfil(request))
+    if leitura.dto is None:
+        return _delegacao_recusada(request, atribuicao, leitura.recusa or RecusaDeFormulario())
+
+    desfecho = delegar_competencia(atribuicao, leitura.dto, _perfil(request), alcance)
+    if desfecho.delegacao is None:
+        return _delegacao_recusada(request, atribuicao, desfecho.recusa)
+
+    registrar_ato(
+        request,
+        operacao="delegar",
+        alvo_tipo="acao_servidor",
+        alvo_identificador=f"{atribuicao.acao.slug}:{desfecho.delegacao.delegado.rf}",
+    )
+    return render(
+        request,
+        TEMPLATE_POCO_CONCESSOES,
+        contexto_poco_concessoes(atribuicao.unidade, _perfil(request), fechar_modal=True),
+    )
+
+
+@acao_protegida(ACAO_CONCEDER)
+@require_POST
+def revogar_delegacao(request: HttpRequest) -> HttpResponse:
+    unidade_id = int(request.POST["unidade"])
+    delegacao_id = int(request.POST["delegacao"])
+    delegacao = get_object_or_404(
+        Delegacao.objects.select_related("acao", "unidade", "delegado"), pk=delegacao_id
+    )
+    if delegacao.unidade_id != unidade_id:
+        raise PermissionDenied
+    _exigir_direcao_para_delegar(delegacao.unidade, _perfil(request))
+
+    encerrar_delegacao(delegacao)
+    registrar_ato(
+        request,
+        operacao="revogar",
+        alvo_tipo="acao_servidor",
+        alvo_identificador=f"{delegacao.acao.slug}:{delegacao.delegado.rf}",
+    )
+    return render(
+        request,
+        TEMPLATE_POCO_CONCESSOES,
+        contexto_poco_concessoes(delegacao.unidade, _perfil(request), fechar_modal=True),
+    )
+
+
+def _exigir_direcao_para_delegar(unidade: Unidade, perfil: Perfil) -> None:
+    if not (perfil.is_superuser or dirige(perfil, unidade)):
+        raise PermissionDenied
+
+
+def _delegacao_recusada(
+    request: HttpRequest,
+    atribuicao: AtribuicaoUnidade,
+    recusa: RecusaDeFormulario,
+) -> HttpResponse:
+    return render(
+        request,
+        TEMPLATE_MODAL_DELEGAR,
+        contexto_modal_delegar(
+            atribuicao,
+            _perfil(request),
+            valores=request.POST.dict(),
+            recusa=recusa,
+        ),
+        status=422,
     )
 
 
