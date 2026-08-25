@@ -23,6 +23,7 @@ from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE_RAIZ,
     ACAO_EDITAR_UNIDADE,
 )
+from apps.user_admin.acoes_declaradas import ACAO_DESIGNAR_SUBSTITUTO
 from apps.unidades.cadastro import alterar_unidade, cadastrar_unidade
 from apps.unidades.context import (
     contexto_corpo_unidades,
@@ -147,7 +148,12 @@ def pagina_unidade(request: HttpRequest, pk: int) -> HttpResponse:
         request,
         TEMPLATE_PAGINA_UNIDADE,
         contexto_unidade(unidade)
-        | {"pode_editar": pode_executar(request.user, ACAO_EDITAR_UNIDADE, unidade.pk)},
+        | {
+            "pode_editar": pode_executar(request.user, ACAO_EDITAR_UNIDADE, unidade.pk),
+            "pode_designar_substituto": pode_executar(
+                request.user, ACAO_DESIGNAR_SUBSTITUTO, unidade.pk
+            ),
+        },
     )
 
 
@@ -197,7 +203,17 @@ def gravar_edicao_unidade(request: HttpRequest, unidade: int) -> HttpResponse:
         alvo_tipo="unidade",
         alvo_identificador=desfecho.unidade.sigla,
     )
-    return render(request, TEMPLATE_EDICAO_CONCLUIDA, contexto_unidade(desfecho.unidade))
+    return render(
+        request,
+        TEMPLATE_EDICAO_CONCLUIDA,
+        contexto_unidade(desfecho.unidade)
+        | {
+            "pode_editar": pode_executar(request.user, ACAO_EDITAR_UNIDADE, desfecho.unidade.pk),
+            "pode_designar_substituto": pode_executar(
+                request.user, ACAO_DESIGNAR_SUBSTITUTO, desfecho.unidade.pk
+            ),
+        },
+    )
 
 
 def listar_unidades(request: HttpRequest) -> HttpResponse:

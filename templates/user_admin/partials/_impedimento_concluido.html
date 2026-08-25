@@ -4,3 +4,12 @@
 <div id="secao-exercicio" hx-swap-oob="outerHTML">
   {% include "user_admin/partials/_secao_exercicio.html" %}
 </div>
+{% if unidade %}
+  <div id="painel-unidade" hx-swap-oob="outerHTML">
+    {% include "unidades/partials/_identidade_unidade.html" %}
+    {% include "unidades/partials/_secao_resumo_unidade.html" %}
+    {% include "unidades/partials/_secao_direcao.html" %}
+    {% include "unidades/partials/_secao_hierarquia.html" %}
+  </div>
+{% endif %}
+

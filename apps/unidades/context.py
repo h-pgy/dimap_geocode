@@ -10,6 +10,8 @@ negócio.
 from collections.abc import Collection, Mapping, Sequence
 from typing import Any
 
+from django.utils import timezone
+
 from apps.core.tabela import colunas_da_tabela, marca_descendente
 from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.consulta import posicao_de
@@ -24,6 +26,7 @@ from apps.unidades.paleta import hex_da_cor, tons_da_paleta
 from apps.unidades.titularidade import candidatos_a_titular
 from apps.user_admin.apresentacao import imagem_do_perfil, selo_do_exercicio
 from apps.user_admin.exercicio import substituicao_vigente
+from apps.user_admin.models import q_vigente_em
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.listagem_gestao import (
     ColunaUnidade,
@@ -94,6 +97,11 @@ def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
     substituicao = substituicao_vigente(titular) if titular else None
     substituto = substituicao.substituto if substituicao else None
     direcao = avaliar_direcao(estado_da_direcao(titular, substituto))
+    titular_impedimento = (
+        titular.impedimentos.filter(q_vigente_em(timezone.localdate())).first()
+        if titular and direcao == "sem_direcao"
+        else None
+    )
     return (
         contexto_fundo_admin()
         | _catalogos_de_unidade()
@@ -106,6 +114,7 @@ def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
             "titular_selo": selo_do_exercicio(titular) if titular else None,
             "titular_imagem": imagem_do_perfil(titular) if titular else None,
             "titular_cor_unidade_hex": hex_da_cor(titular.cor_unidade) if titular else None,
+            "titular_impedimento": titular_impedimento,
             "substituto": substituto,
             "substituto_imagem": imagem_do_perfil(substituto) if substituto else None,
             "substituto_cor_unidade_hex": (

@@ -19,6 +19,8 @@ from django.views.decorators.http import require_POST
 from apps.competencias.consulta import alcance_do_perfil
 from apps.core.tabela import consulta_da_listagem
 from apps.competencias.protecao import acao_protegida, pode_executar, registrar_ato
+from apps.unidades.acoes_declaradas import ACAO_EDITAR_UNIDADE
+from apps.unidades.context import contexto_unidade
 from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
     ACAO_DESIGNAR_SUBSTITUTO,
@@ -553,14 +555,20 @@ def face_substituicao(request: HttpRequest) -> HttpResponse:
 
 
 def _secao_atualizada(request: HttpRequest, perfil: Perfil) -> HttpResponse:
+    contexto = contexto_secao_exercicio(
+        perfil,
+        _pode_registrar_impedimento(request, perfil),
+        pode_designar_substituto=_pode_designar_substituto(request, perfil),
+    )
+    if perfil.unidade_id:
+        contexto |= contexto_unidade(perfil.unidade) | {
+            "pode_editar": pode_executar(request.user, ACAO_EDITAR_UNIDADE, perfil.unidade_id),
+            "pode_designar_substituto": _pode_designar_substituto(request, perfil),
+        }
     return render(
         request,
         TEMPLATE_IMPEDIMENTO_CONCLUIDO,
-        contexto_secao_exercicio(
-            perfil,
-            _pode_registrar_impedimento(request, perfil),
-            pode_designar_substituto=_pode_designar_substituto(request, perfil),
-        ),
+        contexto,
     )
 
 

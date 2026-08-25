@@ -66,6 +66,18 @@
       {% elif titular %}
         <div class="stat-value text-base-content/40!">—</div>
         <div class="stat-desc">Não há substituição vigente.</div>
+        {% if direcao == "sem_direcao" and titular_impedimento and pode_designar_substituto %}
+          <div class="pt-2">
+            <button type="button"
+                    hx-get="{% url 'user_admin:modal_designar' titular.pk titular_impedimento.pk %}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms"
+                    class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              Designar substituto
+            </button>
+          </div>
+        {% endif %}
       {% else %}
         <div class="stat-value">—</div>
         <div class="stat-desc">Sem titular não há quem substituir: substitui-se uma pessoa, não uma vaga.</div>

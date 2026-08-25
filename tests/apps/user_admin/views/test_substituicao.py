@@ -239,8 +239,13 @@ def test_designar_grava_e_devolve_a_secao(client: Client) -> None:
     assert secao["hx-swap-oob"] == "outerHTML"
     assert substituto.nome in secao.get_text()
 
+    painel = sopa.find(id="painel-unidade")
+    assert isinstance(painel, Tag)
+    assert painel["hx-swap-oob"] == "outerHTML"
+
     # O poço do modal é esvaziado para fechar
     secao.extract()
+    painel.extract()
     assert sopa.get_text(strip=True) == ""
 
 
@@ -411,6 +416,36 @@ def test_secao_esconde_os_gestos_de_quem_nao_exerce(client: Client) -> None:
     html_comum = client.get(pagina).content.decode()
     assert _url_modal_trocar(titular.pk, substituicao.pk) not in html_comum
     assert _url_modal_encerrar(titular.pk, substituicao.pk) not in html_comum
+
+
+@banco
+@pytest.mark.django_db
+def test_pagina_unidade_sem_direcao_oferece_designar_a_quem_exerce(client: Client) -> None:
+    raiz = _unidade("RAIZ-SDIR")
+    dirigente = _dirigente(raiz, "9701650")
+    unidade = _unidade("SUB-UNID-SDIR", pai=raiz)
+    titular = _dirigente(unidade, "9701660", "Titular Unidade Sem Dir")
+    comum = _perfil(unidade, "9701670", "Comum Unidade")
+    hoje = timezone.localdate()
+    impedimento = _impedir(titular, "Férias Titular Unid", inicio=hoje, fim=hoje + 10 * DIA)
+
+    url_unidade = reverse("unidades:pagina_unidade", kwargs={"pk": unidade.pk})
+    url_modal = _url_modal_designar(titular.pk, impedimento.pk)
+
+    # 1. Dirigente que alcança a unidade vê o botão "Designar substituto" apontando para modal_designar
+    client.force_login(_fresco(dirigente))
+    resposta_dirigente = client.get(url_unidade)
+    html_dirigente = resposta_dirigente.content.decode()
+    assert resposta_dirigente.status_code == 200
+    assert "Designar substituto" in html_dirigente
+    assert url_modal in html_dirigente
+
+    # 2. Servidor comum não vê o botão
+    client.force_login(_fresco(comum))
+    resposta_comum = client.get(url_unidade)
+    html_comum = resposta_comum.content.decode()
+    assert resposta_comum.status_code == 200
+    assert url_modal not in html_comum
 
 
 @banco

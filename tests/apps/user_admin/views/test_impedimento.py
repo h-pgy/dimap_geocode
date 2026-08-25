@@ -421,9 +421,10 @@ def test_gravacao_devolve_secao_atualizada(client: Client) -> None:
     assert isinstance(secao, Tag)
     assert secao["hx-swap-oob"] == "outerHTML"
     assert tipo.nome in secao.get_text()
-    # Fora do swap fora de banda não sobra nada: o poço do modal recebe vazio, e é assim que o
+    # Fora dos swaps fora de banda não sobra nada: o poço do modal recebe vazio, e é assim que o
     # modal fecha.
-    secao.extract()
+    for swap in sopa.find_all(attrs={"hx-swap-oob": True}):
+        swap.extract()
     assert sopa.get_text(strip=True) == ""
 
 
