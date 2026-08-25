@@ -58,7 +58,7 @@ class Substituicao(models.Model):
         # atos, que por sua vez importam este model.
         from services.domain.exercicio import avaliar_designacao
 
-        from apps.user_admin.exercicio import designacao_de
+        from apps.user_admin.substituicao import designacao_de
 
         if self.data_inicio is None:
             return

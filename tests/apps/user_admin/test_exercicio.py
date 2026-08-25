@@ -108,12 +108,16 @@ def _designar(
     data_fim: date | None = None,
 ) -> Substituicao:
     assert substituto.pk is not None
-    return designar_substituto(
+    desfecho = designar_substituto(
         impedimento,
         NovaSubstituicao(
             substituto=substituto.pk, data_inicio=data_inicio, data_fim=data_fim
         ),
+        alcance={impedimento.perfil.unidade_id, substituto.unidade_id},
     )
+    if desfecho.substituicao is None:
+        raise ValidationError(desfecho.recusa.mensagens if desfecho.recusa else "Inválido")
+    return desfecho.substituicao
 
 
 # ---------------------------------------------------------------------------
@@ -345,14 +349,17 @@ def test_trocar_substituto_encerra_a_anterior_na_vespera() -> None:
 
     novo_substituto = _perfil(unidade, rf="700552", nome="Novo")
     dia_que_assume = hoje + timedelta(days=5)
-    nova = trocar_substituto(
+    desfecho = trocar_substituto(
         anterior,
         TrocaDeSubstituto(
             substituto=novo_substituto.pk,
             data_inicio=dia_que_assume,
             data_fim=hoje + timedelta(days=30),
         ),
+        alcance={afastado.unidade_id, novo_substituto.unidade_id},
     )
+    assert desfecho.substituicao is not None
+    nova = desfecho.substituicao
 
     anterior.refresh_from_db()
     assert anterior.data_fim == dia_que_assume - timedelta(days=1)

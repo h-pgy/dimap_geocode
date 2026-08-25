@@ -375,9 +375,23 @@ def test_modal_de_designar_propoe_a_lacuna_e_os_candidatos(client: Client) -> No
 
     # Só aparece com o alcance ampliado, e a unidade superior vem primeiro.
     da_unidade_superior = _perfil_exercicio(unidade_superior, "700613", "DaSuperior")
+    # Quem dirige a unidade superior alcança tanto a subordinada quanto a superior
+    dirigente_superior = _perfil_exercicio(
+        unidade_superior,
+        "700614",
+        "Dirigente Superior",
+        cargo_comissao=CargoComissao.objects.create(
+            sigla="CDS", nivel=1, e_chefia=True, nome="Coordenador Superior"
+        ),
+    )
+    definir_titular(dirigente_superior)
+    client.force_login(dirigente_superior)
 
     html = client.get(
-        reverse("user_admin:pagina_perfil", kwargs={"pk": substituido.pk})
+        reverse(
+            "user_admin:modal_designar",
+            kwargs={"servidor": substituido.pk, "impedimento": impedimento.pk},
+        )
     ).content.decode()
 
     # As datas do diálogo já vêm preenchidas com a lacuna proposta — aqui, o impedimento inteiro,

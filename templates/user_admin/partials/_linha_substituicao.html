@@ -9,10 +9,18 @@
       <p class="linha-pessoa-meta">RF {{ item.perfil.rf }} · {{ item.perfil.unidade.sigla }} · {{ item.periodo }}{% if item.situacao %} · {{ item.situacao }}{% endif %}</p>
     </div>
   </div>
-  {% if not item.encerrada %}
+  {% if not item.encerrada and pode_designar_substituto %}
     <div class="flex gap-2 shrink-0">
-      <label for="{{ item.modal_trocar }}" class="btn btn-glass btn-xs">Trocar</label>
-      <label for="{{ item.modal_encerrar }}" class="btn btn-glass btn-xs">Encerrar</label>
+      <button type="button"
+              hx-get="{% url 'user_admin:modal_trocar' perfil.pk item.substituicao.pk %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms"
+              class="btn btn-glass btn-xs">Trocar</button>
+      <button type="button"
+              hx-get="{% url 'user_admin:modal_encerrar' perfil.pk item.substituicao.pk %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms"
+              class="btn btn-glass btn-xs">Encerrar</button>
     </div>
   {% endif %}
 </div>

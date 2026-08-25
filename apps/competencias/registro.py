@@ -5,6 +5,7 @@ from apps.unidades.acoes_declaradas import (
 )
 from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
+    ACAO_DESIGNAR_SUBSTITUTO,
     ACAO_EDITAR_SERVIDOR,
     ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
     ACAO_TORNAR_ADMINISTRADOR,
@@ -25,6 +26,7 @@ def _construir_registro() -> RegistroAcoes:
             ACAO_EDITAR_SERVIDOR,
             ACAO_TORNAR_ADMINISTRADOR,
             ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
+            ACAO_DESIGNAR_SUBSTITUTO,
             ACAO_CRIAR_UNIDADE,
             ACAO_EDITAR_UNIDADE,
             ACAO_CRIAR_UNIDADE_RAIZ,

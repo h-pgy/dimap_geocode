@@ -6,9 +6,12 @@ formularios/001): quais controles a tela tem e como cada recusa se diz para quem
 
 from apps.user_admin.schemas import (
     ERRO_FIM_ANTES_DO_INICIO,
+    ERRO_FIM_ANTES_DO_INICIO_SUBSTITUICAO,
     EdicaoServidor,
+    NovaSubstituicao,
     NovoImpedimento,
     NovoServidor,
+    TrocaDeSubstituto,
 )
 from services.utils.erros_formulario import (
     CampoDeFormulario,
@@ -88,3 +91,26 @@ FORMULARIO_IMPEDIMENTO = Formulario(
 )
 
 ler_novo_impedimento = LeitorDeFormulario(NovoImpedimento, FORMULARIO_IMPEDIMENTO)
+traduzir_recusa_impedimento = TradutorDeRecusa(FORMULARIO_IMPEDIMENTO)
+
+# SPEC user_admin/024: catálogo irmão do do impedimento — três controles.
+FORMULARIO_SUBSTITUICAO = Formulario(
+    campos=(
+        CampoDeFormulario(controle="substituto", rotulo="Servidor"),
+        CampoDeFormulario(controle="data_inicio", rotulo="Início da substituição"),
+        CampoDeFormulario(
+            controle="data_fim",
+            rotulo="Fim da substituição",
+            regras={
+                "fim_antes_do_inicio": RegraDeErro(
+                    mensagem=ERRO_FIM_ANTES_DO_INICIO_SUBSTITUICAO
+                )
+            },
+        ),
+    ),
+)
+
+ler_nova_substituicao = LeitorDeFormulario(NovaSubstituicao, FORMULARIO_SUBSTITUICAO)
+ler_troca_de_substituto = LeitorDeFormulario(TrocaDeSubstituto, FORMULARIO_SUBSTITUICAO)
+traduzir_recusa_substituicao = TradutorDeRecusa(FORMULARIO_SUBSTITUICAO)
+

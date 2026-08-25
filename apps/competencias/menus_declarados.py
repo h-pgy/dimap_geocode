@@ -6,6 +6,7 @@ de outra SPEC.
 """
 
 from apps.user_admin.acoes_declaradas import (
+    ACAO_DESIGNAR_SUBSTITUTO,
     ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
     ACAO_TORNAR_ADMINISTRADOR,
 )
@@ -39,6 +40,12 @@ MENU_ADMINISTRADOR = ContratoMenu(
         # unidade e, dentro dela, o servidor.
         ItemDeMenu(
             acao_implementada=ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
+            variante_icone=VarianteIcone.PEQUENO,
+            forma=FormaItem.LINHA,
+        ),
+        # O caminho direto para designar substituto (SPEC user_admin/024).
+        ItemDeMenu(
+            acao_implementada=ACAO_DESIGNAR_SUBSTITUTO,
             variante_icone=VarianteIcone.PEQUENO,
             forma=FormaItem.LINHA,
         ),

@@ -318,7 +318,7 @@ def test_encerrar_registra_ou_apaga(client: Client) -> None:
     # Cobertura vigente: termina hoje
     imp1, vig = _designar(sub_vigente, titular, "Licença Vigente", inicio=hoje - 2 * DIA, fim=hoje + 10 * DIA)
     # Cobertura futura: apagada
-    imp2, fut = _designar(sub_futuro, titular, "Licença Futura", inicio=hoje + 5 * DIA, fim=hoje + 15 * DIA)
+    imp2, fut = _designar(sub_futuro, titular, "Licença Futura", inicio=hoje + 11 * DIA, fim=hoje + 20 * DIA)
 
     client.force_login(_fresco(dirigente))
 

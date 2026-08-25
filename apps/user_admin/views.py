@@ -21,6 +21,7 @@ from apps.core.tabela import consulta_da_listagem
 from apps.competencias.protecao import acao_protegida, pode_executar, registrar_ato
 from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
+    ACAO_DESIGNAR_SUBSTITUTO,
     ACAO_EDITAR_SERVIDOR,
     ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
     ACAO_TORNAR_ADMINISTRADOR,
@@ -32,7 +33,16 @@ from apps.user_admin.exercicio import (
     retornar_ao_exercicio,
     retorno_eh_revogacao,
 )
-from apps.user_admin.formularios import ler_novo_impedimento
+from apps.user_admin.formularios import (
+    ler_nova_substituicao,
+    ler_novo_impedimento,
+    ler_troca_de_substituto,
+)
+from apps.user_admin.substituicao import (
+    designar_substituto,
+    encerrar_substituicao,
+    trocar_substituto,
+)
 from apps.user_admin.context import (
     contexto_administrador_recusado,
     contexto_botao_administrador,
@@ -41,18 +51,24 @@ from apps.user_admin.context import (
     contexto_corpo_servidores,
     contexto_criar_perfil,
     contexto_edicao_recusada,
+    contexto_face_substituicao,
     contexto_impedimento_recusado,
     contexto_listagem_servidores,
     contexto_modal_administrador,
+    contexto_modal_designar,
+    contexto_modal_designar_substituto,
+    contexto_modal_encerrar,
     contexto_modal_impedimento,
     contexto_modal_perfil,
     contexto_modal_registrar_impedimento,
+    contexto_modal_trocar,
     contexto_opcoes_administrador,
     contexto_opcoes_impedimento,
+    contexto_opcoes_substituicao,
     contexto_pagina_perfil,
     contexto_secao_exercicio,
 )
-from apps.user_admin.models import Perfil
+from apps.user_admin.models import Impedimento, Perfil, Substituicao
 from apps.user_admin.schemas import MudancaDeAdministrador
 from services.domain.listagem_gestao import ColunaServidor
 from services.utils.erros_formulario import RecusaDeFormulario
@@ -74,6 +90,10 @@ TEMPLATE_IMPEDIMENTO_CONCLUIDO = "user_admin/partials/_impedimento_concluido.htm
 TEMPLATE_MODAL_REGISTRAR_IMPEDIMENTO = "user_admin/partials/_modal_registrar_impedimento.html"
 TEMPLATE_FORM_IMPEDIMENTO = "user_admin/partials/_form_impedimento.html"
 TEMPLATE_AVISO_RETORNO = "user_admin/partials/_aviso_retorno.html"
+TEMPLATE_MODAL_DESIGNAR = "user_admin/partials/_modal_designar.html"
+TEMPLATE_MODAL_ENCERRAR = "user_admin/partials/_modal_encerrar.html"
+TEMPLATE_MODAL_DESIGNAR_SUBSTITUTO = "user_admin/partials/_modal_designar_substituto.html"
+TEMPLATE_FACE_SUBSTITUICAO = "user_admin/partials/_face_substituicao.html"
 
 
 def listar_servidores(request: HttpRequest) -> HttpResponse:
@@ -103,11 +123,6 @@ def criar_perfil(request: HttpRequest) -> HttpResponse:
 @acao_protegida(ACAO_CRIAR_SERVIDOR)
 @require_POST
 def gravar_servidor(request: HttpRequest) -> HttpResponse:
-    # A view traduz nome de controle em nome de campo e NÃO constrói o DTO: quem o constrói é o
-    # ato, porque a recusa dele volta como o próprio formulário, não como página de erro (SPEC
-    # formularios/001). `.get(..., "")` porque só `unidade` tem rede — o decorator já devolve 400
-    # quando ela falta; nos demais, chave ausente daria 500 justamente na rota que existe para
-    # transformar entrada ruim em recusa na tela.
     autor = _autor(request)
     valores = {
         "rf": request.POST.get("rf", ""),
@@ -117,14 +132,9 @@ def gravar_servidor(request: HttpRequest) -> HttpResponse:
         "unidade_id": request.POST.get("unidade", ""),
         "cargo_base_id": request.POST.get("cargo_base", ""),
         "cargo_comissao_id": request.POST.get("cargo_comissao", ""),
-        # O host de onde o convite parte é da orquestração, não do formulário.
         "url_acesso": request.build_absolute_uri("/"),
-        # SPEC user_admin/022: bool explícito, não string crua — o mesmo molde de
-        # `confirmar_transferencia` em `unidades/views.py`.
         "administrador": request.POST.get("administrador") == "1",
     }
-    # Quem pode armar a marca é resolvido aqui, na orquestração, e desce como dado — o mesmo
-    # desenho de `raiz_permitida` em `unidades.gravar_unidade`.
     desfecho = criar_servidor(valores, foto=request.FILES.get("foto"), administrador_permitido=autor.is_superuser)
     if desfecho.perfil is None:
         return render(
@@ -138,11 +148,8 @@ def gravar_servidor(request: HttpRequest) -> HttpResponse:
             ),
             status=422,
         )
-    # A view NUNCA grava a execução: deixa o recado e quem persiste é o decorator, depois do return.
     registrar_ato(
         request,
-        # SPEC user_admin/022: operação própria — cadastrar alguém já administrador não é o
-        # mesmo ato que cadastrar um servidor comum, e o histórico precisa separá-los.
         operacao="criar_administrador" if desfecho.perfil.is_superuser else "criar",
         alvo_tipo="servidor",
         alvo_identificador=desfecho.perfil.rf,
@@ -156,24 +163,17 @@ def pagina_perfil(request: HttpRequest, pk: int) -> HttpResponse:
     return render(
         request,
         TEMPLATE_PAGINA_PERFIL,
-        contexto_pagina_perfil(perfil)
+        contexto_pagina_perfil(perfil, pode_designar_substituto=_pode_designar_substituto(request, perfil))
         | {
             "pode_editar": pode_executar(request.user, ACAO_EDITAR_SERVIDOR, perfil.unidade_id),
-            # Esconder o botão é UX; a barreira é o `acao_protegida` das rotas. O `pode_executar`
-            # responde às duas conferências de uma vez — competência e alcance —, e por isso recebe
-            # a unidade do servidor da página.
             "pode_registrar_impedimento": _pode_registrar_impedimento(request, perfil),
+            "pode_designar_substituto": _pode_designar_substituto(request, perfil),
         },
     )
 
 
 @acao_protegida(ACAO_EDITAR_SERVIDOR)
 def editar_perfil(request: HttpRequest, servidor: int) -> HttpResponse:
-    # Só o partial do modal: a página de leitura não o carrega, e os catálogos dos selects só são
-    # consultados quando alguém abre o lápis. Nenhuma conferência de lotação escrita aqui: o
-    # contrato da ação declara o alcance pela pessoa, e o decorator já resolveu a unidade dela.
-    # Oferecer destino que o decorator vai recusar no POST é convidar ao 403 — que o HTMX não troca
-    # na tela: a lista sai do mesmo alcance que a barreira confere, como em `criar_perfil`.
     autor = _autor(request)
     return render(
         request,
@@ -189,12 +189,7 @@ def editar_perfil(request: HttpRequest, servidor: int) -> HttpResponse:
 @acao_protegida(ACAO_EDITAR_SERVIDOR)
 @require_POST
 def gravar_edicao(request: HttpRequest, servidor: int) -> HttpResponse:
-    # A view traduz nome de controle em nome de campo e NÃO constrói o DTO: quem o constrói é o
-    # ato, porque a recusa dele volta como o próprio modal (SPEC formularios/001). `.get(..., "")`
-    # porque só `unidade` tem rede — o decorator já devolve 400 quando ela falta; nos demais, chave
-    # ausente daria 500 na rota que existe para transformar entrada ruim em recusa na tela.
     valores = {
-        # Do caminho da rota, nunca do corpo: é o mesmo id que o decorator conferiu.
         "servidor_id": servidor,
         "rf": request.POST.get("rf", ""),
         "nome": request.POST.get("nome", ""),
@@ -203,8 +198,6 @@ def gravar_edicao(request: HttpRequest, servidor: int) -> HttpResponse:
         "unidade_id": request.POST.get("unidade", ""),
         "cargo_base_id": request.POST.get("cargo_base", ""),
         "cargo_comissao_id": request.POST.get("cargo_comissao", ""),
-        # SPEC user_admin/022 v3: bool explícito, não string crua — o mesmo molde de
-        # `gravar_servidor`. A marca viaja com o formulário e é gravada pelo mesmo ato.
         "administrador": request.POST.get("administrador") == "1",
     }
     autor = _autor(request)
@@ -230,29 +223,20 @@ def gravar_edicao(request: HttpRequest, servidor: int) -> HttpResponse:
         )
     registrar_ato(
         request,
-        # SPEC user_admin/022 v3: operação própria — a edição que dá ou tira a condição não é o
-        # mesmo ato que a edição comum, e o histórico precisa separá-los.
         operacao="editar_administrador" if desfecho.marca_alterada else "editar",
         alvo_tipo="servidor",
         alvo_identificador=desfecho.perfil.rf,
     )
-    # O poço volta vazio — é assim que o modal fecha — e a página se atualiza pelo swap fora de
-    # banda que o partial carrega.
     return render(request, TEMPLATE_EDICAO_CONCLUIDA, contexto_pagina_perfil(desfecho.perfil))
 
 
 @acao_protegida(ACAO_TORNAR_ADMINISTRADOR)
 def modal_administrador(request: HttpRequest) -> HttpResponse:
-    """A rota direta da ação (SPEC user_admin/022), pinçada pelo `MENU_ADMINISTRADOR`: escolhe-se a
-    unidade e, dentro dela, o servidor — sem recorte de alcance, porque só o superusuário chega
-    aqui e ele alcança tudo."""
     return render(request, TEMPLATE_MODAL_ADMINISTRADOR, contexto_modal_administrador())
 
 
 @acao_protegida(ACAO_TORNAR_ADMINISTRADOR)
 def opcoes_administrador(request: HttpRequest) -> HttpResponse:
-    # A lista de servidores da unidade escolhida, recarregada por HTMX quando o primeiro select
-    # muda. Leitura protegida pela mesma ação, e sem registro: é navegação dentro da tela do ato.
     unidade = request.GET.get("unidade", "")
     return render(
         request,
@@ -263,9 +247,6 @@ def opcoes_administrador(request: HttpRequest) -> HttpResponse:
 
 @acao_protegida(ACAO_TORNAR_ADMINISTRADOR)
 def estado_administrador(request: HttpRequest) -> HttpResponse:
-    """O botão do servidor escolhido no modal direto — mesmo partial que `gravar_administrador`
-    devolve, só que sem gravar nada: é a segunda metade do gesto de escolher (unidade, depois
-    servidor), sem registro."""
     servidor = request.GET.get("servidor", "")
     if not servidor.isdigit():
         return HttpResponse("")
@@ -275,8 +256,6 @@ def estado_administrador(request: HttpRequest) -> HttpResponse:
 @acao_protegida(ACAO_TORNAR_ADMINISTRADOR)
 @require_POST
 def gravar_administrador(request: HttpRequest, servidor: int) -> HttpResponse:
-    # DTO na fronteira; malformado morre no PydanticValidationMiddleware. `servidor` vem do caminho
-    # da rota, e o autor do request — nenhum dos dois do corpo, que o cliente escreve.
     mudanca = MudancaDeAdministrador(
         servidor_id=servidor,
         tornar=request.POST.get("tornar") == "1",
@@ -290,7 +269,6 @@ def gravar_administrador(request: HttpRequest, servidor: int) -> HttpResponse:
             contexto_administrador_recusado(_perfil(servidor), desfecho.recusa),
             status=422,
         )
-    # Duas operações, uma ação: é o que torna conceder e revogar distinguíveis no histórico.
     registrar_ato(
         request,
         operacao="tornar" if mudanca.tornar else "revogar",
@@ -302,22 +280,16 @@ def gravar_administrador(request: HttpRequest, servidor: int) -> HttpResponse:
 
 @acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
 def modal_impedimento(request: HttpRequest, servidor: int) -> HttpResponse:
-    """O diálogo que a seção de exercício abre (SPEC user_admin/023). Nenhuma conferência de lotação
-    escrita aqui: o contrato declara o alcance pela pessoa, e o decorator já resolveu a unidade
-    dela."""
     return render(request, TEMPLATE_MODAL_IMPEDIMENTO, contexto_modal_impedimento(_perfil(servidor)))
 
 
 @acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
 @require_POST
 def gravar_impedimento(request: HttpRequest, servidor: int) -> HttpResponse:
-    # A view lê o formulário e NÃO constrói o DTO: a recusa dele volta como o próprio modal, e é por
-    # isso que ela não passa pelo PydanticValidationMiddleware (SPEC formularios/001).
     perfil = _perfil(servidor)
     leitura = ler_novo_impedimento(request.POST.dict())
     novo = leitura.dto
     if novo is None:
-        # Sem DTO a leitura traz a recusa; o `or` é só o que o tipo pede, não um caso real.
         return render(
             request,
             TEMPLATE_MODAL_IMPEDIMENTO,
@@ -347,13 +319,10 @@ def modal_retorno(request: HttpRequest, servidor: int) -> HttpResponse:
 @require_POST
 def gravar_retorno(request: HttpRequest, servidor: int) -> HttpResponse:
     perfil = _perfil(servidor)
-    # A pergunta é sobre o estado ANTES do ato: depois dele não sobra vigente algum a consultar.
     revogacao = retorno_eh_revogacao(perfil)
     retornar_ao_exercicio(perfil)
     registrar_ato(
         request,
-        # Três operações, uma ação: registrar, devolver a cadeira e revogar um registro que nunca
-        # vigorou são fatos diferentes, e é a operação que os separa no histórico.
         operacao="revogar" if revogacao else "retornar",
         alvo_tipo="servidor",
         alvo_identificador=perfil.rf,
@@ -363,8 +332,6 @@ def gravar_retorno(request: HttpRequest, servidor: int) -> HttpResponse:
 
 @acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
 def modal_registrar_impedimento(request: HttpRequest) -> HttpResponse:
-    # Oferecer unidade que o decorator vai recusar no POST é convidar ao 403, que o HTMX não troca
-    # na tela: o select sai do MESMO alcance que a barreira confere (molde de `criar_perfil`).
     return render(
         request,
         TEMPLATE_MODAL_REGISTRAR_IMPEDIMENTO,
@@ -374,8 +341,6 @@ def modal_registrar_impedimento(request: HttpRequest) -> HttpResponse:
 
 @acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
 def opcoes_impedimento(request: HttpRequest) -> HttpResponse:
-    # A lista de servidores da unidade escolhida, recarregada por HTMX quando o primeiro select
-    # muda. Leitura protegida pela mesma ação, e sem registro: é navegação dentro da tela do ato.
     unidade = request.GET.get("unidade", "")
     return render(
         request,
@@ -386,11 +351,6 @@ def opcoes_impedimento(request: HttpRequest) -> HttpResponse:
 
 @acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
 def face_impedimento(request: HttpRequest) -> HttpResponse:
-    """A segunda metade do gesto de escolher: qual das duas caras o modal mostra é o estado gravado
-    do servidor, e não uma escolha de quem abriu — quem está impedido se devolve, quem não está se
-    impede. O `servidor` da query string passou pelo `conferir_alvo` do decorator como qualquer
-    outro: escolher alguém de outro ramo neste select é 403, e não uma tela que abre e falha no
-    POST."""
     servidor = request.GET.get("servidor", "")
     if not servidor.isdigit():
         return HttpResponse("")
@@ -399,18 +359,217 @@ def face_impedimento(request: HttpRequest) -> HttpResponse:
     return render(request, template, contexto_modal_impedimento(perfil))
 
 
+# ---------------------------------------------------------------------------
+# Designar substituto, trocar e encerrar (SPEC user_admin/024)
+# ---------------------------------------------------------------------------
+
+
+@acao_protegida(ACAO_DESIGNAR_SUBSTITUTO)
+def modal_designar(
+    request: HttpRequest,
+    servidor: int,
+    impedimento: int,
+) -> HttpResponse:
+    afastamento = get_object_or_404(Impedimento, pk=impedimento, perfil_id=servidor)
+    return render(
+        request,
+        TEMPLATE_MODAL_DESIGNAR,
+        contexto_modal_designar(afastamento, alcance_do_perfil(_autor(request))),
+    )
+
+
+@acao_protegida(ACAO_DESIGNAR_SUBSTITUTO)
+@require_POST
+def gravar_designacao(
+    request: HttpRequest,
+    servidor: int,
+    impedimento: int,
+) -> HttpResponse:
+    afastamento = get_object_or_404(Impedimento, pk=impedimento, perfil_id=servidor)
+    autor = _autor(request)
+    alcance = alcance_do_perfil(autor)
+    leitura = ler_nova_substituicao(request.POST.dict())
+    if leitura.dto is None:
+        return render(
+            request,
+            TEMPLATE_MODAL_DESIGNAR,
+            contexto_modal_designar(
+                afastamento,
+                alcance,
+                valores=request.POST.dict(),
+                recusa=leitura.recusa,
+            ),
+            status=422,
+        )
+    desfecho = designar_substituto(afastamento, leitura.dto, alcance=alcance)
+    if desfecho.substituicao is None:
+        return render(
+            request,
+            TEMPLATE_MODAL_DESIGNAR,
+            contexto_modal_designar(
+                afastamento,
+                alcance,
+                valores=request.POST.dict(),
+                recusa=desfecho.recusa,
+            ),
+            status=422,
+        )
+    registrar_ato(
+        request,
+        operacao="designar",
+        alvo_tipo="servidor",
+        alvo_identificador=afastamento.perfil.rf,
+    )
+    return _secao_atualizada(request, afastamento.perfil)
+
+
+@acao_protegida(ACAO_DESIGNAR_SUBSTITUTO)
+def modal_trocar(
+    request: HttpRequest,
+    servidor: int,
+    substituicao: int,
+) -> HttpResponse:
+    sub = get_object_or_404(Substituicao, pk=substituicao, impedimento__perfil_id=servidor)
+    return render(
+        request,
+        TEMPLATE_MODAL_DESIGNAR,
+        contexto_modal_trocar(sub, alcance_do_perfil(_autor(request))),
+    )
+
+
+@acao_protegida(ACAO_DESIGNAR_SUBSTITUTO)
+@require_POST
+def gravar_troca(
+    request: HttpRequest,
+    servidor: int,
+    substituicao: int,
+) -> HttpResponse:
+    sub = get_object_or_404(Substituicao, pk=substituicao, impedimento__perfil_id=servidor)
+    autor = _autor(request)
+    alcance = alcance_do_perfil(autor)
+    leitura = ler_troca_de_substituto(request.POST.dict())
+    if leitura.dto is None:
+        return render(
+            request,
+            TEMPLATE_MODAL_DESIGNAR,
+            contexto_modal_trocar(
+                sub,
+                alcance,
+                valores=request.POST.dict(),
+                recusa=leitura.recusa,
+            ),
+            status=422,
+        )
+    desfecho = trocar_substituto(sub, leitura.dto, alcance=alcance)
+    if desfecho.substituicao is None:
+        return render(
+            request,
+            TEMPLATE_MODAL_DESIGNAR,
+            contexto_modal_trocar(
+                sub,
+                alcance,
+                valores=request.POST.dict(),
+                recusa=desfecho.recusa,
+            ),
+            status=422,
+        )
+    registrar_ato(
+        request,
+        operacao="trocar",
+        alvo_tipo="servidor",
+        alvo_identificador=sub.impedimento.perfil.rf,
+    )
+    return _secao_atualizada(request, sub.impedimento.perfil)
+
+
+@acao_protegida(ACAO_DESIGNAR_SUBSTITUTO)
+def modal_encerrar(
+    request: HttpRequest,
+    servidor: int,
+    substituicao: int,
+) -> HttpResponse:
+    sub = get_object_or_404(Substituicao, pk=substituicao, impedimento__perfil_id=servidor)
+    return render(
+        request,
+        TEMPLATE_MODAL_ENCERRAR,
+        contexto_modal_encerrar(sub),
+    )
+
+
+@acao_protegida(ACAO_DESIGNAR_SUBSTITUTO)
+@require_POST
+def gravar_encerramento(
+    request: HttpRequest,
+    servidor: int,
+    substituicao: int,
+) -> HttpResponse:
+    sub = get_object_or_404(Substituicao, pk=substituicao, impedimento__perfil_id=servidor)
+    encerrar_substituicao(sub)
+    registrar_ato(
+        request,
+        operacao="encerrar",
+        alvo_tipo="servidor",
+        alvo_identificador=sub.impedimento.perfil.rf,
+    )
+    return _secao_atualizada(request, sub.impedimento.perfil)
+
+
+@acao_protegida(ACAO_DESIGNAR_SUBSTITUTO)
+def modal_designar_substituto(request: HttpRequest) -> HttpResponse:
+    return render(
+        request,
+        TEMPLATE_MODAL_DESIGNAR_SUBSTITUTO,
+        contexto_modal_designar_substituto(alcance_do_perfil(_autor(request))),
+    )
+
+
+@acao_protegida(ACAO_DESIGNAR_SUBSTITUTO)
+def opcoes_substituicao(request: HttpRequest) -> HttpResponse:
+    unidade = request.GET.get("unidade", "")
+    return render(
+        request,
+        TEMPLATE_OPCOES_SERVIDOR,
+        contexto_opcoes_substituicao(int(unidade) if unidade.isdigit() else None),
+    )
+
+
+@acao_protegida(ACAO_DESIGNAR_SUBSTITUTO)
+def face_substituicao(request: HttpRequest) -> HttpResponse:
+    servidor = request.GET.get("servidor", "")
+    if not servidor.isdigit():
+        return HttpResponse("")
+    perfil = _perfil(int(servidor))
+    impedimento_bruto = request.GET.get("impedimento", "")
+    impedimento_id = int(impedimento_bruto) if impedimento_bruto.isdigit() else None
+    return render(
+        request,
+        TEMPLATE_FACE_SUBSTITUICAO,
+        contexto_face_substituicao(
+            perfil,
+            impedimento_id,
+            alcance_do_perfil(_autor(request)),
+        ),
+    )
+
+
 def _secao_atualizada(request: HttpRequest, perfil: Perfil) -> HttpResponse:
-    """O poço volta vazio — é assim que o modal fecha — e a seção se atualiza pelo swap fora de
-    banda que o partial carrega, no molde de `_edicao_concluida.html`."""
     return render(
         request,
         TEMPLATE_IMPEDIMENTO_CONCLUIDO,
-        contexto_secao_exercicio(perfil, _pode_registrar_impedimento(request, perfil)),
+        contexto_secao_exercicio(
+            perfil,
+            _pode_registrar_impedimento(request, perfil),
+            pode_designar_substituto=_pode_designar_substituto(request, perfil),
+        ),
     )
 
 
 def _pode_registrar_impedimento(request: HttpRequest, perfil: Perfil) -> bool:
     return pode_executar(request.user, ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR, perfil.unidade_id)
+
+
+def _pode_designar_substituto(request: HttpRequest, perfil: Perfil) -> bool:
+    return pode_executar(request.user, ACAO_DESIGNAR_SUBSTITUTO, perfil.unidade_id)
 
 
 def _perfil(pk: int) -> Perfil:
@@ -421,5 +580,4 @@ def _perfil(pk: int) -> Perfil:
 
 
 def _autor(request: HttpRequest) -> Perfil:
-    # AUTH_USER_MODEL é Perfil: autenticado aqui É um Perfil — o decorator já barrou o anônimo.
     return cast(Perfil, request.user)

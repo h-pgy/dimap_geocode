@@ -9,8 +9,8 @@ from apps.competencias.registro import REGISTRO
 from apps.unidades.consulta import posicao_de
 from apps.unidades.direcao import estado_da_direcao
 from apps.unidades.models import Unidade
-from apps.user_admin.exercicio import substituicao_que_exerce, substituicao_vigente
 from apps.user_admin.models import Perfil
+from apps.user_admin.substituicao import substituicao_que_exerce, substituicao_vigente
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.autorizacao import (
     AvaliacaoCompetenciaInput,

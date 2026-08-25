@@ -1,10 +1,11 @@
-{# Modal de encerrar substituição (SPEC user_admin/015): revogar sem pôr outra pessoa no lugar. A #}
-{# confirmação precisa dizer o que acontece com o REGISTRO, que é diferente conforme a cobertura  #}
-{# já tenha começado ou não.                                                                      #}
-<input type="checkbox" id="{{ item.modal_encerrar }}" class="modal-toggle" />
+{# Modal de encerrar substituição (SPEC user_admin/015, ato na 024) #}
+<input type="checkbox" id="modal-encerrar" class="modal-toggle" checked />
 <div class="modal modal-glass" role="dialog">
   <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
-    <div class="flex flex-col gap-5">
+    <form hx-post="{% url 'user_admin:gravar_encerramento' perfil.pk item.substituicao.pk %}"
+          hx-target="#poco-modal"
+          hx-swap="innerHTML"
+          class="flex flex-col gap-5">
       <div>
         <h2 class="text-xl font-bold tracking-tight text-madeira-700">Encerrar substituição</h2>
         <p class="text-sm text-base-content/70 mt-1">
@@ -13,7 +14,7 @@
         </p>
       </div>
       <div class="tarja-vinculo flex items-start gap-3">
-        <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+        <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/></svg>
         <p class="text-[13px] text-base-content/80">
           {% if item.vigente %}
             Como ela <strong>está em curso</strong>, termina <strong>hoje</strong> e continua na lista,
@@ -25,17 +26,17 @@
         </p>
       </div>
       <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
-        <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+        <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
         <p class="text-[13px] text-base-content/80">
           A partir daí ninguém responde pelo cargo em {{ item.periodo }}, até que outra pessoa seja
           designada para esse período.
         </p>
       </div>
       <div class="modal-action">
-        <label for="{{ item.modal_encerrar }}" class="btn btn-glass btn-sm">Cancelar</label>
-        <button type="button" class="btn btn-onsen btn-sm">Encerrar</button>
+        <label for="modal-encerrar" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">Encerrar</button>
       </div>
-    </div>
+    </form>
   </div>
-  <label class="modal-backdrop" for="{{ item.modal_encerrar }}">Fechar</label>
+  <label class="modal-backdrop" for="modal-encerrar">Fechar</label>
 </div>

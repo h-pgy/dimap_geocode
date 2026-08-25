@@ -69,7 +69,16 @@ SobrenomeDePessoa = Annotated[
 EmailDeServidor = Annotated[EmailStr, BeforeValidator(_caixa_baixa)]
 
 
+def conferir_fim(fim: date | None, inicio: date | None, mensagem: str) -> date | None:
+    if fim is not None and inicio is not None and fim < inicio:
+        raise PydanticCustomError("fim_antes_do_inicio", mensagem)
+    return fim
+
+
 ERRO_FIM_ANTES_DO_INICIO = "Fim: não pode ser anterior ao início do impedimento."
+ERRO_FIM_ANTES_DO_INICIO_SUBSTITUICAO = (
+    "Substitui até: não pode ser anterior ao início da substituição."
+)
 
 
 class NovoImpedimento(BaseModel):
@@ -88,10 +97,7 @@ class NovoImpedimento(BaseModel):
         # Validador de CAMPO, e não de model: só assim a recusa nasce apontando `data_fim`, e o
         # realce cai no controle que a pessoa precisa consertar. O `CheckConstraint` do model
         # continua de pé — este validador é a frase, não a garantia.
-        inicio = info.data.get("data_inicio")
-        if fim is not None and inicio is not None and fim < inicio:
-            raise PydanticCustomError("fim_antes_do_inicio", ERRO_FIM_ANTES_DO_INICIO)
-        return fim
+        return conferir_fim(fim, info.data.get("data_inicio"), ERRO_FIM_ANTES_DO_INICIO)
 
 
 class NovoServidor(BaseModel):
@@ -156,18 +162,36 @@ class NovoSuperusuario(BaseModel):
 
 
 class NovaSubstituicao(BaseModel):
+    """ALTERADO nesta SPEC: ganha o `frozen` e a conferência do período."""
+
+    model_config = ConfigDict(frozen=True)
+
     substituto: int
     # A tela manda as datas já propostas; em branco continua valendo, porque é assim que o andaime
     # designa sem repetir o cálculo da lacuna.
     data_inicio: DataOpcional = None
     data_fim: DataOpcional = None
 
+    @field_validator("data_fim")
+    @classmethod
+    def _fim_nao_antecede_inicio(cls, fim: date | None, info: ValidationInfo) -> date | None:
+        return conferir_fim(fim, info.data.get("data_inicio"), ERRO_FIM_ANTES_DO_INICIO_SUBSTITUICAO)
+
 
 class TrocaDeSubstituto(BaseModel):
+    """ALTERADO nesta SPEC: mesmo `frozen` e mesma conferência."""
+
+    model_config = ConfigDict(frozen=True)
+
     substituto: int
     # "Assume em" — obrigatório, porque é a véspera dela que encerra a substituição que sai.
     data_inicio: date
     data_fim: DataOpcional = None
+
+    @field_validator("data_fim")
+    @classmethod
+    def _fim_nao_antecede_inicio(cls, fim: date | None, info: ValidationInfo) -> date | None:
+        return conferir_fim(fim, info.data.get("data_inicio"), ERRO_FIM_ANTES_DO_INICIO_SUBSTITUICAO)
 
 
 class MudancaDeAdministrador(BaseModel):

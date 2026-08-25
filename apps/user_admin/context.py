@@ -19,20 +19,14 @@ from apps.unidades.direcao import alarme_sem_direcao, estado_da_direcao
 from apps.unidades.paleta import hex_da_cor
 from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
+    ACAO_DESIGNAR_SUBSTITUTO,
     ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
     ACAO_TORNAR_ADMINISTRADOR,
 )
 from apps.user_admin.apresentacao import imagem_do_perfil, selo_do_exercicio
 from apps.user_admin.exercicio import (
-    candidatos_a_substituto,
     impedimentos_em_aberto,
-    lacuna_proposta,
-    periodo_de,
     retorno_eh_revogacao,
-    substituicao_que_exerce,
-    substituicao_vigente,
-    substituicoes_do_impedimento,
-    trechos_do_impedimento,
 )
 from apps.user_admin.models import (
     CargoBase,
@@ -41,6 +35,15 @@ from apps.user_admin.models import (
     Perfil,
     Substituicao,
     TipoImpedimento,
+)
+from apps.user_admin.substituicao import (
+    candidatos_a_substituto,
+    lacuna_proposta,
+    periodo_de,
+    substituicao_que_exerce,
+    substituicao_vigente,
+    substituicoes_do_impedimento,
+    trechos_do_impedimento,
 )
 from services.domain.autorizacao import VarianteIcone
 from services.domain.exercicio import Periodo, Trecho, vigente_em
@@ -54,14 +57,17 @@ from services.domain.titularidade import Direcao, avaliar_direcao
 from services.utils.erros_formulario import RecusaDeFormulario
 
 SEM_CARGO_COMISSAO = "—"
-# As duas telas que encadeiam unidade → servidor no mesmo partial (SPEC user_admin/023): o que muda
-# entre elas é a rota que o segundo select chama, o bloco que ela troca e a dica de unidade vazia.
+# As telas que encadeiam unidade → servidor no mesmo partial (SPEC user_admin/022, 023 e 024).
 ROTA_ESTADO_ADMINISTRADOR = "user_admin:estado_administrador"
 ALVO_ESTADO_ADMINISTRADOR = "administrador-alvo"
 DICA_SEM_SERVIDOR_ADMINISTRADOR = "Cadastre alguém na unidade antes de tornar administrador."
 ROTA_FACE_IMPEDIMENTO = "user_admin:face_impedimento"
 ALVO_FACE_IMPEDIMENTO = "face-impedimento"
 DICA_SEM_SERVIDOR_IMPEDIMENTO = "Cadastre alguém na unidade antes de registrar impedimento."
+ROTA_FACE_SUBSTITUICAO = "user_admin:face_substituicao"
+ALVO_FACE_SUBSTITUICAO = "face-substituicao"
+DICA_SEM_SERVIDOR_SUBSTITUICAO = "Cadastre alguém na unidade antes de designar substituto."
+
 # Os campos do formulário de servidor que o `selected` do select compara com um `pk`.
 CAMPOS_DE_ID = ("unidade_id", "cargo_base_id", "cargo_comissao_id")
 ROTULO_UM_SUBSTITUTO = "Substituído por"
@@ -142,11 +148,14 @@ def contexto_cadastro_concluido(perfil: Perfil) -> dict[str, Any]:
     return {"perfil": perfil}
 
 
-def contexto_pagina_perfil(perfil: Perfil) -> dict[str, Any]:
+def contexto_pagina_perfil(
+    perfil: Perfil,
+    pode_designar_substituto: bool = False,
+) -> dict[str, Any]:
     """O que a página lê. Sem catálogo nenhum: os selects são do modal, que vem por rota."""
     return (
         contexto_fundo_admin()
-        | contexto_exercicio(perfil)
+        | contexto_exercicio(perfil, pode_designar=pode_designar_substituto)
         | _icone_administrador()
         | {
             "perfil": perfil,
@@ -301,12 +310,13 @@ def _opcoes_de_servidor(
     }
 
 
-def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
-    """A seção e os diálogos dela: os cartões dos impedimentos em aberto, a agenda de cada um, a
-    lacuna que a designação propõe e os candidatos dos dois alcances. Uma passagem só — nada na
-    página pergunta duas vezes a mesma coisa ao banco."""
+def contexto_exercicio(
+    perfil: Perfil,
+    pode_designar: bool = False,
+) -> dict[str, Any]:
+    """A seção e os diálogos dela. Os cartões não montam mais candidatos nem modais completos
+    estaticamente: os diálogos chegam por rota protegida."""
     tem_cargo_comissao = perfil.cargo_comissao_id is not None
-    universos = _universos_de_candidatos(perfil) if tem_cargo_comissao else {}
     return {
         "exercicio": {
             "selo": selo_do_exercicio(perfil),
@@ -315,13 +325,12 @@ def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
             "tem_cargo_comissao": tem_cargo_comissao,
             "tipos_impedimento": TipoImpedimento.objects.order_by("nome"),
             "cartoes": [
-                _cartao_do_impedimento(impedimento, universos)
+                _cartao_do_impedimento(impedimento, pode_designar=pode_designar)
                 for impedimento in impedimentos_em_aberto(perfil)
             ],
             "substituindo": _substituindo(perfil),
-            # Reflexo da SPEC 016: a mesma pergunta ("esta unidade tem direção hoje?"), aplicada à
-            # unidade de quem é titular desta página.
             "alarme_sem_direcao": _alarme_sem_direcao_do_titular(perfil),
+            "pode_designar_substituto": pode_designar,
         }
     }
 
@@ -331,12 +340,17 @@ def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def contexto_secao_exercicio(perfil: Perfil, pode_registrar_impedimento: bool) -> dict[str, Any]:
+def contexto_secao_exercicio(
+    perfil: Perfil,
+    pode_registrar_impedimento: bool,
+    pode_designar_substituto: bool = False,
+) -> dict[str, Any]:
     """A seção sozinha, como o swap fora de banda a devolve. `perfil` viaja junto porque a seção o
-    nomeia, e a permissão porque é ela que decide se os dois botões existem."""
-    return contexto_exercicio(perfil) | {
+    nomeia, e as permissões decidem quais botões existem."""
+    return contexto_exercicio(perfil, pode_designar=pode_designar_substituto) | {
         "perfil": perfil,
         "pode_registrar_impedimento": pode_registrar_impedimento,
+        "pode_designar_substituto": pode_designar_substituto,
     }
 
 
@@ -374,13 +388,184 @@ def contexto_modal_registrar_impedimento(ids_permitidos: Collection[int]) -> dic
 
 
 def _icone_impedimento() -> dict[str, Any]:
-    # Mesmo molde de `_icone_administrador`: o slug e a variante vão prontos para o `icone_acao` do
-    # template, porque o resolvedor mora em `apps.competencias`, que este módulo não importa.
     return {
         "acao_registrar_impedimento": ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR.acao,
         "variante_icone_pequena": VarianteIcone.PEQUENO,
         "variante_icone_grande": VarianteIcone.GRANDE,
     }
+
+
+# ---------------------------------------------------------------------------
+# Designar substituto, trocar e encerrar como ato (SPEC user_admin/024)
+# ---------------------------------------------------------------------------
+
+
+def _icone_substituto() -> dict[str, Any]:
+    return {
+        "acao_designar_substituto": ACAO_DESIGNAR_SUBSTITUTO.acao,
+        "variante_icone_pequena": VarianteIcone.PEQUENO,
+        "variante_icone_grande": VarianteIcone.GRANDE,
+    }
+
+
+def contexto_modal_designar_substituto(ids_permitidos: Collection[int]) -> dict[str, Any]:
+    """O modal da rota direta de designar: unidades do alcance de quem assina."""
+    return (
+        catalogo_de_unidades(ids_permitidos)
+        | contexto_opcoes_substituicao(None)
+        | _icone_substituto()
+    )
+
+
+def contexto_opcoes_substituicao(unidade_id: int | None) -> dict[str, Any]:
+    return _opcoes_de_servidor(
+        unidade_id,
+        ROTA_FACE_SUBSTITUICAO,
+        ALVO_FACE_SUBSTITUICAO,
+        DICA_SEM_SERVIDOR_SUBSTITUICAO,
+    )
+
+
+def contexto_modal_designar(
+    afastamento: Impedimento,
+    ids_permitidos: Collection[int],
+    valores: Mapping[str, Any] | None = None,
+    recusa: RecusaDeFormulario | None = None,
+) -> dict[str, Any]:
+    perfil = afastamento.perfil
+    agenda = list(substituicoes_do_impedimento(afastamento))
+    lacuna = lacuna_proposta(afastamento, agenda)
+    universos = _universos_de_candidatos(perfil, ids_permitidos)
+    periodo_proposto = lacuna or periodo_de(afastamento)
+    candidatos = _candidatos(afastamento, periodo_proposto, universos, exceto=None)
+
+    data_inicio = valores.get("data_inicio") if valores else (periodo_proposto.inicio.isoformat() if periodo_proposto.inicio else "")
+    data_fim = valores.get("data_fim") if valores else (periodo_proposto.fim.isoformat() if periodo_proposto.fim else "")
+
+    return {
+        "perfil": perfil,
+        "cartao": {
+            "impedimento": afastamento,
+            "periodo": _texto_periodo_longo(periodo_de(afastamento)),
+        },
+        "candidatos": candidatos,
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
+        "troca": None,
+        "valores": valores or {},
+        "erros": recusa.mensagens if recusa else (),
+        "realce": recusa.realce if recusa else {},
+    }
+
+
+def contexto_modal_trocar(
+    substituicao: Substituicao,
+    ids_permitidos: Collection[int],
+    valores: Mapping[str, Any] | None = None,
+    recusa: RecusaDeFormulario | None = None,
+) -> dict[str, Any]:
+    afastamento = substituicao.impedimento
+    perfil = afastamento.perfil
+    universos = _universos_de_candidatos(perfil, ids_permitidos)
+    periodo = periodo_de(substituicao)
+    candidatos = _candidatos(afastamento, periodo, universos, exceto=substituicao.pk)
+
+    data_inicio = valores.get("data_inicio") if valores else (periodo.inicio.isoformat() if periodo.inicio else "")
+    data_fim = valores.get("data_fim") if valores else (periodo.fim.isoformat() if periodo.fim else "")
+
+    item_troca = {
+        "substituicao": substituicao,
+        "perfil": substituicao.substituto,
+        "periodo": _texto_periodo_curto(periodo),
+    }
+
+    return {
+        "perfil": perfil,
+        "cartao": {
+            "impedimento": afastamento,
+            "periodo": _texto_periodo_longo(periodo_de(afastamento)),
+        },
+        "candidatos": candidatos,
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
+        "troca": item_troca,
+        "valores": valores or {},
+        "erros": recusa.mensagens if recusa else (),
+        "realce": recusa.realce if recusa else {},
+    }
+
+
+def contexto_modal_encerrar(substituicao: Substituicao) -> dict[str, Any]:
+    hoje = timezone.localdate()
+    periodo = periodo_de(substituicao)
+    vigente = vigente_em(periodo, hoje)
+    futura = substituicao.data_inicio > hoje
+
+    item = {
+        "substituicao": substituicao,
+        "perfil": substituicao.substituto,
+        "periodo": _texto_periodo_curto(periodo),
+        "vigente": vigente,
+        "futura": futura,
+    }
+    return {
+        "perfil": substituicao.impedimento.perfil,
+        "item": item,
+    }
+
+
+def contexto_face_substituicao(
+    perfil: Perfil,
+    impedimento_id: int | None,
+    ids_permitidos: Collection[int],
+) -> dict[str, Any]:
+    """As quatro faces da rota direta (SPEC user_admin/024 §6):
+    1. Sem cargo em comissão
+    2. Sem impedimento em aberto
+    3. Afastamento já coberto (sem lacuna)
+    4. Formulário de designação
+    """
+    tem_cargo = perfil.cargo_comissao_id is not None
+    abertos = list(impedimentos_em_aberto(perfil))
+    escolhido = next((i for i in abertos if i.pk == impedimento_id), None) or (
+        abertos[0] if abertos else None
+    )
+
+    if not tem_cargo:
+        return {"estado": "sem_cargo", "perfil": perfil}
+
+    if not abertos or escolhido is None:
+        return {"estado": "sem_impedimento", "perfil": perfil}
+
+    agenda = list(substituicoes_do_impedimento(escolhido))
+    lacuna = lacuna_proposta(escolhido, agenda)
+
+    if lacuna is None:
+        return {
+            "estado": "coberto",
+            "perfil": perfil,
+            "impedimento": escolhido,
+            "agenda": agenda,
+            "periodo": _texto_periodo_longo(periodo_de(escolhido)),
+        }
+
+    universos = _universos_de_candidatos(perfil, ids_permitidos)
+    candidatos = _candidatos(escolhido, lacuna, universos, exceto=None)
+
+    return {
+        "estado": "formulario",
+        "perfil": perfil,
+        "impedimento": escolhido,
+        "impedimentos_abertos": abertos,
+        "calha": _calha(escolhido, agenda),
+        "candidatos": candidatos,
+        "data_inicio": lacuna.inicio.isoformat() if lacuna.inicio else "",
+        "data_fim": lacuna.fim.isoformat() if lacuna.fim else "",
+        "valores": {},
+        "erros": (),
+        "realce": {},
+    }
+
 
 
 def _valores_do_impedimento(valores: Mapping[str, Any]) -> dict[str, Any]:
@@ -435,13 +620,13 @@ def _alarme_sem_direcao_do_titular(perfil: Perfil) -> str:
 
 def _cartao_do_impedimento(
     impedimento: Impedimento,
-    universos: dict[str, list[Perfil]],
+    pode_designar: bool = False,
 ) -> dict[str, Any]:
     # Uma consulta pela agenda, e é dela que saem a lista, a calha e a lacuna proposta.
     agenda = list(substituicoes_do_impedimento(impedimento))
     lacuna = lacuna_proposta(impedimento, agenda)
     itens = [
-        _item_de_substituicao(substituicao, impedimento, universos)
+        _item_de_substituicao(substituicao, impedimento, pode_designar=pode_designar)
         for substituicao in agenda
     ]
     return {
@@ -462,19 +647,14 @@ def _cartao_do_impedimento(
         "lacuna_texto": _texto_periodo_corrido(lacuna) if lacuna is not None else "",
         "calha": _calha(impedimento, agenda),
         "lacuna": lacuna,
-        "candidatos": (
-            _candidatos(impedimento, lacuna, universos, exceto=None)
-            if lacuna is not None
-            else None
-        ),
-        "modal": f"modal-designar-{impedimento.pk}",
+        "pode_designar": pode_designar,
     }
 
 
 def _item_de_substituicao(
     substituicao: Substituicao,
     impedimento: Impedimento,
-    universos: dict[str, list[Perfil]],
+    pode_designar: bool = False,
 ) -> dict[str, Any]:
     hoje = timezone.localdate()
     periodo = periodo_de(substituicao)
@@ -490,13 +670,7 @@ def _item_de_substituicao(
         # O que passou recua e perde as ações: substituição encerrada não se troca nem se encerra.
         "encerrada": not vigente and not futura,
         "situacao": SITUACAO_VIGENTE if vigente else "" if futura else SITUACAO_ENCERRADA,
-        "candidatos": (
-            None
-            if not vigente and not futura
-            else _candidatos(impedimento, periodo, universos, exceto=substituicao.pk)
-        ),
-        "modal_trocar": f"modal-trocar-{substituicao.pk}",
-        "modal_encerrar": f"modal-encerrar-{substituicao.pk}",
+        "pode_designar": pode_designar,
     }
 
 
@@ -556,16 +730,22 @@ def _substituindo(perfil: Perfil) -> dict[str, Any] | None:
     }
 
 
-def _universos_de_candidatos(perfil: Perfil) -> dict[str, list[Perfil]]:
+def _universos_de_candidatos(
+    perfil: Perfil,
+    ids_permitidos: Collection[int] | None = None,
+) -> dict[str, list[Perfil]]:
     # As duas listas nascem renderizadas: o toggle de alcance troca qual aparece, e uma rota para
     # isso recalcularia o que não muda com o diálogo aberto. O prefetch é o que faz o avaliador
     # rodar sem uma consulta por candidato.
-    servidores = list(
+    qs = (
         Perfil.objects.exclude(pk=perfil.pk)
         .select_related("unidade", "cargo_comissao")
         .prefetch_related("impedimentos", "substituicoes_exercidas")
         .order_by("nome", "sobrenome")
     )
+    if ids_permitidos is not None:
+        qs = qs.filter(unidade_id__in=ids_permitidos)
+    servidores = list(qs)
     return {
         "unidade": [
             candidato

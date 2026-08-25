@@ -1,0 +1,108 @@
+{# Face da substituição para o modal direto (SPEC user_admin/024 §6) #}
+{% if estado == "sem_cargo" %}
+  <div class="flex flex-col gap-5">
+    <div class="tarja-vinculo flex items-start gap-3">
+      <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+      <p class="text-[13px] text-base-content/80">
+        {{ perfil.nome }} não ocupa cargo em comissão. Apenas cargos de direção e chefia geram competência administrativa a ser coberta por substituição.
+      </p>
+    </div>
+  </div>
+{% elif estado == "sem_impedimento" %}
+  <div class="flex flex-col gap-5">
+    <div class="tarja-vinculo flex items-start gap-3">
+      <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+      <p class="text-[13px] text-base-content/80">
+        {{ perfil.nome }} está em exercício e não possui afastamentos registrados ou programados. Registre um impedimento antes de designar cobertura.
+      </p>
+    </div>
+  </div>
+{% elif estado == "coberto" %}
+  <div class="flex flex-col gap-5">
+    <div class="tarja-vinculo flex items-start gap-3">
+      <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      <p class="text-[13px] text-base-content/80">
+        O afastamento atual (<strong>{{ impedimento.tipo.nome }} · {{ periodo }}</strong>) já está totalmente coberto. Para trocar ou encerrar a cobertura existente, use a página do servidor.
+      </p>
+    </div>
+  </div>
+{% elif estado == "formulario" %}
+  <form hx-post="{% url 'user_admin:gravar_designacao' perfil.pk impedimento.pk %}"
+        hx-target="#poco-modal"
+        hx-swap="innerHTML"
+        class="flex flex-col gap-5">
+
+    {% include "partials/_tarja_recusa.html" with titulo="A substituição não foi gravada" %}
+
+    {% if impedimentos_abertos|length > 1 %}
+      <label class="form-field">
+        <span class="text-overline">Afastamento a cobrir</span>
+        <select name="impedimento_escolhido" class="select select-glass" data-select-onsen
+                hx-get="{% url 'user_admin:face_substituicao' %}?servidor={{ perfil.pk }}"
+                hx-target="#face-substituicao"
+                hx-swap="innerHTML"
+                name="impedimento">
+          {% for imp in impedimentos_abertos %}
+            <option value="{{ imp.pk }}"{% if imp.pk == impedimento.pk %} selected{% endif %}>{{ imp.tipo.nome }} · {{ imp.data_inicio|date:"d/m/Y" }} → {% if imp.data_fim %}{{ imp.data_fim|date:"d/m/Y" }}{% else %}prazo indeterminado{% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+    {% endif %}
+
+    <div class="card-well p-4 flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <span class="text-overline">Cobertura do afastamento</span>
+        <span class="text-xs text-warning font-medium">Período descoberto</span>
+      </div>
+      {% include "user_admin/partials/_calha_cobertura.html" with calha=calha %}
+    </div>
+
+    <div class="form-field group">
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-overline">Substituto</span>
+        <label class="flex items-center gap-2 shrink-0 cursor-pointer">
+          <span class="text-xs text-base-content/60">Outras unidades</span>
+          <input type="checkbox" class="toggle-onsen" aria-label="Liberar outras unidades" />
+        </label>
+      </div>
+
+      <div class="flex flex-col gap-1.5 group-has-[.toggle-onsen:checked]:hidden">
+        <select name="substituto" class="select select-glass {{ realce.substituto }}" data-select-onsen>
+          {% for candidato in candidatos.unidade %}
+            <option value="{{ candidato.pk }}"{% if valores.substituto == candidato.pk|stringformat:"s" or valores.substituto == candidato.pk %} selected{% endif %}>{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <span class="form-field-hint">
+          A {{ perfil.unidade.sigla }} inteira, menos quem estiver afastado ou cobrindo outra pessoa no período.
+        </span>
+      </div>
+
+      <div class="hidden flex-col gap-1.5 group-has-[.toggle-onsen:checked]:flex">
+        <select name="substituto" class="select select-glass {{ realce.substituto }}" data-select-onsen>
+          {% for candidato in candidatos.ampliado %}
+            <option value="{{ candidato.pk }}"{% if valores.substituto == candidato.pk|stringformat:"s" or valores.substituto == candidato.pk %} selected{% endif %}>{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }} · {{ candidato.unidade.sigla }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <span class="form-field-hint">
+          Só servidores de unidades dentro do seu alcance hierárquico.
+        </span>
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-4">
+      <label class="form-field">
+        <span class="text-overline">Substitui a partir de</span>
+        <input type="date" name="data_inicio" class="input input-glass {{ realce.data_inicio }}" value="{{ data_inicio }}" />
+      </label>
+      <label class="form-field">
+        <span class="text-overline">Substitui até</span>
+        <input type="date" name="data_fim" class="input input-glass {{ realce.data_fim }}" value="{{ data_fim }}" />
+        <span class="form-field-hint">Em branco, o prazo é indeterminado.</span>
+      </label>
+    </div>
+
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-onsen btn-sm">Designar</button>
+    </div>
+  </form>
+{% endif %}

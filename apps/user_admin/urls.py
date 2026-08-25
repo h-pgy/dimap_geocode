@@ -55,4 +55,18 @@ urlpatterns = [
     # partial e o contexto se reusam, a competência que protege a rota é que muda.
     path("servidores/impedimento/opcoes/", views.opcoes_impedimento, name="opcoes_impedimento"),
     path("servidores/impedimento/face/", views.face_impedimento, name="face_impedimento"),
+    # A ação "designar substituto" (SPEC user_admin/024). O impedimento e a substituição descem
+    # ABAIXO do servidor no caminho: é o servidor que o alcance confere, e são eles que a consulta
+    # escopa por ele.
+    path("servidores/<int:servidor>/impedimentos/<int:impedimento>/substituto/modal/", views.modal_designar, name="modal_designar"),
+    path("servidores/<int:servidor>/impedimentos/<int:impedimento>/substituto/", views.gravar_designacao, name="gravar_designacao"),
+    path("servidores/<int:servidor>/substituicoes/<int:substituicao>/trocar/modal/", views.modal_trocar, name="modal_trocar"),
+    path("servidores/<int:servidor>/substituicoes/<int:substituicao>/trocar/", views.gravar_troca, name="gravar_troca"),
+    path("servidores/<int:servidor>/substituicoes/<int:substituicao>/encerrar/modal/", views.modal_encerrar, name="modal_encerrar"),
+    path("servidores/<int:servidor>/substituicoes/<int:substituicao>/encerrar/", views.gravar_encerramento, name="gravar_encerramento"),
+    path("servidores/substituicoes/", views.modal_designar_substituto, name="modal_designar_substituto"),
+    # Mesma lista de servidores por unidade dos outros dois modais diretos, servida por rota
+    # própria: o partial e o contexto se reusam, a competência que protege a rota é que muda.
+    path("servidores/substituicoes/opcoes/", views.opcoes_substituicao, name="opcoes_substituicao"),
+    path("servidores/substituicoes/face/", views.face_substituicao, name="face_substituicao"),
 ]

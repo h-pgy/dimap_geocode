@@ -76,3 +76,16 @@ ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR = instanciar_acao(
     # Um alvo só, e ele é uma PESSOA: a unidade sai da lotação dela, lida no banco.
     alcance=LotacaoDoServidor(),
 )
+
+ACAO_DESIGNAR_SUBSTITUTO = instanciar_acao(
+    slug="user_admin.designar_substituto",
+    nome="Designar substituto",
+    nome_curto="Substituto",
+    tooltip="Designa quem responde pelo cargo de um servidor impedido — troca e encerra a cobertura.",
+    url_name="user_admin:modal_designar_substituto",
+    partial="competencias/partials/_item_menu.html",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    estrutural=True,
+    alcance=LotacaoDoServidor(),
+)
+
