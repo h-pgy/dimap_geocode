@@ -156,6 +156,12 @@ def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> No
         )
     )
     mensagem = montar_mensagem(conteudo, destinatarios=(perfil.email,))
+    # Envio desligado: a mensagem foi montada (validação de conteúdo ainda roda), impressa para
+    # visibilidade de desenvolvimento, e o cadastro segue sem abrir conexão nem construir o
+    # SmtpConfig — cujo `usuario: EmailStr` explode quando a variável de ambiente está vazia.
+    if not settings.EMAIL_ENVIO_HABILITADO:
+        print(f"[SMTP desligado] para={mensagem.destinatarios} assunto={mensagem.assunto}")
+        return
     enviador = EnviadorSmtp(build_smtp_config(settings), build_smtp_retry_policy(settings))
     resultado = enviador(mensagem)
     if resultado.destinatarios_recusados:

@@ -102,8 +102,9 @@ def _preparar(
     settings: SettingsWrapper,
     enviador: EnviadorFake,
 ) -> None:
-    # EMAIL_SMTP_USUARIO precisa validar como EmailStr mesmo com o enviador trocado: é
-    # `build_smtp_config` quem monta o `SmtpConfig`, e ele roda antes de `EnviadorSmtp` ser chamado.
+    # O envio precisa estar ligado para o código chegar ao `EnviadorSmtp` (aqui trocado pelo fake):
+    # com a guarda de `EMAIL_ENVIO_HABILITADO` em `_entregar_senha`, envio desligado retorna antes.
+    settings.EMAIL_ENVIO_HABILITADO = True
     settings.EMAIL_SMTP_USUARIO = "dimap.geocoder@example.com"
     monkeypatch.setattr(cadastro, "gerar_senha_temporaria", lambda *args, **kwargs: SENHA_FIXA)
     monkeypatch.setattr(cadastro, "EnviadorSmtp", lambda *args: enviador)
