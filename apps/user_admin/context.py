@@ -17,13 +17,18 @@ from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.context import catalogo_de_unidades, contexto_do_modal_de_unidade
 from apps.unidades.direcao import alarme_sem_direcao, estado_da_direcao
 from apps.unidades.paleta import hex_da_cor
-from apps.user_admin.acoes_declaradas import ACAO_CRIAR_SERVIDOR, ACAO_TORNAR_ADMINISTRADOR
+from apps.user_admin.acoes_declaradas import (
+    ACAO_CRIAR_SERVIDOR,
+    ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
+    ACAO_TORNAR_ADMINISTRADOR,
+)
 from apps.user_admin.apresentacao import imagem_do_perfil, selo_do_exercicio
 from apps.user_admin.exercicio import (
     candidatos_a_substituto,
     impedimentos_em_aberto,
     lacuna_proposta,
     periodo_de,
+    retorno_eh_revogacao,
     substituicao_que_exerce,
     substituicao_vigente,
     substituicoes_do_impedimento,
@@ -49,6 +54,14 @@ from services.domain.titularidade import Direcao, avaliar_direcao
 from services.utils.erros_formulario import RecusaDeFormulario
 
 SEM_CARGO_COMISSAO = "—"
+# As duas telas que encadeiam unidade → servidor no mesmo partial (SPEC user_admin/023): o que muda
+# entre elas é a rota que o segundo select chama, o bloco que ela troca e a dica de unidade vazia.
+ROTA_ESTADO_ADMINISTRADOR = "user_admin:estado_administrador"
+ALVO_ESTADO_ADMINISTRADOR = "administrador-alvo"
+DICA_SEM_SERVIDOR_ADMINISTRADOR = "Cadastre alguém na unidade antes de tornar administrador."
+ROTA_FACE_IMPEDIMENTO = "user_admin:face_impedimento"
+ALVO_FACE_IMPEDIMENTO = "face-impedimento"
+DICA_SEM_SERVIDOR_IMPEDIMENTO = "Cadastre alguém na unidade antes de registrar impedimento."
 # Os campos do formulário de servidor que o `selected` do select compara com um `pk`.
 CAMPOS_DE_ID = ("unidade_id", "cargo_base_id", "cargo_comissao_id")
 ROTULO_UM_SUBSTITUTO = "Substituído por"
@@ -232,7 +245,7 @@ def contexto_administrador_recusado(
 
 
 def contexto_modal_administrador() -> dict[str, Any]:
-    return catalogo_de_unidades() | _icone_administrador()
+    return catalogo_de_unidades() | contexto_opcoes_administrador(None) | _icone_administrador()
 
 
 def _icone_administrador() -> dict[str, Any]:
@@ -247,10 +260,44 @@ def _icone_administrador() -> dict[str, Any]:
 
 
 def contexto_opcoes_administrador(unidade_id: int | None) -> dict[str, Any]:
-    if unidade_id is None:
-        return {"servidores": Perfil.objects.none()}
+    return _opcoes_de_servidor(
+        unidade_id,
+        ROTA_ESTADO_ADMINISTRADOR,
+        ALVO_ESTADO_ADMINISTRADOR,
+        DICA_SEM_SERVIDOR_ADMINISTRADOR,
+    )
+
+
+def contexto_opcoes_impedimento(unidade_id: int | None) -> dict[str, Any]:
+    return _opcoes_de_servidor(
+        unidade_id,
+        ROTA_FACE_IMPEDIMENTO,
+        ALVO_FACE_IMPEDIMENTO,
+        DICA_SEM_SERVIDOR_IMPEDIMENTO,
+    )
+
+
+def _opcoes_de_servidor(
+    unidade_id: int | None,
+    rota_estado: str,
+    alvo_estado: str,
+    dica_sem_servidor: str,
+) -> dict[str, Any]:
+    """A lista de servidores de uma unidade, com o destino do segundo select descendo como DADO —
+    o partial é um só, e o que o recorta é a tela que o compõe."""
+    servidores = (
+        Perfil.objects.none()
+        if unidade_id is None
+        else Perfil.objects.filter(unidade_id=unidade_id).order_by("nome", "sobrenome")
+    )
     return {
-        "servidores": Perfil.objects.filter(unidade_id=unidade_id).order_by("nome", "sobrenome")
+        "servidores": servidores,
+        # Unidade sem ninguém não é a mesma falta que unidade não escolhida, e a tela diz cada uma
+        # com a sua frase.
+        "unidade_escolhida": unidade_id is not None,
+        "rota_estado_servidor": rota_estado,
+        "alvo_estado_servidor": alvo_estado,
+        "dica_sem_servidor": dica_sem_servidor,
     }
 
 
@@ -264,7 +311,7 @@ def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
         "exercicio": {
             "selo": selo_do_exercicio(perfil),
             "exonerado": perfil.exonerado,
-            "afastado": perfil.esta_impedido,
+            "impedido": perfil.esta_impedido,
             "tem_cargo_comissao": tem_cargo_comissao,
             "tipos_impedimento": TipoImpedimento.objects.order_by("nome"),
             "cartoes": [
@@ -277,6 +324,73 @@ def contexto_exercicio(perfil: Perfil) -> dict[str, Any]:
             "alarme_sem_direcao": _alarme_sem_direcao_do_titular(perfil),
         }
     }
+
+
+# ---------------------------------------------------------------------------
+# Registrar impedimento e voltar ao exercício como ato (SPEC user_admin/023)
+# ---------------------------------------------------------------------------
+
+
+def contexto_secao_exercicio(perfil: Perfil, pode_registrar_impedimento: bool) -> dict[str, Any]:
+    """A seção sozinha, como o swap fora de banda a devolve. `perfil` viaja junto porque a seção o
+    nomeia, e a permissão porque é ela que decide se os dois botões existem."""
+    return contexto_exercicio(perfil) | {
+        "perfil": perfil,
+        "pode_registrar_impedimento": pode_registrar_impedimento,
+    }
+
+
+def contexto_modal_impedimento(perfil: Perfil) -> dict[str, Any]:
+    """Os dois modais da página do servidor e as duas faces do modal direto: o perfil sobre quem o
+    ato incide, os tipos de impedimento do select e qual das duas caras o retorno mostra."""
+    return contexto_exercicio(perfil) | {
+        "perfil": perfil,
+        "retorno_eh_revogacao": retorno_eh_revogacao(perfil),
+    }
+
+
+def contexto_impedimento_recusado(
+    perfil: Perfil,
+    valores: Mapping[str, Any],
+    recusa: RecusaDeFormulario,
+) -> dict[str, Any]:
+    # Repopula do formulário cru, e não do DTO: na recusa do DTO não existe DTO algum para
+    # repopular (mesmo molde de `contexto_cadastro_recusado`).
+    return contexto_modal_impedimento(perfil) | {
+        "valores": _valores_do_impedimento(valores),
+        "erros": recusa.mensagens,
+        "realce": recusa.realce,
+    }
+
+
+def contexto_modal_registrar_impedimento(ids_permitidos: Collection[int]) -> dict[str, Any]:
+    """O modal da rota direta: as unidades recortadas ao alcance de quem abre e o segundo select
+    ainda vazio — a face nasce depois, quando o servidor é escolhido."""
+    return (
+        catalogo_de_unidades(ids_permitidos)
+        | contexto_opcoes_impedimento(None)
+        | _icone_impedimento()
+    )
+
+
+def _icone_impedimento() -> dict[str, Any]:
+    # Mesmo molde de `_icone_administrador`: o slug e a variante vão prontos para o `icone_acao` do
+    # template, porque o resolvedor mora em `apps.competencias`, que este módulo não importa.
+    return {
+        "acao_registrar_impedimento": ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR.acao,
+        "variante_icone_pequena": VarianteIcone.PEQUENO,
+        "variante_icone_grande": VarianteIcone.GRANDE,
+    }
+
+
+def _valores_do_impedimento(valores: Mapping[str, Any]) -> dict[str, Any]:
+    """O `selected` do select de tipo compara com `tipo.pk`: id que voltasse como texto perderia a
+    escolha justamente na tela que pede para corrigi-la."""
+    lidos = dict(valores)
+    bruto = lidos.get("tipo")
+    if isinstance(bruto, str) and bruto.isdigit():
+        lidos["tipo"] = int(bruto)
+    return lidos
 
 
 def contexto_listagem_servidores(consulta: ConsultaServidores) -> dict[str, Any]:

@@ -49,6 +49,14 @@ class LotacaoAtualEDestino(TipoAlcance):
     parametros_alvo: tuple[str, ...] = ("servidor", "unidade")
 
 
+class LotacaoDoServidor(TipoAlcance):
+    """O alcance de quem dirige, com um alvo só: a unidade em que o servidor-alvo está lotado, lida
+    no banco a partir do id que vem no caminho da rota (SPEC user_admin/023). O ato incide sobre a
+    pessoa; a unidade é consequência dela, e nunca chega pelo corpo da requisição."""
+
+    parametros_alvo: tuple[str, ...] = ("servidor",)
+
+
 class Acao(BaseModel):
     """O que a ação é. Sem rota, sem template, sem Django."""
 

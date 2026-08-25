@@ -9,7 +9,17 @@ import re
 from datetime import date
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, HttpUrl
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    EmailStr,
+    Field,
+    HttpUrl,
+    ValidationInfo,
+    field_validator,
+)
+from pydantic_core import PydanticCustomError
 
 
 def _vazio_para_nulo(valor: object) -> object:
@@ -59,10 +69,29 @@ SobrenomeDePessoa = Annotated[
 EmailDeServidor = Annotated[EmailStr, BeforeValidator(_caixa_baixa)]
 
 
+ERRO_FIM_ANTES_DO_INICIO = "Fim: não pode ser anterior ao início do impedimento."
+
+
 class NovoImpedimento(BaseModel):
+    """Quem o constrói é o `LeitorDeFormulario` de `apps/user_admin/formularios.py` (SPEC
+    user_admin/023), e não a view — a recusa do período volta como o próprio modal."""
+
+    model_config = ConfigDict(frozen=True)
+
     tipo: int
     data_inicio: date
     data_fim: DataOpcional = None
+
+    @field_validator("data_fim")
+    @classmethod
+    def _fim_nao_antecede_inicio(cls, fim: date | None, info: ValidationInfo) -> date | None:
+        # Validador de CAMPO, e não de model: só assim a recusa nasce apontando `data_fim`, e o
+        # realce cai no controle que a pessoa precisa consertar. O `CheckConstraint` do model
+        # continua de pé — este validador é a frase, não a garantia.
+        inicio = info.data.get("data_inicio")
+        if fim is not None and inicio is not None and fim < inicio:
+            raise PydanticCustomError("fim_antes_do_inicio", ERRO_FIM_ANTES_DO_INICIO)
+        return fim
 
 
 class NovoServidor(BaseModel):

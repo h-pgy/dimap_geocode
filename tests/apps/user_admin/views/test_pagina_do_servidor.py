@@ -217,7 +217,9 @@ def test_pagina_do_servidor_mantem_a_secao_de_exercicio(client: Client) -> None:
 
     assert "Afastado" in html
     assert "Férias SPEC017" in html
-    assert 'id="modal-impedimento"' in html
+    # SPEC user_admin/023: o modal de impedimento deixou de nascer na página — ele chega por rota
+    # protegida, como o de edição. O que a página mantém é a SEÇÃO, com o cartão do impedimento.
+    assert 'id="modal-impedimento"' not in html
     assert 'id="modal-editar-perfil"' not in html
 
 

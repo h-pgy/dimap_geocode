@@ -31,4 +31,28 @@ urlpatterns = [
         views.gravar_administrador,
         name="gravar_administrador",
     ),
+    # A ação "registrar impedimento de servidor" (SPEC user_admin/023): os dois modais da página do
+    # servidor, as duas rotas que gravam — o alvo vem do caminho, que é o único id que o cliente não
+    # forja — e a tela da rota direta com as duas leituras que ela encadeia.
+    path(
+        "servidores/<int:servidor>/impedimento/modal/",
+        views.modal_impedimento,
+        name="modal_impedimento",
+    ),
+    path(
+        "servidores/<int:servidor>/impedimento/",
+        views.gravar_impedimento,
+        name="gravar_impedimento",
+    ),
+    path("servidores/<int:servidor>/retorno/modal/", views.modal_retorno, name="modal_retorno"),
+    path("servidores/<int:servidor>/retorno/", views.gravar_retorno, name="gravar_retorno"),
+    path(
+        "servidores/impedimento/",
+        views.modal_registrar_impedimento,
+        name="modal_registrar_impedimento",
+    ),
+    # Mesma lista de servidores por unidade do modal de plenos poderes, servida por rota própria: o
+    # partial e o contexto se reusam, a competência que protege a rota é que muda.
+    path("servidores/impedimento/opcoes/", views.opcoes_impedimento, name="opcoes_impedimento"),
+    path("servidores/impedimento/face/", views.face_impedimento, name="face_impedimento"),
 ]

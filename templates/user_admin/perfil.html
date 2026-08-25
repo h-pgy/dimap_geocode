@@ -16,7 +16,11 @@
           {% include "user_admin/partials/_identidade_perfil.html" %}
           {% include "user_admin/partials/_secao_resumo_perfil.html" %}
         </div>
-        {% include "user_admin/partials/_secao_exercicio.html" %}
+        {# O invólucro com id é o alvo do swap fora de banda que as rotas do impedimento devolvem #}
+        {# (SPEC user_admin/023): a seção volta no lugar dela sem recarregar a página.             #}
+        <div id="secao-exercicio">
+          {% include "user_admin/partials/_secao_exercicio.html" %}
+        </div>
 
         {% if pode_editar %}
           <div class="flex justify-center pt-2">

@@ -5,7 +5,12 @@ opera sobre os models deste app.
 """
 
 from apps.competencias.utils import instanciar_acao
-from services.domain.autorizacao import LotacaoAtualEDestino, UnidadesSubordinadas, VarianteIcone
+from services.domain.autorizacao import (
+    LotacaoAtualEDestino,
+    LotacaoDoServidor,
+    UnidadesSubordinadas,
+    VarianteIcone,
+)
 
 ACAO_CRIAR_SERVIDOR = instanciar_acao(
     slug="user_admin.criar_servidor",
@@ -53,4 +58,21 @@ ACAO_TORNAR_ADMINISTRADOR = instanciar_acao(
     exclusiva_superusuario=True,
     # Sem alcance: o ato não incide sobre unidade, e o superusuário alcança o organograma inteiro.
     alcance=None,
+)
+
+ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR = instanciar_acao(
+    slug="user_admin.registrar_impedimento_servidor",
+    nome="Registrar impedimento de servidor",
+    nome_curto="Impedimento",
+    tooltip="Registra o impedimento que tira um servidor do exercício — e o devolve antes do prazo.",
+    # Precisa reverter sem argumento (`competencias.E004`): é a rota do modal direto, e não as de
+    # gravação, que recebem o servidor no caminho.
+    url_name="user_admin:modal_registrar_impedimento",
+    partial="competencias/partials/_item_menu.html",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    # Titular da área a exerce por dirigir, sem concessão gravada — e é por ser estrutural que ela é
+    # delegável (SPEC autorizacao/009).
+    estrutural=True,
+    # Um alvo só, e ele é uma PESSOA: a unidade sai da lotação dela, lida no banco.
+    alcance=LotacaoDoServidor(),
 )

@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/023 — Registrar impedimento de servidor (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .quadro-glifo — vitrine de EXPOSIÇÃO. Não é peça do projeto, não vai para o tema. */
+      .quadro-glifo { @apply p-5 flex flex-col items-center justify-center gap-3 text-center; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual. -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC user_admin/023 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Registrar impedimento de servidor</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler está página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          A seção de exercício e os dois modais da página do servidor <strong>não mudam de desenho</strong> —
+          só ganham destino — e por isso não estão aqui. O que se aprova nesta página é o
+          <strong>modal da rota direta</strong>, tela nova, nos seus sete estados, mais o
+          <strong>par de ícones</strong> da ação. Nenhuma peça nova de design system.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · ÍCONES DA AÇÃO ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Ícones da ação</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · O par <span class="text-sm font-normal text-base-content/60">— <span class="text-code">static/src/acoes/user_admin/registrar_impedimento_servidor/icones/</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            O calendário de <span class="text-code">#glifo-impedimento</span>, com a barra do dia que sai
+            da grade. Herda a cor do texto — nenhuma cor escrita dentro do SVG.
+          </p>
+        </div>
+        <div class="card-well p-6 flex flex-wrap items-center gap-10">
+          <!-- variante: pequeno (linha de menu) -->
+          <div class="quadro-glifo">
+            <span class="icone-acao icone-acao-pequeno text-agua-700">
+              <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+                <path d="M8 3v4"/><path d="M16 3v4"/><path d="M9 14.5h6"/>
+              </svg>
+            </span>
+            <span class="text-code text-xs">pequeno.svg</span>
+          </div>
+          <!-- variante: grande (cabeçalho do modal, cartão de ação) -->
+          <div class="quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-700">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+                <path d="M8 3v4"/><path d="M16 3v4"/><path d="M9 14.5h6"/>
+              </svg>
+            </span>
+            <span class="text-code text-xs">grande.svg</span>
+          </div>
+          <!-- em uso: a linha do menu -->
+          <div class="flex-1 min-w-[15rem]">
+            <div class="card-well p-3 flex items-center gap-3">
+              <span class="icone-acao icone-acao-pequeno icone-acao-acende text-agua-700">
+                <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                  <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+                  <path d="M8 3v4"/><path d="M16 3v4"/><path d="M9 14.5h6"/>
+                </svg>
+              </span>
+              <span class="text-sm font-medium">Impedimento</span>
+            </div>
+            <p class="form-field-hint mt-2">no <span class="text-code">MENU_ADMINISTRADOR</span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · TELA MONTADA — o modal da rota direta ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 &middot; Modal da rota direta</h2>
+
+      <!-- partial: user_admin/partials/_modal_registrar_impedimento.html — hx-get de user_admin:modal_registrar_impedimento, alvo #poco-modal -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <div>
+          <p class="text-overline">Abra cada estado</p>
+          <p class="text-sm text-base-content/70 mt-1">
+            A tela própria da acao, pinçada pelo menu de administração: escolhe-se a unidade, depois o
+            servidor dentro dela, e a <strong>face</strong> do modal é o estado gravado de quem foi
+            escolhido &mdash; quem está em exercício se impede; quem está impedido se devolve, ou tem o
+            registro revogado quando o impedimento começa hoje e ainda não vigorou.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <label for="m-vazio" class="btn btn-glass btn-sm">1 &middot; Vazio <span class="text-base-content/50">&mdash; nada escolhido</span></label>
+          <label for="m-unidade" class="btn btn-glass btn-sm">2 &middot; Unidade escolhida <span class="text-base-content/50">&mdash; falta o servidor</span></label>
+          <label for="m-exercicio" class="btn btn-glass btn-sm">3 &middot; Em exercício <span class="text-base-content/50">&mdash; a face é o formulário</span></label>
+          <label for="m-impedido" class="btn btn-glass btn-sm">4 &middot; Impedido <span class="text-base-content/50">&mdash; a face é o retorno</span></label>
+          <label for="m-falta" class="btn btn-glass btn-sm">5 &middot; Unidade sem ninguém <span class="text-base-content/50">&mdash; estado de falta</span></label>
+          <label for="m-recusa" class="btn btn-glass btn-sm">6 &middot; Recusa <span class="text-base-content/50">&mdash; fim antes do início</span></label>
+          <label for="m-revoga" class="btn btn-glass btn-sm">7 &middot; Revogação <span class="text-base-content/50">&mdash; o impedimento começa hoje</span></label>
+        </div>
+      </div>
+      <!-- /partial -->
+    </section>
+
+  </div>
+
+  <div class="poco-modal">
+    <input type="checkbox" id="m-vazio" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                  <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+                  <path d="M8 3v4"/><path d="M16 3v4"/><path d="M9 14.5h6"/>
+                </svg>
+              </span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Registrar impedimento</h2>
+                <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor.</p>
+              </div>
+            </div>
+            <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option value="">&mdash; escolha &mdash;</option>
+                  <option>DIMAP-1 &middot; Avaliação</option>
+                  <option>DIMAP-2 &middot; Cadastro</option>
+                </select>
+                <span class="form-field-hint">Só as unidades do seu alcance.</span>
+              </label>
+              <!-- partial: user_admin/partials/_opcoes_servidor.html — hx-get de user_admin:opcoes_impedimento, alvo o próprio campo -->
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass" disabled>
+                  <option value="">&mdash; escolha a unidade primeiro &mdash;</option>
+                </select>
+              </label>
+              <!-- /partial -->
+            </div>
+            <!-- partial: alvo do hx-get de user_admin:face_impedimento — nasce vazio -->
+            <div id="face-impedimento" class="hidden"></div>
+            <!-- /partial -->
+          <div class="modal-action">
+            <label for="m-vazio" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-vazio">Fechar</label>
+  </div>
+
+  <div class="poco-modal">
+    <input type="checkbox" id="m-unidade" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                  <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+                  <path d="M8 3v4"/><path d="M16 3v4"/><path d="M9 14.5h6"/>
+                </svg>
+              </span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Registrar impedimento</h2>
+                <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor.</p>
+              </div>
+            </div>
+            <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option>DIMAP-1 &middot; Avaliação</option>
+                </select>
+                <span class="form-field-hint">Só as unidades do seu alcance.</span>
+              </label>
+              <!-- partial: user_admin/partials/_opcoes_servidor.html — hx-get de user_admin:opcoes_impedimento, alvo o próprio campo -->
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option value="">&mdash; escolha &mdash;</option>
+                  <option>Ana Ramos &middot; RF 812.345-6</option>
+                  <option>Bruno Teixeira &middot; RF 745.112-0</option>
+                </select>
+              </label>
+              <!-- /partial -->
+            </div>
+          <div class="modal-action">
+            <label for="m-unidade" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-unidade">Fechar</label>
+  </div>
+
+  <div class="poco-modal">
+    <input type="checkbox" id="m-exercicio" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                  <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+                  <path d="M8 3v4"/><path d="M16 3v4"/><path d="M9 14.5h6"/>
+                </svg>
+              </span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Registrar impedimento</h2>
+                <p class="text-sm text-base-content/70 mt-1">Ana Ramos &middot; DIMAP-1 &middot; <span class="badge badge-success badge-soft align-middle">em exercício</span></p>
+              </div>
+            </div>
+            <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option>DIMAP-1 &middot; Avaliação</option>
+                </select>
+              </label>
+              <!-- partial: user_admin/partials/_opcoes_servidor.html — hx-get de user_admin:opcoes_impedimento, alvo o próprio campo -->
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass" data-select-onsen><option>Ana Ramos &middot; RF 812.345-6</option></select>
+              </label>
+              <!-- /partial -->
+            </div>
+            <!-- partial: user_admin/partials/_form_impedimento.html — a MESMA face que o modal da página do servidor compõe -->
+            <form class="flex flex-col gap-5">
+              <label class="form-field">
+                <span class="text-overline">Tipo</span>
+                <select name="tipo" class="select select-glass" data-select-onsen>
+                  <option>Férias</option>
+                  <option>Licença médica</option>
+                  <option>Afastamento para estudo</option>
+                </select>
+              </label>
+              <div class="grid sm:grid-cols-2 gap-4">
+                <label class="form-field">
+                  <span class="text-overline">Início</span>
+                  <input type="date" name="data_início" class="input input-glass" value="2026-09-01" />
+                </label>
+                <label class="form-field">
+                  <span class="text-overline">Fim</span>
+                  <input type="date" name="data_fim" class="input input-glass" />
+                  <span class="form-field-hint">Em branco, o prazo é indeterminado.</span>
+                </label>
+              </div>
+              <div class="tarja-vinculo flex items-start gap-3">
+                <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4h4"/></svg>
+                <p class="text-[13px] text-base-content/80">
+                  Ana sai do exercício <strong>na data de início</strong>, não agora &mdash; e volta
+                  <strong>sozinha</strong> no dia seguinte ao fim. Com o fim em branco, só volta por ato.
+                </p>
+              </div>
+              <div class="flex justify-end">
+                <button type="submit" class="btn btn-onsen btn-sm">Registrar</button>
+              </div>
+            </form>
+            <!-- /partial -->
+          <div class="modal-action">
+            <label for="m-exercicio" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-exercicio">Fechar</label>
+  </div>
+
+  <div class="poco-modal">
+    <input type="checkbox" id="m-impedido" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4h4"/></svg>
+              </span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Voltar ao exercício</h2>
+                <p class="text-sm text-base-content/70 mt-1">Bruno Teixeira &middot; DIMAP-1 &middot; <span class="badge badge-warning badge-soft align-middle">impedido</span></p>
+              </div>
+            </div>
+            <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option>DIMAP-1 &middot; Avaliação</option>
+                </select>
+              </label>
+              <!-- partial: user_admin/partials/_opcoes_servidor.html — hx-get de user_admin:opcoes_impedimento, alvo o próprio campo -->
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass" data-select-onsen><option>Bruno Teixeira &middot; RF 745.112-0</option></select>
+              </label>
+              <!-- /partial -->
+            </div>
+            <!-- partial: user_admin/partials/_aviso_retorno.html — a MESMA face que o modal de retorno da página do servidor compõe -->
+            <div class="flex flex-col gap-5">
+              <div class="tarja-vinculo flex items-start gap-3">
+                <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                  <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/>
+                </svg>
+                <p class="text-[13px] text-base-content/80">
+                  <strong>Todos</strong> os impedimentos que valem hoje passam a terminar
+                  <strong>ontem</strong> &mdash; é o que devolve a cadeira já hoje. Os
+                  <strong>futuros</strong> não são tocados.
+                </p>
+              </div>
+              <div class="tarja-vinculo flex items-start gap-3">
+                <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3.5a4 4 0 1 1-4 4"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="9" cy="8" r="3.5"/></svg>
+                <p class="text-[13px] text-base-content/80">
+                  As substituições são acertadas junto, na mesma transação: a que está em curso termina
+                  no mesmo dia, e as que ainda não começaram são apagadas.
+                </p>
+              </div>
+              <div class="flex justify-end">
+                <button type="button" class="btn btn-onsen btn-sm">Voltar ao exercício</button>
+              </div>
+            </div>
+            <!-- /partial -->
+          <div class="modal-action">
+            <label for="m-impedido" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-impedido">Fechar</label>
+  </div>
+
+  <div class="poco-modal">
+    <input type="checkbox" id="m-falta" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                  <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+                  <path d="M8 3v4"/><path d="M16 3v4"/><path d="M9 14.5h6"/>
+                </svg>
+              </span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Registrar impedimento</h2>
+                <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor.</p>
+              </div>
+            </div>
+            <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option>DIMAP-3 &middot; Geoprocessamento</option>
+                </select>
+                <span class="form-field-hint">Só as unidades do seu alcance.</span>
+              </label>
+              <!-- partial: user_admin/partials/_opcoes_servidor.html — hx-get de user_admin:opcoes_impedimento, alvo o próprio campo -->
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass" disabled>
+                  <option value="">&mdash; nenhum servidor lotado &mdash;</option>
+                </select>
+                <span class="form-field-hint">Cadastre alguém na unidade antes de registrar impedimento.</span>
+              </label>
+              <!-- /partial -->
+            </div>
+          <div class="modal-action">
+            <label for="m-falta" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-falta">Fechar</label>
+  </div>
+
+  <div class="poco-modal">
+    <input type="checkbox" id="m-recusa" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                  <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+                  <path d="M8 3v4"/><path d="M16 3v4"/><path d="M9 14.5h6"/>
+                </svg>
+              </span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Registrar impedimento</h2>
+                <p class="text-sm text-base-content/70 mt-1">Ana Ramos &middot; DIMAP-1</p>
+              </div>
+            </div>
+            <!-- partial: partials/_tarja_recusa.html — reusada tal e qual -->
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">O impedimento não foi registrado</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>Fim: não pode ser anterior ao início do impedimento.</li>
+                </ul>
+              </div>
+            </div>
+            <!-- /partial -->
+            <form class="flex flex-col gap-5">
+              <label class="form-field">
+                <span class="text-overline">Tipo</span>
+                <select name="tipo" class="select select-glass" data-select-onsen><option>Férias</option></select>
+              </label>
+              <div class="grid sm:grid-cols-2 gap-4">
+                <label class="form-field">
+                  <span class="text-overline">Início</span>
+                  <input type="date" name="data_início" class="input input-glass" value="2026-09-10" />
+                </label>
+                <label class="form-field">
+                  <span class="text-overline">Fim</span>
+                  <!-- realce no controle recusado: .campo-realce-erro, já no tema -->
+                  <input type="date" name="data_fim" class="input input-glass campo-realce-erro" value="2026-09-02" />
+                </label>
+              </div>
+              <div class="flex justify-end">
+                <button type="submit" class="btn btn-onsen btn-sm">Registrar</button>
+              </div>
+            </form>
+          <div class="modal-action">
+            <label for="m-recusa" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-recusa">Fechar</label>
+  </div>
+
+  <!-- Estado 7: a face de REVOGAÇÃO. O impedimento começa hoje e ainda não vigorou, então o ato não
+       devolve a cadeira — desfaz o registro. Mesma composição do estado 4: nenhuma peça nova, a
+       gravidade é da .tarja-vinculo-critica e o botão que confirma segue .btn-onsen. -->
+  <div class="poco-modal">
+    <input type="checkbox" id="m-revoga" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
+        <div class="flex flex-col gap-5">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Revogar impedimento</h2>
+            <p class="text-sm text-base-content/70 mt-1">
+              Ana Ramos &middot; DIMAP-1 &middot; <span class="badge badge-success badge-soft align-middle">em exercício</span>
+            </p>
+          </div>
+
+          <!-- partial: user_admin/partials/_aviso_retorno.html — a face que `retorno_eh_revogacao` escolhe -->
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+              <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/>
+            </svg>
+            <p class="text-[13px] text-base-content/80">
+              Ana <strong>não saiu do exercício</strong>: o impedimento começa hoje e ainda não vigorou.
+              Revogar <strong>apaga o registro</strong>, e ela segue na cadeira.
+            </p>
+          </div>
+          <div class="tarja-vinculo flex items-start gap-3">
+            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3.5a4 4 0 1 1-4 4"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="9" cy="8" r="3.5"/></svg>
+            <p class="text-[13px] text-base-content/80">
+              As substituições designadas para ele são apagadas junto: sem impedimento, não há o que cobrir.
+            </p>
+          </div>
+          <div class="flex justify-end">
+            <button type="button" class="btn btn-onsen btn-sm">Revogar impedimento</button>
+          </div>
+          <!-- /partial -->
+
+          <div class="modal-action">
+            <label for="m-revoga" class="btn btn-glass btn-sm">Cancelar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-revoga">Fechar</label>
+  </div>
+
+  <!-- Sem este módulo os selects seguem nativos: o componente de vidro (SPEC user_admin/011) é
+       opt-in por atributo e depende do módulo carregado, na aplicação e aqui. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+
+  <script>
+    // Fundo à deriva (SPEC user_admin/007), reproduzido aqui porque o mock não passa pelo Django.
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
+        ultimoFrame = agora;
+        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
+        mapa.setView(
+          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
+          ZOOM,
+          { animate: false },
+        );
+      }
+      requestAnimationFrame(derivar);
+    }
+    requestAnimationFrame(derivar);
+  </script>
+</body>
+</html>

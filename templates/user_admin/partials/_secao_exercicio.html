@@ -48,19 +48,31 @@
       </div>
     {% endif %}
 
-    <div class="flex flex-wrap justify-end gap-3">
-      <label for="modal-impedimento" class="btn btn-glass btn-sm gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
-        Registrar impedimento
-      </label>
-      {# Voltar ao exercício é da PESSOA, não de um afastamento: por isso fica no rodapé da seção, #}
-      {# fora dos cartões, e encerra o que está valendo hoje.                                     #}
-      {% if exercicio.afastado %}
-        <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
-          Voltar ao exercício
-        </label>
-      {% endif %}
-    </div>
+    {# Os dois botões abrem ROTA, e não um checkbox (SPEC user_admin/023): é a rota protegida que #}
+    {# monta o modal, e ela não monta para quem não exerce a ação sobre este servidor.            #}
+    {% if pode_registrar_impedimento %}
+      <div class="flex flex-wrap justify-end gap-3">
+        <button type="button"
+                hx-get="{% url 'user_admin:modal_impedimento' perfil.pk %}"
+                hx-target="#poco-modal"
+                hx-swap="innerHTML settle:150ms"
+                class="btn btn-glass btn-sm gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+          Registrar impedimento
+        </button>
+        {# Voltar ao exercício é da PESSOA, não de um impedimento: por isso fica no rodapé da seção, #}
+        {# fora dos cartões, e encerra o que está valendo hoje.                                     #}
+        {% if exercicio.impedido %}
+          <button type="button"
+                  hx-get="{% url 'user_admin:modal_retorno' perfil.pk %}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms"
+                  class="btn btn-onsen btn-sm gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+            {% if retorno_eh_revogacao %}Revogar impedimento{% else %}Voltar ao exercício{% endif %}
+          </button>
+        {% endif %}
+      </div>
+    {% endif %}
   {% endif %}
 </div>

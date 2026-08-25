@@ -22,10 +22,17 @@ from apps.competencias.protecao import acao_protegida, pode_executar, registrar_
 from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
     ACAO_EDITAR_SERVIDOR,
+    ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
     ACAO_TORNAR_ADMINISTRADOR,
 )
 from apps.user_admin.administrador import mudar_administrador
 from apps.user_admin.cadastro import criar_servidor, editar_servidor
+from apps.user_admin.exercicio import (
+    registrar_impedimento,
+    retornar_ao_exercicio,
+    retorno_eh_revogacao,
+)
+from apps.user_admin.formularios import ler_novo_impedimento
 from apps.user_admin.context import (
     contexto_administrador_recusado,
     contexto_botao_administrador,
@@ -34,15 +41,21 @@ from apps.user_admin.context import (
     contexto_corpo_servidores,
     contexto_criar_perfil,
     contexto_edicao_recusada,
+    contexto_impedimento_recusado,
     contexto_listagem_servidores,
     contexto_modal_administrador,
+    contexto_modal_impedimento,
     contexto_modal_perfil,
+    contexto_modal_registrar_impedimento,
     contexto_opcoes_administrador,
+    contexto_opcoes_impedimento,
     contexto_pagina_perfil,
+    contexto_secao_exercicio,
 )
 from apps.user_admin.models import Perfil
 from apps.user_admin.schemas import MudancaDeAdministrador
 from services.domain.listagem_gestao import ColunaServidor
+from services.utils.erros_formulario import RecusaDeFormulario
 
 TEMPLATE_FORMULARIO = "user_admin/perfil_form.html"
 TEMPLATE_FORMULARIO_RECUSADO = "user_admin/partials/_formulario_servidor.html"
@@ -55,6 +68,12 @@ TEMPLATE_CORPO_SERVIDORES = "user_admin/partials/_corpo_servidores.html"
 TEMPLATE_MODAL_ADMINISTRADOR = "user_admin/partials/_modal_administrador.html"
 TEMPLATE_OPCOES_SERVIDOR = "user_admin/partials/_opcoes_servidor.html"
 TEMPLATE_BOTAO_ADMINISTRADOR = "user_admin/partials/_botao_administrador.html"
+TEMPLATE_MODAL_IMPEDIMENTO = "user_admin/partials/_modal_impedimento.html"
+TEMPLATE_MODAL_RETORNO = "user_admin/partials/_modal_retorno.html"
+TEMPLATE_IMPEDIMENTO_CONCLUIDO = "user_admin/partials/_impedimento_concluido.html"
+TEMPLATE_MODAL_REGISTRAR_IMPEDIMENTO = "user_admin/partials/_modal_registrar_impedimento.html"
+TEMPLATE_FORM_IMPEDIMENTO = "user_admin/partials/_form_impedimento.html"
+TEMPLATE_AVISO_RETORNO = "user_admin/partials/_aviso_retorno.html"
 
 
 def listar_servidores(request: HttpRequest) -> HttpResponse:
@@ -138,7 +157,13 @@ def pagina_perfil(request: HttpRequest, pk: int) -> HttpResponse:
         request,
         TEMPLATE_PAGINA_PERFIL,
         contexto_pagina_perfil(perfil)
-        | {"pode_editar": pode_executar(request.user, ACAO_EDITAR_SERVIDOR, perfil.unidade_id)},
+        | {
+            "pode_editar": pode_executar(request.user, ACAO_EDITAR_SERVIDOR, perfil.unidade_id),
+            # Esconder o botão é UX; a barreira é o `acao_protegida` das rotas. O `pode_executar`
+            # responde às duas conferências de uma vez — competência e alcance —, e por isso recebe
+            # a unidade do servidor da página.
+            "pode_registrar_impedimento": _pode_registrar_impedimento(request, perfil),
+        },
     )
 
 
@@ -273,6 +298,119 @@ def gravar_administrador(request: HttpRequest, servidor: int) -> HttpResponse:
         alvo_identificador=desfecho.perfil.rf,
     )
     return render(request, TEMPLATE_BOTAO_ADMINISTRADOR, contexto_botao_administrador(desfecho.perfil))
+
+
+@acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
+def modal_impedimento(request: HttpRequest, servidor: int) -> HttpResponse:
+    """O diálogo que a seção de exercício abre (SPEC user_admin/023). Nenhuma conferência de lotação
+    escrita aqui: o contrato declara o alcance pela pessoa, e o decorator já resolveu a unidade
+    dela."""
+    return render(request, TEMPLATE_MODAL_IMPEDIMENTO, contexto_modal_impedimento(_perfil(servidor)))
+
+
+@acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
+@require_POST
+def gravar_impedimento(request: HttpRequest, servidor: int) -> HttpResponse:
+    # A view lê o formulário e NÃO constrói o DTO: a recusa dele volta como o próprio modal, e é por
+    # isso que ela não passa pelo PydanticValidationMiddleware (SPEC formularios/001).
+    perfil = _perfil(servidor)
+    leitura = ler_novo_impedimento(request.POST.dict())
+    novo = leitura.dto
+    if novo is None:
+        # Sem DTO a leitura traz a recusa; o `or` é só o que o tipo pede, não um caso real.
+        return render(
+            request,
+            TEMPLATE_MODAL_IMPEDIMENTO,
+            contexto_impedimento_recusado(
+                perfil,
+                request.POST.dict(),
+                leitura.recusa or RecusaDeFormulario(),
+            ),
+            status=422,
+        )
+    registrar_impedimento(perfil, novo)
+    registrar_ato(
+        request,
+        operacao="registrar",
+        alvo_tipo="servidor",
+        alvo_identificador=perfil.rf,
+    )
+    return _secao_atualizada(request, perfil)
+
+
+@acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
+def modal_retorno(request: HttpRequest, servidor: int) -> HttpResponse:
+    return render(request, TEMPLATE_MODAL_RETORNO, contexto_modal_impedimento(_perfil(servidor)))
+
+
+@acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
+@require_POST
+def gravar_retorno(request: HttpRequest, servidor: int) -> HttpResponse:
+    perfil = _perfil(servidor)
+    # A pergunta é sobre o estado ANTES do ato: depois dele não sobra vigente algum a consultar.
+    revogacao = retorno_eh_revogacao(perfil)
+    retornar_ao_exercicio(perfil)
+    registrar_ato(
+        request,
+        # Três operações, uma ação: registrar, devolver a cadeira e revogar um registro que nunca
+        # vigorou são fatos diferentes, e é a operação que os separa no histórico.
+        operacao="revogar" if revogacao else "retornar",
+        alvo_tipo="servidor",
+        alvo_identificador=perfil.rf,
+    )
+    return _secao_atualizada(request, perfil)
+
+
+@acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
+def modal_registrar_impedimento(request: HttpRequest) -> HttpResponse:
+    # Oferecer unidade que o decorator vai recusar no POST é convidar ao 403, que o HTMX não troca
+    # na tela: o select sai do MESMO alcance que a barreira confere (molde de `criar_perfil`).
+    return render(
+        request,
+        TEMPLATE_MODAL_REGISTRAR_IMPEDIMENTO,
+        contexto_modal_registrar_impedimento(alcance_do_perfil(_autor(request))),
+    )
+
+
+@acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
+def opcoes_impedimento(request: HttpRequest) -> HttpResponse:
+    # A lista de servidores da unidade escolhida, recarregada por HTMX quando o primeiro select
+    # muda. Leitura protegida pela mesma ação, e sem registro: é navegação dentro da tela do ato.
+    unidade = request.GET.get("unidade", "")
+    return render(
+        request,
+        TEMPLATE_OPCOES_SERVIDOR,
+        contexto_opcoes_impedimento(int(unidade) if unidade.isdigit() else None),
+    )
+
+
+@acao_protegida(ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR)
+def face_impedimento(request: HttpRequest) -> HttpResponse:
+    """A segunda metade do gesto de escolher: qual das duas caras o modal mostra é o estado gravado
+    do servidor, e não uma escolha de quem abriu — quem está impedido se devolve, quem não está se
+    impede. O `servidor` da query string passou pelo `conferir_alvo` do decorator como qualquer
+    outro: escolher alguém de outro ramo neste select é 403, e não uma tela que abre e falha no
+    POST."""
+    servidor = request.GET.get("servidor", "")
+    if not servidor.isdigit():
+        return HttpResponse("")
+    perfil = _perfil(int(servidor))
+    template = TEMPLATE_AVISO_RETORNO if perfil.esta_impedido else TEMPLATE_FORM_IMPEDIMENTO
+    return render(request, template, contexto_modal_impedimento(perfil))
+
+
+def _secao_atualizada(request: HttpRequest, perfil: Perfil) -> HttpResponse:
+    """O poço volta vazio — é assim que o modal fecha — e a seção se atualiza pelo swap fora de
+    banda que o partial carrega, no molde de `_edicao_concluida.html`."""
+    return render(
+        request,
+        TEMPLATE_IMPEDIMENTO_CONCLUIDO,
+        contexto_secao_exercicio(perfil, _pode_registrar_impedimento(request, perfil)),
+    )
+
+
+def _pode_registrar_impedimento(request: HttpRequest, perfil: Perfil) -> bool:
+    return pode_executar(request.user, ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR, perfil.unidade_id)
 
 
 def _perfil(pk: int) -> Perfil:

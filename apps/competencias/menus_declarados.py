@@ -5,7 +5,10 @@ autorizacao/007, §4, e SPEC user_admin/022, §4): onde ele aparece na área adm
 de outra SPEC.
 """
 
-from apps.user_admin.acoes_declaradas import ACAO_TORNAR_ADMINISTRADOR
+from apps.user_admin.acoes_declaradas import (
+    ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
+    ACAO_TORNAR_ADMINISTRADOR,
+)
 from services.domain.autorizacao import VarianteIcone
 
 from .acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
@@ -29,6 +32,13 @@ MENU_ADMINISTRADOR = ContratoMenu(
         # alvo nenhum ainda — é a tela que abre quem escolhe.
         ItemDeMenu(
             acao_implementada=ACAO_TORNAR_ADMINISTRADOR,
+            variante_icone=VarianteIcone.PEQUENO,
+            forma=FormaItem.LINHA,
+        ),
+        # O caminho direto para o ato (SPEC user_admin/023): a tela que abre é quem escolhe a
+        # unidade e, dentro dela, o servidor.
+        ItemDeMenu(
+            acao_implementada=ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
             variante_icone=VarianteIcone.PEQUENO,
             forma=FormaItem.LINHA,
         ),

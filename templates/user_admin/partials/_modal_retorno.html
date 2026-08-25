@@ -1,37 +1,28 @@
-{# Modal de voltar ao exercício (SPEC user_admin/015): confirmação pura, e é o único que precisa #}
-{# ser — o ato tem efeitos que não estão no enunciado dele.                                      #}
-<input type="checkbox" id="modal-retorno" class="modal-toggle" />
+{# Modal de voltar ao exercício da página do servidor (SPEC user_admin/015, ato na 023). Chega por #}
+{# rota protegida com o toggle já marcado, como o de impedimento; o aviso é a face compartilhada   #}
+{# com a rota direta.                                                                              #}
+<input type="checkbox" id="modal-retorno" class="modal-toggle" checked />
 <div class="modal modal-glass" role="dialog">
   <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
     <div class="flex flex-col gap-5">
       <div>
-        <h2 class="text-xl font-bold tracking-tight text-madeira-700">Voltar ao exercício</h2>
-        <p class="text-sm text-base-content/70 mt-1">
-          {{ perfil.nome }} {{ perfil.sobrenome }} volta a responder pelo cargo, antes do prazo.
-        </p>
+        {% if retorno_eh_revogacao %}
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Revogar impedimento</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            {{ perfil.nome }} {{ perfil.sobrenome }} · {{ perfil.unidade.sigla }}
+          </p>
+        {% else %}
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Voltar ao exercício</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            {{ perfil.nome }} {{ perfil.sobrenome }} volta a responder pelo cargo, antes do prazo.
+          </p>
+        {% endif %}
       </div>
-      <div class="tarja-vinculo flex items-start gap-3">
-        <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
-        <p class="text-[13px] text-base-content/80">
-          <strong>Todos</strong> os afastamentos que valem hoje passam a terminar <strong>ontem</strong>
-          — é o que devolve a cadeira já hoje —, e encerrar um só deixaria a pessoa fora pelo outro. É
-          encerrando o afastamento que se volta antes do prazo, e não há outro caminho.
-        </p>
-      </div>
-      <div class="tarja-vinculo flex items-start gap-3">
-        <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
-        <p class="text-[13px] text-base-content/80">
-          As substituições deles são acertadas junto, na mesma transação: a que está em curso termina
-          no mesmo dia em que o afastamento, e as que ainda não começaram são apagadas.
-        </p>
-      </div>
-      <p class="text-[13px] text-base-content/70">
-        Os afastamentos <strong>futuros</strong> não são tocados: o ato encerra o que está valendo hoje,
-        não a agenda inteira.
-      </p>
+
+      {% include "user_admin/partials/_aviso_retorno.html" %}
+
       <div class="modal-action">
         <label for="modal-retorno" class="btn btn-glass btn-sm">Cancelar</label>
-        <button type="button" class="btn btn-onsen btn-sm">Voltar ao exercício</button>
       </div>
     </div>
   </div>

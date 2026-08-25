@@ -20,7 +20,12 @@ from apps.competencias.registro_execucao import gravar_execucao
 from apps.competencias.schemas import AcaoImplementada
 from apps.user_admin.models import Perfil
 from services.domain.autorizacao import Acao as AcaoDominio
-from services.domain.autorizacao import LotacaoAtualEDestino, TipoAlcance, UnidadesSubordinadas
+from services.domain.autorizacao import (
+    LotacaoAtualEDestino,
+    LotacaoDoServidor,
+    TipoAlcance,
+    UnidadesSubordinadas,
+)
 
 ViewFunc = Callable[..., HttpResponse]
 
@@ -144,6 +149,10 @@ def _unidades_alvo(alcance: TipoAlcance, valores: Mapping[str, int]) -> tuple[in
         # escolhido que `_valores_dos_alvos` já deixou passar: em POST a ausência virou 400 lá
         # (SPEC user_admin/020).
         return tuple(valores[parametro] for parametro in alcance.parametros_alvo if parametro in valores)
+    if isinstance(alcance, LotacaoDoServidor):
+        # A mesma leitura de `LotacaoAtualEDestino`, sem destino: aceitar a unidade do cliente
+        # abriria a ação inteira — bastaria mandar a própria (SPEC user_admin/023).
+        return (_lotacao_de(valores["servidor"]),)
     if isinstance(alcance, LotacaoAtualEDestino):
         # A origem é lida no banco, nunca recebida do cliente: aceitá-la do request deixaria
         # qualquer um editar quem quisesse, bastando mandar a própria unidade.

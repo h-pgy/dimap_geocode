@@ -23,12 +23,12 @@ def conferir_foto(foto: UploadedFile | None) -> ErroBruto | None:
     tamanho = foto.size or 0
     if tamanho > LIMITE_BYTES:
         return ErroBruto(controle="foto", tipo="tamanho", mensagem=ERRO_TAMANHO)
-    if not _e_imagem(foto):
+    if not _eh_imagem(foto):
         return ErroBruto(controle="foto", tipo="formato", mensagem=ERRO_FORMATO)
     return None
 
 
-def _e_imagem(foto: UploadedFile) -> bool:
+def _eh_imagem(foto: UploadedFile) -> bool:
     # `verify()` lê o cabeçalho e deixa o arquivo consumido: o seek devolve o ponteiro para quem
     # vai gravar depois.
     try:

@@ -4,7 +4,12 @@ formularios/001): quais controles a tela tem e como cada recusa se diz para quem
 (SPEC criacao_usuarios/005) reusa o mesmo catálogo — os controles são os mesmos, só o DTO lido muda.
 """
 
-from apps.user_admin.schemas import EdicaoServidor, NovoServidor
+from apps.user_admin.schemas import (
+    ERRO_FIM_ANTES_DO_INICIO,
+    EdicaoServidor,
+    NovoImpedimento,
+    NovoServidor,
+)
 from services.utils.erros_formulario import (
     CampoDeFormulario,
     Formulario,
@@ -66,3 +71,20 @@ traduzir_recusa = TradutorDeRecusa(FORMULARIO_SERVIDOR)
 # Mesmos controles, mesmos rótulos, mesmas frases: o que muda entre criar e editar é o DTO lido,
 # não como a recusa se diz. Um catálogo irmão seria a mesma tabela com outro nome.
 ler_edicao_servidor = LeitorDeFormulario(EdicaoServidor, FORMULARIO_SERVIDOR)
+
+# SPEC user_admin/023: catálogo irmão do do servidor — três controles, os mesmos `name=` do modal.
+FORMULARIO_IMPEDIMENTO = Formulario(
+    campos=(
+        CampoDeFormulario(controle="tipo", rotulo="Tipo"),
+        CampoDeFormulario(controle="data_inicio", rotulo="Início"),
+        CampoDeFormulario(
+            controle="data_fim",
+            rotulo="Fim",
+            # A frase já vem escrita da fonte; o catálogo existe para o controle ser reconhecido e
+            # o realce cair no campo certo.
+            regras={"fim_antes_do_inicio": RegraDeErro(mensagem=ERRO_FIM_ANTES_DO_INICIO)},
+        ),
+    ),
+)
+
+ler_novo_impedimento = LeitorDeFormulario(NovoImpedimento, FORMULARIO_IMPEDIMENTO)

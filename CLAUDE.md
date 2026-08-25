@@ -303,6 +303,8 @@ request/response.**
 - **Nomenclatura:** `PascalCase` classes, `snake_case` funções, `UPPER_CASE` constantes. Estrutura
   em inglês, **termos de domínio em português** (`roteamento_busca`, `nome_camada`) — não
   "traduzir" nomes de domínio.
+- **`eh` para o verbo "ser", nunca `e`.** Em nome de função ou método, quando o nome afirma que algo
+  *é* alguma coisa em português (o `is` do inglês), escreve-se **`eh`**: `eh_ponto`, `eh_revogacao`, etc..
 - **Constantes** no topo do módulo, após os imports. Valores de configuração são lidos via settings
   e **reextraídos para constantes locais** — o módulo referencia a constante, não o objeto de
   settings.

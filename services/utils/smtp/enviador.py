@@ -85,7 +85,7 @@ class EnviadorSmtp:
                 destinatarios_recusados=tuple(exc.recipients),
             )
         except (smtplib.SMTPException, OSError) as exc:
-            if not self._e_transitoria(exc):
+            if not self._eh_transitoria(exc):
                 raise SmtpEnvioError(f"falha definitiva em {self._config.host}: {exc!r}") from exc
             self._esperar_ou_desistir(repr(exc), tentativa, exc)
             return None
@@ -94,7 +94,7 @@ class EnviadorSmtp:
             destinatarios_recusados=tuple(recusados),
         )
 
-    def _e_transitoria(self, exc: Exception) -> bool:
+    def _eh_transitoria(self, exc: Exception) -> bool:
         if isinstance(exc, smtplib.SMTPResponseException):
             return 400 <= exc.smtp_code < 500  # 4xx é recusa temporária no protocolo SMTP
         return isinstance(exc, FALHAS_TRANSITORIAS)

@@ -76,14 +76,14 @@ class ItbiPortalScraper:
 
     def _url_planilha(self, item: Tag, url_pagina: str) -> str | None:
         for link in item.select("a[href]"):
-            if not self._e_planilha(link):
+            if not self._eh_planilha(link):
                 continue
             # urljoin em TODO link: absoluto passa intacto, relativo resolve contra a página —
             # e o portal já inverteu qual dos dois usa.
             return urljoin(url_pagina, str(link["href"]))
         return None
 
-    def _e_planilha(self, link: Tag) -> bool:
+    def _eh_planilha(self, link: Tag) -> bool:
         """Pelo rótulo: a extensão do href some no ano corrente, o texto do link não."""
         rotulo = normalize_text(link.get_text())
         return any(marcador in rotulo for marcador in MARCADORES_PLANILHA)

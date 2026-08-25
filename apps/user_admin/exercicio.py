@@ -114,9 +114,9 @@ def trocar_substituto(atual: Substituicao, dados: TrocaDeSubstituto) -> Substitu
 def retornar_ao_exercicio(perfil: Perfil) -> None:
     """Encerra na VÉSPERA de hoje TODOS os impedimentos vigentes — encerrar um só deixaria a pessoa
     fora pelo outro — e acerta as substituições: trunca a que está em curso, apaga as que não
-    começaram.
+    começaram. O que ainda não vigorou é apagado, não encerrado (SPEC user_admin/023).
 
-    A véspera, e não hoje: o período é inclusivo no fim, então um afastamento que termina hoje ainda
+    A véspera, e não hoje: o período é inclusivo no fim, então um impedimento que termina hoje ainda
     vale hoje, e o botão teria mentido — quem volta ao exercício volta agora, não amanhã."""
     hoje = timezone.localdate()
     ontem = hoje - DIA
@@ -128,11 +128,25 @@ def retornar_ao_exercicio(perfil: Perfil) -> None:
             impedimento__in=vigentes,
         ):
             _encerrar_em(substituicao, ontem)
-        # Um a um, e não em massa: o afastamento que começou HOJE não pode terminar ontem, e aí o
-        # retorno só vale a partir de amanhã — nenhuma data anterior ao início existe para gravar.
+        # Um a um, e não em massa: o que começa hoje não tem data anterior ao início para gravar, e
+        # cada um decide entre ser encurtado e ser apagado.
         for impedimento in vigentes:
-            impedimento.data_fim = max(ontem, impedimento.data_inicio)
-            impedimento.save(update_fields=["data_fim"])
+            _encerrar_impedimento_em(impedimento, ontem)
+
+
+def retorno_eh_revogacao(perfil: Perfil) -> bool:
+    """Verdadeiro quando TODO impedimento que vale hoje começa hoje: nenhum chegou a vigorar, e
+    encerrá-los é apagá-los. Falso quando algum começou antes — aí houve saída do exercício, e o ato
+    devolve a cadeira. Falso também sem impedimento algum: não há o que revogar.
+
+    É a pergunta que a tela faz para escolher a face, e a que o ato faz para nomear a operação."""
+    hoje = timezone.localdate()
+    inicios_dos_vigentes = Impedimento.objects.filter(
+        q_vigente_em(hoje),
+        perfil=perfil,
+    ).values_list("data_inicio", flat=True)
+    nenhum_vigorou = all(inicio == hoje for inicio in inicios_dos_vigentes)
+    return bool(inicios_dos_vigentes) and nenhum_vigorou
 
 
 # ---------------------------------------------------------------------------
@@ -271,6 +285,16 @@ def _periodo_da_designacao(
         return Periodo(inicio=dados.data_inicio, fim=dados.data_fim)
     agenda = substituicoes_do_impedimento(impedimento)
     return lacuna_proposta(impedimento, agenda) or periodo_de(impedimento)
+
+
+def _encerrar_impedimento_em(impedimento: Impedimento, dia: date) -> None:
+    # Mesma regra de `_encerrar_em`: encerrar antes do próprio início não é encurtar, é dizer que o
+    # impedimento nunca vigorou. O CASCADE leva as substituições dele junto.
+    if dia < impedimento.data_inicio:
+        impedimento.delete()
+        return
+    impedimento.data_fim = dia
+    impedimento.save(update_fields=["data_fim"])
 
 
 def _encerrar_em(substituicao: Substituicao, dia: date) -> None:
