@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC autenticacao/002 — Definir e redefinir senha (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-002").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec-002">
+    @layer components {
+      /* ==================== ÁTOMO · OLHINHO ==================== */
+      .input-olhinho-wrap {
+        @apply relative flex items-center w-full;
+      }
+      .input-olhinho-btn {
+        @apply absolute right-3 p-1.5 text-base-content/50 hover:text-agua-600 focus:outline-none transition-colors cursor-pointer;
+      }
+
+      /* ==================== MOLÉCULA · CHECKLIST DE SENHA FORTE ==================== */
+      .checklist-senha {
+        @apply flex flex-col gap-1.5 p-3 rounded-lg bg-base-100/60 border border-base-300/60 text-xs;
+      }
+      .checklist-item {
+        @apply flex items-center gap-2 text-base-content/60 transition-colors;
+      }
+      .checklist-item.atendido {
+        @apply text-success font-medium;
+      }
+      .checklist-icone {
+        @apply w-4 h-4 rounded-full flex items-center justify-center text-[10px] bg-base-300 text-base-content/60 transition-all;
+      }
+      .checklist-item.atendido .checklist-icone {
+        @apply bg-success text-success-content font-bold;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-12 flex flex-col gap-12">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC autenticacao/002 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Definir e Redefinir Senha</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          <strong>1 · Átomos</strong> traz o alternador de visibilidade de senha (<span class="text-code">.input-olhinho-wrap</span>).
+          <strong>2 · Moléculas</strong> traz o checklist reativo de senha forte (<span class="text-code">.checklist-senha</span>) e a <strong>validação de correspondência em tempo real</strong> (match JS entre nova senha e confirmação com <span class="text-code">.campo-realce-erro</span> imediato).
+          <strong>3 · Telas montadas</strong> traz o template unificado nos dois contextos (Primeiro Login vs Redefinição Voluntária com senha atual) e o atalho no perfil do servidor.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Átomos</h2>
+
+      <!-- 1.1 Olhinho -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · Alternador de visibilidade <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.input-olhinho-wrap</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Alterna entre senha mascarada e texto visível.
+          </p>
+        </div>
+
+        <div class="card-well p-6 max-w-md mx-auto w-full flex flex-col gap-4">
+          <div class="form-control gap-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Teste o alternador:</label>
+            <div class="input-olhinho-wrap">
+              <input type="password" id="demo-olhinho-input" class="input input-glass pr-10 w-full" value="SenhaForte123!" />
+              <button type="button" class="input-olhinho-btn" onclick="toggleSenha('demo-olhinho-input', this)" title="Alternar visibilidade">
+                <!-- Olho aberto -->
+                <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                <!-- Olho fechado -->
+                <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · MOLÉCULAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Moléculas</h2>
+
+      <!-- 2.1 Checklist Reativo e Match em Tempo Real -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">2.1 · Checklist reativo e correspondência de senhas em tempo real</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Conforme o usuário digita, o checklist marca os requisitos atendidos e a confirmação sinaliza imediatamente se coincide ou não com a nova senha, aplicando <span class="text-code">.campo-realce-erro</span> sem necessidade de submeter formulário.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6 items-start">
+          
+          <!-- Teste interativo ao vivo com match -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <span class="text-overline text-madeira-600">Teste interativo ao vivo</span>
+            
+            <!-- Campo Nova Senha -->
+            <div class="form-control gap-1">
+              <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Nova senha</label>
+              <div class="input-olhinho-wrap">
+                <input type="password" id="demo-nova-senha" class="input input-glass pr-10 w-full" placeholder="Ex: Cidade2026!" oninput="aoDigitarSenhas('demo')" />
+                <button type="button" class="input-olhinho-btn" onclick="toggleSenha('demo-nova-senha', this)">
+                  <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- O checklist de requisitos -->
+            <div class="checklist-senha" id="demo-checklist">
+              <div class="checklist-item" id="demo-req-tamanho">
+                <span class="checklist-icone">✓</span>
+                <span>Mínimo de 8 caracteres</span>
+              </div>
+              <div class="checklist-item" id="demo-req-maiuscula">
+                <span class="checklist-icone">✓</span>
+                <span>Pelo menos uma letra maiúscula</span>
+              </div>
+              <div class="checklist-item" id="demo-req-especial">
+                <span class="checklist-icone">✓</span>
+                <span>Pelo menos um caractere especial (!@#$%^&*...)</span>
+              </div>
+            </div>
+
+            <!-- Campo Confirmar Senha com Match JS -->
+            <div class="form-control gap-1">
+              <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Confirmar senha</label>
+              <div class="input-olhinho-wrap">
+                <input type="password" id="demo-confirma-senha" class="input input-glass pr-10 w-full" placeholder="Repita a nova senha..." oninput="aoDigitarSenhas('demo')" />
+                <button type="button" class="input-olhinho-btn" onclick="toggleSenha('demo-confirma-senha', this)">
+                  <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                </button>
+              </div>
+              <!-- Feedback dinâmico de match -->
+              <div id="demo-feedback-match" class="min-h-[18px]"></div>
+            </div>
+          </div>
+
+          <!-- Estados estáticos de referência -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <span class="text-overline text-madeira-600">Estados estáticos de referência</span>
+            
+            <!-- Estado: Senhas Divergentes (Erro em tempo real) -->
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-semibold text-error">1 · Divergência detectada (em tempo real)</span>
+              <div class="p-3 bg-base-100/60 rounded-lg border border-base-300/60 flex flex-col gap-2">
+                <input type="password" class="input input-glass text-xs w-full" value="SenhaForte123!" readonly />
+                <input type="password" class="input input-glass campo-realce-erro text-xs w-full" value="SenhaDiferente456" readonly />
+                <p class="text-xs text-error font-medium flex items-center gap-1">
+                  <span>✕</span> As senhas não coincidem
+                </p>
+              </div>
+            </div>
+
+            <!-- Estado: Totalmente atendido e coincidente -->
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-semibold text-success">2 · Política atendida e senhas coincidentes</span>
+              <div class="p-3 bg-base-100/60 rounded-lg border border-base-300/60 flex flex-col gap-2">
+                <div class="checklist-senha">
+                  <div class="checklist-item atendido"><span class="checklist-icone">✓</span> 8+ caracteres</div>
+                  <div class="checklist-item atendido"><span class="checklist-icone">✓</span> Letra maiúscula</div>
+                  <div class="checklist-item atendido"><span class="checklist-icone">✓</span> Caractere especial</div>
+                </div>
+                <p class="text-xs text-success font-medium flex items-center gap-1 mt-1">
+                  <span>✓</span> Senhas coincidem
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-10">
+      <h2 class="section-title px-2">3 · Telas Montadas</h2>
+
+      <!-- TELA 1: DEFINIR SENHA (PRIMEIRO LOGIN) -->
+      <div class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="border-b border-base-300/60 pb-4">
+          <h3 class="text-xl font-bold text-madeira-700">Tela de Definir Senha <span class="text-sm font-normal text-base-content/60">— Modo Primeiro Login (<span class="text-code">eh_primeiro_login=True</span>)</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Exibida após validação bem-sucedida do código OTP. Sem campo de senha atual.</p>
+        </div>
+
+        <div class="max-w-md mx-auto w-full py-4">
+          <div class="glass-panel p-8 flex flex-col gap-6 shadow-xl border-white/60">
+            
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-xl bg-agua-100 text-agua-700 flex items-center justify-center shadow-sm mb-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Definir Senha</h2>
+              <p class="text-xs text-base-content/70 mt-1">Crie a sua credencial definitiva de acesso ao sistema.</p>
+            </div>
+
+            <!-- página: autenticacao/definir_senha.html -->
+            <form class="flex flex-col gap-5">
+              
+              <!-- Campo Nova Senha -->
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Definir senha</label>
+                <div class="input-olhinho-wrap">
+                  <input type="password" id="primeiro-nova-senha" name="nova_senha" class="input input-glass pr-10 w-full" placeholder="Nova senha segura" oninput="aoDigitarSenhas('primeiro')" />
+                  <button type="button" class="input-olhinho-btn" onclick="toggleSenha('primeiro-nova-senha', this)">
+                    <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Checklist Reativo -->
+              <div class="checklist-senha" id="primeiro-checklist">
+                <div class="checklist-item" id="primeiro-req-tamanho">
+                  <span class="checklist-icone">✓</span>
+                  <span>Mínimo de 8 caracteres</span>
+                </div>
+                <div class="checklist-item" id="primeiro-req-maiuscula">
+                  <span class="checklist-icone">✓</span>
+                  <span>Pelo menos uma letra maiúscula</span>
+                </div>
+                <div class="checklist-item" id="primeiro-req-especial">
+                  <span class="checklist-icone">✓</span>
+                  <span>Pelo menos um caractere especial</span>
+                </div>
+              </div>
+
+              <!-- Campo Confirmar Senha com Match em Tempo Real -->
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Confirmar senha</label>
+                <div class="input-olhinho-wrap">
+                  <input type="password" id="primeiro-confirma-senha" name="confirmacao_senha" class="input input-glass pr-10 w-full" placeholder="Repita a senha" oninput="aoDigitarSenhas('primeiro')" />
+                  <button type="button" class="input-olhinho-btn" onclick="toggleSenha('primeiro-confirma-senha', this)">
+                    <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                  </button>
+                </div>
+                <div id="primeiro-feedback-match" class="min-h-[18px]"></div>
+              </div>
+
+              <!-- Botão Salvar -->
+              <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md mt-1">
+                Salvar Senha e Acessar
+              </button>
+            </form>
+            <!-- fica na página: o formulário unificado, condicionado por {% if eh_primeiro_login %} -->
+
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 2: REDEFINIR SENHA (USUÁRIO AUTENTICADO) -->
+      <div class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="border-b border-base-300/60 pb-4">
+          <h3 class="text-xl font-bold text-madeira-700">Tela de Redefinir Senha <span class="text-sm font-normal text-base-content/60">— Redefinição Voluntária (<span class="text-code">eh_primeiro_login=False</span>)</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Exige confirmação da senha atual antes de salvar a nova credencial.</p>
+        </div>
+
+        <div class="max-w-md mx-auto w-full py-4">
+          <div class="glass-panel p-8 flex flex-col gap-6 shadow-xl border-white/60">
+            
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-xl bg-base-200 text-madeira-700 flex items-center justify-center shadow-sm mb-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Redefinir Senha</h2>
+              <p class="text-xs text-base-content/70 mt-1">Altere sua senha de acesso ao DIMAP GeoCoder.</p>
+            </div>
+
+            <!-- página: autenticacao/definir_senha.html -->
+            <form class="flex flex-col gap-5">
+              
+              <!-- Campo Senha Atual -->
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha atual</label>
+                <div class="input-olhinho-wrap">
+                  <input type="password" id="redefinir-senha-atual" name="senha_atual" class="input input-glass pr-10 w-full" placeholder="Sua senha atual" />
+                  <button type="button" class="input-olhinho-btn" onclick="toggleSenha('redefinir-senha-atual', this)">
+                    <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Campo Nova Senha -->
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Nova senha</label>
+                <div class="input-olhinho-wrap">
+                  <input type="password" id="redefinir-nova-senha" name="nova_senha" class="input input-glass pr-10 w-full" placeholder="Nova senha segura" oninput="aoDigitarSenhas('redefinir')" />
+                  <button type="button" class="input-olhinho-btn" onclick="toggleSenha('redefinir-nova-senha', this)">
+                    <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Checklist Reativo -->
+              <div class="checklist-senha" id="redefinir-checklist">
+                <div class="checklist-item" id="redefinir-req-tamanho">
+                  <span class="checklist-icone">✓</span>
+                  <span>Mínimo de 8 caracteres</span>
+                </div>
+                <div class="checklist-item" id="redefinir-req-maiuscula">
+                  <span class="checklist-icone">✓</span>
+                  <span>Pelo menos uma letra maiúscula</span>
+                </div>
+                <div class="checklist-item" id="redefinir-req-especial">
+                  <span class="checklist-icone">✓</span>
+                  <span>Pelo menos um caractere especial</span>
+                </div>
+              </div>
+
+              <!-- Campo Confirmar Senha com Match em Tempo Real -->
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Confirmar senha</label>
+                <div class="input-olhinho-wrap">
+                  <input type="password" id="redefinir-confirma-senha" name="confirmacao_senha" class="input input-glass pr-10 w-full" placeholder="Repita a nova senha" oninput="aoDigitarSenhas('redefinir')" />
+                  <button type="button" class="input-olhinho-btn" onclick="toggleSenha('redefinir-confirma-senha', this)">
+                    <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                  </button>
+                </div>
+                <div id="redefinir-feedback-match" class="min-h-[18px]"></div>
+              </div>
+
+              <!-- Botão Salvar -->
+              <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md mt-1">
+                Salvar Alterações
+              </button>
+            </form>
+            <!-- fica na página: formulário unificado renderizando o campo senha_atual antes dos demais -->
+
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 3: ATALHO NA PÁGINA DO PERFIL -->
+      <div class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="border-b border-base-300/60 pb-4">
+          <h3 class="text-xl font-bold text-madeira-700">Atalho na Página do Servidor <span class="text-sm font-normal text-base-content/60">— <span class="text-code">apps/user_admin/perfil.html</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">O botão "Redefinir senha" aparece **apenas** quando o usuário autenticado está visualizando a si mesmo (<span class="text-code">request.user.pk == perfil.pk</span>).</p>
+        </div>
+
+        <div class="card-well p-6 flex flex-col gap-6">
+          <!-- Caso A -->
+          <!-- partial: user_admin/partials/_secao_identificacao.html — condicionado a request.user.pk == perfil.pk -->
+          <div class="flex flex-col gap-2">
+            <p class="text-xs font-bold text-success uppercase tracking-wider">Caso A: Servidor logado vendo a si mesmo (botão visível)</p>
+            <div class="glass-panel p-5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-agua-600 text-white font-bold flex items-center justify-center">DF</div>
+                <div>
+                  <h4 class="font-bold text-sm">Daniel Fagundes</h4>
+                  <p class="text-xs text-base-content/60">RF 8359160 · DIMAP-1</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline gap-1 text-xs">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                  Redefinir senha
+                </button>
+                <button type="button" class="btn btn-sm btn-onsen text-xs">Editar</button>
+              </div>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <!-- Caso B -->
+          <!-- partial: user_admin/partials/_secao_identificacao.html — visualizando outro servidor (botão omitido) -->
+          <div class="flex flex-col gap-2 opacity-75">
+            <p class="text-xs font-bold text-base-content/60 uppercase tracking-wider">Caso B: Servidor logado vendo o perfil de outro colega (botão omitido)</p>
+            <div class="glass-panel p-5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-madeira-600 text-white font-bold flex items-center justify-center">MS</div>
+                <div>
+                  <h4 class="font-bold text-sm">Maria Silva</h4>
+                  <p class="text-xs text-base-content/60">RF 1234567 · DIMAP-2</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <!-- Redefinir senha OMITIDO de propósito quando request.user.pk != perfil.pk -->
+                <button type="button" class="btn btn-sm btn-onsen text-xs">Editar</button>
+              </div>
+            </div>
+          </div>
+          <!-- /partial -->
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <script>
+    // Inicialização do mapa Leaflet com movimento suave de deriva (SPEC user_admin/007)
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
+        ultimoFrame = agora;
+        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
+        mapa.setView(
+          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
+          ZOOM,
+          { animate: false },
+        );
+      }
+      requestAnimationFrame(derivar);
+    }
+    requestAnimationFrame(derivar);
+
+    function toggleSenha(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const iconAberto = btn.querySelector(".icone-olho-aberto");
+      const iconFechado = btn.querySelector(".icone-olho-fechado");
+      if (input.type === "password") {
+        input.type = "text";
+        iconAberto.classList.add("hidden");
+        iconFechado.classList.remove("hidden");
+      } else {
+        input.type = "password";
+        iconAberto.classList.remove("hidden");
+        iconFechado.classList.add("hidden");
+      }
+    }
+
+    const ESPECIAIS = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+
+    function avaliarRegras(senha) {
+      return {
+        tamanho: senha.length >= 8,
+        maiuscula: /[A-Z]/.test(senha),
+        especial: Array.from(senha).some((c) => ESPECIAIS.includes(c)),
+      };
+    }
+
+    function atualizarChecklist(prefix, res) {
+      const elTamanho = document.getElementById(`${prefix}-req-tamanho`);
+      const elMaiuscula = document.getElementById(`${prefix}-req-maiuscula`);
+      const elEspecial = document.getElementById(`${prefix}-req-especial`);
+
+      if (!elTamanho) return;
+
+      if (res.tamanho) elTamanho.classList.add("atendido");
+      else elTamanho.classList.remove("atendido");
+
+      if (res.maiuscula) elMaiuscula.classList.add("atendido");
+      else elMaiuscula.classList.remove("atendido");
+
+      if (res.especial) elEspecial.classList.add("atendido");
+      else elEspecial.classList.remove("atendido");
+    }
+
+    function aoDigitarSenhas(prefix) {
+      const elNova = document.getElementById(`${prefix}-nova-senha`);
+      const elConfirma = document.getElementById(`${prefix}-confirma-senha`);
+      const elFeedback = document.getElementById(`${prefix}-feedback-match`);
+
+      const nova = elNova ? elNova.value : "";
+      const confirma = elConfirma ? elConfirma.value : "";
+
+      // 1. Atualiza o checklist reativo da nova senha
+      atualizarChecklist(prefix, avaliarRegras(nova));
+
+      // 2. Validação de correspondência (Match JS) em tempo real
+      if (!elConfirma || !elFeedback) return;
+
+      if (!confirma) {
+        // Campo confirmação ainda vazio
+        elConfirma.classList.remove("campo-realce-erro");
+        elFeedback.innerHTML = "";
+      } else if (nova === confirma) {
+        // Senhas coincidem: remove realce de erro e exibe feedback positivo
+        elConfirma.classList.remove("campo-realce-erro");
+        elFeedback.innerHTML = `
+          <p class="text-xs text-success font-medium flex items-center gap-1 mt-1 transition-all">
+            <span>✓</span> As senhas coincidem
+          </p>
+        `;
+      } else {
+        // Senhas divergentes: pinta de vermelho com o css padrão (.campo-realce-erro)
+        elConfirma.classList.add("campo-realce-erro");
+        elFeedback.innerHTML = `
+          <p class="text-xs text-error font-medium flex items-center gap-1 mt-1 transition-all">
+            <span>✕</span> As senhas não coincidem
+          </p>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
