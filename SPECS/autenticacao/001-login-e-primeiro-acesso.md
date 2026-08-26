@@ -2,7 +2,7 @@
 spec: autenticacao/001
 versao: v5
 atualizado_em: 2026-08-26
-testes_tdd: false
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
