@@ -1,13 +1,16 @@
 ---
 spec: autenticacao/001
-versao: v2
-atualizado_em: 2026-08-25
+versao: v5
+atualizado_em: 2026-08-26
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
   - v2: ponto de entrada no widget de topo e renderização da foto/avatar do usuário logado
+  - v3: RF com os sete dígitos do cadastro e realce do campo ao exceder
+  - v4: campo de RF mascarado no cliente, com os dígitos seguindo sozinhos para a view
+  - v5: acionador de logout na interface fica fora de escopo
 ---
 
 # SPEC autenticacao/001 — Login, detecção de primeiro acesso, validação de OTP e ponto de entrada no topo
@@ -18,7 +21,7 @@ O servidor da DIMAP clica no widget de usuário no canto superior direito para a
 ## 2 · Condições de pronto
 - [ ] O widget de usuário no canto superior direito (`#widget-area-usuario`), quando anônimo, exibe o ícone padrão com o rótulo "Entrar" e o clique direciona para a rota de login (`/login/`); quando autenticado, a bolinha exibe a foto ou avatar de iniciais com anel na cor da unidade, o nome do servidor, e o clique direciona para a página do seu perfil (`user_admin:pagina_perfil`).
 - [ ] A tela de login é renderizada como modal compacto de vidro sobre o mapa administrativo vivo com deriva suave, mantendo o campo de RF permanentemente visível e editável em repouso e após retorno de erro de autenticação (status 422).
-- [ ] Digitar o RF na tela de login consulta o estado do servidor via HTMX: se for primeiro acesso (`senha_provisoria=True`), exibe o botão com aura **"Primeiro Login"**; se não for, abre o campo de senha com máscara e alternador de visibilidade ("olhinho") e o botão "Entrar".
+- [ ] O campo de RF exibe o que se digita na forma `123.456-7` e leva ao servidor só os sete dígitos: completos os sete, a consulta HTMX resolve o estado do servidor — primeiro acesso (`senha_provisoria=True`) exibe o botão com aura **"Primeiro Login"**, senão abre o campo de senha oculta com alternador de visibilidade ("olhinho") e o botão "Entrar"; passar de sete dígitos realça o campo de RF em erro e não dispara consulta alguma.
 - [ ] Digitar um RF não cadastrado devolve o campo de senha padrão: a recusa ocorre apenas na submissão com a mensagem "RF ou senha incorretos", impedindo a enumeração de RFs válidos por força bruta.
 - [ ] Digitar um novo RF quando a tela exibe mensagem de recusa (status 422) limpa a tarja de erro e reavalia dinamicamente o novo RF digitado.
 - [ ] Clicar no botão "Primeiro Login" redireciona para a tela de primeiro acesso com confirmação por código de uso único (`/primeiro-login/`), renderizando o **átomo OTP** com 8 caixas no padrão daisyUI e o botão com aura "Primeiro Login".
@@ -36,7 +39,7 @@ class ConsultaRfInput(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    rf: str = Field(min_length=1, max_length=20)
+    rf: RegistroFuncional
 
 
 class LoginInput(BaseModel):
@@ -44,7 +47,7 @@ class LoginInput(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    rf: str = Field(min_length=1, max_length=20)
+    rf: RegistroFuncional
     senha: SecretStr = Field(min_length=1)
 
 
@@ -53,7 +56,7 @@ class ValidacaoOtpInput(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    rf: str = Field(min_length=1, max_length=20)
+    rf: RegistroFuncional
     codigo_otp: SecretStr = Field(min_length=8, max_length=8)
 
 
@@ -69,6 +72,7 @@ class EstadoRfOutput(BaseModel):
 
 O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 
+- [`RegistroFuncional` e `PADRAO_RF`](../../apps/user_admin/schemas.py) — "que forma tem o RF?": os sete dígitos do `USERNAME_FIELD`, com os não-dígitos descartados na entrada; é ele que define o limite que o campo da tela conta.
 - [`Perfil`](../../apps/user_admin/models/user.py) — "o servidor existe, está ativo e com `senha_provisoria` ligada?"; a leitura decide se renderiza o botão de aura ou o campo de senha, e fornece nome e lotação do usuário logado.
 - [`imagem_do_perfil` e `resolver_imagem_perfil`](../../apps/user_admin/apresentacao.py) — entrega a foto ou avatar SVG de iniciais com anel na cor da unidade para renderizar na bolinha do widget quando autenticado.
 - [`PoliticaSenhaTemporaria`](../../services/utils/senha.py) — o comprimento de 8 dígitos numéricos que define o número de caixas do átomo OTP.
@@ -78,7 +82,7 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 **Mock:** [001-mock-login-e-primeiro-acesso.html](001-mock-login-e-primeiro-acesso.html) — leia a skill `mock`.
 
 ## 4 · Fora de escopo
-- Menu dropdown de ações e atalhos administrativos no widget de usuário — sem dono ainda.
+- Menu do widget de usuário, com o **acionador de logout** e os atalhos administrativos — SPEC `autenticacao/003`, a escrever: a rota `/logout/` sai desta SPEC sem gatilho na interface, alcançável só pela URL.
 - A definição da senha definitiva após validar o OTP — SPEC [autenticacao/002](002-definir-e-redefinir-senha.md).
 - Redefinição voluntária de senha por usuário logado — SPEC [autenticacao/002](002-definir-e-redefinir-senha.md).
 - Reenvio da senha temporária ou recuperação de senha esquecida — sem dono ainda.
@@ -86,10 +90,12 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 
 ## 5 · Peças de referência a compor
 - `@apps/user_admin/models/user.py` → `Perfil`, `senha_provisoria`.
+- `@apps/user_admin/schemas.py` → `RegistroFuncional`, `PADRAO_RF`: a forma única do RF nos DTOs.
 - `@apps/user_admin/apresentacao.py` → `imagem_do_perfil`: resolução de foto/avatar e cor da unidade.
 - `@templates/base.html` → `#widget-area-usuario`: ponto de entrada no topo direito com estados anônimo e autenticado.
 - `@templates/user_admin/partials/_imagem_perfil.html` → renderização do avatar/foto na bolinha do widget.
 - `@services/utils/erros_formulario` → `Formulario`, `CampoDeFormulario`, `ErroBruto`, `TradutorDeRecusa`, `RecusaDeFormulario`.
+- `@static/src/js/ui/scroll_etched.js` → o padrão de módulo de UI opt-in por atributo `data-`.
 - `@static/src/tema-dimap.dev.css` → `.glass-panel`, `.card-well`, `.input-glass`, `.btn-onsen`, `.botao-aura`, `.aura-onsen`, `.tarja-vinculo-critica`, `.campo-realce-erro`, `.avatar-glass`.
 - `django.contrib.auth` → `authenticate`, `login`, `logout`.
 - Skills: `componentes-frontend`, `daisyui`, `htmx`, `mock`, `erros-de-formulario`, `escrever-testes`, `test-django-views`.
@@ -245,6 +251,97 @@ def logout_view(request: HttpRequest) -> HttpResponse:
     return redirect("autenticacao:login")
 ```
 
+**`static/src/js/ui/campo_mascarado.js`** — a máscara do campo e o valor que segue para a view.
+```js
+// Opt-in por [data-mascara], no padrão dos demais módulos de UI. O gabarito diz onde entram os
+// separadores e, pela contagem dos seus slots, quantos dígitos o campo tem; [data-mascara-alvo]
+// aponta o campo oculto que leva ao servidor só os dígitos.
+const SLOT_DE_DIGITO = "0";
+
+function contarDigitos(texto) {
+  return texto.replace(/\D/g, "").length;
+}
+
+// O excesso não é truncado: sai formatado à direita do gabarito e acende o campo — engolir a tecla
+// a mais esconderia da pessoa que ela digitou um RF errado.
+function formatar(digitos, gabarito) {
+  let saida = "";
+  let lidos = 0;
+  for (const marca of gabarito) {
+    if (lidos >= digitos.length) return saida;
+    if (marca === SLOT_DE_DIGITO) {
+      saida += digitos[lidos];
+      lidos += 1;
+    } else {
+      saida += marca;
+    }
+  }
+  return saida + digitos.slice(lidos);
+}
+
+// Reformatar move o texto sob o cursor; o que o mantém no lugar é a contagem de dígitos à esquerda
+// dele, que a máscara não altera.
+function posicaoAposDigitos(texto, quantidade) {
+  if (quantidade === 0) return 0;
+  let vistos = 0;
+  for (let i = 0; i < texto.length; i += 1) {
+    if (!/\d/.test(texto[i])) continue;
+    vistos += 1;
+    if (vistos === quantidade) return i + 1;
+  }
+  return texto.length;
+}
+
+function aplicar(campo) {
+  const gabarito = campo.dataset.mascara;
+  const limite = contarDigitos(gabarito);
+  const cursor = campo.selectionStart ?? campo.value.length;
+  const digitosAEsquerda = contarDigitos(campo.value.slice(0, cursor));
+  const digitos = campo.value.replace(/\D/g, "");
+
+  campo.value = formatar(digitos, gabarito);
+  if (document.activeElement === campo) {
+    const posicao = posicaoAposDigitos(campo.value, digitosAEsquerda);
+    campo.setSelectionRange(posicao, posicao);
+  }
+
+  const excede = digitos.length > limite;
+  campo.classList.toggle("campo-realce-erro", excede);
+  campo.setAttribute("aria-invalid", excede ? "true" : "false");
+  campo.dataset.digitosCompletos = digitos.length === limite ? "sim" : "nao";
+
+  const alvo = document.querySelector(campo.dataset.mascaraAlvo);
+  if (alvo) alvo.value = digitos;
+}
+
+function montar(raiz) {
+  raiz.querySelectorAll("[data-mascara]").forEach((campo) => {
+    campo.addEventListener("input", () => aplicar(campo));
+    aplicar(campo);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => montar(document));
+// A recusa 422 devolve o formulário inteiro, e com ele um campo de RF que ainda não foi montado.
+document.body.addEventListener("htmx:load", (evento) => montar(evento.detail.elt));
+```
+
+**`templates/autenticacao/login.html`** — o campo de RF, sempre visível e editável.
+```html
+{# O oculto é o que se chama `rf`: o visível só mostra a máscara e dispara a consulta. #}
+<input type="hidden" name="rf" id="rf-valor" value="{{ rf|default:'' }}" />
+<input type="text"
+       inputmode="numeric"
+       value="{{ rf|default:'' }}"
+       class="input input-glass w-full {{ realce.rf|default:'' }}"
+       data-mascara="000.000-0"
+       data-mascara-alvo="#rf-valor"
+       hx-post="{% url 'autenticacao:checar_rf' %}"
+       hx-trigger="keyup[this.dataset.digitosCompletos === 'sim'] changed delay:400ms"
+       hx-include="#rf-valor"
+       hx-target="#slot-dinamico-login" />
+```
+
 **`static/src/tema-dimap.dev.css`** — os átomos OTP e alternador olhinho.
 ```css
 /* ÁTOMO. O campo OTP com 8 caixas monoespaçadas, fundo de vidro e destaque em foco. */
@@ -278,6 +375,12 @@ RFs inexistentes recebem o partial idêntico ao de quem já possui senha definit
 A permanência do campo de RF editável na tela de erro (status 422) assegura que o usuário corrija erros de digitação no RF diretamente no formulário sem necessidade de recarregar a página.
 
 A validação bem-sucedida do OTP inicia uma sessão de autenticação com `senha_provisoria=True`. A decisão permite que a rota seguinte (`/definir-senha/`) seja protegida por `@login_required` sem criar tokens ou cookies ad hoc fora do motor de sessões do Django. O custo é manter uma sessão autenticada restrita que precisa ser finalizada ou regularizada na definição da senha definitiva.
+
+O campo de RF é mascarado no cliente e acende em erro por um módulo de UI que reformata o valor a cada `input`. O que o módulo decide é estado visual de um controle, não regra: a recusa que vale continua sendo a do servidor, que revalida o RF no DTO. O custo é a classe `.campo-realce-erro` passar a ter dois donos no mesmo campo — o `realce` da recusa 422, vindo do servidor, e o módulo, que a apaga assim que a contagem volta aos sete dígitos.
+
+Quem se chama `rf` na submissão é um campo oculto que o módulo escreve; o campo visível não tem `name`. A separação é o que entrega ao servidor os sete dígitos limpos, sem os separadores da máscara. O custo é o formulário depender de JavaScript para ter valor — com o módulo fora do ar o login não sai, ainda que `RegistroFuncional` descartasse os separadores sozinho.
+
+A consulta dinâmica de RF só dispara com os sete dígitos completos, por filtro no `hx-trigger`. Consultar a cada tecla faria o DTO recusar toda digitação parcial e o `PydanticValidationMiddleware` responder erro no meio da digitação. O custo é o gatilho depender de um atributo escrito por JavaScript, e não do valor do campo.
 
 O avatar e a cor da unidade do usuário autenticado são injetados via context processor para alimentar o widget de topo em todas as páginas que herdam `base.html`. A decisão centraliza a apresentação da identidade no cabeçalho sem repetição de chamadas nas views. O custo é a resolução da imagem em requisições de usuários autenticados.
 

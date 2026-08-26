@@ -54,6 +54,32 @@
       .input-olhinho-btn {
         @apply absolute right-3 p-1.5 text-base-content/50 hover:text-agua-600 focus:outline-none transition-colors cursor-pointer;
       }
+
+      /* ==================== ÁTOMO · PULSO DE CONVITE ====================
+         Respiro ciano de afordância num alvo em repouso: o brilho e o leve crescimento correm em
+         laço e param no hover/foco. O halo vem de `drop-shadow` (segue a silhueta e não disputa
+         com o `shadow-[inset_...]` do disco) e o `transform` fica no disco, nunca no invólucro do
+         tooltip — senão a bolha respiraria junto. */
+      .pulso-convite {
+        @apply transition-all duration-300;
+        animation: onsen-pulso-convite 2.8s ease-in-out infinite;
+      }
+      .pulso-convite:hover,
+      .pulso-convite:focus-visible,
+      .group:hover .pulso-convite,
+      .group:focus-visible .pulso-convite {
+        animation: none;
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 12px rgba(72, 202, 228, 0.9));
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pulso-convite { animation: none; }
+      }
+    }
+
+    @keyframes onsen-pulso-convite {
+      0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 2px rgba(72, 202, 228, 0.25)); }
+      50%      { transform: scale(1.07); filter: drop-shadow(0 0 12px rgba(72, 202, 228, 0.85)); }
     }
   </script>
 </head>
@@ -76,8 +102,8 @@
       <div class="card-well p-4 mt-6">
         <p class="text-overline mb-2">Como ler esta página</p>
         <p class="text-sm text-base-content/80 leading-relaxed">
-          <strong>1 · Átomos</strong> traz o campo OTP com 8 caixas (<span class="text-code">.otp-onsen</span>) e o alternador de visibilidade de senha (<span class="text-code">.input-olhinho-wrap</span>).
-          <strong>2 · Moléculas</strong> traz o formulário de login dinâmico e o widget de topo (<span class="text-code">#widget-area-usuario</span>) nos estados anônimo (link para login) e autenticado (avatar/foto com anel da unidade e link para o perfil).
+          <strong>1 · Átomos</strong> traz o campo OTP com 8 caixas (<span class="text-code">.otp-onsen</span>), o alternador de visibilidade de senha (<span class="text-code">.input-olhinho-wrap</span>) e o pulso de convite (<span class="text-code">.pulso-convite</span>).
+          <strong>2 · Moléculas</strong> traz o formulário de login dinâmico e o widget de topo (<span class="text-code">#widget-area-usuario</span>) nos estados anônimo (pulso, tooltip "Entrar no sistema" e link para login) e autenticado (avatar/foto com anel da unidade e link para o perfil).
           <strong>3 · Telas montadas</strong> traz o modal compacto de Login sobre o mapa, a navegação responsiva e a tela de confirmação de senha de uso único (Primeiro Login).
         </p>
       </div>
@@ -173,6 +199,50 @@
           </div>
         </div>
       </div>
+
+      <!-- 1.3 Pulso de convite -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.3 · Pulso de convite <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.pulso-convite</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Respiro ciano de afordância: o alvo em repouso brilha e cresce em laço para se anunciar como clicável, e o laço para no hover e no foco por teclado. Composto com o átomo <span class="text-code">.tooltip</span> do design system, que nomeia o destino.
+          </p>
+        </div>
+
+        <div class="card-well p-6 grid sm:grid-cols-3 gap-6 items-center justify-items-center">
+          <!-- estado: repouso (laço em execução) -->
+          <div class="flex flex-col items-center gap-3">
+            <p class="text-xs font-semibold text-base-content/70">Estado: Repouso (em laço)</p>
+            <div class="pulso-convite w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+              <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- estado: hover / foco (laço parado, expandido) -->
+          <div class="flex flex-col items-center gap-3">
+            <p class="text-xs font-semibold text-base-content/70">Estado: Hover / foco — passe o mouse</p>
+            <div class="pulso-convite w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]" tabindex="0">
+              <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- estado: composto com .tooltip, bolha aberta -->
+          <div class="flex flex-col items-center gap-3">
+            <p class="text-xs font-semibold text-base-content/70">Composto: <span class="text-code">.tooltip</span> aberto</p>
+            <div class="tooltip tooltip-bottom tooltip-open mt-1" data-tip="Entrar no sistema">
+              <div class="pulso-convite w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+                <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 2 · MOLÉCULAS ============ -->
@@ -184,19 +254,36 @@
         <div>
           <h3 class="text-lg font-bold">2.1 · Formulário e slot dinâmico de login <span class="text-sm font-normal text-base-content/60">— <span class="text-code">_campo_login_dinamico.html</span></span></h3>
           <p class="text-sm text-base-content/70 mt-1">
-            O campo de RF permanece sempre no topo. Conforme o RF é preenchido, o partial troca dinamicamente entre aguardo, primeiro login, login com senha e retorno de erro 422.
+            O campo de RF permanece sempre no topo e aplica a máscara <span class="text-code">123.456-7</span> conforme se digita — passar dos sete dígitos acende o campo em erro e nenhuma consulta é disparada. Completos os sete, o partial troca dinamicamente entre aguardo, primeiro login, login com senha e retorno de erro 422.
           </p>
         </div>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
-          
+
+          <!-- Estado 0: RF com dígitos em excesso -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[290px]">
+            <div class="flex flex-col gap-3">
+              <span class="text-overline text-error">0 · RF em excesso</span>
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Registro Funcional (RF)</label>
+                <input type="text" class="input input-glass campo-realce-erro w-full text-sm font-medium" value="835.916-09" aria-invalid="true" />
+              </div>
+              <p class="text-xs text-base-content/60 leading-relaxed">
+                O RF tem sete dígitos. O oitavo sai formatado à direita da máscara, acende o campo em erro e o slot dinâmico não é consultado.
+              </p>
+            </div>
+            <div class="p-2.5 bg-base-200/50 rounded-lg text-center text-xs text-base-content/50 border border-base-300/40">
+              Slot dinâmico congelado
+            </div>
+          </div>
+
           <!-- Estado 1: Inicial / Digitar RF -->
           <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[290px]">
             <div class="flex flex-col gap-3">
               <span class="text-overline text-madeira-600">1 · Inicial / Repouso</span>
               <div class="form-control gap-1">
                 <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Registro Funcional (RF)</label>
-                <input type="text" class="input input-glass w-full text-sm" placeholder="Ex: 8359160" value="" />
+                <input type="text" class="input input-glass w-full text-sm" placeholder="Ex: 123.456-7" value="" />
               </div>
               <p class="text-xs text-base-content/60 leading-relaxed">
                 Aguardando o servidor digitar o RF para consultar o estado cadastral.
@@ -213,7 +300,7 @@
               <span class="text-overline text-madeira-600">2 · 1º Login Detectado</span>
               <div class="form-control gap-1">
                 <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">RF</label>
-                <input type="text" class="input input-glass w-full text-sm font-medium" value="8359160" />
+                <input type="text" class="input input-glass w-full text-sm font-medium" value="835.916-0" />
               </div>
               <div class="p-2.5 bg-agua-50/80 border border-agua-200 text-[11px] text-agua-900 leading-relaxed rounded-lg">
                 Detectamos que este é o seu <strong>primeiro acesso</strong>. Confirme sua senha de uso único.
@@ -235,7 +322,7 @@
               <span class="text-overline text-madeira-600">3 · Login com Senha</span>
               <div class="form-control gap-1">
                 <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">RF</label>
-                <input type="text" class="input input-glass w-full text-sm font-medium" value="1234567" />
+                <input type="text" class="input input-glass w-full text-sm font-medium" value="123.456-7" />
               </div>
               <div class="form-control gap-1">
                 <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>
@@ -261,7 +348,7 @@
               </div>
               <div class="form-control gap-1">
                 <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">RF (editável)</label>
-                <input type="text" class="input input-glass w-full text-sm font-medium" value="8359160" />
+                <input type="text" class="input input-glass w-full text-sm font-medium" value="835.916-0" />
               </div>
               <div class="form-control gap-1">
                 <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>
@@ -293,16 +380,16 @@
           <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[220px]">
             <div class="flex flex-col gap-2">
               <span class="text-overline text-madeira-600">1 · Anônimo (Deslogado)</span>
-              <p class="text-xs text-base-content/70">Ícone padrão com rótulo "Entrar". O clique direciona para a rota de login (<span class="text-code">/login/</span>).</p>
+              <p class="text-xs text-base-content/70">Ícone padrão com rótulo "Entrar", pulso de convite (<span class="text-code">.pulso-convite</span>) e tooltip "Entrar no sistema". O clique direciona para a rota de login (<span class="text-code">/login/</span>).</p>
             </div>
             <div class="flex justify-center py-2">
-              <a href="#form-login" class="glass-panel rounded-full! p-1.5 flex items-center gap-3 cursor-pointer transition-glass hover:bg-white/60">
-                <div class="w-10 h-10 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+              <a href="#form-login" class="group tooltip tooltip-bottom glass-panel rounded-full! p-1.5 flex items-center gap-3 cursor-pointer transition-glass hover:bg-white/60" data-tip="Entrar no sistema">
+                <div class="pulso-convite w-10 h-10 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
                   <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
-                <div class="pr-4">
+                <div class="pr-4 text-left">
                   <p class="text-sm font-bold m-0 leading-tight">Entrar</p>
                   <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">Área do Usuário</p>
                 </div>
@@ -355,11 +442,11 @@
           <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[220px]">
             <div class="flex flex-col gap-2">
               <span class="text-overline text-madeira-600">4 · Mobile (&lt; 1024px)</span>
-              <p class="text-xs text-base-content/70">Avatar compacto responsivo (<span class="text-code">w-9 h-9</span>) sem rótulo de texto, alinhado à navbar compacta.</p>
+              <p class="text-xs text-base-content/70">Avatar compacto responsivo (<span class="text-code">w-9 h-9</span>) sem rótulo de texto, alinhado à navbar compacta. Sem o rótulo, o pulso e o tooltip são o que anunciam a entrada.</p>
             </div>
             <div class="flex justify-center items-center gap-4 py-3">
-              <div class="glass-panel rounded-full! p-1.5 flex items-center justify-center cursor-pointer transition-glass hover:bg-white/60" title="Deslogado (Mobile)">
-                <div class="w-9 h-9 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+              <div class="group tooltip tooltip-bottom glass-panel rounded-full! p-1.5 flex items-center justify-center cursor-pointer transition-glass hover:bg-white/60" data-tip="Entrar no sistema">
+                <div class="pulso-convite w-9 h-9 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
                   <svg class="w-4 h-4 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -455,7 +542,8 @@
               <!-- fica na página: o container da aplicação, a marca e o campo RF fixo -->
               <div class="form-control gap-1">
                 <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Registro Funcional (RF)</label>
-                <input type="text" id="input-rf" name="rf" class="input input-glass w-full" placeholder="Digite seu RF..." value="" oninput="aoDigitarRf(this.value)" autofocus />
+                <input type="hidden" name="rf" id="rf-valor" value="" />
+                <input type="text" id="input-rf" inputmode="numeric" data-mascara="000.000-0" data-mascara-alvo="#rf-valor" class="input input-glass w-full" placeholder="Ex: 123.456-7" value="" oninput="aoDigitarRf()" autofocus />
               </div>
 
               <!-- partial: autenticacao/partials/_campo_login_dinamico.html — alvo de hx-post="{% url 'autenticacao:checar_rf' %}" -->
@@ -682,7 +770,7 @@
       }
     }
 
-    function simularRf(tipo) {
+    function simularRf(tipo, escrever = true) {
       const inputRf = document.getElementById("input-rf");
       const estadoVazio = document.getElementById("estado-login-vazio");
       const estadoPrimeiro = document.getElementById("estado-primeiro-login");
@@ -697,29 +785,29 @@
       }
 
       if (tipo === "limpo") {
-        inputRf.value = "";
+        if (escrever) inputRf.value = "";
         estadoVazio.classList.remove("hidden");
         estadoPrimeiro.classList.add("hidden");
         estadoSenha.classList.add("hidden");
         inputRf.focus();
       } else if (tipo === "primeiro_login") {
-        inputRf.value = "8359160";
+        if (escrever) inputRf.value = "8359160";
         estadoVazio.classList.add("hidden");
         estadoPrimeiro.classList.remove("hidden");
         estadoSenha.classList.add("hidden");
       } else if (tipo === "ativo") {
-        inputRf.value = "1234567";
+        if (escrever) inputRf.value = "1234567";
         estadoVazio.classList.add("hidden");
         estadoPrimeiro.classList.add("hidden");
         estadoSenha.classList.remove("hidden");
       } else if (tipo === "inexistente") {
-        inputRf.value = "9999999";
+        if (escrever) inputRf.value = "9999999";
         // Anti-enumeração: exibe o campo comum de senha sem erro prévio
         estadoVazio.classList.add("hidden");
         estadoPrimeiro.classList.add("hidden");
         estadoSenha.classList.remove("hidden");
       } else if (tipo === "erro") {
-        inputRf.value = "8359160";
+        if (escrever) inputRf.value = "8359160";
         estadoVazio.classList.add("hidden");
         estadoPrimeiro.classList.add("hidden");
         estadoSenha.classList.remove("hidden");
@@ -729,19 +817,91 @@
           inputSenha.classList.add("campo-realce-erro");
         }
       }
+
+      aplicarMascara(inputRf);
     }
 
-    function aoDigitarRf(val) {
-      const trimmed = val.trim();
+    // Espelho do módulo previsto em static/src/js/ui/campo_mascarado.js: opt-in por [data-mascara],
+    // com o gabarito ditando os separadores, a contagem de dígitos e o valor do campo oculto.
+    const SLOT_DE_DIGITO = "0";
+
+    function contarDigitos(texto) {
+      return texto.replace(/\D/g, "").length;
+    }
+
+    function formatar(digitos, gabarito) {
+      let saida = "";
+      let lidos = 0;
+      for (const marca of gabarito) {
+        if (lidos >= digitos.length) return saida;
+        if (marca === SLOT_DE_DIGITO) {
+          saida += digitos[lidos];
+          lidos += 1;
+        } else {
+          saida += marca;
+        }
+      }
+      return saida + digitos.slice(lidos);
+    }
+
+    function posicaoAposDigitos(texto, quantidade) {
+      if (quantidade === 0) return 0;
+      let vistos = 0;
+      for (let i = 0; i < texto.length; i += 1) {
+        if (!/\d/.test(texto[i])) continue;
+        vistos += 1;
+        if (vistos === quantidade) return i + 1;
+      }
+      return texto.length;
+    }
+
+    function aplicarMascara(campo) {
+      const gabarito = campo.dataset.mascara;
+      const limite = contarDigitos(gabarito);
+      const cursor = campo.selectionStart ?? campo.value.length;
+      const digitosAEsquerda = contarDigitos(campo.value.slice(0, cursor));
+      const digitos = campo.value.replace(/\D/g, "");
+
+      campo.value = formatar(digitos, gabarito);
+      if (document.activeElement === campo) {
+        const posicao = posicaoAposDigitos(campo.value, digitosAEsquerda);
+        campo.setSelectionRange(posicao, posicao);
+      }
+
+      const excede = digitos.length > limite;
+      campo.classList.toggle("campo-realce-erro", excede);
+      campo.setAttribute("aria-invalid", excede ? "true" : "false");
+      campo.dataset.digitosCompletos = digitos.length === limite ? "sim" : "nao";
+
+      const alvo = document.querySelector(campo.dataset.mascaraAlvo);
+      if (alvo) alvo.value = digitos;
+    }
+
+    function montarMascaras(raiz) {
+      raiz.querySelectorAll("[data-mascara]").forEach(aplicarMascara);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => montarMascaras(document));
+
+    function aoDigitarRf() {
+      const campoRf = document.getElementById("input-rf");
+      aplicarMascara(campoRf);
+
       const tarjaErro = document.getElementById("tarja-erro-login");
       tarjaErro.classList.add("hidden");
 
-      if (!trimmed) {
-        simularRf("limpo");
-      } else if (trimmed === "8359160" || trimmed.startsWith("83")) {
-        simularRf("primeiro_login");
+      const digitos = document.getElementById("rf-valor").value;
+      if (!digitos) {
+        simularRf("limpo", false);
+        return;
+      }
+      // O que o filtro do hx-trigger faz: sem os sete dígitos, nenhuma consulta sai.
+      if (campoRf.dataset.digitosCompletos !== "sim") return;
+
+      if (digitos.startsWith("83")) {
+        simularRf("primeiro_login", false);
       } else {
-        simularRf("ativo");
+        simularRf("ativo", false);
       }
     }
 
@@ -772,13 +932,13 @@
 
       if (estado === "anonimo") {
         widget.innerHTML = `
-          <div class="glass-panel rounded-full! p-1.5 flex items-center gap-3 transition-glass hover:bg-white/60">
-            <div class="w-9 h-9 lg:w-11 lg:h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+          <div class="group tooltip tooltip-bottom glass-panel rounded-full! p-1.5 flex items-center gap-3 transition-glass hover:bg-white/60" data-tip="Entrar no sistema">
+            <div class="pulso-convite w-9 h-9 lg:w-11 lg:h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
               <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <div class="hidden lg:block pr-4">
+            <div class="hidden lg:block pr-4 text-left">
               <p class="text-sm font-bold m-0 leading-tight text-base-content">Entrar</p>
               <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">Área do Usuário</p>
             </div>
