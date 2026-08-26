@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC criacao_usuarios/007 — A senha em tela quando o envio está desligado (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- O que nasce nesta SPEC: dois ÁTOMOS. O resto é composição de peça já portada
+       (.modal-glass, .modal-box-glass, .glass-panel-thick, .card-well, .tarja-vinculo,
+       .icon-bubble, .text-overline, .text-code, .btn-onsen, .btn-glass). -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== ÁTOMO · A SENHA REVELADA ====================
+         O .text-code em medida de display: a senha é o objeto da tela, não um dado dela.
+         `select-all` faz um clique pegar os oito dígitos inteiros — é o caminho manual, que
+         precisa funcionar sozinho quando o botão de copiar não estiver disponível.
+         O `pl` compensa o tracking do último dígito, que sem isso desloca o centro. */
+      .senha-revelada {
+        @apply font-mono font-bold text-4xl tracking-[0.3em] pl-[0.3em] text-agua-700 select-all;
+      }
+
+      /* ==================== ÁTOMO · BOTÃO DE COPIAR ====================
+         Três faces no DOM; quem escolhe é o `data-estado` no próprio botão. Só o troca-faces
+         mora aqui — o corpo do botão é o .btn-glass, empilhado no HTML.
+         A face de falha é peça, não ausência: sem ela o botão fica mudo e parece ter copiado. */
+      .btn-copiar [data-face] { @apply hidden items-center gap-2; }
+      .btn-copiar[data-estado="pronto"]  [data-face="pronto"],
+      .btn-copiar[data-estado="copiado"] [data-face="copiado"],
+      .btn-copiar[data-estado="falhou"]  [data-face="falhou"] { @apply inline-flex; }
+      .btn-copiar[data-estado="copiado"] { @apply text-accent; }
+      .btn-copiar[data-estado="falhou"]  { @apply text-error; }
+
+      /* .vitrine-placa — EXPOSIÇÃO. Não é peça do projeto, não vai para o tema. */
+      .vitrine-placa { @apply w-full max-w-md mx-auto; }
+      .vitrine-rotulo { @apply text-[10px] font-mono text-base-content/60; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual. -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC criacao_usuarios/007 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">A senha em tela quando o envio está desligado</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          <strong>1 · Átomos</strong> traz a senha revelada e o botão de copiar nas três faces.
+          <strong>2 · Organismo</strong> traz o modal inteiro — a placa aberta para inspeção e o modal
+          de verdade, ao vivo, no botão ao lado.
+          <strong>3 · Telas</strong> põe o painel de sucesso nos três estados: envio desligado com o
+          modal aberto, envio desligado depois de fechado, e envio ligado.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Átomos</h2>
+
+      <!-- 1.1 .senha-revelada -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · A senha revelada <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.senha-revelada</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            O <span class="text-code">.text-code</span> em medida de display. Clique uma vez sobre os
+            dígitos: <span class="text-code">select-all</span> pega os oito de uma vez, sem arrastar.
+          </p>
+        </div>
+        <div class="card-well p-6 flex flex-wrap items-end justify-center gap-10">
+          <div class="flex flex-col items-center gap-3">
+            <p class="senha-revelada">47019352</p>
+            <p class="vitrine-rotulo">.senha-revelada</p>
+          </div>
+          <div class="flex flex-col items-center gap-3">
+            <p class="text-code text-lg">8123456</p>
+            <p class="vitrine-rotulo">.text-code — o RF, ao lado, na medida de sempre</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.2 .btn-copiar -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.2 · Botão de copiar <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.btn-copiar</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Corpo de <span class="text-code">.btn-glass</span>; o átomo só troca a face conforme o
+            <span class="text-code">data-estado</span>. O primeiro botão é o de verdade — clique nele.
+          </p>
+        </div>
+        <div class="card-well p-6 flex flex-wrap items-center justify-center gap-8">
+          <!-- estado: pronto (ao vivo) -->
+          <div class="flex flex-col items-center gap-3">
+            <button type="button" class="btn btn-glass btn-sm btn-copiar" data-estado="pronto" data-copiar-senha="47019352">
+              <span data-face="pronto"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar</span>
+              <span data-face="copiado"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>Copiado</span>
+              <span data-face="falhou"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>Não deu — copie a mão</span>
+            </button>
+            <p class="vitrine-rotulo">pronto · ao vivo</p>
+          </div>
+          <!-- estado: copiado -->
+          <div class="flex flex-col items-center gap-3">
+            <button type="button" class="btn btn-glass btn-sm btn-copiar" data-estado="copiado">
+              <span data-face="pronto">Copiar</span>
+              <span data-face="copiado"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>Copiado</span>
+              <span data-face="falhou">Não deu</span>
+            </button>
+            <p class="vitrine-rotulo">copiado</p>
+          </div>
+          <!-- estado de falta: clipboard indisponível -->
+          <div class="flex flex-col items-center gap-3">
+            <button type="button" class="btn btn-glass btn-sm btn-copiar" data-estado="falhou">
+              <span data-face="pronto">Copiar</span>
+              <span data-face="copiado">Copiado</span>
+              <span data-face="falhou"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>Não deu — copie a mão</span>
+            </button>
+            <p class="vitrine-rotulo">falhou — sem clipboard fora de contexto seguro</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · ORGANISMO ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Organismo — o modal da senha</h2>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold">2.1 · A placa, aberta para inspeção</h3>
+            <p class="text-sm text-base-content/70 mt-1">
+              O mesmo conteúdo do modal, fora do <span class="text-code">.modal</span> para poder ser
+              lido aqui. Ao lado, o modal de verdade.
+            </p>
+          </div>
+          <label for="modal-senha-vivo" class="btn btn-onsen btn-sm">Abrir o modal de verdade</label>
+        </div>
+
+        <div class="card-well p-6 sm:p-10">
+          <div class="modal-box glass-panel-thick modal-box-glass vitrine-placa p-6 sm:p-8 flex flex-col gap-5">
+            <div class="flex items-start gap-3">
+              <span class="icon-bubble bg-error/15 border-error/30 text-error">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+              </span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Senha de primeiro acesso</h2>
+                <p class="text-sm text-base-content/70 mt-1">
+                  Nenhum e-mail foi enviado. Copie agora e entregue a senha a quem foi cadastrado.
+                </p>
+              </div>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                <strong>Só para desenvolvimento.</strong> Senha em tela é inseguro: ela fica no HTML da
+                página e no histórico do navegador. Isto só aparece porque o envio de e-mail está
+                desligado — nunca ligue essa configuração em produção.
+              </p>
+            </div>
+
+            <div class="card-well p-5 flex flex-col items-center gap-1 text-center">
+              <p class="text-overline">RF</p>
+              <p class="text-code text-lg">8123456</p>
+              <p class="text-overline mt-4">Senha de primeiro acesso</p>
+              <p class="senha-revelada mt-1">47019352</p>
+              <button type="button" class="btn btn-glass btn-sm btn-copiar mt-4" data-estado="pronto" data-copiar-senha="47019352">
+                <span data-face="pronto"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar</span>
+                <span data-face="copiado"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>Copiado</span>
+                <span data-face="falhou"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>Não deu — copie a mão</span>
+              </button>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-onsen btn-sm">Anotei, fechar</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">3 · Telas montadas</h2>
+
+      <!-- 3.1 -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">3.1 · Envio desligado, modal recém-aberto</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            O modal cobre o painel de sucesso, que já está montado atrás dele.
+            <label for="modal-senha-vivo" class="link text-agua-700 font-medium">Abra o modal de verdade</label>
+            para ver a cena inteira.
+          </p>
+        </div>
+
+        <!-- página: user_admin/perfil_form.html — o que o POST substitui é o <form id="form-servidor"> -->
+        <div class="card-well p-6 sm:p-10 flex flex-col gap-6">
+
+          <!-- partial: user_admin/partials/_cadastro_concluido.html — resposta do hx-post de
+               gravar_servidor, hx-target="#form-servidor" hx-swap="outerHTML" -->
+          <div class="glass-panel p-8 flex flex-col items-center gap-4 text-center">
+            <span class="icon-bubble w-16 h-16 bg-agua-500/15 border-agua-600/30 text-agua-700">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Servidor cadastrado</h2>
+              <p class="text-sm text-base-content/75 mt-1">
+                Ana Ribeiro Nogueira · RF <span class="text-code">8123456</span> — o envio de e-mail
+                está desligado: entregue a senha de primeiro acesso a mão.
+              </p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-3 pt-1">
+              <label for="modal-senha-vivo" class="btn btn-onsen btn-sm gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.75"/></svg>
+                Ver a senha
+              </label>
+              <a href="#" class="btn btn-glass btn-sm">Cadastrar outro</a>
+              <a href="#" class="btn btn-glass btn-sm">Abrir a página do servidor</a>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <!-- partial: user_admin/partials/_modal_senha_desenvolvimento.html — vai ao ar por
+               hx-swap-oob="innerHTML:#poco-modal", e NÃO como irmão do painel acima.
+               O #poco-modal fica na perfil_form.html FORA da .admin-shell: a casca é
+               `z-10` posicionada, e um modal `z-50` nascido dentro dela ficaria preso nesse
+               contexto de empilhamento, sob os chips fixos `z-20` do base.html.
+               O toggle chega `checked`, como no _modal_encerrar.html: o modal já entra aberto.
+               Aqui no mock ele começa fechado — aberto no load cobriria a página toda. -->
+          <!-- fica na página: o #poco-modal vazio, irmão da .admin-shell -->
+        </div>
+      </div>
+
+      <!-- 3.2 -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">3.2 · Envio desligado, modal já fechado</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            O painel fica íntegro e o botão de ver a senha permanece: o modal é
+            <span class="text-code">checkbox</span>, e fechá-lo não descarta nada.
+          </p>
+        </div>
+        <div class="card-well p-6 sm:p-10">
+          <div class="glass-panel p-8 flex flex-col items-center gap-4 text-center">
+            <span class="icon-bubble w-16 h-16 bg-agua-500/15 border-agua-600/30 text-agua-700">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Servidor cadastrado</h2>
+              <p class="text-sm text-base-content/75 mt-1">
+                Ana Ribeiro Nogueira · RF <span class="text-code">8123456</span> — o envio de e-mail
+                está desligado: entregue a senha de primeiro acesso a mão.
+              </p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-3 pt-1">
+              <label for="modal-senha-vivo" class="btn btn-onsen btn-sm gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.75"/></svg>
+                Ver a senha
+              </label>
+              <a href="#" class="btn btn-glass btn-sm">Cadastrar outro</a>
+              <a href="#" class="btn btn-glass btn-sm">Abrir a página do servidor</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3.3 -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">3.3 · Envio ligado — o estado de sempre</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Sem modal, sem botão de ver a senha, sem tarja. A frase volta a falar do e-mail, e a
+            senha não existe em lugar nenhum desta resposta.
+          </p>
+        </div>
+        <div class="card-well p-6 sm:p-10">
+          <div class="glass-panel p-8 flex flex-col items-center gap-4 text-center">
+            <span class="icon-bubble w-16 h-16 bg-agua-500/15 border-agua-600/30 text-agua-700">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Servidor cadastrado</h2>
+              <p class="text-sm text-base-content/75 mt-1">
+                Ana Ribeiro Nogueira · RF <span class="text-code">8123456</span> — a senha de primeiro
+                acesso foi enviada para <span class="text-code">ana.nogueira@prefeitura.sp.gov.br</span>.
+              </p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-3 pt-1">
+              <a href="#" class="btn btn-glass btn-sm">Cadastrar outro</a>
+              <a href="#" class="btn btn-onsen btn-sm">Abrir a página do servidor</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- O modal de verdade, ao vivo. Na aplicação ele chega ao #poco-modal, fora da .admin-shell. -->
+  <input type="checkbox" id="modal-senha-vivo" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8 flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icon-bubble bg-error/15 border-error/30 text-error">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+        </span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Senha de primeiro acesso</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            Nenhum e-mail foi enviado. Copie agora e entregue a senha a quem foi cadastrado.
+          </p>
+        </div>
+      </div>
+
+      <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+        <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+        <p class="text-[13px] text-base-content/80">
+          <strong>Só para desenvolvimento.</strong> Senha em tela é inseguro: ela fica no HTML da
+          página e no histórico do navegador. Isto só aparece porque o envio de e-mail está
+          desligado — nunca ligue essa configuração em produção.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col items-center gap-1 text-center">
+        <p class="text-overline">RF</p>
+        <p class="text-code text-lg">8123456</p>
+        <p class="text-overline mt-4">Senha de primeiro acesso</p>
+        <p class="senha-revelada mt-1">47019352</p>
+        <button type="button" class="btn btn-glass btn-sm btn-copiar mt-4" data-estado="pronto" data-copiar-senha="47019352">
+          <span data-face="pronto"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar</span>
+          <span data-face="copiado"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>Copiado</span>
+          <span data-face="falhou"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>Não deu — copie a mão</span>
+        </button>
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-senha-vivo" class="btn btn-onsen btn-sm">Anotei, fechar</label>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-senha-vivo">Fechar</label>
+  </div>
+
+  <script>
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
+        ultimoFrame = agora;
+        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
+        mapa.setView(
+          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
+          ZOOM,
+          { animate: false },
+        );
+      }
+      requestAnimationFrame(derivar);
+    }
+    requestAnimationFrame(derivar);
+
+    // O controle de copiar, como ele vai existir em static/src/js/ui/copiar_senha.js.
+    const VOLTA_MS = 2400;
+
+    document.querySelectorAll("[data-copiar-senha]").forEach((botao) => {
+      botao.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(botao.dataset.copiarSenha);
+          botao.dataset.estado = "copiado";
+        } catch {
+          botao.dataset.estado = "falhou";
+        }
+        window.setTimeout(() => { botao.dataset.estado = "pronto"; }, VOLTA_MS);
+      });
+    });
+  </script>
+</body>
+</html>
