@@ -31,6 +31,7 @@ from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.models import CargoBase, CargoComissao, Perfil, TipoImpedimento
 from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento
 from apps.unidades.titularidade import definir_titular
+from services.utils.smtp import ResultadoEnvio
 
 banco = pytest.mark.banco
 
@@ -507,13 +508,13 @@ def test_leitura_autorizada_nao_vira_registro(client: Client) -> None:
 
 
 # ---------------------------------------------------------------------------
-# A senha não vaza: nem na resposta, nem no registro
+# A senha não vaza para o registro do ato, com envio ligado ou desligado
 # ---------------------------------------------------------------------------
 
 
 @banco
 @pytest.mark.django_db
-def test_senha_nao_aparece_na_resposta_nem_no_registro(
+def test_senha_nao_aparece_no_registro_do_ato(
     client: Client,
     settings: SettingsWrapper,
     monkeypatch: pytest.MonkeyPatch,
@@ -531,7 +532,6 @@ def test_senha_nao_aparece_na_resposta_nem_no_registro(
     )
 
     assert resposta.status_code == 200
-    assert "87654321" not in resposta.content.decode()
     execucao = ExecucaoAcao.objects.get(alvo_identificador="9302210")
     assert "87654321" not in execucao.operacao
     assert "87654321" not in execucao.alvo_identificador
@@ -665,3 +665,128 @@ def test_cadastro_com_marca_registra_operacao_propria(
     execucao_comum = ExecucaoAcao.objects.get(alvo_identificador="9302820")
     assert execucao_comum.operacao == "criar"
     assert Perfil.objects.get(rf="9302820").is_superuser is False
+
+
+# ---------------------------------------------------------------------------
+# A senha em tela quando o envio está desligado (SPEC criacao_usuarios/007)
+# ---------------------------------------------------------------------------
+
+
+SENHA_EM_TELA = SecretStr("47019352")
+
+
+def _ligar_envio(settings: SettingsWrapper, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Envio ligado sem rede: o `EnviadorSmtp` vira um fake que entrega tudo."""
+    settings.EMAIL_ENVIO_HABILITADO = True
+    settings.EMAIL_SMTP_USUARIO = "dimap.geocoder@example.com"
+    settings.ENFORCE_PREFEITURA_EMAIL = False
+    monkeypatch.setattr(
+        cadastro,
+        "EnviadorSmtp",
+        lambda *args: lambda mensagem: ResultadoEnvio(
+            entregue_ao_servidor=True, destinatarios_recusados=()
+        ),
+    )
+
+
+def _fixar_senha(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cadastro, "gerar_senha_temporaria", lambda *args, **kwargs: SENHA_EM_TELA)
+
+
+@banco
+@pytest.mark.django_db
+def test_modal_da_senha_no_html_com_envio_desligado(
+    client: Client, settings: SettingsWrapper, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _desligar_envio(settings)
+    _fixar_senha(monkeypatch)
+    unidade = _unidade("CRS-MODAL")
+    cargo = _cargo_base()
+    dirigente = _dirigente(unidade, "9303000")
+
+    client.force_login(dirigente)
+    resposta = client.post(
+        _url_gravar(), _payload(unidade, cargo, "9303010", "modal@prefeitura.sp.gov.br")
+    )
+    html = resposta.content.decode()
+    soup = BeautifulSoup(html, "html.parser")
+
+    assert resposta.status_code == 200
+    assert "47019352" in html
+    assert "Só para desenvolvimento." in html
+    # O modal chega aberto e por fora da casca administrativa (SPEC 007, §6).
+    toggle = soup.find("input", attrs={"id": "modal-senha"})
+    assert isinstance(toggle, Tag)
+    assert toggle.has_attr("checked")
+    poco = soup.find("div", attrs={"id": "poco-modal"})
+    assert isinstance(poco, Tag)
+    assert poco["hx-swap-oob"] == "innerHTML"
+
+
+@banco
+@pytest.mark.django_db
+def test_senha_ausente_do_html_com_envio_ligado(
+    client: Client, settings: SettingsWrapper, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _ligar_envio(settings, monkeypatch)
+    _fixar_senha(monkeypatch)
+    unidade = _unidade("CRS-SEM-MODAL")
+    cargo = _cargo_base()
+    dirigente = _dirigente(unidade, "9303100")
+
+    client.force_login(dirigente)
+    resposta = client.post(
+        _url_gravar(), _payload(unidade, cargo, "9303110", "semmodal@prefeitura.sp.gov.br")
+    )
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert "47019352" not in html
+    assert "modal-senha" not in html
+    assert "foi enviada para" in html
+
+
+@banco
+@pytest.mark.django_db
+def test_painel_de_sucesso_nao_promete_email_sem_envio(
+    client: Client, settings: SettingsWrapper, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _desligar_envio(settings)
+    _fixar_senha(monkeypatch)
+    unidade = _unidade("CRS-FRASE")
+    cargo = _cargo_base()
+    dirigente = _dirigente(unidade, "9303200")
+
+    client.force_login(dirigente)
+    resposta = client.post(
+        _url_gravar(), _payload(unidade, cargo, "9303210", "frase@prefeitura.sp.gov.br")
+    )
+    html = resposta.content.decode()
+
+    assert "Servidor cadastrado" in html
+    assert "foi enviada para" not in html
+    assert "entregue a senha de primeiro acesso a mão" in html
+
+
+@banco
+@pytest.mark.django_db
+def test_cadastro_recusado_nao_expoe_senha(
+    client: Client, settings: SettingsWrapper, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Recusa sai pelos `except` do ato, antes de a senha virar desfecho — mesmo sem envio."""
+    _desligar_envio(settings)
+    _fixar_senha(monkeypatch)
+    unidade = _unidade("CRS-RECUSA-SENHA")
+    cargo = _cargo_base()
+    dirigente = _dirigente(unidade, "9303300")
+    _perfil(unidade, "9303310", "Já Existe", email="repetido@prefeitura.sp.gov.br")
+
+    client.force_login(dirigente)
+    resposta = client.post(
+        _url_gravar(), _payload(unidade, cargo, "9303310", "repetido@prefeitura.sp.gov.br")
+    )
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 422
+    assert "47019352" not in html
+    assert "modal-senha" not in html

@@ -326,3 +326,72 @@ def test_cadastro_com_marca_sem_caneta_recusa_tudo(
     assert not Perfil.objects.filter(rf="9202010").exists()
     # Nada tenta sair pela rede: a recusa acontece antes da senha e do envio.
     assert enviador.mensagens == []
+
+
+# ---------------------------------------------------------------------------
+# Envio desligado devolve a senha para a tela (SPEC criacao_usuarios/007)
+# ---------------------------------------------------------------------------
+
+
+def _preparar_sem_envio(monkeypatch: pytest.MonkeyPatch, settings: SettingsWrapper) -> None:
+    """Envio desligado: `_entregar_senha` volta antes do SMTP, e a senha sobrevive ao ato."""
+    settings.EMAIL_ENVIO_HABILITADO = False
+    monkeypatch.setattr(cadastro, "gerar_senha_temporaria", lambda *args, **kwargs: SENHA_FIXA)
+
+
+@banco
+@pytest.mark.django_db
+def test_envio_desligado_devolve_senha_no_desfecho(
+    monkeypatch: pytest.MonkeyPatch,
+    settings: SettingsWrapper,
+) -> None:
+    _preparar_sem_envio(monkeypatch, settings)
+    unidade = _unidade()
+    cargo = _cargo_base()
+
+    desfecho = criar_servidor(
+        _novo_servidor(unidade, cargo, rf="9203000", email="sem.envio@prefeitura.sp.gov.br")
+    )
+
+    assert desfecho.perfil is not None
+    assert desfecho.senha_a_exibir is not None
+    assert desfecho.senha_a_exibir.get_secret_value() == SENHA_FIXA.get_secret_value()
+
+
+@banco
+@pytest.mark.django_db
+def test_envio_ligado_nao_devolve_senha_no_desfecho(
+    monkeypatch: pytest.MonkeyPatch,
+    settings: SettingsWrapper,
+) -> None:
+    _preparar(monkeypatch, settings, EnviadorFake(_resultado()))
+    unidade = _unidade()
+    cargo = _cargo_base()
+
+    desfecho = criar_servidor(
+        _novo_servidor(unidade, cargo, rf="9203010", email="com.envio@prefeitura.sp.gov.br")
+    )
+
+    assert desfecho.perfil is not None
+    assert desfecho.senha_a_exibir is None
+
+
+@banco
+@pytest.mark.django_db
+def test_senha_exibida_autentica_o_servidor(
+    monkeypatch: pytest.MonkeyPatch,
+    settings: SettingsWrapper,
+) -> None:
+    """A senha da tela é a que foi gravada — não outra sorteada no caminho de exibição."""
+    _preparar_sem_envio(monkeypatch, settings)
+    unidade = _unidade()
+    cargo = _cargo_base()
+
+    desfecho = criar_servidor(
+        _novo_servidor(unidade, cargo, rf="9203020", email="autentica@prefeitura.sp.gov.br")
+    )
+
+    assert desfecho.perfil is not None
+    assert desfecho.senha_a_exibir is not None
+    perfil = Perfil.objects.get(rf="9203020")
+    assert perfil.check_password(desfecho.senha_a_exibir.get_secret_value())
