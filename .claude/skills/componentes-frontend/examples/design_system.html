@@ -524,6 +524,46 @@
         </div>
 
         <div>
+          <p class="text-overline mb-3">Campo OTP (SPEC autenticacao/001) — <span class="text-code">.otp-onsen</span></p>
+          <div class="card-well p-5 flex flex-col gap-4 items-center">
+            <div class="otp-onsen">
+              <input type="text" maxlength="1" class="otp-caixa" value="8" />
+              <input type="text" maxlength="1" class="otp-caixa" value="4" />
+              <input type="text" maxlength="1" class="otp-caixa" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+            </div>
+            <div class="otp-onsen">
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+            </div>
+          </div>
+          <p class="form-field-hint mt-2">8 caixas monoespaçadas para a senha de uso único do primeiro acesso; a segunda fileira é o estado recusado, com <span class="text-code">.campo-realce-erro</span> por caixa.</p>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Alternador de senha / olhinho (SPEC autenticacao/001) — <span class="text-code">.input-olhinho-wrap</span></p>
+          <div class="card-well p-5 max-w-sm">
+            <div class="input-olhinho-wrap">
+              <input type="password" class="input input-glass pr-10 w-full" value="SenhaForte123!" readonly />
+              <span class="input-olhinho-btn">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+              </span>
+            </div>
+          </div>
+          <p class="form-field-hint mt-2">O botão acoplado alterna o <span class="text-code">type</span> do input entre mascarado e texto plano (<span class="text-code">static/src/js/ui/olhinho_senha.js</span>).</p>
+        </div>
+
+        <div>
           <p class="text-overline mb-3">Botão de criação inline (.btn-criar-inline)</p>
           <div class="flex flex-wrap items-center gap-5">
             <button type="button" class="btn btn-circle btn-criar-inline" aria-label="Cadastrar">

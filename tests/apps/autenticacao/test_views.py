@@ -128,7 +128,7 @@ def test_login_com_credenciais_validas_autentica_e_redireciona(client: Client) -
 
 @banco
 @pytest.mark.django_db
-def test_login_com_senha_invalida_recusa_com_mensagem_em_portugues_e_preserva_rf(
+def test_login_com_senha_invalida_recusa_com_mensagem_em_portugues_e_limpa_rf(
     client: Client,
 ) -> None:
     rf = "9501004"
@@ -139,7 +139,7 @@ def test_login_com_senha_invalida_recusa_com_mensagem_em_portugues_e_preserva_rf
 
     assert resposta.status_code == 422
     assert "RF ou senha incorretos" in html
-    assert f'value="{rf}"' in html
+    assert f'value="{rf}"' not in html
     assert "_auth_user_id" not in client.session
 
 

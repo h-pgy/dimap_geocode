@@ -7,6 +7,7 @@ from django.urls import URLPattern, URLResolver, include, path
 # infere como só de URLResolver (todas as entradas são include).
 urlpatterns: list[URLResolver | URLPattern] = [
     path("admin/", admin.site.urls),
+    path("", include("apps.autenticacao.urls")),
     path("", include("apps.core.urls")),
     path("gestao/", include("apps.user_admin.urls")),
     path("gestao/unidades/", include("apps.unidades.urls")),

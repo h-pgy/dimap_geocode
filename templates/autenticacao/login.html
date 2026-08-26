@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Entrar · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-md mx-auto px-4 py-24">
+      <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+        <div class="text-center flex flex-col items-center">
+          <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <h2 class="text-2xl font-black text-madeira-700 tracking-tight">DIMAP GeoCoder</h2>
+          <p class="text-xs text-base-content/60 mt-0.5">Plataforma Territorial da DIMAP</p>
+        </div>
+
+        <form method="post" action="{% url 'autenticacao:login' %}" class="flex flex-col gap-5">
+          {% csrf_token %}
+
+          {% if recusa %}
+            <div class="p-3 bg-error/10 border border-error/30 text-xs text-error rounded-lg font-medium">
+              {% for mensagem in recusa.mensagens %}{{ mensagem }}{% endfor %}
+            </div>
+          {% endif %}
+
+          {# O campo de RF fica na página, e não no partial dinâmico: continua visível e editável #}
+          {# mesmo quando a recusa (422) re-renderiza a tela inteira. #}
+          <div class="form-control gap-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Registro Funcional (RF)</label>
+            <input type="hidden" name="rf" id="rf-valor" value="{{ rf|default:'' }}" />
+            <input type="text"
+                   inputmode="numeric"
+                   value="{{ rf|default:'' }}"
+                   class="input input-glass w-full"
+                   placeholder="Ex: 123.456-7"
+                   data-mascara="000.000-0"
+                   data-mascara-alvo="#rf-valor"
+                   hx-post="{% url 'autenticacao:checar_rf' %}"
+                   hx-trigger="keyup[this.dataset.digitosCompletos === 'sim'] changed delay:400ms"
+                   hx-include="#rf-valor"
+                   hx-target="#slot-dinamico-login"
+                   autofocus />
+          </div>
+
+          {# partial: autenticacao/partials/_campo_login_dinamico.html — alvo do checar_rf #}
+          <div id="slot-dinamico-login" class="flex flex-col gap-5">
+            <div class="card-well p-3.5 text-center text-xs text-base-content/60 rounded-lg">
+              Digite seu RF acima para acessar.
+            </div>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/campo_mascarado.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/olhinho_senha.js' %}"></script>
+{% endblock %}

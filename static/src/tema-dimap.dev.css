@@ -305,6 +305,26 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.28), 0 0 22px rgba(var(--halo-realce), 0.45);
   }
 
+  /* ÁTOMO · OTP (SPEC autenticacao/001). O campo de código de uso único: 8 caixas monoespaçadas
+     com fundo de vidro e destaque em foco. */
+  .otp-onsen {
+    @apply flex items-center justify-center gap-2;
+  }
+  .otp-onsen .otp-caixa {
+    @apply w-10 h-13 sm:w-11 sm:h-14 text-center text-xl font-bold font-mono rounded-lg border border-base-300 bg-base-100/90 text-agua-700 focus:border-agua-500 focus:outline-none focus:ring-2 focus:ring-agua-400/30 transition-all;
+  }
+  .otp-onsen .otp-caixa.campo-realce-erro {
+    @apply border-error bg-error/10 text-error focus:ring-error/30;
+  }
+
+  /* ÁTOMO · ALTERNADOR DE SENHA / OLHINHO (SPEC autenticacao/001). Acoplado a um input de senha. */
+  .input-olhinho-wrap {
+    @apply relative flex items-center w-full;
+  }
+  .input-olhinho-btn {
+    @apply absolute right-3 p-1.5 text-base-content/50 hover:text-agua-600 focus:outline-none transition-colors cursor-pointer;
+  }
+
   /* Cavidade de tinta: a tinta "molhada" vem em --tinta (hex resolvido na borda do app). */
   .paint-well {
     @apply w-9 h-9 rounded-full border border-white/70 shadow-[inset_0_2px_5px_rgba(7,58,84,0.45),0_1px_0_rgba(255,255,255,0.6)] cursor-pointer transition-all duration-300 hover:scale-110;

@@ -88,9 +88,10 @@ def test_pagina_criar_perfil_renderiza_o_formulario(client: Client) -> None:
     assert "Identificação" in html
     assert "Lotação" in html
     assert "upload-well" in html
-    # Sem perfil ainda não há imagem a mostrar: a molécula grande é exclusiva da edição. Procura o
-    # uso da classe, não o nome dela — o design system inteiro é servido inline pelo base.html.
-    assert 'class="avatar-glass' not in html
+    # Sem perfil ainda não há imagem a mostrar: a molécula grande (w-28 h-28) é exclusiva da
+    # edição. O widget de topo (SPEC autenticacao/001) também usa avatar-glass, então o buscado é
+    # o tamanho, não a classe.
+    assert 'avatar-glass shrink-0 w-28 h-28' not in html
 
 
 @banco

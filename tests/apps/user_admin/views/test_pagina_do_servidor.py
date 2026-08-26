@@ -247,8 +247,9 @@ def test_criar_servidor_mantem_a_mesma_estrutura_de_formulario(client: Client) -
     assert "Lotação" in html
     assert 'id="modal-editar-perfil"' not in html
     assert "Exercício" not in html
-    # A molécula grande é exclusiva de quem já tem foto/perfil gravado.
-    assert 'class="avatar-glass' not in html
+    # A molécula grande (w-28 h-28, exclusiva de quem já tem foto/perfil gravado) não aparece; o
+    # widget de topo (SPEC autenticacao/001) também usa avatar-glass, então o buscado é o tamanho.
+    assert 'avatar-glass shrink-0 w-28 h-28' not in html
 
 
 @banco

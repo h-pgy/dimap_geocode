@@ -57,22 +57,37 @@
       <span class="lg:hidden text-xl font-black tracking-tight text-madeira-700">D</span>
     </a>
 
-    {# Widget da área do usuário — estático nesta SPEC; id estável para a lógica futura de #}
-    {# autenticação (accounts) se pendurar aqui. Presente em qualquer página que estenda base.html. #}
+    {# Widget da área do usuário (SPEC autenticacao/001): anônimo aponta para login; autenticado  #}
+    {# exibe avatar/foto e aponta para o perfil. Presente em qualquer página que estenda base.html. #}
     {# Abaixo de lg o avatar encolhe para w-9 h-9 e o texto sai (altura total 3rem, alinhada à   #}
     {# navbar compacta da SPEC design/005): ponta direita da fileira.                            #}
-    <div id="widget-area-usuario"
+    {% if request.user.is_authenticated %}
+      <a id="widget-area-usuario"
+         href="{% url 'user_admin:pagina_perfil' pk=request.user.pk %}"
          class="fixed top-6 right-4 lg:right-6 z-20 glass-panel rounded-full! p-1.5 flex items-center lg:gap-3 cursor-pointer transition-glass hover:bg-white/60">
-      <div class="w-9 h-9 lg:w-11 lg:h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
-        <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      </div>
-      <div class="hidden lg:block pr-4">
-        <p class="text-sm font-bold m-0 leading-tight">Projetos</p>
-        <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">Área do Usuário</p>
-      </div>
-    </div>
+        <div class="w-9 h-9 lg:w-11 lg:h-11 shrink-0">
+          {% include "user_admin/partials/_imagem_perfil.html" with imagem=imagem_perfil_usuario cor_unidade_hex=cor_unidade_hex tamanho="w-full h-full" perfil=request.user %}
+        </div>
+        <div class="hidden lg:block pr-4">
+          <p class="text-sm font-bold m-0 leading-tight">{{ request.user.nome }}</p>
+          <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">{{ request.user.unidade.sigla|default:"Área do Usuário" }}</p>
+        </div>
+      </a>
+    {% else %}
+      <a id="widget-area-usuario"
+         href="{% url 'autenticacao:login' %}"
+         class="fixed top-6 right-4 lg:right-6 z-20 glass-panel rounded-full! p-1.5 flex items-center lg:gap-3 cursor-pointer transition-glass hover:bg-white/60">
+        <div class="w-9 h-9 lg:w-11 lg:h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+          <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <div class="hidden lg:block pr-4">
+          <p class="text-sm font-bold m-0 leading-tight">Entrar</p>
+          <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">Área do Usuário</p>
+        </div>
+      </a>
+    {% endif %}
 
     {% if messages %}
       <div class="fixed top-24 left-1/2 -translate-x-1/2 z-30 w-11/12 max-w-xl space-y-2">

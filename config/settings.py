@@ -219,6 +219,7 @@ INSTALLED_APPS = [
     # Antes de user_admin: o Perfil é lotado numa unidade, e a dependência é de mão única.
     "apps.unidades",
     "apps.user_admin",
+    "apps.autenticacao",
     "apps.competencias",
     "apps.search",
     "apps.logradouro_matcher",
@@ -244,6 +245,11 @@ MIDDLEWARE = [
 # Perfil (apps.user_admin) concentra RF, cargo e unidade — o Perfil do CLAUDE.md §3.5.
 AUTH_USER_MODEL = "user_admin.Perfil"
 
+# `@login_required` sem isto cairia no default do Django (`/accounts/login/`, rota inexistente).
+# Caminho literal, e não o nome da rota: é o que `settings.LOGIN_URL` compara nos testes de
+# proteção de rota das demais ações (ex. apps/competencias/test_protecao.py).
+LOGIN_URL = "/login/"
+
 # Os dois backends, cada um com um papel; a ordem não decide nada, porque `has_perm` é verdadeiro
 # se qualquer um deles disser sim (SPEC autorizacao/003).
 AUTHENTICATION_BACKENDS = [
@@ -268,6 +274,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.autenticacao.context_processors.contexto_usuario_autenticado",
             ],
         },
     },

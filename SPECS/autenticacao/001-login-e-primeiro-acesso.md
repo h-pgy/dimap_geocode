@@ -1,9 +1,9 @@
 ---
 spec: autenticacao/001
-versao: v5
+versao: v6
 atualizado_em: 2026-08-26
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -11,6 +11,7 @@ changelog:
   - v3: RF com os sete dígitos do cadastro e realce do campo ao exceder
   - v4: campo de RF mascarado no cliente, com os dígitos seguindo sozinhos para a view
   - v5: acionador de logout na interface fica fora de escopo
+  - v6: recusa de credenciais inválidas limpa o campo de RF, em vez de preservar o valor digitado
 ---
 
 # SPEC autenticacao/001 — Login, detecção de primeiro acesso, validação de OTP e ponto de entrada no topo
@@ -26,7 +27,7 @@ O servidor da DIMAP clica no widget de usuário no canto superior direito para a
 - [ ] Digitar um novo RF quando a tela exibe mensagem de recusa (status 422) limpa a tarja de erro e reavalia dinamicamente o novo RF digitado.
 - [ ] Clicar no botão "Primeiro Login" redireciona para a tela de primeiro acesso com confirmação por código de uso único (`/primeiro-login/`), renderizando o **átomo OTP** com 8 caixas no padrão daisyUI e o botão com aura "Primeiro Login".
 - [ ] Digitar o código OTP de 8 dígitos correto valida a senha temporária, inicia a sessão autenticada do servidor com `senha_provisoria=True` e o redireciona para a tela de definição de senha; código inválido devolve status 422 com o OTP realçado em erro e mensagem em português na tarja.
-- [ ] Submeter RF e senha válidos no fluxo normal autentica o servidor via `django.contrib.auth` e o redireciona para a página do perfil; credenciais inválidas ou servidor inativo (`is_active=False`) recebem recusa com status 422 e mensagem "RF ou senha incorretos", preservando o RF digitado.
+- [ ] Submeter RF e senha válidos no fluxo normal autentica o servidor via `django.contrib.auth` e o redireciona para a página do perfil; credenciais inválidas ou servidor inativo (`is_active=False`) recebem recusa com status 422 e mensagem "RF ou senha incorretos", **limpando** o campo de RF para nova digitação.
 - [ ] O acionamento de logout (`/logout/`) encerra a sessão ativa no Django e redireciona para a tela de login.
 - [ ] O design da tela de login (modal compacto), da tela de primeiro login, do átomo OTP, do alternador de senha e dos estados do widget de usuário foi aprovado no **mock**, e as peças novas foram portadas para `static/src/tema-dimap.dev.css` e styleguide antes de qualquer template da aplicação usá-las.
 
@@ -391,7 +392,7 @@ O avatar e a cor da unidade do usuário autenticado são injetados via context p
 - `test_checar_rf_com_senha_definitiva_devolve_campo_senha` — o partial renderiza o campo de senha com olhinho e o botão "Entrar". *(marker `banco`)*
 - `test_checar_rf_inexistente_devolve_campo_senha_sem_revelar_inexistencia` — RF não encontrado responde com o mesmo partial de login padrão. *(marker `banco`)*
 - `test_login_com_credenciais_validas_autentica_e_redireciona` — POST válido autentica o usuário no Django e redireciona para a página do perfil. *(marker `banco`)*
-- `test_login_com_senha_invalida_recusa_com_mensagem_em_portugues_e_preserva_rf` — POST com senha errada responde status 422, exibe a tarja de erro com a mensagem em português e renderiza o campo RF preenchido e editável. *(marker `banco`)*
+- `test_login_com_senha_invalida_recusa_com_mensagem_em_portugues_e_limpa_rf` — POST com senha errada responde status 422, exibe a tarja de erro com a mensagem em português e renderiza o campo RF vazio e editável. *(marker `banco`)*
 - `test_validar_otp_correto_autentica_sessao_e_redireciona_para_definir_senha` — código de 8 dígitos coincidente com a senha provisória inicia sessão e redireciona para `definir_senha`. *(marker `banco`)*
 - `test_validar_otp_incorreto_devolve_recusa_com_campo_realcado` — código incorreto responde status 422 com o campo OTP realçado em erro e sem autenticar sessão. *(marker `banco`)*
 - `test_logout_encerra_a_sessao_e_redireciona_ao_login` — acionar a rota de logout desloga o usuário e direciona para a tela de login. *(marker `banco`)*
