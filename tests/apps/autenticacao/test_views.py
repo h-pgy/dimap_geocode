@@ -1,9 +1,9 @@
 """
-Testes de apps/autenticacao/views.py (SPEC autenticacao/001, autenticacao/002 e autenticacao/003):
-a consulta dinâmica de estado do RF, a autenticação padrão via RF + senha, a validação da senha de
-uso único do primeiro acesso, o logout, a definição/redefinição de senha — o template
-compartilhado, a política de senha forte e a exigência de senha atual fora do primeiro login — e o
-consumo do link de recuperação de senha por e-mail.
+Testes de apps/autenticacao/views.py (SPEC autenticacao/001, autenticacao/002, autenticacao/003 e
+autenticacao/004): a consulta dinâmica de estado do RF, a autenticação padrão via RF + senha, a
+validação da senha de uso único do primeiro acesso, o logout, a definição/redefinição de senha — o
+template compartilhado, a política de senha forte e a exigência de senha atual fora do primeiro
+login —, o consumo do link de recuperação de senha por e-mail e o reenvio da senha de uso único.
 
 Todos levam o marker `banco`: RF e `senha_provisoria` só se conferem contra o Postgres real.
 """
@@ -20,7 +20,8 @@ from django.utils.http import urlsafe_base64_encode
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
-from apps.autenticacao import recuperacao
+from apps.autenticacao import recuperacao, reenvio
+from apps.autenticacao.schemas import ReenvioSenhaInput
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.models import CargoBase, Perfil
 
@@ -515,3 +516,92 @@ def test_gravar_senha_pela_recuperacao_encerra_a_sessao_e_leva_ao_login(client: 
     assert "_auth_user_id" not in client.session
     perfil.refresh_from_db()
     assert perfil.check_password(NOVA_SENHA_FORTE)
+
+
+# ---------------------------------------------------------------------------
+# Reenvio da senha de uso único do primeiro acesso (SPEC autenticacao/004)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_codigo_substituido_recusa_dizendo_que_foi_trocado(
+    client: Client,
+    settings: SettingsWrapper,
+) -> None:
+    settings.EMAIL_ENVIO_HABILITADO = False
+    rf = "9503200"
+    codigo_antigo = OTP_VALIDO
+    _perfil(rf, senha=codigo_antigo, senha_provisoria=True, email=f"{rf}@prefeitura.sp.gov.br")
+
+    desfecho = reenvio.reenviar_senha_uso_unico(
+        ReenvioSenhaInput(rf=rf, url_acesso="https://geocoder.dimap.local/")
+    )
+    assert desfecho.senha_a_exibir is not None
+    codigo_novo = desfecho.senha_a_exibir.get_secret_value()
+
+    resposta_substituido = client.post(
+        reverse("autenticacao:validar_otp"), {"rf": rf, "otp": codigo_antigo}
+    )
+    assert resposta_substituido.status_code == 422
+    assert "foi substituída por um reenvio" in resposta_substituido.content.decode()
+
+    resposta_errado = client.post(
+        reverse("autenticacao:validar_otp"), {"rf": rf, "otp": "00000000"}
+    )
+    html_errado = resposta_errado.content.decode()
+    assert resposta_errado.status_code == 422
+    assert "foi substituída" not in html_errado
+    assert "Senha de uso único inválida" in html_errado
+
+    resposta_novo = client.post(
+        reverse("autenticacao:validar_otp"), {"rf": rf, "otp": codigo_novo}
+    )
+    assert resposta_novo.status_code == 302
+
+
+@banco
+@pytest.mark.django_db
+def test_login_em_primeiro_acesso_oferece_o_reenvio(client: Client) -> None:
+    rf_primeiro_acesso = "9503210"
+    _perfil(rf_primeiro_acesso, senha_provisoria=True)
+    rf_senha_definitiva = "9503211"
+    _perfil(rf_senha_definitiva, senha_provisoria=False)
+
+    primeiro_acesso = client.post(
+        reverse("autenticacao:checar_rf"), {"rf": rf_primeiro_acesso}
+    ).content.decode()
+    ramo_senha = client.post(
+        reverse("autenticacao:checar_rf"), {"rf": rf_senha_definitiva}
+    ).content.decode()
+
+    alvo_reenvio = f"{reverse('autenticacao:esqueci_senha')}?rf={rf_primeiro_acesso}"
+    assert "Reenviar senha de uso único" in primeiro_acesso
+    assert alvo_reenvio in primeiro_acesso
+    assert "Reenviar senha de uso único" not in ramo_senha
+
+
+@banco
+@pytest.mark.django_db
+def test_telas_de_recuperacao_e_de_codigo_oferecem_o_reenvio_ativo(client: Client) -> None:
+    rf = "9503220"
+    _perfil(rf, senha_provisoria=True, email=f"{rf}@prefeitura.sp.gov.br")
+    url_reenvio = reverse("autenticacao:reenviar_senha_unico")
+
+    tela_recuperacao = client.get(
+        reverse("autenticacao:esqueci_senha"), {"rf": rf}
+    ).content.decode()
+    soup_recuperacao = BeautifulSoup(tela_recuperacao, "html.parser")
+    botao_recuperacao = soup_recuperacao.select_one("[data-reenvio-acionador]")
+    assert isinstance(botao_recuperacao, Tag)
+    assert botao_recuperacao.get("disabled") is None
+    assert url_reenvio in tela_recuperacao
+
+    tela_codigo = client.get(
+        f"{reverse('autenticacao:primeiro_login')}?rf={rf}"
+    ).content.decode()
+    soup_codigo = BeautifulSoup(tela_codigo, "html.parser")
+    botao_codigo = soup_codigo.select_one("[data-reenvio-acionador]")
+    assert isinstance(botao_codigo, Tag)
+    assert botao_codigo.get("disabled") is None
+    assert url_reenvio in tela_codigo
