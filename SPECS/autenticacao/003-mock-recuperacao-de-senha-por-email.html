@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC autenticacao/003 — Recuperação de senha por e-mail (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-003").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec-003">
+    @layer components {
+      /* ==================== ÁTOMO · BOTÃO GRAVADO QUE INCHA ==================== */
+      .btn-etched-swell {
+        @apply transition-transform duration-300 origin-center;
+      }
+      .btn-etched-swell:hover {
+        @apply scale-[1.06];
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <!-- Filtros da gravação (templates/partials/_filtros_gravacao.html) — sem os defs, .etched não desenha -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-12 flex flex-col gap-12">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC autenticacao/003 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Recuperação de Senha por E-mail</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          <strong>1 · Átomos</strong> traz o acionador gravado que incha no hover (<span class="text-code">.btn-etched-swell</span>) — <em>passe o ponteiro</em>.
+          <strong>2 · Moléculas</strong> traz a tarja de espera com contagem regressiva viva, o aviso de link em aberto e o poço do link em desenvolvimento.
+          <strong>3 · Organismos</strong> traz as quatro faces da resposta do pedido.
+          <strong>4 · Telas montadas</strong> traz o login, a tela de recuperação nos três estados e a tela de link inválido.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Átomos</h2>
+
+      <!-- .btn-etched-swell -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · Acionador gravado que incha <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.btn-etched-swell</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Variante do <span class="text-code">.btn-etched</span>: mesma gravação, mesma tinta de água no hover, e o corpo cresce um pouco sob o ponteiro. O <span class="text-code">.btn-etched</span> segue intocado.
+          </p>
+        </div>
+
+        <div class="card-well p-8 flex flex-col sm:flex-row items-center justify-center gap-12">
+          <!-- estado: repouso e hover, lado a lado com o átomo de origem -->
+          <div class="flex flex-col items-center gap-3">
+            <p class="text-overline">.btn-etched (origem)</p>
+            <button type="button" class="btn-etched etched">✕ limpar filtros</button>
+          </div>
+          <div class="w-px h-16 etched-line hidden sm:block"></div>
+          <div class="flex flex-col items-center gap-3">
+            <p class="text-overline">.btn-etched-swell</p>
+            <a href="#" class="btn-etched btn-etched-swell etched">Esqueci minha senha</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · MOLÉCULAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Moléculas</h2>
+
+      <!-- 2.1 Tarja de espera com contagem regressiva -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">2.1 · Espera do reenvio, com contagem regressiva</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            A demonstração corre em <strong>12 s</strong> no lugar dos 120 s da janela real: assista o acionador voltar sozinho.
+          </p>
+        </div>
+
+        <div class="card-well p-6 flex flex-col gap-4" data-envio-recuperacao>
+          <!-- estado: correndo → liberado -->
+          <div class="alert alert-info alert-soft text-xs" data-contagem-reenvio="12">
+            <span data-reenvio-correndo>
+              A mensagem acabou de ser enviada para <strong>maria.souza@prefeitura.sp.gov.br</strong>.
+              Se ela não chegar, peça outra em <span class="text-code" data-reenvio-relogio>12 s</span>.
+            </span>
+            <span class="hidden" data-reenvio-liberado>
+              A mensagem foi enviada para <strong>maria.souza@prefeitura.sp.gov.br</strong>.
+              Não chegou? Você já pode pedir outra.
+            </span>
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            <button type="button" class="btn btn-onsen font-bold" data-reenvio-acionador>Enviar link de redefinição</button>
+            <button type="button" class="btn-etched etched" data-reiniciar-contagem>↻ rodar de novo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.2 Aviso de link em aberto -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">2.2 · Aviso de link em aberto <span class="text-sm font-normal text-base-content/60">— cor semântica de informação</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Aparece no partial dinâmico do login quando o RF digitado tem link de redefinição emitido e ainda válido.
+          </p>
+        </div>
+
+        <div class="card-well p-6 max-w-md mx-auto w-full">
+          <div class="alert alert-info alert-soft text-xs">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>Já pedimos uma redefinição de senha para este RF: o link está no seu e-mail institucional.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.3 Poço do link em desenvolvimento -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">2.3 · Link em tela, com o envio desligado <span class="text-sm font-normal text-base-content/60">— composição do <span class="text-code">.card-well</span> com o <span class="text-code">.btn-copiar</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Mesmo regime da senha de cadastro (SPEC criacao_usuarios/007): o que a caixa de entrada receberia aparece na tela.
+          </p>
+        </div>
+
+        <div class="card-well p-6 max-w-lg mx-auto w-full flex flex-col gap-3">
+          <div class="alert alert-warning alert-soft text-xs">
+            <span>Envio de e-mail desligado: o link aparece aqui só em desenvolvimento.</span>
+          </div>
+          <div class="card-well p-3 flex items-center gap-3">
+            <span class="text-code text-xs break-all leading-relaxed grow">http://localhost:8000/recuperar-senha/Mw/cs8f2p-1a4b9c7e5d0f3a8b2c6e1d9f/</span>
+            <button type="button" class="btn btn-glass btn-sm btn-copiar shrink-0" data-estado="pronto">
+              <span data-face="pronto"><span class="icon-etched">⧉</span> copiar</span>
+              <span data-face="copiado">✓ copiado</span>
+              <span data-face="falhou">✕ falhou</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · ORGANISMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">3 · Organismos</h2>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">3.1 · Resposta do pedido, nas quatro faces</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            <span class="text-code">autenticacao/partials/_envio_recuperacao.html</span> — alvo do <span class="text-code">hx-post</span> do formulário de pedido.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-5">
+          <!-- estado: enviado -->
+          <div class="card-well p-5 flex flex-col gap-3">
+            <p class="text-overline">enviado</p>
+            <div class="alert alert-success alert-soft text-xs">
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              <span>Link enviado para <strong>maria.souza@prefeitura.sp.gov.br</strong>. Ele vale uma vez e por 1 hora.</span>
+            </div>
+          </div>
+
+          <!-- estado: retido na janela -->
+          <div class="card-well p-5 flex flex-col gap-3" data-envio-recuperacao>
+            <p class="text-overline">retido na janela</p>
+            <div class="alert alert-info alert-soft text-xs" data-contagem-reenvio="12">
+              <span data-reenvio-correndo>
+                A mensagem acabou de ser enviada para <strong>maria.souza@prefeitura.sp.gov.br</strong>.
+                Se ela não chegar, peça outra em <span class="text-code" data-reenvio-relogio>12 s</span>.
+              </span>
+              <span class="hidden" data-reenvio-liberado>
+                A mensagem foi enviada para <strong>maria.souza@prefeitura.sp.gov.br</strong>.
+                Não chegou? Você já pode pedir outra.
+              </span>
+            </div>
+            <button type="button" class="btn btn-onsen btn-sm font-bold self-start" data-reenvio-acionador>Enviar link</button>
+          </div>
+
+          <!-- estado: envio desligado -->
+          <div class="card-well p-5 flex flex-col gap-3">
+            <p class="text-overline">envio desligado (desenvolvimento)</p>
+            <div class="alert alert-warning alert-soft text-xs">
+              <span>Envio de e-mail desligado: o link aparece aqui só em desenvolvimento.</span>
+            </div>
+            <div class="card-well p-3 flex items-center gap-3">
+              <span class="text-code text-[11px] break-all leading-relaxed grow">http://localhost:8000/recuperar-senha/Mw/cs8f2p-1a4b9c7e5d0f3a8b2c6e1d9f/</span>
+              <button type="button" class="btn btn-glass btn-sm btn-copiar shrink-0" data-estado="pronto">
+                <span data-face="pronto"><span class="icon-etched">⧉</span> copiar</span>
+                <span data-face="copiado">✓ copiado</span>
+                <span data-face="falhou">✕ falhou</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- estado: falha de entrega -->
+          <div class="card-well p-5 flex flex-col gap-3">
+            <p class="text-overline">falha de entrega</p>
+            <div class="alert alert-error alert-soft text-xs">
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <span>Não foi possível enviar o link para <strong>maria.souza@prefeitura.sp.gov.br</strong>. Tente novamente em instantes.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 4 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-10">
+      <h2 class="section-title px-2">4 · Telas Montadas</h2>
+
+      <!-- TELA 1: LOGIN COM O ACIONADOR -->
+      <div class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="border-b border-base-300/60 pb-4">
+          <h3 class="text-xl font-bold text-madeira-700">Login <span class="text-sm font-normal text-base-content/60">— ramo de senha do partial dinâmico</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">À esquerda, sem pedido em aberto. À direita, com o aviso.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+          <!-- estado: sem pedido em aberto -->
+          <div class="max-w-md mx-auto w-full">
+            <p class="text-overline mb-2 text-center">sem pedido em aberto</p>
+            <!-- página: autenticacao/login.html -->
+            <div class="glass-panel p-8 flex flex-col gap-6 shadow-xl border-white/60">
+              <div class="text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">DIMAP GeoCoder</h2>
+                <p class="text-xs text-base-content/60 mt-0.5">Plataforma Territorial da DIMAP</p>
+              </div>
+
+              <form class="flex flex-col gap-5">
+                <!-- fica na página: o campo de RF segue visível e editável mesmo no retorno 422 -->
+                <div class="form-control gap-1">
+                  <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Registro Funcional (RF)</label>
+                  <input type="text" inputmode="numeric" value="123.456-7" class="input input-glass w-full" placeholder="Ex: 123.456-7" />
+                </div>
+
+                <!-- partial: autenticacao/partials/_campo_login_dinamico.html — alvo do hx-post de checar_rf -->
+                <div class="flex flex-col gap-5">
+                  <div class="form-control gap-1">
+                    <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>
+                    <div class="input-olhinho-wrap">
+                      <input type="password" id="login-senha-a" class="input input-glass pr-10 w-full" placeholder="••••••••" />
+                      <button type="button" class="input-olhinho-btn" data-olhinho-alvo="#login-senha-a">
+                        <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md">Entrar</button>
+                  <a href="#tela-recuperacao" class="btn-etched btn-etched-swell etched self-center">Esqueci minha senha</a>
+                </div>
+                <!-- /partial -->
+              </form>
+            </div>
+          </div>
+
+          <!-- estado: com pedido em aberto -->
+          <div class="max-w-md mx-auto w-full">
+            <p class="text-overline mb-2 text-center">com link em aberto para o RF</p>
+            <div class="glass-panel p-8 flex flex-col gap-6 shadow-xl border-white/60">
+              <div class="text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">DIMAP GeoCoder</h2>
+                <p class="text-xs text-base-content/60 mt-0.5">Plataforma Territorial da DIMAP</p>
+              </div>
+
+              <form class="flex flex-col gap-5">
+                <div class="form-control gap-1">
+                  <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Registro Funcional (RF)</label>
+                  <input type="text" inputmode="numeric" value="123.456-7" class="input input-glass w-full" />
+                </div>
+
+                <!-- partial: autenticacao/partials/_campo_login_dinamico.html -->
+                <div class="flex flex-col gap-5">
+                  <div class="form-control gap-1">
+                    <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>
+                    <div class="input-olhinho-wrap">
+                      <input type="password" id="login-senha-b" class="input input-glass pr-10 w-full" placeholder="••••••••" />
+                      <button type="button" class="input-olhinho-btn" data-olhinho-alvo="#login-senha-b">
+                        <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md">Entrar</button>
+                  <a href="#tela-recuperacao" class="btn-etched btn-etched-swell etched self-center">Esqueci minha senha</a>
+                  <div class="alert alert-info alert-soft text-xs">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>Já pedimos uma redefinição de senha para este RF: o link está no seu e-mail institucional.</span>
+                  </div>
+                </div>
+                <!-- /partial -->
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 2: ESQUECI MINHA SENHA -->
+      <div class="glass-panel p-6 sm:p-10 flex flex-col gap-6" id="tela-recuperacao">
+        <div class="border-b border-base-300/60 pb-4">
+          <h3 class="text-xl font-bold text-madeira-700">Esqueci minha senha <span class="text-sm font-normal text-base-content/60">— <span class="text-code">/esqueci-minha-senha/?rf=</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Os três estados do RF informado.</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+          <!-- estado: recuperável -->
+          <div class="w-full">
+            <p class="text-overline mb-2 text-center">recuperável</p>
+            <!-- página: autenticacao/esqueci_senha.html -->
+            <div class="glass-panel p-7 flex flex-col gap-5 shadow-xl border-white/60">
+              <div class="text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-xl bg-agua-100 text-agua-700 flex items-center justify-center shadow-sm mb-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Recuperar acesso</h2>
+              </div>
+
+              <div class="card-well p-4 flex flex-col gap-2">
+                <p class="text-overline">o link vai para</p>
+                <p class="text-sm font-bold text-rocha-950 leading-tight">Maria Souza</p>
+                <p class="text-code text-xs break-all">maria.souza@prefeitura.sp.gov.br</p>
+              </div>
+
+              <p class="text-xs text-base-content/70 leading-relaxed">
+                Enviaremos um link de <strong>uso único</strong>, válido por 1 hora, para você definir uma senha nova.
+              </p>
+
+              <form class="flex flex-col gap-4">
+                <button type="button" class="btn btn-onsen w-full font-bold shadow-md" data-reenvio-acionador>Enviar link de redefinição</button>
+                <!-- partial: autenticacao/partials/_envio_recuperacao.html — alvo do hx-post de enviar_link_recuperacao -->
+                <div class="min-h-[1rem]"></div>
+                <!-- /partial -->
+              </form>
+              <a href="#" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
+            </div>
+          </div>
+
+          <!-- estado de falta: RF sem conta ativa -->
+          <div class="w-full">
+            <p class="text-overline mb-2 text-center">sem conta ativa</p>
+            <div class="glass-panel p-7 flex flex-col gap-5 shadow-xl border-white/60">
+              <div class="text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-xl bg-base-200 text-base-content/50 flex items-center justify-center shadow-sm mb-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Recuperar acesso</h2>
+              </div>
+
+              <div class="alert alert-error alert-soft text-xs">
+                <span>Não há conta ativa para o RF <span class="text-code">999.999-9</span>.</span>
+              </div>
+
+              <p class="text-xs text-base-content/70 leading-relaxed">
+                Confira o número digitado. Se o seu cadastro ainda não existe, procure quem administra o cadastro da DIMAP.
+              </p>
+
+              <a href="#" class="btn btn-glass w-full font-bold">Voltar ao login</a>
+            </div>
+          </div>
+
+          <!-- estado: em primeiro acesso -->
+          <div class="w-full">
+            <p class="text-overline mb-2 text-center">em primeiro acesso</p>
+            <div class="glass-panel p-7 flex flex-col gap-5 shadow-xl border-white/60">
+              <div class="text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-xl bg-agua-100 text-agua-700 flex items-center justify-center shadow-sm mb-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Recuperar acesso</h2>
+              </div>
+
+              <div class="alert alert-info alert-soft text-xs">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>Este RF ainda não fez o primeiro acesso: a entrada é pela senha de uso único enviada no cadastro.</span>
+              </div>
+
+              <div class="card-well p-4 flex flex-col gap-2">
+                <p class="text-overline">o código vai para</p>
+                <p class="text-sm font-bold text-rocha-950 leading-tight">João Prado</p>
+                <p class="text-code text-xs break-all">joao.prado@prefeitura.sp.gov.br</p>
+              </div>
+
+              <div class="aura aura-onsen w-full">
+                <a href="#" class="btn btn-onsen w-full font-bold shadow-md">
+                  Possuo o código: fazer primeiro acesso
+                </a>
+              </div>
+
+              <!-- acionador sem rota até a SPEC da reemissão (§4) -->
+              <button type="button" class="btn btn-glass w-full font-bold" disabled>
+                Reenviar senha de uso único
+              </button>
+              <a href="#" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- estado: o mesmo acionador com a rota da próxima SPEC -->
+        <div class="card-well p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p class="text-xs text-base-content/70 leading-relaxed">
+            O acionador de reemissão nasce indisponível: ganha rota na SPEC da reemissão da senha de uso único. Ativo, é o mesmo botão.
+          </p>
+          <button type="button" class="btn btn-glass font-bold shrink-0">Reenviar senha de uso único</button>
+        </div>
+      </div>
+
+      <!-- TELA 3: LINK INVÁLIDO -->
+      <div class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="border-b border-base-300/60 pb-4">
+          <h3 class="text-xl font-bold text-madeira-700">Link inválido <span class="text-sm font-normal text-base-content/60">— <span class="text-code">/recuperar-senha/&lt;uidb64&gt;/&lt;token&gt;/</span>, resposta 410</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Vencido, já consumido, adulterado ou de conta que não recupera por aqui — a tela é uma só.</p>
+        </div>
+
+        <div class="max-w-md mx-auto w-full">
+          <!-- página: autenticacao/link_invalido.html -->
+          <div class="glass-panel p-8 flex flex-col gap-6 shadow-xl border-white/60">
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-xl bg-base-200 text-base-content/50 flex items-center justify-center shadow-sm mb-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656m-3.656 0a4 4 0 010-5.656m-2.829 8.485a8 8 0 010-11.314m11.314 0a8 8 0 010 11.314M3 3l18 18" /></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Este link não vale mais</h2>
+              <p class="text-xs text-base-content/70 mt-2 leading-relaxed">
+                Cada link de redefinição vale <strong>uma única vez</strong> e por 1 hora. Peça outro para continuar.
+              </p>
+            </div>
+
+            <a href="#tela-recuperacao" class="btn btn-onsen w-full font-bold shadow-md">Pedir um link novo</a>
+            <a href="#" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // Mapa de fundo com deriva suave (SPEC user_admin/007)
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
+        ultimoFrame = agora;
+        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
+        mapa.setView(
+          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
+          ZOOM,
+          { animate: false },
+        );
+      }
+      requestAnimationFrame(derivar);
+    }
+    requestAnimationFrame(derivar);
+
+    // Alternador de visibilidade de senha (SPEC autenticacao/001)
+    document.querySelectorAll("[data-olhinho-alvo]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        const alvo = document.querySelector(botao.dataset.olhinhoAlvo);
+        const paraTexto = alvo.type === "password";
+        alvo.type = paraTexto ? "text" : "password";
+        botao.querySelector(".icone-olho-aberto").classList.toggle("hidden", paraTexto);
+        botao.querySelector(".icone-olho-fechado").classList.toggle("hidden", !paraTexto);
+      });
+    });
+
+    // Contagem regressiva do reenvio: a espera chega pronta do servidor e o relógio só a consome.
+    function formatar(segundos) {
+      const minutos = Math.floor(segundos / 60);
+      return minutos ? `${minutos} min ${String(segundos % 60).padStart(2, "0")} s` : `${segundos} s`;
+    }
+
+    function correr(painel) {
+      const bloco = painel.closest("[data-envio-recuperacao]");
+      const acionador = bloco.querySelector("[data-reenvio-acionador]");
+      const relogio = painel.querySelector("[data-reenvio-relogio]");
+      const correndo = painel.querySelector("[data-reenvio-correndo]");
+      const liberado = painel.querySelector("[data-reenvio-liberado]");
+      let restante = Number(painel.dataset.contagemReenvio);
+
+      acionador.disabled = true;
+      correndo.classList.remove("hidden");
+      liberado.classList.add("hidden");
+      relogio.textContent = formatar(restante);
+
+      const passo = setInterval(() => {
+        if (!painel.isConnected) return clearInterval(passo);
+        restante -= 1;
+        relogio.textContent = formatar(restante);
+        if (restante > 0) return;
+        clearInterval(passo);
+        acionador.disabled = false;
+        correndo.classList.add("hidden");
+        liberado.classList.remove("hidden");
+      }, 1000);
+    }
+
+    document.querySelectorAll("[data-contagem-reenvio]").forEach(correr);
+    document.querySelectorAll("[data-reiniciar-contagem]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        correr(botao.closest("[data-envio-recuperacao]").querySelector("[data-contagem-reenvio]"));
+      });
+    });
+  </script>
+</body>
+</html>
