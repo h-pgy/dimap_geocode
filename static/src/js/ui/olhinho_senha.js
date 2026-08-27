@@ -9,12 +9,16 @@ function alternar(botao) {
   botao.querySelector(".icone-olho-fechado")?.classList.toggle("hidden", !paraTexto);
 }
 
-function montar(raiz) {
-  raiz.querySelectorAll("[data-olhinho-alvo]").forEach((botao) => {
+// O atributo de montagem marca o que já foi feito: `htmx:load` também dispara no scan inicial da
+// página (não só num swap real) — sem a marca, um botão presente desde o carregamento ganhava dois
+// ouvintes, e o segundo clique desfazia o primeiro (SPEC autenticacao/002).
+function montar() {
+  document.querySelectorAll("[data-olhinho-alvo]:not([data-olhinho-montado])").forEach((botao) => {
+    botao.dataset.olhinhoMontado = "true";
     botao.addEventListener("click", () => alternar(botao));
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => montar(document));
+document.addEventListener("DOMContentLoaded", montar);
 // O partial dinâmico do login troca o campo de senha por HTMX: o botão que chega precisa montar.
-document.body.addEventListener("htmx:load", (evento) => montar(evento.detail.elt));
+document.addEventListener("htmx:afterSwap", montar);

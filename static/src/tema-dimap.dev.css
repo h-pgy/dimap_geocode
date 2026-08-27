@@ -325,6 +325,24 @@ html[data-theme="dimap"] {
     @apply absolute right-3 p-1.5 text-base-content/50 hover:text-agua-600 focus:outline-none transition-colors cursor-pointer;
   }
 
+  /* MOLÉCULA · CHECKLIST DE SENHA FORTE (SPEC autenticacao/002). Cada requisito acende em
+     `.atendido` conforme o servidor digita a nova senha. */
+  .checklist-senha {
+    @apply flex flex-col gap-1.5 p-3 rounded-lg bg-base-100/60 border border-base-300/60 text-xs;
+  }
+  .checklist-item {
+    @apply flex items-center gap-2 text-base-content/60 transition-colors;
+  }
+  .checklist-item.atendido {
+    @apply text-success font-medium;
+  }
+  .checklist-icone {
+    @apply w-4 h-4 rounded-full flex items-center justify-center text-[10px] bg-base-300 text-base-content/60 transition-all;
+  }
+  .checklist-item.atendido .checklist-icone {
+    @apply bg-success text-success-content font-bold;
+  }
+
   /* ÁTOMO · A SENHA REVELADA (SPEC criacao_usuarios/007). O .text-code em medida de display: a
      senha é o objeto da tela, não um dado dela. `select-all` faz um clique pegar os oito dígitos
      inteiros — é o caminho manual, que precisa funcionar sozinho quando o botão de copiar não

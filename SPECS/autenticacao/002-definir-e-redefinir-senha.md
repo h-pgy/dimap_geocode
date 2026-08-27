@@ -1,12 +1,13 @@
 ---
 spec: autenticacao/002
-versao: v1
-atualizado_em: 2026-08-25
-testes_tdd: false
-implementado: false
+versao: v2
+atualizado_em: 2026-08-26
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: botão "Redefinir senha" trocado de btn-outline (fora do design system) para btn-glass, no mock e no snippet
 ---
 
 # SPEC autenticacao/002 — Definir e redefinir senha: template unificado, alternador de visibilidade e checklist reativo
@@ -216,7 +217,7 @@ def gravar_senha_view(request: HttpRequest) -> HttpResponse:
 ```html
 {# Só exibe o botão de redefinir senha se o usuário autenticado for o próprio servidor exibido #}
 {% if request.user.is_authenticated and request.user.pk == perfil.pk %}
-  <a href="{% url 'autenticacao:redefinir_senha' %}" class="btn btn-outline btn-sm">
+  <a href="{% url 'autenticacao:redefinir_senha' %}" class="btn btn-glass btn-sm">
     Redefinir senha
   </a>
 {% endif %}

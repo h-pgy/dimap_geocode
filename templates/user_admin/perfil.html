@@ -22,16 +22,26 @@
           {% include "user_admin/partials/_secao_exercicio.html" %}
         </div>
 
-        {% if pode_editar %}
-          <div class="flex justify-center pt-2">
-            <button type="button"
-                    hx-get="{% url 'user_admin:editar_perfil' perfil.pk %}"
-                    hx-target="#poco-modal"
-                    hx-swap="innerHTML settle:150ms"
-                    class="btn btn-onsen btn-lg gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
-              Editar servidor
-            </button>
+        {% if pode_editar or request.user.pk == perfil.pk %}
+          <div class="flex justify-center items-center gap-3 pt-2">
+            {# Redefinir senha é gestão de credencial estritamente pessoal (SPEC autenticacao/002): #}
+            {# só quem vê o próprio perfil recebe o atalho, sem depender de competência alguma.     #}
+            {% if request.user.pk == perfil.pk %}
+              <a href="{% url 'autenticacao:redefinir_senha' %}" class="btn btn-glass gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                Redefinir senha
+              </a>
+            {% endif %}
+            {% if pode_editar %}
+              <button type="button"
+                      hx-get="{% url 'user_admin:editar_perfil' perfil.pk %}"
+                      hx-target="#poco-modal"
+                      hx-swap="innerHTML settle:150ms"
+                      class="btn btn-onsen btn-lg gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+                Editar servidor
+              </button>
+            {% endif %}
           </div>
         {% endif %}
       </div>

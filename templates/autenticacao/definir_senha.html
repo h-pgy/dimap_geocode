@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if eh_primeiro_login %}Definir Senha{% else %}Redefinir Senha{% endif %} · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-md mx-auto px-4 py-24">
+      <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+        <div class="text-center flex flex-col items-center">
+          {% if eh_primeiro_login %}
+            <div class="w-12 h-12 rounded-xl bg-agua-100 text-agua-700 flex items-center justify-center shadow-sm mb-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </div>
+            <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Definir Senha</h2>
+            <p class="text-xs text-base-content/70 mt-1">Crie a sua credencial definitiva de acesso ao sistema.</p>
+          {% else %}
+            <div class="w-12 h-12 rounded-xl bg-base-200 text-madeira-700 flex items-center justify-center shadow-sm mb-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Redefinir Senha</h2>
+            <p class="text-xs text-base-content/70 mt-1">Altere sua senha de acesso ao DIMAP GeoCoder.</p>
+          {% endif %}
+        </div>
+
+        <form method="post" action="{% url 'autenticacao:gravar_senha' %}" class="flex flex-col gap-5">
+          {% csrf_token %}
+
+          {% if recusa %}
+            <div class="p-3 bg-error/10 border border-error/30 text-xs text-error rounded-lg font-medium">
+              {% for mensagem in recusa.mensagens %}{{ mensagem }}{% endfor %}
+            </div>
+          {% endif %}
+
+          {% if not eh_primeiro_login %}
+            <div class="form-control gap-1">
+              <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha atual</label>
+              <div class="input-olhinho-wrap">
+                <input type="password" id="senha-atual" name="senha_atual" class="input input-glass pr-10 w-full {{ recusa.realce.senha_atual }}" placeholder="Sua senha atual" />
+                <button type="button" class="input-olhinho-btn" data-olhinho-alvo="#senha-atual">
+                  <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                </button>
+              </div>
+            </div>
+          {% endif %}
+
+          <div class="flex flex-col gap-5" data-checklist-senha>
+            <div class="form-control gap-1">
+              <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">{% if eh_primeiro_login %}Definir senha{% else %}Nova senha{% endif %}</label>
+              <div class="input-olhinho-wrap">
+                <input type="password" id="nova-senha" name="nova_senha" class="input input-glass pr-10 w-full {{ recusa.realce.nova_senha }}" placeholder="Nova senha segura" data-checklist-alvo />
+                <button type="button" class="input-olhinho-btn" data-olhinho-alvo="#nova-senha">
+                  <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="checklist-senha" data-checklist-lista>
+              <div class="checklist-item" data-requisito="tamanho">
+                <span class="checklist-icone">✓</span>
+                <span>Mínimo de 8 caracteres</span>
+              </div>
+              <div class="checklist-item" data-requisito="maiuscula">
+                <span class="checklist-icone">✓</span>
+                <span>Pelo menos uma letra maiúscula</span>
+              </div>
+              <div class="checklist-item" data-requisito="especial">
+                <span class="checklist-icone">✓</span>
+                <span>Pelo menos um caractere especial (!@#$%^&*...)</span>
+              </div>
+            </div>
+
+            <div class="form-control gap-1">
+              <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Confirmar senha</label>
+              <div class="input-olhinho-wrap">
+                <input type="password" id="confirmacao-senha" name="confirmacao_senha" class="input input-glass pr-10 w-full {{ recusa.realce.confirmacao_senha }}" placeholder="Repita a nova senha" data-checklist-confirmacao />
+                <button type="button" class="input-olhinho-btn" data-olhinho-alvo="#confirmacao-senha">
+                  <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                </button>
+              </div>
+              <div class="min-h-[18px]" data-checklist-feedback></div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-onsen w-full text-base font-bold shadow-md mt-1">
+            {% if eh_primeiro_login %}Salvar Senha e Acessar{% else %}Salvar Alterações{% endif %}
+          </button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/olhinho_senha.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/checklist_senha.js' %}"></script>
+{% endblock %}

@@ -3,7 +3,9 @@ Orquestração da entrada no sistema (SPEC autenticacao/001): a consulta dinâmi
 a autenticação padrão via `django.contrib.auth`, a validação do OTP de primeiro acesso e o logout.
 """
 
-from django.contrib.auth import authenticate, login, logout
+from typing import cast
+
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -14,8 +16,10 @@ from pydantic import SecretStr
 
 from apps.autenticacao.formularios import traduzir_recusa_login, traduzir_recusa_otp
 from apps.autenticacao.schemas import ConsultaRfInput, ValidacaoOtpInput
+from apps.autenticacao.senha import gravar_senha
 from apps.autenticacao.services import autenticar_primeiro_login, resolver_estado_rf
 from apps.mapping.context import contexto_fundo_admin
+from apps.user_admin.models import Perfil
 from services.utils.erros_formulario import ErroBruto
 
 ERRO_LOGIN = "RF ou senha incorretos."
@@ -81,10 +85,47 @@ def validar_otp_view(request: HttpRequest) -> HttpResponse:
     return redirect("autenticacao:definir_senha")
 
 
+TEMPLATE_DEFINIR_SENHA = "autenticacao/definir_senha.html"
+
+
 @login_required
 def definir_senha_view(request: HttpRequest) -> HttpResponse:
-    # Fora de escopo desta SPEC (autenticacao/002): rota reservada para o redirecionamento pós-OTP.
-    return HttpResponse("Definição de senha — SPEC autenticacao/002.")
+    # Quem decide o modo é a flag do perfil, não a rota visitada: um servidor com senha definitiva
+    # que caia aqui (ex.: link antigo) já recebe o formulário pedindo a senha atual.
+    perfil = cast(Perfil, request.user)
+    contexto = {"eh_primeiro_login": perfil.senha_provisoria, **contexto_fundo_admin()}
+    return render(request, TEMPLATE_DEFINIR_SENHA, contexto)
+
+
+@login_required
+def redefinir_senha_view(request: HttpRequest) -> HttpResponse:
+    contexto = {"eh_primeiro_login": False, **contexto_fundo_admin()}
+    return render(request, TEMPLATE_DEFINIR_SENHA, contexto)
+
+
+@login_required
+@require_POST
+def gravar_senha_view(request: HttpRequest) -> HttpResponse:
+    perfil = cast(Perfil, request.user)
+    eh_primeiro_login = perfil.senha_provisoria
+    desfecho = gravar_senha(perfil, eh_primeiro_login, request.POST)
+
+    if not desfecho.sucesso:
+        contexto = {
+            "eh_primeiro_login": eh_primeiro_login,
+            "recusa": desfecho.recusa,
+            **contexto_fundo_admin(),
+        }
+        return render(request, TEMPLATE_DEFINIR_SENHA, contexto, status=422)
+
+    if eh_primeiro_login:
+        # A sessão de primeiro acesso não sobrevive à senha definitiva: o servidor entra de novo,
+        # já com a credencial que acabou de escolher (SPEC, Caveats).
+        logout(request)
+        return redirect("autenticacao:login")
+
+    update_session_auth_hash(request, perfil)
+    return redirect(reverse("user_admin:pagina_perfil", kwargs={"pk": perfil.pk}))
 
 
 def logout_view(request: HttpRequest) -> HttpResponse:

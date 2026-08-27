@@ -1,0 +1,21 @@
+from .politica_senha import (
+    CARACTERES_ESPECIAIS,
+    ERRO_SENHA_ATUAL_INCORRETA,
+    ERRO_SENHA_FRACA_COMPRIMENTO,
+    ERRO_SENHA_FRACA_ESPECIAL,
+    ERRO_SENHA_FRACA_MAIUSCULA,
+    ERRO_SENHAS_DIVERGENTES,
+    PoliticaSenhaForte,
+    validar_complexidade_senha,
+)
+
+__all__ = [
+    "CARACTERES_ESPECIAIS",
+    "ERRO_SENHAS_DIVERGENTES",
+    "ERRO_SENHA_ATUAL_INCORRETA",
+    "ERRO_SENHA_FRACA_COMPRIMENTO",
+    "ERRO_SENHA_FRACA_ESPECIAL",
+    "ERRO_SENHA_FRACA_MAIUSCULA",
+    "PoliticaSenhaForte",
+    "validar_complexidade_senha",
+]
