@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC autenticacao/004 — Reenvio da senha de uso único (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-004").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Nenhuma peça nova. O que há é UMA peça alterada, pendente de aval: a régua do código.
+       O resto que esta SPEC veste já está no tema. -->
+  <script type="text/css" id="tokens-spec-004">
+    @layer components {
+      /* ==================== ÁTOMO ALTERADO · RÉGUA DO CÓDIGO ====================
+         `.otp-caixa` tinha largura fixa (w-10 sm:w-11) dentro de um flex: oito caixas somavam
+         376px que não encolhiam, e estouravam o painel abaixo de ~430px de vaso.
+         Agora a régua é uma grade de oito colunas iguais e a caixa ocupa a coluna. A altura e a
+         pele seguem as mesmas; o realce de erro continua vindo do tema, com especificidade maior. */
+      .otp-onsen { @apply grid grid-cols-8 items-center gap-1.5 sm:gap-2 w-full; }
+      .otp-onsen .otp-caixa {
+        @apply w-full min-w-0 h-13 sm:h-14 text-center text-lg sm:text-xl font-bold font-mono
+               rounded-lg border border-base-300 bg-base-100/90 text-agua-700
+               focus:border-agua-500 focus:outline-none focus:ring-2 focus:ring-agua-400/30
+               transition-all;
+      }
+
+      /* EXPOSIÇÃO. Não é peça do projeto, não vai para o tema. */
+      .vitrine-placa { @apply w-full max-w-md mx-auto; }
+      .vitrine-rotulo { @apply text-[10px] font-mono text-base-content/60; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <!-- Filtros da gravação (templates/partials/_filtros_gravacao.html) — sem os defs, .etched não desenha -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-12 flex flex-col gap-12">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC autenticacao/004 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Reenvio da Senha de Uso Único</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          <strong>1 · Moléculas</strong> traz as cinco faces da resposta do pedido — a contagem regressiva corre de verdade — e as duas recusas da tela do código.
+          <strong>2 · Organismos</strong> traz o modal da senha em tela com o subtítulo nas duas vozes.
+          <strong>3 · Telas montadas</strong> traz o login, a tela de recuperação em primeiro acesso e a tela do código.
+          Nenhuma peça nova nasce aqui: tudo já está no tema.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · MOLÉCULAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Moléculas</h2>
+
+      <!-- 1.1 · a resposta do pedido -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · Resposta do pedido, nas cinco faces</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            <span class="text-code">autenticacao/partials/_envio_senha_unico.html</span> — alvo do <span class="text-code">hx-post</span> do acionador, nas duas telas que o oferecem.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-5">
+          <!-- estado: enviado -->
+          <div class="card-well p-5 flex flex-col gap-3">
+            <p class="text-overline">enviado</p>
+            <div class="alert alert-success alert-soft text-xs">
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              <span>Senha de uso único enviada para <strong>joao.prado@prefeitura.sp.gov.br</strong>.</span>
+            </div>
+          </div>
+
+          <!-- estado: retido na janela — contagem viva, o acionador volta sozinho -->
+          <div class="card-well p-5 flex flex-col gap-3" data-bloco-reenvio>
+            <p class="text-overline">retido na janela</p>
+            <div class="card-well p-4 text-xs text-base-content/70 leading-relaxed" data-contagem-reenvio="15">
+              A mensagem acabou de ser enviada para <strong>joao.prado@prefeitura.sp.gov.br</strong>.
+              Se ela não chegar, peça outra em <span class="text-code" data-reenvio-relogio>15 s</span>.
+            </div>
+            <div class="flex items-center gap-3">
+              <button type="button" class="btn btn-glass btn-sm font-bold" data-reenvio-acionador>Reenviar senha</button>
+              <button type="button" class="btn-etched etched text-xs" data-reiniciar-contagem>rodar de novo</button>
+            </div>
+          </div>
+
+          <!-- estado: envio desligado (desenvolvimento) -->
+          <div class="card-well p-5 flex flex-col gap-3">
+            <p class="text-overline">envio desligado (desenvolvimento)</p>
+            <div class="alert alert-warning alert-soft text-xs">
+              <span>Envio de e-mail desligado: a senha aparece no modal, e só em desenvolvimento.</span>
+            </div>
+            <label for="modal-senha-vivo" class="btn btn-glass btn-sm font-bold self-start">Ver o modal que abre junto</label>
+          </div>
+
+          <!-- estado: falha de entrega -->
+          <div class="card-well p-5 flex flex-col gap-3">
+            <p class="text-overline">falha de entrega</p>
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">Não foi possível enviar a senha</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>Não foi possível enviar a senha para joao.prado@prefeitura.sp.gov.br. Tente novamente em instantes.</li>
+                </ul>
+              </div>
+            </div>
+            <p class="vitrine-rotulo">a senha anterior continua valendo — a troca foi desfeita</p>
+          </div>
+
+          <!-- estado de falta: RF que não está em primeiro acesso -->
+          <div class="card-well p-5 flex flex-col gap-3 md:col-span-2">
+            <p class="text-overline">nada a fazer</p>
+            <div class="card-well p-4 text-xs text-base-content/70">Nada a fazer para este pedido.</div>
+            <p class="vitrine-rotulo">RF sem conta ativa, com senha definitiva ou sem e-mail — alcançável só por POST fora das telas</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.2 · a régua do código, nas larguras de vaso -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.2 · Régua do código <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.otp-onsen</span>, peça alterada</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            A mesma régua em três vasos. Antes, a caixa tinha largura fixa e a fila de oito não cabia embaixo de ~430px; agora cada caixa ocupa uma coluna da grade e a fila cabe em qualquer largura.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-start gap-6">
+          <!-- estado: vaso de telefone -->
+          <div class="flex flex-col items-center gap-3">
+            <div class="card-well p-4" style="width: 279px">
+              <div class="otp-onsen">
+                <input type="text" maxlength="1" class="otp-caixa" value="4" />
+                <input type="text" maxlength="1" class="otp-caixa" value="7" />
+                <input type="text" maxlength="1" class="otp-caixa" value="0" />
+                <input type="text" maxlength="1" class="otp-caixa" value="1" />
+                <input type="text" maxlength="1" class="otp-caixa" value="9" />
+                <input type="text" maxlength="1" class="otp-caixa" value="3" />
+                <input type="text" maxlength="1" class="otp-caixa" value="5" />
+                <input type="text" maxlength="1" class="otp-caixa" value="2" />
+              </div>
+            </div>
+            <p class="vitrine-rotulo">279px — o que sobra num telefone de 375px</p>
+          </div>
+
+          <!-- estado: vaso de coluna estreita -->
+          <div class="flex flex-col items-center gap-3">
+            <div class="card-well p-4" style="width: 242px">
+              <div class="otp-onsen">
+                <input type="text" maxlength="1" class="otp-caixa" value="4" />
+                <input type="text" maxlength="1" class="otp-caixa" value="7" />
+                <input type="text" maxlength="1" class="otp-caixa" value="0" />
+                <input type="text" maxlength="1" class="otp-caixa" value="1" />
+                <input type="text" maxlength="1" class="otp-caixa" value="9" />
+                <input type="text" maxlength="1" class="otp-caixa" value="3" />
+                <input type="text" maxlength="1" class="otp-caixa" value="5" />
+                <input type="text" maxlength="1" class="otp-caixa" value="2" />
+              </div>
+            </div>
+            <p class="vitrine-rotulo">242px — coluna estreita</p>
+          </div>
+
+          <!-- estado: vaso da tela real -->
+          <div class="flex flex-col items-center gap-3 grow">
+            <div class="card-well p-4 w-full max-w-md">
+              <div class="otp-onsen">
+                <input type="text" maxlength="1" class="otp-caixa" value="4" />
+                <input type="text" maxlength="1" class="otp-caixa" value="7" />
+                <input type="text" maxlength="1" class="otp-caixa" value="0" />
+                <input type="text" maxlength="1" class="otp-caixa" value="1" />
+                <input type="text" maxlength="1" class="otp-caixa" value="9" />
+                <input type="text" maxlength="1" class="otp-caixa" value="3" />
+                <input type="text" maxlength="1" class="otp-caixa" value="5" />
+                <input type="text" maxlength="1" class="otp-caixa" value="2" />
+              </div>
+            </div>
+            <p class="vitrine-rotulo">largura da tela real</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.3 · as recusas da tela do código -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.3 · As duas recusas do código</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Mesma tarja, mesmo realce no <span class="text-code">.otp-onsen</span>. O que muda é a frase — e é ela que diz à pessoa que o dedo dela não errou.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-5">
+          <!-- estado: código errado -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">código errado</p>
+            <div class="p-3 bg-error/10 border border-error/30 text-xs text-error rounded-lg font-medium">
+              Senha de uso único inválida: confira o código recebido no e-mail institucional.
+            </div>
+            <div class="otp-onsen">
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="4" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="7" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="0" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="1" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="3" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="5" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="1" />
+            </div>
+          </div>
+
+          <!-- estado: código substituído por um reenvio -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">código substituído</p>
+            <div class="p-3 bg-error/10 border border-error/30 text-xs text-error rounded-lg font-medium">
+              Esta senha de uso único foi substituída por um reenvio. Use o código da mensagem mais recente que chegou no seu e-mail institucional.
+            </div>
+            <div class="otp-onsen">
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="4" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="7" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="0" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="1" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="3" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="5" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="2" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · ORGANISMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Organismos</h2>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold">2.1 · O modal da senha em tela, nas duas vozes</h3>
+            <p class="text-sm text-base-content/70 mt-1">
+              <span class="text-code">user_admin/partials/_modal_senha_desenvolvimento.html</span> — o mesmo modal do cadastro. Só o subtítulo muda de dono.
+            </p>
+          </div>
+          <label for="modal-senha-vivo" class="btn btn-onsen btn-sm">Abrir o modal de verdade</label>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-5">
+          <!-- estado: incluído pelo cadastro (subtítulo padrão) -->
+          <div class="card-well p-6">
+            <p class="text-overline mb-4">cadastro — sem passar nada</p>
+            <div class="modal-box glass-panel-thick modal-box-glass vitrine-placa p-6 flex flex-col gap-4">
+              <div class="flex items-start gap-3">
+                <span class="icon-bubble bg-error/15 border-error/30 text-error">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+                </span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Senha de primeiro acesso</h2>
+                  <p class="text-sm text-base-content/70 mt-1">
+                    Nenhum e-mail foi enviado. Copie agora e entregue a senha a quem foi cadastrado.
+                  </p>
+                </div>
+              </div>
+              <div class="card-well p-4 flex flex-col items-center gap-1 text-center">
+                <p class="text-overline">Senha de primeiro acesso</p>
+                <p class="senha-revelada mt-1">47019352</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- estado: incluído pelo reenvio (subtítulo próprio) -->
+          <div class="card-well p-6">
+            <p class="text-overline mb-4">reenvio — com <span class="text-code">instrucao</span></p>
+            <div class="modal-box glass-panel-thick modal-box-glass vitrine-placa p-6 flex flex-col gap-4">
+              <div class="flex items-start gap-3">
+                <span class="icon-bubble bg-error/15 border-error/30 text-error">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+                </span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Senha de primeiro acesso</h2>
+                  <p class="text-sm text-base-content/70 mt-1">
+                    Nenhum e-mail foi enviado. Anote a senha e use-a agora para ativar sua conta.
+                  </p>
+                </div>
+              </div>
+              <div class="card-well p-4 flex flex-col items-center gap-1 text-center">
+                <p class="text-overline">Senha de primeiro acesso</p>
+                <p class="senha-revelada mt-1">47019352</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-10">
+      <h2 class="section-title px-2">3 · Telas Montadas</h2>
+
+      <!-- TELA 1: LOGIN -->
+      <div class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="border-b border-base-300/60 pb-4">
+          <h3 class="text-xl font-bold text-madeira-700">Login <span class="text-sm font-normal text-base-content/60">— os dois ramos do partial dinâmico</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">O acionador novo ocupa, no ramo de primeiro acesso, o lugar que "Esqueci minha senha" ocupa no ramo de senha.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+          <!-- estado: ramo de senha (referência, já implementado) -->
+          <div class="max-w-md mx-auto w-full">
+            <p class="text-overline mb-2 text-center">ramo de senha — referência</p>
+            <div class="glass-panel p-7 flex flex-col gap-4 shadow-xl border-white/60">
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">RF</label>
+                <input type="text" value="123.456-7" class="input input-glass w-full" />
+              </div>
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>
+                <input type="password" value="alguma-coisa" class="input input-glass w-full" />
+              </div>
+              <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md">Entrar</button>
+              <a href="#" class="btn-etched btn-etched-swell etched self-center">Esqueci minha senha</a>
+            </div>
+          </div>
+
+          <!-- estado: ramo de primeiro acesso -->
+          <div class="max-w-md mx-auto w-full">
+            <p class="text-overline mb-2 text-center">ramo de primeiro acesso</p>
+            <!-- página: autenticacao/login.html -->
+            <div class="glass-panel p-7 flex flex-col gap-4 shadow-xl border-white/60">
+              <!-- fica na página: o campo de RF segue visível e editável mesmo no retorno 422 -->
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">RF</label>
+                <input type="text" value="123.456-7" class="input input-glass w-full" />
+              </div>
+
+              <!-- partial: autenticacao/partials/_campo_login_dinamico.html — alvo do hx-post de checar_rf -->
+              <div class="card-well p-3.5 bg-agua-50/70 border-agua-200 text-xs text-agua-900 leading-relaxed rounded-lg">
+                Detectamos que este é o seu <strong>primeiro acesso</strong>. Confirme sua senha de uso único recebida no e-mail institucional.
+              </div>
+              <div class="aura aura-onsen w-full">
+                <a href="#tela-codigo" class="btn btn-onsen w-full gap-2 text-base font-bold shadow-md">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                  Primeiro Login
+                </a>
+              </div>
+              <a href="#tela-recuperacao" class="btn-etched btn-etched-swell etched self-center text-center">Reenviar senha de uso único</a>
+              <!-- /partial -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 2: RECUPERAR ACESSO, EM PRIMEIRO ACESSO -->
+      <div id="tela-recuperacao" class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="border-b border-base-300/60 pb-4">
+          <h3 class="text-xl font-bold text-madeira-700">Recuperar acesso <span class="text-sm font-normal text-base-content/60">— <span class="text-code">/esqueci-minha-senha/?rf=</span>, estado de primeiro acesso</span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Ativar a conta segue em destaque, com aura. O reenvio é o gesto secundário logo abaixo — e agora tem rota.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+          <!-- estado: repouso -->
+          <div class="max-w-md mx-auto w-full">
+            <p class="text-overline mb-2 text-center">repouso</p>
+            <!-- página: autenticacao/esqueci_senha.html -->
+            <div class="glass-panel p-7 flex flex-col gap-5 shadow-xl border-white/60">
+              <div class="text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-xl bg-agua-100 text-agua-700 flex items-center justify-center shadow-sm mb-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Recuperar acesso</h2>
+              </div>
+
+              <div class="alert alert-info alert-soft text-xs">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>Este RF ainda não fez o primeiro acesso: a entrada é pela senha de uso único enviada no cadastro.</span>
+              </div>
+
+              <div class="card-well p-4 flex flex-col gap-2">
+                <p class="text-overline">o código vai para</p>
+                <p class="text-sm font-bold text-rocha-950 leading-tight">João Prado</p>
+                <p class="text-code text-xs break-all">joao.prado@prefeitura.sp.gov.br</p>
+              </div>
+
+              <div class="aura aura-onsen w-full">
+                <a href="#tela-codigo" class="btn btn-onsen w-full font-bold shadow-md">Possuo o código: fazer primeiro acesso</a>
+              </div>
+
+              <!-- fica na página: o acionador é irmão do alvo, não filho — a resposta não o substitui -->
+              <button type="button" class="btn btn-glass w-full font-bold">Reenviar senha de uso único</button>
+              <!-- partial: autenticacao/partials/_envio_senha_unico.html — alvo do hx-post de reenviar_senha_unico -->
+              <div class="min-h-[1rem]"></div>
+              <!-- /partial -->
+              <a href="#" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
+            </div>
+          </div>
+
+          <!-- estado: respondido, dentro da janela -->
+          <div class="max-w-md mx-auto w-full" data-bloco-reenvio>
+            <p class="text-overline mb-2 text-center">acabou de enviar</p>
+            <div class="glass-panel p-7 flex flex-col gap-5 shadow-xl border-white/60">
+              <div class="text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-xl bg-agua-100 text-agua-700 flex items-center justify-center shadow-sm mb-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Recuperar acesso</h2>
+              </div>
+
+              <div class="card-well p-4 flex flex-col gap-2">
+                <p class="text-overline">o código vai para</p>
+                <p class="text-sm font-bold text-rocha-950 leading-tight">João Prado</p>
+                <p class="text-code text-xs break-all">joao.prado@prefeitura.sp.gov.br</p>
+              </div>
+
+              <div class="aura aura-onsen w-full">
+                <a href="#tela-codigo" class="btn btn-onsen w-full font-bold shadow-md">Possuo o código: fazer primeiro acesso</a>
+              </div>
+
+              <button type="button" class="btn btn-glass w-full font-bold" data-reenvio-acionador>Reenviar senha de uso único</button>
+              <div class="card-well p-4 text-xs text-base-content/70 leading-relaxed" data-contagem-reenvio="20">
+                A mensagem acabou de ser enviada para <strong>joao.prado@prefeitura.sp.gov.br</strong>.
+                Se ela não chegar, peça outra em <span class="text-code" data-reenvio-relogio>20 s</span>.
+              </div>
+              <a href="#" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
+            </div>
+          </div>
+
+          <!-- estado: envio desligado (desenvolvimento) -->
+          <div class="max-w-md mx-auto w-full">
+            <p class="text-overline mb-2 text-center">envio desligado</p>
+            <div class="glass-panel p-7 flex flex-col gap-5 shadow-xl border-white/60">
+              <div class="text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-xl bg-agua-100 text-agua-700 flex items-center justify-center shadow-sm mb-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Recuperar acesso</h2>
+              </div>
+
+              <div class="card-well p-4 flex flex-col gap-2">
+                <p class="text-overline">o código vai para</p>
+                <p class="text-sm font-bold text-rocha-950 leading-tight">João Prado</p>
+                <p class="text-code text-xs break-all">joao.prado@prefeitura.sp.gov.br</p>
+              </div>
+
+              <div class="aura aura-onsen w-full">
+                <a href="#tela-codigo" class="btn btn-onsen w-full font-bold shadow-md">Possuo o código: fazer primeiro acesso</a>
+              </div>
+
+              <button type="button" class="btn btn-glass w-full font-bold">Reenviar senha de uso único</button>
+              <div class="alert alert-warning alert-soft text-xs">
+                <span>Envio de e-mail desligado: a senha aparece no modal, e só em desenvolvimento.</span>
+              </div>
+              <a href="#" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
+            </div>
+            <!-- fica na página: o poço do modal, irmão da casca administrativa -->
+            <p class="vitrine-rotulo mt-3 text-center">o modal chega por oob no <span class="text-code">#poco-modal</span> — <label for="modal-senha-vivo" class="link text-agua-700 font-medium">abra o de verdade</label></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 3: SENHA DE USO ÚNICO -->
+      <div id="tela-codigo" class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="border-b border-base-300/60 pb-4">
+          <h3 class="text-xl font-bold text-madeira-700">Senha de uso único <span class="text-sm font-normal text-base-content/60">— <span class="text-code">/primeiro-login/</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">Aqui o gesto principal é digitar o código: o reenvio desce para a gravação, ao lado do caminho de volta.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+          <!-- estado: repouso -->
+          <div class="max-w-md mx-auto w-full">
+            <p class="text-overline mb-2 text-center">repouso</p>
+            <!-- página: autenticacao/primeiro_login.html -->
+            <div class="glass-panel p-7 flex flex-col gap-6 shadow-xl border-white/60">
+              <div class="flex flex-col gap-2 text-center">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-agua-100 text-agua-700 mx-auto mb-1 shadow-sm">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Primeiro Login</h2>
+                <p class="text-xs text-base-content/80 leading-relaxed px-2">
+                  Confirme a <strong>senha de uso único</strong> de 8 dígitos recebida no e-mail institucional.
+                </p>
+              </div>
+
+              <div class="card-well p-3 flex items-center justify-between bg-base-100/60">
+                <span class="text-xs uppercase font-bold text-base-content/60">Servidor autenticando:</span>
+                <span class="font-mono font-bold text-agua-700">RF 1234567</span>
+              </div>
+
+              <!-- fica na página: o formulário do código, com a régua de 8 caixas -->
+              <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-center text-base-content/70">Senha de uso único:</label>
+                <div class="otp-onsen my-2">
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                </div>
+              </div>
+
+              <div class="aura aura-onsen w-full">
+                <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md">Primeiro Login</button>
+              </div>
+
+              <!-- fica na página: fora do <form> do código — formulário aninhado não existe em HTML -->
+              <div class="flex flex-col items-center gap-3 pt-1 border-t border-base-300/50">
+                <p class="text-[11px] text-base-content/60 pt-3">Não recebeu o código?</p>
+                <button type="button" class="btn-etched btn-etched-swell etched text-center">Reenviar senha de uso único</button>
+                <!-- partial: autenticacao/partials/_envio_senha_unico.html — alvo do hx-post de reenviar_senha_unico -->
+                <div class="min-h-[1rem] w-full"></div>
+                <!-- /partial -->
+                <a href="#" class="text-xs text-base-content/60 hover:text-agua-600 transition-colors">Voltar para o login</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- estado: código substituído -->
+          <div class="max-w-md mx-auto w-full">
+            <p class="text-overline mb-2 text-center">código substituído</p>
+            <div class="glass-panel p-7 flex flex-col gap-6 shadow-xl border-white/60">
+              <div class="flex flex-col gap-2 text-center">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-agua-100 text-agua-700 mx-auto mb-1 shadow-sm">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Primeiro Login</h2>
+              </div>
+
+              <div class="p-3 bg-error/10 border border-error/30 text-xs text-error rounded-lg font-medium">
+                Esta senha de uso único foi substituída por um reenvio. Use o código da mensagem mais recente que chegou no seu e-mail institucional.
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-center text-base-content/70">Senha de uso único:</label>
+                <div class="otp-onsen my-2">
+                  <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="4" />
+                  <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="7" />
+                  <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="0" />
+                  <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="1" />
+                  <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+                  <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="3" />
+                  <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="5" />
+                  <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="2" />
+                </div>
+              </div>
+
+              <div class="aura aura-onsen w-full">
+                <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md">Primeiro Login</button>
+              </div>
+
+              <div class="flex flex-col items-center gap-3 pt-1 border-t border-base-300/50">
+                <p class="text-[11px] text-base-content/60 pt-3">Não recebeu o código?</p>
+                <button type="button" class="btn-etched btn-etched-swell etched text-center">Reenviar senha de uso único</button>
+                <a href="#" class="text-xs text-base-content/60 hover:text-agua-600 transition-colors">Voltar para o login</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- estado: acabou de reenviar, sem sair da tela -->
+          <div class="max-w-md mx-auto w-full" data-bloco-reenvio>
+            <p class="text-overline mb-2 text-center">acabou de reenviar</p>
+            <div class="glass-panel p-7 flex flex-col gap-6 shadow-xl border-white/60">
+              <div class="flex flex-col gap-2 text-center">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-agua-100 text-agua-700 mx-auto mb-1 shadow-sm">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Primeiro Login</h2>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-center text-base-content/70">Senha de uso único:</label>
+                <div class="otp-onsen my-2">
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" maxlength="1" class="otp-caixa" />
+                </div>
+              </div>
+
+              <div class="aura aura-onsen w-full">
+                <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md">Primeiro Login</button>
+              </div>
+
+              <div class="flex flex-col items-center gap-3 pt-1 border-t border-base-300/50">
+                <p class="text-[11px] text-base-content/60 pt-3">Não recebeu o código?</p>
+                <button type="button" class="btn-etched btn-etched-swell etched text-center" data-reenvio-acionador>Reenviar senha de uso único</button>
+                <div class="w-full alert alert-success alert-soft text-xs">
+                  <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                  <span>Senha de uso único enviada para <strong>joao.prado@prefeitura.sp.gov.br</strong>.</span>
+                </div>
+                <div class="card-well p-3 w-full text-[11px] text-base-content/70 leading-relaxed" data-contagem-reenvio="25">
+                  Se ela não chegar, peça outra em <span class="text-code" data-reenvio-relogio>25 s</span>.
+                </div>
+                <a href="#" class="text-xs text-base-content/60 hover:text-agua-600 transition-colors">Voltar para o login</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- O modal de verdade, fora da casca: mesmo poço que a aplicação usa (#poco-modal) -->
+  <input type="checkbox" id="modal-senha-vivo" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8 flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icon-bubble bg-error/15 border-error/30 text-error">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+        </span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Senha de primeiro acesso</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            Nenhum e-mail foi enviado. Anote a senha e use-a agora para ativar sua conta.
+          </p>
+        </div>
+      </div>
+
+      <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+        <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+        <p class="text-[13px] text-base-content/80">
+          <strong>Só para desenvolvimento.</strong> Senha em tela é inseguro: ela fica no HTML da
+          página e no histórico do navegador. Isto só aparece porque o envio de e-mail está
+          desligado — nunca ligue essa configuração em produção.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col items-center gap-1 text-center">
+        <p class="text-overline">RF</p>
+        <p class="text-code text-lg">1234567</p>
+        <p class="text-overline mt-4">Senha de primeiro acesso</p>
+        <p class="senha-revelada mt-1">47019352</p>
+        <button type="button" class="btn btn-glass btn-sm btn-copiar mt-4" data-estado="pronto" data-copiar-senha="47019352">
+          <span data-face="pronto"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar</span>
+          <span data-face="copiado"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>Copiado</span>
+          <span data-face="falhou"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>Não deu — copie a mão</span>
+        </button>
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-senha-vivo" class="btn btn-onsen btn-sm">Anotei, fechar</label>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-senha-vivo">Fechar</label>
+  </div>
+
+  <script>
+    // Mapa de fundo com deriva suave (SPEC user_admin/007)
+    const mapa = L.map("map-admin", {
+      center: [-23.5505, -46.6333], zoom: 13, zoomControl: false, attributionControl: false,
+      dragging: false, scrollWheelZoom: false, doubleClickZoom: false, keyboard: false, touchZoom: false,
+    });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(mapa);
+    let angulo = 0;
+    setInterval(() => {
+      angulo += 0.0016;
+      mapa.panTo([-23.5505 + Math.sin(angulo) * 0.012, -46.6333 + Math.cos(angulo) * 0.012], { animate: true, duration: 2 });
+    }, 2000);
+
+    // Botão de copiar: as três faces do átomo (static/src/js/ui/copiar_senha.js)
+    document.querySelectorAll("[data-copiar-senha]").forEach((botao) => {
+      botao.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(botao.dataset.copiarSenha);
+          botao.dataset.estado = "copiado";
+        } catch {
+          botao.dataset.estado = "falhou";
+        }
+      });
+    });
+
+    // Contagem regressiva do reenvio (static/src/js/ui/contagem_reenvio.js): a espera chega pronta
+    // do servidor e o relógio só a consome. Aqui o acionador é buscado dentro do bloco, para os
+    // vários exemplos desta página não disputarem o mesmo botão.
+    function correr(painel) {
+      const bloco = painel.closest("[data-bloco-reenvio]");
+      const acionador = bloco.querySelector("[data-reenvio-acionador]");
+      const relogio = painel.querySelector("[data-reenvio-relogio]");
+      let restante = Number(painel.dataset.contagemReenvio);
+      acionador.disabled = true;
+      relogio.textContent = `${restante} s`;
+      const passo = setInterval(() => {
+        restante -= 1;
+        relogio.textContent = `${restante} s`;
+        if (restante > 0) return;
+        clearInterval(passo);
+        acionador.disabled = false;
+      }, 1000);
+    }
+
+    document.querySelectorAll("[data-contagem-reenvio]").forEach(correr);
+    document.querySelectorAll("[data-reiniciar-contagem]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        correr(botao.closest("[data-bloco-reenvio]").querySelector("[data-contagem-reenvio]"));
+      });
+    });
+  </script>
+</body>
+</html>
