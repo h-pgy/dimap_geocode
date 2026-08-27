@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Recuperar Acesso · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-md mx-auto px-4 py-24">
+      <div class="glass-panel p-8 sm:p-9 flex flex-col gap-5 shadow-2xl border-white/70">
+
+        {% if destino.estado == "recuperavel" %}
+          <div class="text-center flex flex-col items-center">
+            <div class="w-12 h-12 rounded-xl bg-agua-100 text-agua-700 flex items-center justify-center shadow-sm mb-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            </div>
+            <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Recuperar acesso</h2>
+          </div>
+
+          <div class="card-well p-4 flex flex-col gap-2">
+            <p class="text-overline">o link vai para</p>
+            <p class="text-sm font-bold text-rocha-950 leading-tight">{{ destino.nome }}</p>
+            <p class="text-code text-xs break-all">{{ destino.email }}</p>
+          </div>
+
+          <p class="text-xs text-base-content/70 leading-relaxed">
+            Enviaremos um link de <strong>uso único</strong>, válido por 1 hora, para você definir uma senha nova.
+          </p>
+
+          {# O botão fica fora do alvo do POST: o `hx-post` só troca a resposta abaixo dele, e é #}
+          {# ela que decide se ele volta a ficar disponível (SPEC, contagem regressiva do reenvio). #}
+          <form class="flex flex-col gap-4"
+                hx-post="{% url 'autenticacao:enviar_link_recuperacao' %}"
+                hx-target="#resultado-envio-recuperacao"
+                hx-swap="innerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="rf" value="{{ destino.rf }}" />
+            <button type="submit" class="btn btn-onsen w-full font-bold shadow-md" data-reenvio-acionador>
+              Enviar link de redefinição
+            </button>
+            <div id="resultado-envio-recuperacao" class="min-h-[1rem]"></div>
+          </form>
+          <a href="{% url 'autenticacao:login' %}" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
+
+        {% elif destino.estado == "sem_conta" %}
+          <div class="text-center flex flex-col items-center">
+            <div class="w-12 h-12 rounded-xl bg-base-200 text-base-content/50 flex items-center justify-center shadow-sm mb-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+            </div>
+            <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Recuperar acesso</h2>
+          </div>
+
+          <div class="alert alert-error alert-soft text-xs">
+            <span>Não há conta ativa para o RF <span class="text-code">{{ destino.rf }}</span>.</span>
+          </div>
+
+          <p class="text-xs text-base-content/70 leading-relaxed">
+            Confira o número digitado. Se o seu cadastro ainda não existe, procure quem administra o cadastro da DIMAP.
+          </p>
+
+          <a href="{% url 'autenticacao:login' %}" class="btn btn-glass w-full font-bold">Voltar ao login</a>
+
+        {% else %}
+          <div class="text-center flex flex-col items-center">
+            <div class="w-12 h-12 rounded-xl bg-agua-100 text-agua-700 flex items-center justify-center shadow-sm mb-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </div>
+            <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Recuperar acesso</h2>
+          </div>
+
+          <div class="alert alert-info alert-soft text-xs">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>Este RF ainda não fez o primeiro acesso: a entrada é pela senha de uso único enviada no cadastro.</span>
+          </div>
+
+          <div class="card-well p-4 flex flex-col gap-2">
+            <p class="text-overline">o código vai para</p>
+            <p class="text-sm font-bold text-rocha-950 leading-tight">{{ destino.nome }}</p>
+            <p class="text-code text-xs break-all">{{ destino.email }}</p>
+          </div>
+
+          <div class="aura aura-onsen w-full">
+            <a href="{% url 'autenticacao:primeiro_login' %}?rf={{ destino.rf }}" class="btn btn-onsen w-full font-bold shadow-md">
+              Possuo o código: fazer primeiro acesso
+            </a>
+          </div>
+
+          {# Sem rota até a SPEC da reemissão da senha de uso único (§4): o botão nasce indisponível. #}
+          <button type="button" class="btn btn-glass w-full font-bold" disabled>
+            Reenviar senha de uso único
+          </button>
+          <a href="{% url 'autenticacao:login' %}" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/contagem_reenvio.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/copiar_senha.js' %}"></script>
+{% endblock %}

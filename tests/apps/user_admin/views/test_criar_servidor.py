@@ -25,6 +25,7 @@ import pytest
 from pytest_django.fixtures import SettingsWrapper
 
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, ExecucaoAcao
+from apps.core import entrega_email
 from apps.user_admin import cadastro
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
 from apps.unidades.models import TipoUnidade, Unidade
@@ -681,7 +682,7 @@ def _ligar_envio(settings: SettingsWrapper, monkeypatch: pytest.MonkeyPatch) -> 
     settings.EMAIL_SMTP_USUARIO = "dimap.geocoder@example.com"
     settings.ENFORCE_PREFEITURA_EMAIL = False
     monkeypatch.setattr(
-        cadastro,
+        entrega_email,
         "EnviadorSmtp",
         lambda *args: lambda mensagem: ResultadoEnvio(
             entregue_ao_servidor=True, destinatarios_recusados=()

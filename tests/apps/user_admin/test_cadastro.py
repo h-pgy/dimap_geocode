@@ -4,7 +4,7 @@ gravar e entregar a senha temporária são a mesma transação; falha na entrega
 envio desligado por configuração o conclui. A política de e-mail institucional é conferida antes de
 gerar senha ou abrir conversa com o SMTP.
 
-O enviador é sempre um fake (monkeypatch de `cadastro.EnviadorSmtp`, no molde de
+O enviador é sempre um fake (monkeypatch de `entrega_email.EnviadorSmtp`, no molde de
 `tests/apps/user_admin/test_enviar_email_teste.py`): nenhum destes testes abre conexão real. Todos levam
 o marker `banco`: o cadastro grava `Perfil`.
 """
@@ -15,6 +15,7 @@ from pydantic import SecretStr
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
+from apps.core import entrega_email
 from apps.user_admin import cadastro
 from apps.user_admin.cadastro import ERRO_DOMINIO, ERRO_ENVIO, ERRO_SEM_CANETA, criar_servidor
 from apps.unidades.models import TipoUnidade, Unidade
@@ -103,11 +104,11 @@ def _preparar(
     enviador: EnviadorFake,
 ) -> None:
     # O envio precisa estar ligado para o código chegar ao `EnviadorSmtp` (aqui trocado pelo fake):
-    # com a guarda de `EMAIL_ENVIO_HABILITADO` em `_entregar_senha`, envio desligado retorna antes.
+    # com a guarda de `EMAIL_ENVIO_HABILITADO` em `entregar_email`, envio desligado retorna antes.
     settings.EMAIL_ENVIO_HABILITADO = True
     settings.EMAIL_SMTP_USUARIO = "dimap.geocoder@example.com"
     monkeypatch.setattr(cadastro, "gerar_senha_temporaria", lambda *args, **kwargs: SENHA_FIXA)
-    monkeypatch.setattr(cadastro, "EnviadorSmtp", lambda *args: enviador)
+    monkeypatch.setattr(entrega_email, "EnviadorSmtp", lambda *args: enviador)
 
 
 # ---------------------------------------------------------------------------
@@ -334,7 +335,7 @@ def test_cadastro_com_marca_sem_caneta_recusa_tudo(
 
 
 def _preparar_sem_envio(monkeypatch: pytest.MonkeyPatch, settings: SettingsWrapper) -> None:
-    """Envio desligado: `_entregar_senha` volta antes do SMTP, e a senha sobrevive ao ato."""
+    """Envio desligado: `entregar_email` volta antes do SMTP, e a senha sobrevive ao ato."""
     settings.EMAIL_ENVIO_HABILITADO = False
     monkeypatch.setattr(cadastro, "gerar_senha_temporaria", lambda *args, **kwargs: SENHA_FIXA)
 

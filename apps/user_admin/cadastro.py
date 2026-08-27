@@ -16,6 +16,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from pydantic import HttpUrl, SecretStr
 
+from apps.core.entrega_email import entregar_email
 from apps.core.erros_formulario import de_validation_error
 from apps.user_admin.administrador import recusa_de_auto_revogacao
 from apps.user_admin.formularios import ler_edicao_servidor, ler_novo_servidor, traduzir_recusa
@@ -25,7 +26,7 @@ from apps.user_admin.schemas import EdicaoServidor, NovoServidor
 from services.domain.email import EmailAcessoInput, montar_email_acesso, montar_mensagem
 from services.utils.erros_formulario import ErroBruto, RecusaDeFormulario
 from services.utils.senha import gerar_senha_temporaria
-from services.utils.smtp import EnviadorSmtp, SmtpEnvioError, build_smtp_config, build_smtp_retry_policy
+from services.utils.smtp import SmtpEnvioError
 
 DOMINIOS_INSTITUCIONAIS = ("prefeitura.sp.gov.br", "sf.prefeitura.sp.gov.br")
 ERRO_DOMINIO = "O e-mail precisa ser institucional: @" + ", @".join(DOMINIOS_INSTITUCIONAIS) + "."
@@ -150,11 +151,8 @@ def _gravar(novo: NovoServidor, senha: SecretStr, foto: UploadedFile | None) -> 
 
 def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> bool:
     """Devolve True quando a mensagem foi de fato entregue ao SMTP (SPEC criacao_usuarios/007) —
-    é essa a ÚNICA leitura de `EMAIL_ENVIO_HABILITADO` em todo o caminho até a tela.
-
-    Recusa do destinatário e queda do servidor são o mesmo desfecho para o cadastro — a senha não
-    chegou —, e por isso viram a mesma exceção. Envio DESLIGADO por configuração não é falha: a
-    mensagem foi montada e impressa, e o cadastro de desenvolvimento segue."""
+    a guarda de `EMAIL_ENVIO_HABILITADO` mora em `entregar_email`, e é essa a ÚNICA leitura dela em
+    todo o caminho até a tela."""
     conteudo = montar_email_acesso(
         EmailAcessoInput(
             nome=perfil.nome,
@@ -164,18 +162,7 @@ def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> bo
             url_acesso=url_acesso,
         )
     )
-    mensagem = montar_mensagem(conteudo, destinatarios=(perfil.email,))
-    # Envio desligado: a mensagem foi montada (validação de conteúdo ainda roda), impressa para
-    # visibilidade de desenvolvimento, e o cadastro segue sem abrir conexão nem construir o
-    # SmtpConfig — cujo `usuario: EmailStr` explode quando a variável de ambiente está vazia.
-    if not settings.EMAIL_ENVIO_HABILITADO:
-        print(f"[SMTP desligado] para={mensagem.destinatarios} assunto={mensagem.assunto}")
-        return False
-    enviador = EnviadorSmtp(build_smtp_config(settings), build_smtp_retry_policy(settings))
-    resultado = enviador(mensagem)
-    if resultado.destinatarios_recusados:
-        raise SmtpEnvioError(f"Destinatário recusado: {perfil.email}.")
-    return True
+    return entregar_email(montar_mensagem(conteudo, destinatarios=(perfil.email,)))
 
 
 def editar_servidor(

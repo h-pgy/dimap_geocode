@@ -1,10 +1,12 @@
 """
 Orquestração da entrada no sistema (SPEC autenticacao/001): a consulta dinâmica de estado do RF,
-a autenticação padrão via `django.contrib.auth`, a validação do OTP de primeiro acesso e o logout.
+a autenticação padrão via `django.contrib.auth`, a validação do OTP de primeiro acesso, o logout, e
+a recuperação de senha por link de uso único no e-mail (SPEC autenticacao/003).
 """
 
 from typing import cast
 
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
@@ -12,10 +14,21 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from pydantic import SecretStr
+from pydantic import HttpUrl, SecretStr
 
 from apps.autenticacao.formularios import traduzir_recusa_login, traduzir_recusa_otp
-from apps.autenticacao.schemas import ConsultaRfInput, ValidacaoOtpInput
+from apps.autenticacao.recuperacao import (
+    SESSAO_SENHA_SEM_ATUAL,
+    enviar_link_recuperacao,
+    resolver_destino_recuperacao,
+    resolver_perfil_do_link,
+)
+from apps.autenticacao.schemas import (
+    ConsultaRfInput,
+    LinkRecuperacaoInput,
+    PedidoRecuperacaoInput,
+    ValidacaoOtpInput,
+)
 from apps.autenticacao.senha import gravar_senha
 from apps.autenticacao.services import autenticar_primeiro_login, resolver_estado_rf
 from apps.mapping.context import contexto_fundo_admin
@@ -88,18 +101,22 @@ def validar_otp_view(request: HttpRequest) -> HttpResponse:
 TEMPLATE_DEFINIR_SENHA = "autenticacao/definir_senha.html"
 
 
+def _dispensa_senha_atual(request: HttpRequest) -> bool:
+    """Senha de uso único do primeiro acesso e link de recuperação chegam no mesmo lugar: nos dois
+    casos não existe senha atual que o servidor consiga informar."""
+    perfil = cast(Perfil, request.user)
+    return perfil.senha_provisoria or request.session.get(SESSAO_SENHA_SEM_ATUAL, False)
+
+
 @login_required
 def definir_senha_view(request: HttpRequest) -> HttpResponse:
-    # Quem decide o modo é a flag do perfil, não a rota visitada: um servidor com senha definitiva
-    # que caia aqui (ex.: link antigo) já recebe o formulário pedindo a senha atual.
-    perfil = cast(Perfil, request.user)
-    contexto = {"eh_primeiro_login": perfil.senha_provisoria, **contexto_fundo_admin()}
+    contexto = {"dispensa_senha_atual": _dispensa_senha_atual(request), **contexto_fundo_admin()}
     return render(request, TEMPLATE_DEFINIR_SENHA, contexto)
 
 
 @login_required
 def redefinir_senha_view(request: HttpRequest) -> HttpResponse:
-    contexto = {"eh_primeiro_login": False, **contexto_fundo_admin()}
+    contexto = {"dispensa_senha_atual": False, **contexto_fundo_admin()}
     return render(request, TEMPLATE_DEFINIR_SENHA, contexto)
 
 
@@ -107,20 +124,20 @@ def redefinir_senha_view(request: HttpRequest) -> HttpResponse:
 @require_POST
 def gravar_senha_view(request: HttpRequest) -> HttpResponse:
     perfil = cast(Perfil, request.user)
-    eh_primeiro_login = perfil.senha_provisoria
-    desfecho = gravar_senha(perfil, eh_primeiro_login, request.POST)
+    dispensa = _dispensa_senha_atual(request)
+    desfecho = gravar_senha(perfil, dispensa, request.POST)
 
     if not desfecho.sucesso:
         contexto = {
-            "eh_primeiro_login": eh_primeiro_login,
+            "dispensa_senha_atual": dispensa,
             "recusa": desfecho.recusa,
             **contexto_fundo_admin(),
         }
         return render(request, TEMPLATE_DEFINIR_SENHA, contexto, status=422)
 
-    if eh_primeiro_login:
-        # A sessão de primeiro acesso não sobrevive à senha definitiva: o servidor entra de novo,
-        # já com a credencial que acabou de escolher (SPEC, Caveats).
+    if dispensa:
+        # `logout` esvazia a sessão inteira, e com ela a chave da recuperação: a sessão seguinte
+        # nasce com senha definitiva e exigindo a senha atual, como qualquer outra (SPEC, Caveats).
         logout(request)
         return redirect("autenticacao:login")
 
@@ -131,3 +148,46 @@ def gravar_senha_view(request: HttpRequest) -> HttpResponse:
 def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
     return redirect("autenticacao:login")
+
+
+def esqueci_senha_view(request: HttpRequest) -> HttpResponse:
+    destino = resolver_destino_recuperacao(ConsultaRfInput(rf=request.GET.get("rf", "").strip()))
+    return render(
+        request,
+        "autenticacao/esqueci_senha.html",
+        {"destino": destino, **contexto_fundo_admin()},
+    )
+
+
+@require_POST
+def enviar_link_view(request: HttpRequest) -> HttpResponse:
+    desfecho = enviar_link_recuperacao(
+        PedidoRecuperacaoInput(
+            rf=request.POST.get("rf", "").strip(),
+            base_url=HttpUrl(request.build_absolute_uri("/")),
+            validade_horas=settings.RECUPERACAO_SENHA_VALIDADE_HORAS,
+        )
+    )
+    status = 422 if desfecho.recusa.mensagens else 200
+    return render(
+        request,
+        "autenticacao/partials/_envio_recuperacao.html",
+        {"desfecho": desfecho},
+        status=status,
+    )
+
+
+def recuperar_senha_view(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
+    perfil = resolver_perfil_do_link(LinkRecuperacaoInput(uidb64=uidb64, token=token))
+    if perfil is None:
+        return render(
+            request,
+            "autenticacao/link_invalido.html",
+            contexto_fundo_admin(),
+            status=410,
+        )
+    # A ordem importa: `login()` atualiza `last_login`, que entra no hash do token — é esta linha
+    # que queima o link, e ela só pode rodar depois de o token ter conferido.
+    login(request, perfil, backend=BACKEND_AUTENTICACAO)
+    request.session[SESSAO_SENHA_SEM_ATUAL] = True
+    return redirect("autenticacao:definir_senha")

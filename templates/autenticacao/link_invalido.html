@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Link Inválido · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-md mx-auto px-4 py-24">
+      <div class="glass-panel p-8 flex flex-col gap-6 shadow-2xl border-white/70">
+
+        <div class="text-center flex flex-col items-center">
+          <div class="w-12 h-12 rounded-xl bg-base-200 text-base-content/50 flex items-center justify-center shadow-sm mb-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656m-3.656 0a4 4 0 010-5.656m-2.829 8.485a8 8 0 010-11.314m11.314 0a8 8 0 010 11.314M3 3l18 18" />
+            </svg>
+          </div>
+          <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Este link não vale mais</h2>
+          <p class="text-xs text-base-content/70 mt-2 leading-relaxed">
+            Cada link de redefinição vale <strong>uma única vez</strong> e por 1 hora. Peça outro para continuar.
+          </p>
+        </div>
+
+        <a href="{% url 'autenticacao:esqueci_senha' %}" class="btn btn-onsen w-full font-bold shadow-md">Pedir um link novo</a>
+        <a href="{% url 'autenticacao:login' %}" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
+
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
+{% endblock %}

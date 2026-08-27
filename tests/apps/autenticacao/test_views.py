@@ -1,18 +1,26 @@
 """
-Testes de apps/autenticacao/views.py (SPEC autenticacao/001 e autenticacao/002): a consulta
-dinâmica de estado do RF, a autenticação padrão via RF + senha, a validação da senha de uso único
-do primeiro acesso, o logout, e a definição/redefinição de senha — o template compartilhado, a
-política de senha forte e a exigência de senha atual fora do primeiro login.
+Testes de apps/autenticacao/views.py (SPEC autenticacao/001, autenticacao/002 e autenticacao/003):
+a consulta dinâmica de estado do RF, a autenticação padrão via RF + senha, a validação da senha de
+uso único do primeiro acesso, o logout, a definição/redefinição de senha — o template
+compartilhado, a política de senha forte e a exigência de senha atual fora do primeiro login — e o
+consumo do link de recuperação de senha por e-mail.
 
 Todos levam o marker `banco`: RF e `senha_provisoria` só se conferem contra o Postgres real.
 """
 
+from urllib.parse import urlparse
+
 from bs4 import BeautifulSoup, Tag
+from django.contrib.auth.tokens import default_token_generator
 from django.test import Client
 from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
+from apps.autenticacao import recuperacao
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.models import CargoBase, Perfil
 
@@ -69,6 +77,19 @@ def _controle(soup: BeautifulSoup, tag: str, nome: str) -> Tag:
     controle = soup.find(tag, attrs={"name": nome})
     assert isinstance(controle, Tag), f"a tela não trouxe o {tag} de {nome}"
     return controle
+
+
+def _link_de_recuperacao(perfil: Perfil, token: str | None = None) -> str:
+    """O link de consumo montado direto pelo gerador do Django, sem passar pela emissão cacheada
+    de `recuperacao.py` — o que este arquivo fixa é o comportamento da rota de consumo, não o da
+    emissão (coberta em `tests/apps/autenticacao/test_recuperacao.py`)."""
+    return reverse(
+        "autenticacao:recuperar_senha",
+        kwargs={
+            "uidb64": urlsafe_base64_encode(force_bytes(perfil.pk)),
+            "token": token or default_token_generator.make_token(perfil),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -384,3 +405,113 @@ def test_servidor_com_senha_definitiva_acessando_definir_senha_exige_senha_atual
     assert "campo-realce-erro" in _controle(soup, "input", "senha_atual")["class"]
     perfil.refresh_from_db()
     assert perfil.check_password(SENHA_DEFINITIVA)
+
+
+# ---------------------------------------------------------------------------
+# Aviso de pedido de redefinição em aberto no login (SPEC autenticacao/003)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_login_avisa_pedido_de_redefinicao_em_aberto(client: Client) -> None:
+    rf = "9502100"
+    perfil = _perfil(rf, senha_provisoria=False)
+
+    antes = client.post(reverse("autenticacao:checar_rf"), {"rf": rf}).content.decode()
+    assert "Já pedimos uma redefinição de senha" not in antes
+
+    link = recuperacao.montar_link_recuperacao(perfil, "https://geocoder.dimap.local/")
+    depois = client.post(reverse("autenticacao:checar_rf"), {"rf": rf}).content.decode()
+    assert "Já pedimos uma redefinição de senha" in depois
+
+    resposta_consumo = client.get(urlparse(link).path)
+    assert resposta_consumo.status_code == 302
+    client.logout()
+
+    apos_consumo = client.post(reverse("autenticacao:checar_rf"), {"rf": rf}).content.decode()
+    assert "Já pedimos uma redefinição de senha" not in apos_consumo
+
+
+# ---------------------------------------------------------------------------
+# Consumo do link de recuperação (SPEC autenticacao/003)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_link_valido_autentica_e_leva_a_definir_senha_sem_senha_atual(client: Client) -> None:
+    rf = "9502110"
+    perfil = _perfil(rf, senha_provisoria=False)
+
+    resposta = client.get(_link_de_recuperacao(perfil))
+
+    assert resposta.status_code == 302
+    assert resposta.url == reverse("autenticacao:definir_senha")
+    assert client.session["_auth_user_id"] == str(perfil.pk)
+
+    tela = client.get(reverse("autenticacao:definir_senha")).content.decode()
+    assert 'name="senha_atual"' not in tela
+
+
+@banco
+@pytest.mark.django_db
+def test_link_reaberto_apos_consumo_responde_410_sem_autenticar(client: Client) -> None:
+    rf = "9502120"
+    perfil = _perfil(rf, senha_provisoria=False)
+    link = _link_de_recuperacao(perfil)
+
+    primeira = client.get(link)
+    assert primeira.status_code == 302
+    client.logout()
+
+    segunda = client.get(link)
+
+    assert segunda.status_code == 410
+    assert "_auth_user_id" not in client.session
+
+
+@banco
+@pytest.mark.django_db
+def test_link_vencido_ou_adulterado_responde_410(
+    client: Client,
+    settings: SettingsWrapper,
+) -> None:
+    perfil_a = _perfil("9502130", senha_provisoria=False)
+    perfil_b = _perfil("9502131", senha_provisoria=False)
+
+    settings.PASSWORD_RESET_TIMEOUT = 0
+    vencido = client.get(_link_de_recuperacao(perfil_a))
+    assert vencido.status_code == 410
+    assert "_auth_user_id" not in client.session
+
+    settings.PASSWORD_RESET_TIMEOUT = 3600
+    token_de_b = default_token_generator.make_token(perfil_b)
+    adulterado = client.get(_link_de_recuperacao(perfil_a, token=token_de_b))
+
+    assert adulterado.status_code == 410
+    assert "_auth_user_id" not in client.session
+
+
+# ---------------------------------------------------------------------------
+# Definir senha pela recuperação encerra a sessão, como no primeiro acesso (SPEC autenticacao/003)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_gravar_senha_pela_recuperacao_encerra_a_sessao_e_leva_ao_login(client: Client) -> None:
+    rf = "9502140"
+    perfil = _perfil(rf, senha_provisoria=False)
+    client.get(_link_de_recuperacao(perfil))
+
+    resposta = client.post(
+        reverse("autenticacao:gravar_senha"),
+        {"nova_senha": NOVA_SENHA_FORTE, "confirmacao_senha": NOVA_SENHA_FORTE},
+    )
+
+    assert resposta.status_code == 302
+    assert resposta.url == reverse("autenticacao:login")
+    assert "_auth_user_id" not in client.session
+    perfil.refresh_from_db()
+    assert perfil.check_password(NOVA_SENHA_FORTE)

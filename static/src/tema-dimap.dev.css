@@ -405,6 +405,16 @@ html[data-theme="dimap"] {
     color: rgba(0, 119, 182, 0.85);
   }
 
+  /* Variante do .btn-etched (SPEC autenticacao/003): sem crachá de botão, porque o gesto é
+     secundário — a afordância é a gravação enchendo de água e o corpo crescendo um pouco sob o
+     ponteiro. O .btn-etched segue intocado: quem incha é só quem pede esta classe. */
+  .btn-etched-swell {
+    @apply transition-transform duration-300 origin-center;
+  }
+  .btn-etched-swell:hover {
+    @apply scale-[1.06];
+  }
+
   /* Ícone gravado dentro de um botão de vidro: quem carrega a afordância é o botão, e o glifo só
      diz qual gesto é — exatamente o registro do .etched. */
   /* O glifo dentro de um botão de vidro mora sempre sobre placa, e ali a tinta de repouso do

@@ -3,6 +3,7 @@ A resolução de estado do RF na tela de login e a validação da senha provisó
 (SPEC autenticacao/001).
 """
 
+from apps.autenticacao.recuperacao import ha_pedido_em_aberto
 from apps.autenticacao.schemas import ConsultaRfInput, EstadoRfOutput, ValidacaoOtpInput
 from apps.user_admin.models import Perfil
 
@@ -16,6 +17,9 @@ def resolver_estado_rf(consulta: ConsultaRfInput) -> EstadoRfOutput:
             rf=consulta.rf,
             eh_primeiro_login=perfil.senha_provisoria,
             rf_encontrado=True,
+            # Quem está em primeiro acesso nunca tem link em aberto — a emissão o recusa —, e a
+            # consulta ao cache nem chega a acontecer (SPEC autenticacao/003).
+            recuperacao_em_aberto=not perfil.senha_provisoria and ha_pedido_em_aberto(perfil),
         )
     except Perfil.DoesNotExist:
         return EstadoRfOutput(

@@ -9,6 +9,7 @@ from .models import (
     Destaque,
     Divisor,
     EmailAcessoInput,
+    EmailRecuperacaoInput,
     EmailTesteInput,
     Imagem,
     Otp,
@@ -18,6 +19,7 @@ from .models import (
     Titulo,
 )
 from .montagem import MontarMensagem, montar_mensagem
+from .recuperacao import ASSUNTO_RECUPERACAO, MontarEmailRecuperacao, montar_email_recuperacao
 from .tema import TEMA_EMAIL
 from .teste import ASSUNTO, MontarEmailTeste, montar_email_teste
 from .texto_puro import RenderizadorTextoPuro, renderizar_texto_puro
@@ -25,6 +27,7 @@ from .texto_puro import RenderizadorTextoPuro, renderizar_texto_puro
 __all__ = [
     "ASSUNTO",
     "ASSUNTO_ACESSO",
+    "ASSUNTO_RECUPERACAO",
     "ESCRITORES",
     "TEMA_EMAIL",
     "Bloco",
@@ -34,9 +37,11 @@ __all__ = [
     "Destaque",
     "Divisor",
     "EmailAcessoInput",
+    "EmailRecuperacaoInput",
     "EmailTesteInput",
     "Imagem",
     "MontarEmailAcesso",
+    "MontarEmailRecuperacao",
     "MontarEmailTeste",
     "MontarMensagem",
     "Otp",
@@ -47,6 +52,7 @@ __all__ = [
     "Tabela",
     "Titulo",
     "montar_email_acesso",
+    "montar_email_recuperacao",
     "montar_email_teste",
     "montar_mensagem",
     "renderizar_html",

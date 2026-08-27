@@ -34,14 +34,20 @@ class DesfechoGravacaoSenha:
 
 def gravar_senha(
     perfil: Perfil,
-    eh_primeiro_login: bool,
+    dispensa_senha_atual: bool,
     valores: Mapping[str, Any],
 ) -> DesfechoGravacaoSenha:
     """Valida e grava a nova senha do servidor autenticado. Recebe o formulário cru e delega a
     leitura ao `LeitorDeFormulario` — construir o DTO na view entregaria a recusa ao
     `PydanticValidationMiddleware`, cuja resposta apaga o `<form>` inteiro (skill
-    `erros-de-formulario`)."""
-    leitura = ler_definicao_senha(valores) if eh_primeiro_login else ler_redefinicao_senha(valores)
+    `erros-de-formulario`).
+
+    `dispensa_senha_atual` tem duas causas (SPEC autenticacao/003): a senha provisória do primeiro
+    acesso e a sessão aberta pelo consumo do link de recuperação — nos dois casos não existe senha
+    atual que o servidor consiga informar."""
+    leitura = (
+        ler_definicao_senha(valores) if dispensa_senha_atual else ler_redefinicao_senha(valores)
+    )
     dto = leitura.dto
     if dto is None:
         return DesfechoGravacaoSenha(sucesso=False, recusa=leitura.recusa or RecusaDeFormulario())
@@ -70,7 +76,7 @@ def gravar_senha(
         return DesfechoGravacaoSenha(sucesso=False, recusa=recusa)
 
     perfil.set_password(nova_senha)
-    if eh_primeiro_login:
+    if dispensa_senha_atual:
         perfil.senha_provisoria = False
         perfil.save(update_fields=["password", "senha_provisoria"])
     else:

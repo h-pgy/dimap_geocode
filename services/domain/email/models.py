@@ -147,3 +147,17 @@ class EmailAcessoInput(BaseModel):
     # no corpo da mensagem ela viaja em claro, que é o propósito dela.
     senha_temporaria: SecretStr
     url_acesso: HttpUrl
+
+
+class EmailRecuperacaoInput(BaseModel):
+    """O pedido do e-mail que entrega o link de redefinição. Sem conta remetente: quem envia é a
+    configuração, não o caso de uso."""
+
+    model_config = ConfigDict(frozen=True)
+
+    nome: str
+    destinatario: EmailStr
+    url_recuperacao: HttpUrl
+    # Vem da orquestração, como todo valor de settings: o corpo da mensagem promete o prazo que o
+    # `PASSWORD_RESET_TIMEOUT` de fato cobra.
+    validade_horas: int

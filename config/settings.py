@@ -204,6 +204,11 @@ EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS = _env.email_smtp_retry_wait_max_seconds
 # Cadastro de servidor (apps.user_admin.cadastro) — desligue só em ambiente de teste.
 ENFORCE_PREFEITURA_EMAIL = _env.enforce_prefeitura_email
 
+# Recuperação de senha por e-mail (apps.autenticacao.recuperacao).
+RECUPERACAO_SENHA_VALIDADE_HORAS = 1
+# O nome é do Django: é ele que o `PasswordResetTokenGenerator.check_token` consulta.
+PASSWORD_RESET_TIMEOUT = RECUPERACAO_SENHA_VALIDADE_HORAS * 3600
+
 
 # Application definition
 

@@ -14,4 +14,12 @@ urlpatterns = [
     path("redefinir-senha/", views.redefinir_senha_view, name="redefinir_senha"),
     path("gravar-senha/", views.gravar_senha_view, name="gravar_senha"),
     path("logout/", views.logout_view, name="logout"),
+    # SPEC autenticacao/003: recuperação de senha por link de uso único no e-mail.
+    path("esqueci-minha-senha/", views.esqueci_senha_view, name="esqueci_senha"),
+    path("esqueci-minha-senha/enviar/", views.enviar_link_view, name="enviar_link_recuperacao"),
+    path(
+        "recuperar-senha/<str:uidb64>/<str:token>/",
+        views.recuperar_senha_view,
+        name="recuperar_senha",
+    ),
 ]

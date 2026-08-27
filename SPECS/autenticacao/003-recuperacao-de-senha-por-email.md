@@ -1,9 +1,9 @@
 ---
 spec: autenticacao/003
 versao: v1
-atualizado_em: 2026-08-26
-testes_tdd: false
-implementado: false
+atualizado_em: 2026-08-27
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
