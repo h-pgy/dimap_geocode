@@ -2,8 +2,8 @@
 spec: autenticacao/004
 versao: v1
 atualizado_em: 2026-08-27
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial

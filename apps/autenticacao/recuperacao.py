@@ -2,7 +2,6 @@
 A emissão e o consumo do link de uso único de recuperação de senha (SPEC autenticacao/003).
 """
 
-import time
 from dataclasses import dataclass
 from urllib.parse import urljoin
 
@@ -15,6 +14,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from pydantic import HttpUrl
 
+from apps.autenticacao.janela_envio import armar_janela, espera_do_reenvio
 from apps.autenticacao.schemas import (
     ConsultaRfInput,
     DestinoRecuperacaoOutput,
@@ -23,23 +23,32 @@ from apps.autenticacao.schemas import (
 )
 from apps.core.entrega_email import entregar_email
 from apps.user_admin.models import Perfil
-from services.domain.email import EmailRecuperacaoInput, montar_email_recuperacao, montar_mensagem
-from services.utils.erros_formulario import ErroBruto, Formulario, RecusaDeFormulario, TradutorDeRecusa
+from services.domain.email import (
+    EmailRecuperacaoInput,
+    montar_email_recuperacao,
+    montar_mensagem,
+)
+from services.utils.erros_formulario import (
+    ErroBruto,
+    Formulario,
+    RecusaDeFormulario,
+    TradutorDeRecusa,
+)
 from services.utils.smtp import SmtpEnvioError
 
 # O gerador do contrib.auth deriva o token de pk + hash da senha + `last_login` + e-mail + carimbo
 # de tempo. É `last_login` que faz o uso único: o consumo do link autentica o servidor, o
 # `last_login` muda e o mesmo token deixa de conferir (Caveats).
 SESSAO_SENHA_SEM_ATUAL = "recuperacao_dispensa_senha_atual"
-ERRO_ENTREGA = "Não foi possível enviar o link para {email}. Tente novamente em instantes."
+ERRO_ENTREGA = (
+    "Não foi possível enviar o link para {email}. Tente novamente em instantes."
+)
 
 # Sem controle nesta tela para realçar: o pedido nasce de um botão, não de um campo — a recusa vira
 # tarja, e não realce de input.
 traduzir_recusa_recuperacao = TradutorDeRecusa(Formulario(campos=()))
 
 CHAVE_TOKEN = "recuperacao_senha:{pk}"
-CHAVE_JANELA = "recuperacao_senha_janela:{pk}"
-JANELA_REENVIO_SEGUNDOS = 120
 
 
 @dataclass(frozen=True)
@@ -56,26 +65,6 @@ class DesfechoRecuperacao:
     # Preenchido SÓ quando o envio está desligado — `None` é a etiqueta de "foi entregue", e é ela
     # que a tela lê para decidir se mostra o link (SPEC criacao_usuarios/007).
     link_a_exibir: str | None = None
-
-
-def _espera_do_reenvio(perfil: Perfil) -> int:
-    """O valor guardado é o instante em que o envio libera, e não um sinalizador: sem ele a tela
-    diria "aguarde" sem saber quanto, e o cache do Django não conta o tempo que falta para uma
-    chave expirar."""
-    liberado_em = cache.get(CHAVE_JANELA.format(pk=perfil.pk))
-    if liberado_em is None:
-        return 0
-    return max(0, int(liberado_em - time.time()))
-
-
-def _armar_janela(perfil: Perfil) -> None:
-    # Só depois de a mensagem sair de fato: a janela protege caixa de entrada, e com o envio
-    # desligado não há nenhuma a proteger — segurar ali só atrapalharia o desenvolvimento.
-    cache.set(
-        CHAVE_JANELA.format(pk=perfil.pk),
-        time.time() + JANELA_REENVIO_SEGUNDOS,
-        timeout=JANELA_REENVIO_SEGUNDOS,
-    )
 
 
 def _token_vigente(perfil: Perfil) -> str | None:
@@ -98,7 +87,9 @@ def _token_do_pedido(perfil: Perfil) -> str:
     token = default_token_generator.make_token(perfil)
     # O TTL é a validade do próprio link: entrada que sobrevive ao token só devolveria um link morto
     # para o `check_token` recusar no pedido seguinte.
-    cache.set(CHAVE_TOKEN.format(pk=perfil.pk), token, timeout=settings.PASSWORD_RESET_TIMEOUT)
+    cache.set(
+        CHAVE_TOKEN.format(pk=perfil.pk), token, timeout=settings.PASSWORD_RESET_TIMEOUT
+    )
     return token
 
 
@@ -128,7 +119,13 @@ def _perfil_recuperavel(rf: str) -> Perfil | None:
 
 def _recusa_da_entrega(email: str) -> RecusaDeFormulario:
     return traduzir_recusa_recuperacao(
-        (ErroBruto(controle="email", tipo="entrega", mensagem=ERRO_ENTREGA.format(email=email)),)
+        (
+            ErroBruto(
+                controle="email",
+                tipo="entrega",
+                mensagem=ERRO_ENTREGA.format(email=email),
+            ),
+        )
     )
 
 
@@ -138,11 +135,13 @@ def enviar_link_recuperacao(pedido: PedidoRecuperacaoInput) -> DesfechoRecuperac
         # Conta inexistente, inativa ou em primeiro acesso: nenhuma delas monta e-mail ou gera link.
         # A tela já disse qual é o caso antes do POST; aqui o que importa é não emitir nada.
         return DesfechoRecuperacao(email="")
-    espera = _espera_do_reenvio(perfil)
+    espera = espera_do_reenvio(perfil)
     if espera:
         # Sai antes de montar link, conteúdo e mensagem: dentro da janela o pedido não produz nada,
         # nem trabalho nem token.
-        return DesfechoRecuperacao(email=perfil.email, enviado=True, espera_segundos=espera)
+        return DesfechoRecuperacao(
+            email=perfil.email, enviado=True, espera_segundos=espera
+        )
     link = montar_link_recuperacao(perfil, pedido.base_url)
     conteudo = montar_email_recuperacao(
         EmailRecuperacaoInput(
@@ -153,11 +152,15 @@ def enviar_link_recuperacao(pedido: PedidoRecuperacaoInput) -> DesfechoRecuperac
         )
     )
     try:
-        entregue = entregar_email(montar_mensagem(conteudo, destinatarios=(perfil.email,)))
+        entregue = entregar_email(
+            montar_mensagem(conteudo, destinatarios=(perfil.email,))
+        )
     except SmtpEnvioError:
-        return DesfechoRecuperacao(email=perfil.email, recusa=_recusa_da_entrega(perfil.email))
+        return DesfechoRecuperacao(
+            email=perfil.email, recusa=_recusa_da_entrega(perfil.email)
+        )
     if entregue:
-        _armar_janela(perfil)
+        armar_janela(perfil)
     return DesfechoRecuperacao(
         email=perfil.email,
         enviado=entregue,
@@ -173,7 +176,10 @@ def resolver_destino_recuperacao(consulta: ConsultaRfInput) -> DestinoRecuperaca
         return DestinoRecuperacaoOutput(rf=consulta.rf, estado="sem_conta")
     if perfil.senha_provisoria:
         return DestinoRecuperacaoOutput(
-            rf=consulta.rf, nome=perfil.nome, email=perfil.email, estado="primeiro_acesso"
+            rf=consulta.rf,
+            nome=perfil.nome,
+            email=perfil.email,
+            estado="primeiro_acesso",
         )
     return DestinoRecuperacaoOutput(
         rf=consulta.rf, nome=perfil.nome, email=perfil.email, estado="recuperavel"
@@ -190,7 +196,7 @@ def resolver_perfil_do_link(link: LinkRecuperacaoInput) -> Perfil | None:
     try:
         pk = urlsafe_base64_decode(link.uidb64).decode()
         perfil = Perfil.objects.get(pk=pk, is_active=True, senha_provisoria=False)
-    except (ValueError, TypeError, Perfil.DoesNotExist):
+    except ValueError, TypeError, Perfil.DoesNotExist:
         return None
     if not default_token_generator.check_token(perfil, link.token):
         return None

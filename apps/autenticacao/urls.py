@@ -22,4 +22,10 @@ urlpatterns = [
         views.recuperar_senha_view,
         name="recuperar_senha",
     ),
+    # SPEC autenticacao/004: reenvio da senha de uso único do primeiro acesso.
+    path(
+        "esqueci-minha-senha/reenviar-senha/",
+        views.reenviar_senha_unico_view,
+        name="reenviar_senha_unico",
+    ),
 ]

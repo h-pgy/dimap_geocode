@@ -57,12 +57,26 @@
           </div>
         </form>
 
+        {# Fora do <form> do código: formulário aninhado não existe em HTML, e o `hx-post` deste  #}
+        {# botão só troca a resposta abaixo dele.                                                 #}
+        <button type="button" class="btn btn-glass w-full font-bold"
+                hx-post="{% url 'autenticacao:reenviar_senha_unico' %}"
+                hx-vals='{"rf": "{{ rf }}"}'
+                hx-target="#resultado-reenvio-senha"
+                data-reenvio-acionador>
+          Reenviar senha de uso único
+        </button>
+        <div id="resultado-reenvio-senha" class="min-h-[1rem]"></div>
+
       </div>
     </div>
   </div>
+  <div id="poco-modal" class="poco-modal"></div>
 {% endblock %}
 
 {% block scripts %}
   <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
   <script type="module" src="{% static 'js/ui/otp_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/contagem_reenvio.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/copiar_senha.js' %}"></script>
 {% endblock %}

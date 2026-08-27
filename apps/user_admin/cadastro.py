@@ -16,21 +16,29 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from pydantic import HttpUrl, SecretStr
 
-from apps.core.entrega_email import entregar_email
+from apps.core.entrega_email import entregar_email_de_acesso
 from apps.core.erros_formulario import de_validation_error
 from apps.user_admin.administrador import recusa_de_auto_revogacao
-from apps.user_admin.formularios import ler_edicao_servidor, ler_novo_servidor, traduzir_recusa
+from apps.user_admin.formularios import (
+    ler_edicao_servidor,
+    ler_novo_servidor,
+    traduzir_recusa,
+)
 from apps.user_admin.foto import conferir_foto
 from apps.user_admin.models import Perfil
 from apps.user_admin.schemas import EdicaoServidor, NovoServidor
-from services.domain.email import EmailAcessoInput, montar_email_acesso, montar_mensagem
+from services.domain.email import EmailAcessoInput
 from services.utils.erros_formulario import ErroBruto, RecusaDeFormulario
 from services.utils.senha import gerar_senha_temporaria
 from services.utils.smtp import SmtpEnvioError
 
 DOMINIOS_INSTITUCIONAIS = ("prefeitura.sp.gov.br", "sf.prefeitura.sp.gov.br")
-ERRO_DOMINIO = "O e-mail precisa ser institucional: @" + ", @".join(DOMINIOS_INSTITUCIONAIS) + "."
-ERRO_ENVIO = "Cadastro não concluído: não foi possível entregar a senha temporária em {email}."
+ERRO_DOMINIO = (
+    "O e-mail precisa ser institucional: @" + ", @".join(DOMINIOS_INSTITUCIONAIS) + "."
+)
+ERRO_ENVIO = (
+    "Cadastro não concluído: não foi possível entregar a senha temporária em {email}."
+)
 # SPEC user_admin/022.
 ERRO_SEM_CANETA = "Só um administrador pode cadastrar outro administrador."
 ERRO_SEM_CANETA_EDICAO = (
@@ -75,7 +83,9 @@ def criar_servidor(
     novo = leitura.dto
     if novo is None:
         # Sem DTO a leitura traz a recusa; o `or` é só o que o tipo pede, não um caso real.
-        return DesfechoCadastro(perfil=None, recusa=leitura.recusa or RecusaDeFormulario())
+        return DesfechoCadastro(
+            perfil=None, recusa=leitura.recusa or RecusaDeFormulario()
+        )
     if novo.administrador and not administrador_permitido:
         # Recusa, e não 403: o controle existe na tela e a marca veio de um formulário — quem
         # preencheu tem que ver o motivo no lugar em que ele nasceu. Nada é gravado, nem o
@@ -93,7 +103,9 @@ def criar_servidor(
         # RF e e-mail repetidos chegam aqui pelo full_clean: conferir antes com um SELECT abriria
         # janela entre a consulta e o INSERT, e a unicidade é do banco. A ponte de `apps/core`
         # preserva o `code`, que é o que faz a mensagem do model chegar realçada no campo certo.
-        return DesfechoCadastro(perfil=None, recusa=traduzir_recusa(de_validation_error(recusa)))
+        return DesfechoCadastro(
+            perfil=None, recusa=traduzir_recusa(de_validation_error(recusa))
+        )
     except SmtpEnvioError:
         return DesfechoCadastro(perfil=None, recusa=_recusa_da_entrega(novo.email))
     # A senha só escapa do ato por este caminho, e só depois de a transação ter fechado: cadastro
@@ -102,12 +114,16 @@ def criar_servidor(
     return DesfechoCadastro(perfil=perfil, senha_a_exibir=senha_a_exibir)
 
 
-def _recusa_de_politica(email: str, foto: UploadedFile | None) -> RecusaDeFormulario | None:
+def _recusa_de_politica(
+    email: str, foto: UploadedFile | None
+) -> RecusaDeFormulario | None:
     """O que o DTO não pode conferir: o domínio institucional depende de settings, e a foto é um
     objeto de upload do Django. Nenhum dos dois desce para o model — gravar pelo shell, pelo
     `createsuperuser` ou por um comando continua livre (SPEC criacao_usuarios/006)."""
     erros = tuple(
-        erro for erro in (_erro_de_dominio(email), conferir_foto(foto)) if erro is not None
+        erro
+        for erro in (_erro_de_dominio(email), conferir_foto(foto))
+        if erro is not None
     )
     return traduzir_recusa(erros) if erros else None
 
@@ -123,7 +139,13 @@ def _erro_de_dominio(email: str) -> ErroBruto | None:
 
 def _recusa_da_entrega(email: str) -> RecusaDeFormulario:
     return traduzir_recusa(
-        (ErroBruto(controle="email", tipo="entrega", mensagem=ERRO_ENVIO.format(email=email)),)
+        (
+            ErroBruto(
+                controle="email",
+                tipo="entrega",
+                mensagem=ERRO_ENVIO.format(email=email),
+            ),
+        )
     )
 
 
@@ -153,7 +175,7 @@ def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> bo
     """Devolve True quando a mensagem foi de fato entregue ao SMTP (SPEC criacao_usuarios/007) —
     a guarda de `EMAIL_ENVIO_HABILITADO` mora em `entregar_email`, e é essa a ÚNICA leitura dela em
     todo o caminho até a tela."""
-    conteudo = montar_email_acesso(
+    return entregar_email_de_acesso(
         EmailAcessoInput(
             nome=perfil.nome,
             rf=perfil.rf,
@@ -162,7 +184,6 @@ def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> bo
             url_acesso=url_acesso,
         )
     )
-    return entregar_email(montar_mensagem(conteudo, destinatarios=(perfil.email,)))
 
 
 def editar_servidor(
@@ -183,14 +204,18 @@ def editar_servidor(
     edicao = leitura.dto
     if edicao is None:
         # O `or` é só o que o tipo pede, não um caso real.
-        return DesfechoCadastro(perfil=None, recusa=leitura.recusa or RecusaDeFormulario())
+        return DesfechoCadastro(
+            perfil=None, recusa=leitura.recusa or RecusaDeFormulario()
+        )
     # A MESMA linha da criação: é a ausência dela aqui que deixava a edição gravar @gmail.com.
     politica = _recusa_de_politica(edicao.email, foto)
     if politica is not None:
         return DesfechoCadastro(perfil=None, recusa=politica)
     perfil = get_object_or_404(Perfil, pk=edicao.servidor_id)
     if edicao.administrador and not administrador_permitido:
-        return DesfechoCadastro(perfil=None, recusa=_recusa_sem_caneta(ERRO_SEM_CANETA_EDICAO))
+        return DesfechoCadastro(
+            perfil=None, recusa=_recusa_sem_caneta(ERRO_SEM_CANETA_EDICAO)
+        )
     marca = _marca_pretendida(perfil, edicao, administrador_permitido)
     alterou_marca = marca != perfil.is_superuser
     if alterou_marca:
@@ -207,7 +232,9 @@ def editar_servidor(
         # destino: as três recusas são do model, e chegam juntas por aqui. A ponte de `apps/core`
         # preserva o `code`, que é o que faz o RF e o e-mail realçarem o controle certo; a do
         # titular nomeia `e_titular`, que não é controle desta tela, e por isso cai na tarja.
-        return DesfechoCadastro(perfil=None, recusa=traduzir_recusa(de_validation_error(recusa)))
+        return DesfechoCadastro(
+            perfil=None, recusa=traduzir_recusa(de_validation_error(recusa))
+        )
     return DesfechoCadastro(perfil=perfil, marca_alterada=alterou_marca)
 
 
@@ -254,4 +281,3 @@ def _dominio_recusado(email: str) -> bool:
         return False
     _, _, dominio = email.rpartition("@")
     return dominio.lower() not in DOMINIOS_INSTITUCIONAIS
-

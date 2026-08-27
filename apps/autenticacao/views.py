@@ -1,7 +1,8 @@
 """
 Orquestração da entrada no sistema (SPEC autenticacao/001): a consulta dinâmica de estado do RF,
-a autenticação padrão via `django.contrib.auth`, a validação do OTP de primeiro acesso, o logout, e
-a recuperação de senha por link de uso único no e-mail (SPEC autenticacao/003).
+a autenticação padrão via `django.contrib.auth`, a validação do OTP de primeiro acesso, o logout, a
+recuperação de senha por link de uso único no e-mail (SPEC autenticacao/003) e o reenvio da senha de
+uso único do primeiro acesso (SPEC autenticacao/004).
 """
 
 from typing import cast
@@ -23,10 +24,12 @@ from apps.autenticacao.recuperacao import (
     resolver_destino_recuperacao,
     resolver_perfil_do_link,
 )
+from apps.autenticacao.reenvio import codigo_foi_substituido, reenviar_senha_uso_unico
 from apps.autenticacao.schemas import (
     ConsultaRfInput,
     LinkRecuperacaoInput,
     PedidoRecuperacaoInput,
+    ReenvioSenhaInput,
     ValidacaoOtpInput,
 )
 from apps.autenticacao.senha import gravar_senha
@@ -36,7 +39,13 @@ from apps.user_admin.models import Perfil
 from services.utils.erros_formulario import ErroBruto
 
 ERRO_LOGIN = "RF ou senha incorretos."
-ERRO_OTP = "Senha de uso único inválida: confira o código recebido no e-mail institucional."
+ERRO_OTP = (
+    "Senha de uso único inválida: confira o código recebido no e-mail institucional."
+)
+ERRO_OTP_SUBSTITUIDO = (
+    "Esta senha de uso único foi substituída por um reenvio. Use o código da mensagem mais "
+    "recente que chegou no seu e-mail institucional."
+)
 # A validação do OTP confere a senha via `check_password`, e não `authenticate()` — sem backend
 # explícito, `login()` não sabe escolher entre os dois de AUTHENTICATION_BACKENDS (autenticação e
 # autorização por competência).
@@ -45,13 +54,17 @@ BACKEND_AUTENTICACAO = "django.contrib.auth.backends.ModelBackend"
 
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
-        return redirect(reverse("user_admin:pagina_perfil", kwargs={"pk": request.user.pk}))
+        return redirect(
+            reverse("user_admin:pagina_perfil", kwargs={"pk": request.user.pk})
+        )
     if request.method == "POST":
         rf = request.POST.get("rf", "").strip()
         senha = request.POST.get("password", "")
         user = authenticate(request, username=rf, password=senha)
         if user is None or not user.is_active:
-            recusa = traduzir_recusa_login((ErroBruto(controle="rf", tipo="invalido", mensagem=ERRO_LOGIN),))
+            recusa = traduzir_recusa_login(
+                (ErroBruto(controle="rf", tipo="invalido", mensagem=ERRO_LOGIN),)
+            )
             # RF limpo, e não preservado: o campo pré-preenchido convidaria a testar senhas em
             # sequência contra o mesmo RF sem digitar nada de novo.
             contexto = {"recusa": recusa, "rf": "", **contexto_fundo_admin()}
@@ -74,7 +87,11 @@ def checar_rf_view(request: HttpRequest) -> HttpResponse:
 
 def primeiro_login_otp_view(request: HttpRequest) -> HttpResponse:
     rf = request.GET.get("rf", "").strip()
-    return render(request, "autenticacao/primeiro_login.html", {"rf": rf, **contexto_fundo_admin()})
+    return render(
+        request,
+        "autenticacao/primeiro_login.html",
+        {"rf": rf, **contexto_fundo_admin()},
+    )
 
 
 @require_POST
@@ -84,7 +101,15 @@ def validar_otp_view(request: HttpRequest) -> HttpResponse:
     validacao = ValidacaoOtpInput(rf=rf, codigo_otp=SecretStr(otp))
     perfil = autenticar_primeiro_login(validacao)
     if perfil is None:
-        recusa = traduzir_recusa_otp((ErroBruto(controle="otp", tipo="invalido", mensagem=ERRO_OTP),))
+        # A pergunta só é feita DEPOIS da recusa, e só ela: acertar o código nunca passa por aqui.
+        mensagem = (
+            ERRO_OTP_SUBSTITUIDO
+            if codigo_foi_substituido(rf, validacao.codigo_otp)
+            else ERRO_OTP
+        )
+        recusa = traduzir_recusa_otp(
+            (ErroBruto(controle="otp", tipo="invalido", mensagem=mensagem),)
+        )
         return render(
             request,
             "autenticacao/primeiro_login.html",
@@ -110,7 +135,10 @@ def _dispensa_senha_atual(request: HttpRequest) -> bool:
 
 @login_required
 def definir_senha_view(request: HttpRequest) -> HttpResponse:
-    contexto = {"dispensa_senha_atual": _dispensa_senha_atual(request), **contexto_fundo_admin()}
+    contexto = {
+        "dispensa_senha_atual": _dispensa_senha_atual(request),
+        **contexto_fundo_admin(),
+    }
     return render(request, TEMPLATE_DEFINIR_SENHA, contexto)
 
 
@@ -151,7 +179,9 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 
 
 def esqueci_senha_view(request: HttpRequest) -> HttpResponse:
-    destino = resolver_destino_recuperacao(ConsultaRfInput(rf=request.GET.get("rf", "").strip()))
+    destino = resolver_destino_recuperacao(
+        ConsultaRfInput(rf=request.GET.get("rf", "").strip())
+    )
     return render(
         request,
         "autenticacao/esqueci_senha.html",
@@ -173,6 +203,30 @@ def enviar_link_view(request: HttpRequest) -> HttpResponse:
         request,
         "autenticacao/partials/_envio_recuperacao.html",
         {"desfecho": desfecho},
+        status=status,
+    )
+
+
+@require_POST
+def reenviar_senha_unico_view(request: HttpRequest) -> HttpResponse:
+    desfecho = reenviar_senha_uso_unico(
+        ReenvioSenhaInput(
+            rf=request.POST.get("rf", "").strip(),
+            url_acesso=HttpUrl(request.build_absolute_uri("/")),
+        )
+    )
+    senha = desfecho.senha_a_exibir
+    contexto = {
+        # `.get_secret_value()` é obrigatório: o SecretStr renderiza como `**********` no
+        # template, e o modal sairia com asteriscos no lugar da senha, sem erro que denuncie.
+        "desfecho": desfecho,
+        "senha_temporaria": senha.get_secret_value() if senha is not None else None,
+    }
+    status = 422 if desfecho.recusa.mensagens else 200
+    return render(
+        request,
+        "autenticacao/partials/_envio_senha_unico.html",
+        contexto,
         status=status,
     )
 

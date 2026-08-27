@@ -86,16 +86,23 @@
             </a>
           </div>
 
-          {# Sem rota até a SPEC da reemissão da senha de uso único (§4): o botão nasce indisponível. #}
-          <button type="button" class="btn btn-glass w-full font-bold" disabled>
+          {# O acionador fica FORA do alvo do POST: o `hx-post` só troca a resposta abaixo dele, e é #}
+          {# ela que decide se ele volta a ficar disponível (SPEC, contagem regressiva do reenvio).  #}
+          <button type="button" class="btn btn-glass w-full font-bold"
+                  hx-post="{% url 'autenticacao:reenviar_senha_unico' %}"
+                  hx-vals='{"rf": "{{ destino.rf }}"}'
+                  hx-target="#resultado-reenvio-senha"
+                  data-reenvio-acionador>
             Reenviar senha de uso único
           </button>
+          <div id="resultado-reenvio-senha" class="min-h-[1rem]"></div>
           <a href="{% url 'autenticacao:login' %}" class="btn-etched btn-etched-swell etched self-center">Voltar ao login</a>
         {% endif %}
 
       </div>
     </div>
   </div>
+  <div id="poco-modal" class="poco-modal"></div>
 {% endblock %}
 
 {% block scripts %}

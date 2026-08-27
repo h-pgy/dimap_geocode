@@ -1,8 +1,9 @@
 """
 DTOs da entrada no sistema (SPEC autenticacao/001): a consulta dinâmica de estado do RF, a
 submissão de credenciais e a validação do código de uso único do primeiro acesso. A definição e a
-redefinição de senha (SPEC autenticacao/002), e a recuperação de senha por e-mail (SPEC
-autenticacao/003), entram aqui também.
+redefinição de senha (SPEC autenticacao/002), a recuperação de senha por e-mail (SPEC
+autenticacao/003) e o reenvio da senha de uso único do primeiro acesso (SPEC autenticacao/004)
+entram aqui também.
 """
 
 from typing import Literal
@@ -101,3 +102,15 @@ class LinkRecuperacaoInput(BaseModel):
 
     uidb64: str = Field(min_length=1)
     token: str = Field(min_length=1)
+
+
+class ReenvioSenhaInput(BaseModel):
+    """O pedido de reenvio da senha de uso único, submetido pela tela de recuperação ou pela tela
+    do código (SPEC autenticacao/004)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    rf: RegistroFuncional
+    # O host de onde o convite parte é da orquestração, como no cadastro: o e-mail de acesso leva
+    # a URL do sistema, e nem o domínio nem o cadastro sabem em que host ele roda.
+    url_acesso: HttpUrl

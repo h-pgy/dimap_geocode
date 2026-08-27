@@ -14,6 +14,12 @@
       Primeiro Login
     </a>
   </div>
+  {# O RF já resolvido viaja na query string, no mesmo molde do "Esqueci minha senha" do ramo de #}
+  {# senha: a tela de recuperação precisa dele para saber para qual e-mail o reenvio vai.        #}
+  <a href="{% url 'autenticacao:esqueci_senha' %}?rf={{ estado.rf }}"
+     class="btn-etched btn-etched-swell etched self-center">
+    Reenviar senha de uso único
+  </a>
 {% else %}
   <div class="form-control gap-1">
     <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>

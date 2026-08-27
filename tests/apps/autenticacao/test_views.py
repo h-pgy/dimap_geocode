@@ -481,7 +481,9 @@ def test_link_vencido_ou_adulterado_responde_410(
     perfil_a = _perfil("9502130", senha_provisoria=False)
     perfil_b = _perfil("9502131", senha_provisoria=False)
 
-    settings.PASSWORD_RESET_TIMEOUT = 0
+    # -1, e não 0: `check_token` recusa só quando o tempo decorrido EXCEDE o timeout, e token
+    # emitido e conferido no mesmo segundo decorre 0 — com timeout 0 o link não vence de verdade.
+    settings.PASSWORD_RESET_TIMEOUT = -1
     vencido = client.get(_link_de_recuperacao(perfil_a))
     assert vencido.status_code == 410
     assert "_auth_user_id" not in client.session
