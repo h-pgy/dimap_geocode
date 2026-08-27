@@ -237,17 +237,59 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco), 0 0 22px rgba(72, 202, 228, 0.35);
   }
 
-  /* Moldura da imagem de perfil. O anel é a cor da unidade em --cor-unidade: o hex é resolvido na
-     borda do app, porque classe montada no template (ring-{{ cor }}) o Tailwind não enxerga no
-     @source e some no build de produção. */
+  /* Moldura da imagem de perfil: a unidade é luz atrás do disco, não anel. O hex vem em
+     --cor-unidade porque classe montada no template (ring-{{ cor }}) some do build de produção.
+     Anel sólido saía de `outline`, aresta dura desenhada fora de uma caixa que não a reserva: em
+     w-28 pousava inteiro sobre o poço vizinho. Luz que esmaece atravessa o vizinho sem quebrá-lo.
+     --halo-escala é o alcance dela, que segue o diâmetro (padrão de w-9 a w-16; disco maior abre
+     no include). --halo-aro é o contato, e não escala: contato tem espessura de contato em
+     qualquer disco. Ele vem na opacidade da imagem, e os fades partem dele. */
   .avatar-glass {
-    @apply rounded-full overflow-hidden bg-white/40 border-2 border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_28px_rgba(7,58,84,0.28),0_0_22px_rgba(72,202,228,0.25)];
-    outline: 3px solid var(--cor-unidade);
-    outline-offset: 3px;
+    --halo-escala: 1;
+    --halo-aro: 3px;
+    @apply relative rounded-full overflow-hidden bg-white/40;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 8px 28px rgba(7, 58, 84, 0.28),
+      0 0 0 var(--halo-aro) color-mix(in srgb, var(--cor-unidade) 88%, transparent),
+      0 0 calc(11px * var(--halo-escala)) calc(var(--halo-aro) + 3px * var(--halo-escala))
+        color-mix(in srgb, var(--cor-unidade) 55%, transparent),
+      0 0 calc(24px * var(--halo-escala)) calc(var(--halo-aro) + 6px * var(--halo-escala))
+        color-mix(in srgb, var(--cor-unidade) 26%, transparent);
   }
+  /* O domo do disco: a óptica simulada do mapa (§6) aplicada ao avatar — curvatura por luz, sem
+     deformar a malha. Só o aro curva; o miolo até 78% do raio é onde está o rosto, e mancha larga
+     ali não faz volume, faz véu. Porcentagem, não px: o disco vai de w-9 a w-28. */
+  .avatar-glass::after {
+    content: "";
+    @apply absolute inset-0 rounded-full pointer-events-none;
+    background:
+      radial-gradient(
+        circle at 50% 50%,
+        transparent 78%,
+        rgba(7, 58, 84, 0.1) 90%,
+        rgba(7, 58, 84, 0.26) 100%
+      ),
+      radial-gradient(
+        ellipse 72% 24% at 50% 3%,
+        rgba(255, 255, 255, 0.55),
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 60% 20% at 50% 98%,
+        rgba(202, 240, 248, 0.34),
+        transparent 72%
+      );
+  }
+
   /* O SVG do avatar é markup do domínio (services/domain/avatar) e não carrega classe alguma:
      quem o dimensiona é a moldura. */
   .avatar-glass > svg { @apply w-full h-full; }
+  /* A imagem cede um pouco ao gelo por baixo: disco opaco no meio de uma cena de vidro é o único
+     corpo sólido da tela. A opacidade fica no FILHO, nunca no .avatar-glass — no pai ela levaria
+     junto o halo da unidade e o domo, que são luz e não podem esmaecer com a foto. */
+  .avatar-glass > img,
+  .avatar-glass > svg { @apply opacity-[0.88]; }
 
   /* ==================== ÁTOMOS ==================== */
   .btn-onsen {

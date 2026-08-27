@@ -187,7 +187,7 @@
         <div class="campo-onsen items-center">
           <input type="checkbox" id="editar-campo-foto" class="campo-onsen-toggle"{% if realce.foto %} checked{% endif %} />
           <div class="avatar-editavel">
-            {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-28 h-28" %}
+            {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-28 h-28" halo_escala="2" %}
             <label for="editar-campo-foto" class="btn btn-circle btn-foto campo-onsen-lapis" title="Trocar a foto">
               <span class="campo-onsen-lapis-abre">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>

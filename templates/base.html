@@ -66,7 +66,7 @@
          href="{% url 'user_admin:pagina_perfil' pk=request.user.pk %}"
          class="fixed top-6 right-4 lg:right-6 z-20 glass-panel rounded-full! p-1.5 flex items-center lg:gap-3 cursor-pointer transition-glass hover:bg-white/60">
         <div class="w-9 h-9 lg:w-11 lg:h-11 shrink-0">
-          {% include "user_admin/partials/_imagem_perfil.html" with imagem=imagem_perfil_usuario cor_unidade_hex=cor_unidade_hex tamanho="w-full h-full" perfil=request.user %}
+          {% include "user_admin/partials/_imagem_perfil.html" with imagem=imagem_perfil_usuario cor_unidade_hex=cor_unidade_hex tamanho="w-full h-full" halo_escala="0.5" perfil=request.user %}
         </div>
         <div class="hidden lg:block pr-4">
           <p class="text-sm font-bold m-0 leading-tight">{{ request.user.nome }}</p>

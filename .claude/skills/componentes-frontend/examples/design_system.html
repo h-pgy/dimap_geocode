@@ -381,8 +381,14 @@
             </div>
           </div>
           <div class="flex flex-col gap-2">
-            <p class="text-overline">.avatar-glass</p>
-            <div class="card-well h-32 flex items-center justify-center">
+            <p class="text-overline">.avatar-glass · --halo-escala</p>
+            <div class="card-well h-32 flex items-center justify-center gap-8">
+              <div class="avatar-glass w-11 h-11" style="--cor-unidade: #0077b6; --halo-escala: 0.5">
+                <svg viewBox="0 0 100 100" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                </svg>
+              </div>
               <div class="avatar-glass w-16 h-16" style="--cor-unidade: #0077b6">
                 <svg viewBox="0 0 100 100" role="img" aria-label="HP">
                   <circle cx="50" cy="50" r="50" fill="#0077b6"/>
@@ -390,6 +396,7 @@
                 </svg>
               </div>
             </div>
+            <p class="text-xs text-base-content/60">O aro de contato não escala; o que cresce com o disco é o alcance da luz. À esquerda, o chip do topo (<span class="text-code">0.5</span>); à direita, o padrão.</p>
           </div>
           <div class="flex flex-col gap-2">
             <p class="text-overline">.admin-shell</p>
@@ -1097,7 +1104,7 @@
       <!-- Imagem de perfil em versão grande -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Imagem de perfil grande (à esquerda do nome)</p>
-        <p class="text-sm text-base-content/70">Foto ou avatar de iniciais — o que <span class="text-code">resolver_imagem_perfil</span> devolver; a molécula é a mesma nos dois ramos. O anel é a cor da unidade, entregue em <span class="text-code">--cor-unidade</span> (hex resolvido na borda do app, nunca classe montada no template).</p>
+        <p class="text-sm text-base-content/70">Foto ou avatar de iniciais — o que <span class="text-code">resolver_imagem_perfil</span> devolver; a molécula é a mesma nos dois ramos. A unidade não é um anel, é <strong>luz atrás do disco</strong>: aro de contato de <span class="text-code">--halo-aro</span> na mesma transparência da imagem, e a partir dele dois fades que se dissolvem. O hex chega em <span class="text-code">--cor-unidade</span> (resolvido na borda do app, nunca classe montada no template) e o alcance da luz em <span class="text-code">--halo-escala</span> — o padrão serve de <span class="text-code">w-9</span> a <span class="text-code">w-16</span>, e disco maior abre o alcance no include. O volume vem do domo (<span class="text-code">::after</span>): só o aro curva, o miolo até 78% do raio é a foto crua.</p>
         <div class="grid lg:grid-cols-2 gap-6">
           <div class="card-well p-5 flex items-center gap-5">
             <div class="avatar-glass w-28 h-28 shrink-0" style="--cor-unidade: #0077b6">

@@ -1,7 +1,9 @@
 {# Molécula: imagem do perfil — foto ou avatar de iniciais, o que resolver_imagem_perfil devolveu #}
-{# (o componente não sabe qual dos dois veio). O anel é a cor da unidade, entregue em hex pela    #}
-{# borda do app; `tamanho` é a escala pedida por quem inclui.                                     #}
-<div class="avatar-glass shrink-0 {{ tamanho }}" style="--cor-unidade: {{ cor_unidade_hex }}">
+{# (o componente não sabe qual dos dois veio). O halo é a cor da unidade, entregue em hex pela    #}
+{# borda do app; `tamanho` é a escala pedida por quem inclui, e `halo_escala` o alcance da luz    #}
+{# que aquele tamanho pede — o padrão do token serve de w-9 a w-16.                               #}
+<div class="avatar-glass shrink-0 {{ tamanho }}"
+     style="--cor-unidade: {{ cor_unidade_hex }}{% if halo_escala %}; --halo-escala: {{ halo_escala }}{% endif %}">
   {% if imagem.tipo == "foto" %}
     <img src="{{ imagem.valor }}" alt="Foto de {{ perfil.nome }} {{ perfil.sobrenome }}" class="w-full h-full object-cover" />
   {% else %}

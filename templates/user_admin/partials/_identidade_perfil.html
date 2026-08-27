@@ -1,8 +1,10 @@
 {% load icones %}
 {# Molécula: cabeçalho de identidade do servidor — a imagem grande à esquerda do nome (edição). #}
+{# A folga embaixo é o alcance do halo do disco w-28: a luz precisa acabar antes do poço do      #}
+{# Resumo, que nasce colado logo abaixo em toda página que compõe esta molécula.                 #}
 {% icone_acao acao_tornar_administrador.slug variante_icone_pequena as svg_administrador %}
-<div class="flex items-center gap-5">
-  {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-28 h-28" %}
+<div class="flex items-center gap-5 mb-6">
+  {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-28 h-28" halo_escala="2" %}
   <div class="min-w-0">
     <h1 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">{{ perfil.nome }} {{ perfil.sobrenome }}</h1>
     <div class="flex flex-wrap items-center gap-3 mt-1">
