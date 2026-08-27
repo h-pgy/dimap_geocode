@@ -49,6 +49,9 @@ class DesfechoCadastro:
     # SPEC user_admin/022 v3: a edição que mexe na caneta não é o mesmo ato que a edição comum, e é
     # a view que precisa saber disso para nomear a operação registrada.
     marca_alterada: bool = False
+    # SPEC criacao_usuarios/007: preenchido SÓ quando a senha não saiu por e-mail — `None` é a
+    # etiqueta de "foi entregue", e é ela que a tela lê para decidir tudo.
+    senha_a_exibir: SecretStr | None = None
 
 
 def criar_servidor(
@@ -84,7 +87,7 @@ def criar_servidor(
     try:
         with transaction.atomic():
             perfil = _gravar(novo, senha, foto)
-            _entregar_senha(perfil, senha, novo.url_acesso)
+            entregue = _entregar_senha(perfil, senha, novo.url_acesso)
     except ValidationError as recusa:
         # RF e e-mail repetidos chegam aqui pelo full_clean: conferir antes com um SELECT abriria
         # janela entre a consulta e o INSERT, e a unicidade é do banco. A ponte de `apps/core`
@@ -92,7 +95,10 @@ def criar_servidor(
         return DesfechoCadastro(perfil=None, recusa=traduzir_recusa(de_validation_error(recusa)))
     except SmtpEnvioError:
         return DesfechoCadastro(perfil=None, recusa=_recusa_da_entrega(novo.email))
-    return DesfechoCadastro(perfil=perfil)
+    # A senha só escapa do ato por este caminho, e só depois de a transação ter fechado: cadastro
+    # recusado sai pelos `except` acima, que devolvem desfecho sem perfil e sem senha (SPEC 007).
+    senha_a_exibir = None if entregue else senha
+    return DesfechoCadastro(perfil=perfil, senha_a_exibir=senha_a_exibir)
 
 
 def _recusa_de_politica(email: str, foto: UploadedFile | None) -> RecusaDeFormulario | None:
@@ -142,10 +148,13 @@ def _gravar(novo: NovoServidor, senha: SecretStr, foto: UploadedFile | None) -> 
     return perfil
 
 
-def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> None:
-    """Recusa do destinatário e queda do servidor são o mesmo desfecho para o cadastro — a senha
-    não chegou —, e por isso viram a mesma exceção. Envio DESLIGADO por configuração não entra
-    aqui: a mensagem foi montada e impressa, e o cadastro de desenvolvimento segue."""
+def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> bool:
+    """Devolve True quando a mensagem foi de fato entregue ao SMTP (SPEC criacao_usuarios/007) —
+    é essa a ÚNICA leitura de `EMAIL_ENVIO_HABILITADO` em todo o caminho até a tela.
+
+    Recusa do destinatário e queda do servidor são o mesmo desfecho para o cadastro — a senha não
+    chegou —, e por isso viram a mesma exceção. Envio DESLIGADO por configuração não é falha: a
+    mensagem foi montada e impressa, e o cadastro de desenvolvimento segue."""
     conteudo = montar_email_acesso(
         EmailAcessoInput(
             nome=perfil.nome,
@@ -161,11 +170,12 @@ def _entregar_senha(perfil: Perfil, senha: SecretStr, url_acesso: HttpUrl) -> No
     # SmtpConfig — cujo `usuario: EmailStr` explode quando a variável de ambiente está vazia.
     if not settings.EMAIL_ENVIO_HABILITADO:
         print(f"[SMTP desligado] para={mensagem.destinatarios} assunto={mensagem.assunto}")
-        return
+        return False
     enviador = EnviadorSmtp(build_smtp_config(settings), build_smtp_retry_policy(settings))
     resultado = enviador(mensagem)
     if resultado.destinatarios_recusados:
         raise SmtpEnvioError(f"Destinatário recusado: {perfil.email}.")
+    return True
 
 
 def editar_servidor(

@@ -1,0 +1,45 @@
+{# Modal da senha em tela (SPEC criacao_usuarios/007): chega já aberto — o toggle marcado é o que #}
+{# abre —, e o "Ver a senha" do painel de sucesso é um <label for> que o remarca depois, sem novo #}
+{# request. Mesmo molde do _modal_encerrar.html. #}
+<input type="checkbox" id="modal-senha" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8 flex flex-col gap-5">
+    <div class="flex items-start gap-3">
+      <span class="icon-bubble bg-error/15 border-error/30 text-error">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+      </span>
+      <div>
+        <h2 class="text-xl font-bold tracking-tight text-madeira-700">Senha de primeiro acesso</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          Nenhum e-mail foi enviado. Copie agora e entregue a senha a quem foi cadastrado.
+        </p>
+      </div>
+    </div>
+
+    <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+      <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+      <p class="text-[13px] text-base-content/80">
+        <strong>Só para desenvolvimento.</strong> Senha em tela é inseguro: ela fica no HTML da
+        página e no histórico do navegador. Isto só aparece porque o envio de e-mail está
+        desligado — nunca ligue essa configuração em produção.
+      </p>
+    </div>
+
+    <div class="card-well p-5 flex flex-col items-center gap-1 text-center">
+      <p class="text-overline">RF</p>
+      <p class="text-code text-lg">{{ perfil.rf }}</p>
+      <p class="text-overline mt-4">Senha de primeiro acesso</p>
+      <p class="senha-revelada mt-1">{{ senha_temporaria }}</p>
+      <button type="button" class="btn btn-glass btn-sm btn-copiar mt-4" data-estado="pronto" data-copiar-senha="{{ senha_temporaria }}">
+        <span data-face="pronto"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar</span>
+        <span data-face="copiado"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>Copiado</span>
+        <span data-face="falhou"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>Não deu — copie a mão</span>
+      </button>
+    </div>
+
+    <div class="modal-action">
+      <label for="modal-senha" class="btn btn-onsen btn-sm">Anotei, fechar</label>
+    </div>
+  </div>
+  <label class="modal-backdrop" for="modal-senha">Fechar</label>
+</div>

@@ -26,6 +26,10 @@
   {% if pode_administrador %}
     {% include "user_admin/partials/_avisos_administrador.html" with prefixo="cad" %}
   {% endif %}
+
+  {# Poço do modal da senha (SPEC criacao_usuarios/007), mesmo molde da perfil.html: nasce vazio, #}
+  {# o oob do cadastro o preenche, e fora da .admin-shell pelo mesmo motivo dos modais acima.      #}
+  <div id="poco-modal" class="poco-modal"></div>
 {% endblock %}
 
 {% block scripts %}
@@ -33,4 +37,6 @@
   <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
   {# Sem este módulo os selects da lotação seguem nativos: marcar o campo não carrega o componente #}
   <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+  {# Sem este módulo o botão de copiar a senha do modal de desenvolvimento fica mudo #}
+  <script type="module" src="{% static 'js/ui/copiar_senha.js' %}"></script>
 {% endblock %}

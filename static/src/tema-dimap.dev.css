@@ -325,6 +325,26 @@ html[data-theme="dimap"] {
     @apply absolute right-3 p-1.5 text-base-content/50 hover:text-agua-600 focus:outline-none transition-colors cursor-pointer;
   }
 
+  /* ÁTOMO · A SENHA REVELADA (SPEC criacao_usuarios/007). O .text-code em medida de display: a
+     senha é o objeto da tela, não um dado dela. `select-all` faz um clique pegar os oito dígitos
+     inteiros — é o caminho manual, que precisa funcionar sozinho quando o botão de copiar não
+     estiver disponível. O `pl` compensa o tracking do último dígito, que sem isso desloca o
+     centro. */
+  .senha-revelada {
+    @apply font-mono font-bold text-4xl tracking-[0.3em] pl-[0.3em] text-agua-700 select-all;
+  }
+
+  /* ÁTOMO · BOTÃO DE COPIAR (SPEC criacao_usuarios/007). Três faces no DOM; quem escolhe é o
+     `data-estado` no próprio botão. Só o troca-faces mora aqui — o corpo do botão é o
+     .btn-glass, empilhado no HTML. A face de falha é peça, não ausência: sem ela o botão fica
+     mudo e parece ter copiado. */
+  .btn-copiar [data-face] { @apply hidden items-center gap-2; }
+  .btn-copiar[data-estado="pronto"]  [data-face="pronto"],
+  .btn-copiar[data-estado="copiado"] [data-face="copiado"],
+  .btn-copiar[data-estado="falhou"]  [data-face="falhou"] { @apply inline-flex; }
+  .btn-copiar[data-estado="copiado"] { @apply text-accent; }
+  .btn-copiar[data-estado="falhou"]  { @apply text-error; }
+
   /* Cavidade de tinta: a tinta "molhada" vem em --tinta (hex resolvido na borda do app). */
   .paint-well {
     @apply w-9 h-9 rounded-full border border-white/70 shadow-[inset_0_2px_5px_rgba(7,58,84,0.45),0_1px_0_rgba(255,255,255,0.6)] cursor-pointer transition-all duration-300 hover:scale-110;

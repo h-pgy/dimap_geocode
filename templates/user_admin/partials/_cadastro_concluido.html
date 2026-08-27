@@ -1,5 +1,6 @@
-{# Resposta do hx-post de gravar, no lugar do #form-servidor (SPEC criacao_usuarios/004): a senha #}
-{# não aparece aqui — ela existe só na caixa de quem recebeu.                                     #}
+{# Resposta do hx-post de gravar, no lugar do #form-servidor (SPEC criacao_usuarios/004). Com o    #}
+{# envio desligado (SPEC criacao_usuarios/007) a senha não aparece aqui — ela sai por oob no modal #}
+{# abaixo, e "Ver a senha" reabre o mesmo toggle sem novo request.                                 #}
 <div class="glass-panel p-8 flex flex-col items-center gap-4 text-center">
   <span class="icon-bubble w-16 h-16 bg-agua-500/15 border-agua-600/30 text-agua-700">
     <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
@@ -7,12 +8,33 @@
   <div>
     <h2 class="text-xl font-bold tracking-tight text-madeira-700">Servidor cadastrado</h2>
     <p class="text-sm text-base-content/75 mt-1">
-      {{ perfil.nome }} {{ perfil.sobrenome }} · RF <span class="text-code">{{ perfil.rf }}</span> — a
-      senha de primeiro acesso foi enviada para <span class="text-code">{{ perfil.email }}</span>.
+      {{ perfil.nome }} {{ perfil.sobrenome }} · RF <span class="text-code">{{ perfil.rf }}</span> —
+      {% if senha_temporaria is not None %}
+        o envio de e-mail está desligado: entregue a senha de primeiro acesso a mão.
+      {% else %}
+        a senha de primeiro acesso foi enviada para <span class="text-code">{{ perfil.email }}</span>.
+      {% endif %}
     </p>
   </div>
   <div class="flex flex-wrap justify-center gap-3 pt-1">
-    <a href="{% url 'user_admin:criar_perfil' %}" class="btn btn-glass btn-sm">Cadastrar outro</a>
-    <a href="{% url 'user_admin:pagina_perfil' perfil.pk %}" class="btn btn-onsen btn-sm">Abrir a página do servidor</a>
+    {% if senha_temporaria is not None %}
+      <label for="modal-senha" class="btn btn-onsen btn-sm gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.75"/></svg>
+        Ver a senha
+      </label>
+      <a href="{% url 'user_admin:criar_perfil' %}" class="btn btn-glass btn-sm">Cadastrar outro</a>
+      <a href="{% url 'user_admin:pagina_perfil' perfil.pk %}" class="btn btn-glass btn-sm">Abrir a página do servidor</a>
+    {% else %}
+      <a href="{% url 'user_admin:criar_perfil' %}" class="btn btn-glass btn-sm">Cadastrar outro</a>
+      <a href="{% url 'user_admin:pagina_perfil' perfil.pk %}" class="btn btn-onsen btn-sm">Abrir a página do servidor</a>
+    {% endif %}
   </div>
 </div>
+{# O swap normal cai dentro da .admin-shell, que é `z-10` posicionada e portanto contexto de       #}
+{# empilhamento: um modal `z-50` nascido ali fica sob os chips fixos `z-20` do base.html. O oob o   #}
+{# entrega no #poco-modal, irmão da casca — mesmo poço que a perfil.html já usa.                    #}
+{% if senha_temporaria is not None %}
+  <div id="poco-modal" hx-swap-oob="innerHTML">
+    {% include "user_admin/partials/_modal_senha_desenvolvimento.html" %}
+  </div>
+{% endif %}

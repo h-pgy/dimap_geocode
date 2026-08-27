@@ -24,6 +24,7 @@ from apps.user_admin.acoes_declaradas import (
     ACAO_TORNAR_ADMINISTRADOR,
 )
 from apps.user_admin.apresentacao import imagem_do_perfil, selo_do_exercicio
+from apps.user_admin.cadastro import DesfechoCadastro
 from apps.user_admin.exercicio import (
     impedimentos_em_aberto,
     retorno_eh_revogacao,
@@ -144,8 +145,16 @@ def _valores_do_formulario(valores: Mapping[str, Any]) -> dict[str, Any]:
     return lidos
 
 
-def contexto_cadastro_concluido(perfil: Perfil) -> dict[str, Any]:
-    return {"perfil": perfil}
+def contexto_cadastro_concluido(desfecho: DesfechoCadastro) -> dict[str, Any]:
+    # `.get_secret_value()` é obrigatório: o SecretStr renderiza como `**********` no template, e
+    # o modal sairia com asteriscos no lugar da senha, sem erro nenhum para denunciar (SPEC 007).
+    # `None` quando a senha foi entregue — e é esse `None` que apaga o modal E troca a frase do
+    # painel, sem o template precisar conhecer o flag de envio.
+    senha = desfecho.senha_a_exibir
+    return {
+        "perfil": desfecho.perfil,
+        "senha_temporaria": senha.get_secret_value() if senha is not None else None,
+    }
 
 
 def contexto_pagina_perfil(

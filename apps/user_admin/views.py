@@ -156,7 +156,7 @@ def gravar_servidor(request: HttpRequest) -> HttpResponse:
         alvo_tipo="servidor",
         alvo_identificador=desfecho.perfil.rf,
     )
-    return render(request, TEMPLATE_CADASTRO_CONCLUIDO, contexto_cadastro_concluido(desfecho.perfil))
+    return render(request, TEMPLATE_CADASTRO_CONCLUIDO, contexto_cadastro_concluido(desfecho))
 
 
 def pagina_perfil(request: HttpRequest, pk: int) -> HttpResponse:
