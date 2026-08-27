@@ -1,12 +1,13 @@
 ---
 spec: autenticacao/003
-versao: v1
+versao: v2
 atualizado_em: 2026-08-27
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: acionador de logout na página do servidor, e `/logout/` passa a exigir POST de sessão autenticada
 ---
 
 # SPEC autenticacao/003 — Recuperação de senha por link de uso único no e-mail
@@ -14,6 +15,10 @@ changelog:
 ## 1 · User story
 O servidor da DIMAP que esqueceu a senha pede, da própria tela de login, um link de uso único para o
 seu e-mail institucional e volta a entrar definindo uma senha nova.
+
+E, do outro lado da sessão, ele a encerra pela própria página — o acionador de logout que a SPEC
+[001](001-login-e-primeiro-acesso.md) deixou marcado para esta (§4 de lá) e que, sem gatilho, deixava
+a rota alcançável só pela URL.
 
 ## 2 · Condições de pronto
 - [ ] O ramo de senha do partial dinâmico do login exibe o acionador **"Esqueci minha senha"**, que
@@ -50,6 +55,14 @@ seu e-mail institucional e volta a entrar definindo uma senha nova.
 - [ ] O design da tela de recuperação, da tela de confirmação, da tela de link inválido e do
       acionador gravado foi aprovado no **mock**, e as peças novas foram portadas para
       `static/src/tema-dimap.dev.css` e para o styleguide antes de qualquer template usá-las.
+- [ ] A página do servidor exibe o acionador **"Encerrar sessão"** — o `.btn-etched-swell` já
+      aprovado no mock desta SPEC, sem peça nova — **só para quem vê o próprio perfil**, no fim do
+      painel, em **linha própria abaixo da fileira de ações** e **centralizado** com ela, como
+      último gesto da página.
+- [ ] A rota `/logout/` **só encerra a sessão por POST de sessão autenticada**: GET responde **405**
+      sem tocar na sessão, e POST sem o token CSRF daquela sessão é recusado com **403**. É o que
+      valida que quem pede a saída é o próprio dono da sessão — uma página de terceiro, ou um
+      prefetch do navegador sobre o `href`, não derruba mais ninguém. **Substitui o GET da SPEC 001.**
 
 ## 3 · Domínio
 O pedido de recuperação, o endereço para onde ele vai e o que a mensagem diz. O link de uso único
@@ -149,10 +162,14 @@ O domínio consumido, e a pergunta que esta SPEC faz a cada peça:
 - `@apps/autenticacao/views.py` → `BACKEND_AUTENTICACAO`: o backend explícito que o `login()` exige.
 - `@services/utils/erros_formulario` → `Formulario`, `CampoDeFormulario`, `ErroBruto`,
   `TradutorDeRecusa`: a recusa em português com o controle realçado.
-- `@static/src/tema-dimap.dev.css` → `.btn-etched`, `.btn-copiar`, `.glass-panel`, `.card-well`,
-  `.tarja-vinculo-critica`, `.input-glass`.
+- `@static/src/tema-dimap.dev.css` → `.btn-etched`, `.btn-etched-swell`, `.btn-copiar`,
+  `.glass-panel`, `.card-well`, `.tarja-vinculo-critica`, `.input-glass`.
+- `@templates/user_admin/perfil.html` → a fileira de ações do fim do painel, com a condição
+  `request.user.pk == perfil.pk` que já rege o atalho de redefinir senha.
 - `django.contrib.auth.tokens` → `default_token_generator`; `django.utils.http` →
   `urlsafe_base64_encode` / `urlsafe_base64_decode`; `django.core.cache` → `cache`.
+- `django.views.decorators.http` → `require_POST`; `django.contrib.auth.decorators` →
+  `login_required`: os dois já em uso nas demais rotas do app.
 - Skills: `componentes-frontend`, `daisyui`, `htmx`, `mock`, `erros-de-formulario`,
   `escrever-testes`, `test-django-views`.
 
@@ -592,6 +609,34 @@ senha.
 {% endif %}
 ```
 
+**`apps/autenticacao/views.py`** — a saída, agora com as duas guardas. `logout()` só sabe encerrar
+a sessão de quem faz a requisição: a identidade não é conferida contra um `pk` no corpo — seria
+teatro —, e sim pelo par sessão autenticada + token CSRF, que é o que prova que o POST saiu de uma
+página servida àquela sessão.
+```python
+@login_required
+@require_POST
+def logout_view(request: HttpRequest) -> HttpResponse:
+    logout(request)
+    return redirect("autenticacao:login")
+```
+
+**`templates/user_admin/perfil.html`** — o acionador, irmão da fileira de ações e não parte dela:
+sair é saída da sessão, não ação sobre o perfil. O `<form>` é quem recebe o `self-center` porque o
+painel é `flex flex-col` — o alinhamento é do item, e a linha própria já vem da coluna; o
+`.btn-etched` já nasce `inline-flex`, e vale igual em `<button>`.
+```html
+{% if request.user.pk == perfil.pk %}
+  <form method="post"
+        action="{% url 'autenticacao:logout' %}"
+        class="self-center">
+    {% csrf_token %}
+    <button type="submit"
+            class="btn-etched btn-etched-swell etched">Encerrar sessão</button>
+  </form>
+{% endif %}
+```
+
 ## 7 · Caveats
 A tela de recuperação mostra o e-mail institucional em texto claro a quem informar um RF de conta
 ativa, e diz explicitamente quando o RF não tem conta. A decisão é do usuário e vale para um sistema
@@ -634,6 +679,14 @@ recuperação desembocando no mesmo template e na mesma view, sem duplicar formu
 quem alterar uma das causas precisa lembrar da outra, e o modo do formulário deixa de ser legível
 apenas pelo banco.
 
+O logout deixa de responder a GET, e com isso o snippet e o teste da SPEC 001 — que acionavam a
+rota por `client.get` — passam a descrever um comportamento que não existe mais; o teste é reescrito
+aqui, o snippet de lá fica desatualizado até a 001 ser versionada. A decisão é fechar a rota no
+momento em que ela ganha gatilho na interface: enquanto era alcançável só digitando a URL, o GET não
+tinha como ser disparado por terceiro, e um `<a href>` o entrega a qualquer `<img src="/logout/">` de
+página alheia e a qualquer prefetch do navegador. O custo é a divergência entre duas SPECs do mesmo
+épico até a próxima edição da 001.
+
 Com o envio de e-mail desligado, o link aparece na tela de quem pediu, sem autenticação — mesmo
 regime da SPEC criacao_usuarios/007 para a senha de cadastro. A decisão mantém o fluxo exercitável de
 ponta a ponta em ambiente sem SMTP. O custo é que, em desenvolvimento, qualquer pessoa que informe um
@@ -663,3 +716,11 @@ RF válido redefine a senha daquele servidor.
   sessão é encerrada e a resposta redireciona para o login. *(marker `banco`)*
 - `test_com_envio_desligado_o_link_aparece_na_tela_e_com_envio_ligado_nao` — a resposta do POST
   carrega o link no HTML só quando `EMAIL_ENVIO_HABILITADO` está desligado. *(marker `banco`)*
+- `test_logout_encerra_a_sessao_por_post_e_recusa_get` — POST em `/logout/` encerra a sessão e
+  redireciona ao login; GET responde 405 e a sessão continua de pé. Reescreve o teste homônimo da
+  SPEC 001. *(marker `banco`)*
+- `test_logout_sem_o_token_csrf_nao_encerra_a_sessao` — POST de cliente com CSRF exigido, sem o
+  token, responde 403 e deixa a sessão intacta. *(marker `banco`)*
+- `test_atalhos_da_propria_conta_so_aparecem_para_o_proprio_servidor` — a página do servidor traz os
+  caminhos de redefinir senha e de encerrar sessão para o dono do perfil, e não os traz para um
+  colega. Estende o teste da SPEC user_admin/017. *(marker `banco`)*

@@ -216,15 +216,33 @@ def test_validar_otp_incorreto_devolve_recusa_com_campo_realcado(client: Client)
 
 @banco
 @pytest.mark.django_db
-def test_logout_encerra_a_sessao_e_redireciona_ao_login(client: Client) -> None:
+def test_logout_encerra_a_sessao_por_post_e_recusa_get(client: Client) -> None:
     perfil = _perfil("9501007")
     client.force_login(perfil)
 
-    resposta = client.get(reverse("autenticacao:logout"))
+    recusa = client.get(reverse("autenticacao:logout"))
+
+    assert recusa.status_code == 405
+    assert "_auth_user_id" in client.session
+
+    resposta = client.post(reverse("autenticacao:logout"))
 
     assert resposta.status_code == 302
     assert resposta.url == reverse("autenticacao:login")
     assert "_auth_user_id" not in client.session
+
+
+@banco
+@pytest.mark.django_db
+def test_logout_sem_o_token_csrf_nao_encerra_a_sessao() -> None:
+    cliente = Client(enforce_csrf_checks=True)
+    perfil = _perfil("9501008")
+    cliente.force_login(perfil)
+
+    resposta = cliente.post(reverse("autenticacao:logout"))
+
+    assert resposta.status_code == 403
+    assert "_auth_user_id" in cliente.session
 
 
 # ---------------------------------------------------------------------------

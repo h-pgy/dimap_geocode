@@ -173,6 +173,11 @@ def gravar_senha_view(request: HttpRequest) -> HttpResponse:
     return redirect(reverse("user_admin:pagina_perfil", kwargs={"pk": perfil.pk}))
 
 
+# POST autenticado (SPEC autenticacao/003 v2): num `<a href>`, o GET seria disparado por qualquer
+# `<img src="/logout/">` de página alheia e por prefetch do navegador. Quem valida que a saída é do
+# dono da sessão é o par sessão autenticada + token CSRF — `logout()` não encerra outra sessão.
+@login_required
+@require_POST
 def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
     return redirect("autenticacao:login")

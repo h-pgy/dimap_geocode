@@ -44,6 +44,19 @@
             {% endif %}
           </div>
         {% endif %}
+
+        {# Sair é saída da sessão, não ação sobre o perfil: ganha linha própria abaixo da  #}
+        {# fileira de ações, como último gesto da página. Formulário, e não link: a rota   #}
+        {# só encerra a sessão por POST com o token CSRF dela (SPEC autenticacao/003 v2).  #}
+        {% if request.user.pk == perfil.pk %}
+          <form method="post"
+                action="{% url 'autenticacao:logout' %}"
+                class="self-center">
+            {% csrf_token %}
+            <button type="submit"
+                    class="btn-etched btn-etched-swell etched">Encerrar sessão</button>
+          </form>
+        {% endif %}
       </div>
     </div>
   </div>

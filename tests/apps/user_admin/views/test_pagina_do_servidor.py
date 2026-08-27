@@ -254,7 +254,7 @@ def test_criar_servidor_mantem_a_mesma_estrutura_de_formulario(client: Client) -
 
 @banco
 @pytest.mark.django_db
-def test_botao_redefinir_so_aparece_para_o_proprio_servidor_na_pagina_de_perfil(
+def test_atalhos_da_propria_conta_so_aparecem_para_o_proprio_servidor(
     client: Client,
 ) -> None:
     unidade = _unidade("SRV-SENHA")
@@ -266,12 +266,14 @@ def test_botao_redefinir_so_aparece_para_o_proprio_servidor_na_pagina_de_perfil(
         reverse("user_admin:pagina_perfil", kwargs={"pk": dono.pk})
     ).content.decode()
     assert reverse("autenticacao:redefinir_senha") in html_proprio
+    assert reverse("autenticacao:logout") in html_proprio
 
     client.force_login(colega)
     html_alheio = client.get(
         reverse("user_admin:pagina_perfil", kwargs={"pk": dono.pk})
     ).content.decode()
     assert reverse("autenticacao:redefinir_senha") not in html_alheio
+    assert reverse("autenticacao:logout") not in html_alheio
 
 
 @banco
