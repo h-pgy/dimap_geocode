@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/025 — Extinção e reativação de unidade (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Carrega o tema e concatena as peças desta SPEC no MESMO bloco text/tailwindcss. -->
+  <script>
+    (async function carregarTema() {
+      const caminhos = [
+        "/static/src/tema-dimap.dev.css",
+        "../../static/src/tema-dimap.dev.css",
+        "../static/src/tema-dimap.dev.css"
+      ];
+      let css = null;
+      for (const caminho of caminhos) {
+        try {
+          const r = await fetch(caminho);
+          if (r.ok) { css = await r.text(); break; }
+        } catch (_) {}
+      }
+      if (css) {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-025").textContent;
+        document.head.appendChild(s);
+      } else {
+        (document.body || document.documentElement).insertAdjacentHTML(
+          "afterbegin",
+          "<p style='position:fixed;top:0;left:0;right:0;z-index:99999;margin:0;padding:1rem;background:#fff3f3;border-bottom:2px solid #b00;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — abra o mock por um servidor com raiz no projeto (Live Server). Via file:// o fetch é bloqueado.</p>"
+        );
+      }
+    })();
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec-025">
+    @layer components {
+      /* ==================== ÁTOMO · GLIFO GRAVADO DE GESTO CRÍTICO ==================== */
+      /* Variante do .icon-etched: empilha-se nele e só troca a tinta que o hover acende — água
+         vira a semântica de erro. Precisa vir DEPOIS do .icon-etched no arquivo: mesma
+         especificidade, e quem vence é a ordem. */
+      .btn:hover .icon-etched-critico,
+      .btn:focus-visible .icon-etched-critico {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(220, 38, 38, 0.45));
+        color: rgba(220, 38, 38, 0.92);
+      }
+
+      /* ==================== MOLÉCULA · BARRA DE AÇÕES ==================== */
+      /* A placa de gestos entre a árvore e a tabela. Material composto no HTML (.glass-panel); daqui
+         saem só o layout e o raio de placa, que sobrepõe o do painel por vir depois dele. */
+      .barra-acoes {
+        @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-2.5;
+        border-radius: var(--radius-placa);
+      }
+      .barra-acoes-gestos { @apply flex flex-wrap items-center gap-2; }
+      .barra-acoes-chave  { @apply flex items-center gap-2.5 cursor-pointer select-none; }
+
+      /* ==================== MOLÉCULA · PRÉVIA DO ATO ==================== */
+      /* Serve às duas faces: o que sai na extinção, o que volta na reativação. */
+      .previa-extincao { @apply grid gap-3 sm:grid-cols-3; }
+      .previa-extincao-tile { @apply flex flex-col gap-1 px-4 py-3; }
+      .previa-extincao-valor { @apply text-[26px] font-bold leading-none text-madeira-700; }
+      .previa-extincao-vazio { @apply text-[13px] leading-snug text-base-content/55; }
+
+      /* ==================== MODIFICADORES · UNIDADE EXTINTA ==================== */
+      /* A extinta só aparece com o toggle ligado, e quando aparece precisa ser LIDA: recuar a tinta
+         a apagava. Quem carrega o estado passa a ser o FUNDO, na semântica de erro do sistema, e a
+         tinta volta cheia. */
+      /* `bg-none` derruba o gradiente do .glass-panel, composto no HTML: sem isso a cor entraria por
+         baixo da placa de gelo e não apareceria. É a mesma razão pela qual o hover do card em
+         repouso levanta brilho em vez de pintar fundo. */
+      .card-unidade-extinta { @apply bg-none bg-error/12 border-error/35; }
+      .card-unidade-extinta:hover { @apply border-error/50; }
+      /* A sigla vira gravação: `etched etched-rotulo` compostos no HTML — o registro que o design
+         system reserva para o sulco que NOMEIA, com a tinta subindo à legibilidade. Só a cor precisa
+         de regra: `.card-unidade-sigla` declara a própria e vence `.etched-rotulo` por vir depois no
+         tema. O relevo já chega pelo filtro do `.etched`. Espelha `.etched-rotulo`, que não se
+         alcança por seletor a partir daqui. */
+      .card-unidade-extinta .card-unidade-sigla { color: rgba(13, 27, 42, 0.62); }
+      .linha-extinta td { @apply bg-error/8; }
+      /* Precisa vencer o `.table-onsen tbody tr:hover td` do tema, que é mais específico que a
+         linha: sob o cursor a extinta continua vermelha, só que mais acesa. */
+      .table-onsen tbody tr.linha-extinta:hover td { @apply bg-error/15; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content antialiased">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual. -->
+  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+  <!-- Filtro de gravação no gelo + glifos usados neste mock -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <!-- já no sprite: templates/unidades/partials/_glifos_unidade.html -->
+      <g id="glifo-hierarquia">
+        <rect x="9" y="3" width="6" height="4.4" rx="1.2"/>
+        <rect x="2.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <rect x="15.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <path d="M12 7.4v4.2"/><path d="M5.5 16.6v-5h13v5"/>
+      </g>
+      <g id="glifo-alerta"><path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/></g>
+      <g id="glifo-link">
+        <path d="M10.6 13.4a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5"/>
+        <path d="M13.4 10.6a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5"/>
+      </g>
+      <g id="glifo-unidade">
+        <path d="M1.6 8 7.6 4l6 4z"/>
+        <path d="M4 9.8v7.6"/><path d="M7.6 9.8v7.6"/><path d="M11.2 9.8v7.6"/>
+        <path d="M2.6 17.4h10"/><path d="M1.6 20.4h12"/>
+      </g>
+
+      <!-- NOVOS nesta SPEC -->
+      <g id="glifo-lixeira">
+        <path d="M4.2 6.8h15.6"/>
+        <path d="M9.6 6.8V4.6h4.8v2.2"/>
+        <path d="M6.6 6.8 7.6 19.4h8.8L17.4 6.8"/>
+        <path d="M10.4 10.4v5.4"/><path d="M13.6 10.4v5.4"/>
+      </g>
+      <g id="glifo-voltar">
+        <path d="M20 12H4.6"/><path d="M10.6 6 4.6 12l6 6"/>
+      </g>
+      <g id="glifo-reativar">
+        <path d="M20.4 12a8.4 8.4 0 1 1-2.46-5.94"/>
+        <path d="M20.4 3.6v4.9h-4.9"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 p-8 max-w-6xl mx-auto flex flex-col gap-16">
+    <header class="border-b border-base-200 pb-4">
+      <p class="text-overline text-agua-700">Mock de validação</p>
+      <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC user_admin/025 — Extinção e reativação de unidade</h1>
+    </header>
+
+    <!-- ==================================================================== -->
+    <!-- 1 · TOKENS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="tokens" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">1 · Tokens</h2>
+        <p class="text-xs text-base-content/70">Glifos novos do sprite de unidade.</p>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-wrap items-end gap-10">
+        <div class="flex flex-col items-center gap-2">
+          <svg class="w-9 h-9 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+          <span class="text-overline">#glifo-lixeira</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <svg class="w-9 h-9 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+          <span class="text-overline">#glifo-reativar</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <svg class="w-9 h-9 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-voltar"/></svg>
+          <span class="text-overline">#glifo-voltar</span>
+        </div>
+        <div class="flex flex-col items-center gap-2 pl-6 border-l border-white/60">
+          <div class="flex items-end gap-3">
+            <svg class="w-5 h-5 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+            <svg class="w-4 h-4 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+          </div>
+          <span class="text-overline">medidas de uso · 20px / 16px</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 2 · ÁTOMOS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">2 · Átomos</h2>
+        <p class="text-xs text-base-content/70">Passe o cursor: o gesto crítico grava em vermelho onde o comum grava em água.</p>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-wrap items-center gap-10">
+        <!-- .icon-etched (existente) × .icon-etched-critico (novo) -->
+        <div class="flex flex-col gap-2 items-center">
+          <div class="flex items-center gap-2">
+            <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver unidade">
+              <span class="etched icon-etched">✎</span>
+            </a>
+            <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir unidade">
+              <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+            </button>
+          </div>
+          <span class="text-overline">.icon-etched · .icon-etched-critico</span>
+        </div>
+
+        <!-- estado de falta: a linha em que o gesto não é oferecido -->
+        <div class="flex flex-col gap-2 items-center">
+          <div class="flex items-center gap-2">
+            <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver unidade">
+              <span class="etched icon-etched">✎</span>
+            </a>
+            <span class="w-6 h-6 inline-block"></span>
+          </div>
+          <span class="text-overline">sem o gesto · lugar preservado</span>
+        </div>
+
+        <!-- os dois atos em corpo de botão: daisyUI puro, já em uso no sistema -->
+        <div class="flex flex-col gap-2 items-center pl-6 border-l border-white/60">
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-error btn-soft btn-sm gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+              Extinguir unidade
+            </button>
+            <button type="button" class="btn btn-error btn-soft btn-sm btn-disabled">Extinguir</button>
+            <button type="button" class="btn btn-onsen btn-sm gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+              Reativar unidade
+            </button>
+          </div>
+          <span class="text-overline">extinguir (btn-error btn-soft) · sem alvo · reativar (btn-onsen)</span>
+        </div>
+
+        <!-- a marca de extinta: badge neutro, não semântica de erro — extinta é estado, não falha -->
+        <div class="flex flex-col gap-2 items-center pl-6 border-l border-white/60">
+          <div class="flex items-center gap-2">
+            <span class="badge badge-neutral badge-soft badge-sm font-medium">Extinta</span>
+            <span class="badge badge-neutral badge-soft">Extinta em 26/08/2026</span>
+          </div>
+          <span class="text-overline">marca de extinta · tabela e cabeçalho</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 3 · MOLÉCULAS                                                         -->
+    <!-- ==================================================================== -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">3 · Moléculas</h2>
+      </div>
+
+      <!-- .barra-acoes -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.barra-acoes — completa, toggle desligado</span>
+        <div class="barra-acoes glass-panel">
+          <div class="barra-acoes-gestos">
+            <a href="#" class="btn btn-onsen btn-sm gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-unidade"/></svg>
+              Nova unidade
+            </a>
+            <button type="button" class="btn btn-error btn-soft btn-sm gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+              Extinguir unidade
+            </button>
+          </div>
+          <div class="barra-acoes-gestos">
+            <label class="barra-acoes-chave">
+              <input type="checkbox" class="toggle-onsen" aria-label="Mostrar unidades extintas" />
+              <span class="text-overline">Mostrar unidades extintas</span>
+            </label>
+            <button type="button" class="btn-etched etched">✕ limpar filtros</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.barra-acoes — toggle ligado · e o estado de falta: visitante sem competência sobre unidade alguma</span>
+        <div class="flex flex-col gap-3">
+          <div class="barra-acoes glass-panel">
+            <div class="barra-acoes-gestos">
+              <a href="#" class="btn btn-onsen btn-sm gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-unidade"/></svg>
+                Nova unidade
+              </a>
+              <button type="button" class="btn btn-error btn-soft btn-sm gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                Extinguir unidade
+              </button>
+            </div>
+            <div class="barra-acoes-gestos">
+              <label class="barra-acoes-chave">
+                <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar unidades extintas" />
+                <span class="text-overline">Mostrar unidades extintas</span>
+              </label>
+              <button type="button" class="btn-etched etched">✕ limpar filtros</button>
+            </div>
+          </div>
+          <div class="barra-acoes glass-panel">
+            <div class="barra-acoes-gestos"></div>
+            <div class="barra-acoes-gestos">
+              <label class="barra-acoes-chave">
+                <input type="checkbox" class="toggle-onsen" aria-label="Mostrar unidades extintas" />
+                <span class="text-overline">Mostrar unidades extintas</span>
+              </label>
+              <button type="button" class="btn-etched etched">✕ limpar filtros</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- .previa-extincao — as duas faces -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.previa-extincao — face de extinção (o que sai) · face de reativação (o que volta)</span>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div class="glass-panel p-5">
+            <div class="previa-extincao">
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Servidores</span>
+                <span class="previa-extincao-valor">7</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Subordinadas</span>
+                <span class="previa-extincao-valor">2</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Passam a responder a</span>
+                <span class="flex items-center gap-2 pt-1">
+                  <span class="dot-unidade w-5 h-5" style="--cor-unidade:#0077B6"></span>
+                  <span class="text-[17px] font-bold text-madeira-700">DIMAP</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="glass-panel p-5">
+            <div class="previa-extincao">
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Atribuições</span>
+                <span class="previa-extincao-valor">3</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Concessões</span>
+                <span class="previa-extincao-valor">5</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Volta a responder a</span>
+                <span class="flex items-center gap-2 pt-1">
+                  <span class="dot-unidade w-5 h-5" style="--cor-unidade:#0077B6"></span>
+                  <span class="text-[17px] font-bold text-madeira-700">DIMAP</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.previa-extincao — estados de falta: sem unidade escolhida · unidade vazia · nada a restaurar</span>
+        <div class="flex flex-col gap-4">
+          <div class="glass-panel p-5">
+            <div class="previa-extincao">
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Servidores</span>
+                <span class="previa-extincao-vazio">—</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Subordinadas</span>
+                <span class="previa-extincao-vazio">—</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Passam a responder a</span>
+                <span class="previa-extincao-vazio">Escolha a unidade acima.</span>
+              </div>
+            </div>
+          </div>
+          <div class="glass-panel p-5">
+            <div class="previa-extincao">
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Servidores</span>
+                <span class="previa-extincao-vazio">Nenhum lotado</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Subordinadas</span>
+                <span class="previa-extincao-vazio">Nenhuma</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Passam a responder a</span>
+                <span class="flex items-center gap-2 pt-1">
+                  <span class="dot-unidade w-5 h-5" style="--cor-unidade:#5E412F"></span>
+                  <span class="text-[17px] font-bold text-madeira-700">DIMAP-2</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="glass-panel p-5">
+            <div class="previa-extincao">
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Atribuições</span>
+                <span class="previa-extincao-vazio">Nenhuma a restaurar</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Concessões</span>
+                <span class="previa-extincao-vazio">Nenhuma a restaurar</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Volta a responder a</span>
+                <span class="flex items-center gap-2 pt-1">
+                  <span class="dot-unidade w-5 h-5" style="--cor-unidade:#0077B6"></span>
+                  <span class="text-[17px] font-bold text-madeira-700">DIMAP</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- .linha-extinta e .card-unidade-extinta -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.linha-extinta · .card-unidade-extinta — a extinta quando o toggle a revela</span>
+        <div class="glass-panel p-5 flex flex-wrap items-center gap-8">
+          <div class="card-well p-2 table-onsen-poco grow min-w-[22rem]">
+            <div class="table-onsen-wrap">
+              <table class="table table-onsen">
+                <tbody>
+                  <tr>
+                    <td><a href="#" class="link-tabela-onsen">DIMAP-3</a></td>
+                    <td><p class="td-nome-unidade">Divisão de Cadastro</p></td>
+                    <td class="text-right"><a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle"><span class="etched icon-etched">✎</span></a></td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle">
+                        <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr class="linha-extinta">
+                    <td>
+                      <a href="#" class="link-tabela-onsen">DIMAP-4</a>
+                      <span class="badge badge-neutral badge-soft badge-sm font-medium ml-2">Extinta</span>
+                    </td>
+                    <td><p class="td-nome-unidade">Divisão de Estudos Econômicos</p></td>
+                    <td class="text-right"><a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle"><span class="etched icon-etched">✎</span></a></td>
+                    <td class="text-right"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex items-end gap-4">
+            <div class="card-unidade card-unidade-repouso glass-panel">
+              <button class="card-unidade-gatilho" type="button">
+                <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415A77"></span>
+                <span class="card-unidade-sigla">DIMAP-3</span>
+              </button>
+            </div>
+            <div class="card-unidade card-unidade-repouso card-unidade-extinta glass-panel">
+              <button class="card-unidade-gatilho" type="button">
+                <span class="dot-unidade w-9 h-9" style="--cor-unidade:#778DA9"></span>
+                <span class="card-unidade-sigla etched etched-rotulo">DIMAP-4</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 4 · ORGANISMOS                                                        -->
+    <!-- ==================================================================== -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">4 · Organismos</h2>
+        <p class="text-xs text-base-content/70">As duas faces do modal, fora da cena para leitura lado a lado. A face sai do estado da unidade escolhida.</p>
+      </div>
+
+      <div class="grid gap-6 xl:grid-cols-2">
+        <!-- face: extinguir, alvo com carga -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">face extinguir · alvo com carga</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir unidade</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">A unidade sai da estrutura. O que ela carrega sobe para a unidade superior.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Unidade a extinguir</p>
+              <select class="select select-glass" data-select-onsen>
+                <option>DIMAP-2 · Divisão de Avaliação de Imóveis</option>
+                <option>DIMAP-3 · Divisão de Cadastro Territorial</option>
+              </select>
+            </div>
+
+            <div class="previa-extincao">
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Servidores</span>
+                <span class="previa-extincao-valor">7</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Subordinadas</span>
+                <span class="previa-extincao-valor">2</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Passam a responder a</span>
+                <span class="flex items-center gap-2 pt-1">
+                  <span class="dot-unidade w-5 h-5" style="--cor-unidade:#0077B6"></span>
+                  <span class="text-[17px] font-bold text-madeira-700">DIMAP</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                Há hoje <strong>7 servidores</strong> na DIMAP-2. Extinguindo, eles e as <strong>2 subordinadas</strong> passam a responder à <strong>DIMAP</strong>, e as <strong>3 atribuições</strong> da unidade deixam de valer.
+              </p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-error btn-soft btn-sm">Extinguir a DIMAP-2</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: extinguir, sem alvo -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">face extinguir · estado de falta: aberto pela barra, sem unidade em foco</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir unidade</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">A unidade sai da estrutura. O que ela carrega sobe para a unidade superior.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Unidade a extinguir</p>
+              <select class="select select-glass" data-select-onsen>
+                <option value="" selected>— escolha a unidade —</option>
+                <option>DIMAP-2 · Divisão de Avaliação de Imóveis</option>
+              </select>
+            </div>
+
+            <div class="previa-extincao">
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Servidores</span>
+                <span class="previa-extincao-vazio">—</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Subordinadas</span>
+                <span class="previa-extincao-vazio">—</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Passam a responder a</span>
+                <span class="previa-extincao-vazio">Escolha a unidade acima.</span>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-error btn-soft btn-sm btn-disabled">Extinguir</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: reativar -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">face reativar · alvo extinto, com competências a restaurar</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reativar unidade</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">DIMAP-4 · Divisão de Estudos Econômicos</p>
+              </div>
+            </div>
+
+            <div class="previa-extincao">
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Atribuições</span>
+                <span class="previa-extincao-valor">3</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Concessões</span>
+                <span class="previa-extincao-valor">5</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Volta a responder a</span>
+                <span class="flex items-center gap-2 pt-1">
+                  <span class="dot-unidade w-5 h-5" style="--cor-unidade:#0077B6"></span>
+                  <span class="text-[17px] font-bold text-madeira-700">DIMAP</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                Voltam a unidade e as competências que caíram com ela. <strong>Servidores e subordinadas não voltam</strong> — a lotação e a hierarquia se refazem uma a uma.
+              </p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Reativar a DIMAP-4</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: reativar, recusada -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">face reativar · recusa: a unidade superior está extinta</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reativar unidade</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">DIMAP-4-1 · Seção de Séries Históricas</p>
+              </div>
+            </div>
+
+            <!-- partial: partials/_tarja_recusa.html -->
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">Unidade não reativada</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>Reative antes a DIMAP-4: uma unidade não pende de unidade extinta.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="previa-extincao">
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Atribuições</span>
+                <span class="previa-extincao-vazio">Nenhuma a restaurar</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Concessões</span>
+                <span class="previa-extincao-vazio">Nenhuma a restaurar</span>
+              </div>
+              <div class="previa-extincao-tile card-well">
+                <span class="text-overline">Volta a responder a</span>
+                <span class="flex items-center gap-2 pt-1">
+                  <span class="dot-unidade w-5 h-5 opacity-50" style="--cor-unidade:#778DA9"></span>
+                  <span class="text-[17px] font-bold text-base-content/45">DIMAP-4</span>
+                  <span class="badge badge-neutral badge-soft badge-sm font-medium">Extinta</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Fechar</label>
+              <a href="#" class="btn btn-onsen btn-sm">Abrir a DIMAP-4</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 5 · TELA MONTADA                                                      -->
+    <!-- ==================================================================== -->
+    <section id="tela" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">5 · Tela montada</h2>
+        <p class="text-xs text-base-content/70">Ligue o toggle para revelar a extinta na árvore e na tabela; clique numa lixeira ou no botão da barra para abrir o modal.</p>
+      </div>
+
+      <!-- ============ 5.1 · Listagem ============ -->
+      <div class="flex flex-col">
+
+        <!-- página: unidades/unidades_list.html -->
+        <div class="w-full">
+          <div class="max-w-6xl mx-auto w-full glass-panel p-6 sm:p-8 flex flex-col gap-5">
+
+            <!-- fica na página: cabeçalho, só arranjo — o gesto de limpar filtros desceu para a barra -->
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Unidades</h1>
+                <p class="text-sm text-base-content/70 mt-1">10 unidades cadastradas. Clique na linha da tabela para situar na árvore, ou no nó para destacar na lista.</p>
+              </div>
+              <button type="button" class="btn btn-glass btn-xs gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+                Ver toda a árvore
+              </button>
+            </div>
+
+            <!-- partial: unidades/partials/_painel_unidades.html — alvo do toggle e do hx-swap-oob da conclusão do ato -->
+            <div id="painel-unidades" class="flex flex-col gap-5">
+
+              <!-- partial: unidades/partials/_organograma_unidades.html — fica dentro do painel, nunca trocado sozinho -->
+              <div class="glass-panel rounded-2xl overflow-x-auto p-4">
+                <div class="organograma">
+                  <div class="no-arvore no-arvore-primeiro no-arvore-ultimo no-arvore-caminho no-arvore-aberto">
+                    <div class="card-unidade card-unidade-poco">
+                      <button class="card-unidade-gatilho" type="button">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077B6"></span>
+                        <span class="card-unidade-sigla">DIMAP</span>
+                        <span class="card-unidade-nome">Departamento de Mapeamento</span>
+                      </button>
+                      <a class="card-unidade-pagina" href="#"><svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-link"/></svg></a>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <div class="no-arvore-filhas">
+                      <div class="no-arvore no-arvore-primeiro">
+                        <span class="etched-line no-arvore-barra"></span>
+                        <span class="etched-line no-arvore-fio"></span>
+                        <div class="card-unidade card-unidade-repouso glass-panel">
+                          <button class="card-unidade-gatilho" type="button">
+                            <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0096C7"></span>
+                            <span class="card-unidade-sigla">DIMAP-1</span>
+                            <span class="card-unidade-nome">Divisão de Avaliação</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="no-arvore no-arvore-ego no-arvore-aberto">
+                        <span class="etched-line no-arvore-barra"></span>
+                        <span class="etched-line no-arvore-fio"></span>
+                        <div class="card-unidade card-unidade-poco card-unidade-ego">
+                          <button class="card-unidade-gatilho" type="button">
+                            <span class="dot-unidade w-9 h-9" style="--cor-unidade:#5E412F"></span>
+                            <span class="card-unidade-sigla">DIMAP-2</span>
+                            <span class="card-unidade-nome">Divisão de Avaliação de Imóveis</span>
+                          </button>
+                          <a class="card-unidade-pagina" href="#"><svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-link"/></svg></a>
+                        </div>
+                        <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                        <div class="no-arvore-filhas">
+                          <div class="no-arvore no-arvore-primeiro no-arvore-ultimo">
+                            <span class="etched-line no-arvore-barra"></span>
+                            <span class="etched-line no-arvore-fio"></span>
+                            <div class="card-unidade card-unidade-repouso glass-panel">
+                              <button class="card-unidade-gatilho" type="button">
+                                <span class="dot-unidade w-9 h-9" style="--cor-unidade:#48CAE4"></span>
+                                <span class="card-unidade-sigla">DIMAP-2-1</span>
+                                <span class="card-unidade-nome">Seção de Amostragem</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="no-arvore">
+                        <span class="etched-line no-arvore-barra"></span>
+                        <span class="etched-line no-arvore-fio"></span>
+                        <div class="card-unidade card-unidade-repouso glass-panel">
+                          <button class="card-unidade-gatilho" type="button">
+                            <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415A77"></span>
+                            <span class="card-unidade-sigla">DIMAP-3</span>
+                            <span class="card-unidade-nome">Divisão de Cadastro</span>
+                          </button>
+                        </div>
+                      </div>
+                      <!-- só existe no HTML quando o toggle está ligado -->
+                      <div class="no-arvore no-arvore-ultimo hidden" data-extinta>
+                        <span class="etched-line no-arvore-barra"></span>
+                        <span class="etched-line no-arvore-fio"></span>
+                        <div class="card-unidade card-unidade-repouso card-unidade-extinta glass-panel">
+                          <button class="card-unidade-gatilho" type="button">
+                            <span class="dot-unidade w-9 h-9" style="--cor-unidade:#778DA9"></span>
+                            <span class="card-unidade-sigla etched etched-rotulo">DIMAP-4</span>
+                            <span class="card-unidade-nome">Divisão de Estudos Econômicos</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- /partial -->
+
+              <!-- partial: unidades/partials/_barra_acoes_unidades.html — o toggle troca o painel inteiro -->
+              <div class="barra-acoes glass-panel">
+                <div class="barra-acoes-gestos">
+                  <a href="#cadastro" class="btn btn-onsen btn-sm gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-unidade"/></svg>
+                    Nova unidade
+                  </a>
+                  <button type="button" class="btn btn-error btn-soft btn-sm gap-1.5" data-abrir-modal="">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                    Extinguir unidade
+                  </button>
+                </div>
+                <div class="barra-acoes-gestos">
+                  <label class="barra-acoes-chave">
+                    <input type="checkbox" class="toggle-onsen" id="toggle-extintas" aria-label="Mostrar unidades extintas" />
+                    <span class="text-overline">Mostrar unidades extintas</span>
+                  </label>
+                  <button type="button" class="btn-etched etched">✕ limpar filtros</button>
+                </div>
+              </div>
+              <!-- /partial -->
+
+              <!-- fica no painel: a moldura do poço da tabela — SPEC user_admin/013 -->
+              <div class="card-well p-2 table-onsen-poco">
+                <div class="table-onsen-wrap">
+                  <table class="table table-onsen" id="tabela-unidades">
+                    <thead>
+                      <tr>
+                        <th><div class="th-onsen"><label class="th-onsen-campo"><span class="text-overline">Sigla</span><input class="th-onsen-input" placeholder="filtrar…"></label><button class="sort-etched etched" type="button">▲</button></div>
+                          <!-- os campos ocultos que viajam com os filtros: `extintas` entra ao lado de `ordenar_por` -->
+                          <input type="hidden" name="extintas" value="">
+                        </th>
+                        <th><div class="th-onsen"><label class="th-onsen-campo"><span class="text-overline">Nome da unidade</span><input class="th-onsen-input" placeholder="filtrar…"></label><button class="sort-etched etched" type="button">▲</button></div></th>
+                        <th><div class="th-onsen"><label class="th-onsen-campo"><span class="text-overline">Tipo</span><input class="th-onsen-input" placeholder="filtrar…"></label><button class="sort-etched etched" type="button">▲</button></div></th>
+                        <th class="w-16"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Cor</span></div></th>
+                        <th><div class="th-onsen"><label class="th-onsen-campo"><span class="text-overline">Unidade pai</span><input class="th-onsen-input" placeholder="filtrar…"></label><button class="sort-etched etched" type="button">▲</button></div></th>
+                        <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
+                        <!-- coluna NOVA, à direita da do lápis -->
+                        <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
+                      </tr>
+                    </thead>
+
+                    <!-- partial: unidades/partials/_corpo_unidades.html — alvo do hx-get dos filtros -->
+                    <tbody>
+                      <!-- linha da unidade que o perfil DIRIGE: o gesto não é oferecido -->
+                      <tr>
+                        <td><a href="#" class="link-tabela-onsen">DIMAP</a></td>
+                        <td><p class="td-nome-unidade">Departamento de Mapeamento</p></td>
+                        <td class="text-base-content/80">Departamento</td>
+                        <td><span class="dot-unidade" style="--cor-unidade:#0077B6"></span></td>
+                        <td><span class="text-xs text-base-content/50">— (Raiz)</span></td>
+                        <td class="text-right"><a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver unidade"><span class="etched icon-etched">✎</span></a></td>
+                        <td class="text-right"></td>
+                      </tr>
+                      <tr>
+                        <td><a href="#" class="link-tabela-onsen">DIMAP-2</a></td>
+                        <td><p class="td-nome-unidade">Divisão de Avaliação de Imóveis</p></td>
+                        <td class="text-base-content/80">Divisão</td>
+                        <td><span class="dot-unidade" style="--cor-unidade:#5E412F"></span></td>
+                        <td><a href="#" class="link-tabela-onsen">DIMAP</a></td>
+                        <td class="text-right"><a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver unidade"><span class="etched icon-etched">✎</span></a></td>
+                        <td class="text-right">
+                          <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir a DIMAP-2" data-abrir-modal="DIMAP-2">
+                            <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><a href="#" class="link-tabela-onsen">DIMAP-2-1</a></td>
+                        <td><p class="td-nome-unidade">Seção de Amostragem</p></td>
+                        <td class="text-base-content/80">Seção</td>
+                        <td><span class="dot-unidade" style="--cor-unidade:#48CAE4"></span></td>
+                        <td><a href="#" class="link-tabela-onsen">DIMAP-2</a></td>
+                        <td class="text-right"><a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver unidade"><span class="etched icon-etched">✎</span></a></td>
+                        <td class="text-right">
+                          <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir a DIMAP-2-1" data-abrir-modal="DIMAP-2-1">
+                            <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                      <!-- extinta: só existe no HTML quando o toggle está ligado, e sem a lixeira -->
+                      <tr class="linha-extinta hidden" data-extinta>
+                        <td>
+                          <a href="#extinta" class="link-tabela-onsen">DIMAP-4</a>
+                          <span class="badge badge-neutral badge-soft badge-sm font-medium ml-2">Extinta</span>
+                        </td>
+                        <td><p class="td-nome-unidade">Divisão de Estudos Econômicos</p></td>
+                        <td>Divisão</td>
+                        <td><span class="dot-unidade" style="--cor-unidade:#778DA9"></span></td>
+                        <td><a href="#" class="link-tabela-onsen">DIMAP</a></td>
+                        <td class="text-right"><a href="#extinta" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver unidade"><span class="etched icon-etched">✎</span></a></td>
+                        <td class="text-right"></td>
+                      </tr>
+                    </tbody>
+                    <!-- /partial -->
+                  </table>
+                </div>
+              </div>
+            </div>
+            <!-- /partial -->
+          </div>
+        </div>
+
+        <!-- partial: unidades/partials/_modal_ato_unidade.html — alvo do hx-get da lixeira, do botão da barra e do botão da página -->
+        <input type="checkbox" id="modal-ato-unidade" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+              <form class="flex flex-col gap-5">
+                <div class="flex items-start gap-3">
+                  <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                  <div>
+                    <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir unidade</h2>
+                    <p class="text-sm text-base-content/70 mt-0.5">A unidade sai da estrutura. O que ela carrega sobe para a unidade superior.</p>
+                  </div>
+                </div>
+
+                <div class="card-well p-5 flex flex-col gap-4">
+                  <p class="text-overline">Unidade a extinguir</p>
+                  <select class="select select-glass" data-select-onsen id="select-ato-mock">
+                    <option value="">— escolha a unidade —</option>
+                    <option value="DIMAP-2">DIMAP-2 · Divisão de Avaliação de Imóveis</option>
+                    <option value="DIMAP-2-1">DIMAP-2-1 · Seção de Amostragem</option>
+                  </select>
+                </div>
+
+                <!-- partial: unidades/partials/_previa_do_ato.html — alvo do hx-get do select acima -->
+                <div id="previa-ato-mock" class="flex flex-col gap-4"></div>
+                <!-- /partial -->
+
+              <div class="modal-action">
+                <label for="modal-ato-unidade" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="button" class="btn btn-error btn-soft btn-sm btn-disabled" id="confirmar-ato-mock">Extinguir</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-ato-unidade">Fechar</label>
+        </div>
+        <!-- /partial -->
+      </div>
+
+      <!-- ============ 5.2 · Página da unidade extinta ============ -->
+      <div id="extinta" class="flex flex-col">
+
+        <!-- página: unidades/unidade.html -->
+        <div class="w-full">
+          <div class="max-w-3xl mx-auto w-full glass-panel p-6 sm:p-8 flex flex-col gap-6">
+
+            <!-- partial: unidades/partials/_identidade_unidade.html — a marca de extinta entra aqui -->
+            <div class="flex flex-col gap-4">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <h1 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">DIMAP-4</h1>
+                  <p class="text-sm text-base-content/70 mt-1">Divisão de Estudos Econômicos</p>
+                  <div class="flex flex-wrap gap-2 mt-3">
+                    <span class="badge badge-neutral badge-soft badge-sm font-medium">Extinta</span>
+                    <span class="badge badge-linha badge-sm">Divisão</span>
+                    <span class="badge badge-info badge-soft">nível 2</span>
+                    <span class="badge badge-ponto badge-sm">0 servidores</span>
+                  </div>
+                </div>
+                <span class="dot-unidade w-6 h-6 mt-1 opacity-60" style="--cor-unidade:#778DA9"></span>
+              </div>
+              <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+                <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                <p class="text-[13px] text-base-content/80">
+                  Unidade <strong>extinta em 26/08/2026</strong>. Não aparece na estrutura, não recebe lotação e não exerce competência alguma. Os servidores e as subordinadas que ela tinha responderam à <strong>DIMAP</strong> desde então.
+                </p>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- fica na página: as seções de resumo, direção e hierarquia seguem inalteradas -->
+            <div class="card-well p-5 flex flex-col gap-2">
+              <p class="text-overline">Direção</p>
+              <p class="text-[13px] text-base-content/60 italic">Sem titular — a unidade não tem quem a dirija.</p>
+            </div>
+
+            <!-- fica na página: um único gesto, e só ele -->
+            <div class="flex justify-center pt-2">
+              <button type="button" class="btn btn-onsen btn-lg gap-2" data-abrir-modal="DIMAP-4">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+                Reativar unidade
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 5.3 · Página de cadastro: voltar e cancelar ============ -->
+      <div id="cadastro" class="flex flex-col">
+
+        <!-- página: unidades/unidade_form.html -->
+        <div class="w-full">
+          <div class="max-w-3xl mx-auto w-full flex flex-col gap-4">
+
+            <!-- fica na página: o retorno à listagem, acima da placa do formulário -->
+            <div>
+              <a href="#tela" class="btn btn-glass btn-sm gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-voltar"/></svg>
+                Voltar para a lista de unidades
+              </a>
+            </div>
+
+            <!-- partial: unidades/partials/_formulario_unidade.html — alvo do hx-post de gravar -->
+            <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+              <div>
+                <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Nova unidade</h1>
+                <p class="text-sm text-base-content/70 mt-1">A unidade é o eixo da competência administrativa: é ela que, com o cargo, define o que cada servidor pode praticar.</p>
+              </div>
+
+              <!-- partial: unidades/partials/_campos_unidade.html — inalterado nesta SPEC -->
+              <div class="card-well p-5 flex flex-col gap-4">
+                <p class="text-overline">Identificação</p>
+                <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                  <label class="flex flex-col gap-1.5">
+                    <span class="text-overline etched-rotulo">Nome</span>
+                    <input type="text" class="input input-glass" placeholder="Divisão de…">
+                  </label>
+                  <label class="flex flex-col gap-1.5">
+                    <span class="text-overline etched-rotulo">Sigla</span>
+                    <input type="text" class="input input-glass" placeholder="DIMAP-5">
+                  </label>
+                </div>
+              </div>
+              <div class="card-well p-5 flex flex-col gap-4">
+                <p class="text-overline">Hierarquia</p>
+                <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                  <label class="flex flex-col gap-1.5">
+                    <span class="text-overline etched-rotulo">Tipo</span>
+                    <select class="select select-glass" data-select-onsen><option>Divisão · nível 2</option></select>
+                  </label>
+                  <label class="flex flex-col gap-1.5">
+                    <span class="text-overline etched-rotulo">Unidade superior</span>
+                    <select class="select select-glass" data-select-onsen><option>DIMAP · Departamento de Mapeamento</option></select>
+                  </label>
+                </div>
+              </div>
+              <!-- /partial -->
+
+              <div class="flex justify-end gap-3 pt-1">
+                <a href="#tela" class="btn btn-ghost btn-glass">Cancelar</a>
+                <button type="button" class="btn btn-onsen">Salvar unidade</button>
+              </div>
+            </form>
+            <!-- /partial -->
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Sem este módulo os selects seguem nativos: marcar o campo não carrega o componente. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+
+  <script>
+    // Fundo à deriva (SPEC user_admin/007), reproduzido aqui porque o mock não passa pelo Django.
+    const CENTRO = [-23.5505, -46.6333];
+    const ZOOM = 15;
+    const PERIODO_MS = 150000;
+    const AMPLITUDE_GRAUS = 0.008;
+    const INTERVALO_FRAME_MS = 50;
+
+    const mapa = L.map("map-admin", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+    }).setView(CENTRO, ZOOM);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(mapa);
+
+    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ultimoFrame = 0;
+
+    function derivar(agora) {
+      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
+        ultimoFrame = agora;
+        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
+        mapa.setView(
+          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
+          ZOOM,
+          { animate: false },
+        );
+      }
+      requestAnimationFrame(derivar);
+    }
+    requestAnimationFrame(derivar);
+
+    // Coreografia do mock. No servidor: o toggle troca o painel, a lixeira e o botão da página
+    // trazem o modal, e o select troca o bloco da prévia.
+    const UNIDADES = {
+      "DIMAP-2":   { face: "extinguir", servidores: 7, subordinadas: 2, atribuicoes: 3, destino: "DIMAP", cor: "#0077B6" },
+      "DIMAP-2-1": { face: "extinguir", servidores: 0, subordinadas: 0, atribuicoes: 0, destino: "DIMAP-2", cor: "#5E412F" },
+      "DIMAP-4":   { face: "reativar", atribuicoes: 3, concessoes: 5, destino: "DIMAP", cor: "#0077B6" },
+    };
+    const chaveModal = document.getElementById("modal-ato-unidade");
+    const caixa = document.querySelector("#modal-ato-unidade + .modal .modal-box");
+    const select = document.getElementById("select-ato-mock");
+    const previa = document.getElementById("previa-ato-mock");
+    const confirmar = document.getElementById("confirmar-ato-mock");
+    const campoSelect = select.closest(".card-well");
+    const cabecalho = caixa.querySelector("h2");
+    const subtitulo = caixa.querySelector("h2 + p");
+    const icone = caixa.querySelector(".icone-acao");
+    const toggle = document.getElementById("toggle-extintas");
+    const ocultoExtintas = document.querySelector('input[name="extintas"]');
+
+    function tile(rotulo, conteudo) {
+      return `<div class="previa-extincao-tile card-well"><span class="text-overline">${rotulo}</span>${conteudo}</div>`;
+    }
+    function valor(n) { return `<span class="previa-extincao-valor">${n}</span>`; }
+    function vazio(texto) { return `<span class="previa-extincao-vazio">${texto}</span>`; }
+    function unidadeAlvo(sigla, cor) {
+      return `<span class="flex items-center gap-2 pt-1"><span class="dot-unidade w-5 h-5" style="--cor-unidade:${cor}"></span><span class="text-[17px] font-bold text-madeira-700">${sigla}</span></span>`;
+    }
+
+    function vestirFace(face) {
+      const extinguir = face !== "reativar";
+      icone.className = `icone-acao icone-acao-pequeno mt-0.5 ${extinguir ? "text-error" : "text-agua-700"}`;
+      icone.innerHTML = `<svg viewBox="0 0 24 24"><use href="#${extinguir ? "glifo-lixeira" : "glifo-reativar"}"/></svg>`;
+      cabecalho.textContent = extinguir ? "Extinguir unidade" : "Reativar unidade";
+      confirmar.className = `btn btn-sm ${extinguir ? "btn-error btn-soft" : "btn-onsen"}`;
+      campoSelect.classList.toggle("hidden", !extinguir);
+    }
+
+    function desenharModal(sigla) {
+      const dados = UNIDADES[sigla];
+      if (!dados) {
+        vestirFace("extinguir");
+        subtitulo.textContent = "A unidade sai da estrutura. O que ela carrega sobe para a unidade superior.";
+        previa.innerHTML = `<div class="previa-extincao">
+          ${tile("Servidores", vazio("—"))}
+          ${tile("Subordinadas", vazio("—"))}
+          ${tile("Passam a responder a", vazio("Escolha a unidade acima."))}
+        </div>`;
+        confirmar.classList.add("btn-disabled");
+        confirmar.textContent = "Extinguir";
+        return;
+      }
+      vestirFace(dados.face);
+      confirmar.classList.remove("btn-disabled");
+
+      if (dados.face === "reativar") {
+        subtitulo.textContent = `${sigla} · Divisão de Estudos Econômicos`;
+        previa.innerHTML = `<div class="previa-extincao">
+          ${tile("Atribuições", dados.atribuicoes ? valor(dados.atribuicoes) : vazio("Nenhuma a restaurar"))}
+          ${tile("Concessões", dados.concessoes ? valor(dados.concessoes) : vazio("Nenhuma a restaurar"))}
+          ${tile("Volta a responder a", unidadeAlvo(dados.destino, dados.cor))}
+        </div>
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+          <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <p class="text-[13px] text-base-content/80">Voltam a unidade e as competências que caíram com ela. <strong>Servidores e subordinadas não voltam</strong> — a lotação e a hierarquia se refazem uma a uma.</p>
+        </div>`;
+        confirmar.textContent = `Reativar a ${sigla}`;
+        return;
+      }
+
+      subtitulo.textContent = "A unidade sai da estrutura. O que ela carrega sobe para a unidade superior.";
+      const nada = dados.servidores === 0 && dados.subordinadas === 0;
+      const tarja = nada
+        ? `<div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+             <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+             <p class="text-[13px] text-base-content/80">Nada será transferido: a <strong>${sigla}</strong> não tem servidores lotados nem subordinadas.</p>
+           </div>`
+        : `<div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+             <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+             <p class="text-[13px] text-base-content/80">Há hoje <strong>${dados.servidores} servidores</strong> na ${sigla}. Extinguindo, eles e as <strong>${dados.subordinadas} subordinadas</strong> passam a responder à <strong>${dados.destino}</strong>, e as <strong>${dados.atribuicoes} atribuições</strong> da unidade deixam de valer.</p>
+           </div>`;
+      previa.innerHTML = `<div class="previa-extincao">
+        ${tile("Servidores", dados.servidores ? valor(dados.servidores) : vazio("Nenhum lotado"))}
+        ${tile("Subordinadas", dados.subordinadas ? valor(dados.subordinadas) : vazio("Nenhuma"))}
+        ${tile("Passam a responder a", unidadeAlvo(dados.destino, dados.cor))}
+      </div>${tarja}`;
+      confirmar.textContent = `Extinguir a ${sigla}`;
+    }
+
+    // No servidor a escolha já vem no partial e o `htmx:afterSwap` remonta a casca do select. Aqui
+    // o mock escolhe em memória, então precisa acertar o rótulo do gatilho na mão.
+    function escolherNoSelect(sigla) {
+      select.value = sigla;
+      const rotulo = select.closest(".select-onsen")?.querySelector(".select-onsen-trigger span");
+      if (rotulo) rotulo.textContent = select.options[select.selectedIndex]?.textContent ?? "";
+    }
+
+    document.querySelectorAll("[data-abrir-modal]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        const sigla = botao.dataset.abrirModal || "";
+        if (UNIDADES[sigla] && UNIDADES[sigla].face !== "reativar") escolherNoSelect(sigla);
+        desenharModal(sigla);
+        chaveModal.checked = true;
+      });
+    });
+    select.addEventListener("change", () => desenharModal(select.value));
+
+    toggle.addEventListener("change", () => {
+      ocultoExtintas.value = toggle.checked ? "1" : "";
+      document.querySelectorAll("[data-extinta]").forEach((no) => {
+        no.classList.toggle("hidden", !toggle.checked);
+      });
+    });
+
+    desenharModal("");
+  </script>
+</body>
+</html>
