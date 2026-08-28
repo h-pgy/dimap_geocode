@@ -6,7 +6,8 @@ description: Design system "Onsen de Inverno" e padronização dos componentes d
 # Design System "Onsen de Inverno" — DIMAP GeoCoder
 
 Esta skill define o design system do projeto e **como construir componentes com Atomic Design**.
-A referência visual validada vive em `examples/design_system.html` (styleguide sobre mapa vivo) e
+A referência visual validada vive em `examples/design_system.html` (styleguide sobre o fundo oficial
+da área administrativa) e
 `examples/mock_ui.html` (aplicação mockada). Qualquer componente novo nasce seguindo o método do §2.
 
 ## 1. O Conceito: água límpida sob luz fria de inverno
@@ -281,6 +282,11 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
   ~500ms) entre o mapa e o painel. O mapa embaça; nada escurece.
 - A "lente" é óptica simulada por overlays `pointer-events-none`. **Proibido distorcer o mapa
   geometricamente** (transforms/SVG displacement): desalinha os cliques do Leaflet.
+- **O snippet acima é da home.** Toda tela que não é a home roda sobre o **fundo da área
+  administrativa** — a mesma lente sobre a ortofoto dessaturada à deriva —, e ele já existe pronto:
+  `{% include "mapping/_mapa_admin.html" %}` mais o módulo `js/mapa/fundo_admin.js`. Página nova não
+  recopia camada nenhuma. Mock e styleguide montam esse mesmo par pelo
+  `examples/fundo-admin.js` da skill `mock`.
 
 ## 7. Coreografia, micro-interações e HTMX
 
@@ -337,7 +343,8 @@ Cuidados que já quebraram build/render:
 ## 9. Arquivos de referência (ordem de consulta)
 
 1. **Styleguide vivo:** `examples/design_system.html` — tokens, átomos, moléculas e organismos
-   renderizados sobre o mapa real. **É o contrato visual**; componente novo é registrado aqui.
+   renderizados sobre o fundo oficial da área administrativa — a condição real de uso.
+   **É o contrato visual**; componente novo é registrado aqui.
 2. **Aplicação mockada:** `examples/mock_ui.html` — o design system aplicado na UX completa
    (barra única, gaveta, coreografia de foco).
 3. **CSS dos tokens:** `static/src/tema-dimap.dev.css` — a **fonte única** (§8). O espelho

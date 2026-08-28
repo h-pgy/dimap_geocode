@@ -12,6 +12,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
@@ -99,13 +105,6 @@
 </head>
 
 <body class="min-h-screen text-base-content antialiased">
-
-  <!-- Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual. -->
-  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
   <!-- Filtro de gravação no gelo + glifos usados neste mock -->
   <svg width="0" height="0" class="absolute" aria-hidden="true">
     <defs>
@@ -1069,45 +1068,6 @@
   <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
 
   <script>
-    // Fundo à deriva (SPEC user_admin/007), reproduzido aqui porque o mock não passa pelo Django.
-    const CENTRO = [-23.5505, -46.6333];
-    const ZOOM = 15;
-    const PERIODO_MS = 150000;
-    const AMPLITUDE_GRAUS = 0.008;
-    const INTERVALO_FRAME_MS = 50;
-
-    const mapa = L.map("map-admin", {
-      zoomControl: false,
-      attributionControl: true,
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      keyboard: false,
-    }).setView(CENTRO, ZOOM);
-
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      subdomains: "abcd",
-      maxZoom: 20,
-      attribution: "&copy; OpenStreetMap &copy; CARTO",
-    }).addTo(mapa);
-
-    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let ultimoFrame = 0;
-
-    function derivar(agora) {
-      if (!reduzido.matches && agora - ultimoFrame > INTERVALO_FRAME_MS) {
-        ultimoFrame = agora;
-        const fase = (agora % PERIODO_MS) / PERIODO_MS * 2 * Math.PI;
-        mapa.setView(
-          [CENTRO[0] + Math.sin(fase) * AMPLITUDE_GRAUS * 0.6, CENTRO[1] + Math.cos(fase) * AMPLITUDE_GRAUS],
-          ZOOM,
-          { animate: false },
-        );
-      }
-      requestAnimationFrame(derivar);
-    }
-    requestAnimationFrame(derivar);
-
     // Coreografia do mock. No servidor: o toggle troca o painel, a lixeira e o botão da página
     // trazem o modal, e o select troca o bloco da prévia.
     const UNIDADES = {
@@ -1222,6 +1182,7 @@
     });
 
     desenharModal("");
+  
   </script>
 </body>
 </html>

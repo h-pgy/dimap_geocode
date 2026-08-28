@@ -12,6 +12,13 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
@@ -96,7 +103,6 @@
 </head>
 
 <body class="min-h-screen">
-  <div id="map" class="fixed inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
 
   <!-- defs da gravação (SPEC user_admin/013) — repetidos aqui só para o mock renderizar sozinho;
        na aplicação vêm de templates/partials/_filtros_gravacao.html, no base.html. -->
@@ -897,13 +903,6 @@
     <label class="modal-backdrop" for="modal-remover">Fechar</label>
   </div>
   <!-- /partial -->
-
-  <script>
-    const mapa = L.map("map", { zoomControl: false, attributionControl: false })
-      .setView([-23.5505, -46.6333], 15);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(mapa);
-  </script>
-
   <!-- Percorrer o organograma é estado visual do controle (SPEC user_admin/018): o módulo move o
        ego e escava o caminho sobre a árvore que já está no DOM. -->
   <script type="module" src="/static/src/js/ui/arvore_hierarquica.js"></script>

@@ -12,6 +12,13 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- O fundo oficial da área administrativa, montado a partir do partial e do módulo da própria
+       aplicação (skill `mock`): a peça se valida sobre o mesmo fundo em que vai viver. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
@@ -109,15 +116,6 @@
       <g id="glifo-mais"><path d="M12 5v14"/><path d="M5 12h14"/></g>
     </defs>
   </svg>
-
-  <!-- Mapa real de fundo: o design system é validado na condição de uso -->
-  <div id="map" class="fixed inset-0 z-0 pointer-events-none saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
-  <!-- Tinta de água límpida (multiply com ciano claro) -->
-  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
-  <!-- Lente (efeito globo LEVE): vinheta ciana nas bordas + desfoque de borda + luz fria no centro -->
-  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
 
   <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
 
@@ -2023,7 +2021,7 @@
         <p class="text-overline px-2">Fundo da área administrativa</p>
         <div class="glass-panel p-6 flex flex-col gap-3">
           <p class="text-sm text-base-content/80">O partial <span class="text-code">mapping/_mapa_admin.html</span> repete as lentes e filtros azuis sob um canvas de <strong>ortofoto do GeoSampa dessaturada e desfocada</strong> (grayscale, blur 30px, contraste reduzido). O filtro azul é forte no centro e suaviza nas bordas, criando foco visual nos formulários. O canvas fica em <span class="text-code">pointer-events-none</span> e deriva devagar (<span class="text-code">js/mapa/deriva.js</span>), parando com a aba oculta e com <span class="text-code">prefers-reduced-motion: reduce</span>.</p>
-          <p class="form-field-hint">A identidade visual não muda de seção para seção: a lente é a mesma do mapa do produto, só o que está sob ela é outro.</p>
+          <p class="form-field-hint">A identidade visual não muda de seção para seção: a lente é a mesma do mapa do produto, só o que está sob ela é outro. É sobre ele que esta página roda — as peças abaixo estão na condição real de uso.</p>
         </div>
       </div>
     </section>
@@ -2076,14 +2074,6 @@
     </div>
     <label class="modal-backdrop" for="modal-styleguide">Fechar</label>
   </div>
-
-  <script>
-    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-23.5505, -46.6333], 14);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd',
-      maxZoom: 20
-    }).addTo(map);
-  </script>
 
   <!-- Os utilitários de UI do projeto, tal e qual (exigem o Live Server na raiz, como o tema). -->
   <script type="module" src="/static/src/js/ui/select_onsen.js"></script>

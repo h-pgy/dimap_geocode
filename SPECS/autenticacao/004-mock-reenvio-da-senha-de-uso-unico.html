@@ -12,6 +12,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
@@ -56,13 +62,6 @@
 </head>
 
 <body class="min-h-screen text-base-content">
-
-  <!-- Fundo da área administrativa (SPEC user_admin/007) -->
-  <div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.05] contrast-[0.95]"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
-  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
 
   <!-- Filtros da gravação (templates/partials/_filtros_gravacao.html) — sem os defs, .etched não desenha -->
   <svg width="0" height="0" class="absolute" aria-hidden="true">
@@ -706,18 +705,6 @@
   </div>
 
   <script>
-    // Mapa de fundo com deriva suave (SPEC user_admin/007)
-    const mapa = L.map("map-admin", {
-      center: [-23.5505, -46.6333], zoom: 13, zoomControl: false, attributionControl: false,
-      dragging: false, scrollWheelZoom: false, doubleClickZoom: false, keyboard: false, touchZoom: false,
-    });
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(mapa);
-    let angulo = 0;
-    setInterval(() => {
-      angulo += 0.0016;
-      mapa.panTo([-23.5505 + Math.sin(angulo) * 0.012, -46.6333 + Math.cos(angulo) * 0.012], { animate: true, duration: 2 });
-    }, 2000);
-
     // Botão de copiar: as três faces do átomo (static/src/js/ui/copiar_senha.js)
     document.querySelectorAll("[data-copiar-senha]").forEach((botao) => {
       botao.addEventListener("click", async () => {
@@ -755,6 +742,7 @@
         correr(botao.closest("[data-bloco-reenvio]").querySelector("[data-contagem-reenvio]"));
       });
     });
+  
   </script>
 </body>
 </html>
