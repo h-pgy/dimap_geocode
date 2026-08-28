@@ -3,7 +3,7 @@
 {# que vem tem a data à frente.                                                                    #}
 <div class="flex items-center justify-between gap-3{% if item.encerrada %} opacity-55{% endif %}{% if not forloop.first %} border-t border-white/50 pt-3{% endif %}">
   <div class="linha-pessoa">
-    {% include "user_admin/partials/_imagem_perfil.html" with perfil=item.perfil imagem=item.imagem cor_unidade_hex=item.cor_unidade_hex tamanho="w-10 h-10" %}
+    {% include "user_admin/partials/_imagem_perfil.html" with perfil=item.perfil imagem=item.imagem cor_unidade_hex=item.cor_unidade_hex tamanho="w-10 h-10" halo_escala="0.5" %}
     <div class="min-w-0">
       <p class="linha-pessoa-nome">{{ item.perfil.nome }} {{ item.perfil.sobrenome }}</p>
       <p class="linha-pessoa-meta">RF {{ item.perfil.rf }} · {{ item.perfil.unidade.sigla }} · {{ item.periodo }}{% if item.situacao %} · {{ item.situacao }}{% endif %}</p>

@@ -287,9 +287,11 @@ html[data-theme="dimap"] {
   .avatar-glass > svg { @apply w-full h-full; }
   /* A imagem cede um pouco ao gelo por baixo: disco opaco no meio de uma cena de vidro é o único
      corpo sólido da tela. A opacidade fica no FILHO, nunca no .avatar-glass — no pai ela levaria
-     junto o halo da unidade e o domo, que são luz e não podem esmaecer com a foto. */
-  .avatar-glass > img,
-  .avatar-glass > svg { @apply opacity-[0.88]; }
+     junto o halo da unidade e o domo, que são luz e não podem esmaecer com a foto.
+     SVG de letras precisa de mais transparência para integrar melhor com o vidro e evitar
+     aparência pixelada — opacidade de cor sólida sobre fundo translúcido fica áspera. */
+  .avatar-glass > img { @apply opacity-[0.88]; }
+  .avatar-glass > svg { @apply opacity-[0.65]; }
 
   /* ==================== ÁTOMOS ==================== */
   .btn-onsen {

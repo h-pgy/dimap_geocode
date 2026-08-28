@@ -15,7 +15,7 @@
           <p class="text-overline">Titular hoje</p>
           <div class="tarja-vinculo">
             <div class="linha-pessoa">
-              {% include "user_admin/partials/_imagem_perfil.html" with perfil=titular imagem=titular_imagem cor_unidade_hex=titular_cor_unidade_hex tamanho="w-10 h-10" %}
+              {% include "user_admin/partials/_imagem_perfil.html" with perfil=titular imagem=titular_imagem cor_unidade_hex=titular_cor_unidade_hex tamanho="w-10 h-10" halo_escala="0.5" %}
               <div class="min-w-0 flex-1">
                 <p class="linha-pessoa-nome">{{ titular.nome }} {{ titular.sobrenome }}</p>
                 <p class="linha-pessoa-meta">RF {{ titular.rf }}{% if titular.cargo_comissao %} · {{ titular.cargo_comissao.padrao }} · {{ titular.cargo_comissao.nome }}{% endif %}</p>

@@ -29,7 +29,7 @@
       {% if titular %}
         <div class="stat-value">
           <div class="linha-pessoa">
-            {% include "user_admin/partials/_imagem_perfil.html" with perfil=titular imagem=titular_imagem cor_unidade_hex=titular_cor_unidade_hex tamanho="w-11 h-11" %}
+            {% include "user_admin/partials/_imagem_perfil.html" with perfil=titular imagem=titular_imagem cor_unidade_hex=titular_cor_unidade_hex tamanho="w-11 h-11" halo_escala="0.5" %}
             <div class="min-w-0 flex-1">
               <p class="linha-pessoa-nome">{{ titular.nome }} {{ titular.sobrenome }}</p>
               <p class="linha-pessoa-meta">RF {{ titular.rf }}{% if titular.cargo_comissao %} · {{ titular.cargo_comissao.padrao }} · {{ titular.cargo_comissao.nome }}{% endif %}</p>
@@ -53,7 +53,7 @@
       {% if substituto %}
         <div class="stat-value">
           <div class="linha-pessoa">
-            {% include "user_admin/partials/_imagem_perfil.html" with perfil=substituto imagem=substituto_imagem cor_unidade_hex=substituto_cor_unidade_hex tamanho="w-11 h-11" %}
+            {% include "user_admin/partials/_imagem_perfil.html" with perfil=substituto imagem=substituto_imagem cor_unidade_hex=substituto_cor_unidade_hex tamanho="w-11 h-11" halo_escala="0.5" %}
             <div class="min-w-0 flex-1">
               <p class="linha-pessoa-nome">{{ substituto.nome }} {{ substituto.sobrenome }}</p>
               <p class="linha-pessoa-meta">RF {{ substituto.rf }}{% if substituto.cargo_comissao %} · {{ substituto.cargo_comissao.padrao }} · {{ substituto.cargo_comissao.nome }}{% endif %}</p>
