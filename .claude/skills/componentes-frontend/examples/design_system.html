@@ -903,7 +903,17 @@
         </div>
 
         <!-- Fundo de ortofoto (SPEC design/010) -->
-        <div class="grid lg:grid-cols-3 gap-6">
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">.fundo-ortofoto__deriva · .fundo-ortofoto__imagem</p>
+          <div class="relative overflow-hidden rounded-2xl h-56 card-well" style="--deriva-margem: 96px; --deriva-periodo: 8s">
+            <div class="fundo-ortofoto__deriva outline outline-2 outline-sakura-500">
+              <div class="fundo-ortofoto__imagem" style="--fundo-ortofoto: url('/static/src/img/ortofotos_fundo/butanta.png')"></div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">A deriva fora da escala real — transbordo de 96px e volta de 8s — com a moldura do átomo em <span class="text-code">sakura</span> para mostrar a contenção: ela permanece fora do quadro nos dois extremos. Duas oscilações em razão 1:2 (Lissajous), a de dentro no dobro da frequência e na metade da amplitude, então a volta nunca repete o traço. <span class="text-code">brightness</span>/<span class="text-code">contrast</span> são do material e vivem aqui, não na lente. Em escala real é o fundo desta página.</p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6">
           <div class="flex flex-col gap-2">
             <p class="text-overline">.range-onsen</p>
             <div class="card-well p-4 flex items-center min-h-[6.5rem]">
@@ -918,26 +928,6 @@
               <button class="btn-etched btn-etched-swell etched btn-etched-mini">+ rápido</button>
             </div>
             <p class="text-xs text-base-content/60">Variante do <span class="text-code">.btn-etched</span> para um controle flutuante pequeno; o átomo base segue intocado — usado como está pela autenticação e pela lista de unidades.</p>
-          </div>
-          <div class="flex flex-col gap-2">
-            <p class="text-overline">.fundo-controle</p>
-            <div class="card-well p-4 flex items-center justify-center min-h-[6.5rem]">
-              <div class="fundo-controle glass-panel">
-                <div class="fundo-controle__cabecalho">
-                  <span class="text-overline">Fundo</span>
-                  <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar o fundo" />
-                </div>
-                <div class="fundo-controle__corpo flex flex-col gap-1.5">
-                  <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">Trocar</button>
-                  <div class="fundo-controle__velocidade">
-                    <button class="btn-etched etched btn-etched-mini">&minus;</button>
-                    <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
-                    <button class="btn-etched etched btn-etched-mini">+</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <p class="text-xs text-base-content/60">Molécula: <span class="text-code">.toggle-onsen</span> + <span class="text-code">.btn-etched-mini</span> + <span class="text-code">.range-onsen</span>. Desligado, o <span class="text-code">:has()</span> apaga o corpo — não há velocidade a ajustar sem imagem a trocar. O controle real fica fixo no canto inferior direito desta página, agindo sobre o fundo dela.</p>
           </div>
         </div>
 
@@ -1983,6 +1973,50 @@
               <button type="button" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
                 <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controle do fundo (SPEC design/010) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Controle do fundo (<span class="text-code">.fundo-controle</span>)</p>
+        <p class="text-sm text-base-content/70 -mt-1"><span class="text-code">.toggle-onsen</span> + <span class="text-code">.btn-etched-mini</span> + <span class="text-code">.range-onsen</span>. Desligado, o <span class="text-code">:has()</span> apaga o corpo — não há velocidade a ajustar sem imagem a trocar. O controle vivo fica fixo no canto inferior direito desta página, agindo sobre o fundo dela; as duas cópias abaixo são inertes.</p>
+        <div class="card-well p-5 grid gap-5 sm:grid-cols-2 justify-items-center">
+          <!-- ligado, no meio da escala -->
+          <div class="fundo-controle glass-panel">
+            <div class="fundo-controle__cabecalho">
+              <span class="text-overline">Fundo</span>
+              <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar o fundo" />
+            </div>
+            <div class="fundo-controle__corpo flex flex-col gap-1.5">
+              <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">
+                <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+                Trocar
+              </button>
+              <div class="fundo-controle__velocidade">
+                <button class="btn-etched etched btn-etched-mini" aria-label="Mais devagar">&minus;</button>
+                <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
+                <button class="btn-etched etched btn-etched-mini" aria-label="Mais rápido">+</button>
+              </div>
+            </div>
+          </div>
+          <!-- desligado -->
+          <div class="fundo-controle glass-panel">
+            <div class="fundo-controle__cabecalho">
+              <span class="text-overline">Fundo</span>
+              <input type="checkbox" class="toggle-onsen" aria-label="Mostrar o fundo" />
+            </div>
+            <div class="fundo-controle__corpo flex flex-col gap-1.5">
+              <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">
+                <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+                Trocar
+              </button>
+              <div class="fundo-controle__velocidade">
+                <button class="btn-etched etched btn-etched-mini" aria-label="Mais devagar">&minus;</button>
+                <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
+                <button class="btn-etched etched btn-etched-mini" aria-label="Mais rápido">+</button>
+              </div>
             </div>
           </div>
         </div>

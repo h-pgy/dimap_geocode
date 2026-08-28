@@ -61,16 +61,14 @@ O mock **não duplica o design system**. Ele faz `fetch` de `static/src/tema-dim
 
 ## O fundo da página: o oficial, nunca um novo
 
-Toda tela que **não é a home** roda sobre o **fundo da área administrativa** — a ortofoto do GeoSampa
-dessaturada, à deriva, sob a lente de água. O mock **não recria esse fundo**: ele monta o mesmo
-`templates/mapping/_mapa_admin.html` e o mesmo `static/src/js/mapa/fundo_admin.js` que a aplicação
-usa, por um módulo só:
+Toda tela que **não é a home** roda sobre o **fundo da área administrativa** — a ortofoto
+pré-gerada em tons de cinza, à deriva, sob a lente de água (SPEC design/010). O mock **não recria
+esse fundo**: ele monta os mesmos partials que a aplicação usa — `templates/mapping/_mapa_admin.html`
+e os que ele inclui (`_glifos_fundo.html`, `_fundo_ortofoto.html`, `_controle_fundo.html`) — mais o
+`static/src/js/ui/controle_fundo.js`, por um módulo só:
 
 ```html
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<!-- Fundo da área administrativa: o partial e o módulo da própria aplicação. -->
+<!-- Fundo da área administrativa: os partials e o módulo da própria aplicação. -->
 <script type="module">
   import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
   montarFundoAdmin();
@@ -80,17 +78,30 @@ usa, por um módulo só:
 O conteúdo do mock fica **acima** dele, num `<div class="relative z-10">` — o fundo é `fixed` em
 `z-0`/`z-[1]`.
 
-Nada além dessas linhas: nem as camadas da lente copiadas no `<body>`, nem um `L.map` com tiles de
-CDN no rodapé. O `examples/fundo-admin.js` desta skill é o **único** lugar em que um mock fala do
-fundo, e o que ele guarda é só o contexto que o Django injetaria — URL do WMS, camada, centro e
-zoom, espelhando `config/settings.py`.
+**O fundo vem com o seu controle.** O `.fundo-controle` (liga/desliga, trocar, velocidade) é parte
+do partial e aparece `fixed` no canto inferior direito, em `z-20`: não é sobra de mock nem peça a
+demonstrar — é o produto. Não coloque conteúdo do mock embaixo dele, e não copie a molécula para o
+arquivo só para "mostrar o fundo funcionando".
+
+Nada além dessas linhas: nem as camadas da lente copiadas no `<body>`, nem o canvas da ortofoto
+remontado à mão. Leaflet **não entra** num mock administrativo — o fundo deixou de ser mapa vivo
+quando a ortofoto passou a ser pré-gerada. O `examples/fundo-admin.js` desta skill é o **único**
+lugar em que um mock fala do fundo, e o que ele guarda é só o que o Django resolveria — o sorteio
+da ortofoto e o `{% static %}` que o `fetch` cru do template não expande.
 
 *Por quê:* fundo copiado é fundo que envelhece. Enquanto cada mock trazia as suas cinco camadas e o
-seu `L.map`, uma troca no fundo do produto — como a dos tiles públicos pela ortofoto — deixava para
-trás a coleção inteira de mocks, cada um provando um design sobre um fundo que não existe mais.
+seu `L.map`, uma troca no fundo do produto — como a dos tiles públicos pela ortofoto, e depois a do
+WMS ao vivo pelo PNG pré-gerado — deixava para trás a coleção inteira de mocks, cada um provando um
+design sobre um fundo que não existe mais.
 
 A **home** é a exceção: ali o mapa é o produto, com as bases e a geometria do resultado — veja
-`examples/mock_ui.html` da skill `componentes-frontend`.
+`examples/mock_ui.html` da skill `componentes-frontend`. É o único mock que carrega Leaflet.
+
+**O fundo é a exceção de si mesmo.** Quando o assunto da SPEC **é o próprio fundo** (design/010), o
+mock não pode importá-lo pronto — a peça em julgamento é ela. Aí o arquivo monta o canvas e a
+molécula do controle no próprio HTML e pode trazer uma seção de **andaime** (calibragem: escolher
+ponto, amplitude, período) que não vai para o produto e é marcada como tal. Fora desse caso, andaime
+não existe.
 
 ---
 
@@ -154,10 +165,8 @@ Ponto de partida obrigatório. Substitua `<épico>`/`<nº>` e omita as seções 
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação, nunca recriados. -->
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação, nunca recriados.
+       Sem Leaflet: a ortofoto é pré-gerada (SPEC design/010), não mapa vivo. -->
   <script type="module">
     import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
     montarFundoAdmin();
@@ -341,8 +350,8 @@ visual dependendo de disciplina individual em vez de peça compartilhada (§3.4 
 - [ ] Nenhum CSS ad hoc; pele nova só em `@layer components` com `@apply` de utilities.
 - [ ] Peça nova mostrada em **todos** os seus estados, inclusive o estado de falta.
 - [ ] Renderizado sobre a condição real de uso, não sobre fundo chapado — o fundo administrativo
-      vem do `examples/fundo-admin.js` desta skill, sem nenhuma camada de lente nem `L.map` recriados
-      no arquivo.
+      vem do `examples/fundo-admin.js` desta skill, sem nenhuma camada de lente, canvas de ortofoto
+      ou Leaflet no arquivo.
 - [ ] A tela montada **anota o recorte de partials** — `partial:` com caminho previsto, `fica na
       página:` no que não é, e o gatilho HTMX quando o partial existe para ser trocado.
 - [ ] **Comentários só de interface** — camada, peça e estado. Nenhuma narrativa de modelagem, regra de
