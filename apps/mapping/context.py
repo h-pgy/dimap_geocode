@@ -24,15 +24,10 @@ def contexto_mapa_base() -> dict[str, Any]:
 
 
 def contexto_fundo_admin() -> dict[str, Any]:
-    """Contexto do fundo à deriva da área administrativa: tiles públicos + centro/zoom, sem WMS.
-    Ali não há território a mostrar, então nenhuma chamada ao GeoSampa (SPEC user_admin/007)."""
+    """Contexto do fundo à deriva da área administrativa: ortofoto do GeoSampa (dessaturada) + centro/zoom.
+    Usa a mesma ortofoto da home, mas com dessaturação aplicada no CSS antes do filtro azul."""
     return {
-        "tiles_publicos": {
-            "url": MAP_TILES_PUBLICOS_URL,
-            "subdominios": MAP_TILES_PUBLICOS_SUBDOMINIOS,
-            "atribuicao": MAP_TILES_PUBLICOS_ATRIBUICAO,
-            "zoom_maximo": MAP_TILES_PUBLICOS_ZOOM_MAXIMO,
-        },
+        "wms": {"url": WMS_URL, "version": WMS_VERSION, "bases": WMS_BASES},
         "config_fundo": {
             "centro": MAP_CENTRO_DEFAULT,
             "zoom": MAP_ZOOM_FUNDO_ADMIN,

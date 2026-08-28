@@ -23,14 +23,18 @@ function criarMapaAdmin(centro, zoom) {
 }
 
 function montarFundoAdmin() {
-  const tiles = lerJson("mapa-admin-tiles");
+  const wms = lerJson("mapa-admin-wms");
   const cfg = lerJson("mapa-admin-config");
-  if (!tiles || !cfg || mapa) return;
+  if (!wms || !cfg || mapa) return;
   mapa = criarMapaAdmin(cfg.centro, cfg.zoom);
-  L.tileLayer(tiles.url, {
-    subdomains: tiles.subdominios,
-    maxZoom: tiles.zoom_maximo,
-    attribution: tiles.atribuicao,
+  // Usa a ortofoto (1ª base da lista) do WMS, com dessaturação aplicada no CSS (#map-admin)
+  const ortofoto = wms.bases[0];
+  L.tileLayer.wms(ortofoto.url || wms.url, {
+    layers: ortofoto.layers,
+    version: wms.version,
+    format: "image/png",
+    transparent: false,
+    attribution: "GeoSampa — PMSP",
   }).addTo(mapa);
   derivarMapa(mapa, cfg.centro, cfg.zoom);
 }

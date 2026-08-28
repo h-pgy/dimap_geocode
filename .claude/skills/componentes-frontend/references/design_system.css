@@ -95,10 +95,26 @@
   .glass-shadow  { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)]; }
   .glass-glow    { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_32px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.5)]; }
 
+  /* ==================== GRAVAÇÃO ==================== */
+  /* Gravação no gelo: relevo escavado por filtro SVG, marcando afordância sem carregar informação.
+     A tinta é controlada via color e o filtro (url(#etched-onsen)) aplica a sombra interna. */
+  .etched {
+    filter: url(#etched-onsen);
+    color: rgba(13, 27, 42, 0.4);
+    @apply transition-all duration-300;
+  }
+  .etched-deeper {
+    color: rgba(13, 27, 42, 0.3);
+  }
+  .etched-inked {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
   /* ==================== MATERIAIS COMPOSTOS ==================== */
   /* Gelo fosco: painel padrão, tinta ESCURA sobre vidro claro */
   .glass-panel {
-    @apply rounded-2xl backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
+    @apply rounded-2xl backdrop-blur-[18px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
   }
   /* Vidro profundo: variante escura pontual (tooltips, contrastes) — tinta CLARA */
   .glass-panel-deep {

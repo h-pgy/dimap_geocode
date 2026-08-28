@@ -161,7 +161,7 @@ html[data-theme="dimap"] {
      isso a gravação NUNCA carrega informação, só afordância. Só vale sobre vidro claro. */
   .etched {
     filter: url(#etched-onsen);
-    color: rgba(13, 27, 42, 0.14);
+    color: rgba(13, 27, 42, 0.4);
     @apply transition-all duration-300;
   }
   /* Os deslocamentos do filtro são px absolutos e não escalam com o font-size: acima de ~32px o
@@ -186,7 +186,7 @@ html[data-theme="dimap"] {
 
   /* ==================== MATERIAIS COMPOSTOS ==================== */
   .glass-panel {
-    @apply rounded-2xl backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
+    @apply rounded-2xl backdrop-blur-[18px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
   }
   .glass-panel-thick {
     @apply rounded-2xl backdrop-blur-[28px] bg-gradient-to-br from-white/97 via-white/93 to-white/88 border border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
