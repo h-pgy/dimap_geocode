@@ -203,6 +203,29 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco);
   }
 
+  /* Vidro sobre vidro (SPEC design/009): a translucidez é multiplicativa, e o material se pinta UMA
+     vez por pilha — quatro placas empilhadas chegam a 98% de branco, que é papel, não gelo.
+     Empilhada, a peça continua sendo peça pelo que não se repete: o desfoque (que compõe com o da
+     de baixo, como vidro sobre vidro faz), a aresta de luz e a sombra.
+
+     A profundidade é lida do DOM porque é o único lugar em que ela existe: o mesmo partial é
+     incluído em três lugares e é alvo de swap HTMX, então não tem como carregá-la numa classe.
+
+     Os dois :where() zeram a especificidade do que envolvem — a regra fica em (0,1,0), igual à da
+     peça base, vence por vir depois, e uma utility no markup ainda ganha das duas.
+
+     .modal-box-glass sai pelo :not(): a caixa do modal mantém a pele onde quer que esteja (SPEC
+     design/008 v2). E .glass-panel-thick não é alcançado — o polegar da .chave-onsen segue intocado. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  .glass-panel:where(:not(.modal-box-glass)) {
+    @apply bg-none;
+  }
+  /* O poço aninhado perde a tinta e fica com o degrau: profundidade é o que descreve um poço. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  .card-well {
+    @apply bg-transparent;
+  }
+
   /* Modal de vidro (SPEC user_admin/012, recalibrado na SPEC design/008): o fundo EMBAÇA a 16px,
      dissolvendo formulários densos e toasts sem escurecer a cena (§6 do design system).
      O bg-transparent! derruba o véu escuro que o daisyUI põe em .modal e o base-100 opaco de .modal-box;
@@ -646,13 +669,19 @@ html[data-theme="dimap"] {
      linha de corte, deixando aparecer uma faixa de linha nítida. */
   .table-onsen-wrap {
     @apply relative overflow-auto overscroll-contain max-h-[32rem] rounded-2xl;
-    /* A coluna da barra gravada: como é padding do rolador, a bandeja também para aqui. */
-    padding-right: 1.125rem;
+    /* A coluna da barra gravada: reservada no rolador para que a LINHA não corra sob o polegar.
+       Em token porque a bandeja precisa da mesma medida para atravessá-la. */
+    --coluna-barra: 1.125rem;
+    padding-right: var(--coluna-barra);
     scrollbar-width: none;
   }
   .table-onsen-wrap::-webkit-scrollbar { display: none; }
   /* Âncora da barra — ela é irmã do rolador, não filha, senão rolaria com o conteúdo. */
   .table-onsen-poco { @apply relative; }
+  /* Cabeçalho rente (SPEC design/009 v3): com a bandeja encostada na borda do poço, a folga do topo
+     deixa de existir e a barra gravada começa direto abaixo dela. O :has(thead) é o que separa a
+     tabela com cabeçalho do poço que só rola conteúdo — este mantém a folga em volta. */
+  .table-onsen-poco:has(thead) { --folga-topo: 0px; }
 
   /* Barra de rolagem gravada: o trilho é o SULCO e o polegar é a ÁGUA que o enche — o par
      repouso/entintado do sistema aplicado a um controle. Serve a QUALQUER .card-well rolável.
@@ -661,8 +690,9 @@ html[data-theme="dimap"] {
      correria ao lado da bandeja. Par com static/src/js/ui/scroll_etched.js. */
   .scroll-etched {
     @apply absolute right-2 w-2.5 rounded-full pointer-events-none;
-    /* Começa onde a bandeja termina; quem a mede é o JS (altura de elemento não se lê em CSS). */
-    top: calc(0.5rem + var(--altura-cabecalho, 0px));
+    /* Começa onde a bandeja termina; quem a mede é o JS (altura de elemento não se lê em CSS).
+       A folga do topo some no poço cuja bandeja encosta na borda — a barra a acompanha. */
+    top: calc(var(--folga-topo, 0.5rem) + var(--altura-cabecalho, 0px));
     bottom: 0.5rem;
     background: rgba(255, 255, 255, 0.16);
     /* Mais fundo que o poço que o contém (--sombra-poco): sulco cavado no fundo de uma bacia não
@@ -706,10 +736,14 @@ html[data-theme="dimap"] {
      peça ler como coisa POSTA sobre a superfície, e a coluna gravada ler como a superfície.
      Duas formas do mesmo material: caixa inteira fora da tabela, segmentos dentro dela — não
      existe elemento que envolva um <tr>, e como todo segmento repete o mesmo gradiente vertical na
-     mesma altura, as emendas somem. */
+     mesma altura, as emendas somem.
+     A densidade fica acima do gelo espesso (94%→86%) porque a bandeja é a única coisa entre o
+     cabeçalho grudento e as linhas que correm por trás: desde que o poço aninhado deixou de pintar
+     (SPEC design/009), o blur de 56px sozinho não apaga o texto que emerge. Abaixo do modal
+     (97%→88%), que é o teto: acima dele a peça deixa de ler como gelo. */
   .th-onsen-bandeja,
   .table-onsen thead th::before {
-    @apply backdrop-blur-[56px] bg-gradient-to-b from-white/74 to-agua-100/55 border-y border-white/55;
+    @apply backdrop-blur-[56px] bg-gradient-to-b from-white/94 to-agua-100/86 border-y border-white/55;
     @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9)];
     background-color: transparent;
   }
@@ -722,7 +756,13 @@ html[data-theme="dimap"] {
     @apply pointer-events-none absolute inset-0;
   }
   .table-onsen thead th:first-child::before { @apply rounded-l-2xl border-l; }
-  .table-onsen thead th:last-child::before { @apply rounded-r-2xl border-r; }
+  /* A bandeja ATRAVESSA a coluna da barra, ao contrário da linha: o polegar só começa abaixo do
+     cabeçalho, então não há o que desviar, e parar antes dela deixava um vazio no canto do poço.
+     O recorte do rolador é a padding box, então o negativo alcança a coluna sem ser cortado. */
+  .table-onsen thead th:last-child::before {
+    @apply rounded-r-2xl border-r;
+    right: calc(-1 * var(--coluna-barra, 0px));
+  }
   /* A folga de 10px dá à sombra da peça espaço para morrer DENTRO da própria célula: cada th é
      contexto de empilhamento próprio e o fundo de um corta em linha reta a sombra do vizinho. */
   .table-onsen thead th { @apply sticky top-0 z-20 p-2.5 align-top; }

@@ -45,11 +45,20 @@
         @apply bg-none;
       }
 
+      /* .card-well aninhado — token de material (1 · Tokens) */
+      :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well) .card-well {
+        @apply bg-transparent;
+      }
+
       /* ---- andaime do comparativo, só neste mock ---- */
       /* Desliga a regra acima para mostrar o empilhamento como está hoje. */
       .demo-hoje :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well) .glass-panel:where(:not(.modal-box-glass)),
       #tela:has(#comparar-tela:checked) :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well) .glass-panel:where(:not(.modal-box-glass)) {
         @apply bg-gradient-to-br from-white/65 via-white/45 to-white/30;
+      }
+      .demo-hoje :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well) .card-well,
+      #tela:has(#comparar-tela:checked) :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well) .card-well {
+        @apply bg-white/30;
       }
       .demo-coluna { @apply flex flex-col gap-2 min-w-0; }
       .demo-rotulo { @apply text-[11px] font-mono text-base-content/60; }
@@ -145,38 +154,42 @@
         <!-- .glass-panel aninhada · estado: dentro de um poço (a exceção) -->
         <div class="flex flex-col gap-5">
           <div class="glass-panel p-6 sm:p-8">
-            <h3 class="text-lg font-bold">1.2 · Placa dentro do poço</h3>
-            <p class="text-sm text-base-content/70 mt-1">Placa assentada em <span class="text-code">.card-well</span>. O poço também é superfície: a placa sobre ele conta como empilhamento.</p>
+            <h3 class="text-lg font-bold">1.2 · Poço dentro de placa</h3>
+            <p class="text-sm text-base-content/70 mt-1">A pilha das seções de <span class="text-code">perfil.html</span> e <span class="text-code">unidade.html</span>: placa da página › <span class="text-code">.card-well</span> › placa de dados. Empilhado, o poço também perde a tinta — quem o descreve é o degrau.</p>
           </div>
           <div class="grid lg:grid-cols-2 gap-6">
             <div class="demo-coluna demo-hoje">
-              <p class="demo-rotulo">hoje</p>
-              <div class="card-well p-5">
-                <p class="text-overline">Resumo</p>
-                <div class="glass-panel rounded-2xl p-5 mt-2 grid sm:grid-cols-2 gap-x-8 gap-y-3">
-                  <div class="min-w-0">
-                    <p class="text-overline">RF</p>
-                    <p class="valor-leitura text-code">812.345-6</p>
-                  </div>
-                  <div class="min-w-0">
-                    <p class="text-overline">Unidade</p>
-                    <p class="valor-leitura text-base-content/90">DIMAP-1</p>
+              <p class="demo-rotulo">hoje · 65% → 75,5% de branco sob a placa de dados</p>
+              <div class="glass-panel p-5">
+                <div class="card-well p-5">
+                  <p class="text-overline">Resumo</p>
+                  <div class="glass-panel rounded-2xl p-5 mt-2 grid sm:grid-cols-2 gap-x-8 gap-y-3">
+                    <div class="min-w-0">
+                      <p class="text-overline">RF</p>
+                      <p class="valor-leitura text-code">812.345-6</p>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-overline">Unidade</p>
+                      <p class="valor-leitura text-base-content/90">DIMAP-1</p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
             <div class="demo-coluna">
-              <p class="demo-rotulo">proposta</p>
-              <div class="card-well p-5">
-                <p class="text-overline">Resumo</p>
-                <div class="glass-panel rounded-2xl p-5 mt-2 grid sm:grid-cols-2 gap-x-8 gap-y-3">
-                  <div class="min-w-0">
-                    <p class="text-overline">RF</p>
-                    <p class="valor-leitura text-code">812.345-6</p>
-                  </div>
-                  <div class="min-w-0">
-                    <p class="text-overline">Unidade</p>
-                    <p class="valor-leitura text-base-content/90">DIMAP-1</p>
+              <p class="demo-rotulo">proposta · o degrau do poço sem a tinta dele</p>
+              <div class="glass-panel p-5">
+                <div class="card-well p-5">
+                  <p class="text-overline">Resumo</p>
+                  <div class="glass-panel rounded-2xl p-5 mt-2 grid sm:grid-cols-2 gap-x-8 gap-y-3">
+                    <div class="min-w-0">
+                      <p class="text-overline">RF</p>
+                      <p class="valor-leitura text-code">812.345-6</p>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-overline">Unidade</p>
+                      <p class="valor-leitura text-base-content/90">DIMAP-1</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -193,19 +206,33 @@
           <div class="grid lg:grid-cols-2 gap-6">
             <div class="demo-coluna demo-hoje">
               <p class="demo-rotulo">hoje</p>
-              <div class="glass-panel-thick modal-box-glass p-6">
+              <div class="glass-panel-thick modal-box-glass p-6 flex flex-col gap-3">
                 <p class="text-overline">Editar servidor</p>
-                <div class="glass-panel rounded-2xl p-4 mt-3">
+                <div class="glass-panel rounded-2xl p-4">
                   <p class="text-sm text-base-content/80">Placa de seção dentro da caixa.</p>
+                </div>
+                <div class="card-well p-4">
+                  <p class="text-overline">Poço dentro da caixa</p>
+                  <label class="form-field mt-2">
+                    <span class="text-overline">RF</span>
+                    <input type="text" class="input input-glass" value="812.345-6" />
+                  </label>
                 </div>
               </div>
             </div>
             <div class="demo-coluna">
               <p class="demo-rotulo">proposta</p>
-              <div class="glass-panel-thick modal-box-glass p-6">
+              <div class="glass-panel-thick modal-box-glass p-6 flex flex-col gap-3">
                 <p class="text-overline">Editar servidor</p>
-                <div class="glass-panel rounded-2xl p-4 mt-3">
+                <div class="glass-panel rounded-2xl p-4">
                   <p class="text-sm text-base-content/80">Placa de seção dentro da caixa.</p>
+                </div>
+                <div class="card-well p-4">
+                  <p class="text-overline">Poço dentro da caixa</p>
+                  <label class="form-field mt-2">
+                    <span class="text-overline">RF</span>
+                    <input type="text" class="input input-glass" value="812.345-6" />
+                  </label>
                 </div>
               </div>
             </div>

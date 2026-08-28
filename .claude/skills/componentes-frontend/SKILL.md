@@ -112,8 +112,11 @@ inválido).
 **Tabela de vidro** (`.table-onsen`, `.table-onsen-wrap`, `.table-onsen-poco`, SPEC
 user_admin/013): a **inversão dos materiais** — corpo em poço rebaixado (`.card-well`) e cabeçalho
 em placa de gelo sobre ele. A caixa rola por conta própria (a viewport nunca rola na horizontal) e o
-cabeçalho é grudento; a folga do poço é padding do `.card-well`, **fora** do rolador. Linhas
-separadas **em luz**, sem zebra, e hover que **acende** o gelo.
+cabeçalho é grudento; a folga do poço é padding do `.card-well`, **fora** do rolador — dentro dele o
+recorte do overflow deixaria aparecer uma faixa de linha nítida acima da bandeja. Com cabeçalho, essa
+folga existe só **embaixo** (`pb-2`): a bandeja encosta no topo e nas laterais do poço e **atravessa**
+a coluna da barra (`--coluna-barra`), onde a linha para. Poço que só rola conteúdo mantém `p-2`.
+Linhas separadas **em luz**, sem zebra, e hover que **acende** o gelo.
 
 **Tabela de vidro simples** (`.tabela-onsen-simples`, SPEC autorizacao/008): a mesma `.table-onsen`
 sem `<thead>` — só linha, para uma lista curta dentro de um cartão (ex.: quem exerce uma
@@ -126,8 +129,9 @@ barra gravada (`.scroll-etched` + `[data-barra]`/`[data-polegar]`) como na tabel
 `.lata-concessao`) empilha essas ações na mesma posição em todas as linhas.
 
 **Bandeja e célula de cabeçalho** (`.th-onsen-bandeja`, `.th-onsen`, `.th-onsen-campo`,
-`.th-onsen-input`, `.th-onsen-gravado`): o cabeçalho é **uma superfície** e cada coluna é uma peça
-assentada sobre ela — clicar a faz **afundar** e virar campo, porque campo aqui é sempre coisa
+`.th-onsen-input`, `.th-onsen-gravado`): o cabeçalho é **uma superfície** — o gelo mais denso do
+sistema depois do modal, `94%→86%` sobre 56px de blur, porque é a única coisa entre ele e as linhas
+que correm por trás — e cada coluna é uma peça assentada sobre ela — clicar a faz **afundar** e virar campo, porque campo aqui é sempre coisa
 rebaixada. **Afundado = a coluna tem filtro**, não "alguém clicou": o CSS lê o valor com
 `:has(input:not(:placeholder-shown))`, sem estado de UI em JavaScript. A régua **abre inteira** (o
 campo de uma coluna abre o de todas). Coluna que não responde **não tem peça**: o rótulo é gravado
@@ -256,10 +260,14 @@ brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `static/src/tem
 | `.glass-panel-thick` | segunda espessura (blur 28px, 88%→76%, aresta `white/70`) — **vidro sobre interface**, onde o fino deixa passar demais. Primitivos `.glass-blur-thick` / `.glass-bg-thick`. Quem esconde o fundo é o **blur**: acima de ~90% de branco o material deixa de ler como gelo (SPEC design/008 v2) | escura |
 | `.glass-drawer-panel` | gaveta lateral (texto denso; blur 12px, mais opaco) | escura |
 | `.card-well` | poço rebaixado: sub-cards dentro de painéis (stats, metadados) | escura |
+| **empilhado** | vidro sobre vidro **não se repinta** (SPEC design/009): `.glass-panel` e `.card-well` dentro de outro material de vidro ficam só com desfoque, aresta e sombra — a pintura acontece uma vez por pilha. Regra de descendência no tema: **nenhum markup muda**, e a peça volta a pintar sozinha quando renderizada fora. Única exceção: `.modal-box-glass` | escura |
 | `.glass-panel-deep` | variante escura **pontual**: tooltips, contraste invertido | clara (`rocha-100`, acentos `agua-300`/`madeira-300`) |
+| `.th-onsen-bandeja` | bandeja do cabeçalho de tabela: `94%→86%` sobre blur 56px — a **única** densidade fora das três, e só porque ela separa um cabeçalho grudento das linhas que correm por trás (§2.3) | escura |
 | `.modal-glass` + `.modal-box-glass` | modal: a cena **embaça** o fundo a 16px (nunca escurece) e a caixa é a **terceira densidade** — 97%→88%, blur 28px, aresta `white/80` —, escrita no próprio `.modal-box-glass` (SPEC design/008 v2). O modal não flutua sobre a interface: ele a substitui enquanto está aberto, e é o único lugar em que a opacidade alta é o acerto. O `.glass-panel-thick` empilhado no markup continua ali e é vencido por ordem. Abre/fecha por `checkbox` nativo | escura |
 
 Regras:
+- **A pintura é uma por pilha** (SPEC design/009). Peça nova não precisa saber onde vai ser
+  renderizada: quem lê a profundidade é o CSS, no DOM. Não crie variante "aninhada" de peça alguma.
 - Blur fraco (2px) é proibido: não separa figura do fundo. O mapa continua legível com 10px.
 - Sombra preta pura é proibida; sombra **apenas ciana** também (não separa). Sempre as duas camadas.
 - Nunca borda branca opaca contínua; a aresta é translúcida (`white/60`) + inset highlight.

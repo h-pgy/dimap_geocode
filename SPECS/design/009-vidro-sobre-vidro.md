@@ -1,11 +1,13 @@
 ---
 spec: design/009
-versao: v1
-atualizado_em: 2026-08-27
-testes_tdd: false
-implementado: false
+versao: v3
+atualizado_em: 2026-08-28
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
+  - v2: "[bugfix] a bandeja da tabela de vidro subiu para 88%→76%: sem a tinta do poço aninhado atrás, o cabeçalho grudento deixava as linhas emergirem legíveis por trás dele"
+  - v3: "[bugfix] bandeja em 94%→86% e cabeçalho rente ao poço: a folga do topo e das laterais saiu das tabelas com cabeçalho, e a bandeja passou a atravessar a coluna da barra de rolagem"
 ---
 
 # SPEC design/009 — Vidro sobre vidro: a placa aninhada
@@ -24,6 +26,8 @@ branco único.
       mais brancas que a segunda.
 - [ ] Uma `.glass-panel` dentro de um `.card-well` também perde a pintura: o poço é superfície, e a
       placa sobre ele é empilhamento.
+- [ ] Um `.card-well` aninhado perde o `bg-white/30` e fica com o degrau (`--sombra-poco`) e a
+      aresta: profundidade é o que descreve um poço.
 - [ ] O `.modal-box-glass` nunca é alcançado pela regra: a caixa do modal mantém a terceira densidade
       (`97 → 93 → 88`) em qualquer contexto em que apareça.
 - [ ] O `.card-unidade` em repouso, a três níveis de profundidade no organograma, deixa de ler como
@@ -40,7 +44,7 @@ que esta SPEC faz aos materiais existentes:
 | Material | Definição vigente | Pergunta desta SPEC |
 |---|---|---|
 | `.glass-panel` | `blur 18px + from-white/65 via-white/45 to-white/30 + aresta white/60 + sombra em duas camadas` | "A placa sabe que pode existir outra placa atrás dela?"; não — a translucidez é multiplicativa e o empilhamento fecha o material: duas placas dão 88% de branco no canto claro, três dão 96%, quatro dão 98%. A pintura é o que se repete; o desfoque, a aresta e a sombra descrevem a placa sozinhos. |
-| `.card-well` | `bg-white/30 + var(--sombra-poco)` | "Placa sobre poço é o mesmo caso?"; sim — rebaixado ou não, o poço é mais uma superfície entre a placa de dentro e o fundo, e a placa cheia sobre ele fecha o material do mesmo jeito. |
+| `.card-well` | `bg-white/30 + var(--sombra-poco)` | "Placa sobre poço é o mesmo caso?"; sim, nos dois sentidos — o poço é mais uma superfície entre a placa de dentro e o fundo, e ele mesmo, empilhado, soma 30% de branco que o degrau já dava conta de dizer. |
 | `.modal-box-glass` | `blur 28px + from-white/97 via-white/93 to-white/88 + aresta white/80` | "A caixa do modal cede a pele quando algo a contém?"; nunca — ela não flutua sobre a interface, substitui a interface, e a densidade alta é a razão de ela existir. |
 | `.card-unidade-repouso` | compõe `.glass-panel` no markup | "O card do organograma quer ser exceção?"; não — ele compõe a placa porque **é** placa, e o que o cega é a profundidade em que vive, não a peça. |
 
@@ -57,6 +61,8 @@ de lá que a regra a lê.
 - Revisão do invólucro `.glass-panel` que embrulha as páginas administrativas inteiras
   (`perfil.html`, `unidade.html`, `unidades_list.html`) — sem dono ainda.
 - `.glass-drawer-panel` e `.glass-panel-deep` aninhados: sem ocorrência no sistema — sem dono ainda.
+- `.upload-well`: é poço com tinta própria (`bg-white/30` declarado nele), então aninhado ele
+  continua pintando enquanto o `.card-well` ao lado não — sem dono ainda.
 
 ## 5 · Peças de referência a compor
 - `@static/src/tema-dimap.dev.css` → `.glass-panel`, `.glass-bg`, `.glass-edge`, `.glass-shadow`: a
@@ -91,11 +97,16 @@ de lá que a regra a lê.
   .glass-panel:where(:not(.modal-box-glass)) {
     @apply bg-none;
   }
+  /* O poço aninhado perde a tinta e fica com o degrau: profundidade é o que descreve um poço. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  .card-well {
+    @apply bg-transparent;
+  }
 }
 ```
 
-O desfoque, a aresta e a sombra não são redeclarados: a regra apaga **só** o gradiente, e todo o
-resto continua vindo do `.glass-panel` base.
+Nem o desfoque, nem a aresta, nem a sombra são redeclarados: as regras apagam **só** a pintura, e
+todo o resto continua vindo das peças base.
 
 ## 7 · Caveats
 
@@ -114,10 +125,11 @@ sentido físico ao vidro sobre vidro, e cada camada compõe com a de baixo. Cust
 instancia um `backdrop-filter` por card de unidade, e é a tela onde uma árvore larga pode pesar na
 GPU.
 
-**O `.card-unidade` em repouso muda de aparência sem que a peça seja tocada.** Ele compõe
-`.glass-panel` no markup e passa a receber a variante aninhada por consequência da regra, não por
-decisão própria. Custo: uma peça já implementada e aprovada muda de leitura, e a validação dela volta
-a acontecer no mock desta SPEC.
+**Peças já implementadas mudam de aparência sem serem tocadas.** Quinze placas e cinquenta e dois
+poços aninhados passam a receber a variante por consequência da regra, não por decisão própria — o
+`.card-unidade` em repouso, as células da bandeja de indicadores, o poço das tabelas, o trilho da
+`.chave-onsen` e a face afundada do `.botao-aura`. Custo: a validação de todas elas passou a depender
+do mock desta SPEC, e nenhuma tem teste que acuse regressão.
 
 **Nenhum teste automatizado.** O entregável é material e token visual no CSS do design system, sem
 regra de negócio em `services/`. Custo: a validação de contraste e translucidez acontece

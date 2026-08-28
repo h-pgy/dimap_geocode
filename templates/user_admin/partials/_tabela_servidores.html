@@ -1,7 +1,8 @@
 {# Tabela de vidro (SPEC user_admin/013): corpo em poço rebaixado e cabeçalho em placa sobre ele. #}
 {# A folga é padding do poço, FORA do rolador — dentro dele o cabeçalho grudento não alcançaria a #}
-{# linha de corte e sobraria uma faixa de linha nítida acima da bandeja.                          #}
-<div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+{# linha de corte e sobraria uma faixa de linha nítida acima da bandeja. Só embaixo (pb-2): em    #}
+{# cima e nas laterais a bandeja encosta na borda do poço (SPEC design/009).                      #}
+<div class="card-well pb-2 table-onsen-poco" data-scroll-etched>
   <div class="table-onsen-wrap" data-rolador>
     {# Um só lugar declara o pedido: o evento input sobe das peças de coluna até a tabela, e a    #}
     {# ordenação chega como evento próprio, disparado pelo tabela_onsen.js. Filtros e ordem       #}

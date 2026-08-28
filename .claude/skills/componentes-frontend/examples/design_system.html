@@ -381,7 +381,8 @@
           <ul class="text-sm text-base-content/80 flex flex-col gap-1 list-disc list-inside">
             <li>Blur do gelo: <span class="text-code">10px</span> (gaveta densa: 12px). Blur fraco não separa figura do fundo.</li>
             <li><strong>Duas espessuras</strong> (SPECs <span class="text-code">user_admin/011</span> e <span class="text-code">design/008</span>): fino sobre o mapa, <strong>espesso sobre interface</strong> — <span class="text-code">.glass-blur-thick .glass-bg-thick .glass-panel-thick</span> (blur 28px, gradiente 88%→76%, aresta white/70, sombra funda). Mesma receita em outro grau, não material novo — quem esconde o que está atrás é o <strong>desfoque</strong>, não a opacidade: acima de ~90% de branco o gradiente vira papel e o material deixa de ler como gelo (SPEC design/008 v2).</li>
-            <li><strong>A terceira densidade é só do modal</strong> (<span class="text-code">.modal-box-glass</span>, 97%→88%): ali a opacidade alta é o acerto, porque o modal substitui a interface em vez de flutuar sobre ela. Peça nova escolhe entre as três — não inventa a quarta.</li>
+            <li><strong>A terceira densidade é só do modal</strong> (<span class="text-code">.modal-box-glass</span>, 97%→88%): ali a opacidade alta é o acerto, porque o modal substitui a interface em vez de flutuar sobre ela. <strong>Peça nova compõe uma das três</strong> — densidade própria é exceção que se argumenta, não se copia. Existe uma: a bandeja da tabela (§3), em 94%→86%, porque ela é a única coisa entre um cabeçalho grudento e as linhas que correm por trás.</li>
+            <li><strong>Empilhado, o material não se repinta</strong> (§1.7): placa dentro de placa, ou dentro de poço, fica só com desfoque, aresta e sombra. A pintura acontece uma vez por pilha.</li>
             <li>Sombra em duas camadas: azul-fria <span class="text-code">rgba(7,58,84,.25)</span> dá a separação; ciana <span class="text-code">rgba(72,202,228,.25)</span> dá a vida.</li>
             <li>Aresta superior iluminada via <span class="text-code">inset 0 1px 0 white/80</span> — o brilho de gelo na quina.</li>
             <li>Foco de tela: <span class="text-code">.cinematic-blur-layer</span> (desfoque), jamais overlay preto.</li>
@@ -487,10 +488,57 @@
         </div>
       </div>
 
-      <!-- 1.7 Coreografia -->
+      <!-- 1.7 Vidro sobre vidro -->
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
         <div>
-          <h3 class="text-lg font-bold">1.7 · Coreografia</h3>
+          <h3 class="text-lg font-bold">1.7 · Vidro sobre vidro</h3>
+          <p class="text-sm text-base-content/70 mt-1">SPEC <span class="text-code">design/009</span>. A translucidez é <strong>multiplicativa</strong>: duas placas empilhadas dão 88% de branco, três dão 96%, quatro dão 98% — e 98% é papel, não gelo. O material se pinta <strong>uma vez por pilha</strong>. Empilhada, a peça continua sendo peça pelo que não se repete: o <strong>desfoque</strong> (que compõe com o da de baixo, como vidro sobre vidro faz), a <strong>aresta de luz</strong> e a <strong>sombra</strong>.</p>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">placa dentro de placa</p>
+            <div class="glass-panel p-4">
+              <p class="text-overline">1 · pinta</p>
+              <div class="glass-panel p-4 mt-2">
+                <p class="text-overline">2 · sem pintura</p>
+                <div class="glass-panel p-4 mt-2">
+                  <p class="text-overline">3 · sem pintura</p>
+                  <div class="glass-panel p-4 mt-2">
+                    <p class="text-overline">4 · sem pintura</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">poço dentro de placa</p>
+            <div class="glass-panel p-4">
+              <div class="card-well p-4">
+                <p class="text-overline">Resumo</p>
+                <div class="glass-panel rounded-2xl p-4 mt-2">
+                  <p class="valor-leitura text-code">812.345-6</p>
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">O poço aninhado também perde a tinta: o que descreve um poço é o <strong>degrau</strong> (<span class="text-code">--sombra-poco</span>), não o <span class="text-code">bg-white/30</span>.</p>
+          </div>
+        </div>
+        <div class="card-well p-4">
+          <p class="text-overline mb-2">Como a regra escolhe</p>
+          <ul class="text-sm text-base-content/80 flex flex-col gap-1 list-disc list-inside">
+            <li>Quem decide é o <strong>DOM</strong>, não a classe: o mesmo partial renderiza a três profundidades diferentes e é alvo de swap HTMX — a profundidade não cabe numa classe. Fora de qualquer material, a peça volta a pintar sozinha, sem trocar de markup.</li>
+            <li>O combinador de descendência cobre <strong>qualquer profundidade</strong> num seletor só; não existe <span class="text-code">.glass-panel .glass-panel .glass-panel</span>.</li>
+            <li>Os <span class="text-code">:where()</span> mantêm a especificidade em <span class="text-code">(0,1,0)</span> — igual à da peça base: a regra vence por ordem, e <strong>utility no markup ainda ganha</strong> quando alguém precisar de escape local.</li>
+            <li><strong>Exceção única:</strong> o <span class="text-code">.modal-box-glass</span> nunca é alcançado. A caixa do modal mantém a terceira densidade (§1.5) onde quer que esteja — ela substitui a interface em vez de flutuar sobre ela.</li>
+            <li>A regra alcança <span class="text-code">.glass-panel</span> e <span class="text-code">.card-well</span>. <span class="text-code">.glass-panel-thick</span> não entra: o polegar da <span class="text-code">.chave-onsen</span> segue sendo placa cheia sobre o trilho.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 1.8 Coreografia -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.8 · Coreografia</h3>
           <p class="text-sm text-base-content/70 mt-1">Os tokens de movimento. <span class="text-code">.transition-glass</span> é o tempo do material (500ms, ease-in-out); <span class="text-code">.glass-hide-up</span> é como uma peça <strong>cede o lugar</strong> quando outra entra em cena; <span class="text-code">.cinematic-blur-layer</span> é o foco de tela. Quem liga os três é sempre <strong>estado que o servidor controla</strong>, lido por CSS (<span class="text-code">:has()</span>, <span class="text-code">:checked</span>) — nunca JavaScript imperativo.</p>
         </div>
         <div class="grid lg:grid-cols-3 gap-5">
@@ -1419,6 +1467,7 @@
       <div class="glass-panel p-6 flex flex-col gap-4 lg:col-span-2">
         <div>
           <p class="text-overline">Bandeja de cabeçalho (<span class="text-code">.th-onsen-bandeja</span>) e célula (<span class="text-code">.th-onsen</span>)</p>
+          <p class="text-sm text-base-content/70 -mt-1">A bandeja é o gelo mais denso do sistema depois do modal — <span class="text-code">94%→86%</span> sobre 56px de blur. Ela não flutua: é a <strong>única</strong> coisa entre o cabeçalho grudento e as linhas que correm por trás, e a 74% o texto que emergia continuava legível. Dentro da tabela ela vem de <span class="text-code">thead th::before</span>, não de um elemento próprio — não existe caixa que envolva um <span class="text-code">&lt;tr&gt;</span>; a classe <span class="text-code">.th-onsen-bandeja</span> é a mesma receita na forma fora-de-tabela, mostrada aqui.</p>
           <p class="text-sm text-base-content/70 mt-1">O cabeçalho é <strong>uma superfície só</strong> e cada coluna é uma <strong>peça assentada</strong> sobre ela. Clicar na peça a faz <strong>afundar no poço</strong> e virar campo — campo, neste design system, é sempre coisa rebaixada. <strong>Afundado = a coluna tem filtro</strong>, não "alguém clicou": o CSS lê o valor do campo com <span class="text-code">:has(input:not(:placeholder-shown))</span>, sem estado de UI em JavaScript.</p>
         </div>
         <div class="card-well p-6 flex flex-col gap-6">
@@ -1473,14 +1522,34 @@
       <!-- Tabela sem resultado (SPEC user_admin/013) -->
       <div class="glass-panel p-6 flex flex-col gap-4 lg:col-span-2">
         <p class="text-overline">Tabela sem resultado (<span class="text-code">.table-onsen-vazio</span>)</p>
-        <div class="card-well p-2 table-onsen-poco">
+        <div class="card-well pb-2 table-onsen-poco">
           <div class="table-onsen-wrap">
             <table class="table table-onsen">
-              <thead>
-                <tr class="th-onsen-bandeja">
-                  <th class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Servidor</span></th>
-                  <th class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Unidade</span></th>
-                  <th class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Situação</span></th>
+              <thead data-cabecalho>
+                <tr>
+                  <th>
+                    <div class="th-onsen" data-coluna="nome">
+                      <label class="th-onsen-campo">
+                        <span class="text-overline">Servidor</span>
+                        <input class="th-onsen-input" value="zzz" placeholder="filtrar…">
+                      </label>
+                      <button class="sort-etched etched" aria-label="Ordenar por servidor">▲</button>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="th-onsen" data-coluna="unidade">
+                      <label class="th-onsen-campo">
+                        <span class="text-overline">Unidade</span>
+                        <input class="th-onsen-input" placeholder="filtrar…">
+                      </label>
+                      <button class="sort-etched etched" aria-label="Ordenar por unidade">▲</button>
+                    </div>
+                  </th>
+                  <th class="w-28">
+                    <div class="th-onsen th-onsen-gravado">
+                      <span class="text-overline etched etched-rotulo">Situação</span>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1494,7 +1563,7 @@
             </table>
           </div>
         </div>
-        <p class="text-xs text-base-content/60">O vazio é <strong>peça</strong>: a bandeja fica, e quem fala é a lupa gravada no fundo do poço — o mesmo sulco do resto do sistema, agora dizendo que não há o que mostrar. Filtro sem resultado não devolve tabela quebrada nem área em branco.</p>
+        <p class="text-xs text-base-content/60">O vazio é <strong>peça</strong>: a bandeja fica — com a coluna filtrada ainda afundada, porque o filtro continua lá —, e quem fala é a lupa gravada no fundo do poço. Filtro sem resultado não devolve tabela quebrada nem área em branco.</p>
       </div>
 
       <!-- Barra de rolagem gravada (SPEC user_admin/013) -->
@@ -1502,6 +1571,7 @@
         <div>
           <p class="text-overline">Barra de rolagem gravada (<span class="text-code">.scroll-etched</span>)</p>
           <p class="text-sm text-base-content/70 mt-1">O trilho é o <strong>sulco</strong> e o polegar é a <strong>água que o enche</strong> — o par repouso/entintado do sistema, agora <strong>no tempo</strong>: ao rolar ela entinta na hora, e quando o gesto acaba a água escorre de volta. Serve a <strong>qualquer</strong> <span class="text-code">.card-well</span> rolável. É <strong>elemento</strong>, não <span class="text-code">::-webkit-scrollbar</span> — o pseudo não existe no Firefox, no Chrome troca a barra flutuante por uma clássica sempre visível, e em ambos ocupa a altura inteira do rolador. Par com <span class="text-code">static/src/js/ui/scroll_etched.js</span>, opt-in por <span class="text-code">data-scroll-etched</span>. Rolando, o JS marca <span class="text-code">.scroll-etched-ativa</span> na peça (o polegar entinta na hora) e a troca por <span class="text-code">.scroll-etched-ociosa</span> quando o gesto para — "parou de rolar" o CSS não enxerga, e é a única coisa que o módulo decide.</p>
+          <p class="text-sm text-base-content/70">A barra mora numa <strong>coluna reservada</strong> no rolador (<span class="text-code">--coluna-barra</span>), para a linha não correr sob o polegar. A <strong>bandeja atravessa</strong> essa coluna: o polegar só começa abaixo do cabeçalho, então ali não há o que desviar — e parar antes deixaria um vazio no canto do poço. Numa tabela com cabeçalho a folga do poço existe só <strong>embaixo</strong> (<span class="text-code">pb-2</span>): a bandeja encosta no topo e nas laterais, e a barra acompanha por <span class="text-code">--folga-topo</span>, que o <span class="text-code">:has(thead)</span> zera. Poço que só rola conteúdo — sem cabeçalho — mantém a folga em volta.</p>
         </div>
         <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
           <div class="table-onsen-wrap max-h-40" data-rolador>
@@ -2134,7 +2204,7 @@
             </div>
             <button class="btn-etched etched">✕ limpar filtros</button>
           </div>
-          <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+          <div class="card-well pb-2 table-onsen-poco" data-scroll-etched>
             <div class="table-onsen-wrap max-h-72" data-rolador>
               <table class="table table-onsen">
                 <thead data-cabecalho>
