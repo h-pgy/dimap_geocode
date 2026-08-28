@@ -1,6 +1,6 @@
 ---
 spec: design/009
-versao: v3
+versao: v4
 atualizado_em: 2026-08-28
 testes_tdd: true
 implementado: true
@@ -8,6 +8,7 @@ changelog:
   - v1: versão inicial
   - v2: "[bugfix] a bandeja da tabela de vidro subiu para 88%→76%: sem a tinta do poço aninhado atrás, o cabeçalho grudento deixava as linhas emergirem legíveis por trás dele"
   - v3: "[bugfix] bandeja em 94%→86% e cabeçalho rente ao poço: a folga do topo e das laterais saiu das tabelas com cabeçalho, e a bandeja passou a atravessar a coluna da barra de rolagem"
+  - v4: o poço de upload entra na regra — era o único poço que continuava pintando quando aninhado
 ---
 
 # SPEC design/009 — Vidro sobre vidro: a placa aninhada
@@ -27,7 +28,8 @@ branco único.
 - [ ] Uma `.glass-panel` dentro de um `.card-well` também perde a pintura: o poço é superfície, e a
       placa sobre ele é empilhamento.
 - [ ] Um `.card-well` aninhado perde o `bg-white/30` e fica com o degrau (`--sombra-poco`) e a
-      aresta: profundidade é o que descreve um poço.
+      aresta: profundidade é o que descreve um poço. Vale também para o `.upload-well`, que declara
+      a tinta em si mesmo — aninhado, ele acende no hover a partir do transparente.
 - [ ] O `.modal-box-glass` nunca é alcançado pela regra: a caixa do modal mantém a terceira densidade
       (`97 → 93 → 88`) em qualquer contexto em que apareça.
 - [ ] O `.card-unidade` em repouso, a três níveis de profundidade no organograma, deixa de ler como
@@ -61,8 +63,6 @@ de lá que a regra a lê.
 - Revisão do invólucro `.glass-panel` que embrulha as páginas administrativas inteiras
   (`perfil.html`, `unidade.html`, `unidades_list.html`) — sem dono ainda.
 - `.glass-drawer-panel` e `.glass-panel-deep` aninhados: sem ocorrência no sistema — sem dono ainda.
-- `.upload-well`: é poço com tinta própria (`bg-white/30` declarado nele), então aninhado ele
-  continua pintando enquanto o `.card-well` ao lado não — sem dono ainda.
 
 ## 5 · Peças de referência a compor
 - `@static/src/tema-dimap.dev.css` → `.glass-panel`, `.glass-bg`, `.glass-edge`, `.glass-shadow`: a
@@ -97,10 +97,17 @@ de lá que a regra a lê.
   .glass-panel:where(:not(.modal-box-glass)) {
     @apply bg-none;
   }
-  /* O poço aninhado perde a tinta e fica com o degrau: profundidade é o que descreve um poço. */
+  /* O poço aninhado perde a tinta e fica com o degrau: profundidade é o que descreve um poço.
+     O .upload-well declara a tinta em si mesmo em vez de compor o .card-well, então precisa ser
+     nomeado — e a regra inteira mora DEPOIS dele no arquivo, senão perderia por ordem. */
   :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
-  .card-well {
+  :is(.card-well, .upload-well) {
     @apply bg-transparent;
+  }
+  /* Ele continua acendendo, só que a partir do transparente: o mesmo salto de 15 pontos de sempre. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  .upload-well:where(:hover, :focus-within) {
+    @apply bg-white/15;
   }
 }
 ```

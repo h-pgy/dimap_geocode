@@ -203,29 +203,6 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco);
   }
 
-  /* Vidro sobre vidro (SPEC design/009): a translucidez é multiplicativa, e o material se pinta UMA
-     vez por pilha — quatro placas empilhadas chegam a 98% de branco, que é papel, não gelo.
-     Empilhada, a peça continua sendo peça pelo que não se repete: o desfoque (que compõe com o da
-     de baixo, como vidro sobre vidro faz), a aresta de luz e a sombra.
-
-     A profundidade é lida do DOM porque é o único lugar em que ela existe: o mesmo partial é
-     incluído em três lugares e é alvo de swap HTMX, então não tem como carregá-la numa classe.
-
-     Os dois :where() zeram a especificidade do que envolvem — a regra fica em (0,1,0), igual à da
-     peça base, vence por vir depois, e uma utility no markup ainda ganha das duas.
-
-     .modal-box-glass sai pelo :not(): a caixa do modal mantém a pele onde quer que esteja (SPEC
-     design/008 v2). E .glass-panel-thick não é alcançado — o polegar da .chave-onsen segue intocado. */
-  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
-  .glass-panel:where(:not(.modal-box-glass)) {
-    @apply bg-none;
-  }
-  /* O poço aninhado perde a tinta e fica com o degrau: profundidade é o que descreve um poço. */
-  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
-  .card-well {
-    @apply bg-transparent;
-  }
-
   /* Modal de vidro (SPEC user_admin/012, recalibrado na SPEC design/008): o fundo EMBAÇA a 16px,
      dissolvendo formulários densos e toasts sem escurecer a cena (§6 do design system).
      O bg-transparent! derruba o véu escuro que o daisyUI põe em .modal e o base-100 opaco de .modal-box;
@@ -267,8 +244,38 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco), 0 0 22px rgba(72, 202, 228, 0.35);
   }
 
+  /* Vidro sobre vidro (SPEC design/009): a translucidez é multiplicativa, e o material se pinta UMA
+     vez por pilha — quatro placas empilhadas chegam a 98% de branco, que é papel, não gelo.
+     Empilhada, a peça continua sendo peça pelo que não se repete: o desfoque (que compõe com o da
+     de baixo, como vidro sobre vidro faz), a aresta de luz e a sombra.
+
+     A profundidade é lida do DOM porque é o único lugar em que ela existe: o mesmo partial é
+     incluído em três lugares e é alvo de swap HTMX, então não tem como carregá-la numa classe.
+
+     Os :where() zeram a especificidade do que envolvem — a regra fica em (0,1,0), igual à da peça
+     base, vence por vir depois, e uma utility no markup ainda ganha das duas. Daí a posição: aqui,
+     depois de TODA peça cuja tinta ela apaga, .upload-well inclusive.
+
+     .modal-box-glass sai pelo :not(): a caixa do modal mantém a pele onde quer que esteja (SPEC
+     design/008 v2). E .glass-panel-thick não é alcançado — o polegar da .chave-onsen segue intocado. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  .glass-panel:where(:not(.modal-box-glass)) {
+    @apply bg-none;
+  }
+  /* O poço aninhado perde a tinta e fica com o degrau: profundidade é o que descreve um poço. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  :is(.card-well, .upload-well) {
+    @apply bg-transparent;
+  }
+  /* O poço de upload continua acendendo — só que a partir do transparente, e não de 30%: o mesmo
+     salto de 15 pontos que ele sempre teve. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  .upload-well:where(:hover, :focus-within) {
+    @apply bg-white/15;
+  }
+
   /* Moldura da imagem de perfil: a unidade é luz atrás do disco, não anel. O hex vem em
-     --cor-unidade porque classe montada no template (ring-{{ cor }}) some do build de produção.
+     --cor-unidade porque classe montada no template (ring-[cor]) some do build de produção.
      Anel sólido saía de `outline`, aresta dura desenhada fora de uma caixa que não a reserva: em
      w-28 pousava inteiro sobre o poço vizinho. Luz que esmaece atravessa o vizinho sem quebrá-lo.
      --halo-escala é o alcance dela, que segue o diâmetro (padrão de w-9 a w-16; disco maior abre

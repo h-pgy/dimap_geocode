@@ -325,8 +325,8 @@
       </div>
 
       <!-- 1.3 Materiais -->
-      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
-        <div>
+      <div class="flex flex-col gap-6">
+        <div class="glass-panel p-6 sm:p-8">
           <h3 class="text-lg font-bold">1.3 · Materiais de vidro</h3>
           <p class="text-sm text-base-content/70 mt-1">Receita do gelo: blur 10px + gradiente branco translúcido + aresta <span class="text-code">white/60</span> + sombra em camadas (azul-fria para separação, ciana para o brilho). Tokens primitivos: <span class="text-code">.glass-blur .glass-bg .glass-bg-deep .glass-edge .glass-shadow .glass-glow</span> — os materiais compostos abaixo são empilhamentos deles, e é assim que uma peça nova ganha pele sem inventar sombra ou blur.</p>
         </div>
@@ -398,7 +398,7 @@
         </div>
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <div class="flex flex-col gap-2">
-            <p class="text-overline">.upload-well</p>
+            <p class="text-overline">.upload-well <span class="font-normal text-base-content/50">— aqui já aninhado (§1.7)</span></p>
             <div class="upload-well h-32 justify-center">
               <span class="text-xs text-base-content/60">poço rebaixado, aresta tracejada; acende no hover/foco</span>
             </div>
@@ -489,8 +489,8 @@
       </div>
 
       <!-- 1.7 Vidro sobre vidro -->
-      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
-        <div>
+      <div class="flex flex-col gap-6">
+        <div class="glass-panel p-6 sm:p-8">
           <h3 class="text-lg font-bold">1.7 · Vidro sobre vidro</h3>
           <p class="text-sm text-base-content/70 mt-1">SPEC <span class="text-code">design/009</span>. A translucidez é <strong>multiplicativa</strong>: duas placas empilhadas dão 88% de branco, três dão 96%, quatro dão 98% — e 98% é papel, não gelo. O material se pinta <strong>uma vez por pilha</strong>. Empilhada, a peça continua sendo peça pelo que não se repete: o <strong>desfoque</strong> (que compõe com o da de baixo, como vidro sobre vidro faz), a <strong>aresta de luz</strong> e a <strong>sombra</strong>.</p>
         </div>
@@ -522,6 +522,22 @@
             </div>
             <p class="text-xs text-base-content/60">O poço aninhado também perde a tinta: o que descreve um poço é o <strong>degrau</strong> (<span class="text-code">--sombra-poco</span>), não o <span class="text-code">bg-white/30</span>.</p>
           </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.upload-well solto — a peça base</p>
+            <div class="upload-well h-28 justify-center">
+              <span class="text-xs text-base-content/60">poço com aresta tracejada, tinta cheia</span>
+            </div>
+            <p class="text-xs text-base-content/60">Fora de qualquer material, ele pinta. É a única forma de ver a peça base — no §1.4 e nos formulários ele já vive dentro de uma placa.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.upload-well aninhado <span class="font-normal text-base-content/60">— passe o cursor</span></p>
+            <div class="glass-panel p-4">
+              <label class="upload-well h-28 justify-center cursor-pointer">
+                <span class="text-xs text-base-content/60">sem tinta; acende no hover e no foco</span>
+              </label>
+            </div>
+            <p class="text-xs text-base-content/60">Ele declara a tinta em si mesmo em vez de compor o <span class="text-code">.card-well</span>, então a regra o nomeia. O <strong>acender</strong> continua: de transparente a <span class="text-code">white/15</span> — o mesmo salto de 15 pontos que ele sempre teve.</p>
+          </div>
         </div>
         <div class="card-well p-4">
           <p class="text-overline mb-2">Como a regra escolhe</p>
@@ -530,7 +546,7 @@
             <li>O combinador de descendência cobre <strong>qualquer profundidade</strong> num seletor só; não existe <span class="text-code">.glass-panel .glass-panel .glass-panel</span>.</li>
             <li>Os <span class="text-code">:where()</span> mantêm a especificidade em <span class="text-code">(0,1,0)</span> — igual à da peça base: a regra vence por ordem, e <strong>utility no markup ainda ganha</strong> quando alguém precisar de escape local.</li>
             <li><strong>Exceção única:</strong> o <span class="text-code">.modal-box-glass</span> nunca é alcançado. A caixa do modal mantém a terceira densidade (§1.5) onde quer que esteja — ela substitui a interface em vez de flutuar sobre ela.</li>
-            <li>A regra alcança <span class="text-code">.glass-panel</span> e <span class="text-code">.card-well</span>. <span class="text-code">.glass-panel-thick</span> não entra: o polegar da <span class="text-code">.chave-onsen</span> segue sendo placa cheia sobre o trilho.</li>
+            <li>A regra alcança <span class="text-code">.glass-panel</span>, <span class="text-code">.card-well</span> e <span class="text-code">.upload-well</span> — este último precisa ser nomeado porque declara a tinta em si mesmo em vez de compor o poço. <span class="text-code">.glass-panel-thick</span> não entra: o polegar da <span class="text-code">.chave-onsen</span> segue sendo placa cheia sobre o trilho.</li>
           </ul>
         </div>
       </div>
