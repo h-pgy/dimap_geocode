@@ -8,6 +8,7 @@ login —, o consumo do link de recuperação de senha por e-mail e o reenvio da
 Todos levam o marker `banco`: RF e `senha_provisoria` só se conferem contra o Postgres real.
 """
 
+from pathlib import Path
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup, Tag
@@ -22,6 +23,7 @@ from pytest_django.fixtures import SettingsWrapper
 
 from apps.autenticacao import recuperacao, reenvio
 from apps.autenticacao.schemas import ReenvioSenhaInput
+from apps.mapping import context as mapping_context
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.models import CargoBase, Perfil
 
@@ -625,3 +627,27 @@ def test_telas_de_recuperacao_e_de_codigo_oferecem_o_reenvio_ativo(client: Clien
     assert isinstance(botao_codigo, Tag)
     assert botao_codigo.get("disabled") is None
     assert url_reenvio in tela_codigo
+
+
+# ---------------------------------------------------------------------------
+# Fundo de ortofoto — sem ortofoto disponível (SPEC design/010)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_pagina_administrativa_sem_ortofoto_disponivel(
+    client: Client,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mapping_context, "MAP_FUNDO_DIR", tmp_path)
+    monkeypatch.setattr(mapping_context, "MAP_FUNDO_PONTOS", {})
+    mapping_context.ortofotos_disponiveis.cache_clear()
+
+    resposta = client.get(reverse("autenticacao:login"))
+
+    assert resposta.status_code == 200
+    # Substring puro pegaria a própria classe DEFINIDA no <style> do tema (embutido em toda
+    # página, SPEC design/004) — o atributo class="..." é só o elemento realmente renderizado.
+    assert 'class="fundo-ortofoto__imagem"' not in resposta.content.decode()

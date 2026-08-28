@@ -230,3 +230,7 @@ data/itbi_parseados/
 
 # Mídia enviada por upload (SPEC user_admin/006): conteúdo de usuário, não artefato versionado.
 /media/
+
+# Ortofotos de fundo da área administrativa (SPEC design/010): geradas pelo comando
+# gerar_ortofotos_fundo, que só busca o que falta no disco.
+static/src/img/ortofotos_fundo/

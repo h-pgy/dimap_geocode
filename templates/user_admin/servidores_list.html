@@ -41,7 +41,6 @@
 
 {% block scripts %}
   {# Fundo à deriva — só existe onde existe o canvas administrativo #}
-  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
   {# Sem estes módulos a barra gravada não desenha e a seta de ordenação não alterna: marcar o #}
   {# markup não basta, o componente é opt-in por atributo e depende do módulo carregado.       #}
   <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>

@@ -59,6 +59,11 @@ html[data-theme="dimap"] {
   --border: 1px;
   --depth: 1;
   --noise: 0;
+  /* Fundo de ortofoto à deriva (SPEC design/010): transbordo de cada lado e teto da translação —
+     ver .fundo-ortofoto__deriva/__imagem. --deriva-periodo tem 5 paradas (300s/220s/150s/90s/50s),
+     ajustadas pelo .fundo-controle; o valor aqui é só o ponto de partida antes do JS assumir. */
+  --deriva-margem: 200px;
+  --deriva-periodo: 150s;
 }
 
 @theme {
@@ -1401,6 +1406,96 @@ html[data-theme="dimap"] {
     box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09),
       0 0 14px color-mix(in srgb, var(--color-agua-400) 55%, transparent);
   }
+
+  /* ==================== FUNDO DE ORTOFOTO (SPEC design/010) ==================== */
+
+  /* .fundo-ortofoto — organismo: a moldura do fundo administrativo. */
+  /* Crossfade da troca (v7), sem JS: classes que o próprio HTMX aplica e tira sozinho. */
+  .fundo-ortofoto {
+    @apply fixed inset-0 z-0 pointer-events-none overflow-hidden;
+    opacity: 1;
+    transition: opacity 350ms ease-in;
+  }
+  .fundo-ortofoto.htmx-swapping {
+    opacity: 0;
+    transition: opacity 250ms ease-out;
+  }
+  .fundo-ortofoto.htmx-added {
+    opacity: 0;
+  }
+  /* Desligado no <html>, não no elemento: o HTMX substitui #fundo-ortofoto inteiro a cada
+     rodízio, e uma classe presa nele se perderia no swap seguinte (controle_fundo.js). */
+  html.fundo-desligado .fundo-ortofoto { @apply hidden; }
+
+  /* .fundo-ortofoto__deriva — átomo: transborda a moldura e oscila no eixo vertical. brightness/
+     contrast são do MATERIAL da ortofoto (SPEC design/010 §3) — não da lente que fica por cima. */
+  .fundo-ortofoto__deriva {
+    position: absolute;
+    inset: calc(-1 * var(--deriva-margem));
+    filter: brightness(1.1) contrast(0.75);
+    animation-name: deriva-vertical;
+    animation-duration: calc(var(--deriva-periodo) / 2);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+  }
+
+  /* .fundo-ortofoto__imagem — átomo: a ortofoto, oscilando no dobro da frequência e na metade da
+     amplitude do pai (Lissajous 1:2 — a volta nunca repete o mesmo traço). Longhand porque o
+     shorthand de animation com calc(var()) não parseia. */
+  .fundo-ortofoto__imagem {
+    position: absolute;
+    inset: 0;
+    background-image: var(--fundo-ortofoto);
+    background-size: cover;
+    background-position: center;
+    animation-name: deriva-horizontal;
+    animation-duration: calc(var(--deriva-periodo) / 4);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+  }
+
+  /* .range-onsen — átomo: o trilho é o poço em pílula do .toggle-onsen e o polegar é o disco
+     entintado da mesma família — mesmo vocabulário, escala de trilho contínuo. */
+  .range-onsen {
+    @apply w-full h-1.5 appearance-none cursor-pointer rounded-full bg-white/30 border border-white/45;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  .range-onsen::-webkit-slider-thumb {
+    @apply w-4 h-4 rounded-full;
+    -webkit-appearance: none;
+    background-color: rgba(0, 119, 182, 0.85);
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+  .range-onsen::-moz-range-thumb {
+    @apply w-4 h-4 rounded-full border-0;
+    background-color: rgba(0, 119, 182, 0.85);
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+
+  /* .btn-etched-mini — variante do .btn-etched (SPEC design/010) para o controle flutuante do
+     fundo; o átomo base segue intocado, usado como está pela autenticação e pela lista de
+     unidades (§3.4 do CLAUDE.md). */
+  .btn-etched-mini {
+    @apply text-[11px] px-1.5 py-0.5 gap-1.5 tracking-[0.1em];
+  }
+
+  /* .fundo-controle — molécula: .toggle-onsen, .btn-etched e .range-onsen compostos no controle
+     flutuante de liga/desliga e velocidade da deriva. */
+  .fundo-controle {
+    @apply flex flex-col gap-1.5 px-3 py-2 w-44;
+  }
+  .fundo-controle__cabecalho {
+    @apply flex items-center justify-between gap-4;
+  }
+  .fundo-controle__velocidade {
+    @apply flex items-center gap-1.5;
+  }
+  /* Fundo desligado: não há imagem a trocar nem velocidade a ajustar. */
+  .fundo-controle:has(.toggle-onsen:not(:checked)) .fundo-controle__corpo {
+    @apply opacity-35 pointer-events-none;
+  }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */
@@ -1408,4 +1503,22 @@ html[data-theme="dimap"] {
   0%   { box-shadow: inset 0 0 0 1.5px rgba(72, 202, 228, 0.6), 0 0 0 rgba(72, 202, 228, 0); }
   55%  { box-shadow: inset 0 0 0 1.5px rgba(72, 202, 228, 0.95), 0 0 22px rgba(72, 202, 228, 0.6); }
   100% { box-shadow: inset 0 0 0 1.5px rgba(72, 202, 228, 0.6), 0 0 12px rgba(72, 202, 228, 0.4); }
+}
+
+/* |translate| ≤ margem em cada eixo ⇒ a borda do .fundo-ortofoto__deriva nunca entra na viewport,
+   em qualquer proporção de tela — `cover` cuida da proporção do PNG, que por isso não entra na
+   conta (SPEC design/010). */
+@keyframes deriva-vertical {
+  from { transform: translateY(calc(-1 * var(--deriva-margem))); }
+  to   { transform: translateY(var(--deriva-margem)); }
+}
+
+@keyframes deriva-horizontal {
+  from { transform: translateX(calc(var(--deriva-margem) / -2)); }
+  to   { transform: translateX(calc(var(--deriva-margem) / 2)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fundo-ortofoto__deriva,
+  .fundo-ortofoto__imagem { animation: none; }
 }

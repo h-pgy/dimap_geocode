@@ -1,9 +1,10 @@
 ---
 spec: ingestao-dados/002
-versao: v1
-atualizado_em: 2026-06-18
+versao: v2
+atualizado_em: 2026-08-28
 changelog:
   - v1: versão inicial
+  - v2: a conexão declara timeout e o estouro vira WmsTimeoutError
 ---
 
 # SPEC ingestao-dados/002 — Integration WMS Fetcher (imagem PNG por bbox)
@@ -27,7 +28,7 @@ consumidor reimplementar a montagem do `GetMap`.
 - [ ] Entrada modelada em Pydantic: `WmsMapRequest`, carregando o `bbox` (`BoundingBox`), camada, dimensões e flag `raster`.
 - [ ] Saída modelada em Pydantic: `WmsImage` (bytes + content-type + dimensões + bbox + camada de proveniência).
 - [ ] Seleção de servidor vetorial vs **raster** resolvida pela config a partir da flag do request.
-- [ ] Exceções **específicas do módulo** em `services/integrations/wms/exceptions.py`: base `WmsError`; `WmsHttpError` (disparada quando `raise_for_status` falharia — **herda de `requests.HTTPError`**); `WmsResponseNotImageError` (HTTP 200 mas corpo não-imagem / `ServiceException`).
+- [ ] Exceções **específicas do módulo** em `services/integrations/wms/exceptions.py`: base `WmsError`; `WmsHttpError` (disparada quando `raise_for_status` falharia — **herda de `requests.HTTPError`**); `WmsResponseNotImageError` (HTTP 200 mas corpo não-imagem / `ServiceException`); `WmsTimeoutError` (o servidor não respondeu dentro de `request_timeout_seconds`).
 - [ ] `services/integrations/wms/__init__.py` expõe **apenas**: os models Pydantic de entrada/saída, as exceptions e a classe callable `WmsFetcher` — nada de helpers internos.
 - [ ] Existe `tests/` na **raiz**, espelhando `services/integrations/wms/`, com testes unitários `pytest` que **mockam a resposta da API** (sem rede).
 
@@ -113,6 +114,7 @@ class WmsConnectionConfig(BaseModel):
     image_format: str = "image/png"
     default_width: int = 256
     default_height: int = 256
+    request_timeout_seconds: float = 30.0
 
     def base_url_for(self, *, raster: bool) -> str:
         return self.raster_url if raster else self.vector_url
@@ -169,14 +171,14 @@ class WmsResponseNotImageError(WmsError):
 # services/integrations/wms/__init__.py
 # Expõe apenas a API pública: models de entrada/saída, exceptions e a classe callable.
 from .models import BoundingBox, WmsConnectionConfig, WmsMapRequest, WmsImage
-from .exceptions import WmsError, WmsHttpError, WmsResponseNotImageError
+from .exceptions import WmsError, WmsHttpError, WmsResponseNotImageError, WmsTimeoutError
 from .fetcher import WmsFetcher
 
 __all__ = [
     # models (entrada/saída)
     "BoundingBox", "WmsConnectionConfig", "WmsMapRequest", "WmsImage",
     # exceptions
-    "WmsError", "WmsHttpError", "WmsResponseNotImageError",
+    "WmsError", "WmsHttpError", "WmsResponseNotImageError", "WmsTimeoutError",
     # callable
     "WmsFetcher",
 ]

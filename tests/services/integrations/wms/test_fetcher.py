@@ -4,7 +4,11 @@ import pytest
 import requests
 from unittest.mock import Mock, patch
 
-from services.integrations.wms.exceptions import WmsHttpError, WmsResponseNotImageError
+from services.integrations.wms.exceptions import (
+    WmsHttpError,
+    WmsResponseNotImageError,
+    WmsTimeoutError,
+)
 from services.integrations.wms.fetcher import WmsFetcher
 from services.integrations.wms.models import BoundingBox, WmsConnectionConfig, WmsMapRequest
 
@@ -145,3 +149,17 @@ def test_wms_http_error_also_catchable_as_wms_error(config: WmsConnectionConfig)
     ):
         with pytest.raises(WmsError):
             WmsFetcher(config)(_req())
+
+
+def test_timeout_vira_excecao_da_integration(config: WmsConnectionConfig) -> None:
+    pedido = WmsMapRequest(layer="geoportal:ORTO_RGB_2020", bbox=BBOX)
+    with patch("requests.get", side_effect=requests.Timeout("estourou")):
+        with pytest.raises(WmsTimeoutError):
+            WmsFetcher(config)(pedido)
+
+
+def test_get_recebe_o_timeout_configurado(config: WmsConnectionConfig) -> None:
+    pedido = WmsMapRequest(layer="geoportal:ORTO_RGB_2020", bbox=BBOX)
+    with patch("requests.get", return_value=_resp()) as get:
+        WmsFetcher(config)(pedido)
+    assert get.call_args.kwargs["timeout"] == config.request_timeout_seconds

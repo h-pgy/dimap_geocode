@@ -14,6 +14,8 @@ from typing import Any
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from config.pontos_fundo import CatalogoPontosFundo
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Paleta do design system "Onsen de Inverno" — espelho de
@@ -67,10 +69,17 @@ class _Settings(BaseSettings):
         alias="WMS_RASTER_URL",
     )
     wms_version: str = Field(default="1.3.0", alias="WMS_VERSION")
+    wms_request_timeout_seconds: float = Field(
+        default=30.0,
+        alias="WMS_REQUEST_TIMEOUT_SECONDS",
+    )
     wms_layer_ortofoto: str = Field(default="geoportal:ORTO_RGB_2020", alias="WMS_LAYER_ORTOFOTO")
     wms_layer_mapa_base: str = Field(
         default="geoportal:MapaBase_Politico", alias="WMS_LAYER_MAPA_BASE"
     )
+    # Sobrescreve o catálogo de config/pontos_fundo.json inteiro (SPEC design/010) — quem quiser
+    # outro recorte de pontos não edita o repositório, só o .env.
+    map_fundo_pontos: str | None = Field(default=None, alias="MAP_FUNDO_PONTOS")
     map_cor_linha: str = Field(default=_GEOMETRIAS["linha"], alias="MAP_COR_LINHA")
     map_cor_poligono: str = Field(default=_GEOMETRIAS["poligono"], alias="MAP_COR_POLIGONO")
     map_cor_ponto: str = Field(default=_GEOMETRIAS["ponto"], alias="MAP_COR_PONTO")
@@ -162,6 +171,7 @@ WMS_URL = _env.wms_url
 # não a define cai no WMS_URL geral (o JS resolve `b.url || wms.url`).
 WMS_RASTER_URL = _env.wms_raster_url
 WMS_VERSION = _env.wms_version
+WMS_REQUEST_TIMEOUT_SECONDS = _env.wms_request_timeout_seconds
 WMS_LAYER_ORTOFOTO = _env.wms_layer_ortofoto
 WMS_LAYER_MAPA_BASE = _env.wms_layer_mapa_base
 # Lista ordenada de bases; a 1ª é a visível por padrão.
@@ -188,7 +198,18 @@ MAP_TILES_PUBLICOS_URL = _env.map_tiles_publicos_url
 MAP_TILES_PUBLICOS_SUBDOMINIOS = _env.map_tiles_publicos_subdominios
 MAP_TILES_PUBLICOS_ATRIBUICAO = _env.map_tiles_publicos_atribuicao
 MAP_TILES_PUBLICOS_ZOOM_MAXIMO = 20
-MAP_ZOOM_FUNDO_ADMIN = 15
+
+# Ortofotos de fundo pré-geradas da área administrativa (SPEC design/010). Mesmo padrão da
+# paleta: falha alto no boot se o arquivo sumir ou o ponto cair fora do município.
+_PONTOS_FUNDO_PADRAO = (BASE_DIR / "config" / "pontos_fundo.json").read_text()
+MAP_FUNDO_PONTOS = CatalogoPontosFundo.model_validate_json(
+    _env.map_fundo_pontos or _PONTOS_FUNDO_PADRAO
+).root
+MAP_FUNDO_DIR = BASE_DIR / "static" / "src" / "img" / "ortofotos_fundo"
+MAP_FUNDO_LARGURA_PX = 2000
+MAP_FUNDO_ALTURA_PX = 1250
+# Resolução do recorte, em metros de terreno por pixel (31983 é métrico de verdade).
+MAP_FUNDO_METROS_POR_PIXEL = 4.4
 
 # Horário do dia (fuso de TIME_ZONE) em que o daemon reextrai os parquets de data/.
 DTIME_ATUALIZACAO_ARQUIVOS = _env.dtime_atualizacao_arquivos

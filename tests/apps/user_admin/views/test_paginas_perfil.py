@@ -97,12 +97,14 @@ def test_pagina_criar_perfil_renderiza_o_formulario(client: Client) -> None:
 @banco
 @pytest.mark.django_db
 def test_pagina_admin_nao_carrega_o_wms_do_geosampa(client: Client) -> None:
+    # O fundo administrativo é ortofoto pré-gerada (SPEC design/010), não mais o Leaflet+WMS
+    # ao vivo de user_admin/007 — id="map-admin" saiu, id="fundo-ortofoto" é o canvas atual.
     dirigente = _perfil_gravado(cor=CorUnidade.AGUA_700, com_foto=False, dirigente=True)
     client.force_login(dirigente)
 
     html = client.get(reverse("user_admin:criar_perfil")).content.decode()
 
-    assert 'id="map-admin"' in html
+    assert 'id="fundo-ortofoto"' in html
     assert "mapa-wms" not in html
     assert "geosampa" not in html.lower()
 

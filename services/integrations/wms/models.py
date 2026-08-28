@@ -25,6 +25,7 @@ class WmsConnectionConfig(BaseModel):
     image_format: str = "image/png"
     default_width: int = 256
     default_height: int = 256
+    request_timeout_seconds: float = 30.0
 
     def base_url_for(self, *, raster: bool) -> str:
         return self.raster_url if raster else self.vector_url

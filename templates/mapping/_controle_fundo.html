@@ -1,0 +1,20 @@
+{# Molécula: o controle flutuante do fundo de ortofoto — liga/desliga e velocidade da deriva.    #}
+{# Fica fora da .admin-shell, como o fundo que ele controla. Preferências são do cliente          #}
+{# (Caveats da SPEC design/010): controle_fundo.js lê/grava localStorage, nunca o servidor.        #}
+<div class="fundo-controle glass-panel fixed bottom-6 right-6 z-20">
+  <div class="fundo-controle__cabecalho">
+    <span class="text-overline">Fundo</span>
+    <input type="checkbox" class="toggle-onsen" data-fundo-ligado checked aria-label="Mostrar o fundo">
+  </div>
+  <div class="fundo-controle__corpo flex flex-col gap-1.5">
+    <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center" data-trocar type="button">
+      <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+      Trocar
+    </button>
+    <div class="fundo-controle__velocidade">
+      <button class="btn-etched etched btn-etched-mini" data-velocidade="-1" aria-label="Mais devagar" type="button">&minus;</button>
+      <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" data-nivel aria-label="Velocidade da deriva">
+      <button class="btn-etched etched btn-etched-mini" data-velocidade="1" aria-label="Mais rápido" type="button">+</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/010 — Ortofotos de fundo pré-geradas (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec">
+    :root {
+      --deriva-margem: 200px;
+      --deriva-periodo: 150s;
+    }
+
+    @layer components {
+      /* .fundo-ortofoto — organismo: a moldura do fundo administrativo */
+      .fundo-ortofoto {
+        @apply fixed inset-0 z-0 pointer-events-none overflow-hidden;
+      }
+
+      /* .fundo-ortofoto__deriva — átomo: transborda a moldura e oscila no eixo vertical */
+      .fundo-ortofoto__deriva {
+        position: absolute;
+        inset: calc(-1 * var(--deriva-margem));
+        filter: brightness(1.1) contrast(0.75);
+        animation-name: deriva-vertical;
+        animation-duration: calc(var(--deriva-periodo) / 2);
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+        animation-direction: alternate;
+      }
+
+      /* .fundo-ortofoto__imagem — átomo: a ortofoto, oscilando no dobro da frequência */
+      .fundo-ortofoto__imagem {
+        position: absolute;
+        inset: 0;
+        background-image: var(--fundo-ortofoto);
+        background-size: cover;
+        background-position: center;
+        transition: opacity 700ms ease;
+        animation-name: deriva-horizontal;
+        animation-duration: calc(var(--deriva-periodo) / 4);
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+        animation-direction: alternate;
+      }
+
+      .fundo-ortofoto__imagem--trocando { opacity: 0; }
+
+      /* .range-onsen — átomo: o trilho é o poço em pílula do .toggle-onsen e o polegar é o
+         disco entintado da mesma família. */
+      .range-onsen {
+        @apply w-full h-1.5 appearance-none cursor-pointer rounded-full bg-white/30 border border-white/45;
+        box-shadow: var(--sombra-poco-fina);
+      }
+      .range-onsen::-webkit-slider-thumb {
+        @apply w-4 h-4 rounded-full;
+        -webkit-appearance: none;
+        background-color: rgba(0, 119, 182, 0.85);
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+      }
+      .range-onsen::-moz-range-thumb {
+        @apply w-4 h-4 rounded-full border-0;
+        background-color: rgba(0, 119, 182, 0.85);
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+      }
+
+      /* .btn-etched-mini — variante do .btn-etched para controle flutuante; o átomo base
+         segue intocado. */
+      .btn-etched-mini {
+        @apply text-[11px] px-1.5 py-0.5 gap-1.5 tracking-[0.1em];
+      }
+
+      /* .fundo-controle — molécula: .toggle-onsen, .btn-etched e .range-onsen */
+      .fundo-controle {
+        @apply flex flex-col gap-1.5 px-3 py-2 w-44;
+      }
+      .fundo-controle__cabecalho {
+        @apply flex items-center justify-between gap-4;
+      }
+      .fundo-controle__velocidade {
+        @apply flex items-center gap-1.5;
+      }
+      /* Fundo desligado: não há imagem a trocar nem velocidade a ajustar. */
+      .fundo-controle:has(.toggle-onsen:not(:checked)) .fundo-controle__corpo {
+        @apply opacity-35 pointer-events-none;
+      }
+    }
+
+    @keyframes deriva-vertical {
+      from { transform: translateY(calc(-1 * var(--deriva-margem))); }
+      to   { transform: translateY(var(--deriva-margem)); }
+    }
+
+    @keyframes deriva-horizontal {
+      from { transform: translateX(calc(var(--deriva-margem) / -2)); }
+      to   { transform: translateX(calc(var(--deriva-margem) / 2)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fundo-ortofoto__deriva,
+      .fundo-ortofoto__imagem { animation: none; }
+    }
+  </script>
+
+  <!-- Fundo da área administrativa: as QUATRO camadas da lente e os defs da gravação vêm dos
+       partials da própria aplicação; só o canvas sob elas é a peça nova desta SPEC. -->
+  <script type="module">
+    const PARTIAL_FUNDO = "/templates/mapping/_mapa_admin.html";
+    const PARTIAL_GRAVACAO = "/templates/partials/_filtros_gravacao.html";
+    const DIR = "/static/src/img/ortofotos_fundo/";
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+
+    async function buscarPartial(caminho) {
+      const resposta = await fetch(caminho);
+      if (!resposta.ok) throw new Error(`${caminho} → ${resposta.status}`);
+      return (await resposta.text()).replace(TAG_DE_TEMPLATE, "").trim();
+    }
+
+    const ORTOFOTOS = ["anhangabau", "ibirapuera", "butanta", "itaquera", "anhembi", "interlagos", "cantareira", "jaragua"];
+    const INTERVALO_TROCA_MS = 60000;
+    let atual = ORTOFOTOS[Math.floor(Math.random() * ORTOFOTOS.length)];
+
+    const canvas = (chave) => `
+      <div class="fundo-ortofoto" id="fundo-ortofoto">
+        <div class="fundo-ortofoto__deriva">
+          <div class="fundo-ortofoto__imagem" style="--fundo-ortofoto: url('${DIR}${chave}.png')"></div>
+        </div>
+      </div>`;
+
+    try {
+      const gravacao = await buscarPartial(PARTIAL_GRAVACAO);
+      const molde = document.createElement("div");
+      molde.innerHTML = await buscarPartial(PARTIAL_FUNDO);
+      molde.querySelector("#map-admin")?.remove();
+      document.body.insertAdjacentHTML("afterbegin", gravacao + canvas(atual) + molde.innerHTML);
+    } catch (erro) {
+      (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        `<p style='padding:1rem;color:#b00;font-family:monospace'>fundo não montou (${erro.message}) — sirva a RAIZ do projeto e gere as ortofotos.</p>`);
+    }
+
+    // Previsto para static/src/js/ui/controle_fundo.js — estado visual do controle (§7.2).
+    const PERIODOS = ["300s", "220s", "150s", "90s", "50s"];
+    const CHAVE_NIVEL = "fundo-admin-velocidade";
+    const CHAVE_LIGADO = "fundo-admin-ligado";
+    let nivel = 2;
+
+    function lembrar(chave, valor) {
+      try { localStorage.setItem(chave, valor); } catch { /* modo privativo */ }
+    }
+
+    function aplicarNivel() {
+      document.documentElement.style.setProperty("--deriva-periodo", PERIODOS[nivel]);
+      document.querySelectorAll("[data-nivel]").forEach((e) => (e.value = nivel));
+      lembrar(CHAVE_NIVEL, nivel);
+    }
+
+    function aplicarLigado(ligado) {
+      document.getElementById("fundo-ortofoto")?.classList.toggle("hidden", !ligado);
+      // Fundo desligado não consome banda nem quadro: o rodízio para junto.
+      if (ligado) reiniciarRodizio(); else clearInterval(rodizio);
+      lembrar(CHAVE_LIGADO, ligado ? "1" : "0");
+    }
+
+    try {
+      nivel = Math.min(4, Math.max(0, Number(localStorage.getItem(CHAVE_NIVEL) ?? 2)));
+    } catch { /* modo privativo */ }
+
+    document.addEventListener("click", (evento) => {
+      const passo = evento.target.closest("[data-velocidade]");
+      if (passo) {
+        nivel = Math.min(4, Math.max(0, nivel + Number(passo.dataset.velocidade)));
+        aplicarNivel();
+    reiniciarRodizio();
+    document.querySelectorAll("[data-ortofoto]").forEach(
+      (b) => (b.dataset.estado = b.dataset.ortofoto === atual ? "atual" : ""));
+      }
+      // Em produção o Trocar é hx-post: o servidor re-sorteia, grava na sessão e devolve o canvas.
+      if (evento.target.closest("[data-trocar]")) trocarOrtofoto();
+    });
+
+    document.addEventListener("input", (evento) => {
+      const barra = evento.target.closest("[data-nivel]");
+      if (!barra) return;
+      nivel = Number(barra.value);
+      aplicarNivel();
+    reiniciarRodizio();
+    document.querySelectorAll("[data-ortofoto]").forEach(
+      (b) => (b.dataset.estado = b.dataset.ortofoto === atual ? "atual" : ""));
+    });
+
+    document.addEventListener("change", (evento) => {
+      if (evento.target.closest("[data-fundo-ligado]")) aplicarLigado(evento.target.checked);
+    });
+
+
+    function pintar(chave) {
+      atual = chave;
+      document.querySelectorAll("[data-ortofoto]").forEach(
+        (b) => (b.dataset.estado = b.dataset.ortofoto === chave ? "atual" : ""));
+      const alvo = document.querySelector(".fundo-ortofoto__imagem");
+      if (!alvo) return;
+      // Apaga, troca a fonte fora do quadro e reacende: a imagem nunca salta de um lugar a outro.
+      alvo.classList.add("fundo-ortofoto__imagem--trocando");
+      setTimeout(() => {
+        alvo.style.setProperty("--fundo-ortofoto", `url('${DIR}${chave}.png')`);
+        alvo.classList.remove("fundo-ortofoto__imagem--trocando");
+      }, 700);
+    }
+
+    function trocarOrtofoto() {
+      const outras = ORTOFOTOS.filter((c) => c !== atual);
+      pintar(outras[Math.floor(Math.random() * outras.length)]);
+      reiniciarRodizio();
+    }
+
+    let rodizio = null;
+
+    function reiniciarRodizio() {
+      clearInterval(rodizio);
+      rodizio = setInterval(trocarOrtofoto, INTERVALO_TROCA_MS);
+    }
+
+    // Andaime do mock: em produção a amplitude é token fixo, não controle de runtime.
+    document.addEventListener("click", (evento) => {
+      const ponto = evento.target.closest("[data-ortofoto]");
+      if (ponto) pintar(ponto.dataset.ortofoto);
+    });
+
+    document.addEventListener("input", (evento) => {
+      const controle = evento.target.closest("[data-amplitude]");
+      if (!controle) return;
+      document.documentElement.style.setProperty("--deriva-margem", controle.value + "px");
+      document.getElementById("eco-amplitude").textContent = controle.value + "px";
+    });
+
+    aplicarNivel();
+    reiniciarRodizio();
+    document.querySelectorAll("[data-ortofoto]").forEach(
+      (b) => (b.dataset.estado = b.dataset.ortofoto === atual ? "atual" : ""));
+  </script>
+</head>
+
+<body class="h-screen w-screen overflow-hidden bg-base-100 text-base-content font-sans">
+  <!-- partial: mapping/_glifos_fundo.html -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-trocar">
+        <path d="M4 8h13"/><path d="m14 5 3 3-3 3"/>
+        <path d="M20 16H7"/><path d="m10 13-3 3 3 3"/>
+      </g>
+    </defs>
+  </svg>
+  <!-- /partial -->
+  <!-- O fundo é montado no topo do <body> pelo módulo do <head>; o conteúdo rola na .admin-shell,
+       mesmo esqueleto das telas administrativas. -->
+  <div class="admin-shell">
+    <div class="mx-auto max-w-5xl px-6 py-16 space-y-10">
+
+      <header class="glass-panel p-6">
+        <p class="text-overline">SPEC design/010</p>
+        <h1 class="text-2xl font-light mt-1">Ortofotos de fundo pré-geradas — mock de validação</h1>
+        <p class="text-sm text-rocha-800/80 mt-3">
+          A lente e os defs da gravação vêm de
+          <span class="text-code">templates/mapping/_mapa_admin.html</span> e
+          <span class="text-code">templates/partials/_filtros_gravacao.html</span>, buscados ao vivo.
+        </p>
+      </header>
+
+      <!-- 1 · TOKENS -->
+      <section id="tokens" class="glass-panel p-6 space-y-4">
+        <h2 class="text-overline">1 · Tokens</h2>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="card-well p-4">
+            <p class="text-code text-sm">--deriva-margem</p>
+            <p class="valor-leitura">200px — transbordo em cada lado, e teto da translação</p>
+          </div>
+          <div class="card-well p-4">
+            <p class="text-code text-sm">--deriva-periodo</p>
+            <p class="valor-leitura">300s · 220s · 150s · 90s · 50s — a escala do controle</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 space-y-6">
+        <h2 class="text-overline">2 · Átomos — .fundo-ortofoto__deriva</h2>
+
+        <!-- estado: contenção, com a moldura do átomo à mostra -->
+        <div class="space-y-2">
+          <p class="text-sm text-rocha-800/80">
+            Transbordo exagerado e contorno visível: a moldura do átomo permanece fora do quadro nos
+            dois extremos da volta.
+          </p>
+          <div class="relative overflow-hidden rounded-2xl h-64 card-well" style="--deriva-margem: 96px; --deriva-periodo: 8s">
+            <div class="fundo-ortofoto__deriva outline outline-2 outline-sakura-500">
+              <div class="fundo-ortofoto__imagem" style="--fundo-ortofoto: url('/static/src/img/ortofotos_fundo/butanta.png')"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- estado: cadência real, sem lente -->
+        <div class="space-y-2">
+          <p class="text-sm text-rocha-800/80">Amplitude e período reais, sem a lente por cima.</p>
+          <div class="relative overflow-hidden rounded-2xl h-64 card-well">
+            <div class="fundo-ortofoto__deriva">
+              <div class="fundo-ortofoto__imagem" style="--fundo-ortofoto: url('/static/src/img/ortofotos_fundo/interlagos.png')"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 space-y-6">
+        <h2 class="text-overline">3 · Moléculas — .fundo-controle</h2>
+        <p class="text-sm text-rocha-800/80">
+          O controle vivo está no canto inferior direito e age sobre o fundo desta página. Abaixo,
+          os mesmos estados fora de posição.
+        </p>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <!-- estado: ligado, no meio da escala -->
+          <div class="glass-panel p-4 flex justify-center">
+            <div class="fundo-controle glass-panel">
+      <div class="fundo-controle__cabecalho">
+        <span class="text-overline">Fundo</span>
+        <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar o fundo">
+      </div>
+      <div class="fundo-controle__corpo flex flex-col gap-1.5">
+        <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">
+          <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+          Trocar
+        </button>
+        <div class="fundo-controle__velocidade">
+          <button class="btn-etched etched btn-etched-mini" aria-label="Mais devagar">&minus;</button>
+          <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva">
+          <button class="btn-etched etched btn-etched-mini" aria-label="Mais rápido">+</button>
+        </div>
+      </div>
+    </div>
+          </div>
+
+          <!-- estado: desligado — não há velocidade a ajustar -->
+          <div class="glass-panel p-4 flex justify-center">
+            <div class="fundo-controle glass-panel">
+      <div class="fundo-controle__cabecalho">
+        <span class="text-overline">Fundo</span>
+        <input type="checkbox" class="toggle-onsen" aria-label="Mostrar o fundo">
+      </div>
+      <div class="fundo-controle__corpo flex flex-col gap-1.5">
+        <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">
+          <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+          Trocar
+        </button>
+        <div class="fundo-controle__velocidade">
+          <button class="btn-etched etched btn-etched-mini" aria-label="Mais devagar">&minus;</button>
+          <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva">
+          <button class="btn-etched etched btn-etched-mini" aria-label="Mais rápido">+</button>
+        </div>
+      </div>
+    </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ANDAIME DO MOCK — não vai para o produto -->
+      <section id="andaime" class="glass-panel p-6 space-y-4">
+        <h2 class="text-overline">Andaime — calibragem</h2>
+        <p class="text-sm text-rocha-800/80">
+          O ponto é sorteado no servidor uma vez por sessão; a amplitude é token fixo. Os dois estão
+          aqui só para escolher os valores.
+        </p>
+        <div class="grid gap-2 sm:grid-cols-3">
+          <button class="btn-etched etched" data-ortofoto="anhangabau">Vale do Anhangabaú</button>
+          <button class="btn-etched etched" data-ortofoto="ibirapuera">Parque Ibirapuera</button>
+          <button class="btn-etched etched" data-ortofoto="butanta">Cidade Universitária</button>
+          <button class="btn-etched etched" data-ortofoto="itaquera">Arena Corinthians</button>
+          <button class="btn-etched etched" data-ortofoto="anhembi">Campo de Marte</button>
+          <button class="btn-etched etched" data-ortofoto="interlagos">Autódromo de Interlagos</button>
+          <button class="btn-etched etched" data-ortofoto="cantareira">Serra da Cantareira</button>
+          <button class="btn-etched etched" data-ortofoto="jaragua">Pico do Jaraguá</button>
+        </div>
+        <label class="card-well p-4 block">
+          <span class="text-sm">Amplitude — <span class="text-code" id="eco-amplitude">200px</span></span>
+          <input class="range-onsen mt-2" type="range" min="40" max="480" step="10" value="200" data-amplitude>
+        </label>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="space-y-4">
+        <h2 class="text-overline">5 · Tela montada</h2>
+
+        <!-- página: unidades/unidade_form.html -->
+        <div class="glass-panel p-6 space-y-5">
+          <!-- fica na página: só arranjo, nunca é trocado sozinho -->
+          <div>
+            <p class="text-overline">Unidade</p>
+            <h3 class="text-xl font-light mt-1">Nova unidade</h3>
+          </div>
+
+          <!-- partial: unidades/partials/_form_unidade.html — alvo de hx-swap na falha de validação -->
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="form-field">
+              <span class="text-overline">Sigla</span>
+              <input class="input-glass" type="text" value="DIMAP-1">
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Nome</span>
+              <input class="input-glass" type="text" placeholder="Divisão de Avaliação">
+            </label>
+          </div>
+          <div class="flex justify-end gap-3">
+            <button class="btn-onsen btn-glass">Cancelar</button>
+            <button class="btn-onsen">Salvar</button>
+          </div>
+          <!-- /partial -->
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- partial: mapping/_controle_fundo.html — fica fora da .admin-shell, como o fundo que ele controla -->
+  <div class="fundo-controle glass-panel fixed bottom-6 right-6 z-20">
+      <div class="fundo-controle__cabecalho">
+        <span class="text-overline">Fundo</span>
+        <input type="checkbox" class="toggle-onsen" data-fundo-ligado checked aria-label="Mostrar o fundo">
+      </div>
+      <div class="fundo-controle__corpo flex flex-col gap-1.5">
+        <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center" data-trocar>
+          <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+          Trocar
+        </button>
+        <div class="fundo-controle__velocidade">
+          <button class="btn-etched etched btn-etched-mini" data-velocidade="-1" aria-label="Mais devagar">&minus;</button>
+          <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" data-nivel aria-label="Velocidade da deriva">
+          <button class="btn-etched etched btn-etched-mini" data-velocidade="1" aria-label="Mais rápido">+</button>
+        </div>
+      </div>
+    </div>
+  <!-- /partial -->
+</body>
+</html>

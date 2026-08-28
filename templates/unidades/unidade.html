@@ -50,7 +50,6 @@
 
 {% block scripts %}
   {# Fundo à deriva — só existe onde existe o canvas administrativo #}
-  <script type="module" src="{% static 'js/mapa/fundo_admin.js' %}"></script>
   {# O modal de edição chega por HTMX depois: sem este módulo já carregado, os selects que ele traz #}
   {# não são aprimorados — select_onsen.js reage a htmx:afterSwap (SPEC user_admin/011).            #}
   <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>

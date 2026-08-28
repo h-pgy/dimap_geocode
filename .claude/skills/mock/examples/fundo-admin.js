@@ -1,12 +1,12 @@
 // Fundo da área administrativa, para os mocks (skill `mock`).
 //
 // Este módulo NÃO desenha fundo algum: ele busca as MESMAS peças que a aplicação usa —
-// `templates/mapping/_mapa_admin.html` (as camadas da lente) e `static/src/js/mapa/fundo_admin.js`
-// (o mapa, a ortofoto do GeoSampa e a deriva) — e as monta na página do mock. Trocar o fundo do
-// produto passa a trocar o de todos os mocks de uma vez, que é o oposto de cada mock recriar o seu
-// e envelhecer sozinho.
+// `templates/mapping/_mapa_admin.html` e os partials que ele inclui (`_glifos_fundo.html`,
+// `_fundo_ortofoto.html`, `_controle_fundo.html`) — e as monta na página do mock. Trocar o fundo
+// do produto passa a trocar o de todos os mocks de uma vez, que é o oposto de cada mock recriar o
+// seu e envelhecer sozinho.
 //
-// Uso, no mock (o CDN do Leaflet precisa vir ANTES):
+// Uso, no mock:
 //   <script type="module">
 //     import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
 //     montarFundoAdmin();
@@ -15,26 +15,24 @@
 // Exige servidor com root na RAIZ do projeto (Live Server), como o resto do mock.
 
 const PARTIAL_FUNDO = "/templates/mapping/_mapa_admin.html";
-const MODULO_FUNDO = "/static/src/js/mapa/fundo_admin.js";
+const PARTIAL_GLIFOS = "/templates/mapping/_glifos_fundo.html";
+const PARTIAL_CANVAS = "/templates/mapping/_fundo_ortofoto.html";
+const PARTIAL_CONTROLE = "/templates/mapping/_controle_fundo.html";
+const MODULO_CONTROLE = "/static/src/js/ui/controle_fundo.js";
+const DIR_ORTOFOTOS = "/static/src/img/ortofotos_fundo/";
 
-// Espelham config/settings.py: no mock não há Django para injetar o contexto. Se a base oficial
-// mudar de URL ou de camada, é aqui que se acerta — em um lugar, não em cada mock.
-const WMS = {
-  url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
-  version: "1.3.0",
-  bases: [
-    {
-      nome: "Ortofoto",
-      layers: "geoportal:ORTO_RGB_2020",
-      url: "http://raster.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/wms",
-    },
-    { nome: "Mapa base", layers: "geoportal:MapaBase_Politico" },
-  ],
-};
-const CONFIG_FUNDO = {
-  centro: [-23.55, -46.63],
-  zoom: 15,
-};
+// Espelha as chaves de config/pontos_fundo.json: no mock não há Django para sortear no servidor,
+// nem para resolver {% static %} — o `fetch` cru do template devolve a tag intacta.
+const CHAVES_ORTOFOTO = [
+  "anhangabau",
+  "ibirapuera",
+  "butanta",
+  "itaquera",
+  "anhembi",
+  "cantareira",
+  "jaragua",
+  "interlagos",
+];
 
 const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
 
@@ -45,31 +43,32 @@ function avisar(mensagem) {
   );
 }
 
-function inserirJson(id, dados) {
-  const script = document.createElement("script");
-  script.type = "application/json";
-  script.id = id;
-  script.textContent = JSON.stringify(dados);
-  document.body.appendChild(script);
+async function buscarPartial(caminho) {
+  const resposta = await fetch(caminho);
+  if (!resposta.ok) throw new Error(`${caminho} → ${resposta.status}`);
+  return (await resposta.text()).replace(TAG_DE_TEMPLATE, "").trim();
 }
 
 export async function montarFundoAdmin() {
   try {
-    if (!window.L) throw new Error("Leaflet não carregou — o CDN dele vem antes deste módulo.");
-
-    const resposta = await fetch(PARTIAL_FUNDO);
-    if (!resposta.ok) throw new Error(`${PARTIAL_FUNDO} → ${resposta.status}`);
-    const marcacao = (await resposta.text()).replace(TAG_DE_TEMPLATE, "").trim();
-    document.body.insertAdjacentHTML("afterbegin", marcacao);
-
-    // O que o `json_script` do Django entrega em produção.
-    inserirJson("mapa-admin-wms", WMS);
-    inserirJson("mapa-admin-config", CONFIG_FUNDO);
-
-    await import(MODULO_FUNDO);
-    // O módulo da aplicação monta no DOMContentLoaded, que aqui já passou: sem este disparo, ele
-    // ficaria carregado e nunca chamado. Andaime do mock — a aplicação não precisa dele.
-    document.dispatchEvent(new Event("DOMContentLoaded"));
+    const chave = CHAVES_ORTOFOTO[Math.floor(Math.random() * CHAVES_ORTOFOTO.length)];
+    const [molde, glifos, canvas, controle] = await Promise.all([
+      buscarPartial(PARTIAL_FUNDO),
+      buscarPartial(PARTIAL_GLIFOS),
+      buscarPartial(PARTIAL_CANVAS),
+      buscarPartial(PARTIAL_CONTROLE),
+    ]);
+    // {% if %}/{% static %} some no fetch cru: a condição vira sempre-verdadeira e a url(''), que
+    // sobra vazia, ganha uma ortofoto real sorteada aqui — o único jeito de povoar o token sem
+    // um Django de pé por trás do Live Server.
+    const canvasPintado = canvas.replace(
+      "url('')",
+      `url('${DIR_ORTOFOTOS}${chave}.png')`,
+    );
+    // Ordem espelha _mapa_admin.html: glifos (invisível) → canvas (z-0) → lente (z-1, no molde
+    // já sem o include) → controle (z-20).
+    document.body.insertAdjacentHTML("afterbegin", glifos + canvasPintado + molde + controle);
+    await import(MODULO_CONTROLE);
   } catch (erro) {
     avisar(`fundo administrativo não montou (${erro.message}) — sirva a RAIZ do projeto.`);
   }

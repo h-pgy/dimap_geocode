@@ -9,11 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- O fundo oficial da área administrativa, montado a partir do partial e do módulo da própria
-       aplicação (skill `mock`): a peça se valida sobre o mesmo fundo em que vai viver. -->
+  <!-- O fundo oficial da área administrativa, montado a partir dos partials da própria aplicação
+       (skill `mock`): a peça se valida sobre o mesmo fundo em que vai viver. -->
   <script type="module">
     import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
     montarFundoAdmin();
@@ -902,6 +899,45 @@
               </div>
             </div>
             <p class="text-xs text-base-content/60">A gravação aplicada a um traço. São <strong>só material</strong>: não posicionam nem dimensionam nada. As pontas esmaecem 20% de cada lado — entre dois trechos vizinhos, aresta viva leria como duas peças encostadas, e o que existe é <strong>um fio só</strong> mudando ao longo do tempo.</p>
+          </div>
+        </div>
+
+        <!-- Fundo de ortofoto (SPEC design/010) -->
+        <div class="grid lg:grid-cols-3 gap-6">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.range-onsen</p>
+            <div class="card-well p-4 flex items-center min-h-[6.5rem]">
+              <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
+            </div>
+            <p class="text-xs text-base-content/60">O trilho é o poço em pílula do <span class="text-code">.toggle-onsen</span>; o polegar é o mesmo disco entintado, em escala de trilho contínuo — mesmo vocabulário, outra geometria.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.btn-etched-mini</p>
+            <div class="card-well p-4 flex items-center justify-center gap-2 min-h-[6.5rem]">
+              <button class="btn-etched btn-etched-swell etched btn-etched-mini">− devagar</button>
+              <button class="btn-etched btn-etched-swell etched btn-etched-mini">+ rápido</button>
+            </div>
+            <p class="text-xs text-base-content/60">Variante do <span class="text-code">.btn-etched</span> para um controle flutuante pequeno; o átomo base segue intocado — usado como está pela autenticação e pela lista de unidades.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.fundo-controle</p>
+            <div class="card-well p-4 flex items-center justify-center min-h-[6.5rem]">
+              <div class="fundo-controle glass-panel">
+                <div class="fundo-controle__cabecalho">
+                  <span class="text-overline">Fundo</span>
+                  <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar o fundo" />
+                </div>
+                <div class="fundo-controle__corpo flex flex-col gap-1.5">
+                  <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">Trocar</button>
+                  <div class="fundo-controle__velocidade">
+                    <button class="btn-etched etched btn-etched-mini">&minus;</button>
+                    <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
+                    <button class="btn-etched etched btn-etched-mini">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">Molécula: <span class="text-code">.toggle-onsen</span> + <span class="text-code">.btn-etched-mini</span> + <span class="text-code">.range-onsen</span>. Desligado, o <span class="text-code">:has()</span> apaga o corpo — não há velocidade a ajustar sem imagem a trocar. O controle real fica fixo no canto inferior direito desta página, agindo sobre o fundo dela.</p>
           </div>
         </div>
 
@@ -2447,9 +2483,9 @@
 
       <!-- Fundo da área administrativa -->
       <div class="flex flex-col gap-2">
-        <p class="text-overline px-2">Fundo da área administrativa</p>
+        <p class="text-overline px-2">Fundo da área administrativa <span class="text-[10px] font-normal text-base-content/50">(SPEC design/010)</span></p>
         <div class="glass-panel p-6 flex flex-col gap-3">
-          <p class="text-sm text-base-content/80">O partial <span class="text-code">mapping/_mapa_admin.html</span> repete as lentes e filtros azuis sob um canvas de <strong>ortofoto do GeoSampa dessaturada e desfocada</strong> (grayscale, blur 30px, contraste reduzido). O filtro azul é forte no centro e suaviza nas bordas, criando foco visual nos formulários. O canvas fica em <span class="text-code">pointer-events-none</span> e deriva devagar (<span class="text-code">js/mapa/deriva.js</span>), parando com a aba oculta e com <span class="text-code">prefers-reduced-motion: reduce</span>.</p>
+          <p class="text-sm text-base-content/80">O partial <span class="text-code">mapping/_mapa_admin.html</span> repete as lentes e filtros azuis sobre uma <strong>ortofoto pré-gerada</strong>, sorteada no servidor e trocada por HTMX — nenhuma requisição ao GeoSampa em tempo de request. <span class="text-code">brightness</span>/<span class="text-code">contrast</span> são do material da ortofoto (gravada em cinza no disco, sem <span class="text-code">grayscale</span> na lente); a deriva é CSS puro (<span class="text-code">.fundo-ortofoto__deriva</span>/<span class="text-code">__imagem</span>), parando sob <span class="text-code">prefers-reduced-motion: reduce</span>. O controle no canto inferior direito troca, desliga e ajusta a velocidade — preferência do navegador, nunca do servidor.</p>
           <p class="form-field-hint">A identidade visual não muda de seção para seção: a lente é a mesma do mapa do produto, só o que está sob ela é outro. É sobre ele que esta página roda — as peças abaixo estão na condição real de uso.</p>
         </div>
       </div>

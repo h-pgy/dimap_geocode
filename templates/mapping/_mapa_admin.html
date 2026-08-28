@@ -1,7 +1,14 @@
-<div id="map-admin" class="fixed inset-0 z-0 pointer-events-none grayscale brightness-[1.1] contrast-[0.75]"></div>
+{% load static %}
+{# O canvas — a ortofoto pré-gerada, à deriva (SPEC design/010) — troca no lugar por HTMX; a #}
+{# lente por cima é a única coisa fixa. brightness/contrast são do material da ortofoto, não da #}
+{# lente: vivem em .fundo-ortofoto__deriva (static/src/tema-dimap.dev.css). #}
+{% include "mapping/_glifos_fundo.html" %}
+{% include "mapping/_fundo_ortofoto.html" %}
 <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#ade8f4]/90"></div>
 <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,119,182,0.5)_0%,rgba(0,119,182,0.15)_100%)]"></div>
 <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[30px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
 <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
-{{ wms|json_script:"mapa-admin-wms" }}
-{{ config_fundo|json_script:"mapa-admin-config" }}
+{% include "mapping/_controle_fundo.html" %}
+{# Script clássico, não module: precisa rodar em ordem de parsing, antes do 1º quadro, para a #}
+{# preferência de liga/desliga e velocidade não piscar errada (Caveats da SPEC design/010). #}
+<script src="{% static 'js/ui/controle_fundo.js' %}"></script>

@@ -1,0 +1,12 @@
+{% load static %}
+<div class="fundo-ortofoto" id="fundo-ortofoto"
+     hx-get="{% url 'mapping:fundo_ortofoto' %}?atual={{ ortofoto_fundo }}"
+     hx-trigger="every 60s, click from:[data-trocar]"
+     hx-target="this" hx-swap="outerHTML swap:250ms">
+  {% if ortofoto_fundo %}
+  <div class="fundo-ortofoto__deriva">
+    <div class="fundo-ortofoto__imagem"
+         style="--fundo-ortofoto: url('{% static "img/ortofotos_fundo/"|add:ortofoto_fundo|add:".png" %}')"></div>
+  </div>
+  {% endif %}
+</div>
