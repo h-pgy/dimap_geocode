@@ -146,12 +146,13 @@ html[data-theme="dimap"] {
   .glass-shadow  { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)]; }
   .glass-glow    { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_32px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.5)]; }
 
-  /* Segunda espessura (SPEC user_admin/011, recalibrada na SPEC design/008): a espessura do gelo depende
-     do que está ATRÁS. Sobre o mapa (água clara) o fino de 10px separa figura do fundo; sobre interface —
-     formulário com tinta escura, selects, poços, toasts — o espesso denso (97%→88%, blur 28px) bloqueia
-     a poluição de fundo sem perder a luminosidade de gelo. */
+  /* Segunda espessura (SPEC user_admin/011, recalibrada na SPEC design/008): a espessura do gelo
+     depende do que está ATRÁS. Sobre o mapa (água clara) o fino de 10px separa figura do fundo; sobre
+     interface — formulário com tinta escura, selects, poços, toasts — o espesso (88%→76%, blur 28px)
+     bloqueia a poluição de fundo. Quem dissolve o que está atrás é o BLUR, não a opacidade: acima de ~90%
+     o gradiente vira papel branco e o material deixa de ler como gelo. */
   .glass-blur-thick { @apply backdrop-blur-[28px]; }
-  .glass-bg-thick   { @apply bg-gradient-to-br from-white/97 via-white/93 to-white/88; }
+  .glass-bg-thick   { @apply bg-gradient-to-br from-white/88 via-white/82 to-white/76; }
 
   /* Gravação no gelo (SPEC user_admin/013): o registro oposto ao .icon-glow — onde ele acende, este
      escava. O relevo vem de filtro SVG porque box-shadow: inset só existe em caixa retangular e aqui
@@ -189,7 +190,7 @@ html[data-theme="dimap"] {
     @apply rounded-2xl backdrop-blur-[18px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
   }
   .glass-panel-thick {
-    @apply rounded-2xl backdrop-blur-[28px] bg-gradient-to-br from-white/97 via-white/93 to-white/88 border border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+    @apply rounded-2xl backdrop-blur-[28px] bg-gradient-to-br from-white/88 via-white/82 to-white/76 border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
   }
   .glass-panel-deep {
     @apply rounded-2xl backdrop-blur-[8px] bg-gradient-to-br from-rocha-950/80 to-rocha-900/70 border border-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(7,58,84,0.35),0_0_24px_rgba(72,202,228,0.25)] text-rocha-100;
@@ -207,9 +208,15 @@ html[data-theme="dimap"] {
      O bg-transparent! derruba o véu escuro que o daisyUI põe em .modal e o base-100 opaco de .modal-box;
      important é sufixo no Tailwind 4. */
   .modal-glass { @apply bg-transparent! backdrop-blur-[16px]; }
-  /* A placa é o .glass-panel-thick, composto no HTML: atrás dela há formulário, não mapa. Aqui fica
-     só o que é do modal — recopiar a receita faria a espessura divergir da SPEC que a define. */
-  .modal-box-glass { @apply bg-transparent! max-h-[85vh] overflow-y-auto; }
+  /* TERCEIRA densidade (SPEC design/008 v2): o modal é o único lugar em que a opacidade alta é o
+     acerto. Ele não flutua sobre interface — ele SUBSTITUI a interface enquanto está aberto, e o
+     diálogo precisa ganhar de um formulário inteiro atrás. Por isso a placa espessa geral desceu
+     para 88%→76% e a do modal ficou em 97%→88%: são densidades diferentes porque respondem a
+     perguntas diferentes. A receita vem escrita aqui e não no .glass-panel-thick empilhado no
+     markup — esta regra vem depois no arquivo e vence, então nenhum dos modais precisa mudar. */
+  .modal-box-glass {
+    @apply bg-transparent! max-h-[85vh] overflow-y-auto backdrop-blur-[28px] bg-gradient-to-br from-white/97 via-white/93 to-white/88 border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+  }
 
   /* Neutralização de artefato de GPU (SPEC design/007): quando o modal está fechado
      (toggle desmarcado ou ausência de .modal-open/[open]), força o descarte do backdrop-filter
@@ -300,7 +307,7 @@ html[data-theme="dimap"] {
   /* O relevo é o oposto do poço (SPEC design/006): a sombra fecha e escurece, porque sombra larga e
      clara só separa contra o mapa — sobre a placa ela vira véu. */
   .btn-glass {
-    @apply rounded-full backdrop-blur-[10px] bg-white/50 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_8px_rgba(7,58,84,0.38)] transition-all duration-300 hover:bg-white/70 hover:shadow-[0_4px_20px_rgba(72,202,228,0.4)];
+    @apply rounded-full backdrop-blur-[10px] bg-white/40 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_8px_rgba(7,58,84,0.38)] transition-all duration-300 hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(72,202,228,0.4)];
   }
   /* Botão de criação inline (SPEC user_admin/012): o gesto "não achei — cadastra agora". Mesma
      receita de gelo do .btn-glass, em tinta ciana (água = ação) e no tamanho que casa com a altura
@@ -583,7 +590,7 @@ html[data-theme="dimap"] {
      e altura máxima vêm do gatilho, escritas pelo JS; o inset: auto derruba o inset: 0 que o
      navegador dá a todo popover. */
   .select-onsen-panel {
-    @apply fixed m-0 p-2 overflow-hidden rounded-2xl backdrop-blur-[28px] bg-transparent bg-gradient-to-br from-white/97 via-white/93 to-white/88 border border-white/80 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+    @apply fixed m-0 p-2 overflow-hidden rounded-2xl backdrop-blur-[28px] bg-transparent bg-gradient-to-br from-white/88 via-white/82 to-white/76 border border-white/70 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
     inset: auto;
   }
   .select-onsen-panel:popover-open { @apply flex flex-col gap-2; }

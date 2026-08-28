@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/009 — Vidro sobre vidro (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação, nunca recriados. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .glass-panel aninhada — token de material (1 · Tokens) */
+      :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well) .glass-panel:where(:not(.modal-box-glass)) {
+        @apply bg-none;
+      }
+
+      /* ---- andaime do comparativo, só neste mock ---- */
+      /* Desliga a regra acima para mostrar o empilhamento como está hoje. */
+      .demo-hoje :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well) .glass-panel:where(:not(.modal-box-glass)),
+      #tela:has(#comparar-tela:checked) :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well) .glass-panel:where(:not(.modal-box-glass)) {
+        @apply bg-gradient-to-br from-white/65 via-white/45 to-white/30;
+      }
+      .demo-coluna { @apply flex flex-col gap-2 min-w-0; }
+      .demo-rotulo { @apply text-[11px] font-mono text-base-content/60; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Ativo não-CSS do token .etched, igual ao templates/partials/_filtros_gravacao.html da
+       aplicação: sem estes defs no documento, .toggle-onsen existe e não desenha o disco. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- O fundo é montado no topo do <body> pelo módulo do <head>; o conteúdo fica acima dele. -->
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC design/009 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Vidro sobre vidro</h1>
+        <p class="mt-4 max-w-3xl text-base-content/80 leading-relaxed">
+          A translucidez é multiplicativa: cada placa empilhada fecha o material da de baixo. À esquerda, como
+          está hoje; à direita, a placa aninhada sem pintura alguma — só desfoque, aresta e sombra. A caixa do
+          modal é a única que mantém a pele em qualquer contexto.
+        </p>
+      </header>
+
+      <!-- 1 · TOKENS -->
+      <section id="tokens" class="flex flex-col gap-8">
+        <h2 class="section-title px-2">1 · Tokens</h2>
+
+        <!-- .glass-panel aninhada · estado: profundidade 1 a 4 -->
+        <div class="flex flex-col gap-5">
+          <div class="glass-panel p-6 sm:p-8">
+            <h3 class="text-lg font-bold">1.1 · A escala de profundidade</h3>
+            <p class="text-sm text-base-content/70 mt-1">Quatro placas encaixadas, do lado de fora para o de dentro.</p>
+          </div>
+          <div class="grid lg:grid-cols-2 gap-6">
+            <div class="demo-coluna demo-hoje">
+              <p class="demo-rotulo">hoje · 65% → 88% → 96% → 98% de branco</p>
+              <div class="glass-panel p-4">
+                <p class="text-overline">1 placa</p>
+                <div class="glass-panel p-4 mt-2">
+                  <p class="text-overline">2 placas</p>
+                  <div class="glass-panel p-4 mt-2">
+                    <p class="text-overline">3 placas</p>
+                    <div class="glass-panel p-4 mt-2">
+                      <p class="text-overline">4 placas</p>
+                      <p class="text-sm text-base-content/80 mt-1">O fundo já não existe.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="demo-coluna">
+              <p class="demo-rotulo">proposta · só a placa de fora pinta; as de cima são vidro sem tinta</p>
+              <div class="glass-panel p-4">
+                <p class="text-overline">1 placa</p>
+                <div class="glass-panel p-4 mt-2">
+                  <p class="text-overline">2 placas</p>
+                  <div class="glass-panel p-4 mt-2">
+                    <p class="text-overline">3 placas</p>
+                    <div class="glass-panel p-4 mt-2">
+                      <p class="text-overline">4 placas</p>
+                      <p class="text-sm text-base-content/80 mt-1">A ortofoto ainda aparece.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- .glass-panel aninhada · estado: dentro de um poço (a exceção) -->
+        <div class="flex flex-col gap-5">
+          <div class="glass-panel p-6 sm:p-8">
+            <h3 class="text-lg font-bold">1.2 · Placa dentro do poço</h3>
+            <p class="text-sm text-base-content/70 mt-1">Placa assentada em <span class="text-code">.card-well</span>. O poço também é superfície: a placa sobre ele conta como empilhamento.</p>
+          </div>
+          <div class="grid lg:grid-cols-2 gap-6">
+            <div class="demo-coluna demo-hoje">
+              <p class="demo-rotulo">hoje</p>
+              <div class="card-well p-5">
+                <p class="text-overline">Resumo</p>
+                <div class="glass-panel rounded-2xl p-5 mt-2 grid sm:grid-cols-2 gap-x-8 gap-y-3">
+                  <div class="min-w-0">
+                    <p class="text-overline">RF</p>
+                    <p class="valor-leitura text-code">812.345-6</p>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline">Unidade</p>
+                    <p class="valor-leitura text-base-content/90">DIMAP-1</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="demo-coluna">
+              <p class="demo-rotulo">proposta</p>
+              <div class="card-well p-5">
+                <p class="text-overline">Resumo</p>
+                <div class="glass-panel rounded-2xl p-5 mt-2 grid sm:grid-cols-2 gap-x-8 gap-y-3">
+                  <div class="min-w-0">
+                    <p class="text-overline">RF</p>
+                    <p class="valor-leitura text-code">812.345-6</p>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline">Unidade</p>
+                    <p class="valor-leitura text-base-content/90">DIMAP-1</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- .glass-panel aninhada · estado: dentro do modal -->
+        <div class="flex flex-col gap-5">
+          <div class="glass-panel p-6 sm:p-8">
+            <h3 class="text-lg font-bold">1.3 · Dentro do modal</h3>
+            <p class="text-sm text-base-content/70 mt-1">A caixa mantém a terceira densidade (97%→88%) nos dois lados — ela nunca é alcançada pela regra. O que muda é a placa de seção dentro dela.</p>
+          </div>
+          <div class="grid lg:grid-cols-2 gap-6">
+            <div class="demo-coluna demo-hoje">
+              <p class="demo-rotulo">hoje</p>
+              <div class="glass-panel-thick modal-box-glass p-6">
+                <p class="text-overline">Editar servidor</p>
+                <div class="glass-panel rounded-2xl p-4 mt-3">
+                  <p class="text-sm text-base-content/80">Placa de seção dentro da caixa.</p>
+                </div>
+              </div>
+            </div>
+            <div class="demo-coluna">
+              <p class="demo-rotulo">proposta</p>
+              <div class="glass-panel-thick modal-box-glass p-6">
+                <p class="text-overline">Editar servidor</p>
+                <div class="glass-panel rounded-2xl p-4 mt-3">
+                  <p class="text-sm text-base-content/80">Placa de seção dentro da caixa.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- .glass-panel aninhada · estado de falta: nenhuma placa em volta -->
+        <div class="flex flex-col gap-5">
+          <div class="glass-panel p-6 sm:p-8">
+            <h3 class="text-lg font-bold">1.4 · Sem placa em volta</h3>
+            <p class="text-sm text-base-content/70 mt-1">O mesmo fragmento fora de qualquer placa — swap HTMX que aterrissa direto na página. Volta a pintar cheio, sem trocar de classe.</p>
+          </div>
+          <div class="grid lg:grid-cols-2 gap-6">
+            <div class="demo-coluna demo-hoje">
+              <p class="demo-rotulo">hoje</p>
+              <div class="glass-panel rounded-2xl p-5">
+                <p class="text-overline">Resumo</p>
+                <p class="valor-leitura text-base-content/90">Henrique Pougy · DIMAP-1</p>
+              </div>
+            </div>
+            <div class="demo-coluna">
+              <p class="demo-rotulo">proposta</p>
+              <div class="glass-panel rounded-2xl p-5">
+                <p class="text-overline">Resumo</p>
+                <p class="valor-leitura text-base-content/90">Henrique Pougy · DIMAP-1</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-8">
+        <div class="flex flex-wrap items-center justify-between gap-4 px-2">
+          <h2 class="section-title">5 · Tela montada</h2>
+          <label class="glass-panel rounded-full! px-4 py-2 flex items-center gap-3 cursor-pointer transition-glass hover:bg-white/60">
+            <input type="checkbox" id="comparar-tela" class="toggle-onsen" />
+            <span class="text-[13px] font-medium text-base-content/80">ver como está hoje</span>
+          </label>
+        </div>
+
+        <!-- página: unidades/unidade.html -->
+        <div class="flex flex-col gap-2">
+          <p class="demo-rotulo px-2">unidades/unidade.html — placa da página › seção › organograma › card</p>
+          <div class="max-w-3xl mx-auto w-full">
+            <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+
+              <!-- partial: unidades/partials/_identidade_unidade.html -->
+              <div class="flex items-center gap-4">
+                <span class="dot-unidade w-12 h-12" style="--cor-unidade:#0077b6"></span>
+                <div class="min-w-0">
+                  <h3 class="text-2xl font-bold tracking-tight text-madeira-700">DIMAP</h3>
+                  <p class="text-sm text-base-content/70">Divisão do Mapa de Valores</p>
+                </div>
+              </div>
+              <!-- /partial -->
+
+              <!-- partial: unidades/partials/_secao_resumo_unidade.html -->
+              <div class="card-well p-5 flex flex-col gap-4">
+                <p class="text-overline">Resumo</p>
+                <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                  <div class="min-w-0">
+                    <p class="text-overline">Sigla</p>
+                    <p class="valor-leitura text-code">DIMAP</p>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline">Unidade superior</p>
+                    <p class="valor-leitura text-base-content/90">DECAD</p>
+                  </div>
+                </div>
+              </div>
+              <!-- /partial -->
+
+              <!-- partial: unidades/partials/_secao_hierarquia.html -->
+              <div class="card-well p-5 flex flex-col gap-4">
+                <p class="text-overline">Hierarquia</p>
+                <div class="glass-panel rounded-2xl overflow-x-auto">
+                  <div class="organograma">
+                    <div class="no-arvore no-arvore-caminho no-arvore-aberto">
+                      <div class="card-unidade card-unidade-poco">
+                        <button class="card-unidade-gatilho" type="button" title="DECAD · Departamento de Cadastros">
+                          <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                          <span class="card-unidade-sigla">DECAD</span>
+                          <span class="card-unidade-nome">Departamento de Cadastros</span>
+                        </button>
+                      </div>
+                      <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                      <div class="no-arvore-filhas">
+                        <div class="no-arvore no-arvore-primeiro no-arvore-ego no-arvore-aberto">
+                          <span class="etched-line no-arvore-barra"></span>
+                          <span class="etched-line no-arvore-fio"></span>
+                          <div class="card-unidade card-unidade-poco card-unidade-ego">
+                            <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão do Mapa de Valores">
+                              <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                              <span class="card-unidade-sigla">DIMAP</span>
+                              <span class="card-unidade-nome">Divisão do Mapa de Valores</span>
+                            </button>
+                          </div>
+                          <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                          <div class="no-arvore-filhas">
+                            <div class="no-arvore no-arvore-primeiro">
+                              <span class="etched-line no-arvore-barra"></span>
+                              <span class="etched-line no-arvore-fio"></span>
+                              <!-- .card-unidade em repouso: é aqui que a placa chega ao 4º nível -->
+                              <div class="card-unidade card-unidade-repouso glass-panel">
+                                <button class="card-unidade-gatilho" type="button" title="DIMAP-1 · Setor de Avaliações">
+                                  <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                                  <span class="card-unidade-sigla">DIMAP-1</span>
+                                  <span class="card-unidade-nome">Setor de Avaliações</span>
+                                </button>
+                              </div>
+                              <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                              <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                            </div>
+                            <div class="no-arvore no-arvore-ultimo">
+                              <span class="etched-line no-arvore-barra"></span>
+                              <span class="etched-line no-arvore-fio"></span>
+                              <div class="card-unidade card-unidade-repouso glass-panel">
+                                <button class="card-unidade-gatilho" type="button" title="DIMAP-2 · Setor de Cadastro Territorial">
+                                  <span class="dot-unidade w-9 h-9" style="--cor-unidade:#bc3a67"></span>
+                                  <span class="card-unidade-sigla">DIMAP-2</span>
+                                  <span class="card-unidade-nome">Setor de Cadastro Territorial</span>
+                                </button>
+                              </div>
+                              <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                              <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="no-arvore no-arvore-ultimo">
+                          <span class="etched-line no-arvore-barra"></span>
+                          <span class="etched-line no-arvore-fio"></span>
+                          <div class="card-unidade card-unidade-repouso glass-panel">
+                            <button class="card-unidade-gatilho" type="button" title="DICAD · Divisão de Cadastro Imobiliário">
+                              <span class="dot-unidade w-9 h-9" style="--cor-unidade:#7f5539"></span>
+                              <span class="card-unidade-sigla">DICAD</span>
+                              <span class="card-unidade-nome">Divisão de Cadastro Imobiliário</span>
+                            </button>
+                          </div>
+                          <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                          <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- /partial -->
+
+              <!-- fica na página: só arranjo, nunca é trocado sozinho -->
+              <div class="flex justify-center pt-2">
+                <button type="button" class="btn btn-onsen btn-lg">Editar unidade</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- página: user_admin/perfil.html -->
+        <div class="flex flex-col gap-2">
+          <p class="demo-rotulo px-2">user_admin/perfil.html — placa da página › poço › placa de dados</p>
+          <div class="max-w-3xl mx-auto w-full">
+            <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+
+              <!-- partial: user_admin/partials/_identidade_perfil.html -->
+              <div class="flex items-center gap-4">
+                <div class="avatar-glass w-16 h-16" style="--cor-unidade: #0077b6">
+                  <svg viewBox="0 0 100 100" role="img" aria-label="HP">
+                    <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Henrique Pougy</h3>
+                  <p class="text-sm text-base-content/70">Analista · DIMAP-1</p>
+                </div>
+              </div>
+              <!-- /partial -->
+
+              <!-- partial: user_admin/partials/_secao_resumo_perfil.html — alvo de swap fora de banda -->
+              <div class="card-well p-5 flex flex-col gap-4">
+                <p class="text-overline">Resumo</p>
+                <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                  <div class="min-w-0">
+                    <p class="text-overline">RF</p>
+                    <p class="valor-leitura text-code">812.345-6</p>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline">E-mail</p>
+                    <p class="valor-leitura text-base-content/90">henrique.pougy@prefeitura.sp.gov.br</p>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline">Unidade</p>
+                    <p class="valor-leitura text-base-content/90">DIMAP-1 <span class="text-base-content/50">· Setor de Avaliações</span></p>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline">Cargo base</p>
+                    <p class="valor-leitura text-base-content/90">Analista de Ordenamento Territorial</p>
+                  </div>
+                </div>
+                <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+                  <div class="stat card-well">
+                    <div class="stat-title">Unidade de lotação</div>
+                    <div class="stat-value flex items-center gap-2">
+                      <span class="dot-unidade w-3 h-3" style="--cor-unidade:#0077b6"></span>
+                      DIMAP-1
+                    </div>
+                    <div class="stat-desc">Setor de Avaliações</div>
+                  </div>
+                  <div class="stat stat-vaga card-well">
+                    <div class="stat-title">Titularidade</div>
+                    <div class="stat-value">—</div>
+                    <div class="stat-desc">Não é titular de unidade alguma.</div>
+                  </div>
+                </div>
+              </div>
+              <!-- /partial -->
+            </div>
+          </div>
+        </div>
+
+        <!-- partial: competencias/partials/_seletor_unidade_alvo.html — alvo de hx-swap ao escolher a unidade -->
+        <div class="flex flex-col gap-2">
+          <p class="demo-rotulo px-2">competencias/partials/_seletor_unidade_alvo.html — placa da página › placa › poço › placa › card</p>
+          <div class="max-w-3xl mx-auto w-full">
+            <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+              <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4">
+                <p class="text-overline">Conceder competência</p>
+                <div class="card-well p-4 flex flex-col gap-3">
+                  <p class="text-overline">Escolha a unidade</p>
+                  <div class="glass-panel rounded-2xl overflow-x-auto">
+                    <div class="organograma">
+                      <div class="no-arvore no-arvore-caminho no-arvore-aberto">
+                        <div class="card-unidade card-unidade-poco">
+                          <button class="card-unidade-gatilho" type="button" title="DECAD · Departamento de Cadastros">
+                            <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                            <span class="card-unidade-sigla">DECAD</span>
+                            <span class="card-unidade-nome">Departamento de Cadastros</span>
+                          </button>
+                        </div>
+                        <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                        <div class="no-arvore-filhas">
+                          <div class="no-arvore no-arvore-primeiro">
+                            <span class="etched-line no-arvore-barra"></span>
+                            <span class="etched-line no-arvore-fio"></span>
+                            <div class="card-unidade card-unidade-repouso glass-panel">
+                              <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão do Mapa de Valores">
+                                <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                                <span class="card-unidade-sigla">DIMAP</span>
+                                <span class="card-unidade-nome">Divisão do Mapa de Valores</span>
+                              </button>
+                            </div>
+                            <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                            <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                          </div>
+                          <div class="no-arvore no-arvore-ultimo">
+                            <span class="etched-line no-arvore-barra"></span>
+                            <span class="etched-line no-arvore-fio"></span>
+                            <div class="card-unidade card-unidade-repouso glass-panel">
+                              <button class="card-unidade-gatilho" type="button" title="DICAD · Divisão de Cadastro Imobiliário">
+                                <span class="dot-unidade w-9 h-9" style="--cor-unidade:#7f5539"></span>
+                                <span class="card-unidade-sigla">DICAD</span>
+                                <span class="card-unidade-nome">Divisão de Cadastro Imobiliário</span>
+                              </button>
+                            </div>
+                            <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                            <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+      </section>
+    </main>
+  </div>
+</body>
+</html>

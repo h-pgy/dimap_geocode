@@ -71,7 +71,7 @@ O menor elemento com identidade própria: botão, input, badge, kbd, ícone, too
 | Átomo | Classe do DS | Sobre |
 |---|---|---|
 | Botão de energia (CTA) | `.btn-onsen` | gradiente `agua-300→500`, tinta escura, glow ciano |
-| Botão de vidro | `.btn-glass` | gelo fosco circular/pill; ações secundárias e ícones |
+| Botão de vidro | `.btn-glass` | gelo fosco circular/pill; ações secundárias e ícones. `bg-white/40`, hover `white/60` — um degrau abaixo da placa espessa, senão o botão encosta nela e some como figura |
 | Botão de criação inline | `.btn-criar-inline` | círculo de gelo com `+` em tinta ciana ao lado de um campo: "criar agora o que falta no catálogo" |
 | Input de vidro | `.input-glass` | fundo `white/30` com o **poço em repouso** (`--sombra-poco`, SPEC design/006 — campo é coisa rebaixada); no foco o poço soma o anel ciano |
 | Badges de geometria | `.badge-ponto` `.badge-linha` `.badge-poligono` | tipo do resultado/camada |
@@ -253,11 +253,11 @@ brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `static/src/tem
 | Material | Uso | Tinta |
 |---|---|---|
 | `.glass-panel` | painel flutuante padrão (fino, 10px — **sobre o mapa**) | escura |
-| `.glass-panel-thick` | segunda espessura (blur 28px, 97%→88%, aresta `white/80`) — **vidro sobre interface**, onde o fino deixa passar demais. Primitivos `.glass-blur-thick` / `.glass-bg-thick` | escura |
+| `.glass-panel-thick` | segunda espessura (blur 28px, 88%→76%, aresta `white/70`) — **vidro sobre interface**, onde o fino deixa passar demais. Primitivos `.glass-blur-thick` / `.glass-bg-thick`. Quem esconde o fundo é o **blur**: acima de ~90% de branco o material deixa de ler como gelo (SPEC design/008 v2) | escura |
 | `.glass-drawer-panel` | gaveta lateral (texto denso; blur 12px, mais opaco) | escura |
 | `.card-well` | poço rebaixado: sub-cards dentro de painéis (stats, metadados) | escura |
 | `.glass-panel-deep` | variante escura **pontual**: tooltips, contraste invertido | clara (`rocha-100`, acentos `agua-300`/`madeira-300`) |
-| `.modal-glass` + `.modal-box-glass` | modal: a cena **embaça** o fundo a 16px (nunca escurece) e a caixa compõe `.glass-panel-thick`. Abre/fecha por `checkbox` nativo | escura |
+| `.modal-glass` + `.modal-box-glass` | modal: a cena **embaça** o fundo a 16px (nunca escurece) e a caixa é a **terceira densidade** — 97%→88%, blur 28px, aresta `white/80` —, escrita no próprio `.modal-box-glass` (SPEC design/008 v2). O modal não flutua sobre a interface: ele a substitui enquanto está aberto, e é o único lugar em que a opacidade alta é o acerto. O `.glass-panel-thick` empilhado no markup continua ali e é vencido por ordem. Abre/fecha por `checkbox` nativo | escura |
 
 Regras:
 - Blur fraco (2px) é proibido: não separa figura do fundo. O mapa continua legível com 10px.

@@ -67,23 +67,10 @@
                shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_40px_rgba(7,58,84,0.3),0_0_28px_rgba(72,202,228,0.28)];
       }
 
-      /* Classe principal que será adotada */
-      .glass-panel-thick {
-        @apply rounded-2xl backdrop-blur-[28px] bg-gradient-to-br from-white/97 via-white/93 to-white/88
-               border border-white/80
-               shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
-      }
-      .glass-blur-thick { @apply backdrop-blur-[28px]; }
-      .glass-bg-thick   { @apply bg-gradient-to-br from-white/97 via-white/93 to-white/88; }
-
-      /* Popover do Select Onsen recalibrado (renderiza na Top Layer via Popover API) */
-      .select-onsen-panel {
-        @apply fixed m-0 p-2 overflow-hidden rounded-2xl backdrop-blur-[28px] bg-transparent
-               bg-gradient-to-br from-white/97 via-white/93 to-white/88 border border-white/80 text-base-content
-               shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
-        inset: auto;
-      }
-      .select-onsen-panel:popover-open { @apply flex flex-col gap-2; }
+      /* .glass-panel-thick, .glass-blur-thick, .glass-bg-thick e .select-onsen-panel viviam aqui como
+         override local, de quando ainda não estavam no tema. No v2 foram removidos: o mock já busca a
+         fonte única, e a cópia congelaria a calibragem antiga e mascararia a vigente. Os níveis em
+         disputa continuam abaixo, sufixados — é para isso que este mock existe. */
       .select-onsen-busca { @apply h-9 text-sm shrink-0; }
       .select-onsen-list  { @apply flex flex-col gap-1 min-h-0 max-h-60 overflow-y-auto overscroll-contain; }
       .select-onsen-option {
@@ -168,13 +155,23 @@
       <p class="mt-4 max-w-3xl text-base-content/80 leading-relaxed">
         Quando um modal abre em frente a um formulário com <strong>toasts coloridos, tabelas e avisos em amarelo/vermelho</strong>, precisamos de duas frentes:
         (1) <strong>Aumentar o desfoque da cena por trás</strong> (<span class="text-code">.modal-glass</span> de 6px → 16px) para transformar o ruído de fundo em uma aquarela suave sem escurecer;
-        (2) <strong>Densificar a placa do modal</strong> (<span class="text-code">.glass-panel-thick</span> de 85%→65% para <strong class="text-agua-700">97%→88%</strong> com blur 28px), blindando o contraste dos campos.
+        (2) <strong>Densificar a placa do modal</strong> (<span class="text-code">.glass-panel-thick</span> de 85%→65% para <strong class="text-agua-700">88%→76%</strong> com blur 28px), blindando o contraste dos campos sem que o material deixe de ler como gelo.
       </p>
       <div class="flex flex-wrap gap-2 mt-5">
         <span class="badge badge-ponto">Backdrop blur 16px</span>
-        <span class="badge badge-linha">Placa 97% → 88%</span>
+        <span class="badge badge-linha">Placa 88% → 76%</span>
         <span class="badge badge-poligono">Placa blur 28px</span>
-        <span class="badge badge-neutral badge-soft">Aresta border-white/80</span>
+        <span class="badge badge-neutral badge-soft">Aresta border-white/70</span>
+      </div>
+      <div class="card-well p-4 mt-5">
+        <p class="text-[13px] text-base-content/80 m-0">
+          <strong>v2 (27/08).</strong> O v1 adotou o nível 3 do comparativo abaixo (97%→88% em branco) e a placa
+          passou a ler como <strong>papel</strong>: sem nada visível atrás, o gradiente perde a translucidez, a aresta
+          deixa de ter função e o brilho de quina vira contorno. A calibragem vigente é <strong>88%→76%</strong>, com o
+          blur de 28px intacto — quem esconde o fundo é o <strong>desfoque</strong>, não a opacidade. Os níveis
+          sufixados (<span class="text-code">-antigo</span>, <span class="text-code">-medio</span>,
+          <span class="text-code">-denso</span>) continuam aqui como registro da disputa.
+        </p>
       </div>
     </header>
 
@@ -250,10 +247,10 @@
             </div>
           </div>
 
-          <!-- 3. Gelo Denso Recomendado (97% -> 88%) -->
+          <!-- 3. Gelo Denso: o nível que o v1 adotou (97% -> 88%) e o v2 recuou -->
           <div class="glass-panel-thick-denso p-5 flex flex-col gap-3 relative ring-2 ring-agua-500/50">
             <div class="flex items-center justify-between">
-              <span class="text-overline text-agua-800 font-bold">3. Denso (97%→88%) ★</span>
+              <span class="text-overline text-agua-800 font-bold">3. Denso (97%→88%)</span>
               <span class="badge badge-xs badge-success badge-soft">28px blur</span>
             </div>
             <p class="text-xs text-base-content/70">Perfeito sobre toasts: bloqueia o ruído e preserva o gelo.</p>
@@ -271,7 +268,7 @@
       <div>
         <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos e Selects sobre Gelo Denso</h2>
         <p class="text-[13px] text-base-content/70 mt-1">
-          O componente <span class="text-code">data-select-onsen</span> com a nova densidade (97%→88%) abrindo na Top Layer.
+          O componente <span class="text-code">data-select-onsen</span> na densidade vigente (88%→76%) abrindo na Top Layer.
         </p>
       </div>
 
@@ -335,7 +332,7 @@
         <label for="modal-teste-denso" class="btn btn-onsen flex flex-col items-start p-4 h-auto gap-1 shadow-lg cursor-pointer">
           <div class="flex items-center justify-between w-full">
             <span class="font-bold text-sm text-white">3. Denso + Fundo Fosco ★</span>
-            <span class="badge badge-success badge-xs">97%→88%</span>
+            <span class="badge badge-success badge-xs">88%→76%</span>
           </div>
           <p class="text-xs text-white/90 font-normal">Backdrop 16px · Placa 28px blur</p>
         </label>
@@ -440,10 +437,11 @@
           </div>
           <ul class="text-xs text-base-content/80 flex flex-col gap-2 m-0 pl-4 list-disc">
             <li><span class="text-code">.glass-blur-thick</span>: atualizado para <code class="text-agua-800 font-semibold">backdrop-blur-[28px]</code>.</li>
-            <li><span class="text-code">.glass-bg-thick</span>: atualizado para <code class="text-agua-800 font-semibold">bg-gradient-to-br from-white/97 via-white/93 to-white/88</code>.</li>
-            <li><span class="text-code">.glass-panel-thick</span>: passa a compor a nova densidade (97%→88%, blur 28px, aresta <code class="text-agua-800 font-semibold">border-white/80</code> e sombra profunda).</li>
+            <li><span class="text-code">.glass-bg-thick</span>: atualizado para <code class="text-agua-800 font-semibold">bg-gradient-to-br from-white/88 via-white/82 to-white/76</code> (v2 — o v1 adotou 97%→88% e a placa virou papel branco).</li>
+            <li><span class="text-code">.glass-panel-thick</span>: passa a compor a nova densidade (88%→76%, blur 28px, aresta <code class="text-agua-800 font-semibold">border-white/70</code>, brilho de quina <code class="text-agua-800 font-semibold">0.9</code> e sombra profunda).</li>
             <li><span class="text-code">.modal-glass</span>: desfoque de backdrop atualizado para <code class="text-agua-800 font-semibold">backdrop-blur-[16px]</code>.</li>
-            <li><span class="text-code">.select-onsen-panel</span>: popover atualizado para a receita de 28px blur e 97%→88%.</li>
+            <li><span class="text-code">.select-onsen-panel</span>: popover atualizado para a mesma receita — 28px de blur e 88%→76%.</li>
+            <li><span class="text-code">.btn-glass</span> (v2): <code class="text-agua-800 font-semibold">bg-white/40</code>, hover <code class="text-agua-800 font-semibold">white/60</code> — sobre a placa espessa, dois brancos altos encostados apagam a figura do botão.</li>
           </ul>
         </div>
 
@@ -466,7 +464,7 @@
 
   <!-- ==================== DIÁLOGOS DE TESTE ==================== -->
 
-  <!-- 1. MODAL DENSO RECOMENDADO (Backdrop 16px + Placa 97%→88%) -->
+  <!-- 1. MODAL no nível 3 (Backdrop 16px + Placa 97%→88%): o que o v1 adotou e o v2 recuou -->
   <input type="checkbox" id="modal-teste-denso" class="modal-toggle" />
   <div class="modal modal-glass-16" role="dialog">
     <div class="modal-box glass-panel-thick-denso modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
