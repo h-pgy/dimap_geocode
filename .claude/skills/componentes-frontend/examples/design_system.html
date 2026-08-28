@@ -114,6 +114,29 @@
       <!-- Alvo de revogar do .chip-concessao e gatilho de conceder (SPEC autorizacao/008). -->
       <g id="glifo-x"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></g>
       <g id="glifo-mais"><path d="M12 5v14"/><path d="M5 12h14"/></g>
+      <!-- Cromo das telas de servidor/unidade (SPECs user_admin/016, 017 e 022). -->
+      <g id="glifo-foto">
+        <path d="M3.6 8.6h3.1l1.4-2.3h7.8l1.4 2.3h3.1a1.5 1.5 0 0 1 1.5 1.5v7.6a1.5 1.5 0 0 1-1.5 1.5H3.6a1.5 1.5 0 0 1-1.5-1.5v-7.6a1.5 1.5 0 0 1 1.5-1.5z"/>
+        <circle cx="12" cy="13.9" r="3.3"/>
+      </g>
+      <g id="glifo-alerta">
+        <path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/>
+      </g>
+      <g id="glifo-titular">
+        <circle cx="9.5" cy="8" r="3.2"/>
+        <path d="M4 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="m18.4 3.6 1.1 2.2 2.5.36-1.8 1.75.42 2.47-2.22-1.17-2.22 1.17.43-2.47-1.8-1.75 2.48-.36z"/>
+      </g>
+      <g id="glifo-substituto">
+        <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+      </g>
+      <g id="glifo-hierarquia">
+        <rect x="9" y="3" width="6" height="4.4" rx="1.2"/>
+        <rect x="2.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <rect x="15.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <path d="M12 7.4v4.2"/><path d="M5.5 16.6v-5h13v5"/>
+      </g>
     </defs>
   </svg>
 
@@ -305,7 +328,7 @@
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
         <div>
           <h3 class="text-lg font-bold">1.3 · Materiais de vidro</h3>
-          <p class="text-sm text-base-content/70 mt-1">Receita do gelo: blur 10px + gradiente branco translúcido + aresta <span class="text-code">white/60</span> + sombra em camadas (azul-fria para separação, ciana para o brilho). Tokens: <span class="text-code">.glass-blur .glass-bg .glass-edge .glass-shadow .glass-glow</span>.</p>
+          <p class="text-sm text-base-content/70 mt-1">Receita do gelo: blur 10px + gradiente branco translúcido + aresta <span class="text-code">white/60</span> + sombra em camadas (azul-fria para separação, ciana para o brilho). Tokens primitivos: <span class="text-code">.glass-blur .glass-bg .glass-bg-deep .glass-edge .glass-shadow .glass-glow</span> — os materiais compostos abaixo são empilhamentos deles, e é assim que uma peça nova ganha pele sem inventar sombra ou blur.</p>
         </div>
         <div class="grid md:grid-cols-3 gap-4">
           <div class="glass-panel p-5">
@@ -425,6 +448,7 @@
               <p class="text-xs text-base-content/70">O foco vem do <strong>desfoque</strong>, na mesma língua da <span class="text-code">.cinematic-blur-layer</span>. Abrir e fechar é <span class="text-code">checkbox</span> nativo — sem JavaScript, sem estado no navegador.</p>
               <label for="modal-styleguide" class="btn btn-onsen w-fit">Abrir o modal</label>
               <p class="form-field-hint">Fecha pelo backdrop e pelo Cancelar. Não fecha com <span class="text-code">Esc</span> — isso exigiria <span class="text-code">&lt;dialog&gt;</span> e JS de estado.</p>
+              <p class="form-field-hint">Modal que chega por HTMX aterrissa no <span class="text-code">.poco-modal</span> (SPEC <span class="text-code">user_admin/017</span>): o contêiner vazio que a página mantém só para recebê-lo. É dele a entrada — o fragmento chega com o <span class="text-code">.modal-toggle</span> já marcado, e sem a fase de <span class="text-code">.htmx-settling</span> a placa apareceria pronta, sem animação alguma.</p>
             </div>
           </div>
         </div>
@@ -459,6 +483,57 @@
             <span class="text-overline etched etched-rotulo">Situação</span>
           </div>
           <p class="text-xs text-base-content/60">Os deslocamentos do filtro são px absolutos e <strong>não escalam com o font-size</strong>: acima de ~32px use <span class="text-code">.etched-lg</span>. Três restrições andam com o token: ele <strong>nunca carrega informação</strong>, só afordância; <strong>só vale sobre vidro claro</strong> (em <span class="text-code">.glass-panel-deep</span> a luz inverte e a escavação some); e quando o sulco precisa <em>nomear</em> algo, a tinta sobe (<span class="text-code">.etched-rotulo</span>).</p>
+        </div>
+      </div>
+
+      <!-- 1.7 Coreografia -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.7 · Coreografia</h3>
+          <p class="text-sm text-base-content/70 mt-1">Os tokens de movimento. <span class="text-code">.transition-glass</span> é o tempo do material (500ms, ease-in-out); <span class="text-code">.glass-hide-up</span> é como uma peça <strong>cede o lugar</strong> quando outra entra em cena; <span class="text-code">.cinematic-blur-layer</span> é o foco de tela. Quem liga os três é sempre <strong>estado que o servidor controla</strong>, lido por CSS (<span class="text-code">:has()</span>, <span class="text-code">:checked</span>) — nunca JavaScript imperativo.</p>
+        </div>
+        <div class="grid lg:grid-cols-3 gap-5">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.transition-glass <span class="text-[10px] font-normal text-base-content/50">(passe o cursor)</span></p>
+            <div class="card-well p-5 flex items-center justify-center min-h-[9rem]">
+              <div class="glass-panel rounded-full! px-5 py-2.5 cursor-pointer transition-glass hover:bg-white/70">
+                <p class="text-sm font-bold text-madeira-700">DIMAP GeoCoder</p>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">O tempo padrão do gelo. Hover de vidro <strong>acende</strong> o material — nunca troca a cor dele.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.glass-hide-up</p>
+            <div class="card-well p-5 grid grid-cols-2 gap-3 items-start min-h-[9rem]">
+              <div class="flex flex-col gap-2">
+                <div class="glass-panel p-3">
+                  <p class="text-[13px] font-bold text-madeira-700">Barra de busca</p>
+                </div>
+                <p class="text-[10px] font-mono text-base-content/60">em cena</p>
+              </div>
+              <div class="flex flex-col gap-2">
+                <div class="glass-panel p-3 glass-hide-up">
+                  <p class="text-[13px] font-bold text-madeira-700">Barra de busca</p>
+                </div>
+                <p class="text-[10px] font-mono text-base-content/60">recolhida</p>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">Sobe, encolhe e para de receber ponteiro — <strong>sem sair do fluxo</strong>: o espaço continua reservado (o rótulo abaixo não subiu). Na aplicação quem aplica é o estado da gaveta, em CSS: <span class="text-code">#lote-drawer:checked ~ …</span>.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.cinematic-blur-layer</p>
+            <div class="card-well p-5 flex flex-col gap-3 min-h-[9rem]">
+              <div class="relative h-[4.5rem] rounded-xl overflow-hidden border border-white/45">
+                <div class="absolute inset-0 flex"><div class="flex-1 bg-agua-500"></div><div class="flex-1 bg-sakura-500"></div><div class="flex-1 bg-madeira-600"></div></div>
+                <div class="cinematic-blur-layer"></div>
+              </div>
+              <div class="relative h-[4.5rem] rounded-xl overflow-hidden border border-white/45">
+                <div class="absolute inset-0 flex"><div class="flex-1 bg-agua-500"></div><div class="flex-1 bg-sakura-500"></div><div class="flex-1 bg-madeira-600"></div></div>
+                <div class="cinematic-blur-layer active"></div>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">A camada de foco entre o mapa e o painel: acima em repouso, abaixo com <span class="text-code">.active</span>. O foco vem do <strong>desfoque</strong> — véu preto sobre o mapa é proibido.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -566,6 +641,33 @@
             </div>
           </div>
           <p class="form-field-hint mt-2">O botão acoplado alterna o <span class="text-code">type</span> do input entre mascarado e texto plano (<span class="text-code">static/src/js/ui/olhinho_senha.js</span>).</p>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">A senha revelada e o botão de copiar (SPEC criacao_usuarios/007) — <span class="text-code">.senha-revelada</span> · <span class="text-code">.btn-copiar</span></p>
+          <div class="card-well p-5 flex flex-col items-center gap-1 text-center">
+            <p class="text-overline">Senha de primeiro acesso</p>
+            <p class="senha-revelada mt-1">K7m$92xQ</p>
+            <div class="flex flex-wrap items-center justify-center gap-4 mt-5">
+              <button type="button" class="btn btn-glass btn-sm btn-copiar" data-estado="pronto">
+                <span data-face="pronto"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar</span>
+                <span data-face="copiado"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>Copiado</span>
+                <span data-face="falhou"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>Não deu — copie a mão</span>
+              </button>
+              <button type="button" class="btn btn-glass btn-sm btn-copiar" data-estado="copiado">
+                <span data-face="pronto"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar</span>
+                <span data-face="copiado"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>Copiado</span>
+                <span data-face="falhou"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>Não deu — copie a mão</span>
+              </button>
+              <button type="button" class="btn btn-glass btn-sm btn-copiar" data-estado="falhou">
+                <span data-face="pronto"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar</span>
+                <span data-face="copiado"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>Copiado</span>
+                <span data-face="falhou"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>Não deu — copie a mão</span>
+              </button>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60 mt-2">data-estado: pronto · copiado · falhou</p>
+          </div>
+          <p class="form-field-hint mt-2">O <span class="text-code">.text-code</span> em medida de display: a senha é <strong>o objeto da tela</strong>, não um dado dela — e <span class="text-code">select-all</span> faz um clique só pegar os oito dígitos, que é o caminho manual e precisa funcionar sozinho. O botão tem <strong>três faces no DOM</strong> e quem escolhe é o <span class="text-code">data-estado</span>; a face de falha é peça, não ausência — sem ela o botão fica mudo e parece ter copiado.</p>
         </div>
 
         <div>
@@ -698,6 +800,14 @@
             </div>
             <p class="text-xs text-base-content/60">O <span class="text-code">.paint-well</span> em escala de marca. O hex chega em <span class="text-code">--cor-unidade</span>, resolvido na borda do app.</p>
           </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.btn-etched-sm <span class="text-[10px] font-normal text-base-content/50">(SPEC user_admin/017)</span></p>
+            <div class="card-well p-4 flex items-center justify-center gap-5 min-h-[6.5rem]">
+              <span class="btn-etched btn-etched-sm etched">✕ cancelar</span>
+              <button class="btn btn-onsen btn-sm">Criar unidade</button>
+            </div>
+            <p class="text-xs text-base-content/60">A gravação em medida menor, para ficar <strong>ao lado de quem grava</strong>: no corpo cheio do <span class="text-code">.btn-etched</span>, o desfazer disputaria a atenção com o botão que salva em vez de ceder.</p>
+          </div>
         </div>
 
         <!-- Átomos do exercício (SPEC user_admin/015) -->
@@ -727,6 +837,24 @@
               </div>
             </div>
             <p class="text-xs text-base-content/60">A gravação aplicada a um traço. São <strong>só material</strong>: não posicionam nem dimensionam nada. As pontas esmaecem 20% de cada lado — entre dois trechos vizinhos, aresta viva leria como duas peças encostadas, e o que existe é <strong>um fio só</strong> mudando ao longo do tempo.</p>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Retrato editável (SPEC user_admin/017) — <span class="text-code">.avatar-editavel</span> · <span class="text-code">.btn-foto</span></p>
+          <div class="card-well p-6 flex flex-wrap items-center justify-around gap-8">
+            <div class="avatar-editavel">
+              <div class="avatar-glass w-28 h-28" style="--cor-unidade: #0077b6; --halo-escala: 2">
+                <svg viewBox="0 0 100 100" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                </svg>
+              </div>
+              <button type="button" class="btn btn-circle btn-foto" title="Trocar a foto">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+              </button>
+            </div>
+            <p class="text-xs text-base-content/60 max-w-sm">O <span class="text-code">.btn-foto</span> é irmão do <span class="text-code">.btn-criar-inline</span> — o mesmo círculo de gelo em tinta ciana —, pousado na quina do retrato. Quem posiciona é o <span class="text-code">.avatar-editavel</span>, e só isso: o retrato continua sendo o <span class="text-code">.avatar-glass</span> intocado, com o halo da unidade e o domo. No modal de edição o botão é o próprio <span class="text-code">.campo-onsen-lapis</span>, e vira ✕ quando o campo já está aberto.</p>
           </div>
         </div>
 
@@ -811,6 +939,24 @@
             </div>
           </div>
           <p class="text-xs text-base-content/60">Duas faces no DOM; quem escolhe é o estado no invólucro — a classe <span class="text-code">.botao-aura-ligado</span> quando vem do servidor, um grupo de rádios/checkbox irmão quando o estado é local (sem alvo a consultar). Nenhuma face é redeclarada: <span class="text-code">.btn-onsen</span> e <span class="text-code">.card-well</span> entram empilhados no HTML.</p>
+
+          <p class="text-overline pt-2">.botao-aura-estado · .botao-aura-aviso <span class="font-normal text-base-content/60">— a pergunta antes do ato</span></p>
+          <div class="card-well p-6 flex flex-wrap items-center gap-6">
+            <div class="relative inline-flex">
+              <input type="radio" name="styleguide-ato" id="styleguide-ato-repouso" class="botao-aura-estado" checked />
+              <input type="radio" name="styleguide-ato" id="styleguide-ato-pergunta" class="botao-aura-estado botao-aura-pergunta" />
+              <input type="radio" name="styleguide-ato" id="styleguide-ato-ligado" class="botao-aura-estado botao-aura-estado-ligado" />
+              <input type="radio" name="styleguide-ato" id="styleguide-ato-pergunta-revogar" class="botao-aura-estado botao-aura-estado-ligado botao-aura-pergunta-revogar" />
+
+              <div class="aura aura-onsen botao-aura">
+                <label for="styleguide-ato-pergunta" class="btn btn-onsen botao-aura-repouso gap-2"><span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>Tornar administrador</label>
+                <label for="styleguide-ato-pergunta-revogar" class="btn card-well botao-aura-acionado gap-2"><span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></svg></span>É administrador</label>
+              </div>
+
+            </div>
+            <p class="text-xs text-base-content/60 flex-1 min-w-[12rem]">O ciclo inteiro, clicável: o ato de peso <strong>pergunta antes</strong>, nos dois sentidos. Aqui o estado é um grupo de rádios irmão (<span class="text-code">.botao-aura-estado</span> + <span class="text-code">.botao-aura-estado-ligado</span>), o caminho de quando não há alvo a consultar; na aplicação quem manda a face é a classe <span class="text-code">.botao-aura-ligado</span> que o servidor devolve. O CSS não sabe a diferença.</p>
+          </div>
+          <p class="text-xs text-base-content/60">O aviso mora <strong>fora</strong> do ramo do formulário e é alcançado por <span class="text-code">:root:has(.botao-aura-pergunta:checked)</span>: ancestral com <span class="text-code">backdrop-filter</span> — o <span class="text-code">.glass-panel</span> do formulário, o <span class="text-code">.modal-box</span> do modal — vira containing block de <span class="text-code">fixed</span>, e a placa presa lá dentro nasceria ancorada no topo do conteúdo, longe de quem rolou até o botão. Há o par <span class="text-code">.botao-aura-aviso-revogar</span> para o caminho de volta, com a mesma mecânica.</p>
         </div>
 
         <!-- Grupo de busca -->
@@ -1099,6 +1245,25 @@
         </div>
       </div>
 
+      <!-- Checklist de senha forte (SPEC autenticacao/002) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Checklist de senha forte (<span class="text-code">.checklist-senha</span>)</p>
+        <div class="card-well p-5 flex flex-col gap-5">
+          <div class="input-olhinho-wrap">
+            <input type="password" class="input input-glass pr-10 w-full" value="Senha!23" readonly aria-label="Nova senha" />
+            <span class="input-olhinho-btn">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+            </span>
+          </div>
+          <div class="checklist-senha">
+            <div class="checklist-item atendido"><span class="checklist-icone">✓</span><span>Mínimo de 8 caracteres</span></div>
+            <div class="checklist-item atendido"><span class="checklist-icone">✓</span><span>Pelo menos uma letra maiúscula</span></div>
+            <div class="checklist-item"><span class="checklist-icone">✓</span><span>Pelo menos um caractere especial (!@#$%^&amp;*...)</span></div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">Cada requisito acende em <span class="text-code">.atendido</span> conforme se digita — o disco cinza vira <span class="text-code">success</span> e a linha ganha peso. É a única peça do sistema que usa cor semântica para um estado <strong>local</strong>: aqui ela não fala de um ato administrativo, fala do que ainda falta para o campo ser aceito. Acima, o par <span class="text-code">.input-olhinho-wrap</span>, que sempre a acompanha.</p>
+      </div>
+
       <!-- Imagem de perfil em versão grande -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Imagem de perfil grande (à esquerda do nome)</p>
@@ -1134,6 +1299,119 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Campo que se abre e painel que cresce (SPECs user_admin/016 e 017) -->
+      <div class="glass-panel p-6 flex flex-col gap-4 lg:col-span-2">
+        <div>
+          <p class="text-overline">Campo que se abre (<span class="text-code">.campo-onsen</span>) e painel que cresce (<span class="text-code">.painel-onsen</span>)</p>
+          <p class="text-sm text-base-content/70 mt-1">O dado nasce <strong>em leitura</strong> e só vira campo quando o lápis ao lado é aberto — editar é um gesto declarado, não o estado padrão de uma tela de consulta. O par é um <span class="text-code">checkbox</span> nativo lido por <span class="text-code">:has()</span>, como o resto do sistema.</p>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-5 items-start">
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline text-madeira-600">em leitura, e um aberto</p>
+            <div class="campo-onsen">
+              <input type="checkbox" id="styleguide-campo-rf" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">RF</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor text-code">812.345-6</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" class="input input-glass" value="812.345-6" />
+                </div>
+                <label for="styleguide-campo-rf" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o RF">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+            <div class="campo-onsen">
+              <input type="checkbox" id="styleguide-campo-email" class="campo-onsen-toggle" checked />
+              <span class="text-overline etched-rotulo">E-mail</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">henrique.pougy@prefeitura.sp.gov.br</p>
+                <div class="campo-onsen-campo">
+                  <input type="email" class="input input-glass" value="henrique.pougy@prefeitura.sp.gov.br" />
+                </div>
+                <label for="styleguide-campo-email" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o e-mail">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">Aberto, o lápis <strong>entinta</strong> e sobe (centrado, flutuaria no meio da coluna) — e vira ✕ no hover, porque o mesmo gesto que abriu é o que desfaz, e nada dizia isso. O valor em leitura quebra <span class="text-code">wrap-anywhere</span>: e-mail é um token sem espaço e sairia por cima do lápis.</p>
+          </div>
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline text-madeira-600">o painel toma o lugar do gatilho</p>
+            <label for="styleguide-painel-unidade" class="painel-onsen-gatilho btn btn-glass btn-xs gap-1.5 self-start">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+              Unidade não encontrada
+            </label>
+            <div class="painel-onsen">
+              <input type="checkbox" id="styleguide-painel-unidade" class="painel-onsen-toggle" />
+              <div class="painel-onsen-corpo">
+                <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4">
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                      <p class="text-overline">Cadastrar unidade</p>
+                      <p class="text-[13px] text-base-content/60 mt-0.5">Criada aqui, ela passa a existir na lista acima.</p>
+                    </div>
+                    <label for="styleguide-painel-unidade" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Fechar o cadastro de unidade">
+                      <span class="etched icon-etched">✕</span>
+                    </label>
+                  </div>
+                  <label class="form-field">
+                    <span class="text-overline">Sigla</span>
+                    <input type="text" class="input input-glass" placeholder="DIMAP-4" />
+                  </label>
+                  <div class="flex items-center justify-end gap-5">
+                    <label for="styleguide-painel-unidade" class="btn-etched btn-etched-sm etched">✕ cancelar</label>
+                    <button type="button" class="btn btn-onsen btn-sm">Criar unidade</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">A altura anima de <span class="text-code">0fr</span> a <span class="text-code">1fr</span> numa grade — o único jeito de animar altura sem fixar um pixel que o conteúdo desmente. A folga vive <strong>dentro</strong> do recorte: fora dele, o <span class="text-code">overflow</span> corta a sombra da placa e a quina sai reta.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bandeja e indicadores (SPEC user_admin/016) -->
+      <div class="glass-panel p-6 flex flex-col gap-4 lg:col-span-2">
+        <div>
+          <p class="text-overline">Bandeja de indicadores (<span class="text-code">.stats-onsen</span> · <span class="text-code">.stat-vaga</span>)</p>
+          <p class="text-sm text-base-content/70 mt-1">O <span class="text-code">.stats</span> do daisyUI vestido com o material do sistema: cada célula é um <span class="text-code">.card-well</span>, e a bandeja fica <strong>sem tinta própria</strong> — o que separa as células é a aresta de luz, não um fundo.</p>
+        </div>
+        <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+            </div>
+            <div class="stat-title">Unidade de lotação</div>
+            <div class="stat-value flex items-center gap-2">
+              <span class="dot-unidade w-3 h-3" style="--cor-unidade:#0077b6"></span>
+              DIMAP-1
+            </div>
+            <div class="stat-desc">Divisão de Avaliação</div>
+            <div class="stat-actions">
+              <a href="#" class="btn btn-glass btn-xs">Ver a unidade</a>
+            </div>
+          </div>
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+            </div>
+            <div class="stat-title">Titularidade</div>
+            <div class="stat-value">Titular da DIMAP-1</div>
+            <div class="stat-desc">Dirige a unidade em que está lotado.</div>
+          </div>
+          <div class="stat stat-vaga card-well">
+            <div class="stat-figure text-error/70!">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+            </div>
+            <div class="stat-title">Substituto</div>
+            <div class="stat-value">Sem substituto</div>
+            <div class="stat-desc">Vaga aberta — o cargo não está ocupado.</div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">A variante <span class="text-code">.stat-vaga</span> tinge o valor de <span class="text-code">error</span>: buraco na cobertura de uma unidade é <strong>estado do sistema</strong>, e estado do sistema tem cor semântica obrigatória. Célula que só existe quando há o que afirmar não ganha variante — ela simplesmente não é renderizada.</p>
       </div>
 
       <!-- Bandeja e peças de coluna (SPEC user_admin/013) -->
@@ -1191,11 +1469,38 @@
         </div>
       </div>
 
+      <!-- Tabela sem resultado (SPEC user_admin/013) -->
+      <div class="glass-panel p-6 flex flex-col gap-4 lg:col-span-2">
+        <p class="text-overline">Tabela sem resultado (<span class="text-code">.table-onsen-vazio</span>)</p>
+        <div class="card-well p-2 table-onsen-poco">
+          <div class="table-onsen-wrap">
+            <table class="table table-onsen">
+              <thead>
+                <tr class="th-onsen-bandeja">
+                  <th class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Servidor</span></th>
+                  <th class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Unidade</span></th>
+                  <th class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Situação</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="3" class="table-onsen-vazio">
+                    <span class="etched text-3xl block mb-2">⌕</span>
+                    Nenhum servidor corresponde aos filtros.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">O vazio é <strong>peça</strong>: a bandeja fica, e quem fala é a lupa gravada no fundo do poço — o mesmo sulco do resto do sistema, agora dizendo que não há o que mostrar. Filtro sem resultado não devolve tabela quebrada nem área em branco.</p>
+      </div>
+
       <!-- Barra de rolagem gravada (SPEC user_admin/013) -->
       <div class="glass-panel p-6 flex flex-col gap-4 lg:col-span-2">
         <div>
           <p class="text-overline">Barra de rolagem gravada (<span class="text-code">.scroll-etched</span>)</p>
-          <p class="text-sm text-base-content/70 mt-1">O trilho é o <strong>sulco</strong> e o polegar é a <strong>água que o enche</strong> — o par repouso/entintado do sistema, agora <strong>no tempo</strong>: ao rolar ela entinta na hora, e quando o gesto acaba a água escorre de volta. Serve a <strong>qualquer</strong> <span class="text-code">.card-well</span> rolável. É <strong>elemento</strong>, não <span class="text-code">::-webkit-scrollbar</span> — o pseudo não existe no Firefox, no Chrome troca a barra flutuante por uma clássica sempre visível, e em ambos ocupa a altura inteira do rolador. Par com <span class="text-code">static/src/js/ui/scroll_etched.js</span>, opt-in por <span class="text-code">data-scroll-etched</span>.</p>
+          <p class="text-sm text-base-content/70 mt-1">O trilho é o <strong>sulco</strong> e o polegar é a <strong>água que o enche</strong> — o par repouso/entintado do sistema, agora <strong>no tempo</strong>: ao rolar ela entinta na hora, e quando o gesto acaba a água escorre de volta. Serve a <strong>qualquer</strong> <span class="text-code">.card-well</span> rolável. É <strong>elemento</strong>, não <span class="text-code">::-webkit-scrollbar</span> — o pseudo não existe no Firefox, no Chrome troca a barra flutuante por uma clássica sempre visível, e em ambos ocupa a altura inteira do rolador. Par com <span class="text-code">static/src/js/ui/scroll_etched.js</span>, opt-in por <span class="text-code">data-scroll-etched</span>. Rolando, o JS marca <span class="text-code">.scroll-etched-ativa</span> na peça (o polegar entinta na hora) e a troca por <span class="text-code">.scroll-etched-ociosa</span> quando o gesto para — "parou de rolar" o CSS não enxerga, e é a única coisa que o módulo decide.</p>
         </div>
         <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
           <div class="table-onsen-wrap max-h-40" data-rolador>
@@ -1372,7 +1677,7 @@
       <!-- Item de menu e cartão de ação (SPEC autorizacao/006) -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Item de menu (<span class="text-code">.item-menu</span>) e cartão de ação (<span class="text-code">.card-acao</span>)</p>
-        <p class="text-sm text-base-content/70 -mt-1">A mesma ação, em duas formas — quem escolhe é o menu que a declara, não a ação. A linha usa o nome curto; o cartão nomeia por extenso e usa o tooltip como descrição.</p>
+        <p class="text-sm text-base-content/70 -mt-1">A mesma ação, em duas formas — quem escolhe é o menu que a declara, não a ação. A linha usa o nome curto; o cartão nomeia por extenso e usa o tooltip como descrição. Quando o nome curto não basta, o <span class="text-code">.item-menu-apoio</span> desce uma segunda linha dentro do próprio rótulo (terceiro item abaixo), sem virar cartão.</p>
         <div class="card-well p-5 flex flex-col gap-3">
           <button class="item-menu">
             <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
@@ -1381,6 +1686,13 @@
           <button class="item-menu">
             <span class="icone-acao icone-acao-pequeno icone-acao-generico"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
             <span class="item-menu-rotulo">Ação sem glifo desenhado</span>
+          </button>
+          <button class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+            <span class="item-menu-rotulo">
+              Amostragem de ofertas
+              <span class="item-menu-apoio">Ofertas próximas com características similares</span>
+            </span>
           </button>
         </div>
         <div class="card-well p-5 flex flex-col gap-3">
@@ -2012,7 +2324,37 @@
               </nav>
             </div>
           </div>
-          <p class="text-xs text-base-content/60">O organismo desenha o que o router (SPEC 005) devolveu: não conhece perfil, cargo nem unidade. Sem item liberado, estado vazio — nunca painel quebrado.</p>
+          <div class="flex flex-col gap-2">
+            <p class="text-[11px] text-base-content/60">forma de cartão — <span class="text-code">.menu-acoes-amplo</span></p>
+            <nav class="glass-panel menu-acoes menu-acoes-amplo">
+              <p class="text-overline">Ações</p>
+              <div class="menu-acoes-cartoes">
+                <a href="#" class="hover-3d card-acao-alvo">
+                  <div class="glass-bg glass-edge glass-shadow card-acao">
+                    <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                    <div>
+                      <p class="card-acao-nome">Amostragem de ofertas</p>
+                      <p class="card-acao-descricao">Busca ofertas próximas com características similares para a avaliação.</p>
+                    </div>
+                  </div>
+                  <div></div><div></div><div></div><div></div>
+                  <div></div><div></div><div></div><div></div>
+                </a>
+                <a href="#" class="hover-3d card-acao-alvo">
+                  <div class="glass-bg glass-edge glass-shadow card-acao">
+                    <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                    <div>
+                      <p class="card-acao-nome">Certidão de lançamento</p>
+                      <p class="card-acao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+                    </div>
+                  </div>
+                  <div></div><div></div><div></div><div></div>
+                  <div></div><div></div><div></div><div></div>
+                </a>
+              </div>
+            </nav>
+          </div>
+          <p class="text-xs text-base-content/60">O organismo desenha o que o router (SPEC 005) devolveu: não conhece perfil, cargo nem unidade. Sem item liberado, estado vazio — nunca painel quebrado. A forma é <strong>homogênea por menu</strong>: quem declara o contrato escolhe, e o organismo só lê o 1º item para decidir entre a lista estreita e a <span class="text-code">.menu-acoes-amplo</span>, que existe porque cartão precisa de largura e o tilt precisa de respiro.</p>
         </div>
       </div>
 
@@ -2073,6 +2415,49 @@
       </form>
     </div>
     <label class="modal-backdrop" for="modal-styleguide">Fechar</label>
+  </div>
+
+  <!-- ORGANISMO · Avisos do ato grave (SPEC user_admin/022). Vivem no nível do DOCUMENTO, e não
+       ao lado do botão: ancestral com backdrop-filter — o .glass-panel da seção, o .modal-box do
+       modal — vira containing block de `fixed`, e a placa presa lá dentro nasceria ancorada no
+       topo daquele conteúdo, fora da vista de quem rolou até o botão. Quem os alcança daqui é o
+       :root:has() do tema, lendo o estado do controle. -->
+  <div class="botao-aura-aviso" role="dialog">
+    <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+      <div class="flex items-start gap-3">
+        <span class="icon-bubble w-11 h-11 shrink-0 bg-warning/15 border-warning/30 text-warning">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+        </span>
+        <div>
+          <h3 class="text-lg font-bold text-madeira-700">Tornar administrador do sistema?</h3>
+          <p class="text-sm text-base-content/80 mt-1 leading-relaxed"><strong>Ana Ramos</strong> passa a ser administradora do sistema: pratica ações para além da unidade a que está vinculada, inclusive ações de alta administração. O ato fica registrado no seu nome.</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 pt-5">
+        <label for="styleguide-ato-repouso" class="btn btn-glass btn-sm">Cancelar</label>
+        <label for="styleguide-ato-ligado" class="btn btn-onsen btn-sm">Ok, tornar administrador</label>
+      </div>
+    </div>
+    <label class="absolute inset-0 -z-10 cursor-pointer" for="styleguide-ato-repouso"><span class="sr-only">Fechar</span></label>
+  </div>
+
+  <div class="botao-aura-aviso-revogar" role="dialog">
+    <div class="relative glass-panel-thick rounded-2xl w-full max-w-md p-6">
+      <div class="flex items-start gap-3">
+        <span class="icon-bubble w-11 h-11 shrink-0 bg-error/15 border-error/30 text-error">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+        </span>
+        <div>
+          <h3 class="text-lg font-bold text-madeira-700">Deixar de ser administrador do sistema?</h3>
+          <p class="text-sm text-base-content/80 mt-1 leading-relaxed"><strong>Ana Ramos</strong> deixa de ser administradora do sistema e volta a exercer só o que o cargo e a unidade a que está vinculada permitem.</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 pt-5">
+        <label for="styleguide-ato-ligado" class="btn btn-glass btn-sm">Cancelar</label>
+        <label for="styleguide-ato-repouso" class="btn btn-onsen btn-sm">Ok, tirar</label>
+      </div>
+    </div>
+    <label class="absolute inset-0 -z-10 cursor-pointer" for="styleguide-ato-ligado"><span class="sr-only">Fechar</span></label>
   </div>
 
   <!-- Os utilitários de UI do projeto, tal e qual (exigem o Live Server na raiz, como o tema). -->

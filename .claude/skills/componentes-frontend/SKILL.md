@@ -73,7 +73,7 @@ O menor elemento com identidade própria: botão, input, badge, kbd, ícone, too
 | Botão de energia (CTA) | `.btn-onsen` | gradiente `agua-300→500`, tinta escura, glow ciano |
 | Botão de vidro | `.btn-glass` | gelo fosco circular/pill; ações secundárias e ícones |
 | Botão de criação inline | `.btn-criar-inline` | círculo de gelo com `+` em tinta ciana ao lado de um campo: "criar agora o que falta no catálogo" |
-| Input de vidro | `.input-glass` | fundo `white/45`, foco com anel ciano |
+| Input de vidro | `.input-glass` | fundo `white/30` com o **poço em repouso** (`--sombra-poco`, SPEC design/006 — campo é coisa rebaixada); no foco o poço soma o anel ciano |
 | Badges de geometria | `.badge-ponto` `.badge-linha` `.badge-poligono` | tipo do resultado/camada |
 | Badges semânticos | `badge-{info,success,warning,error} badge-soft` | estado do sistema (daisyUI puro) |
 | Ícone com brilho | `.icon-glow` | `agua-600` + drop-shadow ciano |
@@ -248,7 +248,7 @@ Título flutuando direto sobre o mapa recebe halo frio: `drop-shadow-[0_1px_3px_
 
 Receita: **blur 10px** + gradiente branco translúcido + aresta `white/60` + **sombra em duas
 camadas** — azul-fria `rgba(7,58,84,.25)` (separação) + ciana `rgba(72,202,228,.25)` (vida) — e o
-brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `references/design_system.css`.
+brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `static/src/tema-dimap.dev.css` (§8).
 
 | Material | Uso | Tinta |
 |---|---|---|
@@ -348,8 +348,8 @@ Cuidados que já quebraram build/render:
 2. **Aplicação mockada:** `examples/mock_ui.html` — o design system aplicado na UX completa
    (barra única, gaveta, coreografia de foco).
 3. **CSS dos tokens:** `static/src/tema-dimap.dev.css` — a **fonte única** (§8). O espelho
-   `references/design_system.css` está **aposentado** pela SPEC design/004: não portar peça nova
-   para lá.
+   `references/design_system.css` foi **apagado**: era órfão (ninguém o importava) e mostrava a
+   receita anterior à SPEC design/006. Não recriar.
 4. **Paleta:** `references/paleta.json` — escalas e papéis em JSON (fonte da verdade dos valores).
 5. **Referências visuais:** `references/onsen_inverno_moodboard.jpg`,
    `references/referencia_original_ui_1.jpg`, `references/referencia_original_ui_2.jpg` — a água
