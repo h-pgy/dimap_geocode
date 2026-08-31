@@ -25,9 +25,8 @@ class AcaoImplementada(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     acao: Acao
-    # Rota por nome: importar a view acoplaria a ação ao app do menu e fecharia um ciclo.
+    # Rota por nome: importar a view acoplaria a ação ao app que a exibe e fecharia um ciclo.
     url_name: str
-    partial: str
 
 
 class RegistroAcoes(BaseModel):

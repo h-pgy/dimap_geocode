@@ -18,7 +18,6 @@ def _acao_implementada(
     nome: str = "Exportar CSV",
     tooltip: str = "Exporta os resultados em CSV",
     url_name: str = "search:exportar_csv",
-    partial: str = "_exportar_csv.html",
     variantes_icone: frozenset[VarianteIcone] = frozenset(),
 ) -> AcaoImplementada:
     return instanciar_acao(
@@ -26,7 +25,6 @@ def _acao_implementada(
         nome=nome,
         tooltip=tooltip,
         url_name=url_name,
-        partial=partial,
         variantes_icone=variantes_icone,
     )
 

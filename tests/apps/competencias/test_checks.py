@@ -29,7 +29,6 @@ def _acao_implementada(
     nome: str = "Exportar CSV",
     tooltip: str = "Exporta os resultados em CSV",
     url_name: str = URL_NAME_REAL,
-    partial: str = "_exportar_csv.html",
     variantes_icone: frozenset[VarianteIcone] = frozenset(),
 ) -> AcaoImplementada:
     return instanciar_acao(
@@ -37,7 +36,6 @@ def _acao_implementada(
         nome=nome,
         tooltip=tooltip,
         url_name=url_name,
-        partial=partial,
         variantes_icone=variantes_icone,
     )
 
@@ -68,7 +66,7 @@ def test_check_slugs_distintos_nao_geram_erro_de_duplicidade() -> None:
     registro = RegistroAcoes(
         acoes=(
             _acao_implementada(),
-            _acao_implementada(slug="search.outro", url_name="search:outro", partial="_outro.html"),
+            _acao_implementada(slug="search.outro", url_name="search:outro"),
         )
     )
 

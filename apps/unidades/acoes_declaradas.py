@@ -17,7 +17,6 @@ ACAO_CRIAR_UNIDADE = instanciar_acao(
     nome_curto="Nova unidade",
     tooltip="Cria uma unidade abaixo de outra que você dirige.",
     url_name="unidades:criar_unidade",
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     estrutural=True,
     # A unidade sobre a qual o ato incide é a MÃE, e o parâmetro é o nome do select da tela.
@@ -30,7 +29,6 @@ ACAO_EDITAR_UNIDADE = instanciar_acao(
     nome_curto="Editar unidade",
     tooltip="Altera nome, sigla, tipo e unidade superior de uma unidade.",
     url_name="unidades:editar_unidade",
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     estrutural=True,
     # Um alvo só: a unidade editada, que vem do caminho da rota. O DESTINO da transferência não é
@@ -45,7 +43,6 @@ ACAO_CRIAR_UNIDADE_RAIZ = instanciar_acao(
     nome_curto="Unidade raiz",
     tooltip="Cria a unidade de topo de um organograma, que não responde a nenhuma outra.",
     url_name="unidades:criar_unidade_raiz",
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     # Nem estrutural nem concedida: dirigir unidade não dá esta caneta a ninguém, e conceder também
     # não. Os dois campos são independentes, e este vence — ver o avaliador (SPEC, §3).
@@ -63,7 +60,6 @@ ACAO_EXTINGUIR_UNIDADE = instanciar_acao(
     # Precisa reverter sem argumento (`competencias.E004`): é a rota que abre o modal, e não as de
     # gravação.
     url_name="unidades:extinguir_unidade",
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     estrutural=True,
     alcance=UnidadesEstritamenteSubordinadas(),

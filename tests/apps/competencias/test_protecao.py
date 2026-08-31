@@ -129,7 +129,6 @@ def _acao_implementada(
             estrutural=estrutural,
         ),
         url_name="competencias:protecao_teste",
-        partial="_protecao_teste.html",
     )
 
 

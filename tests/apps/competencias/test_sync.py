@@ -32,7 +32,6 @@ def _acao_implementada(**overrides: object) -> AcaoImplementada:
     dados: dict[str, object] = {
         "acao": _acao_contrato(),
         "url_name": "competencias:teste",
-        "partial": "competencias/_teste.html",
     }
     dados.update(overrides)
     return AcaoImplementada(**dados)  # type: ignore[arg-type]

@@ -37,7 +37,6 @@ def _item_acao(
         nome=f"Ação {slug}",
         tooltip="tt",
         url_name=url_name,
-        partial="_ignorado.html",
         variantes_icone=frozenset({variante_icone}),
     )
     return ItemAcao(acao=acao_implementada, partial=partial, variante_icone=variante_icone)

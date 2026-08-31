@@ -65,7 +65,6 @@ def _registro(*slugs: str) -> RegistroAcoes:
                 nome=slug,
                 tooltip="tt",
                 url_name="core:home",
-                partial="_teste.html",
             )
             for slug in slugs
         )

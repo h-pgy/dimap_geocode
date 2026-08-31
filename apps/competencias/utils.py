@@ -8,7 +8,6 @@ def instanciar_acao(
     nome: str,
     tooltip: str,
     url_name: str,
-    partial: str,
     nome_curto: str | None = None,
     variantes_icone: frozenset[VarianteIcone] = frozenset(),
     estrutural: bool = False,
@@ -29,5 +28,4 @@ def instanciar_acao(
             alcance=alcance,
         ),
         url_name=url_name,
-        partial=partial,
     )

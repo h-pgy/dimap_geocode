@@ -119,7 +119,6 @@ def test_check_recusa_acao_inscrita_sem_card_no_painel() -> None:
                 nome="Ação Órfã",
                 tooltip="tt",
                 url_name=URL_NAME_REAL,
-                partial="_ignorado.html",
             ),
         )
     )
@@ -136,7 +135,6 @@ def test_check_acao_com_card_no_painel_nao_acusa_e004() -> None:
         nome="Ação Com Card",
         tooltip="tt",
         url_name=URL_NAME_REAL,
-        partial="_ignorado.html",
         variantes_icone=frozenset({VarianteIcone.GRANDE}),
     )
     grupo = Grupo(rotulo="Grupo", itens=(ItemAcao(acao=acao_implementada),))
@@ -168,7 +166,6 @@ def test_check_acao_orfa_em_acoes_sem_card_nao_acusa_e004(
                 nome="Ação Dispensada",
                 tooltip="tt",
                 url_name=URL_NAME_REAL,
-                partial="_ignorado.html",
             ),
         )
     )

@@ -13,8 +13,6 @@ ACAO_DEFINIR_ATRIBUICAO = instanciar_acao(
     nome_curto="Atribuições",
     tooltip="Define quais ações a unidade exerce.",
     url_name="competencias:definir_atribuicao",
-    # O item genérico da SPEC 006, não um partial desta ação: a linha do menu é a mesma para todas.
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     # Quem a exerce é quem dirige a unidade: não passa por atribuição nem concessão, e é isso que
     # dispensa qualquer seed de bootstrap.
@@ -32,7 +30,6 @@ ACAO_CONCEDER = instanciar_acao(
     nome_curto="Competências",
     tooltip="Distribui as atribuições da unidade entre os cargos.",
     url_name="competencias:conceder",
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     # Distribuir é atributo de quem dirige: liberada pela direção da unidade, não por concessão —
     # senão conceder `competencias.conceder` exigiria alguém que já a exercesse.

@@ -87,7 +87,6 @@ def _registro_com_estrutural(slug: str) -> RegistroAcoes:
             AcaoImplementada(
                 acao=AcaoDominio(slug=slug, nome="Estrutural Backend", tooltip="tt", estrutural=True),
                 url_name="competencias:teste",
-                partial="_teste.html",
             ),
         )
     )

@@ -18,8 +18,6 @@ ACAO_CRIAR_SERVIDOR = instanciar_acao(
     nome_curto="Novo servidor",
     tooltip="Cadastra um servidor e entrega a ele a senha de primeiro acesso.",
     url_name="user_admin:criar_perfil",
-    # O item genérico da SPEC autorizacao/006: a linha do menu é a mesma para todas as ações.
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     # Quem a exerce é quem dirige a unidade: não passa por atribuição nem concessão.
     estrutural=True,
@@ -33,7 +31,6 @@ ACAO_EDITAR_SERVIDOR = instanciar_acao(
     nome_curto="Editar servidor",
     tooltip="Altera identificação, lotação, cargos e foto de um servidor.",
     url_name="user_admin:editar_perfil",
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     estrutural=True,
     # Duas incidências, não uma: o ato tira alguém de uma unidade e o põe em outra, e as duas
@@ -50,7 +47,6 @@ ACAO_TORNAR_ADMINISTRADOR = instanciar_acao(
     # Precisa reverter sem argumento (`competencias.E004`): é a rota do modal direto, e não a de
     # gravação, que recebe o servidor no caminho.
     url_name="user_admin:modal_administrador",
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     # Mesmo regime de criar unidade raiz: dirigir unidade não dá esta caneta, e conceder também
     # não. Só quem já a tem a passa adiante.
@@ -68,7 +64,6 @@ ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR = instanciar_acao(
     # Precisa reverter sem argumento (`competencias.E004`): é a rota do modal direto, e não as de
     # gravação, que recebem o servidor no caminho.
     url_name="user_admin:modal_registrar_impedimento",
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     # Titular da área a exerce por dirigir, sem concessão gravada — e é por ser estrutural que ela é
     # delegável (SPEC autorizacao/009).
@@ -83,7 +78,6 @@ ACAO_DESIGNAR_SUBSTITUTO = instanciar_acao(
     nome_curto="Substituto",
     tooltip="Designa quem responde pelo cargo de um servidor impedido — troca e encerra a cobertura.",
     url_name="user_admin:modal_designar_substituto",
-    partial="competencias/partials/_item_menu.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     estrutural=True,
     alcance=LotacaoDoServidor(),

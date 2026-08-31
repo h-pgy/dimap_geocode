@@ -14,7 +14,6 @@ def test_instanciar_acao_compoe_contrato_aninhado() -> None:
         nome="Exportar CSV",
         tooltip="Exporta os resultados em CSV",
         url_name="search:exportar_csv",
-        partial="_exportar_csv.html",
     )
     assert isinstance(impl.acao, Acao)
     assert impl.acao.slug == "search.exportar_csv"
@@ -28,7 +27,6 @@ def test_instanciar_acao_compoe_estrutural() -> None:
         nome="Conceder competência",
         tooltip="Concede competência ao cargo",
         url_name="competencias:conceder",
-        partial="_conceder.html",
         estrutural=True,
     )
     assert impl.acao.estrutural is True
