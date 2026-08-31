@@ -6,6 +6,9 @@
 
 {% block content %}
   {% include "mapping/_mapa_admin.html" %}
+  {# O gesto de exonerar/reintegrar por linha (SPEC user_admin/027) usa os mesmos glifos da página #}
+  {# do servidor. #}
+  {% include "user_admin/partials/_glifos_servidor.html" %}
 
   {# Mesma moldura das páginas de formulário: o fundo fica parado e o conteúdo rola na shell. #}
   <div class="admin-shell">
@@ -34,10 +37,32 @@
           </div>
         </div>
 
+        <div class="flex items-center justify-end gap-4">
+          {# Reuso literal de .toggle-onsen / .barra-acoes-chave (SPEC user_admin/025) — nenhuma   #}
+          {# peça nova. `hx-include` leva os filtros do cabeçalho, para que ligar os exonerados    #}
+          {# não apague o que já estava filtrado. #}
+          <label class="barra-acoes-chave">
+            <input type="checkbox"
+                   class="toggle-onsen"
+                   name="exonerados"
+                   value="1"
+                   {% if exonerados %}checked{% endif %}
+                   hx-get="{% url 'user_admin:corpo_servidores' %}"
+                   hx-target="#corpo-servidores"
+                   hx-swap="outerHTML"
+                   hx-include="#tabela-servidores thead"
+                   aria-label="Mostrar servidores exonerados" />
+            <span class="text-overline">Mostrar servidores exonerados</span>
+          </label>
+        </div>
+
         {% include "user_admin/partials/_tabela_servidores.html" %}
       </div>
     </div>
   </div>
+
+  {# Poço do modal: alvo do hx-get da coluna de exonerar/reintegrar de cada linha. #}
+  <div id="poco-modal" class="poco-modal"></div>
 {% endblock %}
 
 {% block scripts %}

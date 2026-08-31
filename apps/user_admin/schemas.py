@@ -194,6 +194,28 @@ class TrocaDeSubstituto(BaseModel):
         return conferir_fim(fim, info.data.get("data_inicio"), ERRO_FIM_ANTES_DO_INICIO_SUBSTITUICAO)
 
 
+class ComandoExoneracao(BaseModel):
+    """O ato sobre um servidor que JÁ existe (SPEC user_admin/027) — servido pela mesma competência
+    e pelo mesmo modal nas suas duas operações opostas: exonerar e reintegrar."""
+
+    model_config = ConfigDict(frozen=True)
+
+    servidor_id: int
+    # O autor resolvido pela orquestração, nunca o `request`: é contra ele que a recusa de
+    # auto-exoneração é escrita.
+    autor_id: int
+
+
+class ConsultaDeServidores(BaseModel):
+    """O `?exonerados=1` do alternador "Mostrar servidores exonerados" (SPEC user_admin/027, mesmo
+    gesto do toggle de unidades extintas — SPEC 025). Viaja na query string e no campo oculto do
+    cabeçalho da tabela, nunca na sessão."""
+
+    model_config = ConfigDict(frozen=True)
+
+    exonerados: bool = False
+
+
 class MudancaDeAdministrador(BaseModel):
     """O ato sobre um servidor que JÁ existe (SPEC user_admin/022) — o das duas telas de servidor e
     o do modal direto."""

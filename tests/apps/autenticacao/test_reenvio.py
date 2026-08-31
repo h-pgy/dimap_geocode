@@ -12,6 +12,7 @@ import time
 from typing import Any
 
 from django.core.cache import cache
+from django.utils import timezone
 
 import pytest
 
@@ -201,7 +202,7 @@ def test_rf_sem_primeiro_acesso_nao_envia_nada(monkeypatch: pytest.MonkeyPatch) 
     entrega = EntregaAcessoFake()
     monkeypatch.setattr(reenvio, "entregar_email_de_acesso", entrega)
     _perfil("9520031", senha_provisoria=False)
-    _perfil("9520032", is_active=False)
+    _perfil("9520032", is_active=False, exonerado_em=timezone.localdate())
     _perfil("9520033", email="")
 
     inexistente = reenvio.reenviar_senha_uso_unico(_pedido("9520030"))

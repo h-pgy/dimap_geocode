@@ -1591,6 +1591,21 @@ html[data-theme="dimap"] {
      só que mais acesa. O mesmo `:not()` no seletor preserva a linha pinçada — ali quem manda é a
      água do foco, não o estado da unidade. */
   .table-onsen tbody tr.linha-extinta:not([data-ativo="true"]):hover td { @apply bg-error/15; }
+
+  /* ==================== MOLÉCULA · PRÉVIA DO ATO (SPEC user_admin/027) =========================== */
+  /* Mesma forma de `.previa-extincao` (SPEC 025), sob nome genérico: serve a qualquer ato de duas
+     faces. Nasce peça nova, e não renomeia a existente — peça já implementada é intocável sem aval
+     explícito (CLAUDE.md §3.4). */
+  .previa-ato { @apply grid gap-3 sm:grid-cols-3; }
+  .previa-ato-tile { @apply flex flex-col gap-1 px-4 py-3; }
+  .previa-ato-valor { @apply text-[26px] font-bold leading-none text-madeira-700; }
+  .previa-ato-vazio { @apply text-[13px] leading-snug text-base-content/55; }
+
+  /* ==================== MOLÉCULA · CHAMADA DO ATO (SPEC user_admin/027) ========================== */
+  /* O rodapé de gestos das seções da página do servidor: o gesto crítico fica separado dos demais
+     por um fio, à direita. */
+  .chamada-ato { @apply flex flex-wrap items-center justify-end gap-3; }
+  .chamada-ato-critica { @apply pl-3 ml-1 border-l border-white/60; }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */

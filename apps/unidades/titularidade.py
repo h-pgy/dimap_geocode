@@ -32,10 +32,14 @@ def destituir_titular(unidade: Unidade) -> None:
 
 
 def candidatos_a_titular(unidade: Unidade) -> list[Perfil]:
-    """Quem a unidade pode titularizar: o filtro estreita, o domínio decide."""
+    """Quem a unidade pode titularizar: o filtro estreita, o domínio decide.
+
+    SPEC user_admin/027: exonerado não recebe nada de novo, e titularidade não é exceção — o mesmo
+    `is_active=True` que `candidatos_a_delegado` já aplica."""
     lotados = Perfil.objects.filter(
         unidade=unidade,
         cargo_comissao__isnull=False,
+        is_active=True,
     ).select_related("cargo_comissao")
     return [
         perfil

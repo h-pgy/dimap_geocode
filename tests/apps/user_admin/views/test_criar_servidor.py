@@ -356,7 +356,8 @@ def test_perfil_fora_de_exercicio_nao_exerce(client: Client) -> None:
     # sessão a cada request, e o exonerado chega ao decorator como anônimo, não como Perfil.
     exonerado = _dirigente(_unidade("CRS-EXONERADO"), "9301510", "Titular Exonerado")
     exonerado.is_active = False
-    exonerado.save(update_fields=["is_active"])
+    exonerado.exonerado_em = timezone.localdate()
+    exonerado.save(update_fields=["is_active", "exonerado_em"])
     client.force_login(exonerado)
     resposta = client.get(_url_form())
     assert resposta.status_code == 302

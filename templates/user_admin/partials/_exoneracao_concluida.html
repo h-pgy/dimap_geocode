@@ -1,0 +1,12 @@
+{# Resposta dos hx-post de exonerar e reintegrar (SPEC user_admin/027), no lugar do #poco-modal. O  #}
+{# poço fica vazio — este partial não escreve nada nele —, e é isso que fecha o modal: o toggle sai #}
+{# do documento junto com a caixa. A identidade e a seção de Exercício entram pelo hx-swap-oob, no  #}
+{# lugar delas — na página do próprio servidor; da listagem ou do painel, os ids não existem no DOM #}
+{# e o oob simplesmente não encontra alvo.                                                          #}
+<div id="painel-servidor" hx-swap-oob="outerHTML">
+  {% include "user_admin/partials/_identidade_perfil.html" %}
+  {% include "user_admin/partials/_secao_resumo_perfil.html" %}
+</div>
+<div id="secao-exercicio" hx-swap-oob="outerHTML">
+  {% include "user_admin/partials/_secao_exercicio.html" %}
+</div>

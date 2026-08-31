@@ -69,4 +69,16 @@ urlpatterns = [
     # própria: o partial e o contexto se reusam, a competência que protege a rota é que muda.
     path("servidores/substituicoes/opcoes/", views.opcoes_substituicao, name="opcoes_substituicao"),
     path("servidores/substituicoes/face/", views.face_substituicao, name="face_substituicao"),
+    # A ação "exonerar servidor" (SPEC user_admin/027): as três portas — o botão da seção
+    # Exercício, a coluna da tabela e o card do painel — chegam à mesma rota direta, que resolve
+    # `?servidor=` quando ele já é conhecido. Precisa reverter sem argumento (`competencias.E004`).
+    path("servidores/exonerar/", views.modal_exonerar_servidor, name="modal_exonerar_servidor"),
+    path("servidores/exonerar/opcoes/", views.opcoes_exoneracao, name="opcoes_exoneracao"),
+    path("servidores/exonerar/face/", views.face_exoneracao, name="face_exoneracao"),
+    path("servidores/<int:servidor>/exonerar/", views.gravar_exoneracao, name="gravar_exoneracao"),
+    path(
+        "servidores/<int:servidor>/reintegrar/",
+        views.gravar_reintegracao,
+        name="gravar_reintegracao",
+    ),
 ]

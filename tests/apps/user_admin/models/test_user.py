@@ -13,7 +13,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 import pytest
@@ -262,9 +262,38 @@ def test_exercicio_deriva_do_impedimento_e_da_exoneracao() -> None:
     )
     assert perfil.em_exercicio is True
 
-    # Inativo e sem impedimento: fora, pela outra causa.
+    # Inativo e sem impedimento: fora, pela outra causa. exonerado_em acompanha is_active — a
+    # CheckConstraint da SPEC user_admin/027 recusa a discordância entre os dois.
     Impedimento.objects.filter(perfil=perfil).delete()
     perfil.is_active = False
-    perfil.save(update_fields=["is_active"])
+    perfil.exonerado_em = hoje
+    perfil.save(update_fields=["is_active", "exonerado_em"])
     assert perfil.em_exercicio is False
     assert perfil.exonerado is True
+
+
+# ---------------------------------------------------------------------------
+# exonerado_em é o mesmo fato que is_active, e a discordância é impossível (SPEC user_admin/027)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_banco_recusa_exoneracao_sem_data() -> None:
+    inativo_sem_data = _perfil_completo(rf="700410")
+    inativo_sem_data.save()
+    inativo_sem_data.is_active = False
+
+    # save() direto, sem full_clean(): o que este teste fixa é o banco recusando, não a validação.
+    # `transaction.atomic()`: sem o savepoint, o erro esperado deixaria a transação do teste
+    # abortada e a segunda checagem abaixo cairia num TransactionManagementError, não no que se
+    # quer fixar.
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        inativo_sem_data.save(update_fields=["is_active"])
+
+    ativo_com_data = _perfil_completo(rf="700411")
+    ativo_com_data.save()
+    ativo_com_data.exonerado_em = timezone.localdate()
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        ativo_com_data.save(update_fields=["exonerado_em"])

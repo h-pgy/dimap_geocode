@@ -51,6 +51,13 @@ def acao_protegida(acao: AcaoImplementada) -> Callable[[ViewFunc], ViewFunc]:
             # AUTH_USER_MODEL é Perfil: autenticado aqui É um Perfil — narrowing para o resto da
             # função, que só fala a linguagem do domínio (Perfil, nunca o union do Django).
             perfil = cast(Perfil, request.user)
+            # SPEC user_admin/027: ANTES do has_perm, e sem saída para o superusuário — quem saiu
+            # do quadro não pratica ato administrativo nenhum, e a tentativa fica registrada como
+            # qualquer outra negativa. O `ModelBackend` já recusaria a sessão do `is_active=False`
+            # a cada request; isto cobre quem chega ao decorator sem passar por ele (Caveats).
+            if perfil.exonerado:
+                gravar_execucao(perfil, acao, autorizado=False)
+                raise PermissionDenied
             if not perfil.has_perm(acao.acao.slug):
                 gravar_execucao(perfil, acao, autorizado=False)
                 raise PermissionDenied
@@ -189,6 +196,10 @@ def pode_executar(
     """A mesma dupla conferência do decorator, na forma de que a TELA precisa: responde em vez de
     levantar. O router filtra e a rota decide (§3.5) — esconder o botão é UX, e a barreira segue
     sendo o `acao_protegida`."""
+    # SPEC user_admin/027: a mesma recusa do decorator, inclusive para o superusuário, que
+    # passaria direto pelo `has_perm` abaixo.
+    if getattr(usuario, "exonerado", False):
+        return False
     if not usuario.has_perm(acao.acao.slug):
         return False
     if acao.acao.alcance is None or id_unidade_alvo is None:

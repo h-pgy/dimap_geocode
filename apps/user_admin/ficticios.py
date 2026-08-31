@@ -154,7 +154,9 @@ class CriadorServidoresFicticios:
         # exoneração que esta mesma carga encenou.
         ficticios = Perfil.objects.filter(rf__in=FAIXA_RF_FICTICIA)
         Impedimento.objects.filter(perfil__in=ficticios).delete()
-        ficticios.update(is_active=True)
+        # Os dois campos juntos (SPEC user_admin/027): a CheckConstraint recusa is_active=True com
+        # exonerado_em ainda preenchido.
+        ficticios.update(is_active=True, exonerado_em=None)
 
     def _gravar_perfil(
         self,
@@ -336,7 +338,10 @@ class CriadorServidoresFicticios:
         if perfil is None:
             return
         perfil.is_active = False
-        perfil.save(update_fields=["is_active"])
+        # SPEC user_admin/027: os dois campos são a mesma gravação — a CheckConstraint recusa is_active
+        # sem a data.
+        perfil.exonerado_em = timezone.localdate()
+        perfil.save(update_fields=["is_active", "exonerado_em"])
 
     def _impedir(
         self,

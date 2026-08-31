@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/027 — Exoneração e reintegração de servidor (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`).
+       Sem Leaflet: a ortofoto é pré-gerada (SPEC design/010), não mapa vivo. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Carrega o tema e concatena as peças desta SPEC no MESMO bloco text/tailwindcss. -->
+  <script>
+    (async function carregarTema() {
+      const caminhos = [
+        "/static/src/tema-dimap.dev.css",
+        "../../static/src/tema-dimap.dev.css",
+        "../static/src/tema-dimap.dev.css"
+      ];
+      let css = null;
+      for (const caminho of caminhos) {
+        try {
+          const r = await fetch(caminho);
+          if (r.ok) { css = await r.text(); break; }
+        } catch (_) {}
+      }
+      if (css) {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-027").textContent;
+        document.head.appendChild(s);
+      } else {
+        (document.body || document.documentElement).insertAdjacentHTML(
+          "afterbegin",
+          "<p style='position:fixed;top:0;left:0;right:0;z-index:99999;margin:0;padding:1rem;background:#fff3f3;border-bottom:2px solid #b00;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — abra o mock por um servidor com raiz no projeto (Live Server). Via file:// o fetch é bloqueado.</p>"
+        );
+      }
+    })();
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec-027">
+    @layer components {
+      /* ==================== ÁTOMO · GLIFO GRAVADO DE GESTO CRÍTICO ==================== */
+      /* Chega pela SPEC user_admin/025 e ainda não está no tema; repetido aqui para o mock abrir
+         sozinho. Empilha-se no .icon-etched e só troca a tinta que o hover acende. Precisa vir
+         DEPOIS do .icon-etched: mesma especificidade, e quem vence é a ordem. */
+      .btn:hover .icon-etched-critico,
+      .btn:focus-visible .icon-etched-critico {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(220, 38, 38, 0.45));
+        color: rgba(220, 38, 38, 0.92);
+      }
+
+      /* ==================== MOLÉCULA · PRÉVIA DO ATO ==================== */
+      /* Os contadores do que o ato leva ou devolve, em tiles de poço. Serve a qualquer ato de duas
+         faces — a SPEC 025 introduz a mesma peça sob o nome `.previa-extincao`. */
+      .previa-ato { @apply grid gap-3 sm:grid-cols-3; }
+      .previa-ato-tile { @apply flex flex-col gap-1 px-4 py-3; }
+      .previa-ato-valor { @apply text-[26px] font-bold leading-none text-madeira-700; }
+      .previa-ato-vazio { @apply text-[13px] leading-snug text-base-content/55; }
+
+      /* ==================== MOLÉCULA · CHAMADA DO ATO ==================== */
+      /* O rodapé de gestos das seções da página do servidor. O gesto crítico fica separado dos
+         demais por um fio, à direita. */
+      .chamada-ato { @apply flex flex-wrap items-center justify-end gap-3; }
+      .chamada-ato-critica { @apply pl-3 ml-1 border-l border-white/60; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content antialiased">
+  <!-- Filtro de gravação no gelo + glifos usados neste mock -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <!-- já no sprite: templates/user_admin/partials/_glifos_servidor.html -->
+      <g id="glifo-alerta">
+        <path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/>
+      </g>
+      <g id="glifo-impedimento">
+        <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+        <path d="M8 3v4"/><path d="M16 3v4"/><path d="M10 14v4"/><path d="M14 14v4"/>
+      </g>
+      <g id="glifo-titular">
+        <circle cx="9.5" cy="8" r="3.2"/>
+        <path d="M4 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="m18.4 3.6 1.1 2.2 2.5.36-1.8 1.75.42 2.47-2.22-1.17-2.22 1.17.43-2.47-1.8-1.75 2.48-.36z"/>
+      </g>
+
+      <!-- NOVOS nesta SPEC: a mesma pessoa do #glifo-titular, com a marca no canto superior
+           direito que ele reserva para a estrela — e entre eles só o sentido da seta muda. -->
+      <g id="glifo-exonerar">
+        <circle cx="9.5" cy="8" r="3.2"/>
+        <path d="M4 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="M15.4 6.8h6.2"/>
+        <path d="M18.8 3.9 21.8 6.8 18.8 9.7"/>
+      </g>
+      <g id="glifo-reintegrar">
+        <circle cx="9.5" cy="8" r="3.2"/>
+        <path d="M4 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="M21.6 6.8h-6.2"/>
+        <path d="M18.2 3.9 15.2 6.8 18.2 9.7"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 p-8 max-w-6xl mx-auto flex flex-col gap-16">
+    <header class="border-b border-base-200 pb-4">
+      <p class="text-overline text-agua-700">Mock de validação</p>
+      <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC user_admin/027 — Exoneração e reintegração de servidor</h1>
+    </header>
+
+    <!-- ==================================================================== -->
+    <!-- 1 · TOKENS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="tokens" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">1 · Tokens</h2>
+        <p class="text-xs text-base-content/70">Glifos novos do sprite do servidor.</p>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-wrap items-end gap-10">
+        <div class="flex flex-col items-center gap-2">
+          <svg class="w-9 h-9 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+          <span class="text-overline">#glifo-exonerar</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <svg class="w-9 h-9 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reintegrar"/></svg>
+          <span class="text-overline">#glifo-reintegrar</span>
+        </div>
+        <div class="flex flex-col items-center gap-2 pl-6 border-l border-white/60">
+          <div class="flex items-end gap-3">
+            <svg class="w-12 h-12 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+            <svg class="w-5 h-5 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+            <svg class="w-4 h-4 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+          </div>
+          <span class="text-overline">medidas de uso · 48px / 20px / 16px</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 2 · ÁTOMOS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">2 · Átomos</h2>
+        <p class="text-xs text-base-content/70">Passe o cursor: na coluna da tabela o gesto grava em vermelho ao exonerar e em água ao reintegrar.</p>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-wrap items-center gap-10">
+        <!-- .icon-etched-critico × .icon-etched, no mesmo lugar da linha -->
+        <div class="flex flex-col gap-2 items-center">
+          <div class="flex items-center gap-2">
+            <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver servidor">
+              <span class="etched icon-etched">✎</span>
+            </a>
+            <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Exonerar servidor">
+              <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+            </button>
+          </div>
+          <span class="text-overline">linha de quem está no quadro</span>
+        </div>
+
+        <div class="flex flex-col gap-2 items-center">
+          <div class="flex items-center gap-2">
+            <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver servidor">
+              <span class="etched icon-etched">✎</span>
+            </a>
+            <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Reintegrar servidor">
+              <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reintegrar"/></svg>
+            </button>
+          </div>
+          <span class="text-overline">linha de quem já saiu</span>
+        </div>
+
+        <!-- estado de falta: a linha em que o gesto não é oferecido -->
+        <div class="flex flex-col gap-2 items-center">
+          <div class="flex items-center gap-2">
+            <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver servidor">
+              <span class="etched icon-etched">✎</span>
+            </a>
+            <span class="w-6 h-6 inline-block"></span>
+          </div>
+          <span class="text-overline">sem o gesto · lugar preservado</span>
+        </div>
+
+        <!-- os dois atos em corpo de botão: daisyUI puro, já em uso no sistema -->
+        <div class="flex flex-col gap-2 items-center pl-6 border-l border-white/60">
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-error btn-soft btn-sm gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+              Exonerar servidor
+            </button>
+            <button type="button" class="btn btn-error btn-soft btn-sm btn-disabled">Exonerar</button>
+            <button type="button" class="btn btn-onsen btn-sm gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reintegrar"/></svg>
+              Reintegrar servidor
+            </button>
+          </div>
+          <span class="text-overline">exonerar (btn-error btn-soft) · sem alvo · reintegrar (btn-onsen)</span>
+        </div>
+
+        <!-- o selo: âmbar, nunca vermelho — vermelho é da unidade sem direção, nunca da pessoa -->
+        <div class="flex flex-col gap-2 items-center pl-6 border-l border-white/60">
+          <div class="flex items-center gap-2">
+            <span class="badge badge-success badge-soft badge-sm">Em exercício</span>
+            <span class="badge badge-warning badge-soft badge-sm">Afastado</span>
+            <span class="badge badge-warning badge-soft badge-sm">Exonerado</span>
+            <span class="badge badge-warning badge-soft">Exonerado em 31/08/2026</span>
+          </div>
+          <span class="text-overline">selo do exercício · a data só na medida cheia</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 3 · MOLÉCULAS                                                         -->
+    <!-- ==================================================================== -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">3 · Moléculas</h2>
+      </div>
+
+      <!-- .previa-ato -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.previa-ato — preenchida</span>
+        <div class="glass-panel p-5">
+          <div class="previa-ato">
+            <div class="previa-ato-tile card-well">
+              <span class="text-overline">Afastamentos em aberto</span>
+              <span class="previa-ato-valor">2</span>
+            </div>
+            <div class="previa-ato-tile card-well">
+              <span class="text-overline">Coberturas que exerce</span>
+              <span class="previa-ato-valor">1</span>
+            </div>
+            <div class="previa-ato-tile card-well">
+              <span class="text-overline">Delegações recebidas</span>
+              <span class="previa-ato-valor">3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.previa-ato — estado de falta: servidor sem vínculo algum</span>
+        <div class="glass-panel p-5">
+          <div class="previa-ato">
+            <div class="previa-ato-tile card-well">
+              <span class="text-overline">Afastamentos em aberto</span>
+              <span class="previa-ato-vazio">Nenhum</span>
+            </div>
+            <div class="previa-ato-tile card-well">
+              <span class="text-overline">Coberturas que exerce</span>
+              <span class="previa-ato-vazio">Nenhuma</span>
+            </div>
+            <div class="previa-ato-tile card-well">
+              <span class="text-overline">Delegações recebidas</span>
+              <span class="previa-ato-vazio">Nenhuma</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- .chamada-ato -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.chamada-ato — o gesto crítico separado dos demais</span>
+        <div class="glass-panel p-5">
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Exercício</p>
+            <p class="text-[15px] text-base-content/90">Sem impedimento registrado.</p>
+            <div class="chamada-ato">
+              <button type="button" class="btn btn-glass btn-sm gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+                Registrar impedimento
+              </button>
+              <span class="chamada-ato-critica">
+                <button type="button" class="btn btn-error btn-soft btn-sm gap-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+                  Exonerar servidor
+                </button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- a linha de pessoa dentro do modal, nos dois estados -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.linha-pessoa no cabeçalho do modal — no quadro × exonerado</span>
+        <div class="glass-panel p-5 grid gap-3 sm:grid-cols-2">
+          <div class="card-well p-4">
+            <div class="linha-pessoa">
+              <div class="avatar-glass shrink-0 w-12 h-12" style="--cor-unidade:#0077b6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="50" fill="#0077B6"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">HP</text>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <p class="linha-pessoa-nome">Helena Prado</p>
+                <p class="linha-pessoa-meta">RF 8123456 · DAS-12 Diretora de Divisão · DIMAP-2</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-well p-4">
+            <div class="linha-pessoa">
+              <div class="avatar-glass shrink-0 w-12 h-12" style="--cor-unidade:#0096c7">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="MV">
+                  <circle cx="50" cy="50" r="50" fill="#0096C7"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">MV</text>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <p class="linha-pessoa-nome">Mauro Vilela</p>
+                <p class="linha-pessoa-meta">RF 7940188 · Analista · DIMAP-3</p>
+              </div>
+              <span class="badge badge-warning badge-soft badge-sm shrink-0">Exonerado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 4 · ORGANISMOS                                                        -->
+    <!-- ==================================================================== -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">4 · Organismos</h2>
+        <p class="text-xs text-base-content/70">As faces do modal, fora da cena para leitura lado a lado. A face sai do estado do servidor escolhido.</p>
+      </div>
+
+      <div class="grid gap-6 xl:grid-cols-2">
+        <!-- face: exonerar, alvo com vínculos -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">face exonerar · alvo com vínculos</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Exonerar servidor</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">O servidor deixa o quadro da DIMAP e para de entrar no sistema.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-4">
+              <div class="linha-pessoa">
+                <div class="avatar-glass shrink-0 w-12 h-12" style="--cor-unidade:#0077b6">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="HP">
+                    <circle cx="50" cy="50" r="50" fill="#0077B6"/>
+                    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">HP</text>
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="linha-pessoa-nome">Helena Prado</p>
+                  <p class="linha-pessoa-meta">RF 8123456 · DAS-12 Diretora de Divisão · DIMAP-2</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="previa-ato">
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Afastamentos em aberto</span>
+                <span class="previa-ato-valor">2</span>
+              </div>
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Coberturas que exerce</span>
+                <span class="previa-ato-valor">1</span>
+              </div>
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Delegações recebidas</span>
+                <span class="previa-ato-valor">3</span>
+              </div>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                Helena é <strong>titular da DIMAP-2</strong> e <strong>administradora do sistema</strong>. Exonerando, a unidade fica <strong>sem direção</strong> até alguém ser designado, e os dois vínculos caem junto com os afastamentos, a cobertura e as delegações acima.
+              </p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-error btn-soft btn-sm">Exonerar Helena Prado</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: exonerar, estado de falta -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">face exonerar · estado de falta: servidor sem vínculo algum</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Exonerar servidor</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">O servidor deixa o quadro da DIMAP e para de entrar no sistema.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-4">
+              <div class="linha-pessoa">
+                <div class="avatar-glass shrink-0 w-12 h-12" style="--cor-unidade:#0096c7">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="RC">
+                    <circle cx="50" cy="50" r="50" fill="#0096C7"/>
+                    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">RC</text>
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="linha-pessoa-nome">Rafael Camargo</p>
+                  <p class="linha-pessoa-meta">RF 9210477 · Analista · DIMAP-3</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="previa-ato">
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Afastamentos em aberto</span>
+                <span class="previa-ato-vazio">Nenhum</span>
+              </div>
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Coberturas que exerce</span>
+                <span class="previa-ato-vazio">Nenhuma</span>
+              </div>
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Delegações recebidas</span>
+                <span class="previa-ato-vazio">Nenhuma</span>
+              </div>
+            </div>
+
+            <div class="tarja-vinculo flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 text-rocha-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                Rafael não dirige unidade, não cobre ninguém e não recebeu delegação. Exonerando, <strong>só o acesso ao sistema é retirado</strong> — a lotação na DIMAP-3 fica registrada.
+              </p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-error btn-soft btn-sm">Exonerar Rafael Camargo</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: reintegrar -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">face reintegrar · alvo exonerado</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-reintegrar"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reintegrar servidor</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">Exonerado em 12/03/2026.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-4">
+              <div class="linha-pessoa">
+                <div class="avatar-glass shrink-0 w-12 h-12" style="--cor-unidade:#0096c7">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="MV">
+                    <circle cx="50" cy="50" r="50" fill="#0096C7"/>
+                    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">MV</text>
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="linha-pessoa-nome">Mauro Vilela</p>
+                  <p class="linha-pessoa-meta">RF 7940188 · Analista · DIMAP-3</p>
+                </div>
+                <span class="badge badge-warning badge-soft badge-sm shrink-0">Exonerado</span>
+              </div>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                Volta o <strong>acesso ao sistema</strong>, e a lotação na DIMAP-3 que ele guardou. <strong>Titularidade, coberturas, delegações e a condição de administrador não voltam</strong> — cada uma se refaz por seu próprio ato.
+              </p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Reintegrar Mauro Vilela</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: recusa da auto-exoneração -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">face exonerar · recusa: o alvo é quem assina</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Exonerar servidor</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">Beatriz Nunes · RF 6704912</p>
+              </div>
+            </div>
+
+            <!-- partial: partials/_tarja_recusa.html -->
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">Servidor não exonerado</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>Você não pode exonerar a si mesmo: peça a quem dirige a unidade superior.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="previa-ato">
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Afastamentos em aberto</span>
+                <span class="previa-ato-vazio">—</span>
+              </div>
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Coberturas que exerce</span>
+                <span class="previa-ato-vazio">—</span>
+              </div>
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Delegações recebidas</span>
+                <span class="previa-ato-vazio">—</span>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Fechar</label>
+              <button type="button" class="btn btn-error btn-soft btn-sm btn-disabled">Exonerar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: recusa da reintegração -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">face reintegrar · recusa: a unidade de lotação está extinta</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-reintegrar"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reintegrar servidor</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">Exonerado em 04/02/2026.</p>
+              </div>
+            </div>
+
+            <!-- partial: partials/_tarja_recusa.html -->
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">Servidor não reintegrado</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>Reative antes a DIMAP-4: um servidor não é lotado em unidade extinta.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card-well p-4">
+              <div class="linha-pessoa">
+                <div class="avatar-glass shrink-0 w-12 h-12 opacity-70" style="--cor-unidade:#778da9">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="TA">
+                    <circle cx="50" cy="50" r="50" fill="#778DA9"/>
+                    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">TA</text>
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="linha-pessoa-nome">Tiago Arruda</p>
+                  <p class="linha-pessoa-meta">RF 8551203 · Analista · <span class="text-base-content/45">DIMAP-4</span></p>
+                </div>
+                <span class="badge badge-neutral badge-soft badge-sm shrink-0">Unidade extinta</span>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Fechar</label>
+              <a href="#" class="btn btn-onsen btn-sm">Abrir a DIMAP-4</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 5 · TELA MONTADA                                                      -->
+    <!-- ==================================================================== -->
+    <section id="tela" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">5 · Tela montada</h2>
+        <p class="text-xs text-base-content/70">As três portas do ato, na condição real de uso.</p>
+      </div>
+
+      <!-- ============ 5.1 · Página do servidor: seção Exercício ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">5.1 · Página do servidor — seção Exercício, servidor no quadro</span>
+        <!-- página: user_admin/perfil.html -->
+        <div class="glass-panel p-6 flex flex-col gap-5 max-w-2xl">
+          <!-- fica na página: a identidade, só arranjo -->
+          <div class="linha-pessoa">
+            <div class="avatar-glass shrink-0 w-16 h-16" style="--cor-unidade:#0077b6">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="HP">
+                <circle cx="50" cy="50" r="50" fill="#0077B6"/>
+                <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">HP</text>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Helena Prado</h3>
+              <p class="linha-pessoa-meta">RF 8123456 · DAS-12 Diretora de Divisão · DIMAP-2</p>
+            </div>
+          </div>
+
+          <!-- partial: user_admin/partials/_secao_exercicio.html — alvo do hx-swap-oob dos atos de exercício e de exoneração -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between gap-4">
+              <p class="text-overline">Exercício</p>
+              <span class="badge badge-success badge-soft">Em exercício</span>
+            </div>
+
+            <p class="text-[15px] text-base-content/90">Sem impedimento registrado.</p>
+
+            <div class="chamada-ato">
+              <button type="button" class="btn btn-glass btn-sm gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+                Registrar impedimento
+              </button>
+              <span class="chamada-ato-critica">
+                <button type="button" class="btn btn-error btn-soft btn-sm gap-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+                  Exonerar servidor
+                </button>
+              </span>
+            </div>
+          </div>
+          <!-- /partial -->
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">5.1 · Página do servidor — seção Exercício, servidor exonerado</span>
+        <!-- página: user_admin/perfil.html -->
+        <div class="glass-panel p-6 flex flex-col gap-5 max-w-2xl">
+          <!-- fica na página: a identidade, com o selo carregando a data -->
+          <div class="linha-pessoa">
+            <div class="avatar-glass shrink-0 w-16 h-16" style="--cor-unidade:#0096c7">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="MV">
+                <circle cx="50" cy="50" r="50" fill="#0096C7"/>
+                <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">MV</text>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Mauro Vilela</h3>
+              <p class="linha-pessoa-meta">RF 7940188 · Analista · DIMAP-3</p>
+            </div>
+            <span class="badge badge-warning badge-soft shrink-0">Exonerado em 12/03/2026</span>
+          </div>
+
+          <!-- partial: user_admin/partials/_secao_exercicio.html -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between gap-4">
+              <p class="text-overline">Exercício</p>
+              <span class="badge badge-warning badge-soft">Exonerado</span>
+            </div>
+
+            <p class="text-[15px] text-base-content/90">Mauro Vilela não integra mais o quadro da DIMAP.</p>
+            <p class="text-[13px] text-base-content/70">Sem impedimento, sem substituto e sem caminho para designar um.</p>
+
+            <div class="chamada-ato">
+              <button type="button" class="btn btn-onsen btn-sm gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reintegrar"/></svg>
+                Reintegrar servidor
+              </button>
+            </div>
+          </div>
+          <!-- /partial -->
+        </div>
+      </div>
+
+      <!-- ============ 5.2 · Listagem de servidores ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">5.2 · Listagem de servidores — a coluna do gesto, à direita da do lápis, e o alternador "Mostrar servidores exonerados" (desligado por padrão — mesmo gesto do toggle de unidades extintas, SPEC 025)</span>
+        <!-- página: user_admin/servidores_list.html -->
+        <div class="glass-panel p-6">
+          <div class="flex items-center justify-end gap-4 mb-3">
+            <!-- reuso literal de .toggle-onsen / .barra-acoes-chave (SPEC 025) — nenhuma peça nova -->
+            <label class="barra-acoes-chave">
+              <input type="checkbox" class="toggle-onsen" aria-label="Mostrar servidores exonerados">
+              <span class="text-overline">Mostrar servidores exonerados</span>
+            </label>
+          </div>
+          <!-- partial: user_admin/partials/_tabela_servidores.html — o cabeçalho não é trocado pelo swap -->
+          <div class="card-well pb-2 table-onsen-poco" data-scroll-etched>
+            <div class="table-onsen-wrap" data-rolador>
+              <table class="table table-onsen">
+                <thead data-cabecalho>
+                  <tr>
+                    <th>
+                      <div class="th-onsen" data-coluna="nome">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Nome</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por Nome">▲</button>
+                      </div>
+                    </th>
+                    <th>
+                      <div class="th-onsen" data-coluna="rf">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">RF</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por RF">▲</button>
+                      </div>
+                    </th>
+                    <th>
+                      <div class="th-onsen" data-coluna="unidade">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Unidade</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por Unidade">▲</button>
+                      </div>
+                    </th>
+                    <th>
+                      <div class="th-onsen" data-coluna="cargo">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Cargo</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por Cargo">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-32">
+                      <div class="th-onsen th-onsen-gravado">
+                        <span class="text-overline etched etched-rotulo">Situação</span>
+                      </div>
+                    </th>
+                    <th class="w-16">
+                      <div class="th-onsen th-onsen-gravado"></div>
+                    </th>
+                    <th class="w-16">
+                      <div class="th-onsen th-onsen-gravado"></div>
+                    </th>
+                  </tr>
+                </thead>
+                <!-- partial: user_admin/partials/_corpo_servidores.html — alvo do hx-get dos filtros -->
+                <tbody>
+                  <tr>
+                    <td><a href="#" class="link-tabela-onsen">Helena Prado</a></td>
+                    <td><span class="text-code">8123456</span></td>
+                    <td>
+                      <a href="#" class="link-sigla-onsen">
+                        <span class="dot-unidade" style="--cor-unidade:#0077B6"></span>
+                        <span class="text-code">DIMAP-2</span>
+                      </a>
+                    </td>
+                    <td class="text-base-content/80">Analista de Planejamento</td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Em exercício</span></td>
+                    <td class="text-right">
+                      <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver servidor">
+                        <span class="etched icon-etched">✎</span>
+                      </a>
+                    </td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Exonerar servidor">
+                        <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><a href="#" class="link-tabela-onsen">Beatriz Nunes</a></td>
+                    <td><span class="text-code">6704912</span></td>
+                    <td>
+                      <a href="#" class="link-sigla-onsen">
+                        <span class="dot-unidade" style="--cor-unidade:#0096C7"></span>
+                        <span class="text-code">DIMAP-3</span>
+                      </a>
+                    </td>
+                    <td class="text-base-content/80">Analista de Planejamento</td>
+                    <td><span class="badge badge-warning badge-soft badge-sm">Afastada</span></td>
+                    <td class="text-right">
+                      <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver servidor">
+                        <span class="etched icon-etched">✎</span>
+                      </a>
+                    </td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Exonerar servidor">
+                        <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                  <!-- estado: exonerado — o selo carrega a situação, e o gesto da linha inverte -->
+                  <tr>
+                    <td><a href="#" class="link-tabela-onsen">Mauro Vilela</a></td>
+                    <td><span class="text-code">7940188</span></td>
+                    <td>
+                      <a href="#" class="link-sigla-onsen">
+                        <span class="dot-unidade" style="--cor-unidade:#0096C7"></span>
+                        <span class="text-code">DIMAP-3</span>
+                      </a>
+                    </td>
+                    <td class="text-base-content/80">Analista de Planejamento</td>
+                    <td><span class="badge badge-warning badge-soft badge-sm">Exonerado</span></td>
+                    <td class="text-right">
+                      <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver servidor">
+                        <span class="etched icon-etched">✎</span>
+                      </a>
+                    </td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Reintegrar servidor">
+                        <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reintegrar"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                  <!-- estado: sem o gesto — servidor fora do alcance de quem olha -->
+                  <tr>
+                    <td><a href="#" class="link-tabela-onsen">Sônia Marques</a></td>
+                    <td><span class="text-code">5388120</span></td>
+                    <td>
+                      <a href="#" class="link-sigla-onsen">
+                        <span class="dot-unidade" style="--cor-unidade:#5E412F"></span>
+                        <span class="text-code">DIMAP</span>
+                      </a>
+                    </td>
+                    <td class="text-base-content/80">Diretora de Departamento</td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Em exercício</span></td>
+                    <td class="text-right">
+                      <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Ver servidor">
+                        <span class="etched icon-etched">✎</span>
+                      </a>
+                    </td>
+                    <td class="text-right"><span class="w-6 h-6 inline-block"></span></td>
+                  </tr>
+                </tbody>
+                <!-- /partial -->
+              </table>
+            </div>
+            <div class="scroll-etched" data-barra aria-hidden="true">
+              <div class="scroll-etched-thumb" data-polegar></div>
+            </div>
+          </div>
+          <!-- /partial -->
+        </div>
+      </div>
+
+      <!-- ============ 5.3 · Card do painel ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">5.3 · Card do painel (Recursos Humanos › Servidores) — escolhe a unidade e, dentro dela, o servidor</span>
+        <!-- partial: user_admin/partials/_modal_exonerar_servidor.html — alvo do hx-get do card do painel, que aponta para #poco-modal -->
+        <div class="glass-panel-thick modal-box-glass w-full max-w-xl p-6 sm:p-8 rounded-2xl">
+          <div class="flex flex-col gap-6">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-grande text-error shrink-0"><svg viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Exonerar servidor</h2>
+                <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option value="">— escolha —</option>
+                  <option>DIMAP-2 · Divisão de Avaliação de Imóveis</option>
+                  <option>DIMAP-3 · Divisão de Cadastro Territorial</option>
+                </select>
+                <span class="form-field-hint">Só as unidades do seu alcance.</span>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option value="">— escolha a unidade primeiro —</option>
+                </select>
+              </label>
+            </div>
+
+            <!-- partial: user_admin/partials/_face_exoneracao.html — alvo do hx-get dos dois selects; a face sai do estado GRAVADO do escolhido -->
+            <div class="tarja-vinculo flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 text-rocha-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">Escolha o servidor para ver o que a exoneração leva.</p>
+            </div>
+            <!-- /partial -->
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Fechar</label>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+      </div>
+
+      <!-- ============ 5.4 · O que o ato deixa atrás ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">5.4 · Página da unidade, depois do ato — a vaga que a exoneração do titular abre</span>
+        <!-- página: unidades/unidade.html -->
+        <div class="glass-panel p-6 flex flex-col gap-4 max-w-2xl">
+          <!-- partial: unidades/partials/_secao_direcao.html — inalterado nesta SPEC, é o alarme da SPEC 016 que acende -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Direção</p>
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[15px] font-medium text-base-content/90">A DIMAP-2 está sem titular.</p>
+            </div>
+            <div class="chamada-ato">
+              <button type="button" class="btn btn-onsen btn-sm gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+                Definir titular
+              </button>
+            </div>
+          </div>
+          <!-- /partial -->
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

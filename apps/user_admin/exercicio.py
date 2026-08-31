@@ -75,25 +75,32 @@ def registrar_impedimento(perfil: Perfil, dados: NovoImpedimento) -> Impedimento
 
 def retornar_ao_exercicio(perfil: Perfil) -> None:
     """Encerra na VÉSPERA de hoje TODOS os impedimentos vigentes — encerrar um só deixaria a pessoa
-    fora pelo outro — e acerta as substituições: trunca a que está em curso, apaga as que não
-    começaram. O que ainda não vigorou é apagado, não encerrado (SPEC user_admin/023).
+    fora pelo outro. O que ainda não vigorou é apagado, não encerrado (SPEC user_admin/023).
 
     A véspera, e não hoje: o período é inclusivo no fim, então um impedimento que termina hoje ainda
     vale hoje, e o botão teria mentido — quem volta ao exercício volta agora, não amanhã."""
     hoje = timezone.localdate()
     ontem = hoje - DIA
     with transaction.atomic():
-        vigentes = Impedimento.objects.filter(q_vigente_em(hoje), perfil=perfil)
-        # Só as em aberto: encerrar uma que já terminou a alongaria até ontem.
-        for substituicao in Substituicao.objects.filter(
-            q_em_aberto_em(hoje),
-            impedimento__in=vigentes,
-        ):
-            encerrar_substituicao_em(substituicao, ontem)
-        # Um a um, e não em massa: o que começa hoje não tem data anterior ao início para gravar, e
-        # cada um decide entre ser encurtado e ser apagado.
-        for impedimento in vigentes:
-            _encerrar_impedimento_em(impedimento, ontem)
+        encerrar_impedimentos(
+            Impedimento.objects.filter(q_vigente_em(hoje), perfil=perfil),
+            ontem,
+        )
+
+
+def encerrar_impedimentos(impedimentos: QuerySet[Impedimento], dia: date) -> None:
+    """Extraída de `retornar_ao_exercicio` (SPEC user_admin/027), que já a executava sobre os
+    vigentes: trunca as coberturas em aberto e depois cada impedimento, um a um — o que ainda não
+    vigorou é apagado, não encerrado."""
+    for substituicao in Substituicao.objects.filter(
+        q_em_aberto_em(dia),
+        impedimento__in=impedimentos,
+    ):
+        encerrar_substituicao_em(substituicao, dia)
+    # Um a um, e não em massa: o que começa no dia não tem data anterior ao início para gravar, e
+    # cada um decide entre ser encurtado e ser apagado.
+    for impedimento in impedimentos:
+        _encerrar_impedimento_em(impedimento, dia)
 
 
 def retorno_eh_revogacao(perfil: Perfil) -> bool:

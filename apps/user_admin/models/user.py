@@ -95,6 +95,9 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     e_titular = models.BooleanField(default=False)
+    # SPEC user_admin/027: o dia do ato que tirou a pessoa do quadro. Nula é servidor no quadro, e é
+    # o que a reintegração devolve.
+    exonerado_em = models.DateField(null=True, blank=True)
 
     objects = PerfilManager()
 
@@ -122,6 +125,13 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
                 # realçar; sem a mensagem, quem lê recebe o nome da constraint.
                 violation_error_code="unique",
                 violation_error_message="Já existe servidor cadastrado com este e-mail.",
+            ),
+            # SPEC user_admin/027: os dois campos dizem a mesma coisa e são gravados pelo mesmo
+            # ato. A regra é da linha, então é do banco.
+            models.CheckConstraint(
+                condition=Q(is_active=True, exonerado_em__isnull=True)
+                | Q(is_active=False, exonerado_em__isnull=False),
+                name="perfil_exonerado_tem_data",
             ),
         ]
 

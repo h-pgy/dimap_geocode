@@ -17,6 +17,7 @@ from django.conf import settings as django_settings
 from bs4 import BeautifulSoup
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 import pytest
 
@@ -260,7 +261,8 @@ def test_concessao_gravada_nao_libera_acao_exclusiva(client: Client) -> None:
 def test_exonerado_chega_como_anonimo(client: Client) -> None:
     superusuario = _superusuario("9501500")
     superusuario.is_active = False
-    superusuario.save(update_fields=["is_active"])
+    superusuario.exonerado_em = timezone.localdate()
+    superusuario.save(update_fields=["is_active", "exonerado_em"])
     alvo = _perfil(_unidade("ADM-EXON"), "9501510", "Alvo Exonerado")
 
     client.force_login(superusuario)

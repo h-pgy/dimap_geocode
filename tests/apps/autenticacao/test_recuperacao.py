@@ -10,6 +10,7 @@ marker `banco`: a recuperação lê `Perfil` e usa o cache do processo para o to
 import time
 from typing import Any
 
+from django.utils import timezone
 from pytest_django.fixtures import SettingsWrapper
 import pytest
 
@@ -137,7 +138,9 @@ def test_pedido_para_rf_nao_recuperavel_nao_entrega_nada(
     settings.PASSWORD_RESET_TIMEOUT = 3600
     entrega = EntregaEmailFake()
     monkeypatch.setattr(recuperacao, "entregar_email", entrega)
-    _perfil("9510021", senha_provisoria=False, is_active=False)
+    _perfil(
+        "9510021", senha_provisoria=False, is_active=False, exonerado_em=timezone.localdate()
+    )
     _perfil("9510022", senha_provisoria=True)
 
     inexistente = recuperacao.enviar_link_recuperacao(_pedido("9510020"))

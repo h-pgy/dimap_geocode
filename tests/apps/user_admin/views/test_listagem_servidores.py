@@ -9,6 +9,7 @@ visual — o relevo, a bandeja, a barra gravada — se valida no mock da SPEC.
 
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 import pytest
 
@@ -87,3 +88,33 @@ def test_links_de_servidor_e_unidade_possuem_classes_de_afordancia(client: Clien
     assert resposta.status_code == 200
     assert 'class="link-tabela-onsen"' in html
     assert 'class="link-sigla-onsen"' in html
+
+
+# ---------------------------------------------------------------------------
+# O alternador "Mostrar servidores exonerados" (SPEC user_admin/027, mesmo gesto da SPEC 025)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_exonerado_some_da_listagem_ate_o_toggle_revela(client: Client) -> None:
+    _perfil_gravado(nome="Ativa", rf="812360")
+    exonerada = _perfil_gravado(nome="Exonerada", rf="812361")
+    exonerada.is_active = False
+    exonerada.exonerado_em = timezone.localdate()
+    exonerada.save(update_fields=["is_active", "exonerado_em"])
+
+    desligado = client.get(reverse("user_admin:listar_servidores"))
+    assert "Exonerada" not in desligado.content.decode()
+
+    ligado = client.get(reverse("user_admin:listar_servidores"), {"exonerados": "1"})
+    html = ligado.content.decode()
+    assert "Exonerada" in html
+    assert "Exonerado" in html
+
+    # O estado do toggle sobrevive à filtragem seguinte.
+    filtrado = client.get(
+        reverse("user_admin:listar_servidores"),
+        {"exonerados": "1", "nome": "exonerada"},
+    )
+    assert "Exonerada" in filtrado.content.decode()

@@ -12,6 +12,7 @@ from apps.unidades.acoes_declaradas import (
 from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
     ACAO_DESIGNAR_SUBSTITUTO,
+    ACAO_EXONERAR_SERVIDOR,
     ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
     ACAO_TORNAR_ADMINISTRADOR,
 )
@@ -90,6 +91,10 @@ ABA_RECURSOS_HUMANOS = Aba(
                     url_name="user_admin:listar_servidores",
                 ),
                 ItemAcao(acao=ACAO_CRIAR_SERVIDOR),
+                # Consultar, cadastrar, exonerar (SPEC user_admin/027): a ordem declarada é a
+                # ordem exibida, e é a ordem em que o ciclo acontece. Sem esta linha,
+                # `painel.E004` derruba a subida.
+                ItemAcao(acao=ACAO_EXONERAR_SERVIDOR, partial=PARTIAL_CARTAO_MODAL),
             ),
         ),
         Grupo(

@@ -325,7 +325,8 @@ def test_secao_mostra_a_agenda_do_afastamento(client: Client) -> None:
     # Exonerado: mesma causa de estar fora da cadeira, palavra diferente do afastado.
     exonerado = _perfil_exercicio(unidade, "700606", "Exonerado")
     exonerado.is_active = False
-    exonerado.save(update_fields=["is_active"])
+    exonerado.exonerado_em = timezone.localdate()
+    exonerado.save(update_fields=["is_active", "exonerado_em"])
 
     html_exonerado = client.get(
         reverse("user_admin:pagina_perfil", kwargs={"pk": exonerado.pk})

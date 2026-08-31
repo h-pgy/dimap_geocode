@@ -20,6 +20,7 @@ from apps.unidades.paleta import hex_da_cor
 from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
     ACAO_DESIGNAR_SUBSTITUTO,
+    ACAO_EXONERAR_SERVIDOR,
     ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
     ACAO_TORNAR_ADMINISTRADOR,
 )
@@ -29,6 +30,7 @@ from apps.user_admin.exercicio import (
     impedimentos_em_aberto,
     retorno_eh_revogacao,
 )
+from apps.user_admin.exoneracao import previa_da_exoneracao, previa_da_reintegracao
 from apps.user_admin.models import (
     CargoBase,
     CargoComissao,
@@ -48,6 +50,7 @@ from apps.user_admin.substituicao import (
 )
 from services.domain.autorizacao import VarianteIcone
 from services.domain.exercicio import Periodo, Trecho, vigente_em
+from services.domain.exoneracao import avaliar_exoneracao, avaliar_reintegracao
 from services.domain.listagem_gestao import (
     ColunaServidor,
     ConsultaServidores,
@@ -68,6 +71,9 @@ DICA_SEM_SERVIDOR_IMPEDIMENTO = "Cadastre alguém na unidade antes de registrar 
 ROTA_FACE_SUBSTITUICAO = "user_admin:face_substituicao"
 ALVO_FACE_SUBSTITUICAO = "face-substituicao"
 DICA_SEM_SERVIDOR_SUBSTITUICAO = "Cadastre alguém na unidade antes de designar substituto."
+ROTA_FACE_EXONERACAO = "user_admin:face_exoneracao"
+ALVO_FACE_EXONERACAO = "exoneracao-alvo"
+DICA_SEM_SERVIDOR_EXONERACAO = "Cadastre alguém na unidade antes de exonerar."
 
 # Os campos do formulário de servidor que o `selected` do select compara com um `pk`.
 CAMPOS_DE_ID = ("unidade_id", "cargo_base_id", "cargo_comissao_id")
@@ -353,6 +359,8 @@ def contexto_secao_exercicio(
     perfil: Perfil,
     pode_registrar_impedimento: bool,
     pode_designar_substituto: bool = False,
+    pode_exonerar: bool = False,
+    pode_reintegrar: bool = False,
 ) -> dict[str, Any]:
     """A seção sozinha, como o swap fora de banda a devolve. `perfil` viaja junto porque a seção o
     nomeia, e as permissões decidem quais botões existem."""
@@ -360,6 +368,10 @@ def contexto_secao_exercicio(
         "perfil": perfil,
         "pode_registrar_impedimento": pode_registrar_impedimento,
         "pode_designar_substituto": pode_designar_substituto,
+        # SPEC user_admin/027: o botão crítico é oferecido conforme o estado do servidor — nunca
+        # os dois ao mesmo tempo.
+        "pode_exonerar": pode_exonerar,
+        "pode_reintegrar": pode_reintegrar,
     }
 
 
@@ -577,6 +589,72 @@ def contexto_face_substituicao(
 
 
 
+# ---------------------------------------------------------------------------
+# Exonerar e reintegrar como ato, com as três portas (SPEC user_admin/027)
+# ---------------------------------------------------------------------------
+
+
+def _icone_exoneracao() -> dict[str, Any]:
+    return {
+        "acao_exonerar_servidor": ACAO_EXONERAR_SERVIDOR.acao,
+        "variante_icone_pequena": VarianteIcone.PEQUENO,
+        "variante_icone_grande": VarianteIcone.GRANDE,
+    }
+
+
+def contexto_opcoes_exoneracao(unidade_id: int | None) -> dict[str, Any]:
+    return _opcoes_de_servidor(
+        unidade_id,
+        ROTA_FACE_EXONERACAO,
+        ALVO_FACE_EXONERACAO,
+        DICA_SEM_SERVIDOR_EXONERACAO,
+    )
+
+
+def contexto_face_exoneracao(servidor: Perfil, autor_id: int) -> dict[str, Any]:
+    """A identidade, a prévia (só na face de exonerar) e a tarja com o botão do ato — o bloco que o
+    hx-get do segundo select troca, e que a abertura direta já entrega pronto. A face sai do
+    ESTADO do servidor, nunca de qual porta abriu o modal."""
+    base = {
+        "servidor": servidor,
+        "imagem": imagem_do_perfil(servidor),
+        "cor_unidade_hex": hex_da_cor(servidor.cor_unidade),
+    }
+    if servidor.exonerado:
+        previa_reintegracao = previa_da_reintegracao(servidor)
+        return base | {
+            "face": "reintegrar",
+            "previa_reintegracao": previa_reintegracao,
+            "veredito": avaliar_reintegracao(previa_reintegracao),
+        }
+    previa_exoneracao = previa_da_exoneracao(servidor, autor_id=autor_id)
+    return base | {
+        "face": "exonerar",
+        "previa_exoneracao": previa_exoneracao,
+        "veredito": avaliar_exoneracao(previa_exoneracao),
+    }
+
+
+def contexto_modal_exonerar_servidor(
+    servidor: Perfil | None,
+    autor_id: int,
+    ids_permitidos: Collection[int] | None = None,
+) -> dict[str, Any]:
+    """Chegando pela seção Exercício ou pela coluna da listagem, o servidor já vem escolhido e o
+    modal abre direto na face dele (`direto`); chegando pelo card do painel, as duas listas
+    cascateiam até um ser escolhido."""
+    if servidor is not None:
+        return (
+            {"direto": True} | contexto_face_exoneracao(servidor, autor_id) | _icone_exoneracao()
+        )
+    return (
+        catalogo_de_unidades(ids_permitidos)
+        | {"direto": False}
+        | contexto_opcoes_exoneracao(None)
+        | _icone_exoneracao()
+    )
+
+
 def _valores_do_impedimento(valores: Mapping[str, Any]) -> dict[str, Any]:
     """O `selected` do select de tipo compara com `tipo.pk`: id que voltasse como texto perderia a
     escolha justamente na tela que pede para corrigi-la."""
@@ -587,31 +665,46 @@ def _valores_do_impedimento(valores: Mapping[str, Any]) -> dict[str, Any]:
     return lidos
 
 
-def contexto_listagem_servidores(consulta: ConsultaServidores) -> dict[str, Any]:
+def contexto_listagem_servidores(
+    consulta: ConsultaServidores,
+    exonerados: bool = False,
+    alcance_exoneracao: Collection[int] = frozenset(),
+) -> dict[str, Any]:
     # As colunas viajam com o termo e a ordem em vigor: carregada com filtro na query string, a
     # página nasce com as peças afundadas e a seta entintada, sem JavaScript de estado.
     return (
         contexto_fundo_admin()
-        | contexto_corpo_servidores(consulta)
+        | contexto_corpo_servidores(consulta, exonerados, alcance_exoneracao)
+        | _icone_exoneracao()
         | {
             "colunas": colunas_da_tabela(consulta, ColunaServidor, ROTULO_DA_COLUNA),
             # Os campos ocultos que viajam com os filtros: a ordem sobrevive à troca do corpo.
             "ordenar_por": consulta.ordenar_por or "",
             "descendente": marca_descendente(consulta),
             # O botão só existe para quem `perms` libera (SPEC criacao_usuarios/004); o slug e a
-            # variante vão prontos para o `icone_acao` do template — o svg em si só se resolve lá,
+            # variante vão prontos para o `icone_acao` do template — o svg em si já se resolve lá,
             # porque o resolvedor mora em apps.competencias, que este módulo não pode importar.
             "acao_criar_servidor": ACAO_CRIAR_SERVIDOR.acao,
             "variante_icone_pequena": VarianteIcone.PEQUENO,
+            # O alternador "Mostrar servidores exonerados" (SPEC user_admin/027, mesmo gesto do
+            # toggle "Mostrar unidades extintas" da SPEC 025).
+            "exonerados": exonerados,
         }
     )
 
 
-def contexto_corpo_servidores(consulta: ConsultaServidores) -> dict[str, Any]:
-    linhas = _linhas_de_servidores()
+def contexto_corpo_servidores(
+    consulta: ConsultaServidores,
+    exonerados: bool = False,
+    alcance_exoneracao: Collection[int] = frozenset(),
+) -> dict[str, Any]:
+    linhas = _linhas_de_servidores(com_exonerados=exonerados)
     return {
         "linhas": listar_servidores(linhas, consulta),
         "total_servidores": len(linhas),
+        # O conjunto pronto, no molde de `alcance_extincao` (SPEC user_admin/025): o template só
+        # pergunta pertencimento, nunca chama `pode_executar` — a barreira segue sendo a rota.
+        "alcance_exoneracao": frozenset(alcance_exoneracao),
     }
 
 
@@ -851,7 +944,7 @@ def _catalogos_de_lotacao(ids_permitidos: Collection[int] | None = None) -> dict
     }
 
 
-def _linhas_de_servidores() -> list[LinhaServidor]:
+def _linhas_de_servidores(com_exonerados: bool = False) -> list[LinhaServidor]:
     # O domínio recebe as linhas materializadas: são dezenas de registros, e filtrar por texto
     # normalizado no banco exigiria duplicar a normalização única em SQL (§6.1).
     perfis = Perfil.objects.select_related(
@@ -859,6 +952,8 @@ def _linhas_de_servidores() -> list[LinhaServidor]:
         "cargo_base",
         "cargo_comissao",
     ).order_by("nome", "sobrenome")
+    if not com_exonerados:
+        perfis = perfis.filter(is_active=True)
     return [_linha_do_perfil(perfil) for perfil in perfis]
 
 
@@ -873,4 +968,5 @@ def _linha_do_perfil(perfil: Perfil) -> LinhaServidor:
         cargo=perfil.cargo_base.nome,
         comissao=perfil.cargo_comissao.nome if perfil.cargo_comissao else SEM_CARGO_COMISSAO,
         impedido=perfil.esta_impedido,
+        exonerado=perfil.exonerado,
     )

@@ -794,7 +794,8 @@ def test_impedido_recebe_403_e_exonerado_302(client: Client) -> None:
     exonerado = _dirigente(outra_dirigida, "9701801")
     client.force_login(exonerado)
     exonerado.is_active = False
-    exonerado.save(update_fields=["is_active"])
+    exonerado.exonerado_em = timezone.localdate()
+    exonerado.save(update_fields=["is_active", "exonerado_em"])
 
     resposta = client.post(_url_extinguir(), {"unidade": str(outro_alvo.pk)})
     assert resposta.status_code == 302

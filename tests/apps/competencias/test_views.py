@@ -1001,7 +1001,9 @@ def test_delegado_fora_do_exercicio_nao_exerce(client: Client) -> None:
     unidade = _unidade("DEL-EXERC-UNIDADE")
     titular = _dirigente(unidade, "910530", "Titular Exerc")
     delegado_impedido = _perfil(unidade, "910531", "Delegado Imp")
-    delegado_exonerado = _perfil(unidade, "910532", "Delegado Exon", is_active=False)
+    delegado_exonerado = _perfil(
+        unidade, "910532", "Delegado Exon", is_active=False, exonerado_em=timezone.localdate()
+    )
     acao = _acao("competencias.definir_atribuicao", estrutural=True)
     atribuicao = _atribuir(unidade, acao)
     acao_teste = _acao("competencias.acao_teste_exerc", estrutural=False)

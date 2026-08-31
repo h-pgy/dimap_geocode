@@ -15,6 +15,11 @@
           Administrador
         </span>
       {% endif %}
+      {# SPEC user_admin/027: o selo carrega a data do ato — é a medida cheia, ao contrário do #}
+      {# badge-sm da listagem, que só nomeia a situação. #}
+      {% if perfil.exonerado %}
+        <span class="badge badge-warning badge-soft shrink-0">Exonerado em {{ perfil.exonerado_em|date:"d/m/Y" }}</span>
+      {% endif %}
     </div>
     <div class="flex flex-wrap gap-2 mt-2">
       <span class="badge badge-info badge-soft">{{ perfil.unidade.sigla }}</span>

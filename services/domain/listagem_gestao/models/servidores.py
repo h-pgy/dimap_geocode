@@ -23,6 +23,9 @@ class LinhaServidor(BaseModel):
     cargo: str
     comissao: str
     impedido: bool
+    # SPEC user_admin/027: marca a linha quando o toggle "Mostrar servidores exonerados" a revela —
+    # mesmo padrão de LinhaUnidade.extinta (SPEC 025).
+    exonerado: bool = False
 
 
 ConsultaServidores = ConsultaListagem[ColunaServidor]

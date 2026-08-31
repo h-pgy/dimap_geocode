@@ -1,0 +1,96 @@
+{# Bloco de face do modal de exonerar/reintegrar servidor (SPEC user_admin/027): a identidade, a   #}
+{# prévia (só na face de exonerar) e a tarja com o botão do ato — tudo trocado junto pelo hx-get do #}
+{# segundo select, e já pronto quando o servidor chega pela rota direta.                            #}
+{% if not servidor %}
+  <div class="tarja-vinculo flex items-start gap-3">
+    <svg class="w-6 h-6 shrink-0 text-rocha-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+    <p class="text-[13px] text-base-content/80">Escolha o servidor para ver o que a exoneração leva.</p>
+  </div>
+{% else %}
+  <div class="card-well p-4">
+    <div class="linha-pessoa">
+      {% include "user_admin/partials/_imagem_perfil.html" with perfil=servidor imagem=imagem cor_unidade_hex=cor_unidade_hex tamanho="w-12 h-12" halo_escala="0.5" %}
+      <div class="min-w-0">
+        <p class="linha-pessoa-nome">{{ servidor.nome }} {{ servidor.sobrenome }}</p>
+        <p class="linha-pessoa-meta">
+          RF {{ servidor.rf }} ·
+          {% if servidor.cargo_comissao %}{{ servidor.cargo_comissao.padrao }} · {{ servidor.cargo_comissao.nome }} ·{% else %}{{ servidor.cargo_base.nome }} ·{% endif %}
+          {{ servidor.unidade.sigla }}
+        </p>
+      </div>
+      {% if face == "reintegrar" %}
+        <span class="badge badge-warning badge-soft badge-sm shrink-0">Exonerado</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if face == "exonerar" %}
+    <div class="previa-ato">
+      <div class="previa-ato-tile card-well">
+        <span class="text-overline">Afastamentos em aberto</span>
+        {% if previa_exoneracao.impedimentos_em_aberto %}<span class="previa-ato-valor">{{ previa_exoneracao.impedimentos_em_aberto }}</span>{% else %}<span class="previa-ato-vazio">Nenhum</span>{% endif %}
+      </div>
+      <div class="previa-ato-tile card-well">
+        <span class="text-overline">Coberturas que exerce</span>
+        {% if previa_exoneracao.coberturas_em_curso %}<span class="previa-ato-valor">{{ previa_exoneracao.coberturas_em_curso }}</span>{% else %}<span class="previa-ato-vazio">Nenhuma</span>{% endif %}
+      </div>
+      <div class="previa-ato-tile card-well">
+        <span class="text-overline">Delegações recebidas</span>
+        {% if previa_exoneracao.delegacoes_recebidas %}<span class="previa-ato-valor">{{ previa_exoneracao.delegacoes_recebidas }}</span>{% else %}<span class="previa-ato-vazio">Nenhuma</span>{% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  {% if not veredito.pode %}
+    <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+      <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+      <div>
+        <p class="text-[13px] font-semibold text-base-content/90">
+          {% if face == "reintegrar" %}Servidor não reintegrado{% else %}Servidor não exonerado{% endif %}
+        </p>
+        <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+          <li>{{ veredito.motivo }}</li>
+        </ul>
+      </div>
+    </div>
+  {% elif face == "exonerar" %}
+    <div class="tarja-vinculo {% if previa_exoneracao.unidade_que_dirige or previa_exoneracao.administrador %}tarja-vinculo-critica{% endif %} flex items-start gap-3">
+      <svg class="w-6 h-6 shrink-0 {% if previa_exoneracao.unidade_que_dirige or previa_exoneracao.administrador %}text-error{% else %}text-rocha-600{% endif %}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+      <p class="text-[13px] text-base-content/80">
+        {% if previa_exoneracao.unidade_que_dirige and previa_exoneracao.administrador %}
+          {{ servidor.nome }} é <strong>titular da {{ previa_exoneracao.unidade_que_dirige }}</strong> e <strong>administrador(a) do sistema</strong>. Exonerando, a unidade fica <strong>sem direção</strong> até alguém ser designado, e os dois vínculos caem junto com os afastamentos, a cobertura e as delegações acima.
+        {% elif previa_exoneracao.unidade_que_dirige %}
+          {{ servidor.nome }} é <strong>titular da {{ previa_exoneracao.unidade_que_dirige }}</strong>. Exonerando, a unidade fica <strong>sem direção</strong> até alguém ser designado.
+        {% elif previa_exoneracao.administrador %}
+          {{ servidor.nome }} é <strong>administrador(a) do sistema</strong>. Exonerando, a condição cai junto com os afastamentos, a cobertura e as delegações acima.
+        {% else %}
+          {{ servidor.nome }} não dirige unidade, não cobre ninguém e não recebeu delegação. Exonerando, <strong>só o acesso ao sistema é retirado</strong> — a lotação na {{ servidor.unidade.sigla }} fica registrada.
+        {% endif %}
+      </p>
+    </div>
+  {% else %}
+    <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+      <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+      <p class="text-[13px] text-base-content/80">
+        Volta o <strong>acesso ao sistema</strong>, e a lotação na {{ servidor.unidade.sigla }} que ele guardou. <strong>Titularidade, coberturas, delegações e a condição de administrador não voltam</strong> — cada uma se refaz por seu próprio ato.
+      </p>
+    </div>
+  {% endif %}
+
+  <div class="modal-action">
+    <label for="modal-exonerar-servidor" class="btn btn-glass btn-sm">{% if veredito.pode %}Cancelar{% else %}Fechar{% endif %}</label>
+    {% if veredito.pode %}
+      <button type="button"
+              hx-post="{% if face == 'reintegrar' %}{% url 'user_admin:gravar_reintegracao' servidor.pk %}{% else %}{% url 'user_admin:gravar_exoneracao' servidor.pk %}{% endif %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML"
+              class="btn btn-sm {% if face == 'reintegrar' %}btn-onsen{% else %}btn-error btn-soft{% endif %}">
+        {% if face == "reintegrar" %}Reintegrar {{ servidor.nome }} {{ servidor.sobrenome }}{% else %}Exonerar {{ servidor.nome }} {{ servidor.sobrenome }}{% endif %}
+      </button>
+    {% else %}
+      <button type="button" class="btn btn-error btn-soft btn-sm btn-disabled">
+        {% if face == "reintegrar" %}Reintegrar{% else %}Exonerar{% endif %}
+      </button>
+    {% endif %}
+  </div>
+{% endif %}

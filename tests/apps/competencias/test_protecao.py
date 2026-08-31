@@ -253,6 +253,32 @@ def test_rota_nega_autenticado_sem_competencia_com_403() -> None:
 
 @banco
 @pytest.mark.django_db
+def test_perfil_exonerado_injetado_no_decorator_recebe_403_e_fica_registrado() -> None:
+    """O guardrail do Caveat da SPEC user_admin/027: a recusa por `perfil.exonerado` roda ANTES do
+    `has_perm`, e por isso alcança até um `Perfil` exonerado entregue direto ao decorator sem
+    passar pelo `ModelBackend` — um `force_login`, um management command ou um backend novo. O
+    superusuário, que atravessaria `has_perm` sem tocar em avaliador algum, é recusado do mesmo
+    jeito."""
+    unidade = _unidade("PROT-EXON")
+    exonerado = _perfil(
+        unidade,
+        "900810",
+        "Exonerado Injetado",
+        is_active=False,
+        is_superuser=True,
+        exonerado_em=timezone.localdate(),
+    )
+
+    resposta = _chamar(_view_simples, _get(exonerado))
+
+    assert resposta.status_code == 403
+    execucao = ExecucaoAcao.objects.get()
+    assert execucao.autorizado is False
+    assert execucao.perfil_id == exonerado.pk
+
+
+@banco
+@pytest.mark.django_db
 def test_rota_manda_anonimo_para_o_login() -> None:
     resposta = _chamar(_view_simples, _get(AnonymousUser()))
 

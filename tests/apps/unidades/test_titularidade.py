@@ -5,11 +5,17 @@ a troca destitui o anterior na mesma operação, e destituir sozinho abre a vaga
 Marker `banco`: os atos escrevem em Perfil e a unicidade é constraint do Postgres.
 """
 
+from django.utils import timezone
+
 import pytest
 
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.models import CargoBase, CargoComissao, Perfil
-from apps.unidades.titularidade import definir_titular, destituir_titular
+from apps.unidades.titularidade import (
+    candidatos_a_titular,
+    definir_titular,
+    destituir_titular,
+)
 
 banco = pytest.mark.banco
 
@@ -78,3 +84,28 @@ def test_troca_destitui_o_anterior_e_destituir_abre_a_vaga() -> None:
 
     assert Perfil.objects.filter(unidade=unidade, e_titular=True).count() == 0
     assert unidade.titular is None
+
+
+# ---------------------------------------------------------------------------
+# Exonerado não é candidato a titular (SPEC user_admin/027)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_exonerado_nao_e_candidato_a_titular() -> None:
+    tipo = _tipo_unidade(nome="Divisão Titular Exonerado")
+    unidade = Unidade.objects.create(
+        nome="Divisão Titular Exonerado", sigla="DIVTDEXO", tipo=tipo
+    )
+    cargo = _cargo(nome="Diretor Titular Exonerado")
+    exonerado = _perfil(
+        unidade,
+        cargo,
+        rf="700210",
+        nome="Exonerado",
+        is_active=False,
+        exonerado_em=timezone.localdate(),
+    )
+
+    assert exonerado not in candidatos_a_titular(unidade)

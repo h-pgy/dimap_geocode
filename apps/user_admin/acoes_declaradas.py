@@ -83,3 +83,19 @@ ACAO_DESIGNAR_SUBSTITUTO = instanciar_acao(
     alcance=LotacaoDoServidor(),
 )
 
+ACAO_EXONERAR_SERVIDOR = instanciar_acao(
+    slug="user_admin.exonerar_servidor",
+    nome="Exonerar servidor",
+    nome_curto="Exonerar",
+    tooltip="Retira o servidor do quadro da DIMAP — e o reintegra.",
+    # Precisa reverter sem argumento (`competencias.E004`): é a rota do modal direto, e não as de
+    # gravação, que recebem o servidor no caminho.
+    url_name="user_admin:modal_exonerar_servidor",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    # Titular da área a exerce por dirigir, sem concessão gravada — e é por ser estrutural que ela é
+    # delegável (SPEC autorizacao/009).
+    estrutural=True,
+    # Um alvo só, e ele é uma PESSOA: a unidade sai da lotação dela, lida no banco.
+    alcance=LotacaoDoServidor(),
+)
+

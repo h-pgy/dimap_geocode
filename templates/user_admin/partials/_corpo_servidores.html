@@ -2,7 +2,7 @@
 {# cabeçalho junto destruiria, a cada tecla, o campo em que se está digitando.                    #}
 <tbody id="corpo-servidores">
   {% for linha in linhas %}
-    <tr>
+    <tr{% if linha.exonerado %} class="linha-extinta"{% endif %}>
       <td>
         <a href="{% url 'user_admin:pagina_perfil' linha.pk %}" class="link-tabela-onsen">{{ linha.nome }}</a>
       </td>
@@ -17,7 +17,9 @@
       <td class="text-base-content/80">{{ linha.cargo }}</td>
       <td class="text-base-content/60">{{ linha.comissao }}</td>
       <td>
-        {% if linha.impedido %}
+        {% if linha.exonerado %}
+          <span class="badge badge-warning badge-soft badge-sm">Exonerado</span>
+        {% elif linha.impedido %}
           <span class="badge badge-warning badge-soft badge-sm">Impedido</span>
         {% else %}
           <span class="badge badge-success badge-soft badge-sm">Ativo</span>
@@ -30,10 +32,35 @@
           <span class="etched icon-etched">✎</span>
         </a>
       </td>
+      <td class="text-right">
+        {# O gesto crítico (SPEC user_admin/027): exonerar em vermelho, reintegrar em água — o     #}
+        {# lugar preservado, sem gesto algum, para quem está fora do alcance de quem olha.         #}
+        {% if linha.unidade_pk in alcance_exoneracao %}
+          {% if linha.exonerado %}
+            <button type="button"
+                    class="btn btn-ghost btn-glass btn-xs btn-circle"
+                    title="Reintegrar servidor"
+                    hx-get="{% url 'user_admin:modal_exonerar_servidor' %}?servidor={{ linha.pk }}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms">
+              <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reintegrar"/></svg>
+            </button>
+          {% else %}
+            <button type="button"
+                    class="btn btn-ghost btn-glass btn-xs btn-circle"
+                    title="Exonerar servidor"
+                    hx-get="{% url 'user_admin:modal_exonerar_servidor' %}?servidor={{ linha.pk }}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms">
+              <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+            </button>
+          {% endif %}
+        {% endif %}
+      </td>
     </tr>
   {% empty %}
     <tr>
-      <td colspan="7" class="table-onsen-vazio">
+      <td colspan="8" class="table-onsen-vazio">
         <span class="etched text-3xl block mb-2">⌕</span>
         Nenhum servidor corresponde aos filtros.
       </td>

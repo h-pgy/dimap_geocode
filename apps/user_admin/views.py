@@ -14,6 +14,7 @@ from typing import cast
 
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.competencias.consulta import alcance_do_perfil
@@ -25,6 +26,7 @@ from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
     ACAO_DESIGNAR_SUBSTITUTO,
     ACAO_EDITAR_SERVIDOR,
+    ACAO_EXONERAR_SERVIDOR,
     ACAO_REGISTRAR_IMPEDIMENTO_SERVIDOR,
     ACAO_TORNAR_ADMINISTRADOR,
 )
@@ -35,6 +37,7 @@ from apps.user_admin.exercicio import (
     retornar_ao_exercicio,
     retorno_eh_revogacao,
 )
+from apps.user_admin.exoneracao import exonerar_servidor, reintegrar_servidor
 from apps.user_admin.formularios import (
     ler_nova_substituicao,
     ler_novo_impedimento,
@@ -53,6 +56,7 @@ from apps.user_admin.context import (
     contexto_corpo_servidores,
     contexto_criar_perfil,
     contexto_edicao_recusada,
+    contexto_face_exoneracao,
     contexto_face_substituicao,
     contexto_impedimento_recusado,
     contexto_listagem_servidores,
@@ -60,18 +64,20 @@ from apps.user_admin.context import (
     contexto_modal_designar,
     contexto_modal_designar_substituto,
     contexto_modal_encerrar,
+    contexto_modal_exonerar_servidor,
     contexto_modal_impedimento,
     contexto_modal_perfil,
     contexto_modal_registrar_impedimento,
     contexto_modal_trocar,
     contexto_opcoes_administrador,
+    contexto_opcoes_exoneracao,
     contexto_opcoes_impedimento,
     contexto_opcoes_substituicao,
     contexto_pagina_perfil,
     contexto_secao_exercicio,
 )
 from apps.user_admin.models import Impedimento, Perfil, Substituicao
-from apps.user_admin.schemas import MudancaDeAdministrador
+from apps.user_admin.schemas import ComandoExoneracao, ConsultaDeServidores, MudancaDeAdministrador
 from services.domain.listagem_gestao import ColunaServidor
 from services.utils.erros_formulario import RecusaDeFormulario
 
@@ -96,18 +102,32 @@ TEMPLATE_MODAL_DESIGNAR = "user_admin/partials/_modal_designar.html"
 TEMPLATE_MODAL_ENCERRAR = "user_admin/partials/_modal_encerrar.html"
 TEMPLATE_MODAL_DESIGNAR_SUBSTITUTO = "user_admin/partials/_modal_designar_substituto.html"
 TEMPLATE_FACE_SUBSTITUICAO = "user_admin/partials/_face_substituicao.html"
+TEMPLATE_MODAL_EXONERAR = "user_admin/partials/_modal_exonerar_servidor.html"
+TEMPLATE_FACE_EXONERACAO = "user_admin/partials/_face_exoneracao.html"
+TEMPLATE_EXONERACAO_CONCLUIDA = "user_admin/partials/_exoneracao_concluida.html"
 
 
 def listar_servidores(request: HttpRequest) -> HttpResponse:
     consulta = consulta_da_listagem(request.GET.dict(), ColunaServidor)
-    return render(request, TEMPLATE_LISTAGEM, contexto_listagem_servidores(consulta))
+    exonerados = ConsultaDeServidores.model_validate(request.GET.dict()).exonerados
+    return render(
+        request,
+        TEMPLATE_LISTAGEM,
+        contexto_listagem_servidores(consulta, exonerados, _alcance_exoneracao_da_leitura(request)),
+    )
 
 
 def corpo_servidores(request: HttpRequest) -> HttpResponse:
     # Alvo do swap do HTMX: só o <tbody>. Trocar o <thead> junto destruiria, a cada tecla, o campo
-    # em que se está digitando.
+    # em que se está digitando. `exonerados` viaja no campo oculto do cabeçalho (SPEC
+    # user_admin/027) — o mesmo estado do toggle, sem que o filtro/ordenação o derrube.
     consulta = consulta_da_listagem(request.GET.dict(), ColunaServidor)
-    return render(request, TEMPLATE_CORPO_SERVIDORES, contexto_corpo_servidores(consulta))
+    exonerados = ConsultaDeServidores.model_validate(request.GET.dict()).exonerados
+    return render(
+        request,
+        TEMPLATE_CORPO_SERVIDORES,
+        contexto_corpo_servidores(consulta, exonerados, _alcance_exoneracao_da_leitura(request)),
+    )
 
 
 @acao_protegida(ACAO_CRIAR_SERVIDOR)
@@ -170,6 +190,8 @@ def pagina_perfil(request: HttpRequest, pk: int) -> HttpResponse:
             "pode_editar": pode_executar(request.user, ACAO_EDITAR_SERVIDOR, perfil.unidade_id),
             "pode_registrar_impedimento": _pode_registrar_impedimento(request, perfil),
             "pode_designar_substituto": _pode_designar_substituto(request, perfil),
+            "pode_exonerar": _pode_exonerar(request, perfil),
+            "pode_reintegrar": _pode_reintegrar(request, perfil),
         },
     )
 
@@ -552,6 +574,123 @@ def face_substituicao(request: HttpRequest) -> HttpResponse:
             alcance_do_perfil(_autor(request)),
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Exonerar e reintegrar, com as três portas (SPEC user_admin/027)
+# ---------------------------------------------------------------------------
+
+
+@acao_protegida(ACAO_EXONERAR_SERVIDOR)
+def modal_exonerar_servidor(request: HttpRequest) -> HttpResponse:
+    """A rota das três portas: a seção Exercício e a coluna da listagem chegam com `?servidor=`
+    já resolvido — a face nasce pronta, sem select algum. O card do painel chega sem parâmetro, e
+    as duas listas cascateiam até um servidor ser escolhido."""
+    autor = _autor(request)
+    id_bruto = request.GET.get("servidor", "")
+    servidor = _perfil(int(id_bruto)) if id_bruto.isdigit() else None
+    return render(
+        request,
+        TEMPLATE_MODAL_EXONERAR,
+        contexto_modal_exonerar_servidor(servidor, autor.pk, alcance_do_perfil(autor)),
+    )
+
+
+@acao_protegida(ACAO_EXONERAR_SERVIDOR)
+def opcoes_exoneracao(request: HttpRequest) -> HttpResponse:
+    unidade = request.GET.get("unidade", "")
+    return render(
+        request,
+        TEMPLATE_OPCOES_SERVIDOR,
+        contexto_opcoes_exoneracao(int(unidade) if unidade.isdigit() else None),
+    )
+
+
+@acao_protegida(ACAO_EXONERAR_SERVIDOR)
+def face_exoneracao(request: HttpRequest) -> HttpResponse:
+    servidor = request.GET.get("servidor", "")
+    if not servidor.isdigit():
+        return HttpResponse("")
+    return render(
+        request,
+        TEMPLATE_FACE_EXONERACAO,
+        contexto_face_exoneracao(_perfil(int(servidor)), _autor(request).pk),
+    )
+
+
+@acao_protegida(ACAO_EXONERAR_SERVIDOR)
+@require_POST
+def gravar_exoneracao(request: HttpRequest, servidor: int) -> HttpResponse:
+    comando = ComandoExoneracao(servidor_id=servidor, autor_id=_autor(request).pk)
+    desfecho = exonerar_servidor(comando, timezone.localdate())
+    if desfecho.perfil is None:
+        return render(
+            request,
+            TEMPLATE_FACE_EXONERACAO,
+            contexto_face_exoneracao(_perfil(servidor), _autor(request).pk),
+            status=422,
+        )
+    registrar_ato(
+        request,
+        operacao="exonerar",
+        alvo_tipo="servidor",
+        alvo_identificador=desfecho.perfil.rf,
+    )
+    return _exoneracao_concluida(request, desfecho.perfil)
+
+
+@acao_protegida(ACAO_EXONERAR_SERVIDOR)
+@require_POST
+def gravar_reintegracao(request: HttpRequest, servidor: int) -> HttpResponse:
+    comando = ComandoExoneracao(servidor_id=servidor, autor_id=_autor(request).pk)
+    desfecho = reintegrar_servidor(comando)
+    if desfecho.perfil is None:
+        return render(
+            request,
+            TEMPLATE_FACE_EXONERACAO,
+            contexto_face_exoneracao(_perfil(servidor), _autor(request).pk),
+            status=422,
+        )
+    registrar_ato(
+        request,
+        operacao="reintegrar",
+        alvo_tipo="servidor",
+        alvo_identificador=desfecho.perfil.rf,
+    )
+    return _exoneracao_concluida(request, desfecho.perfil)
+
+
+def _exoneracao_concluida(request: HttpRequest, perfil: Perfil) -> HttpResponse:
+    """No lugar do #poco-modal: fecha o modal e, na página do próprio servidor, atualiza a
+    identidade e a seção de Exercício por hx-swap-oob. Da listagem ou do painel, os ids não
+    existem no DOM e o oob simplesmente não encontra alvo."""
+    return render(
+        request,
+        TEMPLATE_EXONERACAO_CONCLUIDA,
+        contexto_pagina_perfil(perfil, pode_designar_substituto=_pode_designar_substituto(request, perfil))
+        | {
+            "pode_registrar_impedimento": _pode_registrar_impedimento(request, perfil),
+            "pode_designar_substituto": _pode_designar_substituto(request, perfil),
+            "pode_exonerar": _pode_exonerar(request, perfil),
+            "pode_reintegrar": _pode_reintegrar(request, perfil),
+        },
+    )
+
+
+def _pode_exonerar(request: HttpRequest, perfil: Perfil) -> bool:
+    return not perfil.exonerado and pode_executar(request.user, ACAO_EXONERAR_SERVIDOR, perfil.unidade_id)
+
+
+def _pode_reintegrar(request: HttpRequest, perfil: Perfil) -> bool:
+    return perfil.exonerado and pode_executar(request.user, ACAO_EXONERAR_SERVIDOR, perfil.unidade_id)
+
+
+def _alcance_exoneracao_da_leitura(request: HttpRequest) -> frozenset[int]:
+    # A listagem é rota de leitura aberta (§3.5): visitante sem perfil não alcança unidade alguma,
+    # e o gesto simplesmente não aparece — a barreira segue sendo a rota de gravação.
+    if not request.user.is_authenticated:
+        return frozenset()
+    return alcance_do_perfil(_autor(request))
 
 
 def _secao_atualizada(request: HttpRequest, perfil: Perfil) -> HttpResponse:

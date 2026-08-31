@@ -602,7 +602,8 @@ def test_impedido_recebe_403_e_exonerado_302(client: Client) -> None:
 
     exonerado = _dirigente(_unidade("IMP-EXON"), "9602520", "Titular Exonerado")
     exonerado.is_active = False
-    exonerado.save(update_fields=["is_active"])
+    exonerado.exonerado_em = timezone.localdate()
+    exonerado.save(update_fields=["is_active", "exonerado_em"])
 
     client.force_login(exonerado)
     resposta = client.post(_url_gravar(alvo.pk), _payload(tipo, timezone.localdate()))

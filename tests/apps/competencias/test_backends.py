@@ -191,7 +191,14 @@ def test_backend_monta_as_canetas_do_banco(monkeypatch: pytest.MonkeyPatch) -> N
 def test_backend_nega_anonimo_e_exonerado_e_nao_autentica() -> None:
     unidade = _unidade("UANON")
     cargo = _cargo_base()
-    perfil = _perfil(unidade, "800820", "Exonerado", cargo_base=cargo, is_active=False)
+    perfil = _perfil(
+        unidade,
+        "800820",
+        "Exonerado",
+        cargo_base=cargo,
+        is_active=False,
+        exonerado_em=timezone.localdate(),
+    )
 
     atribuicao = AtribuicaoUnidade.objects.create(
         unidade=unidade,
