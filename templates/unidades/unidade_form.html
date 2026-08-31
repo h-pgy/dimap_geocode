@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load navegacao %}
 
 {% block title %}{% if raiz %}Nova unidade raiz{% else %}Nova unidade{% endif %} · DIMAP GeoCoder{% endblock %}
 
@@ -11,11 +12,21 @@
   {# Mesmo esqueleto da página de servidor: o fundo fica parado e o conteúdo rola na .admin-shell. #}
   <div class="admin-shell">
     <div class="max-w-3xl mx-auto px-4 py-24 flex flex-col gap-4">
+      {# Chegou direto do card do painel (SPEC painel/001): o destino muda para o painel, e "voltar" #}
+      {# segue certo — é para lá que a visita acabou de vir. Só o rótulo "para a lista de unidades"  #}
+      {# deixaria de fazer sentido: ela nunca foi vista nesta visita.                                #}
       <div>
-        <a href="{% url 'unidades:listar_unidades' %}" class="btn btn-glass btn-sm gap-1.5">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-voltar"/></svg>
-          Voltar para a lista de unidades
-        </a>
+        {% if request|veio_do_painel %}
+          <a href="{% url 'painel:painel' %}" class="btn btn-glass btn-sm gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-voltar"/></svg>
+            Voltar para a área do usuário
+          </a>
+        {% else %}
+          <a href="{% url 'unidades:listar_unidades' %}" class="btn btn-glass btn-sm gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-voltar"/></svg>
+            Voltar para a lista de unidades
+          </a>
+        {% endif %}
       </div>
       {% include "unidades/partials/_formulario_unidade.html" %}
     </div>

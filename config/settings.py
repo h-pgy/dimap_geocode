@@ -256,6 +256,7 @@ INSTALLED_APPS = [
     "apps.user_admin",
     "apps.autenticacao",
     "apps.competencias",
+    "apps.painel",
     "apps.search",
     "apps.logradouro_matcher",
     "apps.lote_matcher",

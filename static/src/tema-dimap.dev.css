@@ -1319,6 +1319,49 @@ html[data-theme="dimap"] {
     @apply px-3 py-6 text-center text-[13px] text-base-content/60;
   }
 
+  /* Abas do painel (SPEC painel/001): a fita e a face são a MESMA placa — o material vem composto
+     no HTML (.glass-panel), e nem a aba aberta nem a face pintam nada por cima. A aba é rótulo e
+     fio, gravados em repouso, cheios de água quando ela abre — o mesmo par do resto do sistema. */
+  .abas-onsen { @apply p-2; }
+  /* A folga lateral da aba casa com a da face: o rótulo da fita e o título do corpo caem na mesma
+     vertical. Vai na aba, e não no invólucro — o daisyUI declara --tab-p na própria aba. */
+  .abas-onsen > .tab { --tab-p: 1.25rem; }
+  .abas-onsen-rotulo {
+    @apply block text-[13px] font-bold uppercase tracking-[0.12em] whitespace-nowrap;
+  }
+  /* Só medida: o material é o .etched-line / .etched-line-inked, composto no HTML. Ancorado embaixo
+     para os fios de todas as abas caírem na mesma linha. */
+  .abas-onsen-fio { @apply absolute inset-x-2 bottom-1 h-[3px]; }
+  /* Duas faces no DOM, e não uma que troca de tinta: a do fio aberto é um gradiente de dez paradas
+     que só se reusa por composição, e o rótulo não pode fazer o mesmo — sairia duplicado para quem
+     lê por leitor de tela. */
+  .abas-onsen-fio-aberta { @apply hidden; }
+  .abas-onsen > .tab:has(input:checked) .abas-onsen-fio-repouso { @apply hidden; }
+  .abas-onsen > .tab:has(input:checked) .abas-onsen-fio-aberta { @apply block; }
+  /* Espelha o .etched-inked, que não se alcança por seletor a partir daqui. */
+  .abas-onsen > .tab:has(input:checked) .abas-onsen-rotulo {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  /* Só a aba fechada responde ao hover: na aberta ele lavaria a água do rótulo. */
+  .abas-onsen > .tab:not(:has(input:checked)):hover .abas-onsen-rotulo { @apply text-base-content/80; }
+  /* O foco de teclado é do rádio, que o daisyUI deixa invisível dentro do rótulo. */
+  .abas-onsen > .tab:has(input:focus-visible) {
+    @apply outline-2 outline-offset-[-5px] outline-agua-400/70;
+  }
+
+  /* Face da aba do painel: quem mostra e esconde é o .tab-content do daisyUI; a face não tem
+     material próprio porque ela É a placa. A folga casa com a --tab-p da fita. */
+  .painel-face { @apply p-5 space-y-5; }
+  .painel-titulo    { @apply text-[24px] font-bold text-madeira-700 leading-tight; }
+  .painel-descricao { @apply text-[15px] text-base-content/90 leading-relaxed max-w-[70ch]; }
+  .painel-grupos    { @apply flex flex-col gap-4; }
+  /* Só o arranjo interno de um grupo: o poço é o .card-well, composto no HTML, e a grade de cartões
+     é o .menu-acoes-cartoes que já existe. */
+  .grupo-painel { @apply flex flex-col gap-2 p-4; }
+  /* Itens fora de qualquer poço da aba — acima ou abaixo dos grupos. */
+  .painel-avulsos { @apply flex flex-wrap items-center justify-center gap-4 py-1; }
+
   /* Cartão da atribuição (SPEC autorizacao/007, compartilhado com a 008): uma competência da     */
   /* unidade e quantos cargos a exercem. Sem .hover-3d — o cartão contém botões, e o componente    */
   /* exige conteúdo não-interativo nos 9 filhos diretos.                                           */

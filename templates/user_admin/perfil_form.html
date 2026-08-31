@@ -9,7 +9,8 @@
   {# .admin-shell: o fundo fica parado e o conteúdo rola aqui dentro — a viewport travada do #}
   {# base.html existe porque a página do produto é o mapa, e não se aplica a formulário.     #}
   <div class="admin-shell">
-    <div class="max-w-3xl mx-auto px-4 py-24">
+    <div class="max-w-3xl mx-auto px-4 py-24 flex flex-col gap-4">
+      {% include "partials/_botao_voltar_painel.html" %}
       {% include "user_admin/partials/_formulario_servidor.html" %}
     </div>
   </div>

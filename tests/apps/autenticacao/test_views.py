@@ -155,7 +155,7 @@ def test_login_com_credenciais_validas_autentica_e_redireciona(client: Client) -
     )
 
     assert resposta.status_code == 302
-    assert resposta.url == reverse("user_admin:pagina_perfil", kwargs={"pk": perfil.pk})
+    assert resposta.url == reverse("painel:painel")
     assert client.session["_auth_user_id"] == str(perfil.pk)
 
 

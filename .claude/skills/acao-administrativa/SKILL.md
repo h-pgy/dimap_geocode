@@ -1,6 +1,6 @@
 ---
 name: acao-administrativa
-description: Como criar uma ação administrativa no DIMAP GeoCoder — o contrato em código, a inscrição no registro, os ícones, a rota protegida, o alcance do alvo, o registro da execução e o menu. Use SEMPRE que a tarefa introduzir uma rotina que exige login e autorização por perfil (cargo × unidade), ao alterar uma ação existente, ou ao escrever a SPEC de uma. Traz também as perguntas a fazer ao usuário antes de escrever e a bateria de checagens de segurança que os testes TDD precisam fixar.
+description: Como criar uma ação administrativa no DIMAP GeoCoder — o contrato em código, a inscrição no registro, os ícones, a rota protegida, o alcance do alvo, o registro da execução e o card no painel. Use SEMPRE que a tarefa introduzir uma rotina que exige login e autorização por perfil (cargo × unidade), ao alterar uma ação existente, ou ao escrever a SPEC de uma. Traz também as perguntas a fazer ao usuário antes de escrever e a bateria de checagens de segurança que os testes TDD precisam fixar.
 ---
 
 # Ação administrativa — contrato, registro, rota protegida e rastro
@@ -39,7 +39,7 @@ adotou**.
 | **O ato altera estado?** | Escrita (POST/PUT/PATCH/DELETE) — registra sozinho. Leitura que **é** o ato (emitir documento) — só registra se a view chamar `registrar_ato`. | Escrita. |
 | **Qual a operação e o alvo?** | A `operacao` distingue atos opostos da mesma ação (`atribuir`/`remover`, `conceder`/`revogar`). O alvo é `alvo_tipo` + `alvo_identificador`, texto livre. | Perguntar sempre: sem isso o histórico não diz o que foi feito nem sobre o quê. |
 | **Em que app mora?** | App próprio é a regra (§3.5). Exceção só quando a ação administra o próprio domínio do app em que já vive (é o caso de `competencias`), e a exceção vai **declarada em Caveat da SPEC**. | App próprio. |
-| **Entra em algum menu?** | Qual menu, qual `VarianteIcone` e qual `FormaItem`. A ação **não** se inscreve em menu: é o menu que a pinça. | Nenhum menu. |
+| **Entra no painel?** | Em qual aba, qual grupo (ou avulso) e qual `VarianteIcone` — skill `painel`, que traz as perguntas de posição, nome e glifo. A ação **não** se inscreve no painel: é o `ItemAcao` de lá que a pinça. | Nenhum card — só se `ACOES_SEM_CARD` justificar (skill `painel`), senão `painel.E004` derruba a subida. |
 
 Duas mais, quando couber: **rota aberta** (exceção que só existe declarada na SPEC — o default é
 protegida) e **assíncrona** (o default é síncrona; fila só se a SPEC justificar).
@@ -64,8 +64,9 @@ ACAO_EMITIR_CERTIDAO = instanciar_acao(
     nome_curto="Certidão",
     tooltip="Emite o PDF que atesta o lançamento do imóvel no IPTU.",
     url_name="certidoes:emitir",
-    # O item genérico da SPEC autorizacao/006: a linha do menu é a mesma para todas as ações.
-    partial="competencias/partials/_item_menu.html",
+    # Vestígio do menu extinto (SPEC painel/001): quem desenha o card é o painel
+    # (`painel/partials/_card_item.html`), não este campo — o valor aqui não é lido em lugar nenhum.
+    partial="_sem_uso.html",
     variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
     estrutural=False,
     alcance=None,
@@ -185,23 +186,22 @@ Três regras que valem para qualquer alcance:
 E a consequência que se esquece: **quem dirige a unidade-raiz alcança o organograma inteiro.** O que
 o contém é o registro do ato, não uma segunda barreira.
 
-## 5 · Menu e botão — o router filtra, a rota decide
+## 5 · Painel e botão — o router filtra, a rota decide
 
-O menu **pinça** a ação; a ação não sabe em que menu aparece.
+O painel **pinça** a ação; a ação não sabe em que aba ou grupo aparece — quem decide onde o card
+entra é a skill `painel` (SPEC painel/001), que também traz o passo a passo e as perguntas de
+posição/nome/glifo. **Toda ação inscrita no registro precisa de um card em algum lugar do painel**:
+sem ele, o check `painel.E004` derruba a subida.
 
 ```python
-# apps/<app>/menus_declarados.py
-MENU_X = ContratoMenu(
-    slug="<app>.<menu>",
-    nome="…",
-    itens=(ItemDeMenu(acao_implementada=ACAO_X, variante_icone=VarianteIcone.PEQUENO, forma=FormaItem.LINHA),),
-)
+# apps/painel/abas_declaradas.py
+ItemAcao(acao=ACAO_X)
 ```
 
-`RoteadorMenu` devolve só os itens liberados, na ordem declarada, e `slugs_liberados`
-(`apps/competencias/resolucao.py`) resolve o conjunto — superusuário recebe o registro inteiro.
-Para um botão solto, `{% if perms.<app>.<nome> %}` já responde pela competência, servido pelo backend
-de autorização.
+`ResolvedorPainel` devolve só os itens liberados, na ordem declarada, com o grupo/aba vazios
+somendo da árvore, e `slugs_liberados` (`apps/competencias/resolucao.py`) resolve o conjunto —
+superusuário recebe o registro inteiro. Para um botão solto, `{% if perms.<app>.<nome> %}` já
+responde pela competência, servido pelo backend de autorização.
 
 **Esconder o botão é UX, não segurança.** A barreira é o `acao_protegida` da rota, sempre. E um botão
 que depende também de **alcance** precisa do alcance resolvido na view — `perms` sozinho não sabe

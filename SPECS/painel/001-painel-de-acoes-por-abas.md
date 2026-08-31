@@ -1,15 +1,18 @@
 ---
 spec: painel/001
-versao: v3
-atualizado_em: 2026-08-27
-testes_tdd: false
-implementado: false
+versao: v5
+atualizado_em: 2026-08-31
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
   - v2: o grupo passa a misturar ato administrativo e view livre, e o template do item é do grupo,
     com sobreposição por item
   - v3: o item pode ficar fora de qualquer grupo, acima ou abaixo deles
+  - v4: ação inscrita no registro sem card no painel é recusada na subida
+  - v5: a skill `painel` entra como entregável, e acrescentar item passa a exigir decidir onde ele
+    aparece, como se chama e que glifo carrega
 ---
 
 # SPEC painel/001 — Painel de ações por abas
@@ -33,8 +36,10 @@ cada app.
       da aba onde os demais são cartão em poço.
 - [ ] "Sair" encerra a sessão por **POST**; o painel não expõe rota de logout por GET.
 - [ ] Visitante anônimo não alcança o painel.
-- [ ] Item com rota que não resolve, ou com ícone ausente, é recusado **na subida**; painel sem
-      nenhuma aba básica também.
+- [ ] Item com rota que não resolve, ou com ícone ausente, é recusado **na subida** — e também o
+      painel sem nenhuma aba básica e a ação inscrita no registro que não tem card em aba alguma.
+- [ ] Acrescentar item ao painel tem passo a passo na skill `painel`, e a skill
+      `acao-administrativa` remete a ela no ponto em que a ação é declarada.
 - [ ] O design foi aprovado no mock e as peças novas foram portadas para o tema e o styleguide antes
       de qualquer template da aplicação usá-las.
 
@@ -190,6 +195,7 @@ skill `mock`.
 - `@apps/competencias/icones.py` → `ResolvedorIcones` e a templatetag `icone_acao`: o SVG inline por
   slug e variante.
 - `@apps/competencias/checks.py` → `GABARITO_CAMINHO_ICONE` e o padrão de system check por registro.
+- `@apps/competencias/registro.py` → `REGISTRO`: as ações inscritas que o check confere.
 - `@templates/competencias/partials/_card_acao.html` → o cartão que os dois tipos de item desenham.
 - `@templates/user_admin/perfil.html` → o `<form method="post">` de encerrar sessão com
   `btn-etched btn-etched-swell etched`.
@@ -404,9 +410,17 @@ class ResolvedorPainel:
         )
 ```
 
-**`apps/painel/checks.py`** — o que o registro de ações já cobra das ações, cobrado dos itens livres.
+**`apps/painel/checks.py`** — o que o registro de ações já cobra das ações, cobrado dos itens livres;
+e, no outro sentido, o painel cobrado de dar destino a toda ação inscrita.
 ```python
-def validar_painel(painel: ContratoPainel) -> list[Error]:
+# Ação que deliberadamente não tem card no painel — a que só existe dentro de outra tela, ou a que
+# opera sobre entidade territorial. Uma linha por exceção; hoje, nenhuma.
+ACOES_SEM_CARD: frozenset[str] = frozenset()
+
+
+# O registro entra por argumento, como em `competencias.checks`: o check registrado injeta o global,
+# e o teste monta o seu.
+def validar_painel(painel: ContratoPainel, registro: RegistroAcoes) -> list[Error]:
     erros: list[Error] = []
     if not any(aba.basica for aba in painel.abas):
         # Sem ela, o servidor sem caneta alguma cai numa página sem nada — e o login o manda para lá.
@@ -423,7 +437,18 @@ def validar_painel(painel: ContratoPainel) -> list[Error]:
             erros.append(Error(f"Ícone de '{item.slug}' não encontrado em '{caminho}'.", id="painel.E002"))
         if not _rota_existe(item.url_name):
             erros.append(Error(f"url_name '{item.url_name}' de '{item.slug}' não resolve.", id="painel.E003"))
-    return erros
+
+    return erros + _acoes_orfas(painel, registro)
+
+
+def _acoes_orfas(painel: ContratoPainel, registro: RegistroAcoes) -> list[Error]:
+    com_card = {item.acao.acao.slug for item in _itens_acao(painel)}
+    return [
+        # Sem card, o ato segue atribuível e concedível — e sem caminho até a rota que o executa.
+        Error(f"Ação '{item.acao.slug}' inscrita no registro e sem card no painel.", id="painel.E004")
+        for item in registro.todas()
+        if item.acao.slug not in com_card | ACOES_SEM_CARD
+    ]
 ```
 
 **`apps/painel/views.py`** — orquestração, e nada além dela.
@@ -443,6 +468,50 @@ def painel(request: HttpRequest) -> HttpResponse:
 
 `apps/autenticacao/views.py` passa a redirecionar para `painel:painel` nos dois pontos que hoje
 apontam para `user_admin:pagina_perfil` — o login e a validação do OTP de primeiro acesso.
+
+**`.claude/skills/painel/SKILL.md`** — o roteiro de acrescentar item, e o portão que impede ação sem
+lugar. Sucinta: é o agente que a lê, e o detalhe já está no resto desta SPEC.
+```markdown
+---
+name: painel
+description: Como acrescentar um item ao painel de ações — item livre e card de ação, o SVG que o
+  slug determina, grupo e aba novos. Use SEMPRE que for expor uma tela nova no painel e SEMPRE ao
+  declarar uma ação administrativa.
+---
+
+## Antes de acrescentar qualquer item: pergunte, nunca decida
+Onde o item aparece, como se chama e que glifo carrega é decisão de quem conhece o processo — e ação
+sem card derruba a subida (`painel.E004`). Pergunte, nesta ordem:
+
+1. **Ação:** ela entra no painel? Se não, qual o destino dela — e o motivo, que vira a linha em
+   `ACOES_SEM_CARD`.
+2. Em qual aba: uma das declaradas em `abas_declaradas.py`, ou uma nova?
+3. Em qual grupo dela — ou fora de poço, acima ou abaixo dos grupos?
+4. Em que posição dentro do grupo? A ordem exibida é a de declaração.
+5. Aba nova: rótulo da tab, título e o parágrafo de descrição?
+6. Grupo novo: rótulo?
+7. Qual o glifo do ícone? Proponha o desenho em palavras e **espere o ok antes de gravar o
+   arquivo** — nenhum item chega ao painel com ícone escolhido por conta própria.
+8. **Item livre:** `nome` do card, `tooltip` (que é a descrição impressa nele) e `slug` — este
+   determina a pasta do SVG. Na ação os três vêm do contrato e não se pergunta de novo.
+
+## Acrescentar item livre
+<a view protegida, o SVG em `acoes/painel/<nome>/icones/`, o `ItemLivre` na posição, o que o check
+cobra — e por que ele não entra no registro de ações>
+
+## Acrescentar card de ação
+<a ordem: skill `acao-administrativa` primeiro, inscrição no registro, um SVG por variante
+declarada, e só então o `ItemAcao`>
+
+## Grupo e aba novos
+<os campos de cada um, grupo vazio que não renderiza, e `basica` como flag de uma aba só>
+
+## Desenho próprio
+<`partial` do item sobrepõe o do grupo; componente novo nasce no design system, aprovado no mock>
+```
+
+A skill `acao-administrativa` ganha, no ponto em que a ação é declarada, uma linha remetendo à skill
+`painel`: é ali que a pergunta precisa acontecer, não depois de a ação estar escrita.
 
 > ⚠️ Os comentários acima são didáticos e **não são portados**: no código vale o §7.2 do CLAUDE.md.
 
@@ -482,6 +551,17 @@ roteamento num nível acima, com item de duas naturezas e template por grupo, e 
 mesma ação aparecer em dois agrupamentos livres para divergir. Custo: a gaveta da entidade territorial,
 quando existir, monta o menu dela sobre `Grupo`, e não sobre um contrato pensado para ela.
 
+**O painel é o único destino de uma ação inscrita, e o check cobra isso na subida.** Com o contrato
+de menu extinto, `abas_declaradas.py` é o único lugar que resolve a rota de um ato, e ação sem card
+fica atribuível, concedível e inexecutável. Custo: `apps/painel/checks.py` passa a conhecer o
+`REGISTRO`, e a ação que legitimamente não pertence ao painel — a que operar sobre entidade
+territorial, quando a gaveta existir — só passa por uma linha em `ACOES_SEM_CARD`.
+
+**O passo a passo de acrescentar item mora na skill, não nesta SPEC.** A skill é o que se lê antes
+de mexer no painel, e repetir o roteiro aqui faria a SPEC ser consultada para operação de rotina.
+Custo: o gabarito do ícone e os nomes dos campos passam a existir em dois lugares, e mudar a
+estrutura do painel obriga a reescrever a skill no mesmo commit.
+
 **Aba vazia some sem dizer nada.** Sinalizar "existem atos que você não alcança" exigiria enumerar o
 que o usuário não pode, que é informação de competência alheia. Custo: quem tem poucas canetas não tem
 pista de que o painel tem mais.
@@ -508,6 +588,8 @@ Comportamento — puros, sobre o resolvedor, com o conjunto de slugs montado no 
 - `test_check_recusa_painel_sem_aba_basica` — contrato sem `basica=True` devolve `painel.E001`.
 - `test_check_recusa_item_livre_com_rota_que_nao_resolve` — `url_name` inexistente devolve
   `painel.E003`.
+- `test_check_recusa_acao_inscrita_sem_card_no_painel` — ação do registro que não aparece em item
+  algum devolve `painel.E004`; a que está em `ACOES_SEM_CARD` passa.
 
 Contrato HTTP — carregam o marker `banco`:
 

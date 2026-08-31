@@ -541,12 +541,10 @@ def test_conceder_e_revogar_ficam_registrados_com_alvo(client: Client) -> None:
 
 @banco
 @pytest.mark.django_db
-def test_menu_administrador_mostra_a_acao_so_para_quem_pode(client: Client) -> None:
-    # Importados aqui, e não no topo: ACAO_CONCEDER ainda não existe no regime `testes_tdd: true` —
+def test_slugs_liberados_da_acao_concedida_so_para_quem_dirige(client: Client) -> None:
+    # Importado aqui, e não no topo: ACAO_CONCEDER ainda não existe no regime `testes_tdd: true` —
     # isolar o import mantém o resto do módulo (SPEC 007, já implementada) coletável e verde.
     from apps.competencias.acoes_declaradas import ACAO_CONCEDER
-    from apps.competencias.menus import MontagemMenu, RoteadorMenu
-    from apps.competencias.menus_declarados import MENU_ADMINISTRADOR
     from apps.competencias.resolucao import slugs_liberados
 
     unidade = _unidade("CONC-MENU-UNIDADE")
@@ -554,16 +552,8 @@ def test_menu_administrador_mostra_a_acao_so_para_quem_pode(client: Client) -> N
     dirigente = _dirigente(unidade, "910320")
     sem_direcao = _perfil(outra, "910321", "Sem Direção Menu Concessão")
 
-    roteador = RoteadorMenu()
-    resolvido_dirigente = roteador(
-        MontagemMenu(menu=MENU_ADMINISTRADOR, slugs_liberados=slugs_liberados(dirigente))
-    )
-    resolvido_sem_direcao = roteador(
-        MontagemMenu(menu=MENU_ADMINISTRADOR, slugs_liberados=slugs_liberados(sem_direcao))
-    )
-
-    assert ACAO_CONCEDER.acao.slug in {item.slug for item in resolvido_dirigente.itens}
-    assert ACAO_CONCEDER.acao.slug not in {item.slug for item in resolvido_sem_direcao.itens}
+    assert ACAO_CONCEDER.acao.slug in slugs_liberados(dirigente)
+    assert ACAO_CONCEDER.acao.slug not in slugs_liberados(sem_direcao)
 
 
 def _delegar(

@@ -7,7 +7,10 @@
   {% include "mapping/_mapa_admin.html" %}
 
   <div class="admin-shell">
-    <div class="max-w-md mx-auto px-4 py-24">
+    <div class="max-w-md mx-auto px-4 py-24 flex flex-col gap-4">
+      {# O primeiro acesso é obrigatório e não é destino do painel — a rota nem chega a ser inscrita #}
+      {# nele, então o Referer nunca aponta para lá nesse fluxo: o partial já some sozinho.          #}
+      {% include "partials/_botao_voltar_painel.html" %}
       <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
 
         <div class="text-center flex flex-col items-center">

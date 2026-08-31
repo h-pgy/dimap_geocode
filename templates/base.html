@@ -58,12 +58,14 @@
     </a>
 
     {# Widget da área do usuário (SPEC autenticacao/001): anônimo aponta para login; autenticado  #}
-    {# exibe avatar/foto e aponta para o perfil. Presente em qualquer página que estenda base.html. #}
-    {# Abaixo de lg o avatar encolhe para w-9 h-9 e o texto sai (altura total 3rem, alinhada à   #}
-    {# navbar compacta da SPEC design/005): ponta direita da fileira.                            #}
+    {# exibe avatar/foto e aponta para o painel (SPEC painel/001) — o hub da área administrativa,  #}
+    {# não mais direto para o próprio perfil, que agora é um card de "Minha conta" lá dentro.      #}
+    {# Presente em qualquer página que estenda base.html. Abaixo de lg o avatar encolhe para       #}
+    {# w-9 h-9 e o texto sai (altura total 3rem, alinhada à navbar compacta da SPEC design/005):    #}
+    {# ponta direita da fileira.                                                                   #}
     {% if request.user.is_authenticated %}
       <a id="widget-area-usuario"
-         href="{% url 'user_admin:pagina_perfil' pk=request.user.pk %}"
+         href="{% url 'painel:painel' %}"
          class="fixed top-6 right-4 lg:right-6 z-20 glass-panel rounded-full! p-1.5 flex items-center lg:gap-3 cursor-pointer transition-glass hover:bg-white/60">
         <div class="w-9 h-9 lg:w-11 lg:h-11 shrink-0">
           {% include "user_admin/partials/_imagem_perfil.html" with imagem=imagem_perfil_usuario cor_unidade_hex=cor_unidade_hex tamanho="w-full h-full" halo_escala="0.5" perfil=request.user %}

@@ -2515,6 +2515,75 @@
         </div>
       </div>
 
+      <!-- Painel de ações por abas (SPEC painel/001) -->
+      <div class="flex flex-col gap-2">
+        <p class="text-overline px-2">Painel — abas, grupo e avulso <span class="text-[10px] font-normal text-base-content/50">(SPEC painel/001)</span></p>
+        <div role="tablist" class="tabs glass-panel abas-onsen max-w-3xl mx-auto">
+          <label role="tab" class="tab">
+            <input type="radio" name="styleguide-painel-abas" checked />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Minha conta</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Minha conta</h2>
+              <p class="painel-descricao">Seus dados de acesso e identificação no sistema — disponíveis para todo servidor autenticado, qualquer que seja o cargo ou a unidade.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Meus dados</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-titular"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Meus dados</p>
+                        <p class="card-acao-descricao">Sua identificação, lotação e cargos, como o sistema os registra.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div class="painel-avulsos">
+              <form action="#"><button type="submit" class="btn-etched btn-etched-swell etched">Encerrar sessão</button></form>
+            </div>
+          </div>
+          <label role="tab" class="tab">
+            <input type="radio" name="styleguide-painel-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Estrutura Administrativa</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Estrutura Administrativa</h2>
+              <p class="painel-descricao">Aba sem grupo algum ficaria de fora — esta abre com um grupo só, o que o "Cargos em Comissão" vazio já demonstra ao não aparecer.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Organograma</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Ver o organograma</p>
+                        <p class="card-acao-descricao">A árvore de unidades e a tabela filtrável que a acompanha.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60 px-2">A fita e a face são a <strong>mesma placa</strong>: a aba é rótulo e fio, gravados em repouso (<span class="text-code">.abas-onsen-fio-repouso</span>) e cheios de água quando ela abre (<span class="text-code">.abas-onsen-fio-aberta</span>), o mesmo par de gravação do resto do sistema. O grupo (<span class="text-code">.grupo-painel</span>) é só arranjo sobre o <span class="text-code">.card-well</span> e o <span class="text-code">.menu-acoes-cartoes</span> já existentes; o avulso (<span class="text-code">.painel-avulsos</span>) fica fora de qualquer poço, acima ou abaixo dos grupos.</p>
+      </div>
+
       <!-- Fundo da área administrativa -->
       <div class="flex flex-col gap-2">
         <p class="text-overline px-2">Fundo da área administrativa <span class="text-[10px] font-normal text-base-content/50">(SPEC design/010)</span></p>

@@ -54,9 +54,7 @@ BACKEND_AUTENTICACAO = "django.contrib.auth.backends.ModelBackend"
 
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
-        return redirect(
-            reverse("user_admin:pagina_perfil", kwargs={"pk": request.user.pk})
-        )
+        return redirect(reverse("painel:painel"))
     if request.method == "POST":
         rf = request.POST.get("rf", "").strip()
         senha = request.POST.get("password", "")
@@ -70,7 +68,7 @@ def login_view(request: HttpRequest) -> HttpResponse:
             contexto = {"recusa": recusa, "rf": "", **contexto_fundo_admin()}
             return render(request, "autenticacao/login.html", contexto, status=422)
         login(request, user)
-        return redirect(reverse("user_admin:pagina_perfil", kwargs={"pk": user.pk}))
+        return redirect(reverse("painel:painel"))
     return render(request, "autenticacao/login.html", contexto_fundo_admin())
 
 

@@ -1,7 +1,9 @@
 """
 Testes do widget de usuário no topo (`#widget-area-usuario`, `templates/base.html`) e do context
 processor que o alimenta quando autenticado (SPEC autenticacao/001): o widget alterna entre o
-estado anônimo, que aponta para o login, e o autenticado, que exibe a identidade do servidor.
+estado anônimo, que aponta para o login, e o autenticado, que exibe a identidade do servidor e
+aponta para o painel (SPEC painel/001) — o hub da área administrativa, não mais direto para a
+própria página de perfil.
 
 O estado autenticado leva o marker `banco`: depende de Perfil e Unidade persistidos.
 """
@@ -82,7 +84,7 @@ def test_widget_usuario_anonimo_exibe_link_login_e_icone_padrao(client: Client) 
 
 @banco
 @pytest.mark.django_db
-def test_widget_usuario_autenticado_exibe_avatar_e_link_perfil(client: Client) -> None:
+def test_widget_usuario_autenticado_exibe_avatar_e_link_painel(client: Client) -> None:
     perfil = _perfil()
     client.force_login(perfil)
 
@@ -90,6 +92,6 @@ def test_widget_usuario_autenticado_exibe_avatar_e_link_perfil(client: Client) -
     widget = BeautifulSoup(html, "html.parser").find(id="widget-area-usuario")
 
     assert widget is not None
-    assert widget["href"] == reverse("user_admin:pagina_perfil", kwargs={"pk": perfil.pk})
+    assert widget["href"] == reverse("painel:painel")
     assert perfil.nome in widget.get_text()
     assert f"--cor-unidade: {HEX_POR_COR[CorUnidade.SAKURA_600]}" in html
