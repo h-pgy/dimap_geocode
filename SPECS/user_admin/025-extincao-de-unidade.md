@@ -1,8 +1,8 @@
 ---
 spec: user_admin/025
-versao: v4
-atualizado_em: 2026-08-26
-testes_tdd: false
+versao: v7
+atualizado_em: 2026-08-31
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
@@ -10,6 +10,9 @@ changelog:
   - v2: a extinção alcança as atribuições e concessões da unidade, e a página da unidade extinta continua acessível com a marca de extinta
   - v3: a listagem ganha o toggle "Mostrar unidades extintas", e árvore, barra e tabela passam a viver num painel só
   - v4: extinguir e reativar viram uma competência só, com duas operações, e o modal ganha face por estado da unidade
+  - v5: unidade extinta deixa de receber lotação e competência nova, e a recusa alcança o superusuário, que não passa pela conferência de alcance
+  - v6: extinções encadeadas entram na SPEC — a subordinada já extinta não é repontada, e a reativação em cadeia passa a ter teste
+  - v7: as peças que os snippets invocavam sem declarar — o DTO do alvo e seu leitor, a construção das prévias, e o `com_extintas` roteado até o fim do alcance
 ---
 
 # SPEC user_admin/025 — Extinção e reativação de unidade
@@ -47,6 +50,9 @@ o histórico dos atos ali praticados.
       superusuário) ou unidade cuja subordinada não pende da superior por nível ou tipo vedado;
       reativar unidade **não extinta** ou cuja **superior está extinta** — esta última nomeando a
       sigla a reativar primeiro.
+- [ ] **Unidade extinta não recebe nada de novo**: nem lotação de servidor, no cadastro e na edição,
+      nem atribuição, nem concessão. A recusa vale **inclusive para o superusuário** — o organograma
+      e os selects já não a oferecem, mas quem barra é a gravação.
 - [ ] O design foi aprovado no **mock**, e as peças novas foram portadas para
       `static/src/tema-dimap.dev.css` e renderizadas no styleguide antes de qualquer template da
       aplicação usá-las.
@@ -125,6 +131,27 @@ class Unidade(models.Model):
             raise ValidationError({"pai": ERRO_PAI_EXTINTO})
 ```
 
+A mesma pergunta que o `pai` faz, a lotação também faz. O gerente tira a extinta dos selects, mas
+quem grava é o POST, e a FK sozinha não recusa: ela valida pelo `_base_manager`, que esta SPEC fixa
+em `todas`. `Perfil.clean()` já cruza perfil → unidade → tipo, e é onde a recusa cabe — e o
+`FORMULARIO_SERVIDOR` já tem o controle `unidade`, então ela chega à tela realçada sem campo novo.
+
+**`apps/user_admin/models/user.py`**
+```python
+ERRO_UNIDADE_EXTINTA = "A unidade está extinta e não recebe lotação."
+
+
+class Perfil(AbstractBaseUser, PermissionsMixin):
+    def clean(self) -> None:
+        # ALTERADO nesta SPEC: antes da conferência de titularidade, porque ela retorna cedo para
+        # quem não é titular — e a lotação em extinta é recusada para todo mundo.
+        if hasattr(self, "unidade") and self.unidade.extinta_em is not None:
+            raise ValidationError({"unidade": ERRO_UNIDADE_EXTINTA})
+        if not self.e_titular or not hasattr(self, "unidade"):
+            return
+        ...
+```
+
 Os dois níveis da competência acompanham a unidade nas duas direções: o que ela fazia deixa de valer
 no mesmo ato, e com data própria — é a data que diz, na volta, o que caiu junto.
 
@@ -163,6 +190,19 @@ class ConsultaDeUnidades(BaseModel):
     # ALTERADO nesta SPEC: viaja na query string e no campo oculto do cabeçalho da tabela, nunca na
     # sessão — a listagem nasce mostrando a estrutura viva a cada visita.
     extintas: bool = False
+
+
+class AtoDeUnidade(BaseModel):
+    """O alvo, e só ele: as duas operações recebem a mesma entrada, e o que as separa é a rota.
+    Passa pelo `LeitorDeFormulario`, e não pelo middleware, porque a recusa volta como o modal
+    (SPEC formularios/001) — o mesmo regime de `NovaUnidade` e `EdicaoUnidade`.
+
+    `unidade_id`, e não `unidade`: o `<select>` se chama `unidade`, e `controle_do_campo` corta o
+    sufixo para que o erro do DTO ache o controle da tela."""
+
+    model_config = ConfigDict(frozen=True)
+
+    unidade_id: int
 ```
 
 O alcance da ação é a terceira resposta a "sobre qual unidade": o ramo abaixo, **sem** as unidades de
@@ -247,6 +287,10 @@ class Veredito(BaseModel):
 - `@apps/unidades/cadastro.py` → `DesfechoUnidade`: a forma de desfecho dos atos de unidade.
 - `@apps/unidades/formularios.py` → `traduzir_recusa`: erro bruto → mensagem em português e controle
   realçado.
+- `@apps/user_admin/models/user.py` → `Perfil.clean`: o cruzamento perfil → unidade que nenhuma
+  `CheckConstraint` alcança, e onde a recusa da lotação entra.
+- `@apps/competencias/views.py` → `_unidade_do_request`, `_atribuicao_no_alvo`: as duas leituras de
+  alvo por onde a recusa da competência nova passa a valer.
 - `@templates/partials/_tarja_recusa.html` → a tarja de recusa dentro do modal.
 - `@templates/unidades/partials/_modal_destituir_titular.html` → a forma de um modal de confirmação
   sem formulário: tarja, dois botões, nada a preencher.
@@ -279,6 +323,32 @@ def partidas_do_alcance(perfil: Perfil) -> frozenset[int]:
     """As unidades de onde o alcance parte: as dirigidas e as recebidas por delegação. Extraída de
     `ramos_do_alcance`, que já a calculava para descartar o ramo contido."""
     return unidades_dirigidas(perfil) | unidades_delegadas(perfil)
+
+
+def ramos_do_alcance(perfil: Perfil, com_extintas: bool = False) -> tuple[NoHierarquia, ...]:
+    # ALTERADO nesta SPEC: o recorte desce até QUEM LÊ O BANCO, e desce pelos dois ramos da função
+    # — o do superusuário monta as raízes por conta própria e ficaria com o organograma vigente
+    # enquanto o outro via as extintas.
+    if perfil.is_superuser:
+        gerente = Unidade.todas if com_extintas else Unidade.objects
+        return tuple(
+            posicao_de(raiz.pk, com_extintas=com_extintas).ego
+            for raiz in gerente.filter(pai__isnull=True)
+        )
+    partidas = partidas_do_alcance(perfil)
+    arvores = {
+        partida: posicao_de(partida, com_extintas=com_extintas).ego for partida in partidas
+    }
+    ...
+
+
+def alcance_do_perfil(perfil: Perfil, com_extintas: bool = False) -> frozenset[int]:
+    # O default `False` é o que mantém as outras três ações intocadas: só
+    # `UnidadesEstritamenteSubordinadas` pede `True`, e pede por um motivo só — sem ele a unidade
+    # recém-extinta sai do alcance de quem a extinguiu e ninguém consegue reativá-la.
+    return frozenset[int]().union(
+        *(ramo.ids for ramo in ramos_do_alcance(perfil, com_extintas))
+    )
 ```
 
 **`apps/competencias/protecao.py`**
@@ -334,10 +404,47 @@ class AvaliadorReativacao:
                 motivo=MOTIVO_SUPERIOR_EXTINTA.format(sigla=previa.superior.sigla),
             )
         return Veredito(pode=True)
+
+
+# Instâncias de módulo, no padrão do `traduzir_recusa`: a classe é o passo, o nome minúsculo é a
+# porta. Reexportadas pelo `__init__.py` do submódulo, que é por onde `apps/` importa (§7.2).
+avaliar_extincao = AvaliadorExtincao()
+avaliar_reativacao = AvaliadorReativacao()
+```
+
+O leitor do alvo e a recusa do veredito, no catálogo que os dois atos já usam. O `<select>` do modal
+é controle novo da tela, então precisa de campo — sem ele a recusa não tem o que realçar.
+
+**`apps/unidades/formularios.py`**
+```python
+FORMULARIO_UNIDADE = Formulario(
+    campos=(
+        ...,
+        # ALTERADO nesta SPEC: o alvo do modal do ato. `veredito` fica fora das REGRAS_PADRAO pelo
+        # mesmo motivo que `transferencia`: nada mais no sistema o levanta.
+        CampoDeFormulario(
+            controle="unidade",
+            rotulo="Unidade",
+            regras={"veredito": RegraDeErro(mensagem="{motivo}", tom=TomDeRealce.ERRO)},
+        ),
+    )
+)
+
+ler_ato_de_unidade = LeitorDeFormulario(AtoDeUnidade, FORMULARIO_UNIDADE)
+
+
+def recusa_do_veredito(motivo: str) -> RecusaDeFormulario:
+    """O `motivo` do avaliador já chega em português e pronto para a tela: o catálogo não o
+    reescreve, só o põe no controle certo."""
+    return traduzir_recusa(
+        (ErroBruto(controle="unidade", tipo="veredito", mensagem=motivo),)
+    )
 ```
 
 O ato, na borda: uma transação por operação, e a recusa da hierarquia traduzida na mesma forma dos
-outros atos de unidade.
+outros atos de unidade. A projeção model → DTO mora aqui também, e não no domínio, que não conhece
+`Unidade`: o modal e o ato fazem a mesma pergunta ao banco, e é de `extincao.py` que `context.py` a
+importa para montar a face.
 
 **`apps/unidades/extincao.py`**
 ```python
@@ -351,6 +458,43 @@ class DesfechoExtincao:
     recusa: RecusaDeFormulario = RecusaDeFormulario()
 
 
+def previa_da_extincao(unidade: Unidade) -> PreviaDaExtincao:
+    destino = unidade.pai
+    return PreviaDaExtincao(
+        unidade=_identidade(unidade),
+        destino=_identidade(destino) if destino is not None else None,
+        # `filhas` conta só as vigentes, e é a mesma leitura que `_subir_filhas` faz: a prévia não
+        # promete transferir a subordinada já extinta, que não vai sair do lugar.
+        servidores=unidade.perfis.count(),
+        subordinadas=unidade.filhas.count(),
+        ja_extinta=unidade.extinta_em is not None,
+    )
+
+
+def previa_da_reativacao(unidade: Unidade) -> PreviaDaReativacao:
+    # `unidade.pai` é acesso de FK, que resolve pelo `_base_manager` (`todas`): a superior extinta
+    # precisa CHEGAR aqui para que o veredito possa nomear a sigla que se reativa primeiro.
+    # Nunca nulo: raiz não se extingue (`CheckConstraint`), logo o que se reativa sempre tem pai —
+    # e é por isso que `PreviaDaReativacao.superior` não é opcional.
+    superior = unidade.pai
+    atribuicoes = unidade.atribuicoes.filter(extinta_em=unidade.extinta_em)
+    return PreviaDaReativacao(
+        unidade=_identidade(unidade),
+        superior=_identidade(superior),
+        superior_extinta=superior.extinta_em is not None,
+        atribuicoes=atribuicoes.count(),
+        concessoes=Concessao.objects.filter(
+            atribuicao__in=atribuicoes,
+            extinta_em=unidade.extinta_em,
+        ).count(),
+        ja_vigente=unidade.extinta_em is None,
+    )
+
+
+def _identidade(unidade: Unidade) -> IdentidadeUnidade:
+    return IdentidadeUnidade(unidade_id=unidade.pk, sigla=unidade.sigla)
+
+
 def extinguir_unidade(valores: Mapping[str, Any], hoje: date) -> DesfechoExtincao:
     leitura = ler_ato_de_unidade(valores)
     if leitura.dto is None:
@@ -360,7 +504,7 @@ def extinguir_unidade(valores: Mapping[str, Any], hoje: date) -> DesfechoExtinca
     )
     veredito = avaliar_extincao(previa_da_extincao(unidade))
     if not veredito.pode:
-        return DesfechoExtincao(unidade=None, recusa=_recusa(veredito.motivo))
+        return DesfechoExtincao(unidade=None, recusa=recusa_do_veredito(veredito.motivo))
     destino = unidade.pai
     try:
         with transaction.atomic():
@@ -386,7 +530,7 @@ def reativar_unidade(valores: Mapping[str, Any]) -> DesfechoExtincao:
     )
     veredito = avaliar_reativacao(previa_da_reativacao(unidade))
     if not veredito.pode:
-        return DesfechoExtincao(unidade=None, recusa=_recusa(veredito.motivo))
+        return DesfechoExtincao(unidade=None, recusa=recusa_do_veredito(veredito.motivo))
     # Lida ANTES de zerar o campo: é a chave de tudo que a restauração vai procurar.
     extinta_em = unidade.extinta_em
     try:
@@ -403,6 +547,10 @@ def reativar_unidade(valores: Mapping[str, Any]) -> DesfechoExtincao:
 
 
 def _subir_filhas(unidade: Unidade, destino: Unidade) -> None:
+    # `filhas` lê pelo gerente PADRÃO, então a subordinada já extinta não sobe — e é de propósito:
+    # o `pai` dela é a memória de onde ela volta, e repontá-la devolveria, na reativação, uma
+    # unidade a um lugar em que ela nunca esteve. Trocar por `Unidade.todas.filter(pai=...)` parece
+    # inofensivo e quebra isso em silêncio.
     # Uma a uma, com `full_clean`: nível e tipo vedado são regras de `Unidade.clean()` e nenhum
     # `update()` em massa as cobra.
     for filha in unidade.filhas.all():
@@ -459,6 +607,39 @@ concessoes = tuple(
         extinta_em__isnull=True,
     ).select_related("atribuicao__acao")
 )
+```
+
+Do outro lado, as duas escritas de competência. A conferência de alcance já recusa o POST de todo
+mundo menos do superusuário, e é dele que estas duas linhas tratam: sem elas, a competência nova
+nasceria com `extinta_em` nulo e devolveria à unidade extinta a ação que a extinção lhe tirou.
+
+**`apps/competencias/views.py`**
+```python
+@acao_protegida(ACAO_DEFINIR_ATRIBUICAO)
+@require_POST
+def atribuir(request: HttpRequest) -> HttpResponse:
+    # ALTERADO nesta SPEC: a unidade passa a ser LIDA, e não repassada como id cru. `Unidade` sem
+    # gerente nomeado resolve pelo `_default_manager` — as vigentes —, então a extinta vira 404 pelo
+    # mesmo caminho que `remover` e `confirmar_remocao` já usavam.
+    unidade = _unidade_do_request(request)
+    comando = ComandoAtribuicao(
+        unidade_alvo_id=unidade.pk,
+        acao_slug=request.POST["acao"],
+    )
+    ...
+
+
+def _atribuicao_no_alvo(atribuicao_id: int, unidade_alvo_id: int) -> AtribuicaoUnidade:
+    atribuicao = get_object_or_404(
+        AtribuicaoUnidade.objects.select_related("acao", "unidade"), pk=atribuicao_id
+    )
+    if atribuicao.unidade_id != unidade_alvo_id:
+        raise Http404
+    # ALTERADO nesta SPEC: o segundo nível, na mesma porta em que o alvo já é conferido. Atribuição
+    # extinta não recebe concessão — revogar continua livre, porque tirar não recria nada.
+    if atribuicao.extinta_em is not None:
+        raise Http404
+    return atribuicao
 ```
 
 Uma ação, duas operações — e o mesmo padrão da SPEC 023: o slug nomeia a face principal e o tooltip
@@ -549,6 +730,21 @@ def contexto_modal_do_ato(unidade: Unidade | None, alcance: frozenset[int]) -> d
     if unidade is not None and unidade.extinta_em is not None:
         return {"face": "reativar", "previa": previa_da_reativacao(unidade)}
     return {"face": "extinguir", "previa": ..., "unidades": _unidades_extinguiveis(alcance)}
+
+
+def contexto_ato_recusado(
+    valores: Mapping[str, Any],
+    recusa: RecusaDeFormulario,
+) -> dict[str, Any]:
+    """O modal remontado sobre a recusa, no mesmo formato do `contexto_unidade_recusada` da SPEC
+    020: a face é recalculada do alvo que veio no POST, para que a recusa da reativação não volte
+    vestida de extinção."""
+    unidade = Unidade.todas.filter(pk=valores.get("unidade_id") or None).first()
+    return contexto_modal_do_ato(unidade, ...) | {
+        "valores": valores,
+        "erros": recusa.mensagens,
+        "realce": recusa.realce,
+    }
 ```
 
 **`apps/unidades/views.py`**
@@ -626,7 +822,10 @@ cresce, e uma segunda porta (`Unidade.todas`) que qualquer consulta nova pode es
 `Unidade.objects` passa a filtrar, e é a `Meta.base_manager_name = "todas"` que mantém a travessia de
 FK devolvendo a unidade extinta. O ganho é a unidade sumir de árvore, tabela e selects sem um filtro
 repetido em dez consultas. O custo é que o filtro fica implícito: quem escrever `Unidade.objects`
-esperando o cadastro inteiro recebe menos linhas do que pediu, e nada no ponto de chamada avisa.
+esperando o cadastro inteiro recebe menos linhas do que pediu, e nada no ponto de chamada avisa. Vale
+também para a relação reversa, onde é menos visível ainda: `unidade.filhas` nasce do gerente padrão e
+`unidade.pai` do `_base_manager`, então o mesmo model responde as duas perguntas com recortes
+diferentes — e `_subir_filhas` depende disso.
 
 `AtribuicaoUnidade` e `Concessao` **não** ganham gerente filtrado, ao contrário de `Unidade`. As duas
 são alcançadas por join a partir de `Acao` e de `Perfil` (`exclude(atribuicoes__unidade=…)`), e join
@@ -671,6 +870,18 @@ que são perguntas diferentes. O custo é um segundo ponto de extensão em `prot
 agora pode precisar de ramo em dois lugares, e só um deles tem `NotImplementedError` guardando o
 esquecimento.
 
+A recusa de lotar e de atribuir em unidade extinta é escrita **mesmo já havendo** a conferência de
+alcance, que recusa o mesmo POST para todo mundo. É exatamente pelo "todo mundo": `conferir_alvo`
+retorna cedo para `is_superuser`, e sem a segunda guarda o administrador seria o único capaz de
+recriar, por engano, o ramo que a extinção desfez — e de devolver competência a uma unidade que não
+existe mais. O custo é a mesma regra dita em dois lugares, o alcance e o `clean()`, com a obrigação
+de mantê-las de acordo.
+
+A guarda da lotação mora no `clean()`, e não numa `CheckConstraint`: a regra cruza `Perfil` e
+`Unidade`, e constraint não atravessa tabela. O custo é que ela só vale por onde passa `full_clean()`
+— e não passa o `update()` em massa de `_transferir_servidores`, que é justamente o caminho que tira
+servidor de unidade extinta, não o que põe.
+
 A prévia do modal é recalculada a cada troca do select, numa rota própria. Mandá-la junto com a lista
 de unidades exigiria contar servidores, filhas e competências de todo o ramo para mostrar as de uma. O
 custo é uma requisição por troca de select, sobre um organograma de dezenas de unidades.
@@ -687,6 +898,12 @@ custo é uma requisição por troca de select, sobre um organograma de dezenas d
   na árvore, na tabela nem no select de unidade superior do cadastro; ligado, ela volta às duas
   primeiras com a marca de extinta e sem a lixeira, segue fora do select, e o filtro seguinte mantém o
   estado. *(marker `banco`)*
+- `test_extinta_nao_recebe_lotacao_nem_como_superusuario` — o POST de cadastro e o de edição de
+  servidor nomeando unidade extinta são recusados em português, e recusados também com o
+  superusuário assinando; nenhum perfil é criado e nenhuma lotação muda. *(marker `banco`)*
+- `test_extinta_nao_recebe_competencia_nova` — atribuir ação a unidade extinta e conceder cargo
+  sobre atribuição extinta são recusados, inclusive para o superusuário; nada é gravado e quem tem o
+  cargo continua sem exercer a ação. *(marker `banco`)*
 - `test_extincao_recusa_por_inteiro` — extinguir a raiz (inclusive como superusuário) e extinguir
   unidade cuja subordinada não pende do destino devolvem a recusa em português; nenhuma filha sobe,
   nenhum servidor muda de lotação, nenhuma atribuição é extinta. *(marker `banco`)*
@@ -704,6 +921,10 @@ custo é uma requisição por troca de select, sobre um organograma de dezenas d
 - `test_reativacao_recusa_por_inteiro` — reativar unidade vigente e reativar unidade cuja superior
   está extinta são recusados, o segundo nomeando a sigla a reativar primeiro, e nada muda.
   *(marker `banco`)*
+- `test_extincao_nao_reponta_filha_ja_extinta` — extinta a subordinada e, depois, a superior de que
+  ela pendia, a subordinada continua pendendo da superior extinta e não é repontada para o avô;
+  reativá-la é recusado nomeando a sigla da superior, e reativar a superior antes faz as duas
+  voltarem à estrutura. *(marker `banco`)*
 - `test_pagina_da_extinta_oferece_so_reativar` — o GET responde 200, traz a marca de extinta com a
   data e o botão de reativar, e não traz os de editar e de designar substituto; depois do ato, o
   inverso. *(marker `banco`)*
