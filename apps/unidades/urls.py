@@ -27,6 +27,15 @@ urlpatterns = [
     path("raiz/gravar/", views.gravar_unidade_raiz, name="gravar_unidade_raiz"),
     path("cor-sugerida/", views.cor_sugerida_unidade, name="cor_sugerida_unidade"),
     path("arvore/", views.arvore_de_unidades, name="arvore_de_unidades"),
+    # O painel é alvo de swap por dois caminhos: o toggle e a conclusão do ato (SPEC user_admin/025).
+    path("painel/", views.painel_unidades, name="painel_unidades"),
+    # Uma porta para abrir (a face sai do estado da unidade) e uma por operação para gravar: é essa
+    # separação, e não uma flag no formulário, que faz "abrir o modal não pratica o ato" ser
+    # estrutural.
+    path("extinguir/", views.extinguir_unidade, name="extinguir_unidade"),
+    path("extinguir/previa/", views.previa_do_ato, name="previa_do_ato"),
+    path("extinguir/gravar/", views.gravar_extincao_unidade, name="gravar_extincao_unidade"),
+    path("reativar/gravar/", views.gravar_reativacao_unidade, name="gravar_reativacao_unidade"),
     path("<int:pk>/", views.pagina_unidade, name="pagina_unidade"),
     # `unidade`, e não `pk`: é o parâmetro que o alcance da ação nomeia.
     path("<int:unidade>/editar/", views.editar_unidade, name="editar_unidade"),

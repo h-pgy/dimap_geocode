@@ -18,6 +18,7 @@ from .cargos import CargoBase, CargoComissao
 from .periodo import q_vigente_em
 
 ERRO_TITULAR_SEM_CARGO_COMPATIVEL = "O titular precisa de cargo em comissão de chefia compatível com o porte da unidade."
+ERRO_UNIDADE_EXTINTA = "A unidade está extinta e não recebe lotação."
 
 
 class PerfilManager(BaseUserManager["Perfil"]):
@@ -128,6 +129,10 @@ class Perfil(AbstractBaseUser, PermissionsMixin):
         return f"{self.rf} — {self.nome}"
 
     def clean(self) -> None:
+        # Antes da conferência de titularidade, porque ela retorna cedo para quem não é titular —
+        # e a lotação em extinta é recusada para todo mundo.
+        if hasattr(self, "unidade") and self.unidade.extinta_em is not None:
+            raise ValidationError({"unidade": ERRO_UNIDADE_EXTINTA})
         # Cruza perfil → cargo e perfil → unidade → tipo: nenhuma CheckConstraint alcança.
         if not self.e_titular or not hasattr(self, "unidade"):
             return

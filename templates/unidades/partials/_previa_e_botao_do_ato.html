@@ -1,0 +1,6 @@
+{# Resposta do hx-get do select ao trocar de unidade (SPEC user_admin/025): a prévia, que é o alvo   #}
+{# do swap, MAIS o botão de confirmar, por hx-swap-oob — o botão mora fora de `#previa-do-ato` (no   #}
+{# `.modal-action`, ao lado do Cancelar) e precisa reagir à mesma troca: sem o oob, escolher uma     #}
+{# unidade nunca destrava o "Extinguir".                                                             #}
+{% include "unidades/partials/_previa_do_ato.html" %}
+{% include "unidades/partials/_botao_confirmar_ato.html" with oob=True %}

@@ -21,6 +21,9 @@ ERRO_CARGO_XOR = "A concessão nomeia exatamente um cargo: base ou em comissão,
 class AtribuicaoUnidade(models.Model):
     unidade = models.ForeignKey(Unidade, on_delete=models.PROTECT, related_name="atribuicoes")
     acao = models.ForeignKey(Acao, on_delete=models.PROTECT, related_name="atribuicoes")
+    # Extinta COM a unidade (SPEC user_admin/025). Retirar a atribuição por ato próprio continua
+    # apagando a linha — o que esta data marca é só o que caiu junto com a unidade.
+    extinta_em = models.DateField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Atribuição de unidade"
@@ -68,6 +71,9 @@ class Concessao(models.Model):
         null=True,
     )
     concedida_em = models.DateTimeField(auto_now_add=True)
+    # Própria, e não lida pela atribuição (SPEC user_admin/025) — é o campo que o avaliador filtra,
+    # e resolvê-lo por join deixaria a competência dependendo de uma segunda tabela a cada request.
+    extinta_em = models.DateField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Concessão"

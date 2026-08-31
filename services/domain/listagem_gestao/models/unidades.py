@@ -24,6 +24,8 @@ class LinhaUnidade(BaseModel):
     titular_nome: str | None = None
     pai_pk: int | None = None
     pai_sigla: str | None = None
+    # SPEC user_admin/025: marca a linha quando o toggle "Mostrar unidades extintas" a revela.
+    extinta: bool = False
 
     @property
     def titular(self) -> str:

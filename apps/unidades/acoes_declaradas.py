@@ -5,7 +5,11 @@ pende de unidade alguma.
 """
 
 from apps.competencias.utils import instanciar_acao
-from services.domain.autorizacao import UnidadesSubordinadas, VarianteIcone
+from services.domain.autorizacao import (
+    UnidadesEstritamenteSubordinadas,
+    UnidadesSubordinadas,
+    VarianteIcone,
+)
 
 ACAO_CRIAR_UNIDADE = instanciar_acao(
     slug="unidades.criar_unidade",
@@ -49,4 +53,18 @@ ACAO_CRIAR_UNIDADE_RAIZ = instanciar_acao(
     exclusiva_superusuario=True,
     # Sem alcance: a raiz não pende de unidade alguma, e não há alvo a conferir.
     alcance=None,
+)
+
+ACAO_EXTINGUIR_UNIDADE = instanciar_acao(
+    slug="unidades.extinguir_unidade",
+    nome="Extinguir unidade",
+    nome_curto="Extinguir",
+    tooltip="Retira da estrutura uma unidade subordinada, transferindo servidores e subordinadas para a unidade superior — e a reativa.",
+    # Precisa reverter sem argumento (`competencias.E004`): é a rota que abre o modal, e não as de
+    # gravação.
+    url_name="unidades:extinguir_unidade",
+    partial="competencias/partials/_item_menu.html",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    estrutural=True,
+    alcance=UnidadesEstritamenteSubordinadas(),
 )

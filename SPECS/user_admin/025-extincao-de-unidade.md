@@ -3,7 +3,7 @@ spec: user_admin/025
 versao: v7
 atualizado_em: 2026-08-31
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial

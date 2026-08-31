@@ -49,6 +49,13 @@ class LotacaoAtualEDestino(TipoAlcance):
     parametros_alvo: tuple[str, ...] = ("servidor", "unidade")
 
 
+class UnidadesEstritamenteSubordinadas(TipoAlcance):
+    """O ramo, menos as unidades de onde ele parte: o alvo precisa estar ABAIXO de quem se dirige ou
+    de quem se recebeu por delegação."""
+
+    parametros_alvo: tuple[str, ...] = ("unidade",)
+
+
 class LotacaoDoServidor(TipoAlcance):
     """O alcance de quem dirige, com um alvo só: a unidade em que o servidor-alvo está lotado, lida
     no banco a partir do id que vem no caminho da rota (SPEC user_admin/023). O ato incide sobre a

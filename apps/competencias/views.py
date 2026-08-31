@@ -7,7 +7,7 @@ tem como conhecer (Caveats da SPEC 008) — só ela é conferida aqui dentro."""
 from typing import cast
 
 from django.core.exceptions import PermissionDenied
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
 
@@ -77,8 +77,12 @@ def catalogo(request: HttpRequest) -> HttpResponse:
 @acao_protegida(ACAO_DEFINIR_ATRIBUICAO)
 @require_POST
 def atribuir(request: HttpRequest) -> HttpResponse:
+    # A unidade passa a ser LIDA, e não repassada como id cru (SPEC user_admin/025). `Unidade` sem
+    # gerente nomeado resolve pelo `_default_manager` — as vigentes —, então a extinta vira 404 pelo
+    # mesmo caminho que `remover` e `confirmar_remocao` já usavam.
+    unidade = _unidade_do_request(request)
     comando = ComandoAtribuicao(
-        unidade_alvo_id=request.POST["unidade"],  # type: ignore[arg-type]
+        unidade_alvo_id=unidade.pk,
         acao_slug=request.POST["acao"],
     )
     atribuicao = atribuir_acao(comando)
@@ -303,6 +307,11 @@ def _atribuicao_no_alvo(atribuicao_id: int, unidade_alvo_id: int) -> AtribuicaoU
     )
     if atribuicao.unidade_id != unidade_alvo_id:
         raise PermissionDenied
+    # O segundo nível, na mesma porta em que o alvo já é conferido (SPEC user_admin/025).
+    # Atribuição extinta não recebe concessão — revogar continua livre, porque tirar não recria
+    # nada.
+    if atribuicao.extinta_em is not None:
+        raise Http404
     return atribuicao
 
 

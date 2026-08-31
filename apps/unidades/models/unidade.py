@@ -33,6 +33,12 @@ ERRO_TIPO_INCOMPATIVEL_COM_TITULAR = (
     "O titular atual não satisfaz o mínimo de cargo deste tipo."
 )
 ERRO_TIPO_DESSUBORDINA_FILHA = "O tipo novo deixaria {siglas} sem subordinação."
+ERRO_PAI_EXTINTO = "A unidade superior está extinta."
+
+
+class UnidadeVigenteManager(models.Manager["Unidade"]):
+    def get_queryset(self) -> models.QuerySet["Unidade"]:
+        return super().get_queryset().filter(extinta_em__isnull=True)
 
 
 class CorUnidade(models.TextChoices):
@@ -136,14 +142,29 @@ class Unidade(models.Model):
         choices=CorUnidade,
         default=CorUnidade.AGUA_700,
     )
+    # A data do ato que a retirou da estrutura (SPEC user_admin/025). Nula é unidade vigente, e é o
+    # que a reativação devolve.
+    extinta_em = models.DateField(null=True, blank=True)
+
+    # O padrão são as vigentes; `todas` é a porta de quem precisa da extinta — o histórico, a
+    # página dela e o toggle. O `_base_manager` segue sem filtro, e a travessia de FK não muda.
+    objects = UnidadeVigenteManager()
+    todas = models.Manager()
 
     class Meta:
         verbose_name = "Unidade"
         verbose_name_plural = "Unidades"
+        base_manager_name = "todas"
         constraints = [
             models.CheckConstraint(
                 condition=~Q(pai=F("id")),
                 name="unidade_nao_e_pai_de_si_mesma",
+            ),
+            # Sem unidade superior não há para onde mandar servidores e filhas, e a raiz não se
+            # extingue. A regra é da linha, então é do banco.
+            models.CheckConstraint(
+                condition=Q(pai__isnull=False) | Q(extinta_em__isnull=True),
+                name="unidade_raiz_nao_se_extingue",
             ),
         ]
 
@@ -189,6 +210,10 @@ class Unidade(models.Model):
             raise ValidationError({"pai": ERRO_NIVEL_NAO_SUBORDINA})
         if tipo_pai.tipos_filhos_vedados.filter(pk=self.tipo.pk).exists():
             raise ValidationError({"pai": ERRO_TIPO_FILHO_VEDADO})
+        # Pendurar unidade viva em unidade extinta recria, por baixo, o ramo que a extinção
+        # desfez. Vale para criar, para transferir e para reativar.
+        if self.pai.extinta_em is not None:
+            raise ValidationError({"pai": ERRO_PAI_EXTINTO})
 
     def _checar_filhas(self) -> None:
         """Criar não alcança esta regra — unidade nova não tem filhas. Editar, sim: baixar o nível

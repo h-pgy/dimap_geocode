@@ -9,6 +9,7 @@ from .contratos import (
     LotacaoAtualEDestino,
     LotacaoDoServidor,
     TipoAlcance,
+    UnidadesEstritamenteSubordinadas,
     UnidadesSubordinadas,
     VarianteIcone,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "LotacaoDoServidor",
     "PerfilCompetencia",
     "TipoAlcance",
+    "UnidadesEstritamenteSubordinadas",
     "UnidadesSubordinadas",
     "VarianteIcone",
     "avaliar_competencia",

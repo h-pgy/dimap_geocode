@@ -19,15 +19,39 @@
           {% include "unidades/partials/_secao_hierarquia.html" %}
         </div>
 
-        {% if pode_editar %}
+        {% if pode_editar or pode_extinguir %}
+          <div class="flex justify-center gap-3 pt-2">
+            {% if pode_editar %}
+              <button type="button"
+                      hx-get="{% url 'unidades:editar_unidade' unidade.pk %}"
+                      hx-target="#poco-modal"
+                      hx-swap="innerHTML settle:150ms"
+                      class="btn btn-onsen btn-lg gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+                Editar unidade
+              </button>
+            {% endif %}
+            {% if pode_extinguir %}
+              <button type="button"
+                      hx-get="{% url 'unidades:extinguir_unidade' %}?unidade={{ unidade.pk }}"
+                      hx-target="#poco-modal"
+                      hx-swap="innerHTML settle:150ms"
+                      class="btn btn-error btn-soft btn-lg gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                Extinguir unidade
+              </button>
+            {% endif %}
+          </div>
+        {% elif pode_reativar %}
+          {# Unidade extinta traz UM único botão de ato: reativar (SPEC user_admin/025). #}
           <div class="flex justify-center pt-2">
             <button type="button"
-                    hx-get="{% url 'unidades:editar_unidade' unidade.pk %}"
+                    hx-get="{% url 'unidades:extinguir_unidade' %}?unidade={{ unidade.pk }}"
                     hx-target="#poco-modal"
                     hx-swap="innerHTML settle:150ms"
                     class="btn btn-onsen btn-lg gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
-              Editar unidade
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+              Reativar unidade
             </button>
           </div>
         {% endif %}

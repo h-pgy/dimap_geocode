@@ -1,0 +1,62 @@
+{# Modal de extinguir/reativar unidade (SPEC user_admin/025): duas faces, a mesma porta — a face   #}
+{# sai do estado da unidade escolhida (`contexto_modal_do_ato`). Chega com o toggle já marcado:     #}
+{# abrir é chegar. A prévia é um bloco à parte (`_previa_do_ato.html`), trocado pelo hx-get do      #}
+{# select sem remontar o modal inteiro.                                                             #}
+<input type="checkbox" id="modal-ato-unidade" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+    <form hx-post="{% if face == 'reativar' %}{% url 'unidades:gravar_reativacao_unidade' %}{% else %}{% url 'unidades:gravar_extincao_unidade' %}{% endif %}"
+          hx-target="#poco-modal"
+          hx-swap="innerHTML"
+          class="flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno {% if face == 'reativar' %}text-agua-700{% else %}text-error{% endif %} mt-0.5">
+          <svg viewBox="0 0 24 24"><use href="{% if face == 'reativar' %}#glifo-reativar{% else %}#glifo-lixeira{% endif %}"/></svg>
+        </span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">
+            {% if face == "reativar" %}Reativar unidade{% else %}Extinguir unidade{% endif %}
+          </h2>
+          <p class="text-sm text-base-content/70 mt-0.5">
+            {% if face == "reativar" %}
+              {{ previa.unidade.sigla }}
+            {% else %}
+              A unidade sai da estrutura. O que ela carrega sobe para a unidade superior.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      {% include "partials/_tarja_recusa.html" with titulo="Ato não realizado" %}
+
+      {% if face == "reativar" %}
+        <input type="hidden" name="unidade" value="{{ previa.unidade.unidade_id }}" />
+      {% else %}
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Unidade a extinguir</p>
+          <select name="unidade"
+                  class="select select-glass {{ realce.unidade }}"
+                  data-select-onsen
+                  hx-get="{% url 'unidades:previa_do_ato' %}"
+                  hx-target="#previa-do-ato"
+                  hx-swap="innerHTML">
+            <option value=""{% if not previa %} selected{% endif %}>— escolha a unidade —</option>
+            {% for outra in unidades %}
+              <option value="{{ outra.pk }}"{% if previa and previa.unidade.unidade_id == outra.pk %} selected{% endif %}>{{ outra.sigla }} · {{ outra.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
+      <div id="previa-do-ato">
+        {% include "unidades/partials/_previa_do_ato.html" %}
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-ato-unidade" class="btn btn-glass btn-sm">Cancelar</label>
+        {% include "unidades/partials/_botao_confirmar_ato.html" %}
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-ato-unidade">Fechar</label>
+</div>

@@ -4,11 +4,13 @@ controles a tela tem e como cada recusa se diz para quem preencheu. Criar e edit
 catálogo — os controles são os mesmos, só o DTO lido muda.
 """
 
-from apps.unidades.schemas import EdicaoUnidade, NovaUnidade
+from apps.unidades.schemas import AtoDeUnidade, EdicaoUnidade, NovaUnidade
 from services.utils.erros_formulario import (
     CampoDeFormulario,
+    ErroBruto,
     Formulario,
     LeitorDeFormulario,
+    RecusaDeFormulario,
     RegraDeErro,
     TomDeRealce,
     TradutorDeRecusa,
@@ -38,9 +40,25 @@ FORMULARIO_UNIDADE = Formulario(
             },
         ),
         CampoDeFormulario(controle="cor", rotulo="Cor"),
+        # SPEC user_admin/025: o alvo do modal de extinguir/reativar. `veredito` fica fora das
+        # REGRAS_PADRAO pelo mesmo motivo que `transferencia` — nada mais no sistema o levanta.
+        CampoDeFormulario(
+            controle="unidade",
+            rotulo="Unidade",
+            regras={"veredito": RegraDeErro(mensagem="{motivo}", tom=TomDeRealce.ERRO)},
+        ),
     )
 )
 
 ler_nova_unidade = LeitorDeFormulario(NovaUnidade, FORMULARIO_UNIDADE)
 ler_edicao_unidade = LeitorDeFormulario(EdicaoUnidade, FORMULARIO_UNIDADE)
+ler_ato_de_unidade = LeitorDeFormulario(AtoDeUnidade, FORMULARIO_UNIDADE)
 traduzir_recusa = TradutorDeRecusa(FORMULARIO_UNIDADE)
+
+
+def recusa_do_veredito(motivo: str) -> RecusaDeFormulario:
+    """O `motivo` do avaliador já chega em português e pronto para a tela (SPEC user_admin/025): o
+    catálogo não o reescreve, só o põe no controle certo."""
+    return traduzir_recusa(
+        (ErroBruto(controle="unidade", tipo="veredito", mensagem=motivo),)
+    )

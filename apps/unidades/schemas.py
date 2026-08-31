@@ -38,10 +38,26 @@ class SelecaoUnidadePai(BaseModel):
 
 
 class ConsultaDeUnidades(BaseModel):
-    """O `?foco=<pk>` com que a página da unidade chega à listagem. Só ele: filtros e ordenação
-    vêm da `ConsultaListagem` do domínio, que já lê o `request.GET` inteiro."""
+    """O `?foco=<pk>` com que a página da unidade chega à listagem, e o `?extintas=1` do toggle
+    (SPEC user_admin/025). Viaja na query string e no campo oculto do cabeçalho da tabela, nunca na
+    sessão — a listagem nasce mostrando a estrutura viva a cada visita. Filtros e ordenação vêm da
+    `ConsultaListagem` do domínio, que já lê o `request.GET` inteiro."""
 
     foco: FocoOpcional = None
+    extintas: bool = False
+
+
+class AtoDeUnidade(BaseModel):
+    """O alvo, e só ele: extinguir e reativar (SPEC user_admin/025) recebem a mesma entrada, e o
+    que as separa é a rota. Passa pelo `LeitorDeFormulario`, e não pelo middleware, porque a recusa
+    volta como o modal (SPEC formularios/001) — o mesmo regime de `NovaUnidade` e `EdicaoUnidade`.
+
+    `unidade_id`, e não `unidade`: o `<select>` se chama `unidade`, e `controle_do_campo` corta o
+    sufixo para que o erro do DTO ache o controle da tela."""
+
+    model_config = ConfigDict(frozen=True)
+
+    unidade_id: int
 
 
 class NovaUnidade(BaseModel):

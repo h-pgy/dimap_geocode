@@ -1,0 +1,11 @@
+{# O painel inteiro (SPEC user_admin/025): árvore, barra e tabela — alvo do toggle "Mostrar         #}
+{# unidades extintas" e da conclusão do ato de extinguir. Os três nunca trocam sozinhos: ligar as    #}
+{# extintas muda a árvore, esconde a lixeira das linhas e revela a marca na tabela de uma vez.       #}
+{# `oob` (mesmo padrão de `_campo_unidade_lotacao.html`): a conclusão do ato responde ao POST do     #}
+{# formulário, cujo `hx-target` é o `#poco-modal` — sem o swap fora de banda, o painel INTEIRO       #}
+{# entraria dentro do poço do modal, duplicado, em vez de substituir o painel de verdade na página.  #}
+<div id="painel-unidades" class="flex flex-col gap-5"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
+  {% include "unidades/partials/_organograma_unidades.html" %}
+  {% include "unidades/partials/_barra_acoes_unidades.html" %}
+  {% include "unidades/partials/_tabela_unidades.html" %}
+</div>

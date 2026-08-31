@@ -1496,6 +1496,58 @@ html[data-theme="dimap"] {
   .fundo-controle:has(.toggle-onsen:not(:checked)) .fundo-controle__corpo {
     @apply opacity-35 pointer-events-none;
   }
+
+  /* ==================== ÁTOMO · GLIFO GRAVADO DE GESTO CRÍTICO (SPEC user_admin/025) ============ */
+  /* Variante do .icon-etched: empilha-se nele e só troca a tinta que o hover acende — água vira a
+     semântica de erro. Precisa vir DEPOIS do .icon-etched no arquivo: mesma especificidade, e quem
+     vence é a ordem. */
+  .btn:hover .icon-etched-critico,
+  .btn:focus-visible .icon-etched-critico {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(220, 38, 38, 0.45));
+    color: rgba(220, 38, 38, 0.92);
+  }
+
+  /* ==================== MOLÉCULA · BARRA DE AÇÕES (SPEC user_admin/025) ========================= */
+  /* A placa de gestos entre a árvore e a tabela. Material composto no HTML (.glass-panel), e é a
+     pilha que decide a pele dele: dentro da placa da página a barra fica só com o desfoque, a
+     aresta e a sombra (SPEC design/009). Daqui saem só o layout e o raio de placa, que sobrepõe o
+     do painel por vir depois dele. */
+  .barra-acoes {
+    @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-2.5;
+    border-radius: var(--radius-placa);
+  }
+  .barra-acoes-gestos { @apply flex flex-wrap items-center gap-2; }
+  .barra-acoes-chave  { @apply flex items-center gap-2.5 cursor-pointer select-none; }
+
+  /* ==================== MOLÉCULA · PRÉVIA DO ATO (SPEC user_admin/025) =========================== */
+  /* Serve às duas faces: o que sai na extinção, o que volta na reativação. */
+  .previa-extincao { @apply grid gap-3 sm:grid-cols-3; }
+  .previa-extincao-tile { @apply flex flex-col gap-1 px-4 py-3; }
+  .previa-extincao-valor { @apply text-[26px] font-bold leading-none text-madeira-700; }
+  .previa-extincao-vazio { @apply text-[13px] leading-snug text-base-content/55; }
+
+  /* ==================== MODIFICADORES · UNIDADE EXTINTA (SPEC user_admin/025) ==================== */
+  /* A extinta só aparece com o toggle ligado, e quando aparece precisa ser LIDA: recuar a tinta a
+     apagava. Quem carrega o estado passa a ser o FUNDO, na semântica de erro do sistema, e a tinta
+     volta cheia. */
+  /* `bg-none` derruba o gradiente do .glass-panel, composto no HTML: sem isso a cor entraria por
+     baixo da placa de gelo e não apareceria. É a mesma razão pela qual o hover do card em repouso
+     levanta brilho em vez de pintar fundo. No organograma a SPEC design/009 já o apaga por
+     aninhamento; a declaração fica porque o modificador não pode depender da pilha em que o card é
+     renderizado — no styleguide ele aparece sozinho. */
+  .card-unidade-extinta { @apply bg-none bg-error/12 border-error/35; }
+  .card-unidade-extinta:hover { @apply border-error/50; }
+  /* A sigla vira gravação: `etched etched-rotulo` compostos no HTML — o registro que o design
+     system reserva para o sulco que NOMEIA, com a tinta subindo à legibilidade. Só a cor precisa de
+     regra: `.card-unidade-sigla` declara a própria e vence `.etched-rotulo` por vir depois no tema.
+     O relevo já chega pelo filtro do `.etched`. */
+  .card-unidade-extinta .card-unidade-sigla { color: rgba(13, 27, 42, 0.62); }
+  .linha-extinta td { @apply bg-error/8; }
+  /* Precisa vencer o `.table-onsen tbody tr:not([data-ativo="true"]):hover td` do tema (SPEC
+     user_admin/021), que é mais específico que a linha: sob o cursor a extinta continua vermelha,
+     só que mais acesa. O mesmo `:not()` no seletor preserva a linha pinçada — ali quem manda é a
+     água do foco, não o estado da unidade. */
+  .table-onsen tbody tr.linha-extinta:not([data-ativo="true"]):hover td { @apply bg-error/15; }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */

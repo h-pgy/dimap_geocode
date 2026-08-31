@@ -580,6 +580,11 @@ def test_reativacao_devolve_unidade_e_as_competencias_que_cairam(
         Concessao.objects.filter(atribuicao=atribuicao, extinta_em__isnull=True).count()
         == 1
     )
+    # A concessão é da UNIDADE (SPEC autorizacao/002): quem exerce precisa estar lotado nela. Como
+    # servidor não volta sozinho (Caveats da SPEC), o arranjo relota à mão — só então a concessão
+    # restaurada tem quem a exerça.
+    beneficiado.unidade = alvo
+    beneficiado.save(update_fields=["unidade"])
     assert Perfil.objects.get(pk=beneficiado.pk).has_perm(acao.slug)
     assert AtribuicaoUnidade.objects.filter(unidade=alvo).count() == 1
 
@@ -834,7 +839,7 @@ def test_ato_grava_quem_cargo_unidade_operacao_e_alvo(client: Client) -> None:
     assert execucao.alvo_identificador == alvo.sigla
 
     # Mudar a lotação depois não reescreve a linha.
-    _, nova_unidade, _ = _ramo("EX-REGISTRO-NOVA")
+    _, nova_unidade, _ = _ramo("EX-REG-NOVA")
     dirigente.unidade = nova_unidade
     dirigente.e_titular = False
     dirigente.save(update_fields=["unidade", "e_titular"])

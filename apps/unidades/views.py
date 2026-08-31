@@ -13,26 +13,32 @@ from typing import cast
 
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.competencias.consulta import alcance_do_perfil
+from apps.competencias.consulta import alcance_do_perfil, partidas_do_alcance
 from apps.core.tabela import consulta_da_listagem
 from apps.competencias.protecao import acao_protegida, pode_executar, registrar_ato
+from apps.unidades import extincao
 from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE,
     ACAO_CRIAR_UNIDADE_RAIZ,
     ACAO_EDITAR_UNIDADE,
+    ACAO_EXTINGUIR_UNIDADE,
 )
 from apps.user_admin.acoes_declaradas import ACAO_DESIGNAR_SUBSTITUTO
 from apps.unidades.cadastro import alterar_unidade, cadastrar_unidade
 from apps.unidades.context import (
+    contexto_ato_recusado,
     contexto_corpo_unidades,
     contexto_cor_sugerida,
     contexto_criacao_recusada,
     contexto_criar_unidade,
     contexto_edicao_recusada,
     contexto_listagem_unidades,
+    contexto_modal_do_ato,
     contexto_modal_unidade,
+    contexto_previa_do_ato,
     contexto_unidade,
     contexto_unidade_selecionada,
 )
@@ -52,6 +58,10 @@ TEMPLATE_PAGINA_UNIDADE = "unidades/unidade.html"
 TEMPLATE_CAMPO_COR = "unidades/partials/_campo_cor_unidade.html"
 TEMPLATE_LISTAGEM_UNIDADES = "unidades/unidades_list.html"
 TEMPLATE_CORPO_UNIDADES = "unidades/partials/_corpo_unidades.html"
+TEMPLATE_PAINEL_UNIDADES = "unidades/partials/_painel_unidades.html"
+TEMPLATE_MODAL_ATO = "unidades/partials/_modal_ato_unidade.html"
+TEMPLATE_PREVIA_ATO = "unidades/partials/_previa_e_botao_do_ato.html"
+TEMPLATE_REATIVACAO_CONCLUIDA = "unidades/partials/_reativacao_concluida.html"
 
 
 @acao_protegida(ACAO_CRIAR_UNIDADE)
@@ -143,16 +153,26 @@ def cor_sugerida_unidade(request: HttpRequest) -> HttpResponse:
 
 
 def pagina_unidade(request: HttpRequest, pk: int) -> HttpResponse:
-    unidade = get_object_or_404(Unidade.objects.select_related("tipo", "pai"), pk=pk)
+    # `todas`: a página é o único lugar em que a unidade extinta se mostra por si, e é onde mora o
+    # gesto de trazê-la de volta (SPEC user_admin/025).
+    unidade = get_object_or_404(Unidade.todas.select_related("tipo", "pai"), pk=pk)
+    extinta = unidade.extinta_em is not None
     return render(
         request,
         TEMPLATE_PAGINA_UNIDADE,
         contexto_unidade(unidade)
         | {
-            "pode_editar": pode_executar(request.user, ACAO_EDITAR_UNIDADE, unidade.pk),
-            "pode_designar_substituto": pode_executar(
-                request.user, ACAO_DESIGNAR_SUBSTITUTO, unidade.pk
-            ),
+            # Gesto de unidade viva não se oferece a unidade extinta, e vice-versa: a barreira
+            # segue na rota, e a tela não convida ao 403.
+            "pode_editar": not extinta and pode_executar(request.user, ACAO_EDITAR_UNIDADE, unidade.pk),
+            "pode_designar_substituto": not extinta
+            and pode_executar(request.user, ACAO_DESIGNAR_SUBSTITUTO, unidade.pk),
+            # Extinguir e reativar são a MESMA competência (Caveats): a página oferece o gesto que
+            # cabe ao estado da unidade — nunca os dois.
+            "pode_extinguir": not extinta
+            and pode_executar(request.user, ACAO_EXTINGUIR_UNIDADE, unidade.pk),
+            "pode_reativar": extinta
+            and pode_executar(request.user, ACAO_EXTINGUIR_UNIDADE, unidade.pk),
         },
     )
 
@@ -221,20 +241,134 @@ def listar_unidades(request: HttpRequest) -> HttpResponse:
     de hierarquia da página da unidade chega aqui — a unidade já situada na árvore e no topo da
     tabela."""
     consulta = consulta_da_listagem(request.GET.dict(), ColunaUnidade)
-    foco = ConsultaDeUnidades.model_validate(request.GET.dict()).foco
-    unidade_em_foco = Unidade.objects.filter(pk=foco).first() if foco else None
+    parametros = ConsultaDeUnidades.model_validate(request.GET.dict())
+    unidade_em_foco = Unidade.todas.filter(pk=parametros.foco).first() if parametros.foco else None
     return render(
         request,
         TEMPLATE_LISTAGEM_UNIDADES,
-        contexto_listagem_unidades(consulta, unidade_em_foco),
+        contexto_listagem_unidades(
+            consulta, unidade_em_foco, parametros.extintas, _alcance_extincao_da_leitura(request)
+        ),
+    )
+
+
+def painel_unidades(request: HttpRequest) -> HttpResponse:
+    """Rota de leitura, alvo do toggle (SPEC user_admin/025). Troca o painel inteiro porque ligar as
+    extintas muda a árvore, a tabela e o próprio estado da barra."""
+    consulta = consulta_da_listagem(request.GET.dict(), ColunaUnidade)
+    parametros = ConsultaDeUnidades.model_validate(request.GET.dict())
+    unidade_em_foco = Unidade.todas.filter(pk=parametros.foco).first() if parametros.foco else None
+    return render(
+        request,
+        TEMPLATE_PAINEL_UNIDADES,
+        contexto_listagem_unidades(
+            consulta, unidade_em_foco, parametros.extintas, _alcance_extincao_da_leitura(request)
+        ),
     )
 
 
 def corpo_unidades(request: HttpRequest) -> HttpResponse:
     # Alvo do swap do HTMX: só o <tbody>. Trocar o <thead> junto destruiria, a cada tecla, o campo
-    # em que se está digitando.
+    # em que se está digitando. `extintas` viaja no campo oculto do cabeçalho (SPEC user_admin/025)
+    # — o mesmo estado do toggle, sem que o filtro/ordenação o derrube.
     consulta = consulta_da_listagem(request.GET.dict(), ColunaUnidade)
-    return render(request, TEMPLATE_CORPO_UNIDADES, contexto_corpo_unidades(consulta))
+    extintas = ConsultaDeUnidades.model_validate(request.GET.dict()).extintas
+    return render(
+        request,
+        TEMPLATE_CORPO_UNIDADES,
+        contexto_corpo_unidades(consulta, extintas=extintas, alcance_extincao=_alcance_extincao_da_leitura(request)),
+    )
+
+
+@acao_protegida(ACAO_EXTINGUIR_UNIDADE)
+def extinguir_unidade(request: HttpRequest) -> HttpResponse:
+    """Abre o modal do ato — a face sai do estado da unidade escolhida, com a unidade da linha, a
+    em foco ou nenhuma (SPEC user_admin/025)."""
+    autor = _autor(request)
+    id_bruto = request.GET.get("unidade", "")
+    unidade = Unidade.todas.filter(pk=id_bruto).first() if id_bruto.isdigit() else None
+    return render(
+        request, TEMPLATE_MODAL_ATO, contexto_modal_do_ato(unidade, _alcance_extincao(autor))
+    )
+
+
+@acao_protegida(ACAO_EXTINGUIR_UNIDADE)
+def previa_do_ato(request: HttpRequest) -> HttpResponse:
+    """Alvo do hx-get do select, ao trocar de unidade dentro do modal (SPEC user_admin/025)."""
+    unidade = get_object_or_404(Unidade.todas, pk=request.GET.get("unidade"))
+    return render(request, TEMPLATE_PREVIA_ATO, contexto_previa_do_ato(unidade))
+
+
+@acao_protegida(ACAO_EXTINGUIR_UNIDADE)
+@require_POST
+def gravar_extincao_unidade(request: HttpRequest) -> HttpResponse:
+    autor = _autor(request)
+    valores = {"unidade_id": request.POST.get("unidade", "")}
+    desfecho = extincao.extinguir_unidade(valores, timezone.localdate())
+    if desfecho.unidade is None:
+        return render(
+            request,
+            TEMPLATE_MODAL_ATO,
+            contexto_ato_recusado(valores, desfecho.recusa, _alcance_extincao(autor)),
+            status=422,
+        )
+    registrar_ato(
+        request, operacao="extinguir", alvo_tipo="unidade", alvo_identificador=desfecho.unidade.sigla
+    )
+    consulta = consulta_da_listagem({}, ColunaUnidade)
+    # `oob`: o POST responde ao `#poco-modal`, e o painel de verdade mora fora dele — sem o swap
+    # fora de banda ele entraria duplicado, aninhado dentro do poço do modal.
+    return render(
+        request,
+        TEMPLATE_PAINEL_UNIDADES,
+        contexto_listagem_unidades(consulta, alcance_extincao=_alcance_extincao(autor)) | {"oob": True},
+    )
+
+
+@acao_protegida(ACAO_EXTINGUIR_UNIDADE)
+@require_POST
+def gravar_reativacao_unidade(request: HttpRequest) -> HttpResponse:
+    """A outra operação da MESMA ação (SPEC user_admin/025): mesma barreira, mesmo alcance, outro
+    desfecho e outra palavra no histórico."""
+    autor = _autor(request)
+    valores = {"unidade_id": request.POST.get("unidade", "")}
+    desfecho = extincao.reativar_unidade(valores)
+    if desfecho.unidade is None:
+        return render(
+            request,
+            TEMPLATE_MODAL_ATO,
+            contexto_ato_recusado(valores, desfecho.recusa, _alcance_extincao(autor)),
+            status=422,
+        )
+    registrar_ato(
+        request, operacao="reativar", alvo_tipo="unidade", alvo_identificador=desfecho.unidade.sigla
+    )
+    return render(
+        request,
+        TEMPLATE_REATIVACAO_CONCLUIDA,
+        contexto_unidade(desfecho.unidade)
+        | {
+            "pode_editar": pode_executar(request.user, ACAO_EDITAR_UNIDADE, desfecho.unidade.pk),
+            "pode_designar_substituto": pode_executar(
+                request.user, ACAO_DESIGNAR_SUBSTITUTO, desfecho.unidade.pk
+            ),
+        },
+    )
+
+
+def _alcance_extincao(perfil: Perfil) -> frozenset[int]:
+    # O ramo, MENOS as unidades de onde ele parte, mas COM as extintas: sem elas a unidade
+    # recém-extinta sairia do alcance de quem a extinguiu e ninguém poderia reativá-la (SPEC
+    # user_admin/025, mesma conta de `_conjunto_alcancado`).
+    return alcance_do_perfil(perfil, com_extintas=True) - partidas_do_alcance(perfil)
+
+
+def _alcance_extincao_da_leitura(request: HttpRequest) -> frozenset[int]:
+    # As rotas de leitura da listagem são abertas (§3.5): visitante sem perfil não alcança unidade
+    # alguma, e a lixeira simplesmente não aparece — a barreira segue sendo a rota de gravação.
+    if not request.user.is_authenticated:
+        return frozenset()
+    return _alcance_extincao(cast(Perfil, request.user))
 
 
 def arvore_de_unidades(request: HttpRequest) -> HttpResponse:

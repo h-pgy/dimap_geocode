@@ -39,7 +39,9 @@ def montar_avaliacao(perfil: Perfil) -> AvaliacaoCompetenciaInput:
             cargo_comissao_id=concessao.cargo_comissao_id,
         )
         for concessao in Concessao.objects.filter(
-            atribuicao__unidade_id__in=unidades_das_canetas
+            atribuicao__unidade_id__in=unidades_das_canetas,
+            # Competência de unidade extinta não é competência de ninguém (SPEC user_admin/025).
+            extinta_em__isnull=True,
         ).select_related("atribuicao__acao")
     )
     hoje = timezone.localdate()
@@ -115,19 +117,33 @@ def unidades_delegadas(perfil: Perfil) -> frozenset[int]:
     return avaliar_competencia(montar_avaliacao(perfil)).unidades_delegadas
 
 
-def ramos_do_alcance(perfil: Perfil) -> tuple[NoHierarquia, ...]:
+def partidas_do_alcance(perfil: Perfil) -> frozenset[int]:
+    """As unidades de onde o alcance parte: as dirigidas e as recebidas por delegação. Extraída de
+    `ramos_do_alcance`, que já a calculava para descartar o ramo contido (SPEC user_admin/025)."""
+    return unidades_dirigidas(perfil) | unidades_delegadas(perfil)
+
+
+def ramos_do_alcance(perfil: Perfil, com_extintas: bool = False) -> tuple[NoHierarquia, ...]:
     """As subárvores que o perfil alcança — uma por unidade dirigida que não pende de outra dirigida.
     Cobrir o titular de uma subordinada é dirigir duas unidades do mesmo ramo: a de baixo já está
-    dentro da de cima, e mantê-la seria percorrer e desenhar duas vezes a parte comum."""
+    dentro da de cima, e mantê-la seria percorrer e desenhar duas vezes a parte comum.
+
+    `com_extintas` (SPEC user_admin/025) desce até QUEM LÊ O BANCO, e desce pelos dois ramos da
+    função — o do superusuário monta as raízes por conta própria e ficaria com o organograma
+    vigente enquanto o outro via as extintas."""
     if perfil.is_superuser:
         # O organograma inteiro, na MESMA forma que o recorte já devolve (SPEC user_admin/020):
         # assim `alcance_do_perfil`, a árvore da tela e os selects ficam certos de uma vez, sem
         # `is_superuser` espalhado em cada um.
+        gerente = Unidade.todas if com_extintas else Unidade.objects
         return tuple(
-            posicao_de(raiz.pk).ego for raiz in Unidade.objects.filter(pai__isnull=True)
+            posicao_de(raiz.pk, com_extintas=com_extintas).ego
+            for raiz in gerente.filter(pai__isnull=True)
         )
-    partidas = unidades_dirigidas(perfil) | unidades_delegadas(perfil)
-    arvores = {partida: posicao_de(partida).ego for partida in partidas}
+    partidas = partidas_do_alcance(perfil)
+    arvores = {
+        partida: posicao_de(partida, com_extintas=com_extintas).ego for partida in partidas
+    }
     return tuple(
         arvore
         for partida, arvore in arvores.items()
@@ -135,10 +151,16 @@ def ramos_do_alcance(perfil: Perfil) -> tuple[NoHierarquia, ...]:
     )
 
 
-def alcance_do_perfil(perfil: Perfil) -> frozenset[int]:
+def alcance_do_perfil(perfil: Perfil, com_extintas: bool = False) -> frozenset[int]:
     """"Unidades subordinadas" não é conceito, é esta projeção: os ramos alcançados reduzidos a ids.
-    Descartar o ramo contido não muda o conjunto — ele já está inteiro dentro do outro."""
-    return frozenset[int]().union(*(ramo.ids for ramo in ramos_do_alcance(perfil)))
+    Descartar o ramo contido não muda o conjunto — ele já está inteiro dentro do outro.
+
+    O default `False` (SPEC user_admin/025) é o que mantém as outras ações intocadas: só
+    `UnidadesEstritamenteSubordinadas` pede `True`, e pede por um motivo só — sem ele a unidade
+    recém-extinta sai do alcance de quem a extinguiu e ninguém consegue reativá-la."""
+    return frozenset[int]().union(
+        *(ramo.ids for ramo in ramos_do_alcance(perfil, com_extintas))
+    )
 
 
 def _slugs_estruturais() -> frozenset[str]:

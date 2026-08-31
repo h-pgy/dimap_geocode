@@ -1,9 +1,12 @@
 {# Corpo da tabela de unidades (SPEC user_admin/021) — alvo exclusivo de swap do HTMX #}
 <tbody id="corpo-unidades">
   {% for linha in linhas %}
-    <tr data-unidade-sigla="{{ linha.sigla }}"{% if unidade_foco_pk == linha.pk %} data-ativo="true"{% endif %}>
+    <tr data-unidade-sigla="{{ linha.sigla }}"{% if unidade_foco_pk == linha.pk %} data-ativo="true"{% endif %}{% if linha.extinta %} class="linha-extinta"{% endif %}>
       <td>
         <a href="{% url 'unidades:pagina_unidade' linha.pk %}" class="link-tabela-onsen link-interno">{{ linha.sigla }}</a>
+        {% if linha.extinta %}
+          <span class="badge badge-neutral badge-soft badge-sm font-medium ml-2">Extinta</span>
+        {% endif %}
       </td>
       <td>
         <p class="td-nome-unidade">{{ linha.nome }}</p>
@@ -38,10 +41,25 @@
           <span class="etched icon-etched">✎</span>
         </a>
       </td>
+      <td class="text-right">
+        {# Sem a lixeira: gesto de unidade viva não se oferece a unidade extinta, à que o perfil    #}
+        {# dirige, nem à fora do alcance (SPEC user_admin/025) — a barreira segue sendo a rota. Sem  #}
+        {# `data-abrir-modal`: isso é só do mock (demo em JS puro) — aqui quem abre é o HTMX.        #}
+        {% if not linha.extinta and linha.pk in alcance_extincao %}
+          <button type="button"
+                  class="btn btn-ghost btn-glass btn-xs btn-circle"
+                  title="Extinguir a {{ linha.sigla }}"
+                  hx-get="{% url 'unidades:extinguir_unidade' %}?unidade={{ linha.pk }}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms">
+            <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+          </button>
+        {% endif %}
+      </td>
     </tr>
   {% empty %}
     <tr>
-      <td colspan="8" class="table-onsen-vazio">
+      <td colspan="9" class="table-onsen-vazio">
         <span class="etched text-3xl block mb-2">⌕</span>
         Nenhuma unidade corresponde aos filtros.
       </td>

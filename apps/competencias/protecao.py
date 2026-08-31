@@ -15,7 +15,7 @@ from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import BadRequest, PermissionDenied
 from django.http import HttpRequest, HttpResponse
 
-from apps.competencias.consulta import alcance_do_perfil
+from apps.competencias.consulta import alcance_do_perfil, partidas_do_alcance
 from apps.competencias.registro_execucao import gravar_execucao
 from apps.competencias.schemas import AcaoImplementada
 from apps.user_admin.models import Perfil
@@ -24,6 +24,7 @@ from services.domain.autorizacao import (
     LotacaoAtualEDestino,
     LotacaoDoServidor,
     TipoAlcance,
+    UnidadesEstritamenteSubordinadas,
     UnidadesSubordinadas,
 )
 
@@ -110,9 +111,17 @@ def conferir_alvo(
     if not valores:
         return
     # Uma passagem só pela árvore, e não uma por alvo: o alcance é o mesmo para os dois.
-    alcance = alcance_do_perfil(perfil)
+    alcance = _conjunto_alcancado(acao.alcance, perfil)
     if not all(unidade in alcance for unidade in _unidades_alvo(acao.alcance, valores)):
         raise PermissionDenied
+
+
+def _conjunto_alcancado(alcance: TipoAlcance, perfil: Perfil) -> frozenset[int]:
+    # A conferência de pertencimento continua escrita uma vez só, em `conferir_alvo`; o que muda por
+    # alcance é o CONJUNTO em que se procura (SPEC user_admin/025).
+    if isinstance(alcance, UnidadesEstritamenteSubordinadas):
+        return alcance_do_perfil(perfil, com_extintas=True) - partidas_do_alcance(perfil)
+    return alcance_do_perfil(perfil)
 
 
 def _valores_dos_alvos(
@@ -144,10 +153,11 @@ def _unidades_alvo(alcance: TipoAlcance, valores: Mapping[str, int]) -> tuple[in
     """Despacha pelo subtipo concreto: é ele que sabe se o número é uma unidade ou a pessoa lotada
     nela. A regra de pertencimento é a mesma para todos e fica escrita uma vez só, em
     `conferir_alvo`; alcance novo sem ramo aqui estoura em vez de passar batido."""
-    if isinstance(alcance, UnidadesSubordinadas):
-        # Cada parâmetro declarado carrega uma unidade. O `if` é o mesmo caso de leitura sem alvo
-        # escolhido que `_valores_dos_alvos` já deixou passar: em POST a ausência virou 400 lá
-        # (SPEC user_admin/020).
+    if isinstance(alcance, UnidadesSubordinadas | UnidadesEstritamenteSubordinadas):
+        # Os dois alcances de unidade extraem o alvo do mesmo jeito — cada parâmetro declarado
+        # carrega uma unidade. O `if` é o mesmo caso de leitura sem alvo escolhido que
+        # `_valores_dos_alvos` já deixou passar: em POST a ausência virou 400 lá (SPEC
+        # user_admin/020).
         return tuple(valores[parametro] for parametro in alcance.parametros_alvo if parametro in valores)
     if isinstance(alcance, LotacaoDoServidor):
         # A mesma leitura de `LotacaoAtualEDestino`, sem destino: aceitar a unidade do cliente
@@ -183,7 +193,7 @@ def pode_executar(
         return False
     if acao.acao.alcance is None or id_unidade_alvo is None:
         return True
-    return id_unidade_alvo in alcance_do_perfil(cast(Perfil, usuario))
+    return id_unidade_alvo in _conjunto_alcancado(acao.acao.alcance, cast(Perfil, usuario))
 
 
 def _valor_do_parametro(

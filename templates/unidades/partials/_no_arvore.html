@@ -20,10 +20,10 @@
     <span class="etched-line no-arvore-barra"></span>
     <span class="etched-line no-arvore-fio"></span>
   {% endif %}
-  <div class="card-unidade {% if no.no_caminho or no.em_foco %}card-unidade-poco{% else %}card-unidade-repouso glass-panel{% endif %}{% if no.em_foco %} card-unidade-ego{% endif %}">
+  <div class="card-unidade {% if no.no_caminho or no.em_foco %}card-unidade-poco{% else %}card-unidade-repouso glass-panel{% endif %}{% if no.em_foco %} card-unidade-ego{% endif %}{% if no.extinta %} card-unidade-extinta{% endif %}">
     <button class="card-unidade-gatilho" type="button" title="{{ no.unidade.sigla }} · {{ no.unidade.nome }}">
       <span class="dot-unidade w-9 h-9" style="--cor-unidade:{{ no.cor_hex }}"></span>
-      <span class="card-unidade-sigla">{{ no.unidade.sigla }}</span>
+      <span class="card-unidade-sigla{% if no.extinta %} etched etched-rotulo{% endif %}">{{ no.unidade.sigla }}</span>
       <span class="card-unidade-nome">{{ no.unidade.nome }}</span>
     </button>
     {% if com_link %}

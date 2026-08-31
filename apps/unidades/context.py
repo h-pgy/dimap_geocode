@@ -21,6 +21,7 @@ from apps.unidades.direcao import (
     estado_da_direcao,
     rotulo_do_minimo,
 )
+from apps.unidades.extincao import previa_da_extincao, previa_da_reativacao
 from apps.unidades.models import CorUnidade, TipoUnidade, Unidade
 from apps.unidades.paleta import hex_da_cor, tons_da_paleta
 from apps.unidades.titularidade import candidatos_a_titular
@@ -63,16 +64,19 @@ def contexto_criar_unidade(
 def contexto_listagem_unidades(
     consulta: ConsultaUnidades,
     unidade_em_foco: Unidade | None = None,
+    extintas: bool = False,
+    alcance_extincao: Collection[int] = (),
 ) -> dict[str, Any]:
     return (
         contexto_fundo_admin()
-        | contexto_organograma(unidade_em_foco)
-        | contexto_corpo_unidades(consulta, unidade_em_foco)
+        | contexto_organograma(unidade_em_foco, extintas=extintas)
+        | contexto_corpo_unidades(consulta, unidade_em_foco, extintas, alcance_extincao)
         | {
             "colunas": colunas_da_tabela(consulta, ColunaUnidade, ROTULO_COLUNAS_UNIDADE),
             # Os campos ocultos que viajam com os filtros: a ordem sobrevive à troca do corpo.
             "ordenar_por": consulta.ordenar_por or "",
             "descendente": marca_descendente(consulta),
+            "extintas": extintas,
         }
     )
 
@@ -80,13 +84,21 @@ def contexto_listagem_unidades(
 def contexto_corpo_unidades(
     consulta: ConsultaUnidades,
     unidade_em_foco: Unidade | None = None,
+    extintas: bool = False,
+    alcance_extincao: Collection[int] = (),
 ) -> dict[str, Any]:
-    linhas = _linhas_de_unidades()
+    # O recorte desce como DADO até a borda que lê o banco, e o mesmo valor vai para a árvore
+    # (SPEC user_admin/025): as duas nunca discordam sobre quem existe.
+    linhas = _linhas_de_unidades(com_extintas=extintas)
     processadas = listar_unidades(linhas, consulta)
     return {
         "linhas": _foco_no_topo(processadas, unidade_em_foco),
         "total_unidades": len(linhas),
         "unidade_foco_pk": unidade_em_foco.pk if unidade_em_foco else None,
+        "extintas": extintas,
+        # A lixeira é UX — não renderizá-la não é a barreira, que segue na rota (§3.5). Conjunto, e
+        # não booleano por linha: a mesma pergunta que `pode_executar` faria, uma vez só.
+        "alcance_extincao": frozenset(alcance_extincao),
     }
 
 
@@ -138,6 +150,7 @@ def contexto_organograma(
     com_link: bool = True,
     com_irmas: bool = True,
     abrir_o_ego: bool = False,
+    extintas: bool = False,
 ) -> dict[str, Any]:
     """A seção da página da unidade (caminho aberto até `unidade_em_foco`) e a página da árvore
     inteira (`unidade_em_foco=None`) nascem da mesma regra: a posição da raiz é o organograma
@@ -145,18 +158,31 @@ def contexto_organograma(
 
     `arvores` recorta o organograma ao que o chamador alcança; sem elas, a hierarquia inteira.
     Recebe a árvore pronta, e não as raízes, porque quem tem o recorte já a percorreu para saber
-    qual é (SPEC autorizacao/007)."""
+    qual é (SPEC autorizacao/007).
+
+    `extintas` (SPEC user_admin/025) é a pergunta da TELA, e não a do alcance estrito — que também
+    usa `com_extintas`, por outro motivo (a unidade recém-extinta tem de continuar alcançável para
+    ser reativada). Mesmo parâmetro, duas perguntas: nenhuma das duas decide pela outra. A árvore
+    obedece ao MESMO toggle que a tabela: com ele desligado, a extinta não é nó."""
     # A regra devolve ids; o template precisa de unidades. Casar as duas coisas aqui é o que impede
     # o domínio de conhecer `Unidade` e o template de conhecer id solto.
+    gerente = Unidade.todas if extintas else Unidade.objects
     ramos = (
         list(arvores)
         if arvores is not None
-        else [posicao_de(raiz.pk).ego for raiz in Unidade.objects.filter(pai__isnull=True)]
+        else [
+            posicao_de(raiz.pk, com_extintas=extintas).ego
+            for raiz in gerente.filter(pai__isnull=True)
+        ]
     )
-    por_id = Unidade.objects.in_bulk(
+    por_id = gerente.in_bulk(
         frozenset(unidade_id for ramo in ramos for unidade_id in ramo.ids)
     )
-    caminho = frozenset(posicao_de(unidade_em_foco.pk).acima) if unidade_em_foco else frozenset()
+    caminho = (
+        frozenset(posicao_de(unidade_em_foco.pk, com_extintas=extintas).acima)
+        if unidade_em_foco
+        else frozenset()
+    )
     # Ordenar aqui, e não na origem: sigla é da `Unidade`, e é o `in_bulk` desta função que a tem
     # em mãos. `unidades_dirigidas` devolve conjunto — sem isto a árvore trocaria de ordem entre
     # duas aberturas da mesma tela.
@@ -262,6 +288,51 @@ def contexto_edicao_recusada(
     )
 
 
+def contexto_modal_do_ato(unidade: Unidade | None, alcance: Collection[int]) -> dict[str, Any]:
+    """A face é o estado da unidade, resolvido uma vez e entregue pronto ao template: perguntar
+    `extinta_em` dentro do HTML espalharia a decisão por cada bloco do modal (SPEC user_admin/025).
+    Sem unidade escolhida — aberto pela barra, sem linha em foco —, a face é a de extinguir e ainda
+    não há prévia: o select espera a escolha."""
+    if unidade is not None and unidade.extinta_em is not None:
+        return {"face": "reativar", "previa": previa_da_reativacao(unidade)}
+    return {
+        "face": "extinguir",
+        "previa": previa_da_extincao(unidade) if unidade is not None else None,
+        "unidades": _unidades_extinguiveis(alcance),
+    }
+
+
+def contexto_previa_do_ato(unidade: Unidade) -> dict[str, Any]:
+    """A prévia sozinha, recalculada a cada troca do select (SPEC user_admin/025) — mesma regra de
+    face que `contexto_modal_do_ato`, sem o select: a unidade já chega escolhida."""
+    if unidade.extinta_em is not None:
+        return {"face": "reativar", "previa": previa_da_reativacao(unidade)}
+    return {"face": "extinguir", "previa": previa_da_extincao(unidade)}
+
+
+def contexto_ato_recusado(
+    valores: Mapping[str, Any],
+    recusa: RecusaDeFormulario,
+    alcance: Collection[int],
+) -> dict[str, Any]:
+    """O modal remontado sobre a recusa, no mesmo formato do `contexto_unidade_recusada` da SPEC
+    020: a face é recalculada do alvo que veio no POST, para que a recusa da reativação não volte
+    vestida de extinção."""
+    unidade_id = valores.get("unidade_id")
+    unidade = Unidade.todas.filter(pk=unidade_id).first() if unidade_id else None
+    return contexto_modal_do_ato(unidade, alcance) | {
+        "valores": valores,
+        "erros": recusa.mensagens,
+        "realce": recusa.realce,
+    }
+
+
+def _unidades_extinguiveis(alcance: Collection[int]) -> Any:
+    # `Unidade.objects` filtra as vigentes: mesmo o alcance estrito trazendo extinta (com_extintas
+    # em `protecao.py`), o select nunca oferece extinguir quem já saiu da estrutura.
+    return Unidade.objects.filter(pk__in=alcance).order_by("sigla")
+
+
 def catalogo_de_unidades(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
     """`ids_permitidos` recorta o catálogo ao alcance de quem abre a tela (SPEC
     criacao_usuarios/004). Sem ele, todas — que é o que o modal de edição continua pedindo.
@@ -286,10 +357,9 @@ def _foco_no_topo(
     return no_topo + [linha for linha in linhas if linha.pk != unidade_em_foco.pk]
 
 
-def _linhas_de_unidades() -> list[LinhaUnidade]:
-    unidades = (
-        Unidade.objects.select_related("tipo", "pai").prefetch_related("perfis").order_by("sigla")
-    )
+def _linhas_de_unidades(com_extintas: bool = False) -> list[LinhaUnidade]:
+    gerente = Unidade.todas if com_extintas else Unidade.objects
+    unidades = gerente.select_related("tipo", "pai").prefetch_related("perfis").order_by("sigla")
     return [_linha_da_unidade(unidade) for unidade in unidades]
 
 
@@ -306,6 +376,7 @@ def _linha_da_unidade(unidade: Unidade) -> LinhaUnidade:
         titular_nome=f"{titular.nome} {titular.sobrenome}" if titular else None,
         pai_pk=unidade.pai.pk if unidade.pai else None,
         pai_sigla=unidade.pai.sigla if unidade.pai else None,
+        extinta=unidade.extinta_em is not None,
     )
 
 
@@ -323,6 +394,7 @@ def _ramo(
         "cor_hex": hex_da_cor(unidade.cor),
         "no_caminho": no.unidade_id in caminho,
         "em_foco": em_foco is not None and no.unidade_id == em_foco.pk,
+        "extinta": unidade.extinta_em is not None,
         "filhas": [_ramo(filha, por_id, caminho, em_foco) for filha in no.filhas],
     }
 

@@ -5,6 +5,7 @@
 
 {% block content %}
   {% include "mapping/_mapa_admin.html" %}
+  {% include "unidades/partials/_glifos_unidade.html" %}
 
   {# Mesma moldura das páginas administrativas: fundo à deriva e conteúdo na shell. #}
   <div class="admin-shell">
@@ -17,31 +18,24 @@
               {{ total_unidades }} unidade{{ total_unidades|pluralize:"s" }} cadastrada{{ total_unidades|pluralize:"s" }}. Clique na linha da tabela para situar na árvore, ou no nó para destacar na lista.
             </p>
           </div>
-          <div class="flex items-center gap-3">
-            <button type="button" class="btn btn-glass btn-xs gap-1.5"
-                    data-abrir-tudo="#organograma-unidades"
-                    data-rotulo-recolher="Recolher a árvore">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
-              Ver toda a árvore
-            </button>
-            <button type="button" class="btn-etched etched" data-limpar-filtros="#tabela-unidades">✕ limpar filtros</button>
-          </div>
+          <button type="button" class="btn btn-glass btn-xs gap-1.5"
+                  data-abrir-tudo="#organograma-unidades"
+                  data-rotulo-recolher="Recolher a árvore">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+            Ver toda a árvore
+          </button>
         </div>
 
-        {# Organograma hierárquico no topo #}
-        <div class="glass-panel rounded-2xl overflow-x-auto p-4 transition-all duration-300">
-          <div class="organograma" id="organograma-unidades">
-            {% for ramo in ramos %}
-              {% include "unidades/partials/_no_arvore.html" with no=ramo raiz=True %}
-            {% endfor %}
-          </div>
-        </div>
-
-        {# Tabela de unidades no poço inferior #}
-        {% include "unidades/partials/_tabela_unidades.html" %}
+        {# partial: unidades/partials/_painel_unidades.html — alvo do toggle e do hx-swap da        #}
+        {# conclusão do ato de extinguir (SPEC user_admin/025); o limpar filtros mora na barra.      #}
+        {% include "unidades/partials/_painel_unidades.html" %}
       </div>
     </div>
   </div>
+
+  {# Poço do modal, irmão do conteúdo: formulário aninhado é HTML inválido, e aqui fora ele escapa   #}
+  {# do contexto de empilhamento da .admin-shell. Nasce vazio — a lixeira e a barra o montam.        #}
+  <div id="poco-modal" class="poco-modal"></div>
 {% endblock %}
 
 {% block scripts %}
@@ -49,4 +43,7 @@
   <script type="module" src="{% static 'js/ui/tabela_onsen.js' %}"></script>
   <script type="module" src="{% static 'js/ui/arvore_hierarquica.js' %}"></script>
   <script type="module" src="{% static 'js/ui/sincronia_unidades.js' %}"></script>
+  {# O modal do ato chega por HTMX: sem este módulo já carregado, o select dele não é aprimorado —  #}
+  {# select_onsen.js reage a htmx:afterSwap (SPEC user_admin/011).                                   #}
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
 {% endblock %}
