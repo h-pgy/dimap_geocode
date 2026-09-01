@@ -7,12 +7,19 @@ referencia as constantes, não o objeto de settings.
 """
 
 import json
+import re
 from datetime import time
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
 from config.pontos_fundo import CatalogoPontosFundo
 
@@ -26,6 +33,67 @@ _GEOMETRIAS: dict[str, str] = _PALETA_DS["geometrias"]
 _ESCALAS: dict[str, dict[str, str]] = _PALETA_DS["escalas"]
 
 
+def _parse_lista_env(v: Any) -> list[str]:
+    """Parse resiliente de listas a partir de variáveis de ambiente.
+
+    Suporta listas nativas, strings JSON (ex: '["a", "b"]'), e strings separadas
+    por vírgula, ponto-e-vírgula, espaços ou quebras de linha, descartando itens
+    vazios e aspas residuais.
+    """
+    if v is None:
+        return []
+    if isinstance(v, (list, tuple, set)):
+        return [
+            str(item).strip().strip("'").strip('"')
+            for item in v
+            if str(item).strip().strip("'").strip('"')
+        ]
+    if isinstance(v, str):
+        v = v.strip()
+        if not v:
+            return []
+        if (v.startswith("[") and v.endswith("]")) or (v.startswith("(") and v.endswith(")")):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [
+                        str(item).strip().strip("'").strip('"')
+                        for item in parsed
+                        if str(item).strip().strip("'").strip('"')
+                    ]
+            except Exception:
+                pass
+            v = v[1:-1]
+
+        tokens = re.split(r"[,;\s]+", v)
+        return [
+            t.strip().strip("'").strip('"')
+            for t in tokens
+            if t.strip().strip("'").strip('"')
+        ]
+    return [str(v)]
+
+
+class _ResilientEnvSettingsSource(EnvSettingsSource):
+    """Fonte de env vars com fallback para valor bruto quando json.loads falha."""
+
+    def decode_complex_value(self, field_name: str, field: Any, value: Any) -> Any:
+        try:
+            return super().decode_complex_value(field_name, field, value)
+        except Exception:
+            return value
+
+
+class _ResilientDotEnvSettingsSource(DotEnvSettingsSource):
+    """Fonte de .env com fallback para valor bruto quando json.loads falha."""
+
+    def decode_complex_value(self, field_name: str, field: Any, value: Any) -> Any:
+        try:
+            return super().decode_complex_value(field_name, field, value)
+        except Exception:
+            return value
+
+
 class _Settings(BaseSettings):
     """Variáveis de ambiente do projeto (ver docker-compose.yml / .env.example)."""
 
@@ -35,11 +103,38 @@ class _Settings(BaseSettings):
         default="dev-insecure-secret-key-change-me", alias="DJANGO_SECRET_KEY"
     )
     debug: bool = Field(default=True, alias="DJANGO_DEBUG")
-    allowed_hosts: str = Field(default="*", alias="DJANGO_ALLOWED_HOSTS")
-    csrf_trusted_origins: str = Field(
-        default="https://*.ngrok-free.app,https://*.ngrok.app",
+    allowed_hosts: list[str] = Field(
+        default_factory=lambda: ["*"], alias="DJANGO_ALLOWED_HOSTS"
+    )
+    csrf_trusted_origins: list[str] = Field(
+        default_factory=lambda: [
+            "https://*.ngrok-free.app",
+            "https://*.ngrok.app",
+        ],
         alias="DJANGO_CSRF_TRUSTED_ORIGINS",
     )
+
+    @field_validator("allowed_hosts", "csrf_trusted_origins", mode="before")
+    @classmethod
+    def _parse_listas(cls, v: Any) -> list[str]:
+        return _parse_lista_env(v)
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        dotenv_file = getattr(dotenv_settings, "env_file", None)
+        return (
+            init_settings,
+            _ResilientEnvSettingsSource(settings_cls),
+            _ResilientDotEnvSettingsSource(settings_cls, dotenv_file),
+            file_secret_settings,
+        )
 
     postgres_db: str = Field(default="dimap_geocode", alias="POSTGRES_DB")
     postgres_user: str = Field(default="dimap", alias="POSTGRES_USER")
@@ -141,10 +236,8 @@ _env = _Settings()
 
 SECRET_KEY = _env.secret_key
 DEBUG = _env.debug
-ALLOWED_HOSTS = [host.strip() for host in _env.allowed_hosts.split(",") if host.strip()]
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip() for origin in _env.csrf_trusted_origins.split(",") if origin.strip()
-]
+ALLOWED_HOSTS = _env.allowed_hosts
+CSRF_TRUSTED_ORIGINS = _env.csrf_trusted_origins
 
 # WFS (GeoSampa → MDSF). A orquestração lê essas constantes e monta
 # WfsConnectionConfig para injetar no WfsFetcher (nunca o domínio lê daqui).
