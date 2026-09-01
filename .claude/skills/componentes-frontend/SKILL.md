@@ -47,7 +47,7 @@ Valores e materiais compartilhados, definidos **uma única vez** no CSS de entra
   documento a classe existe e não desenha nada. Três restrições andam com ele: **nunca carrega
   informação**, só afordância; **só vale sobre vidro claro**; e quando o sulco precisa *nomear*
   algo, a tinta sobe (`.etched-rotulo`). Duas medidas só — acima de ~32px, `.etched-lg`.
-- **Coreografia**: `.transition-glass`, `.glass-hide-up`, `.cinematic-blur-layer` (§7).
+- **Coreografia**: `.transition-glass`, `.glass-hide-up`, `.cinematic-blur-layer`, `.moldura-fixa` (§7).
 
 Regras dos tokens:
 - Cor nova **entra numa escala existente** ou não entra. Proibido hex solto no HTML/CSS de componente.

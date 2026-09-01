@@ -596,6 +596,18 @@
             </div>
             <p class="text-xs text-base-content/60">A camada de foco entre o mapa e o painel: acima em repouso, abaixo com <span class="text-code">.active</span>. O foco vem do <strong>desfoque</strong> — véu preto sobre o mapa é proibido.</p>
           </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.moldura-fixa</p>
+            <div class="card-well p-5 flex flex-col gap-3 min-h-[9rem] justify-center">
+              <div class="glass-panel rounded-full! px-4 py-2 self-start">
+                <p class="text-[13px] font-black tracking-tight text-madeira-700 m-0">DIMAP GeoCoder</p>
+              </div>
+              <div class="glass-panel rounded-full! px-4 py-2 self-start glass-hide-up">
+                <p class="text-[13px] font-black tracking-tight text-madeira-700 m-0">DIMAP GeoCoder</p>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">As duas placas fixas do topo do <span class="text-code">base.html</span> — marca e área do usuário. Com um modal aberto elas cedem o lugar pelo <span class="text-code">.glass-hide-up</span>: <span class="text-code">:root:has(.modal-toggle:checked)</span>. A classe é só o <strong>nome por onde a coreografia as alcança</strong> — não declara pele, medida nem posição.</p>
+          </div>
         </div>
       </div>
     </section>

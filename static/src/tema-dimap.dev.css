@@ -223,13 +223,12 @@ html[data-theme="dimap"] {
     @apply bg-transparent! max-h-[85vh] overflow-y-auto backdrop-blur-[28px] bg-gradient-to-br from-white/97 via-white/93 to-white/88 border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
   }
 
-  /* Neutralização de artefato de GPU (SPEC design/007): quando o modal está fechado
-     (toggle desmarcado ou ausência de .modal-open/[open]), força o descarte do backdrop-filter
-     em toda a subárvore para impedir retenção da textura de blur na memória de vídeo (Chromium/Windows). */
-  .modal-toggle:not(:checked) + .modal,
-  .modal-toggle:not(:checked) + .modal *,
-  .modal:not(.modal-open):not([open]):not(:has(.modal-toggle:checked)),
-  .modal:not(.modal-open):not([open]):not(:has(.modal-toggle:checked)) * {
+  /* Neutralização de artefato de GPU (SPEC design/007): modal fechado retém a textura do blur na
+     memória de vídeo (Chromium). A quarta porta é o toggle IRMÃO — o `:has()` o procura DENTRO do
+     `.modal` e não o encontra, e sem ela a regra alcança também o modal aberto, cujo desfoque de
+     fundo é o que dá foco ao ato. */
+  .modal:not(.modal-open, [open], :has(.modal-toggle:checked), .modal-toggle:checked + *),
+  .modal:not(.modal-open, [open], :has(.modal-toggle:checked), .modal-toggle:checked + *) * {
     backdrop-filter: none !important;
   }
 
@@ -1102,7 +1101,11 @@ html[data-theme="dimap"] {
 
   /* ==================== COREOGRAFIA ==================== */
   .transition-glass { @apply transition-all duration-500 ease-in-out; }
-  .glass-hide-up    { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }
+  /* A moldura fixa do topo (marca e área do usuário) entra pela MESMA regra, e não por uma cópia
+     dela: o modal substitui a interface, e placa fixa deixada atrás vira, sob o desfoque, uma
+     mancha da cor da unidade no lugar da foto (SPEC design/007). */
+  .glass-hide-up,
+  :root:has(.modal-toggle:checked) .moldura-fixa { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }
 
   /* Barra de busca flutuante: nasce em destaque (hero) e recolhe para o topo quando há resultado no
      DOM (CSS reage ao estado que o servidor controla — HATEOAS, sem JS de layout). #resultado-busca
