@@ -104,3 +104,21 @@ def test_pagina_administrativa_sem_ortofoto_disponivel(
 
     assert resposta.status_code == 200
     assert '<img class="fundo-ortofoto__imagem"' not in resposta.content.decode()
+
+
+def test_ortofotos_disponiveis_nao_congela_cache_quando_disco_estiver_vazio(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pontos = {"anhangabau": PontoFundo(descricao="anhangabau", lat=-23.55, lng=-46.63)}
+    monkeypatch.setattr(mapping_context, "MAP_FUNDO_DIR", tmp_path)
+    monkeypatch.setattr(mapping_context, "MAP_FUNDO_PONTOS", pontos)
+    mapping_context.ortofotos_disponiveis.cache_clear()
+
+    assert mapping_context.ortofotos_disponiveis() == ()
+
+    (tmp_path / "anhangabau.png").write_bytes(b"png-fake")
+
+    # Detecta automaticamente no próximo acesso sem precisar de restart ou cache_clear
+    assert mapping_context.ortofotos_disponiveis() == ("anhangabau",)
+

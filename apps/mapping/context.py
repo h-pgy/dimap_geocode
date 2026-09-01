@@ -1,4 +1,3 @@
-from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -29,10 +28,31 @@ def contexto_mapa_base() -> dict[str, Any]:
     }
 
 
-@cache
+_CACHE_ORTOFOTOS: tuple[str, ...] | None = None
+
+
 def ortofotos_disponiveis() -> tuple[str, ...]:
-    """Interseção do catálogo com o disco: ponto sem PNG gerado não entra no sorteio."""
-    return tuple(chave for chave in MAP_FUNDO_PONTOS if (MAP_FUNDO_DIR / f"{chave}.png").exists())
+    """Interseção do catálogo com o disco: ponto sem PNG gerado não entra no sorteio.
+    Só fixa o cache em memória quando encontrar fotos no disco, evitando congelar o processo
+    com uma lista vazia caso o servidor web suba antes do comando de geração rodar."""
+    global _CACHE_ORTOFOTOS
+    if _CACHE_ORTOFOTOS is not None:
+        return _CACHE_ORTOFOTOS
+
+    encontradas = tuple(
+        chave for chave in MAP_FUNDO_PONTOS if (MAP_FUNDO_DIR / f"{chave}.png").exists()
+    )
+    if encontradas:
+        _CACHE_ORTOFOTOS = encontradas
+    return encontradas
+
+
+def _cache_clear() -> None:
+    global _CACHE_ORTOFOTOS
+    _CACHE_ORTOFOTOS = None
+
+
+ortofotos_disponiveis.cache_clear = _cache_clear  # type: ignore[attr-defined]
 
 
 def contexto_fundo_admin() -> dict[str, Any]:
