@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/026 — Titularidade como ato administrativo (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <script type="text/css" id="tokens-spec">
+    /* Nenhum token novo: esta SPEC compõe exclusivamente peças existentes do Design System. */
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+
+<body class="min-h-screen text-base-content">
+
+  <!-- defs de gravação (SPEC user_admin/013) -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Glifos do sistema -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-titular">
+        <circle cx="9.5" cy="8" r="3.2"/>
+        <path d="M4 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="m18.4 3.6 1.1 2.2 2.5.36-1.8 1.75.42 2.47-2.22-1.17-2.22 1.17.43-2.47-1.8-1.75 2.48-.36z"/>
+      </g>
+      <g id="glifo-substituto">
+        <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+      </g>
+      <g id="glifo-alerta">
+        <path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/>
+      </g>
+      <g id="glifo-lixeira">
+        <path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
+      </g>
+      <g id="glifo-check">
+        <path d="M20 6 9 17l-5-5"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC user_admin/026 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Titularidade como ato administrativo</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como navegar neste mock</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          Este mock demonstra a composição dos átomos e moléculas existentes do Design System
+          (<span class="text-code">.avatar-glass</span>, <span class="text-code">.tarja-vinculo</span>, <span class="text-code">.stats-onsen</span>,
+          <span class="text-code">.select-onsen</span>) para os três atos de titularidade de unidade (<strong>Definir</strong>, <strong>Trocar</strong> e <strong>Destituir</strong>),
+          além do <strong>modal direto (standalone)</strong> do Painel de Ações (<span class="text-code">unidades:modal_definir_titular</span>).
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ DESTAQUE: CARD NO PAINEL DE AÇÕES (STANDALONE) ============ -->
+    <section class="flex flex-col gap-4">
+      <div>
+        <p class="text-overline text-madeira-600">Acesso via Painel de Ações</p>
+        <h2 class="text-xl font-bold text-madeira-700">Card Standalone no Painel de Ações (SPEC painel/001)</h2>
+      </div>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <p class="text-sm text-base-content/80">
+          No Painel de Ações (<span class="text-code">painel:painel</span>), a ação <span class="text-code">unidades.definir_titular</span> aparece na aba de Gestão/Estrutura.
+          Ao clicar no card, abre-se o <strong>Modal Standalone</strong> onde o usuário seleciona a unidade do seu alcance:
+        </p>
+
+        <div class="max-w-md">
+          <!-- Card de ação do painel -->
+          <label for="modal-standalone-titularidade" class="card-well p-5 flex items-start gap-4 cursor-pointer hover:border-madeira-500/40 transition group">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0 group-hover:scale-105 transition">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <use href="#glifo-titular"/>
+              </svg>
+            </span>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-bold text-madeira-700 text-base group-hover:text-madeira-800">Definir ou trocar titular</h3>
+              <p class="text-xs text-base-content/70 mt-1">Nomeia, troca ou destitui o titular de uma unidade subordinada da sua área.</p>
+              <span class="btn btn-onsen btn-xs mt-3">Abrir ação</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CENÁRIO 1: UNIDADE COM TITULAR VIGENTE ============ -->
+    <section class="flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-overline text-madeira-600">Cenário na Página da Unidade</p>
+          <h2 class="text-xl font-bold text-madeira-700">Seção de Direção · Unidade Dirigida (DIMAP-1)</h2>
+        </div>
+        <span class="badge badge-success badge-soft">Dirigida pelo titular</span>
+      </div>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div class="flex items-center justify-between gap-4 pb-3 border-b border-white/40">
+          <div>
+            <h3 class="text-lg font-bold text-madeira-700">DIMAP-1 · Divisão de Avaliação Imobiliária</h3>
+            <p class="text-xs text-base-content/60">Subordinada a: DIMAP · Departamento de Identificação e Mapeamento</p>
+          </div>
+          <span class="badge badge-outline border-madeira-700/30 text-madeira-700 font-mono text-xs">CDA-IV</span>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Direção da unidade</p>
+            <span class="badge badge-success badge-soft">Titular ativo</span>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              </div>
+              <div class="stat-title">Titular</div>
+              <div class="stat-value">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade: #0077B6;">
+                    <svg viewBox="0 0 100 100" class="w-full h-full" aria-hidden="true">
+                      <rect width="100" height="100" fill="#ADE8F4" fill-opacity="0.35"/>
+                      <text x="50" y="58" font-family="'Roboto', sans-serif" font-weight="700" font-size="34" fill="#023E8A" text-anchor="middle" dominant-baseline="middle">HP</text>
+                    </svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="linha-pessoa-nome text-base font-bold text-madeira-700">Helena Pougy</p>
+                    <p class="linha-pessoa-meta text-xs text-base-content/70">RF 892.341-0 · CDA-IV · Diretora de Divisão</p>
+                  </div>
+                </div>
+              </div>
+              <div class="stat-desc"><span class="badge badge-success badge-soft badge-sm">Em exercício</span></div>
+            </div>
+
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              </div>
+              <div class="stat-title">Substituto Designado</div>
+              <div class="stat-value">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade: #5B7290;">
+                    <svg viewBox="0 0 100 100" class="w-full h-full" aria-hidden="true">
+                      <rect width="100" height="100" fill="#C5CCD3" fill-opacity="0.35"/>
+                      <text x="50" y="58" font-family="'Roboto', sans-serif" font-weight="700" font-size="34" fill="#1B263B" text-anchor="middle" dominant-baseline="middle">RA</text>
+                    </svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="linha-pessoa-nome text-base font-bold text-madeira-700">Renato Alves</p>
+                    <p class="linha-pessoa-meta text-xs text-base-content/70">RF 712.908-1 · CDA-III · Supervisor de Área</p>
+                  </div>
+                </div>
+              </div>
+              <div class="stat-desc">Cobre o titular nos períodos de afastamento.</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-end gap-3 pt-2">
+            <label for="modal-destituir-titular" class="btn btn-glass btn-sm gap-2 text-error hover:bg-error/10">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+              Destituir
+            </label>
+            <label for="modal-trocar-titular" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              Trocar titular
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CENÁRIO 2: UNIDADE VAGA / PÓS-DESTITUIÇÃO ============ -->
+    <section class="flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-overline text-madeira-600">Cenário na Página da Unidade</p>
+          <h2 class="text-xl font-bold text-madeira-700">Seção de Direção · Unidade Sem Titular (Vaga Aberta)</h2>
+        </div>
+        <span class="badge badge-error badge-soft">Sem titular</span>
+      </div>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div class="tarja-vinculo tarja-vinculo-critica flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="flex items-start gap-3">
+            <svg class="w-6 h-6 shrink-0 text-error mt-0.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <div>
+              <p class="text-[15px] font-bold text-madeira-700">A DIMAP-1 está sem titular</p>
+              <p class="text-[13px] text-base-content/80 mt-0.5">Nenhum servidor titulariza esta unidade. As canetas estruturais da unidade estão inativas até nova nomeação.</p>
+            </div>
+          </div>
+          <label for="modal-definir-titular" class="btn btn-onsen btn-sm shrink-0 gap-2 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+            Definir novo titular
+          </label>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Direção da unidade</p>
+            <span class="badge badge-error badge-soft">Vaga em aberto</span>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat stat-vaga card-well">
+              <div class="stat-figure text-error/70!">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              </div>
+              <div class="stat-title">Titular</div>
+              <div class="stat-value">Sem titular</div>
+              <div class="stat-desc">Vaga aberta — é preciso nomear um titular com cargo compatível (mínimo CDA-IV).</div>
+            </div>
+
+            <div class="stat stat-vaga card-well">
+              <div class="stat-figure text-base-content/30!">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              </div>
+              <div class="stat-title">Substituto</div>
+              <div class="stat-value text-base-content/40!">—</div>
+              <div class="stat-desc">Sem titular não há quem substituir: a substituição cobre uma pessoa, não uma vaga.</div>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-2">
+            <label for="modal-definir-titular" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              Definir titular
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- =========================================================================
+       MODAL STANDALONE: ROTA DIRETA DO PAINEL / MENU (unidades:modal_definir_titular)
+       ========================================================================= -->
+  <input type="checkbox" id="modal-standalone-titularidade" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+      <div class="flex flex-col gap-6">
+        <!-- Cabeçalho do modal direto -->
+        <div class="flex items-start gap-3">
+          <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+              <use href="#glifo-titular"/>
+            </svg>
+          </span>
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Definir ou trocar titular</h2>
+            <p class="text-sm text-base-content/70 mt-1">Selecione a unidade subordinada para gerenciar a titularidade.</p>
+          </div>
+        </div>
+
+        <!-- Seletor de Unidade com data-select-onsen -->
+        <div class="card-well p-4">
+          <label class="form-field">
+            <span class="text-overline">Unidade subordinada</span>
+            <select id="select-unidade-standalone" class="select select-glass w-full" data-select-onsen>
+              <option value="dimap1">DIMAP-1 · Divisão de Avaliação Imobiliária (Titular: Helena Pougy)</option>
+              <option value="dimap2">DIMAP-2 · Divisão de Cadastro e Mapeamento (Vaga Aberta)</option>
+              <option value="dimap3">DIMAP-3 · Seção Técnica (Sem candidatos aptos)</option>
+            </select>
+            <span class="form-field-hint">Apenas unidades estritamente abaixo daquelas que você dirige.</span>
+          </label>
+        </div>
+
+        <!-- FACE 1: UNIDADE COM TITULAR (DIMAP-1) -->
+        <div id="face-dimap1" class="flex flex-col gap-5">
+          <div class="tarja-vinculo flex items-center justify-between">
+            <div class="linha-pessoa">
+              <div class="avatar-glass shrink-0 w-9 h-9" style="--cor-unidade: #0077B6;">
+                <svg viewBox="0 0 100 100" class="w-full h-full" aria-hidden="true">
+                  <rect width="100" height="100" fill="#ADE8F4" fill-opacity="0.35"/>
+                  <text x="50" y="58" font-family="'Roboto', sans-serif" font-weight="700" font-size="34" fill="#023E8A" text-anchor="middle" dominant-baseline="middle">HP</text>
+                </svg>
+              </div>
+              <div>
+                <p class="text-xs text-base-content/60 uppercase font-medium tracking-wider">Titular Atual</p>
+                <p class="text-sm font-bold text-madeira-700">Helena Pougy · RF 892.341-0</p>
+              </div>
+            </div>
+            <span class="badge badge-success badge-soft badge-sm">Em exercício</span>
+          </div>
+
+          <label class="form-field">
+            <span class="text-overline">Substituir por outro servidor da DIMAP-1</span>
+            <select class="select select-glass w-full" data-select-onsen>
+              <option value="2">Renato Alves · RF 712.908-1 · CDA-IV · Supervisor de Área</option>
+              <option value="3">Mariana Costa · RF 654.321-9 · CDA-IV · Especialista</option>
+            </select>
+          </label>
+
+          <div class="modal-action flex items-center justify-between pt-2">
+            <label for="modal-destituir-titular" class="btn btn-glass btn-sm text-error gap-1.5" onclick="document.getElementById('modal-standalone-titularidade').checked = false;">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+              Destituir titular
+            </label>
+            <div class="flex gap-2">
+              <label for="modal-standalone-titularidade" class="btn btn-glass btn-sm">Fechar</label>
+              <label for="modal-standalone-titularidade" class="btn btn-onsen btn-sm gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+                Trocar titular
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- FACE 2: UNIDADE VAGA (DIMAP-2) -->
+        <div id="face-dimap2" class="hidden flex flex-col gap-5">
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+            <svg class="w-5 h-5 shrink-0 text-error mt-0.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <div class="text-xs">
+              <p class="font-bold text-madeira-700">A DIMAP-2 está sem titular</p>
+              <p class="text-base-content/80 mt-0.5">Selecione um dos servidores aptos lotados nesta unidade para assumir a chefia.</p>
+            </div>
+          </div>
+
+          <label class="form-field">
+            <span class="text-overline">Servidor que assumirá a direção da DIMAP-2</span>
+            <select class="select select-glass w-full" data-select-onsen>
+              <option value="4">Carlos Eduardo · RF 543.210-8 · CDA-IV · Chefe de Seção</option>
+              <option value="5">Patrícia Lima · RF 432.109-7 · CDA-IV · Especialista</option>
+            </select>
+          </label>
+
+          <div class="modal-action flex items-center justify-end gap-2 pt-2">
+            <label for="modal-standalone-titularidade" class="btn btn-glass btn-sm">Fechar</label>
+            <label for="modal-standalone-titularidade" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+              Definir titular
+            </label>
+          </div>
+        </div>
+
+        <!-- FACE 3: SEM CANDIDATOS APTOS (DIMAP-3) -->
+        <div id="face-dimap3" class="hidden flex flex-col gap-5">
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+            <svg class="w-5 h-5 shrink-0 text-error mt-0.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <div class="text-xs">
+              <p class="font-bold text-madeira-700">Nenhum servidor da DIMAP-3 pode titularizar</p>
+              <p class="text-base-content/80 mt-0.5">Titularizar exige cargo em comissão de chefia compatível com o tipo (mínimo CDA-III). Lote um servidor com cargo compatível na unidade para poder nomeá-lo.</p>
+            </div>
+          </div>
+
+          <div class="modal-action flex items-center justify-end gap-2 pt-2">
+            <label for="modal-standalone-titularidade" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-standalone-titularidade">Fechar</label>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 1: DESTITUIR TITULAR (com transição integrada)
+       ========================================================================= -->
+  <input type="checkbox" id="modal-destituir-titular" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <div class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Destituir titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">DIMAP-1 · Divisão de Avaliação Imobiliária</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">Titular a ser destituído(a)</p>
+          <div class="tarja-vinculo">
+            <div class="linha-pessoa">
+              <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade: #0077B6;">
+                <svg viewBox="0 0 100 100" class="w-full h-full" aria-hidden="true">
+                  <rect width="100" height="100" fill="#ADE8F4" fill-opacity="0.35"/>
+                  <text x="50" y="58" font-family="'Roboto', sans-serif" font-weight="700" font-size="34" fill="#023E8A" text-anchor="middle" dominant-baseline="middle">HP</text>
+                </svg>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="linha-pessoa-nome font-bold text-madeira-700">Helena Pougy</p>
+                <p class="linha-pessoa-meta text-xs text-base-content/70">RF 892.341-0 · CDA-IV · Diretora de Divisão</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-error mt-0.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="text-[13px] text-base-content/80 flex flex-col gap-1">
+            <p><strong>A vaga será aberta:</strong> a servidora deixa de dirigir a DIMAP-1, mantendo seu cargo e lotação.</p>
+            <p>As <strong>delegações nominais</strong> e <strong>substituições vigentes</strong> atreladas a esta titularidade serão encerradas na mesma transação.</p>
+          </div>
+        </div>
+
+        <div class="card-well p-4 flex flex-col gap-3">
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-sm font-medium text-madeira-700 flex items-center gap-2">
+              <svg class="w-4 h-4 text-agua-700" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              Deseja definir um novo titular agora?
+            </span>
+            <input type="checkbox" id="toggle-definir-junto" class="toggle toggle-primary toggle-sm" onchange="
+              document.getElementById('bloco-novo-titular').classList.toggle('hidden', !this.checked);
+              document.getElementById('btn-destituir-puro').classList.toggle('hidden', this.checked);
+              document.getElementById('btn-trocar-junto').classList.toggle('hidden', !this.checked);
+              document.dispatchEvent(new CustomEvent('htmx:afterSwap'));
+            " />
+          </label>
+
+          <div id="bloco-novo-titular" class="hidden flex flex-col gap-3 pt-3 border-t border-white/40">
+            <label class="form-field">
+              <span class="text-overline">Novo titular da DIMAP-1</span>
+              <select name="novo_titular" class="select select-glass w-full" data-select-onsen>
+                <option value="2">Renato Alves · RF 712.908-1 · CDA-IV · Supervisor de Área</option>
+                <option value="3">Mariana Costa · RF 654.321-9 · CDA-IV · Especialista</option>
+              </select>
+              <span class="form-field-hint">Apenas servidores lotados na DIMAP-1 com cargo compatível (mínimo CDA-IV).</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-action flex items-center justify-end gap-3 pt-2">
+          <label for="modal-destituir-titular" class="btn btn-glass btn-sm">Cancelar</label>
+          <label id="btn-destituir-puro" for="modal-destituir-titular" class="btn btn-error btn-soft btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+            Destituir e deixar vaga
+          </label>
+          <label id="btn-trocar-junto" for="modal-destituir-titular" class="hidden btn btn-onsen btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+            Destituir e nomear novo titular
+          </label>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-destituir-titular">Fechar</label>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 2: TROCAR TITULAR (Acesso direto na tela da unidade)
+       ========================================================================= -->
+  <input type="checkbox" id="modal-trocar-titular" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Trocar titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">DIMAP-1 · Divisão de Avaliação Imobiliária</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">Titular atual</p>
+          <div class="tarja-vinculo">
+            <div class="linha-pessoa">
+              <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade: #0077B6;">
+                <svg viewBox="0 0 100 100" class="w-full h-full" aria-hidden="true">
+                  <rect width="100" height="100" fill="#ADE8F4" fill-opacity="0.35"/>
+                  <text x="50" y="58" font-family="'Roboto', sans-serif" font-weight="700" font-size="34" fill="#023E8A" text-anchor="middle" dominant-baseline="middle">HP</text>
+                </svg>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="linha-pessoa-nome font-bold text-madeira-700">Helena Pougy</p>
+                <p class="linha-pessoa-meta text-xs text-base-content/70">RF 892.341-0 · CDA-IV · Diretora de Divisão</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <label class="form-field">
+          <span class="text-overline">Novo titular</span>
+          <select name="titular" class="select select-glass w-full" data-select-onsen>
+            <option value="2">Renato Alves · RF 712.908-1 · CDA-IV · Supervisor de Área</option>
+            <option value="3">Mariana Costa · RF 654.321-9 · CDA-IV · Especialista</option>
+          </select>
+          <span class="form-field-hint">Servidores lotados na DIMAP-1 com cargo em comissão de chefia compatível (CDA-IV).</span>
+        </label>
+
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-warning mt-0.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="min-w-0 text-[13px] text-base-content/80 flex flex-col gap-1">
+            <p><strong>Helena Pougy</strong> será destituída na mesma transação atômica.</p>
+            <p>As delegações estruturais anteriores serão encerradas e a nova chefia assume o vínculo de direção imediatamente.</p>
+          </div>
+        </div>
+
+        <div class="modal-action flex items-center justify-end gap-3 pt-2">
+          <label for="modal-trocar-titular" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-trocar-titular" class="btn btn-onsen btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+            Trocar titular
+          </label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-trocar-titular">Fechar</label>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 3: DEFINIR TITULAR (Para unidade com vaga aberta)
+       ========================================================================= -->
+  <input type="checkbox" id="modal-definir-titular" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Definir titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">DIMAP-1 · Divisão de Avaliação Imobiliária · hoje sem titular</p>
+        </div>
+
+        <label class="form-field">
+          <span class="text-overline">Servidor que assumirá a direção</span>
+          <select name="titular" class="select select-glass w-full" data-select-onsen>
+            <option value="2">Renato Alves · RF 712.908-1 · CDA-IV · Supervisor de Área</option>
+            <option value="3">Mariana Costa · RF 654.321-9 · CDA-IV · Especialista</option>
+          </select>
+          <span class="form-field-hint">A lista traz quem é lotado na DIMAP-1, em exercício, e possui cargo compatível com o tipo (mínimo CDA-IV).</span>
+        </label>
+
+        <div class="tarja-vinculo flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-agua-700" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+          <p class="text-[13px] text-base-content/80">Titularizar marca o vínculo de direção da unidade, liberando as canetas estruturais subordinadas a quem responde por ela.</p>
+        </div>
+
+        <div class="modal-action flex items-center justify-end gap-3 pt-2">
+          <label for="modal-definir-titular" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-definir-titular" class="btn btn-onsen btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+            Definir titular
+          </label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-definir-titular">Fechar</label>
+  </div>
+
+  <!-- Carregamento do Módulo select_onsen.js para transformar todos os select[data-select-onsen] no componente de vidro -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+
+  <!-- Script local para sincronizar as faces do modal standalone no mock -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const selUnidade = document.getElementById("select-unidade-standalone");
+      if (selUnidade) {
+        selUnidade.addEventListener("change", (e) => {
+          const v = e.target.value;
+          document.getElementById('face-dimap1').classList.toggle('hidden', v !== 'dimap1');
+          document.getElementById('face-dimap2').classList.toggle('hidden', v !== 'dimap2');
+          document.getElementById('face-dimap3').classList.toggle('hidden', v !== 'dimap3');
+        });
+      }
+    });
+  </script>
+
+</body>
+</html>

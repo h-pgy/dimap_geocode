@@ -1,11 +1,13 @@
-{# Modal de trocar titular (SPEC user_admin/016): destitui o atual e define o novo na mesma        #}
-{# operação — o ato de titularidade da SPEC 014. Só há conteúdo quando existe titular; sem um, o    #}
-{# botão que abre este modal nem aparece na seção de direção.                                       #}
 <input type="checkbox" id="modal-trocar-titular" class="modal-toggle" />
 <div class="modal modal-glass" role="dialog">
   <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
     {% if titular %}
-      <form class="flex flex-col gap-6">
+      <form hx-post="{% url 'unidades:gravar_definir_titular' %}"
+            hx-target="#poco-modal"
+            class="flex flex-col gap-6"
+            onsubmit="document.getElementById('modal-trocar-titular').checked = false;">
+        {% csrf_token %}
+        <input type="hidden" name="unidade" value="{{ unidade.pk }}">
         <div>
           <h2 class="text-xl font-bold tracking-tight text-madeira-700">Trocar titular</h2>
           <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {{ unidade.nome }}</p>
@@ -46,7 +48,10 @@
 
         <div class="modal-action">
           <label for="modal-trocar-titular" class="btn btn-glass btn-sm">Cancelar</label>
-          <label for="modal-trocar-titular" class="btn btn-onsen btn-sm">Trocar</label>
+          <button type="submit" class="btn btn-onsen btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+            Trocar
+          </button>
         </div>
       </form>
     {% endif %}

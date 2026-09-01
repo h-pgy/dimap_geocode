@@ -1,11 +1,13 @@
-{# Modal de definir titular (SPEC user_admin/016): a lista é `candidatos_a_titular` — quem já é    #}
-{# lotado na unidade e satisfaz o cargo mínimo do tipo. Sem nenhum candidato, diz o que falta em    #}
-{# vez de abrir um campo vazio. O submit não tem destino: o ato é da SPEC 014 (Caveats).            #}
 <input type="checkbox" id="modal-definir-titular" class="modal-toggle" />
 <div class="modal modal-glass" role="dialog">
   <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
     {% if candidatos %}
-      <form class="flex flex-col gap-6">
+      <form hx-post="{% url 'unidades:gravar_definir_titular' %}"
+            hx-target="#poco-modal"
+            class="flex flex-col gap-6"
+            onsubmit="document.getElementById('modal-definir-titular').checked = false;">
+        {% csrf_token %}
+        <input type="hidden" name="unidade" value="{{ unidade.pk }}">
         <div>
           <h2 class="text-xl font-bold tracking-tight text-madeira-700">Definir titular</h2>
           <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {{ unidade.tipo.nome }} · hoje sem titular</p>
@@ -28,7 +30,10 @@
 
         <div class="modal-action">
           <label for="modal-definir-titular" class="btn btn-glass btn-sm">Cancelar</label>
-          <label for="modal-definir-titular" class="btn btn-onsen btn-sm">Definir</label>
+          <button type="submit" class="btn btn-onsen btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+            Definir
+          </button>
         </div>
       </form>
     {% else %}

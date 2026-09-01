@@ -102,10 +102,15 @@ def contexto_corpo_unidades(
     }
 
 
-def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
-    """Uma passagem só: quem a tela carrega para desenhar é quem ela usa para decidir."""
+def contexto_secao_direcao(
+    unidade: Unidade,
+    usuario: Any = None,
+) -> dict[str, Any]:
+    from apps.competencias.protecao import pode_executar
+    from apps.unidades.acoes_declaradas import ACAO_DEFINIR_TITULAR
+    from apps.user_admin.acoes_declaradas import ACAO_DESIGNAR_SUBSTITUTO
+
     titular = unidade.titular
-    # A vigente vem da SPEC 015: o predicado de data não se copia por tela.
     substituicao = substituicao_vigente(titular) if titular else None
     substituto = substituicao.substituto if substituicao else None
     direcao = avaliar_direcao(estado_da_direcao(titular, substituto))
@@ -114,30 +119,49 @@ def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
         if titular and direcao == "sem_direcao"
         else None
     )
+    extinta = unidade.extinta_em is not None
+    pode_definir = (
+        not extinta and pode_executar(usuario, ACAO_DEFINIR_TITULAR, unidade.pk)
+        if usuario is not None
+        else False
+    )
+    pode_designar = (
+        not extinta and pode_executar(usuario, ACAO_DESIGNAR_SUBSTITUTO, unidade.pk)
+        if usuario is not None
+        else False
+    )
+    return {
+        "unidade": unidade,
+        "titular": titular,
+        "titular_selo": selo_do_exercicio(titular) if titular else None,
+        "titular_imagem": imagem_do_perfil(titular) if titular else None,
+        "titular_cor_unidade_hex": hex_da_cor(titular.cor_unidade) if titular else None,
+        "titular_impedimento": titular_impedimento,
+        "substituto": substituto,
+        "substituto_imagem": imagem_do_perfil(substituto) if substituto else None,
+        "substituto_cor_unidade_hex": (
+            hex_da_cor(substituto.cor_unidade) if substituto else None
+        ),
+        "direcao": direcao,
+        "alarme_sem_titular": alarme_sem_titular(unidade),
+        "alarme_sem_direcao": alarme_sem_direcao(unidade, titular) if titular else "",
+        "candidatos": candidatos_a_titular(unidade),
+        "cargo_minimo": rotulo_do_minimo(unidade.tipo),
+        "pode_definir_titular": pode_definir,
+        "pode_designar_substituto": pode_designar,
+    }
+
+
+def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
+    """Uma passagem só: quem a tela carrega para desenhar é quem ela usa para decidir."""
     return (
         contexto_fundo_admin()
         | _catalogos_de_unidade()
         | contexto_organograma(unidade)
+        | contexto_secao_direcao(unidade)
         | {
-            "unidade": unidade,
             "unidade_cor_hex": hex_da_cor(unidade.cor),
             "pai_cor_hex": hex_da_cor(unidade.pai.cor) if unidade.pai else None,
-            "titular": titular,
-            "titular_selo": selo_do_exercicio(titular) if titular else None,
-            "titular_imagem": imagem_do_perfil(titular) if titular else None,
-            "titular_cor_unidade_hex": hex_da_cor(titular.cor_unidade) if titular else None,
-            "titular_impedimento": titular_impedimento,
-            "substituto": substituto,
-            "substituto_imagem": imagem_do_perfil(substituto) if substituto else None,
-            "substituto_cor_unidade_hex": (
-                hex_da_cor(substituto.cor_unidade) if substituto else None
-            ),
-            # O template acende selo e alarme pelo enum; a causa é decidida no domínio.
-            "direcao": direcao,
-            "alarme_sem_titular": alarme_sem_titular(unidade),
-            "alarme_sem_direcao": alarme_sem_direcao(unidade, titular) if titular else "",
-            "candidatos": candidatos_a_titular(unidade),
-            "cargo_minimo": rotulo_do_minimo(unidade.tipo),
             "total_lotados": unidade.perfis.count(),
         }
     )

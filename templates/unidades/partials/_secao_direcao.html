@@ -1,6 +1,6 @@
 {# Seção de direção (SPEC user_admin/016): quem dirige a unidade hoje, em uma de quatro respostas. #}
 {# O template escolhe a peça pelo enum; não remonta a causa com {% if %} sobre exercício.           #}
-<div class="card-well p-5 flex flex-col gap-4">
+<div id="secao-direcao" class="card-well p-5 flex flex-col gap-4">
   <div class="flex items-center justify-between gap-4">
     <p class="text-overline">Direção</p>
     {% if direcao == "titular" %}
@@ -85,18 +85,23 @@
     </div>
   </div>
 
-  <div class="flex flex-wrap justify-end gap-3">
-    {% if titular %}
-      <label for="modal-destituir-titular" class="btn btn-glass btn-sm">Destituir</label>
-      <label for="modal-trocar-titular" class="btn btn-onsen btn-sm gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
-        Trocar titular
-      </label>
-    {% else %}
-      <label for="modal-definir-titular" class="btn btn-onsen btn-sm gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
-        Definir titular
-      </label>
-    {% endif %}
-  </div>
+  {% if pode_definir_titular %}
+    <div class="flex flex-wrap justify-end gap-3">
+      {% if titular %}
+        <label for="modal-destituir-titular" class="btn btn-glass btn-sm text-error hover:bg-error/10">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+          Destituir
+        </label>
+        <label for="modal-trocar-titular" class="btn btn-onsen btn-sm gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+          Trocar titular
+        </label>
+      {% else %}
+        <label for="modal-definir-titular" class="btn btn-onsen btn-sm gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+          Definir titular
+        </label>
+      {% endif %}
+    </div>
+  {% endif %}
 </div>

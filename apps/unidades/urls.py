@@ -40,4 +40,8 @@ urlpatterns = [
     # `unidade`, e não `pk`: é o parâmetro que o alcance da ação nomeia.
     path("<int:unidade>/editar/", views.editar_unidade, name="editar_unidade"),
     path("<int:unidade>/gravar/", views.gravar_edicao_unidade, name="gravar_edicao_unidade"),
+    path("titularidade/", views.modal_definir_titular, name="modal_definir_titular"),
+    path("titularidade/face/", views.face_titularidade, name="face_titularidade"),
+    path("titularidade/gravar/", views.gravar_definir_titular, name="gravar_definir_titular"),
+    path("titularidade/destituir/", views.gravar_destituir_titular, name="gravar_destituir_titular"),
 ]

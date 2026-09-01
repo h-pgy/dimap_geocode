@@ -64,6 +64,9 @@ html[data-theme="dimap"] {
      ajustadas pelo .fundo-controle; o valor aqui é só o ponto de partida antes do JS assumir. */
   --deriva-margem: 200px;
   --deriva-periodo: 150s;
+  /* Troca de fundo sem vão (SPEC design/011): duração do crossfade entre a camada que sai e a
+     que entra — ver .fundo-ortofoto__camada. */
+  --fundo-troca-duracao: 700ms;
 }
 
 @theme {
@@ -1455,23 +1458,25 @@ html[data-theme="dimap"] {
 
   /* ==================== FUNDO DE ORTOFOTO (SPEC design/010) ==================== */
 
-  /* .fundo-ortofoto — organismo: a moldura do fundo administrativo. */
-  /* Crossfade da troca (v7), sem JS: classes que o próprio HTMX aplica e tira sozinho. */
+  /* .fundo-ortofoto — organismo: a casca que permanece, empilhando camadas absolutas
+     (SPEC design/011 — troca de fundo sem vão). */
   .fundo-ortofoto {
     @apply fixed inset-0 z-0 pointer-events-none overflow-hidden;
-    opacity: 1;
-    transition: opacity 350ms ease-in;
   }
-  .fundo-ortofoto.htmx-swapping {
-    opacity: 0;
-    transition: opacity 250ms ease-out;
-  }
-  .fundo-ortofoto.htmx-added {
-    opacity: 0;
-  }
-  /* Desligado no <html>, não no elemento: o HTMX substitui #fundo-ortofoto inteiro a cada
-     rodízio, e uma classe presa nele se perderia no swap seguinte (controle_fundo.js). */
+  /* Desligado no <html>, não no elemento: o HTMX empilha camadas dentro de #fundo-ortofoto a
+     cada rodízio, e uma classe presa numa camada se perderia no descarte seguinte
+     (controle_fundo.js). */
   html.fundo-desligado .fundo-ortofoto { @apply hidden; }
+
+  /* .fundo-ortofoto__camada — átomo: uma ortofoto e a deriva dela. Entra transparente; a classe
+     que a revela é posta pelo JS depois do decode(), nunca por timer (SPEC design/011). */
+  .fundo-ortofoto__camada {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity var(--fundo-troca-duracao) ease-out;
+  }
+  .fundo-ortofoto__camada--visivel { opacity: 1; }
 
   /* .fundo-ortofoto__deriva — átomo: transborda a moldura e oscila no eixo vertical. brightness/
      contrast são do MATERIAL da ortofoto (SPEC design/010 §3) — não da lente que fica por cima. */
@@ -1488,13 +1493,14 @@ html[data-theme="dimap"] {
 
   /* .fundo-ortofoto__imagem — átomo: a ortofoto, oscilando no dobro da frequência e na metade da
      amplitude do pai (Lissajous 1:2 — a volta nunca repete o mesmo traço). Longhand porque o
-     shorthand de animation com calc(var()) não parseia. */
+     shorthand de animation com calc(var()) não parseia. <img>, não background-image (SPEC
+     design/011): object-fit: cover é o equivalente exato do background-size: cover que sai daqui. */
   .fundo-ortofoto__imagem {
     position: absolute;
     inset: 0;
-    background-image: var(--fundo-ortofoto);
-    background-size: cover;
-    background-position: center;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     animation-name: deriva-horizontal;
     animation-duration: calc(var(--deriva-periodo) / 4);
     animation-timing-function: ease-in-out;

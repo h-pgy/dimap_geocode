@@ -8,25 +8,27 @@ página dela que cobra a nomeação. Só os models de `unidades` seguem cegos a 
 dependência de mão única é entre os models, não entre os atos.
 """
 
+from datetime import date
+
 from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
 
 from apps.unidades.models import Unidade, cargo_titulariza
 from apps.user_admin.models import Perfil
 
 
 def definir_titular(perfil: Perfil) -> None:
-    """Destitui o titular anterior — afastado ou não — e marca o novo na mesma transação: o índice
-    recusa os dois marcados, ainda que por um instante."""
+    """Destitui o anterior (com encerramentos) e marca o novo na mesma transação atômica."""
     with transaction.atomic():
         _destituir(perfil.unidade, exceto=perfil)
         perfil.e_titular = True
-        # Depois da destituição: validate_constraints enxerga a transação e acusaria o anterior.
         perfil.full_clean()
         perfil.save(update_fields=["e_titular"])
 
 
 def destituir_titular(unidade: Unidade) -> None:
-    """Abre a vaga: a unidade fica sem titular, e é a tela que cobra a nomeação."""
+    """Abre a vaga na unidade e encerra delegações estruturais e substituições vigentes."""
     with transaction.atomic():
         _destituir(unidade)
 
@@ -53,8 +55,36 @@ def candidatos_a_titular(unidade: Unidade) -> list[Perfil]:
 
 
 def _destituir(unidade: Unidade, exceto: Perfil | None = None) -> None:
-    # update() em massa fura a validação, mas desmarcar nunca produz titular inválido.
+    hoje = timezone.localdate()
     titulares = Perfil.objects.filter(unidade=unidade, e_titular=True)
     if exceto is not None and exceto.pk is not None:
         titulares = titulares.exclude(pk=exceto.pk)
+    for titular in titulares:
+        _encerrar_substituicoes_de_titularidade(titular, hoje)
+    _encerrar_delegacoes_da_unidade(unidade, hoje)
     titulares.update(e_titular=False)
+
+
+def _encerrar_delegacoes_da_unidade(unidade: Unidade, hoje: date) -> None:
+    from apps.competencias.models.delegacao import Delegacao
+
+    vigentes = Delegacao.objects.filter(unidade=unidade, data_inicio__lte=hoje).filter(
+        Q(data_fim__isnull=True) | Q(data_fim__gt=hoje)
+    )
+    vigentes.update(data_fim=hoje)
+    Delegacao.objects.filter(unidade=unidade, data_inicio__gt=hoje).delete()
+
+
+def _encerrar_substituicoes_de_titularidade(titular: Perfil, hoje: date) -> None:
+    from apps.user_admin.models import Substituicao
+
+    vigentes = Substituicao.objects.filter(
+        impedimento__perfil=titular,
+        data_inicio__lte=hoje,
+    ).filter(Q(data_fim__isnull=True) | Q(data_fim__gt=hoje))
+    vigentes.update(data_fim=hoje)
+    Substituicao.objects.filter(
+        impedimento__perfil=titular,
+        data_inicio__gt=hoje,
+    ).delete()
+

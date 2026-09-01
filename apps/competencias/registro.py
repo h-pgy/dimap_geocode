@@ -1,6 +1,7 @@
 from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE,
     ACAO_CRIAR_UNIDADE_RAIZ,
+    ACAO_DEFINIR_TITULAR,
     ACAO_EDITAR_UNIDADE,
     ACAO_EXTINGUIR_UNIDADE,
 )
@@ -34,8 +35,10 @@ def _construir_registro() -> RegistroAcoes:
             ACAO_EDITAR_UNIDADE,
             ACAO_CRIAR_UNIDADE_RAIZ,
             ACAO_EXTINGUIR_UNIDADE,
+            ACAO_DEFINIR_TITULAR,
         )
     )
+
 
 
 # Porta única do catálogo: uma instância por processo, no idioma dos catálogos de services/domain.

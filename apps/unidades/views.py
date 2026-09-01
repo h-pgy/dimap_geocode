@@ -16,13 +16,18 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.competencias.consulta import alcance_do_perfil, partidas_do_alcance
+from apps.competencias.consulta import (
+    alcance_do_perfil,
+    partidas_do_alcance,
+    unidades_dirigidas,
+)
 from apps.core.tabela import consulta_da_listagem
 from apps.competencias.protecao import acao_protegida, pode_executar, registrar_ato
 from apps.unidades import extincao
 from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE,
     ACAO_CRIAR_UNIDADE_RAIZ,
+    ACAO_DEFINIR_TITULAR,
     ACAO_EDITAR_UNIDADE,
     ACAO_EXTINGUIR_UNIDADE,
 )
@@ -39,11 +44,13 @@ from apps.unidades.context import (
     contexto_modal_do_ato,
     contexto_modal_unidade,
     contexto_previa_do_ato,
+    contexto_secao_direcao,
     contexto_unidade,
     contexto_unidade_selecionada,
 )
-from apps.unidades.models import Unidade
+from apps.unidades.models import Unidade, cargo_titulariza
 from apps.unidades.schemas import ConsultaDeUnidades, SelecaoUnidadePai
+from apps.unidades.titularidade import definir_titular, destituir_titular
 from apps.user_admin.models import Perfil
 from services.domain.listagem_gestao import ColunaUnidade
 
@@ -62,6 +69,10 @@ TEMPLATE_PAINEL_UNIDADES = "unidades/partials/_painel_unidades.html"
 TEMPLATE_MODAL_ATO = "unidades/partials/_modal_ato_unidade.html"
 TEMPLATE_PREVIA_ATO = "unidades/partials/_previa_e_botao_do_ato.html"
 TEMPLATE_REATIVACAO_CONCLUIDA = "unidades/partials/_reativacao_concluida.html"
+TEMPLATE_MODAL_TITULARIDADE = "unidades/partials/_modal_definir_titular_standalone.html"
+TEMPLATE_FACE_TITULARIDADE = "unidades/partials/_face_titularidade.html"
+TEMPLATE_TITULARIDADE_CONCLUIDA = "unidades/partials/_titularidade_concluida.html"
+
 
 
 @acao_protegida(ACAO_CRIAR_UNIDADE)
@@ -167,6 +178,8 @@ def pagina_unidade(request: HttpRequest, pk: int) -> HttpResponse:
             "pode_editar": not extinta and pode_executar(request.user, ACAO_EDITAR_UNIDADE, unidade.pk),
             "pode_designar_substituto": not extinta
             and pode_executar(request.user, ACAO_DESIGNAR_SUBSTITUTO, unidade.pk),
+            "pode_definir_titular": not extinta
+            and pode_executar(request.user, ACAO_DEFINIR_TITULAR, unidade.pk),
             # Extinguir e reativar são a MESMA competência (Caveats): a página oferece o gesto que
             # cabe ao estado da unidade — nunca os dois.
             "pode_extinguir": not extinta
@@ -395,3 +408,93 @@ def _valores_da_unidade(request: HttpRequest) -> dict[str, str]:
 def _autor(request: HttpRequest) -> Perfil:
     # AUTH_USER_MODEL é Perfil: autenticado aqui É um Perfil — o decorator já barrou o anônimo.
     return cast(Perfil, request.user)
+
+
+@acao_protegida(ACAO_DEFINIR_TITULAR)
+def modal_definir_titular(request: HttpRequest) -> HttpResponse:
+    """Rota direta do painel / menu: abre o modal com o seletor de unidades do alcance."""
+    autor = _autor(request)
+    alcance = (
+        Unidade.objects.all().order_by("sigla")
+        if autor.is_superuser
+        else Unidade.objects.filter(
+            pk__in=(alcance_do_perfil(autor) - unidades_dirigidas(autor))
+        ).order_by("sigla")
+    )
+    return render(
+        request,
+        TEMPLATE_MODAL_TITULARIDADE,
+        {"unidades": alcance},
+    )
+
+
+@acao_protegida(ACAO_DEFINIR_TITULAR)
+def face_titularidade(request: HttpRequest) -> HttpResponse:
+    """Atualiza a face do modal conforme a unidade escolhida no select."""
+    unidade_id = request.GET.get("unidade", "")
+    if not unidade_id.isdigit():
+        return HttpResponse("")
+    unidade = get_object_or_404(Unidade, pk=int(unidade_id))
+    return render(
+        request,
+        TEMPLATE_FACE_TITULARIDADE,
+        contexto_unidade(unidade),
+    )
+
+
+@acao_protegida(ACAO_DEFINIR_TITULAR)
+@require_POST
+def gravar_definir_titular(request: HttpRequest) -> HttpResponse:
+    unidade_id = request.POST.get("unidade", "")
+    titular_id = request.POST.get("titular", "")
+    if not unidade_id.isdigit() or not titular_id.isdigit():
+        return HttpResponse(status=400)
+    unidade_obj = get_object_or_404(Unidade, pk=int(unidade_id))
+    novo_titular = get_object_or_404(Perfil, pk=int(titular_id))
+    if (
+        novo_titular.unidade_id != unidade_obj.id
+        or not novo_titular.em_exercicio
+        or not novo_titular.cargo_comissao
+        or not cargo_titulariza(
+            novo_titular.cargo_comissao,
+            exige_alta_administracao=unidade_obj.tipo.exige_alta_administracao,
+            nivel_minimo=unidade_obj.tipo.nivel_minimo_titular,
+        )
+    ):
+        return HttpResponse(status=422)
+    operacao = "trocar" if unidade_obj.titular is not None else "definir"
+    definir_titular(novo_titular)
+    registrar_ato(
+        request,
+        operacao=operacao,
+        alvo_tipo="unidade",
+        alvo_identificador=unidade_obj.sigla,
+    )
+    return render(
+        request,
+        TEMPLATE_TITULARIDADE_CONCLUIDA,
+        contexto_secao_direcao(unidade_obj, request.user),
+    )
+
+
+@acao_protegida(ACAO_DEFINIR_TITULAR)
+@require_POST
+def gravar_destituir_titular(request: HttpRequest) -> HttpResponse:
+    unidade_id = request.POST.get("unidade", "")
+    if not unidade_id.isdigit():
+        return HttpResponse(status=400)
+    unidade_obj = get_object_or_404(Unidade, pk=int(unidade_id))
+    destituir_titular(unidade_obj)
+    registrar_ato(
+        request,
+        operacao="destituir",
+        alvo_tipo="unidade",
+        alvo_identificador=unidade_obj.sigla,
+    )
+    return render(
+        request,
+        TEMPLATE_TITULARIDADE_CONCLUIDA,
+        contexto_secao_direcao(unidade_obj, request.user),
+    )
+
+

@@ -1,5 +1,6 @@
-"""Testes de apps/mapping/views.py (SPEC design/010): a rota aberta que sorteia o fundo de
-ortofoto da área administrativa — sem ato administrativo, sem login exigido (§3.5 do CLAUDE.md).
+"""Testes de apps/mapping/views.py (SPEC design/010, design/011): a rota aberta que sorteia o
+fundo de ortofoto da área administrativa — sem ato administrativo, sem login exigido (§3.5 do
+CLAUDE.md).
 """
 
 from pathlib import Path
@@ -49,3 +50,57 @@ def test_rota_do_fundo_devolve_ortofoto_diferente(
 
     assert resposta.status_code == 200
     assert resposta.context["ortofoto_fundo"] == "ibirapuera"
+
+
+def test_rota_do_fundo_devolve_apenas_a_camada(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_catalogo_no_disco(tmp_path, monkeypatch, ("anhangabau", "ibirapuera"))
+    cliente = Client()
+
+    resposta = cliente.get(reverse("mapping:fundo_ortofoto"))
+
+    conteudo = resposta.content.decode()
+    assert "fundo-ortofoto__camada" in conteudo
+    assert 'id="fundo-ortofoto"' not in conteudo
+
+
+def test_camada_do_rodizio_chega_transparente(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_catalogo_no_disco(tmp_path, monkeypatch, ("anhangabau",))
+    cliente = Client()
+
+    do_rodizio = cliente.get(reverse("mapping:fundo_ortofoto"))
+    da_pagina = cliente.get(reverse("autenticacao:login"))
+
+    assert "fundo-ortofoto__camada--visivel" not in do_rodizio.content.decode()
+    assert "fundo-ortofoto__camada--visivel" in da_pagina.content.decode()
+
+
+def test_camada_declara_a_ortofoto_que_mostra(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_catalogo_no_disco(tmp_path, monkeypatch, ("anhangabau", "ibirapuera"))
+    cliente = Client()
+
+    resposta = cliente.get(reverse("mapping:fundo_ortofoto"), {"atual": "anhangabau"})
+
+    assert f'data-ortofoto="{resposta.context["ortofoto_fundo"]}"' in resposta.content.decode()
+
+
+@pytest.mark.banco
+def test_pagina_administrativa_sem_ortofoto_disponivel(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_catalogo_no_disco(tmp_path, monkeypatch, ())
+    cliente = Client()
+
+    resposta = cliente.get(reverse("autenticacao:login"))
+
+    assert resposta.status_code == 200
+    assert '<img class="fundo-ortofoto__imagem"' not in resposta.content.decode()

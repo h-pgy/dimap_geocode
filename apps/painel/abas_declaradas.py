@@ -7,6 +7,7 @@ from apps.competencias.acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIB
 from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE,
     ACAO_CRIAR_UNIDADE_RAIZ,
+    ACAO_DEFINIR_TITULAR,
     ACAO_EXTINGUIR_UNIDADE,
 )
 from apps.user_admin.acoes_declaradas import (
@@ -127,8 +128,7 @@ ABA_ESTRUTURA = Aba(
                 ),
                 ItemAcao(acao=ACAO_CRIAR_UNIDADE),
                 ItemAcao(acao=ACAO_CRIAR_UNIDADE_RAIZ),
-                # Fora do snippet ilustrativo da SPEC (implementada depois dele): sem card aqui, o
-                # check `painel.E004` recusaria a subida.
+                ItemAcao(acao=ACAO_DEFINIR_TITULAR, partial=PARTIAL_CARTAO_MODAL),
                 ItemAcao(acao=ACAO_EXTINGUIR_UNIDADE, partial=PARTIAL_CARTAO_MODAL),
             ),
         ),

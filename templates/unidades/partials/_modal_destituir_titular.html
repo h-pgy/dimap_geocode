@@ -1,10 +1,13 @@
-{# Modal de destituir titular (SPEC user_admin/016): abre a vaga — o ato `destituir_titular` da    #}
-{# SPEC 014. Só há conteúdo quando existe titular; sem um, o botão que abre este modal nem aparece. #}
 <input type="checkbox" id="modal-destituir-titular" class="modal-toggle" />
 <div class="modal modal-glass" role="dialog">
   <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
     {% if titular %}
-      <div class="flex flex-col gap-5">
+      <form hx-post="{% url 'unidades:gravar_destituir_titular' %}"
+            hx-target="#poco-modal"
+            class="flex flex-col gap-5"
+            onsubmit="document.getElementById('modal-destituir-titular').checked = false;">
+        {% csrf_token %}
+        <input type="hidden" name="unidade" value="{{ unidade.pk }}">
         <div>
           <h2 class="text-xl font-bold tracking-tight text-madeira-700">Destituir titular</h2>
           <p class="text-sm text-base-content/70 mt-1">{{ titular.nome }} {{ titular.sobrenome }} deixa de dirigir a {{ unidade.sigla }}.</p>
@@ -15,9 +18,12 @@
         </div>
         <div class="modal-action">
           <label for="modal-destituir-titular" class="btn btn-glass btn-sm">Cancelar</label>
-          <label for="modal-destituir-titular" class="btn btn-error btn-soft btn-sm">Destituir</label>
+          <button type="submit" class="btn btn-error btn-soft btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+            Destituir
+          </button>
         </div>
-      </div>
+      </form>
     {% endif %}
   </div>
   <label class="modal-backdrop" for="modal-destituir-titular">Fechar</label>

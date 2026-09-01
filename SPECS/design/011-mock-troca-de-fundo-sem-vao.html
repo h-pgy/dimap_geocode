@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/011 — Troca de fundo sem vão (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    :root {
+      --fundo-troca-duracao: 700ms;
+    }
+
+    @layer components {
+      /* .fundo-ortofoto__camada — átomo: uma ortofoto e a deriva dela, empilhada na casca */
+      .fundo-ortofoto__camada {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity var(--fundo-troca-duracao) ease-out;
+      }
+      .fundo-ortofoto__camada--visivel { opacity: 1; }
+
+      /* .fundo-ortofoto__imagem — átomo: passa de div com background-image a <img> */
+      .fundo-ortofoto__imagem {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        animation-name: deriva-horizontal;
+        animation-duration: calc(var(--deriva-periodo) / 4);
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+        animation-direction: alternate;
+      }
+
+      /* ANDAIME — calibragem do mock, não vai para o produto */
+      .vitrine-fundo { @apply relative h-44 overflow-hidden rounded-xl bg-rocha-900/20; }
+      .vitrine-fundo .fundo-ortofoto__imagem { animation: none; }
+      .andaime-linha { @apply flex items-center justify-between gap-4; }
+      .andaime-modo { @apply flex gap-1.5; }
+      .andaime-modo [data-modo] { @apply flex-1 justify-center; }
+      .andaime-modo [data-modo][data-estado="ativo"] { @apply bg-agua-400/30 text-agua-800; }
+    }
+  </script>
+
+  <!-- O fundo é o assunto desta SPEC: o canvas e as camadas são montados aqui, não importados
+       prontos. A lente, os glifos e os defs da gravação seguem vindo dos partials da aplicação. -->
+  <script type="module">
+    const PARTIAL_LENTE = "/templates/mapping/_mapa_admin.html";
+    const PARTIAL_GLIFOS = "/templates/mapping/_glifos_fundo.html";
+    const PARTIAL_CONTROLE = "/templates/mapping/_controle_fundo.html";
+    const PARTIAL_GRAVACAO = "/templates/partials/_filtros_gravacao.html";
+    const MODULO_CONTROLE = "/static/src/js/ui/controle_fundo.js";
+    const DIR = "/static/src/img/ortofotos_fundo/";
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+
+    const ORTOFOTOS = ["anhangabau", "ibirapuera", "butanta", "itaquera", "anhembi", "interlagos", "cantareira", "jaragua"];
+    const ATRASOS_MS = [0, 300, 800, 2000, 5000];
+    const INTERVALO_RODIZIO_MS = 10000;
+
+    async function buscarPartial(caminho) {
+      const resposta = await fetch(caminho);
+      if (!resposta.ok) throw new Error(`${caminho} → ${resposta.status}`);
+      return (await resposta.text()).replace(TAG_DE_TEMPLATE, "").trim();
+    }
+
+    // ---- ANDAIME: estado de calibragem do mock ----
+    let modo = "proposto";
+    let atraso = 0;
+    let forcarRedownload = true;
+    let rodizio = null;
+    let atual = ORTOFOTOS[Math.floor(Math.random() * ORTOFOTOS.length)];
+
+    function fonteDaOrtofoto(chave) {
+      return `${DIR}${chave}.png` + (forcarRedownload ? `?v=${Date.now()}` : "");
+    }
+
+    function esperar(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    // ---- A peça em julgamento ----
+    function montarCamada(chave, { visivel }) {
+      const camada = document.createElement("div");
+      camada.className = "fundo-ortofoto__camada" + (visivel ? " fundo-ortofoto__camada--visivel" : "");
+      camada.dataset.ortofoto = chave ?? "";
+      if (chave) {
+        camada.innerHTML = `
+          <div class="fundo-ortofoto__deriva">
+            <img class="fundo-ortofoto__imagem" alt="" aria-hidden="true">
+          </div>`;
+      }
+      return camada;
+    }
+
+    // O atraso simula a rede: a fonte só é atribuída depois dele, nos dois modos.
+    async function carregar(camada) {
+      const imagem = camada.querySelector("img");
+      if (!imagem) return;
+      await esperar(atraso);
+      imagem.src = fonteDaOrtofoto(camada.dataset.ortofoto);
+    }
+
+    // Previsto para static/src/js/ui/fundo_ortofoto.js
+    async function revelar(camada) {
+      const imagem = camada?.querySelector("img");
+      if (imagem) {
+        try {
+          await imagem.decode();
+        } catch {
+          /* PNG ausente ou corrompido: revela assim mesmo — a lente sozinha é o piso visual */
+        }
+      }
+      camada.addEventListener("transitionend", () => descartarAnteriores(camada), { once: true });
+      camada.classList.add("fundo-ortofoto__camada--visivel");
+    }
+
+    function descartarAnteriores(camada) {
+      for (const anterior of camada.parentElement.querySelectorAll(".fundo-ortofoto__camada")) {
+        if (anterior !== camada) anterior.remove();
+      }
+      contar();
+    }
+
+    function aparar(casca) {
+      const camadas = [...casca.querySelectorAll(".fundo-ortofoto__camada")];
+      for (const camada of camadas.slice(0, -2)) camada.remove();
+    }
+
+    // ---- ANDAIME: o comportamento de hoje (design/010 v7), para comparação ----
+    // Sequencial sobre um elemento só: a imagem some inteira antes de a próxima entrar.
+    async function trocarSequencial(casca, chave) {
+      casca.classList.add("htmx-swapping");
+      await esperar(250);
+      casca.replaceChildren(montarCamada(chave, { visivel: true }));
+      carregar(casca.firstElementChild);
+      // htmx-added entra antes de htmx-swapping sair: um quadro sem nenhuma das duas acenderia a
+      // casca em opacity 1 sobre a imagem ainda vazia.
+      casca.classList.add("htmx-added");
+      casca.classList.remove("htmx-swapping");
+      requestAnimationFrame(() => requestAnimationFrame(() => casca.classList.remove("htmx-added")));
+      contar();
+    }
+
+    // ---- O proposto: duas camadas, e o decode é quem manda ----
+    async function trocarSobreposto(casca, chave) {
+      const camada = montarCamada(chave, { visivel: false });
+      casca.appendChild(camada);
+      aparar(casca);
+      contar();
+      await carregar(camada);
+      await revelar(camada);
+    }
+
+    // `null` explícito é o estado de falta; sem argumento, sorteia diferente da que está na tela.
+    async function trocar(chave = undefined) {
+      const casca = document.getElementById("fundo-ortofoto");
+      if (!casca) return;
+      const outras = ORTOFOTOS.filter((c) => c !== atual);
+      atual = chave === undefined ? outras[Math.floor(Math.random() * outras.length)] : chave;
+      document.getElementById("eco-ortofoto").textContent = atual ?? "(nenhuma)";
+      if (modo === "atual") await trocarSequencial(casca, atual);
+      else await trocarSobreposto(casca, atual);
+    }
+
+    function contar() {
+      const total = document.querySelectorAll(".fundo-ortofoto__camada").length;
+      document.getElementById("eco-camadas").textContent = total;
+      document.getElementById("eco-arvore").textContent = [...document.querySelectorAll(".fundo-ortofoto__camada")]
+        .map((c, i, todas) => `  camada[${i}] ${c.dataset.ortofoto || "(sem ortofoto)"}${i === todas.length - 1 ? "  ← topo" : ""}${c.classList.contains("fundo-ortofoto__camada--visivel") ? "" : "  (transparente)"}`)
+        .join("\n") || "  (vazia)";
+    }
+
+    function reiniciarRodizio(ligado) {
+      clearInterval(rodizio);
+      rodizio = ligado ? setInterval(() => trocar(), INTERVALO_RODIZIO_MS) : null;
+    }
+
+    // ---- Montagem ----
+    try {
+      const [lenteBruta, glifos, controle, gravacao] = await Promise.all([
+        buscarPartial(PARTIAL_LENTE),
+        buscarPartial(PARTIAL_GLIFOS),
+        buscarPartial(PARTIAL_CONTROLE),
+        buscarPartial(PARTIAL_GRAVACAO),
+      ]);
+      // Do _mapa_admin.html interessa só a lente: os includes já saíram com as tags, e o <script>
+      // do controle vira src vazio depois da limpeza.
+      const molde = document.createElement("div");
+      molde.innerHTML = lenteBruta;
+      molde.querySelectorAll("script").forEach((s) => s.remove());
+
+      const casca = document.createElement("div");
+      casca.className = "fundo-ortofoto";
+      casca.id = "fundo-ortofoto";
+      casca.appendChild(montarCamada(atual, { visivel: true }));
+
+      document.body.insertAdjacentHTML("afterbegin", gravacao + glifos);
+      document.body.insertAdjacentElement("afterbegin", casca);
+      document.body.insertAdjacentHTML("beforeend", molde.innerHTML + controle);
+      carregar(casca.firstElementChild);
+      await import(MODULO_CONTROLE);
+    } catch (erro) {
+      (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        `<p style='padding:1rem;color:#b00;font-family:monospace'>fundo não montou (${erro.message}) — sirva a RAIZ do projeto e gere as ortofotos.</p>`);
+    }
+
+    // ---- Vitrine dos átomos (seção 2) ----
+    document.getElementById("vitrine-topo").querySelector("img").src = `${DIR}cantareira.png`;
+    document.getElementById("vitrine-base").querySelector("img").src = `${DIR}interlagos.png`;
+
+    // ---- ANDAIME: fiação dos controles de calibragem ----
+    document.addEventListener("click", (evento) => {
+      if (evento.target.closest("[data-trocar]")) trocar();
+
+      const botaoModo = evento.target.closest("[data-modo]");
+      if (botaoModo) {
+        modo = botaoModo.dataset.modo;
+        document.querySelectorAll("[data-modo]").forEach(
+          (b) => (b.dataset.estado = b.dataset.modo === modo ? "ativo" : ""));
+      }
+
+      if (evento.target.closest("[data-vitrine-alternar]")) {
+        document.getElementById("vitrine-topo").classList.toggle("fundo-ortofoto__camada--visivel");
+      }
+
+      // Estado de falta: nenhuma ortofoto em disco — sobra a lente sozinha.
+      if (evento.target.closest("[data-sem-ortofoto]")) trocar(null);
+    });
+
+    document.addEventListener("input", (evento) => {
+      const barra = evento.target.closest("[data-atraso]");
+      if (!barra) return;
+      atraso = ATRASOS_MS[Number(barra.value)];
+      document.getElementById("eco-atraso").textContent = `${atraso} ms`;
+    });
+
+    document.addEventListener("change", (evento) => {
+      if (evento.target.closest("[data-redownload]")) forcarRedownload = evento.target.checked;
+      if (evento.target.closest("[data-rodizio]")) reiniciarRodizio(evento.target.checked);
+    });
+
+    document.getElementById("eco-ortofoto").textContent = atual ?? "(nenhuma)";
+    contar();
+    setInterval(contar, 1000);
+  </script>
+</head>
+
+<body class="h-screen w-screen overflow-hidden bg-base-100 text-base-content font-sans">
+  <!-- O fundo é montado no topo do <body> pelo módulo do <head>; o conteúdo rola na .admin-shell,
+       mesmo esqueleto das telas administrativas. -->
+  <div class="admin-shell">
+    <div class="mx-auto max-w-4xl px-6 py-16 space-y-8">
+
+      <header class="glass-panel p-6">
+        <p class="text-overline">SPEC design/011</p>
+        <h1 class="text-2xl font-light mt-1">Troca de fundo sem vão — mock de validação</h1>
+        <p class="text-sm text-rocha-800/80 mt-3">
+          O fundo desta página é a peça em julgamento. Use o painel de calibragem no canto inferior
+          esquerdo para comparar os dois comportamentos; o controle do produto fica à direita.
+        </p>
+      </header>
+
+      <!-- 1 · TOKENS -->
+      <section id="tokens" class="glass-panel p-6 space-y-4">
+        <h2 class="text-overline">1 · Tokens</h2>
+        <div class="card-well p-4">
+          <p class="text-code text-sm">--fundo-troca-duracao</p>
+          <p class="valor-leitura">700ms — a subida da camada que chega, contada a partir do decode</p>
+        </div>
+      </section>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 space-y-4">
+        <h2 class="text-overline">2 · Átomos</h2>
+
+        <!-- .fundo-ortofoto__camada — estados: transparente × visível -->
+        <div class="card-well p-4 space-y-3">
+          <div class="andaime-linha">
+            <p class="text-code text-sm">.fundo-ortofoto__camada</p>
+            <button class="btn-etched btn-etched-swell etched btn-etched-mini" data-vitrine-alternar type="button">
+              alternar a de cima
+            </button>
+          </div>
+          <div class="vitrine-fundo">
+            <!-- estado: visível (a que está na tela) -->
+            <div id="vitrine-base" class="fundo-ortofoto__camada fundo-ortofoto__camada--visivel">
+              <div><img class="fundo-ortofoto__imagem" alt="" aria-hidden="true"></div>
+            </div>
+            <!-- estado: transparente (a que chegou e ainda não decodificou) -->
+            <div id="vitrine-topo" class="fundo-ortofoto__camada">
+              <div><img class="fundo-ortofoto__imagem" alt="" aria-hidden="true"></div>
+            </div>
+          </div>
+          <p class="valor-leitura">
+            As duas coexistem: a de cima sobe sobre a de baixo, que só é descartada depois.
+          </p>
+        </div>
+
+        <!-- .fundo-ortofoto__imagem — o átomo muda de tag -->
+        <div class="card-well p-4">
+          <p class="text-code text-sm">.fundo-ortofoto__imagem</p>
+          <p class="valor-leitura">
+            &lt;img&gt; com object-fit: cover, no lugar do &lt;div&gt; com background-image —
+            só o elemento que carrega a imagem expõe decode()
+          </p>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="glass-panel p-6 space-y-4">
+        <h2 class="text-overline">4 · Organismos</h2>
+        <div class="card-well p-4 space-y-3">
+          <div class="andaime-linha">
+            <p class="text-code text-sm">.fundo-ortofoto — a casca que permanece</p>
+            <p class="valor-leitura">camadas no documento: <span id="eco-camadas" class="text-code">1</span></p>
+          </div>
+          <pre id="eco-arvore" class="text-code text-xs whitespace-pre leading-relaxed"></pre>
+          <p class="valor-leitura">
+            Nunca mais de duas, e nunca menos de uma: é essa a invariante que fecha o vão.
+          </p>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="glass-panel p-6 space-y-4">
+        <h2 class="text-overline">5 · Tela montada</h2>
+        <p class="valor-leitura">
+          A tela montada é o próprio fundo desta página, atrás deste painel — em qualquer tela
+          administrativa ele é o mesmo.
+        </p>
+
+        <!-- fica na página: a casca é montada uma vez e nunca é trocada -->
+        <!-- partial: mapping/_fundo_ortofoto.html -->
+        <!-- partial: mapping/_camada_ortofoto.html — alvo de hx-swap beforeend a cada rodízio e no Trocar -->
+        <!-- /partial -->
+        <!-- /partial -->
+        <div class="card-well p-4 space-y-2">
+          <p class="text-overline">Recorte</p>
+          <p class="valor-leitura"><span class="text-code">mapping/_fundo_ortofoto.html</span> — a casca, renderizada com a página</p>
+          <p class="valor-leitura"><span class="text-code">mapping/_camada_ortofoto.html</span> — a camada, alvo de <span class="text-code">hx-swap="beforeend"</span></p>
+          <p class="valor-leitura"><span class="text-code">mapping/_mapa_admin.html</span> — a lente e o controle, sem mudança</p>
+        </div>
+
+        <!-- estado: sem nenhuma ortofoto em disco -->
+        <div class="card-well p-4 space-y-3">
+          <div class="andaime-linha">
+            <p class="text-overline">Estado de falta</p>
+            <button class="btn-etched btn-etched-swell etched btn-etched-mini" data-sem-ortofoto type="button">
+              sem ortofoto em disco
+            </button>
+          </div>
+          <p class="valor-leitura">A camada entra vazia e a lente sozinha vira o piso visual.</p>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ANDAIME — calibragem do mock, não vai para o produto -->
+  <div class="glass-panel fixed bottom-6 left-6 z-20 w-64 p-3 flex flex-col gap-2">
+    <p class="text-overline">Calibragem (andaime)</p>
+
+    <div class="andaime-modo">
+      <button class="btn-etched etched btn-etched-mini" data-modo="atual" type="button">Atual (v7)</button>
+      <button class="btn-etched etched btn-etched-mini" data-modo="proposto" data-estado="ativo" type="button">Proposto</button>
+    </div>
+
+    <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center" data-trocar type="button">
+      Trocar agora
+    </button>
+
+    <div class="andaime-linha">
+      <span class="text-overline">Rodízio 10s</span>
+      <input type="checkbox" class="toggle-onsen" data-rodizio aria-label="Rodízio automático">
+    </div>
+
+    <div class="andaime-linha">
+      <span class="text-overline">Redownload</span>
+      <input type="checkbox" class="toggle-onsen" data-redownload checked aria-label="Forçar redownload">
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <div class="andaime-linha">
+        <span class="text-overline">Atraso de rede</span>
+        <span id="eco-atraso" class="text-code text-xs">0 ms</span>
+      </div>
+      <input type="range" class="range-onsen" min="0" max="4" step="1" value="0" data-atraso aria-label="Atraso de rede">
+    </div>
+
+    <p class="valor-leitura text-xs">na tela: <span id="eco-ortofoto" class="text-code"></span></p>
+  </div>
+</body>
+</html>

@@ -919,10 +919,23 @@
           <p class="text-overline">.fundo-ortofoto__deriva · .fundo-ortofoto__imagem</p>
           <div class="relative overflow-hidden rounded-2xl h-56 card-well" style="--deriva-margem: 96px; --deriva-periodo: 8s">
             <div class="fundo-ortofoto__deriva outline outline-2 outline-sakura-500">
-              <div class="fundo-ortofoto__imagem" style="--fundo-ortofoto: url('/static/src/img/ortofotos_fundo/butanta.png')"></div>
+              <img class="fundo-ortofoto__imagem" alt="" aria-hidden="true" src="/static/src/img/ortofotos_fundo/butanta.png" />
             </div>
           </div>
-          <p class="text-xs text-base-content/60">A deriva fora da escala real — transbordo de 96px e volta de 8s — com a moldura do átomo em <span class="text-code">sakura</span> para mostrar a contenção: ela permanece fora do quadro nos dois extremos. Duas oscilações em razão 1:2 (Lissajous), a de dentro no dobro da frequência e na metade da amplitude, então a volta nunca repete o traço. <span class="text-code">brightness</span>/<span class="text-code">contrast</span> são do material e vivem aqui, não na lente. Em escala real é o fundo desta página.</p>
+          <p class="text-xs text-base-content/60">A deriva fora da escala real — transbordo de 96px e volta de 8s — com a moldura do átomo em <span class="text-code">sakura</span> para mostrar a contenção: ela permanece fora do quadro nos dois extremos. Duas oscilações em razão 1:2 (Lissajous), a de dentro no dobro da frequência e na metade da amplitude, então a volta nunca repete o traço. <span class="text-code">brightness</span>/<span class="text-code">contrast</span> são do material e vivem aqui, não na lente — o átomo é <span class="text-code">&lt;img&gt;</span> com <span class="text-code">object-fit: cover</span>, não mais <span class="text-code">background-image</span> (SPEC design/011): só o elemento que mostra a imagem sabe dizer, via <span class="text-code">decode()</span>, que ela está pronta. Em escala real é o fundo desta página.</p>
+        </div>
+
+        <!-- Troca de fundo sem vão (SPEC design/011) -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">.fundo-ortofoto__camada</p>
+          <div class="relative overflow-hidden rounded-2xl h-56 card-well" style="--deriva-margem: 96px; --deriva-periodo: 8s">
+            <div class="fundo-ortofoto__camada fundo-ortofoto__camada--visivel">
+              <div class="fundo-ortofoto__deriva">
+                <img class="fundo-ortofoto__imagem" alt="" aria-hidden="true" src="/static/src/img/ortofotos_fundo/anhangabau.png" />
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">A casca de <span class="text-code">#fundo-ortofoto</span> empilha uma camada por troca: a que chega nasce sem <span class="text-code">--visivel</span>, sobreposta à que está na tela, e só recebe a classe depois que o JS aguarda o <span class="text-code">decode()</span> da própria imagem — nunca por timer. A anterior só é descartada depois que a nova chega a opacidade 1, então nenhum quadro fica sem ortofoto. Aqui a camada já nasce <span class="text-code">--visivel</span> para mostrar o estado final.</p>
         </div>
 
         <div class="grid lg:grid-cols-2 gap-6">

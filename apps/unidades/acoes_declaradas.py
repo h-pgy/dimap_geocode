@@ -64,3 +64,15 @@ ACAO_EXTINGUIR_UNIDADE = instanciar_acao(
     estrutural=True,
     alcance=UnidadesEstritamenteSubordinadas(),
 )
+
+ACAO_DEFINIR_TITULAR = instanciar_acao(
+    slug="unidades.definir_titular",
+    nome="Definir titular de unidade",
+    nome_curto="Titularidade",
+    tooltip="Nomeia, troca ou destitui o titular de uma unidade subordinada.",
+    url_name="unidades:modal_definir_titular",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    estrutural=True,
+    alcance=UnidadesEstritamenteSubordinadas(),
+)
+
