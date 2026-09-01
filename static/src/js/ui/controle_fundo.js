@@ -64,3 +64,21 @@ document.addEventListener("change", (evento) => {
   const chave = evento.target.closest("[data-fundo-ligado]");
   if (chave) aplicarLigado(chave.checked);
 });
+
+// Em telas estreitas (< xl), o .fundo-controle entra no fluxo como última linha. Para não ficar
+// preso atrás da .admin-shell (z-10) nem sob as lentes (z-1), anexa-se ao final do container
+// rolável da shell quando ela existir. Em xl: o CSS (xl:fixed) o projeta para o canto da viewport.
+function ancorarNaShell() {
+  const container = document.querySelector(".admin-shell > div");
+  const controle = document.querySelector(".fundo-controle");
+  if (container && controle && controle.parentElement !== container) {
+    container.appendChild(controle);
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", ancorarNaShell);
+} else {
+  ancorarNaShell();
+}
+

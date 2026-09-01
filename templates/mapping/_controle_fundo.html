@@ -1,7 +1,7 @@
 {# Molécula: o controle flutuante do fundo de ortofoto — liga/desliga e velocidade da deriva.    #}
 {# Fica fora da .admin-shell, como o fundo que ele controla. Preferências são do cliente          #}
 {# (Caveats da SPEC design/010): controle_fundo.js lê/grava localStorage, nunca o servidor.        #}
-<div class="fundo-controle glass-panel fixed bottom-6 right-6 z-20">
+<div class="fundo-controle glass-panel self-end ml-auto mt-4 xl:fixed xl:bottom-6 xl:right-6 xl:z-20 transition-glass">
   <div class="fundo-controle__cabecalho">
     <span class="text-overline">Fundo</span>
     <input type="checkbox" class="toggle-onsen" data-fundo-ligado checked aria-label="Mostrar o fundo">

@@ -293,9 +293,12 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
 - **O snippet acima é da home** — é a única tela com Leaflet no fundo. Toda tela que não é a home
   roda sobre o **fundo da área administrativa** — a mesma lente sobre a ortofoto **pré-gerada** em
   tons de cinza, à deriva (SPEC design/010) —, e ele já existe pronto: `{% include
-  "mapping/_mapa_admin.html" %}`, que traz o canvas, a lente e o `.fundo-controle`. Página nova não
-  recopia camada nenhuma. Mock e styleguide montam esse mesmo conjunto pelo
-  `examples/fundo-admin.js` da skill `mock`.
+  "mapping/_mapa_admin.html" %}`, que traz o canvas, a lente e o `.fundo-controle`. O `.fundo-controle`
+  tem posicionamento responsivo governado no CSS: em telas amplas (`xl:`), repousa fixo no canto
+  inferior direito (`xl:fixed xl:bottom-6 xl:right-6 xl:z-20`); em telas estreitas (< xl), entra no
+  fluxo como nova linha abaixo do conteúdo alinhado à direita (`self-end ml-auto mt-4`), e sob modais
+  abertos recolhe via `:root:has(.modal-toggle:checked)`. Página nova não recopia camada nenhuma. Mock
+  e styleguide montam esse mesmo conjunto pelo `examples/fundo-admin.js` da skill `mock`.
 
 ## 7. Coreografia, micro-interações e HTMX
 

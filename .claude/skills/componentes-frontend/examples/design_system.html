@@ -2006,7 +2006,7 @@
       <!-- Controle do fundo (SPEC design/010) -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Controle do fundo (<span class="text-code">.fundo-controle</span>)</p>
-        <p class="text-sm text-base-content/70 -mt-1"><span class="text-code">.toggle-onsen</span> + <span class="text-code">.btn-etched-mini</span> + <span class="text-code">.range-onsen</span>. Desligado, o <span class="text-code">:has()</span> apaga o corpo — não há velocidade a ajustar sem imagem a trocar. O controle vivo fica fixo no canto inferior direito desta página, agindo sobre o fundo dela; as duas cópias abaixo são inertes.</p>
+        <p class="text-sm text-base-content/70 -mt-1"><span class="text-code">.toggle-onsen</span> + <span class="text-code">.btn-etched-mini</span> + <span class="text-code">.range-onsen</span>. Desligado, o <span class="text-code">:has()</span> apaga o corpo — não há velocidade a ajustar sem imagem a trocar. O posicionamento é governado pelo CSS (<span class="text-code">xl:fixed xl:bottom-6 xl:right-6</span> em tela cheia; em tela estreita entra no fluxo criando uma nova linha abaixo à direita e recolhe sob modal). As duas cópias abaixo são inertes.</p>
         <div class="card-well p-5 grid gap-5 sm:grid-cols-2 justify-items-center">
           <!-- ligado, no meio da escala -->
           <div class="fundo-controle glass-panel">
