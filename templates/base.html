@@ -1,4 +1,5 @@
 <!doctype html>
+{% load static %}
 <html lang="pt-br" data-theme="dimap">
   <head>
     <meta charset="utf-8" />
@@ -13,15 +14,9 @@
     {# Leaflet (mapa) — CSS no head #}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css" />
 
-    {% comment %} Dev: Tailwind 4 + DaisyUI via CDN. No deploy, compilar static/src/input.css
-       -> static/dist/output.css e trocar por:
-       <link rel="stylesheet" href="{% load static %}{% static 'output.css' %}" /> (CLAUDE.md, "Estrutura do Projeto").
-       O browser build do Tailwind não suporta @plugin — DaisyUI entra como CSS separado e o tema
-       "dimap" vem de static/src/tema-dimap.dev.css (fonte ÚNICA do design system, SPEC design/004),
-       incluído server-side no <style> abaixo. Não há mais espelho: editar o design system é editar
-       aquele arquivo. {% endcomment %}
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    {# Design system compilado pelo serviço `tailwind` do compose (SPEC infraestrutura/004). #}
+    {# A fonte segue sendo static/src/tema-dimap.dev.css, agora via static/src/input.css. #}
+    <link rel="stylesheet" href="{% static 'output.css' %}" />
     <script src="https://unpkg.com/htmx.org@2"></script>
     <script>
       // 422 (ValidationError do Pydantic) deve fazer swap normalmente.
@@ -33,9 +28,6 @@
         {code: "[45]..", swap: false, error: true},
       ];
     </script>
-
-    {# Design system (dev/CDN) — fonte única em static/src/tema-dimap.dev.css (SPEC design/004) #}
-    <style type="text/tailwindcss">{% include "tema-dimap.dev.css" %}</style>
 
     {% block head %}{% endblock %}
   </head>
@@ -106,7 +98,6 @@
     {# Leaflet JS antes do fim do body #}
     <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
     {# JS centralizado do mapa — registra htmx.onLoad uma única vez (§11 caso 1) #}
-    {% load static %}
     <script type="module" src="{% static 'js/mapa/init.js' %}"></script>
     {% block scripts %}{% endblock %}
   </body>

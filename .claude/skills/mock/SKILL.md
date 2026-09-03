@@ -94,8 +94,8 @@ seu `L.map`, uma troca no fundo do produto — como a dos tiles públicos pela o
 WMS ao vivo pelo PNG pré-gerado — deixava para trás a coleção inteira de mocks, cada um provando um
 design sobre um fundo que não existe mais.
 
-A **home** é a exceção: ali o mapa é o produto, com as bases e a geometria do resultado — veja
-`examples/mock_ui.html` da skill `componentes-frontend`. É o único mock que carrega Leaflet.
+A **home** é a exceção: ali o mapa é o produto, com as bases e a geometria do resultado. Mock de
+home é o único que carrega Leaflet.
 
 **O fundo é a exceção de si mesmo.** Quando o assunto da SPEC **é o próprio fundo** (design/010), o
 mock não pode importá-lo pronto — a peça em julgamento é ela. Aí o arquivo monta o canvas e a
@@ -312,7 +312,7 @@ implementação:
 1. **CSS base — `static/src/tema-dimap.dev.css`.** Os blocos de token do mock migram para lá **tal e
    qual**, na seção da camada a que pertencem. É a fonte única (SPEC design/004): enquanto o token
    viver só no mock, ele não existe para a aplicação.
-2. **Styleguide — `.claude/skills/componentes-frontend/examples/design_system.html`.** Cada peça nova é
+2. **Styleguide — `templates/core/design_system.html`, servido em `/design_system`.** Cada peça nova é
    renderizada lá, na seção da sua camada (2 · Átomos, 3 · Moléculas, 4 · Organismos). É o **contrato
    visual do projeto**: componente que não está no styleguide não é encontrável e será reinventado — o
    que o Atomic Design existe para impedir.

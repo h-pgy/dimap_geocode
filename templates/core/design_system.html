@@ -1,42 +1,20 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="pt-BR" data-theme="dimap">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DIMAP GeoCoder — Design System "Onsen de Inverno" v2</title>
+  <title>DIMAP GeoCoder — Design System "Onsen de Inverno"</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <!-- O fundo oficial da área administrativa, montado a partir dos partials da própria aplicação
-       (skill `mock`): a peça se valida sobre o mesmo fundo em que vai viver. -->
-  <script type="module">
-    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
-    montarFundoAdmin();
-  </script>
+  {# O MESMO output.css das demais páginas: o styleguide não consegue exibir peça que a #}
+  {# aplicação não tenha (SPEC infraestrutura/004). #}
+  <link rel="stylesheet" href="{% static 'output.css' %}" />
 
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
-  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
-       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server / python -m
-       http.server) — aberto via file:// o fetch é bloqueado e o tema não carrega. -->
-  <script>
-    fetch("/static/src/tema-dimap.dev.css")
-      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
-      .then((css) => {
-        const s = document.createElement("style");
-        s.type = "text/tailwindcss";
-        s.textContent = css;
-        document.head.appendChild(s);
-      })
-      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
-        "afterbegin",
-        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css n\u00e3o carregou \u2014 sirva a RAIZ do projeto (Live Server), n\u00e3o abra via file://.</p>"));
-  </script>
-
-  <!-- CSS específico deste mock -->
+  {# Esta página é um documento longo e rolável: não estende base.html, que trava a viewport. #}
   <style>
     html, body { margin: 0; padding: 0; }
     body { font-family: "Roboto", sans-serif; background: #e3eff5; }
@@ -44,47 +22,9 @@
 </head>
 <body class="text-base-content">
 
-  <!-- Ativo não-CSS do token .etched (SPEC user_admin/013): sem estes defs no documento,
-       filter: url(#etched-onsen) não desenha nada. Na aplicação eles vêm de
-       templates/partials/_filtros_gravacao.html, incluído no base.html. -->
-  <svg width="0" height="0" class="absolute" aria-hidden="true">
-    <defs>
-      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
-        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
-        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
-        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
-        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
-        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
-        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
-        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
-        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
-        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
-        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
-        <feMerge>
-          <feMergeNode in="SourceGraphic"/>
-          <feMergeNode in="sombraInterna"/>
-          <feMergeNode in="luzInterna"/>
-        </feMerge>
-      </filter>
-      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
-        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
-        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
-        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
-        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
-        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
-        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
-        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
-        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
-        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
-        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
-        <feMerge>
-          <feMergeNode in="SourceGraphic"/>
-          <feMergeNode in="sombraInterna"/>
-          <feMergeNode in="luzInterna"/>
-        </feMerge>
-      </filter>
-    </defs>
-  </svg>
+  {% include "partials/_filtros_gravacao.html" %}
+  {% include "mapping/_mapa_admin.html" %}
+
 
   <!-- Glifos de exemplo (SPEC autorizacao/006). Na aplicação cada um é um arquivo em
        static/acoes/<app>/<nome>/icones/<variante>.svg, lido pelo ResolvedorIcones. -->
@@ -919,7 +859,7 @@
           <p class="text-overline">.fundo-ortofoto__deriva · .fundo-ortofoto__imagem</p>
           <div class="relative overflow-hidden rounded-2xl h-56 card-well" style="--deriva-margem: 96px; --deriva-periodo: 8s">
             <div class="fundo-ortofoto__deriva outline outline-2 outline-sakura-500">
-              <img class="fundo-ortofoto__imagem" alt="" aria-hidden="true" src="/static/src/img/ortofotos_fundo/butanta.png" />
+              <img class="fundo-ortofoto__imagem" alt="" aria-hidden="true" src=\"{% static 'img/ortofotos_fundo/butanta.png' %}\" />
             </div>
           </div>
           <p class="text-xs text-base-content/60">A deriva fora da escala real — transbordo de 96px e volta de 8s — com a moldura do átomo em <span class="text-code">sakura</span> para mostrar a contenção: ela permanece fora do quadro nos dois extremos. Duas oscilações em razão 1:2 (Lissajous), a de dentro no dobro da frequência e na metade da amplitude, então a volta nunca repete o traço. <span class="text-code">brightness</span>/<span class="text-code">contrast</span> são do material e vivem aqui, não na lente — o átomo é <span class="text-code">&lt;img&gt;</span> com <span class="text-code">object-fit: cover</span>, não mais <span class="text-code">background-image</span> (SPEC design/011): só o elemento que mostra a imagem sabe dizer, via <span class="text-code">decode()</span>, que ela está pronta. Em escala real é o fundo desta página.</p>
@@ -931,7 +871,7 @@
           <div class="relative overflow-hidden rounded-2xl h-56 card-well" style="--deriva-margem: 96px; --deriva-periodo: 8s">
             <div class="fundo-ortofoto__camada fundo-ortofoto__camada--visivel">
               <div class="fundo-ortofoto__deriva">
-                <img class="fundo-ortofoto__imagem" alt="" aria-hidden="true" src="/static/src/img/ortofotos_fundo/anhangabau.png" />
+                <img class="fundo-ortofoto__imagem" alt="" aria-hidden="true" src=\"{% static 'img/ortofotos_fundo/anhangabau.png' %}\" />
               </div>
             </div>
           </div>
@@ -2711,8 +2651,8 @@
     <label class="absolute inset-0 -z-10 cursor-pointer" for="styleguide-ato-ligado"><span class="sr-only">Fechar</span></label>
   </div>
 
-  <!-- Os utilitários de UI do projeto, tal e qual (exigem o Live Server na raiz, como o tema). -->
-  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
-  <script type="module" src="/static/src/js/ui/scroll_etched.js"></script>
+  <!-- Os utilitários de UI do projeto, tal e qual servidos pelo Django. -->
+  <script type="module" src=\"{% static 'js/ui/select_onsen.js' %}\"></script>
+  <script type="module" src=\"{% static 'js/ui/scroll_etched.js' %}\"></script>
 </body>
 </html>

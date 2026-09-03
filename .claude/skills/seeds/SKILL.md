@@ -23,22 +23,41 @@ models do próprio app livremente.
 Se a carga precisar de lógica de domínio de verdade (geocodificação, matching, geometria), essa
 lógica é de `services/domain/` como qualquer outra — a seed só a chama e persiste o resultado.
 
-## Idempotência (obrigatória)
+## Idempotência (obrigatória): a seed **só cria o que falta**
 
-Toda seed roda contra **chave natural** (`sigla`, `nome`) e pode ser reexecutada sem duplicar nem
-sujar dado antigo:
+Toda seed roda contra **chave natural** (`sigla`, `nome`) e pode ser reexecutada à vontade — o
+container roda as seeds a cada subida. Registro que já existe é **deixado intacto**: a seed nunca
+reescreve campo, nem religa vínculo, nem apaga.
 
-- Sem validação em jogo: `Model.objects.update_or_create(chave=..., defaults={...})`.
-- Com `full_clean()` em jogo: **nunca** `get_or_create` — ele grava o registro incompleto antes da
-  validação rodar. Monte em memória e só então valide:
+*Por quê:* a seed é bootstrap, não sincronização. Depois da primeira carga a fonte de verdade do
+catálogo é o banco — o cadastro edita, transfere e extingue pela tela —, e uma seed que atualizasse
+o registro existente desfaria isso a cada `docker compose up`. Corolário assumido: **editar o JSON
+não propaga para banco já carregado**; mudar registro que existe é ato administrativo, feito na
+tela.
+
+- Sem validação em jogo: `if Model.objects.filter(chave=valor).exists(): continue`, depois
+  `Model.objects.create(...)`.
+- Com `full_clean()` em jogo: **nunca** `create`/`get_or_create` direto — grava antes da validação
+  rodar. Pule o que existe, monte em memória e só então valide:
   ```python
-  obj = Model.objects.filter(chave=valor).first() or Model(chave=valor)
-  obj.campo = novo_valor
+  if Model.objects.filter(chave=valor).exists():
+      continue
+  obj = Model(
+      chave=valor,
+      campo=novo_valor,
+  )
   obj.full_clean()
   obj.save()
   ```
+- **Exclusão lógica muda a busca.** Se o model tem manager padrão que filtra o registro apagado
+  (`Unidade.objects` esconde as extintas), a checagem de existência **tem** que usar o manager sem
+  filtro (`Unidade.todas`) — senão o apagado parece ausente, a seed tenta recriá-lo e o `unique`
+  derruba a subida inteira do container.
 - Se houver hierarquia (pai/filho, veda de tipos), grave tudo **sem** o vínculo primeiro e ligue
-  numa segunda passada — a ordem do arquivo deixa de importar.
+  numa segunda passada — a ordem do arquivo deixa de importar. A segunda passada percorre **só o
+  que a primeira criou**: religar registro preexistente o arrastaria de volta para o arquivo.
+- A `ContagemSeed` devolvida conta o que foi **criado**, não o tamanho do arquivo — é o número que
+  diz se a carga fez algo.
 
 Toda a carga — **as duas passadas incluídas** — roda dentro de um único `transaction.atomic()`.
 Isso é o que garante a idempotência: se a segunda passada encontrar uma veda/vínculo inválido
@@ -93,10 +112,12 @@ padrão):
 
 1. **Carga cria os registros do arquivo** — o caso feliz: escreve o JSON, chama
    `carregar_seed_<nome>()`, confere os campos gravados.
-2. **Carga é idempotente** — chama `carregar_seed_<nome>()`, reescreve o JSON com dado
-   **alterado** nas mesmas chaves naturais, chama de novo. Confere que a contagem final de
-   registros não dobrou (nada duplicou) e que os campos refletem a **segunda** escrita (o registro
-   foi atualizado, não ignorado).
+2. **Carga não toca registro existente** — chama `carregar_seed_<nome>()`, reescreve o JSON com
+   dado **alterado** nas mesmas chaves naturais, chama de novo. Confere que a contagem final de
+   registros não dobrou (nada duplicou) e que os campos seguem os da **primeira** escrita (o
+   registro foi ignorado, não atualizado). Se o model tiver exclusão lógica, um caso a mais: o
+   registro apagado sobrevive à carga seguinte, sem duplicar, sem estourar o `unique` e sem
+   reviver.
 3. **Registro inválido aborta sem gravar nada** — escreve um JSON em que algum registro fura a
    validação do model (ou, se houver segunda passada de vínculo, um vínculo para chave
    inexistente). Chama a carga esperando a exceção (`pytest.raises`) e confere que **nenhum**

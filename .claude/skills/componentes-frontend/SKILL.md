@@ -6,9 +6,23 @@ description: Design system "Onsen de Inverno" e padronização dos componentes d
 # Design System "Onsen de Inverno" — DIMAP GeoCoder
 
 Esta skill define o design system do projeto e **como construir componentes com Atomic Design**.
-A referência visual validada vive em `examples/design_system.html` (styleguide sobre o fundo oficial
-da área administrativa) e
-`examples/mock_ui.html` (aplicação mockada). Qualquer componente novo nasce seguindo o método do §2.
+Ela não lista o que existe — quem lista é a aplicação.
+
+**A cadeia tem um único ponto editável:**
+
+> átomo novo → `static/src/tema-dimap.dev.css` → o build emite → **`/design_system`** mostra.
+
+`tema-dimap.dev.css` é a fonte única (SPEC design/004); `static/dist/output.css` é o artefato que o
+build produz dela; e a rota `/design_system` é uma página da aplicação que carrega **esse mesmo
+arquivo**. Ninguém consegue registrar peça que a aplicação não tem, nem esquecer de registrar peça
+que ela tem.
+
+Consulte, sob demanda:
+- **`/design_system`** — o catálogo visual do que existe (é o contrato visual do projeto).
+- **`references/pecas.md`** — as armadilhas de uso de cada peça, que a tela não mostra.
+- **`references/paleta.json`** — os valores das escalas.
+
+Componente novo nasce seguindo o método do §2.
 
 ## 1. O Conceito: água límpida sob luz fria de inverno
 
@@ -53,8 +67,11 @@ Regras dos tokens:
 - Cor nova **entra numa escala existente** ou não entra. Proibido hex solto no HTML/CSS de componente.
 - Material novo **compõe os tokens de vidro** existentes; não se inventa outro vocabulário de sombra/blur.
 - Token é classe com `@apply` **apenas de utilities Tailwind**. **NUNCA faça `@apply` de classe do
-  daisyUI** (`btn`, `input`, `badge`...): o build quebra e a folha inteira cai. A classe daisyUI fica
-  no HTML, empilhada com o token (§2.2).
+  daisyUI** (`btn`, `input`, `badge`...). Atenção à armadilha: no build da aplicação isso **compila
+  sem erro**, porque o daisyUI entra como `@plugin` e vira utility resolvível — mas nos mocks de
+  SPEC, onde ele é folha separada servida por CDN, a mesma linha derruba a folha inteira. A falha é
+  assimétrica: passa na aplicação e mata o mock. A classe daisyUI fica no HTML, empilhada com o
+  token (§2.2).
 
 ### 2.2 Átomos (elementos mínimos)
 O menor elemento com identidade própria: botão, input, badge, kbd, ícone, tooltip, toggle, loading.
@@ -67,28 +84,8 @@ O menor elemento com identidade própria: botão, input, badge, kbd, ícone, too
 <label  class="btn btn-ghost btn-glass btn-circle">…</label>
 ```
 
-Átomos existentes (ver todos renderizados em `examples/design_system.html`, seção 2):
-| Átomo | Classe do DS | Sobre |
-|---|---|---|
-| Botão de energia (CTA) | `.btn-onsen` | gradiente `agua-300→500`, tinta escura, glow ciano |
-| Botão de vidro | `.btn-glass` | gelo fosco circular/pill; ações secundárias e ícones. `bg-white/40`, hover `white/60` — um degrau abaixo da placa espessa, senão o botão encosta nela e some como figura |
-| Botão de criação inline | `.btn-criar-inline` | círculo de gelo com `+` em tinta ciana ao lado de um campo: "criar agora o que falta no catálogo" |
-| Input de vidro | `.input-glass` | fundo `white/30` com o **poço em repouso** (`--sombra-poco`, SPEC design/006 — campo é coisa rebaixada); no foco o poço soma o anel ciano |
-| Badges de geometria | `.badge-ponto` `.badge-linha` `.badge-poligono` | tipo do resultado/camada |
-| Badges semânticos | `badge-{info,success,warning,error} badge-soft` | estado do sistema (daisyUI puro) |
-| Ícone com brilho | `.icon-glow` | `agua-600` + drop-shadow ciano |
-| Seta de ordenação | `.sort-etched` | a gravação com alvo próprio, à direita da célula; enche de água em `aria-sort` e gira 180° em `descending` |
-| Botão gravado | `.btn-etched` | a gravação em corpo de botão (o "limpar filtros"); enche de água no hover |
-| Ícone gravado em botão de vidro | `.icon-etched` | o glifo dentro de um `.btn-glass`, onde quem carrega a afordância é o botão |
-| Ponto da unidade | `.dot-unidade` | o `.paint-well` em escala de marca; o hex chega em `--cor-unidade` |
-| Toggle de vidro | `.toggle-onsen` | trilho = poço do `.card-well` em pílula; botão = disco `.etched` que enche de água ao ir para o lado (depende dos `defs`) |
-| Fio gravado / entintado | `.etched-line` / `.etched-line-inked` | a gravação num traço; **só material** — não posicionam nem dimensionam. Pontas esmaecem 20% de cada lado, e nunca até o transparente |
-| Lata de lixo gravada | `.lata-concessao` | `.etched` + `.etched-deeper` parado, sobe a `.etched-inked` no hover/foco; sem crachá de botão — a linha da tabela já carrega a afordância |
-| Overline | `.text-overline` | rótulo 11px caps `rocha-700` |
-| Código | `.text-code` | Roboto Mono `agua-700` (SQL, codlog) |
-
-Para criar um átomo novo: (1) confira se um componente daisyUI já resolve o comportamento;
-(2) crie **uma** classe `@apply` de utilities com a pele do DS; (3) registre-o no styleguide.
+Os átomos que existem estão renderizados em **`/design_system`**; as armadilhas de uso de
+cada um, em `references/pecas.md`.
 
 ### 2.3 Moléculas (combinações pequenas)
 Grupo de átomos funcionando como uma unidade: o grupo de busca (input + botão), o item de sugestão
@@ -97,82 +94,8 @@ o item de layer (cor + nome + badge + toggle + lixeira). Moléculas ganham class
 têm layout interno recorrente** (`.suggestion-item`); caso contrário são apenas composição de átomos
 com utilities de layout no HTML.
 
-**Campo de seleção de vidro** (`.select-onsen`, SPEC user_admin/011): opt-in por
-`data-select-onsen` no `<select>` renderizado pelo servidor. O `<select>` continua sendo o campo
-(valor, envio, `change` nativo); `static/src/js/ui/select_onsen.js` monta o gatilho
-(`.select-onsen-trigger`, o `.select-glass` de hoje) e a lista (`.select-onsen-panel`, gelo espesso
-na top layer via `popover`). Carregue o módulo na página que usa o marcador — marcar o campo não
-basta. Filtro por texto a partir de seis opções.
-
-**Campo com criação inline** (`.form-field-inline-action`, SPEC user_admin/012): o `.form-field`
-com o controle e o `.btn-criar-inline` na mesma linha — o controle estica, o botão não. O gatilho é
-um `<label for>` do modal, e o modal fica **fora** do formulário (formulário aninhado é HTML
-inválido).
-
-**Tabela de vidro** (`.table-onsen`, `.table-onsen-wrap`, `.table-onsen-poco`, SPEC
-user_admin/013): a **inversão dos materiais** — corpo em poço rebaixado (`.card-well`) e cabeçalho
-em placa de gelo sobre ele. A caixa rola por conta própria (a viewport nunca rola na horizontal) e o
-cabeçalho é grudento; a folga do poço é padding do `.card-well`, **fora** do rolador — dentro dele o
-recorte do overflow deixaria aparecer uma faixa de linha nítida acima da bandeja. Com cabeçalho, essa
-folga existe só **embaixo** (`pb-2`): a bandeja encosta no topo e nas laterais do poço e **atravessa**
-a coluna da barra (`--coluna-barra`), onde a linha para. Poço que só rola conteúdo mantém `p-2`.
-Linhas separadas **em luz**, sem zebra, e hover que **acende** o gelo.
-
-**Tabela de vidro simples** (`.tabela-onsen-simples`, SPEC autorizacao/008): a mesma `.table-onsen`
-sem `<thead>` — só linha, para uma lista curta dentro de um cartão (ex.: quem exerce uma
-atribuição). Composição: `.card-well.table-onsen-poco[data-scroll-etched]` >
-`.table-onsen-wrap.tabela-onsen-simples[data-rolador]` > `table.table.table-onsen > tbody`, com a
-barra gravada (`.scroll-etched` + `[data-barra]`/`[data-polegar]`) como na tabela completa —
-`static/src/js/ui/scroll_etched.js` esconde a barra sozinho quando cabe tudo sem rolar.
-`.tabela-onsen-simples` é só a altura do rolador: **3 linhas** (2,75rem cada, da folga `py-3` +
-`text-sm` da célula) cabem antes de rolar. Uma coluna à direita para ação por linha (ex.:
-`.lata-concessao`) empilha essas ações na mesma posição em todas as linhas.
-
-**Bandeja e célula de cabeçalho** (`.th-onsen-bandeja`, `.th-onsen`, `.th-onsen-campo`,
-`.th-onsen-input`, `.th-onsen-gravado`): o cabeçalho é **uma superfície** — o gelo mais denso do
-sistema depois do modal, `94%→86%` sobre 56px de blur, porque é a única coisa entre ele e as linhas
-que correm por trás — e cada coluna é uma peça assentada sobre ela — clicar a faz **afundar** e virar campo, porque campo aqui é sempre coisa
-rebaixada. **Afundado = a coluna tem filtro**, não "alguém clicou": o CSS lê o valor com
-`:has(input:not(:placeholder-shown))`, sem estado de UI em JavaScript. A régua **abre inteira** (o
-campo de uma coluna abre o de todas). Coluna que não responde **não tem peça**: o rótulo é gravado
-direto na bandeja — a ausência da peça é a mensagem, sem cinza de desabilitado.
-
-**Imagem de perfil** (`.avatar-glass`): o disco com a foto ou o avatar de iniciais, recortado no
-círculo. A unidade **não é um anel** — é **luz atrás do disco**: um aro de contato (`--halo-aro`,
-3px, na mesma transparência da imagem) e, a partir dele, dois fades que se dissolvem. Anel sólido
-com `outline`/`offset` é aresta desenhada fora da caixa que a caixa não reserva: pousava sobre o
-vizinho. O hex chega em `--cor-unidade` e o alcance da luz em `--halo-escala` — o padrão serve de
-`w-9` a `w-16`; disco maior abre o alcance **no include**, não no token (`w-28` usa `2`, o chip do
-topo `0.5`). O volume vem do domo (`::after`): a mesma **óptica simulada** do mapa (§6) — só o aro
-curva, o miolo até 78% do raio é a imagem crua, e nada se distorce geometricamente. A imagem cede
-um pouco ao gelo (`opacity` no **filho**, nunca no `.avatar-glass`: no pai levaria junto o halo e o
-domo, que são luz).
-
-**Linha de pessoa, tarja de vínculo e calha da cobertura** (`.linha-pessoa`, `.tarja-vinculo`
-(`-pendente`/`-critica`), `.calha-cobertura*`, SPEC user_admin/015): a tarja é **placa clara
-assentada dentro de um poço** — não é `.card-well`, porque poço dentro de poço perde o degrau —, e
-usa o raio `--radius-placa`. A calha é o afastamento inteiro como **bandeja funda**: ela nunca se
-preenche, o que muda de estado é o **fio** no fundo dela, e a régua é o **calendário** —
-`left`/`width` são a fração de dias de cada trecho, calculada na orquestração (`context.py`), nunca
-no domínio. Prazo indeterminado **dissolve** a ponta (`.calha-cobertura-aberta`) em vez de desenhar
-um fim que não existe. Sem cor semântica no fio: quem *nomeia* o buraco é o rótulo em âmbar.
-
-**Linha pinçada** (`.table-flutuante-clone`, `.linha-pincada`, SPEC user_admin/021): escolhida uma
-unidade, a linha dela sobe até o topo da tabela. Quem desliza é um **clone** em `.glass-panel-thick`
-posicionado no `.table-onsen-poco` — `<tr>` não aceita `transform` sem desmontar a grade da tabela —
-e a original **apaga no lugar** (`.linha-pincada`), sem sair do fluxo: removê-la faria a tabela
-inteira pular sob o clone em movimento. Raio `--radius-placa`. Par com
-`static/src/js/ui/sincronia_unidades.js`, que escreve **só medida** em custom properties
-(`--topo-pincagem`, `--altura-pincagem`, `--duracao-pincagem`, `--largura-coluna`) — nenhuma
-declaração de pele sai do JS.
-
-**Barra de rolagem gravada** (`.scroll-etched`, `.scroll-etched-thumb`, `.scroll-etched-ativa`,
-`.scroll-etched-ociosa`): trilho sulcado e polegar de água, para **qualquer** `.card-well` rolável.
-Opt-in por `data-scroll-etched` no poço, com `[data-rolador]`, `[data-barra]`, `[data-polegar]` e
-`[data-cabecalho]` (opcional) dentro dele; par com `static/src/js/ui/scroll_etched.js` — carregue o
-módulo na página, marcar o markup não basta. É **elemento**, não `::-webkit-scrollbar`: o pseudo não
-existe no Firefox, no Chrome troca a barra flutuante por uma clássica sempre visível, e em ambos
-ocupa a altura inteira do rolador (correria ao lado da bandeja). Rolar continua sendo do navegador.
+As peças que existem estão em **`/design_system`**; como cada uma é acionada e o que já
+quebrou nela, em `references/pecas.md` — leia antes de compor com uma delas.
 
 ### 2.4 Organismos (seções de domínio)
 Seções autônomas da interface: o painel de busca completo, a gaveta de detalhes do imóvel, o widget
@@ -184,12 +107,12 @@ de usuário, o painel de camadas do projeto. **Organismo = partial Django/HTMX**
   copiar blocos de utilities.
 
 ### 2.5 Checklist para qualquer componente novo
-1. Já existe no styleguide (`examples/design_system.html`)? **Reutilize.**
+1. Já existe em `/design_system`? **Reutilize.**
 2. O daisyUI tem o comportamento? Use o componente dele como base.
 3. Precisa de pele nova? Componha **tokens existentes**; se surgir cor/sombra nova, ela entra como
    token antes de aparecer em componente.
 4. Classe nova só com `@apply` de utilities; classe daisyUI empilhada no HTML.
-5. Renderize o novo componente no styleguide (é o contrato visual do projeto).
+5. Renderize o novo componente em `templates/core/design_system.html` (é o contrato visual).
 
 ## 3. Paleta
 
@@ -297,8 +220,9 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
   tem posicionamento responsivo governado no CSS: em telas amplas (`xl:`), repousa fixo no canto
   inferior direito (`xl:fixed xl:bottom-6 xl:right-6 xl:z-20`); em telas estreitas (< xl), entra no
   fluxo como nova linha abaixo do conteúdo alinhado à direita (`self-end ml-auto mt-4`), e sob modais
-  abertos recolhe via `:root:has(.modal-toggle:checked)`. Página nova não recopia camada nenhuma. Mock
-  e styleguide montam esse mesmo conjunto pelo `examples/fundo-admin.js` da skill `mock`.
+  abertos recolhe via `:root:has(.modal-toggle:checked)`. Página nova não recopia camada nenhuma — inclusive
+  `/design_system`, que faz `{% include "mapping/_mapa_admin.html" %}` como qualquer outra. Os mocks
+  de SPEC montam o mesmo conjunto por `examples/fundo-admin.js` da skill `mock`.
 
 ## 7. Coreografia, micro-interações e HTMX
 
@@ -325,18 +249,29 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
 **`static/src/tema-dimap.dev.css` é a FONTE ÚNICA do design system** (SPEC design/004): tema
 daisyUI como variáveis planas em `html[data-theme="dimap"]`, `@theme` (escalas do §3.1 + papéis
 do §3.2) e `@layer components` (tokens/átomos/moléculas). Editar o design system = editar esse
-arquivo. Três consumidores:
+arquivo. Dois consumidores, com mecanismos diferentes:
 
-1. **Aplicação (dev/CDN):** `base.html` inclui o arquivo server-side —
-   `<style type="text/tailwindcss">{% include "tema-dimap.dev.css" %}</style>`
-   (`static/src` está nos `DIRS` do template engine só para isso).
-2. **Mocks desta skill** (`examples/*.html`): loader JS faz fetch do arquivo e injeta o
-   `<style>`. **Exigem servidor com root na raiz do projeto** (ex.: Live Server) — não abrem
-   mais via `file://`.
-3. **Build de prod (futuro):** `static/src/input.css` é só o esqueleto
-   (`@import "tailwindcss"; @import "./tema-dimap.dev.css"; @plugin "daisyui"; @source ...`).
+1. **A aplicação, por build** (SPEC infraestrutura/004). `static/src/input.css` é a entrada —
+   ordem das camadas, `source(none)`, `@import` do tema, `@plugin "daisyui"` e os `@source` — e o
+   serviço `tailwind` do `docker compose` compila em watch para `static/dist/output.css`. Toda
+   página, `/design_system` inclusive, carrega esse arquivo por `{% static 'output.css' %}`. Não há
+   CDN: a aplicação não busca Tailwind nem daisyUI na rede.
+2. **Os mocks de SPEC**, por compilador de browser (`@tailwindcss/browser` + daisyUI por CDN):
+   fazem `fetch` do tema e o injetam num `<style type="text/tailwindcss">`, no mesmo bloco em que
+   escrevem as peças **novas** da SPEC. Precisam disso porque renderizam CSS que ainda não existe
+   em lugar nenhum — e por isso **exigem servidor com root na raiz** (Live Server); não abrem via
+   `file://`. Ver skill `mock`.
+
+Consequência do (1) para quem cria peça: só entra no CSS o que o `@source` descobre como literal em
+`templates/`, `apps/`, `static/src/js` ou `services/utils/erros_formulario`. Peça portada para o
+tema é imune a isso — vira `@layer components` e sai sempre.
 
 Cuidados que já quebraram build/render:
+- **A ordem das camadas é declarada no `input.css`, não herdada do `@import`.** O daisyUI emite os
+  componentes dele dentro de `utilities` e o design system vive em `components`; na ordem padrão do
+  Tailwind (`theme, base, components, utilities`) o daisyUI **vence** o tema, e o resultado é modal
+  opaco, foco sem halo e avisos sem cor — sem erro nenhum no build. Por isso a primeira linha é
+  `@layer properties, theme, base, utilities, components;`.
 - `@apply` **só de utilities** (nunca classes daisyUI) — ver §2.1.
 - `shadow-inner` não existe no Tailwind 4; use `shadow-[inset_...]` arbitrária.
 - **`!important` no CSS é proibido** (CLAUDE.md §3.4) — salvo se pré-aprovado e estritamente necessário. Nunca use em `style` inline.
@@ -354,11 +289,11 @@ Cuidados que já quebraram build/render:
 
 ## 9. Arquivos de referência (ordem de consulta)
 
-1. **Styleguide vivo:** `examples/design_system.html` — tokens, átomos, moléculas e organismos
-   renderizados sobre o fundo oficial da área administrativa — a condição real de uso.
-   **É o contrato visual**; componente novo é registrado aqui.
-2. **Aplicação mockada:** `examples/mock_ui.html` — o design system aplicado na UX completa
-   (barra única, gaveta, coreografia de foco).
+1. **Styleguide vivo:** a rota **`/design_system`** (`templates/core/design_system.html`) — tokens,
+   átomos, moléculas e organismos renderizados sobre o fundo oficial da área administrativa, com o
+   CSS compilado da própria aplicação. **É o contrato visual**; componente novo é registrado aqui.
+2. **Armadilhas de uso das peças:** `references/pecas.md` — como cada peça é acionada e o que já
+   quebrou nela. O que a tela não mostra.
 3. **CSS dos tokens:** `static/src/tema-dimap.dev.css` — a **fonte única** (§8). O espelho
    `references/design_system.css` foi **apagado**: era órfão (ninguém o importava) e mostrava a
    receita anterior à SPEC design/006. Não recriar.

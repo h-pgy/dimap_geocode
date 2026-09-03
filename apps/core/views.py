@@ -2,11 +2,15 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from pydantic import BaseModel
 
-from apps.mapping.context import contexto_mapa_base
+from apps.mapping.context import contexto_fundo_admin, contexto_mapa_base
 
 
 def home(request: HttpRequest) -> HttpResponse:
     return render(request, "core/home.html", contexto_mapa_base())
+
+
+def design_system(request: HttpRequest) -> HttpResponse:
+    return render(request, "core/design_system.html", contexto_fundo_admin())
 
 
 def teste_validacao(request: HttpRequest) -> HttpResponse:
