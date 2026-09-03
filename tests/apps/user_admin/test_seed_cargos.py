@@ -1,7 +1,8 @@
 """
 Testes da carga de cargos a partir de `data/seed/cargos.json` (SPEC user_admin/009):
-cargo base e cargo em comissão gravados a partir do arquivo, idempotência por chave natural
-(`sigla`/`nome`), `full_clean()` de `CargoComissao` e aborto integral diante de qualquer falha.
+cargo base e cargo em comissão gravados a partir do arquivo, criação apenas do que falta por
+chave natural (`sigla`/`nome`), `full_clean()` de `CargoComissao` e aborto integral diante de
+qualquer falha.
 
 Todos levam o marker `banco`: a regra alta_administracao × nivel × e_chefia é validada em
 `clean()` contra a tabela (SPEC user_admin/001), e a constraint só se verifica sobre objeto
@@ -79,7 +80,7 @@ def test_carga_cria_cargo_base_e_cargo_comissao_do_arquivo() -> None:
 
 @banco
 @pytest.mark.django_db
-def test_carga_e_idempotente() -> None:
+def test_carga_nao_toca_registro_existente() -> None:
     _escrever_seed(
         cargo_base=[{"nome": "Assistente Administrativo de Gestão", "sigla": "AAG"}],
         cargo_comissao=[
@@ -110,13 +111,13 @@ def test_carga_e_idempotente() -> None:
     )
     carregar_seed_cargos()
 
+    # Os valores da segunda escrita não entram: os registros já existiam.
     assert CargoBase.objects.count() == 1
     assert CargoComissao.objects.count() == 1
     assert (
-        CargoBase.objects.get(sigla="AAG").nome
-        == "Assistente Administrativo de Gestão II"
+        CargoBase.objects.get(sigla="AAG").nome == "Assistente Administrativo de Gestão"
     )
-    assert CargoComissao.objects.get(nome="Diretor de Divisão").nivel == 5
+    assert CargoComissao.objects.get(nome="Diretor de Divisão").nivel == 4
 
 
 @banco

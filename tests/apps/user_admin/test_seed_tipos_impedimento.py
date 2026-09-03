@@ -1,8 +1,8 @@
 """
 Testes da carga de tipos de impedimento a partir de `data/seed/tipos_impedimento.json`
-(SPEC user_admin/010): catálogo gravado a partir do arquivo, idempotência por chave natural
-(`nome`), `full_clean()` contra a `UniqueConstraint` condicional da sigla e aborto integral
-diante de qualquer falha.
+(SPEC user_admin/010): catálogo gravado a partir do arquivo, criação apenas do que falta por
+chave natural (`nome`), `full_clean()` contra a `UniqueConstraint` condicional da sigla e aborto
+integral diante de qualquer falha.
 
 Todos levam o marker `banco`: a UniqueConstraint da sigla só se verifica sobre objeto persistido.
 """
@@ -52,15 +52,16 @@ def test_carga_cria_tipos_impedimento_do_arquivo() -> None:
 
 @banco
 @pytest.mark.django_db
-def test_carga_e_idempotente() -> None:
+def test_carga_nao_toca_registro_existente() -> None:
     _escrever_seed([{"nome": "Licença Gala", "sigla": None}])
     carregar_seed_tipos_impedimento()
 
     _escrever_seed([{"nome": "Licença Gala", "sigla": "LG"}])
     carregar_seed_tipos_impedimento()
 
+    # A sigla da segunda escrita não entra: o registro já existia.
     assert TipoImpedimento.objects.count() == 1
-    assert TipoImpedimento.objects.get(nome="Licença Gala").sigla == "LG"
+    assert TipoImpedimento.objects.get(nome="Licença Gala").sigla == ""
 
 
 @banco

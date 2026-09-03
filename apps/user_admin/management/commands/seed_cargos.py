@@ -26,6 +26,6 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"{prefixo}: {resultado.cargo_base} cargos base e "
-                f"{resultado.cargo_comissao} cargos em comissão."
+                f"{resultado.cargo_comissao} cargos em comissão criados."
             )
         )

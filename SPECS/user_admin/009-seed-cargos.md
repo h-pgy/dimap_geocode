@@ -1,12 +1,13 @@
 ---
 spec: user_admin/009
-versao: v1
-atualizado_em: 2026-08-05
+versao: v2
+atualizado_em: 2026-09-03
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: a carga passa a só criar o que falta — cargo que já existe fica intacto
 ---
 
 # SPEC user_admin/009 — Seed dos cargos (base e em comissão)
@@ -25,13 +26,13 @@ mesmo catálogo, sem cadastro manual.
 - [ ] Um único arquivo `data/seed/cargos.json` declara os **cargos base** e os **cargos em
       comissão** — mesmo padrão de arquivo único da SPEC user_admin/008, aqui sem serventia em
       dividir porque nenhum dos dois catálogos referencia o outro.
-- [ ] O comando `seed_cargos` carrega esse arquivo, criando/atualizando `CargoBase` (nome, sigla)
-      e `CargoComissao` (nome, sigla, nível, chefia, alta administração).
-- [ ] A carga é **idempotente**: a chave natural de `CargoBase` é a `sigla`; a de `CargoComissao`
-      é o `nome` — sigla+nível colide entre cargos distintos (ex.: CDA-II serve tanto diretor de
-      divisão quanto assessor), então só o nome identifica de forma única. Rodar duas vezes não
-      duplica; registro existente tem os demais campos atualizados.
-- [ ] Cada `CargoComissao` passa pelo `full_clean()` antes de ser gravado: a regra de
+- [ ] O comando `seed_cargos` carrega esse arquivo, criando `CargoBase` (nome, sigla) e
+      `CargoComissao` (nome, sigla, nível, chefia, alta administração).
+- [ ] A carga **só cria o que falta**: a chave natural de `CargoBase` é a `sigla`; a de
+      `CargoComissao` é o `nome` — sigla+nível colide entre cargos distintos (ex.: CDA-II serve
+      tanto diretor de divisão quanto assessor), então só o nome identifica de forma única.
+      Registro que já existe é **deixado intacto**; rodar duas vezes não duplica nem reescreve.
+- [ ] Cada `CargoComissao` **criado** passa pelo `full_clean()` antes de ser gravado: a regra de
       `alta_administracao` × `nivel` × `e_chefia` do model vale para a seed como vale para
       qualquer outro ponto de escrita.
 - [ ] Qualquer falha — validação de `CargoComissao` recusada pelo `clean()`, arquivo malformado —
@@ -50,8 +51,13 @@ mesmo catálogo, sem cadastro manual.
 hierarquia entre cargos —, então não existe o problema de "ordem do arquivo importa" que motivou
 as duas passagens da 008. Cada catálogo é gravado numa passagem só.
 
+**Só cria o que falta.** Mesma decisão da SPEC user_admin/008 v3, pelo mesmo motivo: depois do
+bootstrap o catálogo é mantido pelo sistema, e uma carga que reescreve o registro existente
+desfaria essa manutenção a cada subida do container. Como corolário, editar `data/seed/cargos.json`
+não propaga mais para banco já carregado.
+
 **`CargoBase` sem `full_clean()`, `CargoComissao` com.** `CargoBase` não declara `clean()`: um
-`update_or_create` direto já é suficiente. `CargoComissao` declara (a consistência entre
+`create` direto já é suficiente. `CargoComissao` declara (a consistência entre
 `alta_administracao`, `nivel` e `e_chefia`) e tem `CheckConstraint` espelhando a mesma regra — sem
 `full_clean()`, um arquivo inconsistente falharia como `IntegrityError` cru em vez de um erro de
 validação legível.
@@ -69,7 +75,7 @@ um único `atomic()`; `--dry-run` desfaz a transação no fim, igual à 008.
   leitura do arquivo, como em `@apps/user_admin/seed_unidades.py`.
 - `@apps/user_admin/seed_unidades.py` e
   `@apps/user_admin/management/commands/seed_unidades.py` → padrão de carregador (DTO Pydantic +
-  `update_or_create`/`full_clean()` dentro de `atomic()`) e de comando fino a reaproveitar por
+  criação do que falta / `full_clean()` dentro de `atomic()`) e de comando fino a reaproveitar por
   composição, não por herança.
 
 ## Formato do arquivo — `data/seed/cargos.json`
@@ -146,25 +152,37 @@ class ContagemSeedCargos(BaseModel):
     cargo_comissao: int
 
 
-def _gravar_cargo_base(cargos: list[CargoBaseSeed]) -> None:
+def _gravar_cargo_base(cargos: list[CargoBaseSeed]) -> int:
+    criados = 0
     for cargo in cargos:
-        CargoBase.objects.update_or_create(
+        if CargoBase.objects.filter(sigla=cargo.sigla).exists():
+            continue
+        CargoBase.objects.create(
+            nome=cargo.nome,
             sigla=cargo.sigla,
-            defaults={"nome": cargo.nome},
         )
+        criados += 1
+    return criados
 
 
-def _gravar_cargo_comissao(cargos: list[CargoComissaoSeed]) -> None:
+def _gravar_cargo_comissao(cargos: list[CargoComissaoSeed]) -> int:
+    criados = 0
     for cargo in cargos:
-        # get_or_create + full_clean(): sem isso a regra alta_administracao × nivel × e_chefia
-        # só apareceria como IntegrityError cru no save.
-        obj, _ = CargoComissao.objects.get_or_create(nome=cargo.nome)
-        obj.sigla = cargo.sigla
-        obj.nivel = cargo.nivel
-        obj.e_chefia = cargo.e_chefia
-        obj.alta_administracao = cargo.alta_administracao
+        if CargoComissao.objects.filter(nome=cargo.nome).exists():
+            continue
+        # Monta em memória e só então full_clean(): create() gravaria antes de a regra
+        # alta_administracao × nivel × e_chefia ser checada, e ela viraria IntegrityError cru.
+        obj = CargoComissao(
+            nome=cargo.nome,
+            sigla=cargo.sigla,
+            nivel=cargo.nivel,
+            e_chefia=cargo.e_chefia,
+            alta_administracao=cargo.alta_administracao,
+        )
         obj.full_clean()
         obj.save()
+        criados += 1
+    return criados
 
 
 def carregar_seed_cargos(*, dry_run: bool = False) -> ContagemSeedCargos:
@@ -172,13 +190,13 @@ def carregar_seed_cargos(*, dry_run: bool = False) -> ContagemSeedCargos:
     dados = read_json_from_folder(pasta, NOME_ARQUIVO_SEED)
     arquivo = ArquivoSeedCargos.model_validate(dados)
     with transaction.atomic():
-        _gravar_cargo_base(arquivo.cargo_base)
-        _gravar_cargo_comissao(arquivo.cargo_comissao)
+        cargo_base = _gravar_cargo_base(arquivo.cargo_base)
+        cargo_comissao = _gravar_cargo_comissao(arquivo.cargo_comissao)
         if dry_run:
             transaction.set_rollback(True)
     return ContagemSeedCargos(
-        cargo_base=len(arquivo.cargo_base),
-        cargo_comissao=len(arquivo.cargo_comissao),
+        cargo_base=cargo_base,
+        cargo_comissao=cargo_comissao,
     )
 ```
 
@@ -199,7 +217,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"{prefixo}: {resultado.cargo_base} cargos base e "
-                f"{resultado.cargo_comissao} cargos em comissão."
+                f"{resultado.cargo_comissao} cargos em comissão criados."
             )
         )
 ```
@@ -219,8 +237,9 @@ contra tabela.
 
 - `test_carga_cria_cargo_base_e_cargo_comissao_do_arquivo` — os dois catálogos gravados com os
   campos corretos, inclusive um cargo da alta administração (`nivel=None`). (`banco`)
-- `test_carga_e_idempotente` — rodar duas vezes não duplica em nenhum dos dois catálogos, e campo
-  alterado no arquivo é atualizado no registro existente. (`banco`)
+- `test_carga_nao_toca_registro_existente` — rodar duas vezes não duplica em nenhum dos dois
+  catálogos, e campo alterado no arquivo **não** reescreve o registro que já estava no banco.
+  (`banco`)
 - `test_cargo_comissao_invalido_aborta_sem_gravar_nada` — `alta_administracao=true` com `nivel`
   preenchido (ou sem `e_chefia`) derruba a carga inteira, incluindo o que já seria válido em
   `cargo_base`. (`banco`)

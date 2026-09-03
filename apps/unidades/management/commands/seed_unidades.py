@@ -26,6 +26,6 @@ class Command(BaseCommand):
         prefixo = "dry-run ok" if dry_run else "carga concluída"
         self.stdout.write(
             self.style.SUCCESS(
-                f"{prefixo}: {resultado.tipos} tipos e {resultado.unidades} unidades."
+                f"{prefixo}: {resultado.tipos} tipos e {resultado.unidades} unidades criados."
             )
         )

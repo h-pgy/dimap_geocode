@@ -24,5 +24,5 @@ class Command(BaseCommand):
             raise CommandError(f"carga abortada: {exc}") from exc
         prefixo = "dry-run ok" if dry_run else "carga concluída"
         self.stdout.write(
-            self.style.SUCCESS(f"{prefixo}: {resultado.tipos} tipos de impedimento.")
+            self.style.SUCCESS(f"{prefixo}: {resultado.tipos} tipos de impedimento criados.")
         )

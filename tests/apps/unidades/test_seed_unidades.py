@@ -1,12 +1,14 @@
 """
 Testes da carga do organograma a partir de `data/seed/unidades.json` (SPEC user_admin/008):
-tipos e unidades gravados a partir do arquivo, idempotência por chave natural (`nome`/`sigla`),
-independência da ordem das unidades no arquivo e aborto integral diante de qualquer falha.
+tipos e unidades gravados a partir do arquivo, criação apenas do que falta por chave natural
+(`nome`/`sigla`), independência da ordem das unidades no arquivo e aborto integral diante de
+qualquer falha.
 
 Todos levam o marker `banco`: a hierarquia é validada em `clean()` contra a tabela (SPEC
 user_admin/003), e nenhuma dessas regras se verifica sobre objeto não persistido.
 """
 
+from datetime import date
 from typing import Any
 
 from django.core.exceptions import ValidationError
@@ -91,7 +93,7 @@ def test_carga_cria_tipos_e_unidades_do_arquivo() -> None:
 
 @banco
 @pytest.mark.django_db
-def test_carga_e_idempotente() -> None:
+def test_carga_nao_toca_registro_existente() -> None:
     tipos = [
         {
             "nome": "Secretaria",
@@ -133,7 +135,43 @@ def test_carga_e_idempotente() -> None:
 
     assert TipoUnidade.objects.count() == 2
     assert Unidade.objects.count() == 2
-    assert Unidade.objects.get(sigla="DPTO").cor == CorUnidade.SAKURA_600
+    # A cor da segunda escrita não entra: o registro já existia e a carga só cria o que falta.
+    assert Unidade.objects.get(sigla="DPTO").cor == CorUnidade.AGUA_700
+
+
+@banco
+@pytest.mark.django_db
+def test_unidade_extinta_nao_e_recriada_nem_revivida() -> None:
+    tipos = [
+        {
+            "nome": "Secretaria",
+            "nivel": 30,
+            "pode_ser_raiz": True,
+            "exige_alta_administracao": True,
+        },
+        {"nome": "Departamento", "nivel": 20, "nivel_minimo_titular": 1},
+    ]
+    unidades = [
+        {"nome": "Secretaria", "sigla": "SEC", "tipo": "Secretaria"},
+        {
+            "nome": "Departamento",
+            "sigla": "DPTO",
+            "tipo": "Departamento",
+            "pai": "SEC",
+        },
+    ]
+    _escrever_seed(tipos=tipos, unidades=unidades)
+    carregar_seed_unidades()
+    extinta_em = date(2026, 9, 1)
+    Unidade.todas.filter(sigla="DPTO").update(extinta_em=extinta_em)
+
+    _escrever_seed(tipos=tipos, unidades=unidades)
+    carregar_seed_unidades()
+
+    # O manager padrão esconde a extinta: é por não enxergá-la que a carga tentava recriá-la e
+    # esbarrava no unique de nome/sigla.
+    assert Unidade.todas.count() == 2
+    assert Unidade.todas.get(sigla="DPTO").extinta_em == extinta_em
 
 
 @banco

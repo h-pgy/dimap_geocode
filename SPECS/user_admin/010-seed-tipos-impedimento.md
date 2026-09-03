@@ -1,12 +1,13 @@
 ---
 spec: user_admin/010
-versao: v1
-atualizado_em: 2026-08-05
+versao: v2
+atualizado_em: 2026-09-03
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: a carga passa a só criar o que falta — tipo que já existe fica intacto
 ---
 
 # SPEC user_admin/010 — Seed dos tipos de impedimento
@@ -24,13 +25,12 @@ sistema parta do mesmo catálogo, sem cadastro manual.
 
 - [ ] Um arquivo `data/seed/tipos_impedimento.json` declara os tipos de impedimento (nome e sigla
       opcional).
-- [ ] O comando `seed_tipos_impedimento` carrega esse arquivo, criando/atualizando
-      `TipoImpedimento`.
-- [ ] A carga é **idempotente**, com chave natural o **nome**: é o único campo com unicidade
+- [ ] O comando `seed_tipos_impedimento` carrega esse arquivo, criando `TipoImpedimento`.
+- [ ] A carga **só cria o que falta**, com chave natural o **nome**: é o único campo com unicidade
       incondicional do model (a sigla só é única quando preenchida — SPEC user_admin/002 —, então
-      não serve de chave). Rodar duas vezes não duplica; sigla alterada no arquivo atualiza o
-      registro existente.
-- [ ] Cada `TipoImpedimento` passa pelo `full_clean()` antes de ser gravado: duas siglas iguais no
+      não serve de chave). Registro que já existe é **deixado intacto**; rodar duas vezes não
+      duplica nem reescreve a sigla.
+- [ ] Cada `TipoImpedimento` **criado** passa pelo `full_clean()` antes de ser gravado: duas siglas iguais no
       arquivo violam a `UniqueConstraint` do model e a falha aparece como erro de validação
       legível, não como `IntegrityError` cru.
 - [ ] Qualquer falha — validação recusada, arquivo malformado — **aborta a carga inteira** e não
@@ -46,6 +46,11 @@ sistema parta do mesmo catálogo, sem cadastro manual.
 **Mesmo padrão da SPEC user_admin/009, com um catálogo só.** `TipoImpedimento` não referencia
 outro registro do mesmo tipo, então não há o problema de ordem que motivou as duas passagens da
 008 — uma passagem basta.
+
+**Só cria o que falta.** Mesma decisão da SPEC user_admin/008 v3, pelo mesmo motivo: depois do
+bootstrap o catálogo é mantido pelo sistema, e uma carga que reescreve o registro existente
+desfaria essa manutenção a cada subida do container. Como corolário, editar
+`data/seed/tipos_impedimento.json` não propaga mais para banco já carregado.
 
 **Chave natural é o nome, não a sigla.** Ao contrário de `CargoBase`, a sigla de
 `TipoImpedimento` é opcional e vários tipos convivem sem ela (SPEC 002): não dá para chavear por
@@ -69,7 +74,7 @@ seeds anteriores.
   leitura do arquivo, como nas seeds existentes.
 - `@apps/user_admin/seed_cargos.py` e
   `@apps/user_admin/management/commands/seed_cargos.py` → padrão de carregador (DTO Pydantic +
-  busca por chave natural + `full_clean()` dentro de `atomic()`) e de comando fino a reaproveitar
+  criação do que falta por chave natural + `full_clean()` dentro de `atomic()`) e de comando fino a reaproveitar
   por composição, não por herança.
 
 ## Formato do arquivo — `data/seed/tipos_impedimento.json`
@@ -113,16 +118,21 @@ class ContagemSeedTiposImpedimento(BaseModel):
     tipos: int
 
 
-def _gravar_tipos(tipos: list[TipoImpedimentoSeed]) -> None:
+def _gravar_tipos(tipos: list[TipoImpedimentoSeed]) -> int:
+    criados = 0
     for tipo in tipos:
-        # Monta em memória e só então full_clean(): get_or_create gravaria o registro novo
-        # incompleto antes da validação da UniqueConstraint rodar.
-        obj = TipoImpedimento.objects.filter(nome=tipo.nome).first() or TipoImpedimento(
-            nome=tipo.nome
+        if TipoImpedimento.objects.filter(nome=tipo.nome).exists():
+            continue
+        # Monta em memória e só então full_clean(): create() gravaria antes de a
+        # UniqueConstraint condicional da sigla ser checada.
+        obj = TipoImpedimento(
+            nome=tipo.nome,
+            sigla=tipo.sigla or "",
         )
-        obj.sigla = tipo.sigla or ""
         obj.full_clean()
         obj.save()
+        criados += 1
+    return criados
 
 
 def carregar_seed_tipos_impedimento(*, dry_run: bool = False) -> ContagemSeedTiposImpedimento:
@@ -130,10 +140,10 @@ def carregar_seed_tipos_impedimento(*, dry_run: bool = False) -> ContagemSeedTip
     dados = read_json_from_folder(pasta, NOME_ARQUIVO_SEED)
     arquivo = ArquivoSeedTiposImpedimento.model_validate(dados)
     with transaction.atomic():
-        _gravar_tipos(arquivo.tipos)
+        criados = _gravar_tipos(arquivo.tipos)
         if dry_run:
             transaction.set_rollback(True)
-    return ContagemSeedTiposImpedimento(tipos=len(arquivo.tipos))
+    return ContagemSeedTiposImpedimento(tipos=criados)
 ```
 
 ```python
@@ -155,7 +165,7 @@ class Command(BaseCommand):
             raise CommandError(f"carga abortada: {exc}") from exc
         prefixo = "dry-run ok" if dry_run else "carga concluída"
         self.stdout.write(
-            self.style.SUCCESS(f"{prefixo}: {resultado.tipos} tipos de impedimento.")
+            self.style.SUCCESS(f"{prefixo}: {resultado.tipos} tipos de impedimento criados.")
         )
 ```
 
@@ -173,8 +183,8 @@ Todos com o marker `banco`: idempotência e `full_clean()` só se verificam cont
 
 - `test_carga_cria_tipos_impedimento_do_arquivo` — todos os tipos gravados com nome e sigla
   corretos, inclusive vários tipos sem sigla convivendo. (`banco`)
-- `test_carga_e_idempotente` — rodar duas vezes não duplica, e sigla alterada no arquivo atualiza
-  o registro existente. (`banco`)
+- `test_carga_nao_toca_registro_existente` — rodar duas vezes não duplica, e sigla alterada no
+  arquivo **não** reescreve o registro que já estava no banco. (`banco`)
 - `test_sigla_duplicada_no_arquivo_aborta_sem_gravar_nada` — dois tipos com a mesma sigla no
   arquivo derrubam a carga inteira, nada persistido. (`banco`)
 - `test_dry_run_nao_persiste` — `--dry-run` valida sem deixar registro no catálogo. (`banco`)

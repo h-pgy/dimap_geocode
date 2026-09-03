@@ -1,13 +1,14 @@
 ---
 spec: user_admin/008
-versao: v2
-atualizado_em: 2026-08-05
+versao: v3
+atualizado_em: 2026-09-03
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
   - v2: falha da carga vira CommandError no comando — cor de erro do Django, sem traceback cru
+  - v3: a carga passa a só criar o que falta — registro que já existe, extinto inclusive, fica intacto
 ---
 
 # SPEC user_admin/008 — Seed das unidades
@@ -27,13 +28,18 @@ outro desenvolvedor — parta do mesmo catálogo de tipos e unidades, sem cadast
       tipo sem unidade não tem serventia e por isso não ganha arquivo próprio.
 - [ ] O comando `seed_unidades` carrega esse arquivo, criando os tipos (com nível, marca de raiz e
       vedas de tipo-filho) e as unidades (com tipo, unidade superior e cor).
-- [ ] A carga é **idempotente**: a chave natural do tipo é o `nome` e a da unidade é a `sigla`.
-      Rodar duas vezes não duplica; registro existente tem os demais campos atualizados. A lista de
-      vedas do arquivo **substitui** a do banco — veda retirada do arquivo some do registro.
+- [ ] A carga **só cria o que falta**: a chave natural do tipo é o `nome` e a da unidade é a
+      `sigla`. Registro que já existe é **deixado intacto** — nem os campos, nem as vedas de
+      tipo-filho, nem o vínculo com a superior são reescritos a partir do arquivo. Rodar duas
+      vezes não duplica nem desfaz o que foi editado na tela.
+- [ ] A unidade existente é procurada entre **todas**, extintas inclusive (`Unidade.todas`): a
+      extinção é lógica, a linha continua no banco, e tratá-la como ausente faz a carga tentar
+      recriá-la e esbarrar no `unique` de `nome`/`sigla`. Unidade extinta permanece extinta.
 - [ ] A **ordem das unidades no arquivo é irrelevante** — uma unidade pode aparecer antes da sua
       superior.
-- [ ] Cada unidade passa pelo `full_clean()` antes de ser gravada: as regras de hierarquia da SPEC
-      user_admin/003 valem para a seed exatamente como valem para o formulário.
+- [ ] Cada unidade **criada** passa pelo `full_clean()` antes de ser gravada: as regras de
+      hierarquia da SPEC user_admin/003 valem para a seed exatamente como valem para o formulário.
+      Unidade já existente não é revalidada — a carga não a toca.
 - [ ] Qualquer falha — sigla de pai inexistente, tipo desconhecido, hierarquia inválida — **aborta a
       carga inteira** e não deixa nada gravado.
 - [ ] A falha aparece no console como erro do Django (`CommandError`, cor de erro do `self.style`) com
@@ -53,6 +59,17 @@ partir a carga em duas metades só para que a leitura do JSON ficasse fora do Dj
 módulo a mais sem comprar teste mais barato (os testes que importam exigem banco de qualquer forma).
 O comando segue **fino** (§6.4): parsing de argumento, chamada e feedback.
 
+**Só cria o que falta.** Depois do bootstrap a fonte de verdade do organograma é o banco, não o
+arquivo: o cadastro edita unidade, transfere ramo e extingue unidade pela tela, e uma carga que
+reescreve o registro existente desfaria tudo isso na próxima subida do container. O arquivo passa a
+responder por uma pergunta só — *o que ainda não existe?* Como corolário, editar `data/seed/unidades.json`
+não propaga mais para banco já carregado; mudar unidade que existe é ato administrativo, feito na tela.
+
+**Extinta existe.** A extinção é lógica (`extinta_em`, SPEC user_admin/025) e o manager padrão de
+`Unidade` filtra as extintas. Procurar a unidade por `Unidade.objects` faria a extinta parecer
+ausente, a carga tentaria recriá-la e o `unique` de `nome`/`sigla` derrubaria a subida inteira do
+container — o defeito que motivou a v3. A carga procura por `Unidade.todas` e segue adiante.
+
 **Duas passagens em vez de ordenação topológica.** Primeiro cada unidade é gravada sem `pai`;
 depois a superior é ligada e o `full_clean()` roda. Isso torna a ordem do arquivo irrelevante sem
 nenhum algoritmo de ordenação — e dispensa detecção de ciclo, porque o próprio model já a faz: a
@@ -60,7 +77,10 @@ subordinação exige nível **estritamente** maior, e ciclo exigiria nível decr
 
 A validação fica **toda** na segunda passagem, e é de propósito: sem `pai` ligado, o `clean()`
 recusaria toda unidade de tipo não-raiz. A primeira passagem só existe dentro da transação, então
-estado meio-gravado não sobrevive a uma falha.
+estado meio-gravado não sobrevive a uma falha. A segunda passagem percorre **só o que a primeira
+criou**: ligar a superior de uma unidade preexistente a arrastaria de volta para o lugar do arquivo.
+A superior, essa sim, é procurada entre todas — pendurar unidade nova em superior extinta é recusado
+pelo `clean()`, com a mensagem certa em vez de um `DoesNotExist`.
 
 **A cor é dado, não algoritmo.** Cada unidade traz o seu slug no arquivo e a carga apenas o grava —
 sem herança a partir da superior e sem derivação do nível: mecanismo aqui só criaria uma segunda
@@ -251,13 +271,17 @@ class ArquivoSeedUnidades(BaseModel):
 class AplicadorUnidades:
     """Grava sem pai, depois liga a superior: a ordem do arquivo deixa de importar."""
 
-    def __call__(self, unidades: list[UnidadeSeed]) -> ContagemSeed:
+    def __call__(self, unidades: list[UnidadeSeed]) -> int:
         return self.pipeline(unidades)
 
-    def pipeline(self, unidades: list[UnidadeSeed]) -> ContagemSeed:
-        contagem = self._gravar_sem_pai(unidades)
-        self._ligar_superiores(unidades)
-        return contagem
+    def pipeline(self, unidades: list[UnidadeSeed]) -> int:
+        criadas = self._gravar_sem_pai(unidades)
+        self._ligar_superiores(criadas)
+        return len(criadas)
+
+    def _gravar_sem_pai(self, unidades: list[UnidadeSeed]) -> list[UnidadeSeed]:
+        # `todas`: a extinta continua no banco, e recriá-la esbarraria no unique de nome/sigla.
+        ...
 
     def _ligar_superiores(self, unidades: list[UnidadeSeed]) -> None:
         # full_clean() aqui, com o pai já ligado — antes disso a hierarquia nem existe.
@@ -297,8 +321,10 @@ regras se verifica sobre objeto não persistido.
 
 - `test_carga_cria_tipos_e_unidades_do_arquivo` — tipos gravados com nível, marca de raiz e vedas;
   unidades gravadas com tipo e superior corretos. (`banco`)
-- `test_carga_e_idempotente` — rodar duas vezes não duplica, e campo alterado no arquivo é
-  atualizado no registro existente. (`banco`)
+- `test_carga_nao_toca_registro_existente` — rodar duas vezes não duplica, e campo alterado no
+  arquivo **não** reescreve o registro que já estava no banco. (`banco`)
+- `test_unidade_extinta_nao_e_recriada_nem_revivida` — unidade extinta na tela sobrevive à carga
+  seguinte: nada duplica, nada estoura no `unique` e o `extinta_em` continua lá. (`banco`)
 - `test_ordem_do_arquivo_e_irrelevante` — unidade declarada antes da sua superior é gravada com o
   vínculo correto. (`banco`)
 - `test_pai_inexistente_aborta_sem_gravar_nada` — sigla de superior ausente no arquivo derruba a

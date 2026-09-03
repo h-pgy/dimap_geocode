@@ -1,7 +1,8 @@
 """
 Carga do organograma da DIMAP a partir de `data/seed/unidades.json` (SPEC user_admin/008):
 grava tipos de unidade e unidades a partir do arquivo versionado, com chave natural
-(`nome`/`sigla`) e idempotência — sem essa carga não há organograma sem cadastro manual.
+(`nome`/`sigla`) — sem essa carga não há organograma sem cadastro manual. Só cria o que falta:
+depois do bootstrap a fonte de verdade do organograma é o banco, não o arquivo.
 
 Mexe em persistência e orquestração, não em domínio: a única regra em jogo já está escrita no
 `clean()` de `Unidade` (SPEC user_admin/003), então este código vive no app, não em `services/`.
@@ -57,24 +58,30 @@ class AplicadorTipos:
         return self.pipeline(tipos)
 
     def pipeline(self, tipos: list[TipoUnidadeSeed]) -> int:
-        self._gravar_campos_base(tipos)
-        self._ligar_vedas(tipos)
-        return len(tipos)
+        criados = self._gravar_campos_base(tipos)
+        self._ligar_vedas(criados)
+        return len(criados)
 
-    def _gravar_campos_base(self, tipos: list[TipoUnidadeSeed]) -> None:
+    def _gravar_campos_base(
+        self,
+        tipos: list[TipoUnidadeSeed],
+    ) -> list[TipoUnidadeSeed]:
+        criados: list[TipoUnidadeSeed] = []
         for tipo in tipos:
-            TipoUnidade.objects.update_or_create(
+            if TipoUnidade.objects.filter(nome=tipo.nome).exists():
+                continue
+            TipoUnidade.objects.create(
                 nome=tipo.nome,
-                defaults={
-                    "nivel": tipo.nivel,
-                    "pode_ser_raiz": tipo.pode_ser_raiz,
-                    "exige_alta_administracao": tipo.exige_alta_administracao,
-                    "nivel_minimo_titular": tipo.nivel_minimo_titular,
-                },
+                nivel=tipo.nivel,
+                pode_ser_raiz=tipo.pode_ser_raiz,
+                exige_alta_administracao=tipo.exige_alta_administracao,
+                nivel_minimo_titular=tipo.nivel_minimo_titular,
             )
+            criados.append(tipo)
+        return criados
 
     def _ligar_vedas(self, tipos: list[TipoUnidadeSeed]) -> None:
-        # A lista do arquivo substitui a do banco: .set() troca a veda inteira, nunca acrescenta.
+        # Só os recém-criados: a veda de um tipo que já existia é do banco, não do arquivo.
         for tipo in tipos:
             tipo_obj = TipoUnidade.objects.get(nome=tipo.nome)
             vedados = [
@@ -91,27 +98,32 @@ class AplicadorUnidades:
         return self.pipeline(unidades)
 
     def pipeline(self, unidades: list[UnidadeSeed]) -> int:
-        self._gravar_sem_pai(unidades)
-        self._ligar_superiores(unidades)
-        return len(unidades)
+        criadas = self._gravar_sem_pai(unidades)
+        self._ligar_superiores(criadas)
+        return len(criadas)
 
-    def _gravar_sem_pai(self, unidades: list[UnidadeSeed]) -> None:
+    def _gravar_sem_pai(self, unidades: list[UnidadeSeed]) -> list[UnidadeSeed]:
+        criadas: list[UnidadeSeed] = []
         for unidade in unidades:
+            # `todas`: o manager padrão esconde a extinta, e recriá-la esbarraria no unique.
+            if Unidade.todas.filter(sigla=unidade.sigla).exists():
+                continue
             tipo = TipoUnidade.objects.get(nome=unidade.tipo)
-            Unidade.objects.update_or_create(
+            Unidade.todas.create(
+                nome=unidade.nome,
                 sigla=unidade.sigla,
-                defaults={
-                    "nome": unidade.nome,
-                    "tipo": tipo,
-                    "cor": unidade.cor or _cor_padrao(),
-                },
+                tipo=tipo,
+                cor=unidade.cor or _cor_padrao(),
             )
+            criadas.append(unidade)
+        return criadas
 
     def _ligar_superiores(self, unidades: list[UnidadeSeed]) -> None:
-        # full_clean() aqui, com o pai já ligado — antes disso a hierarquia nem existe.
+        # full_clean() aqui, com o pai já ligado — antes disso a hierarquia nem existe. Só as
+        # recém-criadas: religar a preexistente a arrastaria de volta para o lugar do arquivo.
         for unidade in unidades:
-            obj = Unidade.objects.get(sigla=unidade.sigla)
-            obj.pai = Unidade.objects.get(sigla=unidade.pai) if unidade.pai else None
+            obj = Unidade.todas.get(sigla=unidade.sigla)
+            obj.pai = Unidade.todas.get(sigla=unidade.pai) if unidade.pai else None
             obj.full_clean()
             obj.save()
 
@@ -121,8 +133,8 @@ def carregar_seed_unidades(*, dry_run: bool = False) -> ContagemSeed:
     dados = read_json_from_folder(pasta, NOME_ARQUIVO_SEED)
     arquivo = ArquivoSeedUnidades.model_validate(dados)
     with transaction.atomic():
-        total_tipos = AplicadorTipos()(arquivo.tipos)
-        total_unidades = AplicadorUnidades()(arquivo.unidades)
+        tipos_criados = AplicadorTipos()(arquivo.tipos)
+        unidades_criadas = AplicadorUnidades()(arquivo.unidades)
         if dry_run:
             transaction.set_rollback(True)
-    return ContagemSeed(tipos=total_tipos, unidades=total_unidades)
+    return ContagemSeed(tipos=tipos_criados, unidades=unidades_criadas)
