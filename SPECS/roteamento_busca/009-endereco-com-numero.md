@@ -1,9 +1,11 @@
 ---
 spec: roteamento_busca/009
 versao: v6
-atualizado_em: 2026-07-02
-implementado: false
+atualizado_em: 2026-09-04
+implementado: true
+testes_tdd: true
 changelog:
+  - v6: "[admin] atualização de flags: implementado e testes_tdd verdadeiros (código já estava em produção desde 2026-07-02)"
   - v1: versão inicial
   - v2: EnderecoCodlogParse.numero passa a ser `int` (número de imóvel é estritamente
     numérico no caminho por codlog); separar_numero_codlog só aceita dígitos puros e o
