@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/012 — Campo de data (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== 2 · ÁTOMOS ==================== */
+
+      /* .campo-data-gatilho */
+      .campo-data-gatilho {
+        @apply absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center;
+        @apply w-7 h-7 rounded-lg cursor-pointer transition-all duration-300 origin-center;
+        filter: url(#etched-onsen);
+        color: rgba(13, 27, 42, 0.35);
+      }
+      .campo-data-gatilho:hover,
+      .campo-data:focus-within .campo-data-gatilho {
+        @apply scale-[1.12] bg-agua-400/20;
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      .campo-data-gatilho:focus-visible {
+        @apply outline-none shadow-[0_0_0_3px_rgba(0,150,199,0.25)];
+      }
+
+      /* .calendario-celula — a mesma célula serve dia, mês e ano */
+      .calendario-celula {
+        @apply inline-flex items-center justify-center h-9 rounded-xl text-sm text-base-content;
+        @apply cursor-pointer transition-all duration-200 origin-center tabular-nums;
+      }
+      .calendario-celula:hover { @apply scale-[1.1] bg-agua-400/25 text-agua-800; }
+      .calendario-celula[data-fora] { @apply text-base-content/30; }
+      .calendario-celula[data-hoje] { @apply font-bold text-agua-700 shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5)]; }
+      .calendario-celula[aria-selected="true"] {
+        @apply font-bold text-rocha-950 bg-gradient-to-br from-agua-300 to-agua-500;
+        @apply shadow-[0_4px_16px_rgba(0,150,199,0.45)];
+      }
+      .calendario-celula[data-ativo="true"] {
+        @apply bg-agua-400/45 text-rocha-950 outline-none;
+        @apply shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+      }
+      .calendario-celula[aria-selected="true"][data-ativo="true"] {
+        @apply bg-gradient-to-br from-agua-300 to-agua-500 text-rocha-950;
+        @apply shadow-[inset_0_0_0_1px_rgba(255,255,255,0.9),0_4px_18px_rgba(0,150,199,0.55)];
+      }
+      .calendario-celula:disabled { @apply opacity-25 cursor-not-allowed; }
+      .calendario-celula:disabled:hover { @apply scale-100 bg-transparent text-base-content; }
+
+      /* ==================== 3 · MOLÉCULAS ==================== */
+
+      /* .campo-data */
+      .campo-data { @apply relative w-full; }
+      .campo-data-entrada { @apply pr-9 tabular-nums; }
+
+      /* .calendario-onsen — o display e a posição ficam no :popover-open pelo motivo do
+         .select-onsen-panel: a base não pode declarar display, senão o popover fechado aparece. */
+      .calendario-onsen {
+        @apply p-3 w-64 rounded-2xl backdrop-blur-[28px] bg-transparent;
+        @apply bg-gradient-to-br from-white/88 via-white/82 to-white/76 border border-white/70 text-base-content;
+        @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+      }
+      .calendario-onsen:popover-open {
+        @apply fixed m-0 flex flex-col gap-2;
+        inset: auto;
+      }
+      .calendario-onsen:focus-visible { @apply outline-none; }
+      .calendario-onsen-topo   { @apply flex items-center justify-between gap-1; }
+      /* O corpo é UMA caixa: as faces se SUBSTITUEM dentro dela, e a altura mínima impede o painel
+         de saltar quando a grade de 42 dias dá lugar à de 12 meses. */
+      .calendario-onsen-corpo  { @apply flex flex-col gap-1 min-h-[16rem]; }
+      .calendario-onsen-semana { @apply grid grid-cols-7 gap-1 text-center; }
+      .calendario-onsen-grade  { @apply grid grid-cols-7 gap-1; }
+      .calendario-onsen-meses  { @apply grid grid-cols-3 gap-1.5 flex-1 content-center; }
+      .calendario-onsen-anos   { @apply grid grid-cols-4 gap-1.5 flex-1 content-center overflow-y-auto overscroll-contain; }
+      /* Quem manda na substituição é o data-face do corpo, e não classe posta por JS: uma utility
+         solta empata em força com o display: grid da peça e a face escondida vazava embaixo. */
+      .calendario-onsen-corpo[data-face="dias"]  :is(.calendario-onsen-meses, .calendario-onsen-anos),
+      .calendario-onsen-corpo[data-face="meses"] :is(.calendario-onsen-semana, .calendario-onsen-grade, .calendario-onsen-anos),
+      .calendario-onsen-corpo[data-face="anos"]  :is(.calendario-onsen-semana, .calendario-onsen-grade, .calendario-onsen-meses) {
+        @apply hidden;
+      }
+      /* O título é a subida da pilha: dias → meses → anos. No topo ele para de subir e para de se
+         oferecer — o cursor é o que anuncia que ali não há gesto. */
+      .calendario-onsen-titulo[data-topo] { @apply pointer-events-none; }
+      .calendario-onsen-rodape { @apply flex items-center justify-between gap-2 pt-1 border-t border-white/50; }
+
+      /* .campo-periodo — ALTERADO: o intervalo passa a alcançar a casca, além do input nu */
+      .campo-periodo > :where(input, .campo-data) { @apply min-w-0 flex-1; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Os defs da gravação vêm do partial da própria aplicação (no produto, pelo base.html):
+       sem eles .etched, .icon-etched e .campo-data-gatilho existem e não desenham nada. -->
+  <script type="module">
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((svg) => document.body.insertAdjacentHTML("afterbegin", svg.replace(TAG_DE_TEMPLATE, "").trim()));
+  </script>
+
+  <!-- O fundo é montado no topo do <body> pelo módulo do <head>; o conteúdo fica acima dele. -->
+  <div class="relative z-10">
+    <main class="max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC design/012 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Campo de data</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          Entrada em <strong>dd/mm/aaaa</strong> e calendário de vidro no lugar do seletor do sistema
+          operacional. O <span class="text-code">input[type="date"]</span> continua sendo o campo do
+          formulário, escondido atrás da casca.
+        </p>
+      </header>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">2 · Átomos</h2>
+
+        <!-- .campo-data-gatilho -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.campo-data-gatilho</span>
+          <div class="card-well p-4 flex flex-wrap items-center gap-8">
+            <!-- repouso -->
+            <div class="flex flex-col items-center gap-2">
+              <span class="relative inline-flex w-10 h-9 rounded-xl bg-white/25">
+                <button type="button" class="campo-data-gatilho" tabindex="-1" aria-hidden="true">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+                </button>
+              </span>
+              <span class="text-[11px] text-base-content/60">repouso</span>
+            </div>
+            <!-- hover / campo em foco: gravação entintada + swell (ao vivo) -->
+            <div class="flex flex-col items-center gap-2">
+              <span class="campo-data relative inline-flex w-10 h-9 rounded-xl bg-white/25" tabindex="0">
+                <button type="button" class="campo-data-gatilho" tabindex="-1" aria-hidden="true">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+                </button>
+              </span>
+              <span class="text-[11px] text-base-content/60">ponteiro ou campo em foco</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- .calendario-celula -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.calendario-celula</span>
+          <div class="card-well p-4 flex flex-wrap gap-6">
+            <div class="flex flex-col items-center gap-2">
+              <span class="calendario-celula w-9">14</span>
+              <span class="text-[11px] text-base-content/60">repouso</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="calendario-celula w-9" data-hoje>05</span>
+              <span class="text-[11px] text-base-content/60">hoje</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="calendario-celula w-9" aria-selected="true">18</span>
+              <span class="text-[11px] text-base-content/60">escolhido</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="calendario-celula w-9" data-ativo="true">21</span>
+              <span class="text-[11px] text-base-content/60">cursor do teclado</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="calendario-celula w-9" aria-selected="true" data-ativo="true">18</span>
+              <span class="text-[11px] text-base-content/60">escolhido + cursor</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="calendario-celula w-9" data-fora>31</span>
+              <span class="text-[11px] text-base-content/60">mês vizinho</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <button type="button" class="calendario-celula w-9" disabled>02</button>
+              <span class="text-[11px] text-base-content/60">fora do alcance</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <button type="button" class="calendario-celula w-9">27</button>
+              <span class="text-[11px] text-base-content/60">passe o ponteiro: swell</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .campo-data -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.campo-data</span>
+          <div class="card-well p-4 grid sm:grid-cols-2 gap-5">
+            <!-- vazio: o estado de falta do campo -->
+            <label class="form-field">
+              <span class="text-overline">Vazio</span>
+              <input type="date" data-campo-data class="input input-glass" />
+              <span class="form-field-hint">O texto de apoio é o próprio formato.</span>
+            </label>
+            <!-- preenchido -->
+            <label class="form-field">
+              <span class="text-overline">Preenchido</span>
+              <input type="date" data-campo-data class="input input-glass" value="2026-09-18" />
+            </label>
+            <!-- recusado pelo servidor -->
+            <label class="form-field">
+              <span class="text-overline">Recusado</span>
+              <input type="date" data-campo-data class="input input-glass campo-realce-erro" value="2026-09-02" />
+              <span class="form-field-hint text-error">O fim não pode anteceder o início.</span>
+            </label>
+            <!-- com alcance: min/max -->
+            <label class="form-field">
+              <span class="text-overline">Com alcance (set/2026)</span>
+              <input type="date" data-campo-data class="input input-glass" value="2026-09-10" min="2026-09-01" max="2026-09-30" />
+              <span class="form-field-hint">Fora do alcance, o dia não é escolhível.</span>
+            </label>
+            <!-- medida pequena -->
+            <label class="form-field">
+              <span class="text-overline">Medida pequena</span>
+              <input type="date" data-campo-data class="input input-glass input-sm" value="2026-08-06" />
+            </label>
+            <!-- estado de falta da máscara: data impossível -->
+            <label class="form-field">
+              <span class="text-overline">Data impossível</span>
+              <input type="date" data-campo-data class="input input-glass" />
+              <span class="form-field-hint">Digite <span class="text-code">31/02/2026</span>: o campo acende e não escreve valor.</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- .calendario-onsen — as três faces, abertas lado a lado -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.calendario-onsen</span>
+          <p class="text-[13px] text-base-content/70 -mt-1">
+            Uma caixa só: cada face <strong>substitui</strong> a anterior, de mesma altura. O título
+            sobe a pilha — <span class="text-code">setembro 2026 ⌃</span> →
+            <span class="text-code">2026 ⌃</span> → <span class="text-code">2020 – 2039</span> —, e a
+            volta é sempre por escolha: clicar num ano devolve os meses, clicar num mês devolve os dias.
+          </p>
+          <div class="card-well p-4 flex flex-wrap items-start gap-6" id="vitrine-calendario">
+            <!-- face: dias -->
+            <div class="flex flex-col items-center gap-2">
+              <div class="calendario-onsen flex flex-col gap-2" data-vitrine="dias"></div>
+              <span class="text-[11px] text-base-content/60">1 · dias — o título sobe aos meses</span>
+            </div>
+            <!-- face: meses (substitui os dias) -->
+            <div class="flex flex-col items-center gap-2">
+              <div class="calendario-onsen flex flex-col gap-2" data-vitrine="meses"></div>
+              <span class="text-[11px] text-base-content/60">2 · meses — escolher devolve os dias</span>
+            </div>
+            <!-- face: anos (substitui os meses; topo da pilha) -->
+            <div class="flex flex-col items-center gap-2">
+              <div class="calendario-onsen flex flex-col gap-2" data-vitrine="anos"></div>
+              <span class="text-[11px] text-base-content/60">3 · anos — escolher devolve os meses</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- .campo-periodo com a casca -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.campo-periodo</span>
+          <div class="card-well p-4">
+            <label class="form-field max-w-md">
+              <span class="text-overline">Período</span>
+              <span class="campo-periodo">
+                <input type="date" data-campo-data class="input input-glass input-sm" value="2026-08-06">
+                <span class="campo-periodo-traco">até</span>
+                <input type="date" data-campo-data class="input input-glass input-sm" value="2026-09-05">
+              </span>
+              <span class="form-field-hint">Nasce nos últimos 30 dias.</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-8">
+        <h2 class="section-title px-2">5 · Tela montada</h2>
+
+        <!-- estado: o campo dentro do modal do ato administrativo -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline px-2">Registrar impedimento — o calendário sobre a caixa do modal</p>
+
+          <!-- página: user_admin/perfil.html -->
+          <!-- fica na página: o gesto que chama o ato -->
+          <div class="flex justify-center">
+            <label for="modal-impedimento" class="btn btn-onsen btn-sm">Registrar impedimento</label>
+          </div>
+
+          <!-- partial: user_admin/partials/_modal_impedimento.html — chega por hx-get na rota do ato -->
+          <!-- O toggle é IRMÃO IMEDIATO do .modal: é a adjacência que o abre e que o tira da regra
+               de neutralização de blur do modal fechado (SPEC design/007). -->
+          <input type="checkbox" id="modal-impedimento" class="modal-toggle" />
+          <div class="modal modal-glass" role="dialog">
+            <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+              <div class="flex flex-col gap-6">
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Registrar impedimento</h2>
+                  <p class="text-sm text-base-content/70 mt-1">Marina Salles · DIMAP-11</p>
+                </div>
+
+                <!-- partial: user_admin/partials/_form_impedimento.html — alvo de hx-swap na recusa -->
+                <form class="flex flex-col gap-5" onsubmit="return false">
+                  <label class="form-field">
+                    <span class="text-overline">Tipo</span>
+                    <select class="select select-glass" data-select-onsen>
+                      <option>Férias</option>
+                      <option>Licença médica</option>
+                    </select>
+                  </label>
+
+                  <div class="grid sm:grid-cols-2 gap-4">
+                    <label class="form-field">
+                      <span class="text-overline">Início</span>
+                      <input type="date" name="data_inicio" data-campo-data class="input input-glass" value="2026-09-14" />
+                    </label>
+                    <label class="form-field">
+                      <span class="text-overline">Fim</span>
+                      <input type="date" name="data_fim" data-campo-data class="input input-glass" />
+                      <span class="form-field-hint">Em branco, o prazo é indeterminado.</span>
+                    </label>
+                  </div>
+
+                  <div class="tarja-vinculo flex items-start gap-3">
+                    <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4h4"/></svg>
+                    <p class="text-[13px] text-base-content/80">
+                      Marina sai do exercício <strong>na data de início</strong>, não agora — e volta
+                      <strong>sozinha</strong> no dia seguinte ao fim.
+                    </p>
+                  </div>
+
+                  <div class="flex justify-end">
+                    <button type="submit" class="btn btn-onsen btn-sm">Registrar</button>
+                  </div>
+                </form>
+                <!-- /partial -->
+
+                <div class="modal-action">
+                  <label for="modal-impedimento" class="btn btn-glass btn-sm">Cancelar</label>
+                </div>
+              </div>
+            </div>
+            <label class="modal-backdrop" for="modal-impedimento">Fechar</label>
+          </div>
+          <!-- /partial -->
+        </div>
+
+        <!-- estado: o intervalo dentro da busca do registro de ações -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline px-2">Registro de ações — o intervalo dentro do card de busca</p>
+
+          <!-- página: competencias/registro_acoes_list.html -->
+          <div class="glass-panel p-6 sm:p-8">
+            <!-- partial: competencias/partials/_busca_execucoes.html — hx-get com hx-trigger de mudança -->
+            <div class="card-well card-busca">
+              <div class="card-busca-topo">
+                <span class="text-overline">Busca no registro</span>
+                <button type="button" class="btn-etched btn-etched-sm btn-etched-swell etched">✕ limpar busca</button>
+              </div>
+              <div class="card-busca-grade">
+                <label class="form-field">
+                  <span class="text-overline">Unidade</span>
+                  <select class="select select-glass select-sm" data-select-onsen>
+                    <option>DIMAP-1 · Divisão de Avaliação</option>
+                    <option>DIMAP-11 · Seção de Avaliação Predial</option>
+                  </select>
+                </label>
+                <label class="form-field card-busca-largo">
+                  <span class="text-overline">Período</span>
+                  <span class="campo-periodo">
+                    <input type="date" name="inicio" data-campo-data class="input input-glass input-sm" value="2026-08-06">
+                    <span class="campo-periodo-traco">até</span>
+                    <input type="date" name="fim" data-campo-data class="input input-glass input-sm" value="2026-09-05">
+                  </span>
+                </label>
+              </div>
+            </div>
+            <!-- /partial -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- static/src/js/ui/select_onsen.js — a casca do select, para o formulário ficar completo -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+
+  <!-- static/src/js/ui/campo_data.js -->
+  <script type="module">
+    const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+    const DIAS_DA_SEMANA = ["D", "S", "T", "Q", "Q", "S", "S"];
+    // Seis semanas sempre: mês que cabe em cinco deixaria o painel encolher, e a linha de baixo
+    // dançaria sob o ponteiro a cada troca de mês.
+    const CELULAS = 42;
+    const ANOS_NO_BLOCO = 20;
+    const FOLGA_PX = 8;
+    const ALTURA_CONFORTAVEL_PX = 340;
+    const PASSO_POR_FACE = {
+      dias:  { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 },
+      meses: { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -3, ArrowDown: 3 },
+      anos:  { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -4, ArrowDown: 4 },
+    };
+
+    let sequencia = 0;
+
+    function isoDe(data) {
+      const mes = String(data.getMonth() + 1).padStart(2, "0");
+      const dia = String(data.getDate()).padStart(2, "0");
+      return `${data.getFullYear()}-${mes}-${dia}`;
+    }
+
+    function deIso(iso) {
+      const [ano, mes, dia] = iso.split("-").map(Number);
+      return new Date(ano, mes - 1, dia);
+    }
+
+    function paraBr(iso) {
+      if (!iso) return "";
+      const [ano, mes, dia] = iso.split("-");
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    // Data incompleta ou impossível devolve vazio: meio valor não vira valor, e 31/02 existe como
+    // texto e não como data — é a volta pelo Date que denuncia a diferença.
+    function paraIso(texto) {
+      const digitos = texto.replace(/\D/g, "");
+      if (digitos.length !== 8) return "";
+      const dia = digitos.slice(0, 2);
+      const mes = digitos.slice(2, 4);
+      const ano = digitos.slice(4);
+      const data = new Date(Number(ano), Number(mes) - 1, Number(dia));
+      if (data.getDate() !== Number(dia) || data.getMonth() !== Number(mes) - 1) return "";
+      return `${ano}-${mes}-${dia}`;
+    }
+
+    function mascarar(texto) {
+      const digitos = texto.replace(/\D/g, "").slice(0, 8);
+      if (digitos.length <= 2) return digitos;
+      if (digitos.length <= 4) return `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+      return `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
+    }
+
+    // Reformatar move o texto sob o cursor; o que o mantém no lugar é a contagem de dígitos à
+    // esquerda dele, que a máscara não altera (mesma técnica do campo_mascarado.js).
+    function posicaoAposDigitos(texto, quantidade) {
+      if (quantidade === 0) return 0;
+      let vistos = 0;
+      for (let i = 0; i < texto.length; i += 1) {
+        if (!/\d/.test(texto[i])) continue;
+        vistos += 1;
+        if (vistos === quantidade) return i + 1;
+      }
+      return texto.length;
+    }
+
+    function diasDaGrade(ano, mes) {
+      const primeiro = new Date(ano, mes, 1);
+      // Domingo abre a semana no calendário brasileiro, e getDay() já conta a partir dele.
+      const inicio = new Date(ano, mes, 1 - primeiro.getDay());
+      return Array.from({ length: CELULAS }, (_, passo) => {
+        const dia = new Date(inicio);
+        dia.setDate(inicio.getDate() + passo);
+        return dia;
+      });
+    }
+
+    function celula(rotulo) {
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.className = "calendario-celula";
+      botao.textContent = rotulo;
+      return botao;
+    }
+
+    function seta(glifo, rotulo) {
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.className = "btn btn-ghost btn-sm btn-circle btn-etched-swell";
+      botao.setAttribute("aria-label", rotulo);
+      botao.innerHTML = `<span class="icon-etched">${glifo}</span>`;
+      return botao;
+    }
+
+    function botaoGravado(rotulo) {
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.className = "btn-etched btn-etched-sm btn-etched-swell etched";
+      botao.textContent = rotulo;
+      return botao;
+    }
+
+    // A casca do calendário, sem estado: as faces nascem todas e quem escolhe qual aparece é o
+    // desenho. Devolvida crua para o mock também montar as vitrines estáticas.
+    function montarPainel(identificador) {
+      const painel = document.createElement("div");
+      painel.className = "calendario-onsen";
+      painel.id = identificador;
+      painel.tabIndex = -1;
+
+      const topo = document.createElement("div");
+      topo.className = "calendario-onsen-topo";
+      const anterior = seta("‹", "Anterior");
+      const titulo = botaoGravado("");
+      titulo.classList.add("calendario-onsen-titulo");
+      // O caret é a afordância da subida: enquanto ele está lá, o título leva ao nível de cima.
+      const rotulo = document.createElement("span");
+      const caret = document.createElement("span");
+      caret.textContent = "⌃";
+      caret.setAttribute("aria-hidden", "true");
+      titulo.replaceChildren(rotulo, caret);
+      const proximo = seta("›", "Próximo");
+      topo.append(anterior, titulo, proximo);
+
+      const semana = document.createElement("div");
+      semana.className = "calendario-onsen-semana";
+      DIAS_DA_SEMANA.forEach((letra) => {
+        const marca = document.createElement("span");
+        marca.className = "text-overline";
+        marca.textContent = letra;
+        semana.appendChild(marca);
+      });
+
+      const dias = document.createElement("div");
+      dias.className = "calendario-onsen-grade";
+      dias.setAttribute("role", "grid");
+
+      const meses = document.createElement("div");
+      meses.className = "calendario-onsen-meses";
+
+      const anos = document.createElement("div");
+      anos.className = "calendario-onsen-anos";
+
+      const corpo = document.createElement("div");
+      corpo.className = "calendario-onsen-corpo";
+      corpo.dataset.face = "dias";
+      corpo.append(semana, dias, meses, anos);
+
+      const rodape = document.createElement("div");
+      rodape.className = "calendario-onsen-rodape";
+      const hoje = botaoGravado("hoje");
+      const limpar = botaoGravado("limpar");
+      rodape.append(hoje, limpar);
+
+      painel.append(topo, corpo, rodape);
+      return { painel, anterior, titulo, rotulo, caret, proximo, corpo, semana, dias, meses, anos, hoje, limpar };
+    }
+
+    function montarCasca(nativo) {
+      const casca = document.createElement("div");
+      casca.className = "campo-data";
+      nativo.parentNode.insertBefore(casca, nativo);
+      casca.appendChild(nativo);
+      // Some da tela, não do formulário: continua enviando e recebendo change.
+      nativo.hidden = true;
+      return casca;
+    }
+
+    // A entrada herda as classes que o servidor escreveu no campo nativo — input-sm, w-full e o
+    // campo-realce-* de uma recusa chegam de graça. Entra ANTES do nativo: é ela que o <label>
+    // envolvente precisa achar como primeiro controle.
+    function montarEntrada(casca, nativo) {
+      const entrada = document.createElement("input");
+      entrada.type = "text";
+      entrada.inputMode = "numeric";
+      entrada.autocomplete = "off";
+      entrada.className = `${nativo.className} campo-data-entrada`;
+      entrada.placeholder = "dd/mm/aaaa";
+      entrada.value = paraBr(nativo.value);
+      entrada.disabled = nativo.disabled;
+      casca.prepend(entrada);
+      return entrada;
+    }
+
+    function montarGatilho(casca, identificador) {
+      const gatilho = document.createElement("button");
+      gatilho.type = "button";
+      gatilho.className = "campo-data-gatilho";
+      gatilho.setAttribute("aria-label", "Abrir calendário");
+      gatilho.setAttribute("aria-haspopup", "dialog");
+      gatilho.setAttribute("aria-expanded", "false");
+      gatilho.setAttribute("aria-controls", identificador);
+      gatilho.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>`;
+      casca.appendChild(gatilho);
+      return gatilho;
+    }
+
+    function aprimorar(nativo) {
+      const identificador = `campo-data-${(sequencia += 1)}`;
+      const casca = montarCasca(nativo);
+      const entrada = montarEntrada(casca, nativo);
+      const gatilho = montarGatilho(casca, identificador);
+      const partes = montarPainel(identificador);
+      const { painel, anterior, titulo, rotulo, caret, proximo, corpo, dias, meses, anos, hoje, limpar } = partes;
+      painel.popover = "auto";
+      casca.appendChild(painel);
+
+      const realceDoServidor = entrada.classList.contains("campo-realce-erro");
+      let face = "dias";
+      let ativo = nativo.value ? deIso(nativo.value) : new Date();
+      let visivel = new Date(ativo.getFullYear(), ativo.getMonth(), 1);
+
+      function foraDoAlcance(iso) {
+        return (nativo.min && iso < nativo.min) || (nativo.max && iso > nativo.max);
+      }
+
+      function inicioDoBloco() {
+        return Math.floor(visivel.getFullYear() / ANOS_NO_BLOCO) * ANOS_NO_BLOCO;
+      }
+
+      function desenharDias() {
+        const escolhido = nativo.value;
+        const marcaDeHoje = isoDe(new Date());
+        const grade = diasDaGrade(visivel.getFullYear(), visivel.getMonth()).map((data) => {
+          const iso = isoDe(data);
+          const botao = celula(String(data.getDate()));
+          botao.dataset.iso = iso;
+          if (data.getMonth() !== visivel.getMonth()) botao.dataset.fora = "true";
+          if (iso === marcaDeHoje) botao.dataset.hoje = "true";
+          if (iso === escolhido) botao.setAttribute("aria-selected", "true");
+          if (iso === isoDe(ativo)) botao.dataset.ativo = "true";
+          botao.disabled = foraDoAlcance(iso);
+          return botao;
+        });
+        dias.replaceChildren(...grade);
+      }
+
+      function desenharMeses() {
+        const grade = MESES_CURTOS.map((nome, indice) => {
+          const botao = celula(nome);
+          botao.dataset.mes = String(indice);
+          if (indice === visivel.getMonth()) botao.dataset.ativo = "true";
+          if (nativo.value && deIso(nativo.value).getFullYear() === visivel.getFullYear()
+              && deIso(nativo.value).getMonth() === indice) {
+            botao.setAttribute("aria-selected", "true");
+          }
+          return botao;
+        });
+        meses.replaceChildren(...grade);
+      }
+
+      function desenharAnos() {
+        const primeiro = inicioDoBloco();
+        const grade = Array.from({ length: ANOS_NO_BLOCO }, (_, passo) => {
+          const ano = primeiro + passo;
+          const botao = celula(String(ano));
+          botao.dataset.ano = String(ano);
+          if (ano === visivel.getFullYear()) botao.dataset.ativo = "true";
+          if (nativo.value && deIso(nativo.value).getFullYear() === ano) {
+            botao.setAttribute("aria-selected", "true");
+          }
+          return botao;
+        });
+        anos.replaceChildren(...grade);
+      }
+
+      function desenhar() {
+        corpo.dataset.face = face;
+        titulo.toggleAttribute("data-topo", face === "anos");
+        caret.hidden = face === "anos";
+        titulo.setAttribute("aria-label", face === "anos" ? "Década em exibição" : "Subir um nível");
+        if (face === "dias") {
+          rotulo.textContent = `${MESES[visivel.getMonth()]} ${visivel.getFullYear()}`;
+          desenharDias();
+          return;
+        }
+        if (face === "meses") {
+          rotulo.textContent = String(visivel.getFullYear());
+          desenharMeses();
+          return;
+        }
+        const primeiro = inicioDoBloco();
+        rotulo.textContent = `${primeiro} – ${primeiro + ANOS_NO_BLOCO - 1}`;
+        desenharAnos();
+      }
+
+      // Escrever no nativo E disparar change é o contrato inteiro com o resto do sistema: HTMX e
+      // qualquer outro ouvinte continuam vendo o campo de sempre.
+      function escrever(iso) {
+        nativo.value = iso;
+        nativo.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      function escolher(iso) {
+        escrever(iso);
+        entrada.value = paraBr(iso);
+        entrada.classList.toggle("campo-realce-erro", realceDoServidor);
+        ativo = deIso(iso);
+        visivel = new Date(ativo.getFullYear(), ativo.getMonth(), 1);
+        painel.hidePopover();
+        entrada.focus();
+      }
+
+      function andar(passo) {
+        if (face === "dias") {
+          const alvo = new Date(ativo);
+          alvo.setDate(alvo.getDate() + passo);
+          ativo = alvo;
+          visivel = new Date(alvo.getFullYear(), alvo.getMonth(), 1);
+        } else if (face === "meses") {
+          const alvo = new Date(visivel);
+          alvo.setMonth(alvo.getMonth() + passo);
+          visivel = alvo;
+        } else {
+          const alvo = new Date(visivel);
+          alvo.setFullYear(alvo.getFullYear() + passo);
+          visivel = alvo;
+        }
+        desenhar();
+      }
+
+      function passear(passo) {
+        const alvo = new Date(visivel);
+        if (face === "dias") alvo.setMonth(alvo.getMonth() + passo);
+        if (face === "meses") alvo.setFullYear(alvo.getFullYear() + passo);
+        if (face === "anos") alvo.setFullYear(alvo.getFullYear() + passo * ANOS_NO_BLOCO);
+        visivel = alvo;
+        desenhar();
+      }
+
+      function abrir() {
+        ativo = nativo.value ? deIso(nativo.value) : new Date();
+        visivel = new Date(ativo.getFullYear(), ativo.getMonth(), 1);
+        face = "dias";
+        desenhar();
+        painel.showPopover();
+      }
+
+      // A lista vive na TOP LAYER, fora do fluxo: quem diz onde ela fica é o campo. Abre para cima
+      // quando não há altura confortável abaixo.
+      function posicionar() {
+        const caixa = entrada.getBoundingClientRect();
+        const abaixo = window.innerHeight - caixa.bottom - FOLGA_PX;
+        const acima = caixa.top - FOLGA_PX;
+        const paraCima = abaixo < ALTURA_CONFORTAVEL_PX && acima > abaixo;
+        painel.style.left = `${Math.min(caixa.left, window.innerWidth - painel.offsetWidth - FOLGA_PX)}px`;
+        painel.style.top = paraCima ? "" : `${caixa.bottom + FOLGA_PX}px`;
+        painel.style.bottom = paraCima ? `${window.innerHeight - caixa.top + FOLGA_PX}px` : "";
+      }
+
+      entrada.addEventListener("input", () => {
+        const cursor = entrada.selectionStart ?? entrada.value.length;
+        const digitosAEsquerda = entrada.value.slice(0, cursor).replace(/\D/g, "").length;
+        entrada.value = mascarar(entrada.value);
+        const posicao = posicaoAposDigitos(entrada.value, digitosAEsquerda);
+        entrada.setSelectionRange(posicao, posicao);
+
+        const iso = paraIso(entrada.value);
+        const completo = entrada.value.replace(/\D/g, "").length === 8;
+        escrever(iso);
+        // Data impossível acende o campo — mas a recusa de verdade continua sendo a do servidor.
+        entrada.classList.toggle("campo-realce-erro", realceDoServidor || (completo && !iso));
+        entrada.setAttribute("aria-invalid", completo && !iso ? "true" : "false");
+      });
+
+      entrada.addEventListener("keydown", (evento) => {
+        if (evento.key !== "ArrowDown") return;
+        evento.preventDefault();
+        abrir();
+      });
+
+      // Clique manual, e não popovertarget: o <label> que envolve o campo rouba o foco no default,
+      // e sem o preventDefault o painel abriria já perdendo o teclado.
+      gatilho.addEventListener("click", (evento) => {
+        evento.preventDefault();
+        if (painel.matches(":popover-open")) painel.hidePopover();
+        else abrir();
+      });
+
+      anterior.addEventListener("click", () => passear(-1));
+      proximo.addEventListener("click", () => passear(1));
+      // Subir só: dias → meses → anos. A descida é sempre por escolha — clicar num ano devolve os
+      // meses, clicar num mês devolve os dias.
+      titulo.addEventListener("click", () => {
+        if (face === "anos") return;
+        face = face === "dias" ? "meses" : "anos";
+        desenhar();
+      });
+      hoje.addEventListener("click", () => escolher(isoDe(new Date())));
+      limpar.addEventListener("click", () => {
+        escrever("");
+        entrada.value = "";
+        entrada.classList.toggle("campo-realce-erro", realceDoServidor);
+        painel.hidePopover();
+        entrada.focus();
+      });
+
+      // O painel é descendente do <label> que envolve o campo: sem cancelar o default, cada clique
+      // dentro dele ativa o rótulo, o foco salta para a entrada e o teclado do calendário morre.
+      painel.addEventListener("click", (evento) => {
+        if (evento.target.closest("button")) evento.preventDefault();
+      });
+
+      painel.addEventListener("click", (evento) => {
+        const alvo = evento.target.closest(".calendario-celula");
+        if (!alvo || alvo.disabled) return;
+        if (alvo.dataset.iso) {
+          escolher(alvo.dataset.iso);
+          return;
+        }
+        if (alvo.dataset.mes) {
+          visivel = new Date(visivel.getFullYear(), Number(alvo.dataset.mes), 1);
+          face = "dias";
+          desenhar();
+          return;
+        }
+        if (alvo.dataset.ano) {
+          visivel = new Date(Number(alvo.dataset.ano), visivel.getMonth(), 1);
+          face = "meses";
+          desenhar();
+        }
+      });
+      painel.addEventListener("keydown", (evento) => {
+        const passos = PASSO_POR_FACE[face];
+        if (Object.hasOwn(passos, evento.key)) {
+          evento.preventDefault();
+          andar(passos[evento.key]);
+          return;
+        }
+        if (evento.key === "PageUp" || evento.key === "PageDown") {
+          evento.preventDefault();
+          passear(evento.key === "PageUp" ? -1 : 1);
+          return;
+        }
+        if (evento.key === "Home" || evento.key === "End") {
+          evento.preventDefault();
+          const ultimo = new Date(visivel.getFullYear(), visivel.getMonth() + 1, 0).getDate();
+          ativo = new Date(visivel.getFullYear(), visivel.getMonth(), evento.key === "Home" ? 1 : ultimo);
+          desenhar();
+          return;
+        }
+        if (evento.key !== "Enter" && evento.key !== " ") return;
+        evento.preventDefault();
+        if (face === "dias") {
+          const iso = isoDe(ativo);
+          if (!foraDoAlcance(iso)) escolher(iso);
+          return;
+        }
+        face = face === "meses" ? "dias" : "meses";
+        desenhar();
+      });
+
+      painel.addEventListener("beforetoggle", (evento) => {
+        const abrindo = evento.newState === "open";
+        gatilho.setAttribute("aria-expanded", String(abrindo));
+        if (!abrindo) {
+          window.removeEventListener("scroll", posicionar, true);
+          window.removeEventListener("resize", posicionar);
+          if (painel.contains(document.activeElement)) entrada.focus();
+          return;
+        }
+        posicionar();
+        window.addEventListener("scroll", posicionar, true);
+        window.addEventListener("resize", posicionar);
+      });
+      // Só depois de aberto: medir a largura do painel para não vazar da janela exige ele visível.
+      painel.addEventListener("toggle", (evento) => {
+        if (evento.newState !== "open") return;
+        posicionar();
+        painel.focus();
+      });
+    }
+
+    // O [hidden] marca o que já foi aprimorado: swap do HTMX reexecuta isto sem duplicar casca.
+    function aprimorarCamposDeData() {
+      document.querySelectorAll('input[type="date"][data-campo-data]:not([hidden])').forEach(aprimorar);
+    }
+
+    document.addEventListener("DOMContentLoaded", aprimorarCamposDeData);
+    document.addEventListener("htmx:afterSwap", aprimorarCamposDeData);
+
+    // ---- daqui para baixo é só do mock: as três faces do painel, na ordem da pilha ----
+    document.querySelectorAll("#vitrine-calendario [data-vitrine]").forEach((alvo) => {
+      const face = alvo.dataset.vitrine;
+      const partes = montarPainel(`vitrine-${face}`);
+      const escolhido = new Date(2026, 8, 18);
+      partes.painel.classList.add("flex", "flex-col", "gap-2");
+      partes.corpo.dataset.face = face;
+
+      partes.dias.replaceChildren(...diasDaGrade(2026, 8).map((data) => {
+        const botao = celula(String(data.getDate()));
+        if (data.getMonth() !== 8) botao.dataset.fora = "true";
+        if (isoDe(data) === isoDe(escolhido)) botao.setAttribute("aria-selected", "true");
+        if (isoDe(data) === isoDe(new Date())) botao.dataset.hoje = "true";
+        return botao;
+      }));
+      partes.meses.replaceChildren(...MESES_CURTOS.map((nome, indice) => {
+        const botao = celula(nome);
+        if (indice === 8) botao.setAttribute("aria-selected", "true");
+        return botao;
+      }));
+      partes.anos.replaceChildren(...Array.from({ length: ANOS_NO_BLOCO }, (_, passo) => {
+        const botao = celula(String(2020 + passo));
+        if (passo === 6) botao.setAttribute("aria-selected", "true");
+        return botao;
+      }));
+
+      const legenda = { dias: "setembro 2026", meses: "2026", anos: "2020 – 2039" };
+      partes.rotulo.textContent = legenda[face];
+      partes.caret.hidden = face === "anos";
+      partes.titulo.toggleAttribute("data-topo", face === "anos");
+      alvo.replaceWith(partes.painel);
+    });
+  </script>
+</body>
+</html>

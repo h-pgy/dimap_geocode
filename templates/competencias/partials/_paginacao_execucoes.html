@@ -15,26 +15,26 @@
   {% if pagina.total_linhas %}
     <div class="card-well p-3">
       <nav class="paginacao-onsen" aria-label="Páginas do registro">
-        <span class="paginacao-onsen-info etched etched-lg etched-rotulo">{{ pagina_inicio }}–{{ pagina_fim }} de {{ pagina.total_linhas }}</span>
-        <span class="paginacao-onsen-passos glass-panel rounded-full!">
+        <span class="paginacao-onsen-info etched etched-dark">{{ pagina_inicio }}–{{ pagina_fim }} de {{ pagina.total_linhas }}</span>
+        <span class="paginacao-onsen-passos glass-panel">
           <button type="button"
                   data-pagina="{{ pagina.numero|add:"-1" }}"
-                  class="paginacao-onsen-alvo paginacao-onsen-seta"
+                  class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark"
                   {% if pagina.numero == 1 %}disabled{% endif %}
                   aria-label="Página anterior">‹</button>
           {% for numero in paginas_visiveis %}
             {% if numero %}
               <button type="button"
                       data-pagina="{{ numero }}"
-                      class="paginacao-onsen-alvo etched etched-lg etched-deeper"
+                      class="paginacao-onsen-alvo etched etched-dark"
                       {% if numero == pagina.numero %}aria-current="page"{% endif %}>{{ numero }}</button>
             {% else %}
-              <span class="paginacao-onsen-elipse">…</span>
+              <span class="paginacao-onsen-elipse etched etched-dark">…</span>
             {% endif %}
           {% endfor %}
           <button type="button"
                   data-pagina="{{ pagina.numero|add:"1" }}"
-                  class="paginacao-onsen-alvo paginacao-onsen-seta"
+                  class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark"
                   {% if pagina.numero == pagina.total_paginas %}disabled{% endif %}
                   aria-label="Próxima página">›</button>
         </span>

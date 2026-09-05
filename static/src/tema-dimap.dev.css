@@ -192,6 +192,15 @@ html[data-theme="dimap"] {
   .etched-rotulo {
     color: rgba(13, 27, 42, 0.62);
   }
+  /* Gravação que CONTA: numeral e passo, onde a forma tem que se ler sem apoio do vidro de baixo.
+     A tinta é a rocha-950 cheia e as duas bandas do filtro são opacas — quem carrega a informação
+     passa a ser a tinta, e o relevo só a acompanha. Medida do glifo: o `-lg` é escolhido pelo
+     tamanho do alvo, mas quem recebe o filtro é a forma, e num numeral de 16px a banda escura
+     grande cobre o desenho inteiro. */
+  .etched-dark {
+    filter: url(#etched-onsen-dark);
+    color: rgb(13, 27, 42);
+  }
 
   /* ==================== MATERIAIS COMPOSTOS ==================== */
   .glass-panel {
@@ -1724,39 +1733,36 @@ html[data-theme="dimap"] {
   /* ==================== MOLÉCULA · PAGINAÇÃO GRAVADA (SPEC painel/002) =========================== */
   .paginacao-onsen { @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-2; }
   /* Mesma medida e mesma gravação dos números ao lado — a régua e o passo são a MESMA placa, e um
-     rótulo pequeno ao lado de alvos de 40px é o que fazia o lado esquerdo parecer caído.
-     .etched-rotulo porque este sulco NOMEIA uma contagem — a tinta sobe até a leitura normal. */
+     rótulo pequeno ao lado de alvos de 40px é o que fazia o lado esquerdo parecer caído. */
   .paginacao-onsen-info { @apply text-base font-medium leading-none tabular-nums; }
-  /* A pílula de vidro dá destaque ao passo — sem ela os alvos boiavam soltos sobre o poço. */
-  .paginacao-onsen-passos { @apply flex items-center gap-1 p-1; }
-  /* Só layout: a tinta de repouso é sempre de quem compõe — `etched etched-lg etched-deeper` no
-     número (SPEC painel/002, ajuste), `.paginacao-onsen-seta` na seta. Numa caixa de 40px o
-     `.etched` sozinho não lê — o sulco de poucos px vira fio ao lado de um alvo grande — por isso
-     o número leva `etched-lg` (o par de offsets grandes) e `etched-deeper` (a tinta funda:
-     0.3 de alfa lê contra o vidro claro da pílula, onde o 0.4 do `.etched` batia fraco). O swell
-     no hover é só afordância — nunca prende, nunca entinta sozinho. */
+  /* O raio é da própria molécula: empilhado como utility no markup, ele só venceria o .glass-panel
+     com important. */
+  .paginacao-onsen-passos { @apply flex items-center gap-1 p-1 rounded-full; }
+  /* Só layout e medida: a tinta de todo caractere daqui — número, seta e reticência — é o
+     `.etched-dark` composto no HTML. O swell no hover é só afordância — nunca prende, nunca
+     entinta sozinho. */
   .paginacao-onsen-alvo {
     @apply w-10 h-10 shrink-0 flex items-center justify-center rounded-xl;
     @apply text-base font-medium leading-none tabular-nums cursor-pointer;
     @apply transition-all duration-300 origin-center;
   }
   .paginacao-onsen-alvo:not(:disabled):hover { @apply scale-[1.1]; }
-  /* Página em curso: a depressão ENCHE — o mesmo entintado do .sort-etched sob aria-sort, na
-     mesma medida grande do repouso (`etched-onsen-lg`), então a troca não pula de fio pra sulco. */
+  /* Página em curso: a depressão ENCHE — o mesmo entintado do .sort-etched sob aria-sort, na mesma
+     medida do repouso, então a troca não pula de fio pra sulco. */
   .paginacao-onsen-alvo[aria-current="page"] {
-    filter: url(#etched-onsen-lg) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
-    color: rgba(0, 119, 182, 0.85);
+    filter: url(#etched-onsen-dark) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
+    color: rgba(0, 119, 182, 0.9);
   }
-  /* A seta é GESTO, não estado: enche sob o ponteiro, como o .btn-etched — nunca fica presa acesa,
-     e por isso repousa só em tinta, sem `.etched` — sulco constante contradiria "sem resposta". */
-  .paginacao-onsen-seta { @apply text-xl; color: rgba(13, 27, 42, 0.4); }
+  /* A seta é GESTO, não estado: enche sob o ponteiro, como o .btn-etched — nunca fica presa acesa. */
+  .paginacao-onsen-seta { @apply text-xl; }
   .paginacao-onsen-seta:not(:disabled):hover {
-    filter: url(#etched-onsen-lg) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
-    color: rgba(0, 119, 182, 0.85);
+    filter: url(#etched-onsen-dark) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
+    color: rgba(0, 119, 182, 0.9);
   }
-  /* Sem para onde ir: sulco vazio, sem resposta ao ponteiro — nunca cinza de desabilitado com moldura. */
-  .paginacao-onsen-alvo:disabled { @apply cursor-default; color: rgba(13, 27, 42, 0.12); }
-  .paginacao-onsen-elipse { @apply w-6 text-center text-base leading-none; color: rgba(13, 27, 42, 0.25); }
+  /* Sem para onde ir: sulco vazio, sem resposta ao ponteiro — nunca cinza de desabilitado com
+     moldura. Vence o `.etched-dark` do markup pela pseudoclasse. */
+  .paginacao-onsen-alvo:disabled { @apply cursor-default; color: rgba(13, 27, 42, 0.22); }
+  .paginacao-onsen-elipse { @apply w-6 text-center text-base leading-none; }
 
   /* ==================== ORGANISMO · CARD DE BUSCA (SPEC painel/002) ============================== */
   .card-busca { @apply flex flex-col gap-3 p-4; }

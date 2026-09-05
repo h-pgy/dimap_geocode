@@ -47,5 +47,27 @@
         <feMergeNode in="luzInterna"/>
       </feMerge>
     </filter>
+
+    {# Gravação escura (SPEC painel/002): a medida do #etched-onsen com as duas bandas opacas — o    #}
+    {# par que sustenta a forma quando quem carrega a informação é a tinta, e não a luz.             #}
+    <filter id="etched-onsen-dark" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="0" dy="1.6" result="desceu"/>
+      <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+      <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+      <feFlood flood-color="#073a54" flood-opacity="1" result="tintaEscura"/>
+      <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+      <feOffset in="SourceAlpha" dx="0" dy="-1.5" result="subiu"/>
+      <feGaussianBlur in="subiu" stdDeviation="0.9" result="subiuBorrado"/>
+      <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+      <feFlood flood-color="#ffffff" flood-opacity="1" result="tintaClara"/>
+      <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="sombraInterna"/>
+        <feMergeNode in="luzInterna"/>
+      </feMerge>
+    </filter>
   </defs>
 </svg>

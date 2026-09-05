@@ -24,6 +24,8 @@ registrar o período de um ato sem traduzir o formato do seletor do sistema oper
       corrente sem dia marcado.
 - [ ] O dia sob o ponteiro **incha e acende em ciano**; o dia escolhido fica preenchido de água; hoje
       tem marca própria mesmo sem estar escolhido.
+- [ ] O calendário tem **uma caixa só**: a face de meses substitui a de dias e a de anos substitui a
+      de meses, sem o painel mudar de altura. O título sobe a pilha; escolher desce de volta um nível.
 - [ ] O calendário anda por teclado — setas, `PageUp`/`PageDown`, `Home`/`End`, `Enter` escolhe, `Esc`
       fecha — e `Tab` continua saindo do campo.
 - [ ] Dia fora de `min`/`max` não é escolhível.
@@ -119,6 +121,25 @@ function escrever(nativo, iso) {
 }
 ```
 
+### O calendário dentro de um `<label>`
+
+**`static/src/js/ui/campo_data.js`**
+```javascript
+// Didático (não portar): todo campo de data do sistema mora dentro de um <label class="form-field">,
+// e o painel é descendente dele no DOM mesmo vivendo na top layer. Sem cancelar o default, cada
+// clique dentro do calendário ativa o rótulo, o foco salta para a entrada e o teclado morre.
+painel.addEventListener("click", (evento) => {
+  if (evento.target.closest("button")) evento.preventDefault();
+});
+
+// Pelo mesmo motivo o gatilho não usa popovertarget: ele precisa cancelar o default antes de abrir.
+gatilho.addEventListener("click", (evento) => {
+  evento.preventDefault();
+  if (painel.matches(":popover-open")) painel.hidePopover();
+  else abrir();
+});
+```
+
 ### A grade do mês
 
 **`static/src/js/ui/campo_data.js`**
@@ -136,6 +157,42 @@ function diasDaGrade(ano, mes) {
     dia.setDate(inicio.getDate() + passo);
     return dia;
   });
+}
+```
+
+### A pilha das faces
+
+**`static/src/js/ui/campo_data.js`**
+```javascript
+// Didático (não portar): sobe-se pelo título, desce-se escolhendo. Nenhuma face é acrescentada
+// embaixo da outra — o corpo é uma caixa só, e o data-face diz qual delas está em cena.
+titulo.addEventListener("click", () => {
+  if (face === "anos") return;
+  face = face === "dias" ? "meses" : "anos";
+  desenhar();
+});
+
+painel.addEventListener("click", (evento) => {
+  const alvo = evento.target.closest(".calendario-celula");
+  if (!alvo || alvo.disabled) return;
+  if (alvo.dataset.iso) return escolher(alvo.dataset.iso);
+  // Escolher um mês devolve os dias; escolher um ano devolve os meses.
+  if (alvo.dataset.mes) {
+    visivel = new Date(visivel.getFullYear(), Number(alvo.dataset.mes), 1);
+    face = "dias";
+  } else if (alvo.dataset.ano) {
+    visivel = new Date(Number(alvo.dataset.ano), visivel.getMonth(), 1);
+    face = "meses";
+  }
+  desenhar();
+});
+
+function desenhar() {
+  corpo.dataset.face = face;
+  // O caret é a afordância da subida; sem ele o título é só o rótulo do nível.
+  titulo.toggleAttribute("data-topo", face === "anos");
+  caret.hidden = face === "anos";
+  ...
 }
 ```
 
@@ -157,6 +214,9 @@ function diasDaGrade(ano, mes) {
   @apply scale-[1.12] bg-agua-400/20;
   filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
   color: rgba(0, 119, 182, 0.85);
+}
+.campo-data-gatilho:focus-visible {
+  @apply outline-none shadow-[0_0_0_3px_rgba(0,150,199,0.25)];
 }
 
 /* A célula do calendário — a mesma para dia, mês e ano. O swell é a afordância: a peça cresce sob o
@@ -194,20 +254,37 @@ function diasDaGrade(ano, mes) {
 .campo-data-entrada { @apply pr-9 tabular-nums; }
 
 /* .calendario-onsen: mesma receita de top layer do .select-onsen-panel — popover, posição escrita
-   pelo JS e inset: auto para derrubar o inset: 0 que o navegador dá a todo popover. */
+   pelo JS e inset: auto para derrubar o inset: 0 que o navegador dá a todo popover. Display e
+   posição ficam no :popover-open, e não na base, senão o popover fechado aparece: a regra de autor
+   que declara display vence o display: none do navegador. */
 .calendario-onsen {
-  @apply fixed m-0 p-3 rounded-2xl backdrop-blur-[28px] bg-transparent;
+  @apply p-3 w-64 rounded-2xl backdrop-blur-[28px] bg-transparent;
   @apply bg-gradient-to-br from-white/88 via-white/82 to-white/76 border border-white/70 text-base-content;
   @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+}
+.calendario-onsen:popover-open {
+  @apply fixed m-0 flex flex-col gap-2;
   inset: auto;
 }
-.calendario-onsen:popover-open { @apply flex flex-col gap-2 w-64; }
-.calendario-onsen-topo    { @apply flex items-center justify-between gap-1; }
-.calendario-onsen-semana  { @apply grid grid-cols-7 gap-1 text-center; }
-.calendario-onsen-grade   { @apply grid grid-cols-7 gap-1; }
-.calendario-onsen-meses   { @apply grid grid-cols-3 gap-1.5; }
-.calendario-onsen-anos    { @apply grid grid-cols-4 gap-1.5 max-h-56 overflow-y-auto overscroll-contain; }
-.calendario-onsen-rodape  { @apply flex items-center justify-between gap-2 pt-1 border-t border-white/50; }
+.calendario-onsen:focus-visible { @apply outline-none; }
+.calendario-onsen-topo   { @apply flex items-center justify-between gap-1; }
+/* O corpo é UMA caixa: as faces se substituem dentro dela, e a altura mínima impede o painel de
+   saltar quando a grade de 42 dias dá lugar à de 12 meses. */
+.calendario-onsen-corpo  { @apply flex flex-col gap-1 min-h-[16rem]; }
+.calendario-onsen-semana { @apply grid grid-cols-7 gap-1 text-center; }
+.calendario-onsen-grade  { @apply grid grid-cols-7 gap-1; }
+.calendario-onsen-meses  { @apply grid grid-cols-3 gap-1.5 flex-1 content-center; }
+.calendario-onsen-anos   { @apply grid grid-cols-4 gap-1.5 flex-1 content-center overflow-y-auto overscroll-contain; }
+/* Quem manda na substituição é o data-face do corpo, e não classe posta por JS: uma utility solta
+   empata em força com o display: grid da peça, e a face escondida vaza embaixo da que está em cena. */
+.calendario-onsen-corpo[data-face="dias"]  :is(.calendario-onsen-meses, .calendario-onsen-anos),
+.calendario-onsen-corpo[data-face="meses"] :is(.calendario-onsen-semana, .calendario-onsen-grade, .calendario-onsen-anos),
+.calendario-onsen-corpo[data-face="anos"]  :is(.calendario-onsen-semana, .calendario-onsen-grade, .calendario-onsen-meses) {
+  @apply hidden;
+}
+/* No topo da pilha o título para de subir — e para de se oferecer. */
+.calendario-onsen-titulo[data-topo] { @apply pointer-events-none; }
+.calendario-onsen-rodape { @apply flex items-center justify-between gap-2 pt-1 border-t border-white/50; }
 ```
 
 **`static/src/tema-dimap.dev.css`** — molécula existente, uma linha alterada

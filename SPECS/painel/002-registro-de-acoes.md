@@ -1,9 +1,9 @@
 ---
 spec: painel/002
-versao: v9
+versao: v10
 atualizado_em: 2026-09-05
 testes_tdd: true
-implementado: true
+implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -23,6 +23,8 @@ changelog:
   - v9: implementado — os 10 testes da SPEC passam (3 de domínio, 7 de banco); o parâmetro de
     unidade do card nasce como `unidade_partida`, e não `unidade`, para não colidir com a coluna
     homônima que o cabeçalho filtra na mesma query string
+  - v10: todo caractere da paginação vira gravação que conta — cava escura própria, na medida do
+    glifo
 ---
 
 # SPEC painel/002 — Registro de Ações
@@ -534,6 +536,17 @@ pelo partial de erro 422 dentro da `<table>`, que não fica de pé ali. Custo: q
 **A coluna Momento não filtra nem ordena.** O recorte por tempo é do card, e o motor genérico ordena
 por texto normalizado — o que ordenaria "05/09/2026" antes de "31/08/2026". Custo: ordenar por outra
 coluna perde a cronologia, e só recarregar a busca a devolve.
+
+**A gravação da paginação passa a carregar informação.** Número, seta e reticência são lidos pela
+tinta cheia da rocha-950, e não pelo relevo, o que contraria a regra de que o sulco no gelo nunca
+carrega informação. O número da página não tem outro portador: tirá-lo da gravação seria escrever a
+paginação fora do material em que o resto do poço está escrito. Custo: a família `.etched` ganha um
+membro cuja tinta é de texto, e cada peça nova de gravação passa a ter que decidir de que lado está.
+
+**A paginação já entregue é recomposta na medida do sulco e na tinta.** A medida grande é escolhida
+pelo tamanho do alvo, mas quem recebe o filtro é o glifo — num numeral de 16px a banda escura passa
+por cima da forma inteira. Custo: uma peça no ar e no styleguide muda de aparência, e o raio da pílula
+sai do markup para virar regra da própria molécula, levando junto o `!important` que estava lá.
 
 ## 8 · Testes (TDD)
 

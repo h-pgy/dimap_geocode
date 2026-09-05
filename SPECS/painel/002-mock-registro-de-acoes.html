@@ -49,111 +49,8 @@
     })();
   </script>
 
-  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
-  <script type="text/css" id="tokens-spec-002">
-    @layer components {
-      /* ==================== ÁTOMO · CÉLULA DE TEMPO ==================== */
-      .td-momento { @apply whitespace-nowrap text-xs leading-tight tabular-nums text-base-content/75; }
-      .td-momento-hora { @apply block text-[11px] tabular-nums text-base-content/50; }
-
-      /* ==================== ÁTOMO · MARCA DE COBERTURA ==================== */
-      .marca-cobertura { @apply block text-[11px] leading-tight text-warning; }
-
-      /* ==================== ÁTOMO · ALVO DO ATO ==================== */
-      .td-alvo { @apply text-[11px] leading-tight text-base-content/70; }
-      .td-alvo-vazio { @apply text-base-content/35; }
-
-      /* ==================== MOLÉCULA · CAMPO DE PERÍODO ==================== */
-      .campo-periodo { @apply flex items-center gap-2; }
-      .campo-periodo > input { @apply min-w-0 flex-1; }
-      .campo-periodo-traco { @apply shrink-0 text-base-content/45; }
-
-      /* ==================== ÁTOMO · TABELA LARGA ==================== */
-      /* Sem largura mínima a tabela de nove colunas se espreme dentro do poço em vez de rolar:
-         .table-onsen é w-full e as células quebram. O modificador é de cada tabela, não do
-         componente — tabela curta não deve nascer rolando. */
-      .table-onsen-larga { @apply min-w-[74rem]; }
-
-      /* ==================== MOLÉCULA · BARRA GRAVADA HORIZONTAL ==================== */
-      /* A gêmea da .scroll-etched deitada: o rolador esconde as duas barras nativas
-         (scrollbar-width: none), e sem esta a tabela larga rolaria sem afordância nenhuma. */
-      /* A medida da coluna da barra sobe do rolador para o POÇO. As duas barras são irmãs do
-         rolador, não filhas: dali elas nunca enxergariam a variável, e a deitada correria por baixo
-         da em pé. O rolador continua com a declaração dele, no mesmo valor — nada muda para as
-         tabelas de um eixo só. */
-      .table-onsen-poco { --coluna-barra: 1.125rem; }
-      .scroll-etched-h {
-        @apply absolute left-2 h-2.5 rounded-full pointer-events-none transition-opacity duration-300;
-        right: calc(0.5rem + var(--coluna-barra, 0px));
-        /* Na calha do poço (pb-4), não sobre a última linha. */
-        bottom: 0.25rem;
-        background: rgba(255, 255, 255, 0.16);
-        box-shadow: inset 0 2px 5px rgba(7, 58, 84, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
-      }
-      .scroll-etched-h-thumb {
-        @apply absolute inset-y-0 left-0 rounded-full cursor-grab pointer-events-auto;
-        border: 2px solid transparent;
-        background-clip: content-box;
-        background-color: rgba(13, 27, 42, 0.14);
-        transition: background-color 700ms ease, box-shadow 700ms ease;
-      }
-      .scroll-etched-ativa .scroll-etched-h-thumb {
-        background-color: rgba(0, 150, 199, 0.5);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
-        transition-duration: 150ms;
-      }
-      .scroll-etched-h-thumb:hover,
-      .scroll-etched-h-thumb:active {
-        background-color: rgba(0, 119, 182, 0.75);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(72, 202, 228, 0.7);
-        transition-duration: 150ms;
-      }
-      .scroll-etched-h-thumb:active { @apply cursor-grabbing; }
-      /* A vertical sobe para não cruzar com a deitada. Regra por presença: tabela sem eixo
-         horizontal não muda em nada. */
-      .table-onsen-poco:has(.scroll-etched-h) .scroll-etched { bottom: 1.25rem; }
-
-      /* ==================== MOLÉCULA · PAGINAÇÃO GRAVADA ==================== */
-      .paginacao-onsen { @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-2; }
-      /* Mesma medida e mesma gravação dos números ao lado — a régua e o passo são a MESMA placa,
-         e um rótulo pequeno ao lado de alvos de 40px é o que fazia o lado esquerdo parecer caído.
-         .etched-rotulo porque este sulco NOMEIA uma contagem — a tinta sobe até a leitura normal. */
-      .paginacao-onsen-info { @apply text-base font-medium leading-none tabular-nums; }
-      /* A pílula de vidro dá destaque ao passo — sem ela os alvos boiavam soltos sobre o poço. */
-      .paginacao-onsen-passos { @apply flex items-center gap-1 p-1; }
-      /* O número é ESTADO e segue a mesma lógica da seta de ordenação (.sort-etched): repouso em
-         tinta discreta, sem sulco aceso — o sulco só ENCHE quando a página está em curso, o mesmo
-         par repouso/entintado do resto do sistema, na medida grande (etched-onsen-lg: o botão
-         passou dos 32px). O swell no hover é só afordância — nunca prende, nunca entinta sozinho. */
-      .paginacao-onsen-alvo {
-        @apply w-10 h-10 shrink-0 flex items-center justify-center rounded-xl;
-        @apply text-base font-medium leading-none tabular-nums cursor-pointer;
-        @apply transition-all duration-300 origin-center;
-        color: rgba(13, 27, 42, 0.4);
-      }
-      .paginacao-onsen-alvo:not(:disabled):hover { @apply scale-[1.1]; color: rgba(13, 27, 42, 0.55); }
-      /* Página em curso: a depressão ENCHE — o mesmo entintado do .sort-etched sob aria-sort. */
-      .paginacao-onsen-alvo[aria-current="page"] {
-        filter: url(#etched-onsen-lg) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
-        color: rgba(0, 119, 182, 0.85);
-      }
-      /* A seta é GESTO, não estado: enche sob o ponteiro, como o .btn-etched — nunca fica presa acesa. */
-      .paginacao-onsen-seta { @apply text-xl; }
-      .paginacao-onsen-seta:not(:disabled):hover {
-        filter: url(#etched-onsen-lg) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
-        color: rgba(0, 119, 182, 0.85);
-      }
-      /* Sem para onde ir: sulco vazio, sem resposta ao ponteiro — nunca cinza de desabilitado com moldura. */
-      .paginacao-onsen-alvo:disabled { @apply cursor-default; color: rgba(13, 27, 42, 0.12); }
-      .paginacao-onsen-elipse { @apply w-6 text-center text-base leading-none; color: rgba(13, 27, 42, 0.25); }
-
-      /* ==================== ORGANISMO · CARD DE BUSCA ==================== */
-      .card-busca { @apply flex flex-col gap-3 p-4; }
-      .card-busca-topo { @apply flex flex-wrap items-center justify-between gap-3; }
-      .card-busca-grade { @apply grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3; }
-      .card-busca-largo { @apply sm:col-span-2; }
-    }
-  </script>
+  <!-- Peças desta SPEC: todas portadas para o tema. O bloco fica vazio e é o loader que o concatena. -->
+  <script type="text/css" id="tokens-spec-002"></script>
 </head>
 
 <body class="min-h-screen text-base-content antialiased">
@@ -178,15 +75,34 @@
         </feMerge>
       </filter>
       <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
-        <feOffset in="SourceAlpha" dx="0" dy="2.2" result="desceu"/>
-        <feGaussianBlur in="desceu" stdDeviation="1.6" result="desceuBorrado"/>
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
         <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
         <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
         <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
-        <feOffset in="SourceAlpha" dx="0" dy="-1.7" result="subiu"/>
-        <feGaussianBlur in="subiu" stdDeviation="1.1" result="subiuBorrado"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
         <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
         <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <!-- NOVO na v2: a gravação escura. Vai para templates/partials/_filtros_gravacao.html. -->
+      <filter id="etched-onsen-dark" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.6" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="1" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.5" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.9" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="1" result="tintaClara"/>
         <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
         <feMerge>
           <feMergeNode in="SourceGraphic"/>
@@ -211,8 +127,71 @@
     <header class="border-b border-base-200 pb-4">
       <p class="text-overline text-agua-700">Mock de validação</p>
       <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC painel/002 — Registro de Ações</h1>
-      <p class="text-sm text-base-content/70 mt-1">Nenhum token novo: 1 · Tokens omitido. O card de busca é poço, a tabela é a de sempre — gestos sobem, campos afundam. Nove colunas pedem rolagem horizontal, e a barra gravada ganha o eixo deitado.</p>
+      <p class="text-sm text-base-content/70 mt-1">O card de busca é poço, a tabela é a de sempre — gestos sobem, campos afundam. Nove colunas pedem rolagem horizontal, e a barra gravada ganha o eixo deitado. <strong>v2:</strong> o número da paginação não lia dentro do poço — entra a gravação escura, o único token novo.</p>
     </header>
+
+    <!-- ==================================================================== -->
+    <!-- 1 · TOKENS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="tokens" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">1 · Tokens</h2>
+        <p class="text-xs text-base-content/70">A gravação que carrega número, na condição real: dentro de um poço, dentro de um card de vidro, sobre a ortofoto.</p>
+      </div>
+
+      <!-- #etched-onsen-dark — a escada de leitura -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">#etched-onsen-dark · escada de leitura</span>
+
+        <div class="card-well p-4 grid gap-3 sm:grid-cols-3">
+          <!-- hoje -->
+          <div class="flex flex-col items-center gap-2">
+            <span class="paginacao-onsen-passos glass-panel">
+              <span class="paginacao-onsen-alvo etched etched-lg etched-deeper">1</span>
+              <span class="paginacao-onsen-alvo etched etched-lg etched-deeper">2</span>
+              <span class="paginacao-onsen-alvo etched etched-lg etched-deeper">12</span>
+            </span>
+            <span class="text-overline">etched-lg + etched-deeper</span>
+            <p class="text-xs text-base-content/60 text-center">A pílula não pinta (poço dentro de card, SPEC design/009) e a banda escura do <span class="text-code">-lg</span> passa por cima de um numeral de 16px.</p>
+          </div>
+
+          <!-- a medida do glifo -->
+          <div class="flex flex-col items-center gap-2">
+            <span class="paginacao-onsen-passos glass-panel">
+              <span class="paginacao-onsen-alvo etched etched-deeper">1</span>
+              <span class="paginacao-onsen-alvo etched etched-deeper">2</span>
+              <span class="paginacao-onsen-alvo etched etched-deeper">12</span>
+            </span>
+            <span class="text-overline">medida do glifo · etched-deeper</span>
+            <p class="text-xs text-base-content/60 text-center">A forma volta a aparecer, a tinta de afordância ainda não conta um número.</p>
+          </div>
+
+          <!-- o token aprovado -->
+          <div class="flex flex-col items-center gap-2">
+            <span class="paginacao-onsen-passos glass-panel">
+              <span class="paginacao-onsen-alvo etched etched-dark">1</span>
+              <span class="paginacao-onsen-alvo etched etched-dark">2</span>
+              <span class="paginacao-onsen-alvo etched etched-dark">12</span>
+            </span>
+            <span class="text-overline text-agua-700">etched-dark</span>
+            <p class="text-xs text-base-content/60 text-center">Tinta cheia da rocha-950 e as duas bandas opacas: a forma é da tinta, o relevo só a acompanha — sem material novo por baixo.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- a família da gravação, na mesma medida e no mesmo chão -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">.etched-dark · a família em ordem de tinta</span>
+        <div class="card-well p-4 flex flex-wrap items-center gap-8">
+          <span class="etched text-2xl font-medium tabular-nums">128</span>
+          <span class="etched etched-deeper text-2xl font-medium tabular-nums">128</span>
+          <span class="etched etched-rotulo text-2xl font-medium tabular-nums">128</span>
+          <span class="etched etched-dark text-2xl font-medium tabular-nums">128</span>
+          <span class="etched etched-inked text-2xl font-medium tabular-nums">128</span>
+        </div>
+        <p class="text-xs text-base-content/60"><span class="text-code">.etched</span> · <span class="text-code">.etched-deeper</span> · <span class="text-code">.etched-rotulo</span> · <span class="text-code">.etched-dark</span> · <span class="text-code">.etched-inked</span>. As três primeiras são afordância e nome; a escura é a única que se propõe a carregar <strong>número</strong>, e por isso é a única com tinta cheia.</p>
+      </div>
+    </section>
 
     <!-- ==================================================================== -->
     <!-- 2 · ÁTOMOS                                                            -->
@@ -400,14 +379,14 @@
         <!-- primeira página de muitas: o vizinho (2) some só quando o vão até o fim é maior que 1 -->
         <div class="card-well p-3">
           <nav class="paginacao-onsen" aria-label="Páginas do registro">
-            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–50 de 600</span>
-            <span class="paginacao-onsen-passos glass-panel rounded-full!">
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
-              <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
-              <button type="button" class="paginacao-onsen-alvo">2</button>
-              <span class="paginacao-onsen-elipse">…</span>
-              <button type="button" class="paginacao-onsen-alvo">12</button>
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            <span class="paginacao-onsen-info etched etched-dark">1–50 de 600</span>
+            <span class="paginacao-onsen-passos glass-panel">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" disabled aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark" aria-current="page">1</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">2</button>
+              <span class="paginacao-onsen-elipse etched etched-dark">…</span>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">12</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Próxima página">›</button>
             </span>
           </nav>
         </div>
@@ -415,15 +394,15 @@
         <!-- meio do caminho: primeira, atual, última — nenhum vizinho de cortesia no meio -->
         <div class="card-well p-3">
           <nav class="paginacao-onsen" aria-label="Páginas do registro">
-            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">201–250 de 600</span>
-            <span class="paginacao-onsen-passos glass-panel rounded-full!">
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Página anterior">‹</button>
-              <button type="button" class="paginacao-onsen-alvo">1</button>
-              <span class="paginacao-onsen-elipse">…</span>
-              <button type="button" class="paginacao-onsen-alvo" aria-current="page">5</button>
-              <span class="paginacao-onsen-elipse">…</span>
-              <button type="button" class="paginacao-onsen-alvo">12</button>
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            <span class="paginacao-onsen-info etched etched-dark">201–250 de 600</span>
+            <span class="paginacao-onsen-passos glass-panel">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">1</button>
+              <span class="paginacao-onsen-elipse etched etched-dark">…</span>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark" aria-current="page">5</button>
+              <span class="paginacao-onsen-elipse etched etched-dark">…</span>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">12</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Próxima página">›</button>
             </span>
           </nav>
         </div>
@@ -431,14 +410,14 @@
         <!-- quatro páginas, atual perto do início: o vizinho (2) preenche o mesmo vão do 1º exemplo -->
         <div class="card-well p-3">
           <nav class="paginacao-onsen" aria-label="Páginas do registro">
-            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">51–100 de 175</span>
-            <span class="paginacao-onsen-passos glass-panel rounded-full!">
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Página anterior">‹</button>
-              <button type="button" class="paginacao-onsen-alvo">1</button>
-              <button type="button" class="paginacao-onsen-alvo" aria-current="page">2</button>
-              <span class="paginacao-onsen-elipse">…</span>
-              <button type="button" class="paginacao-onsen-alvo">4</button>
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            <span class="paginacao-onsen-info etched etched-dark">51–100 de 175</span>
+            <span class="paginacao-onsen-passos glass-panel">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">1</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark" aria-current="page">2</button>
+              <span class="paginacao-onsen-elipse etched etched-dark">…</span>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">4</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Próxima página">›</button>
             </span>
           </nav>
         </div>
@@ -446,14 +425,14 @@
         <!-- quatro páginas, atual perto do fim: o espelho do exemplo acima -->
         <div class="card-well p-3">
           <nav class="paginacao-onsen" aria-label="Páginas do registro">
-            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">101–150 de 175</span>
-            <span class="paginacao-onsen-passos glass-panel rounded-full!">
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Página anterior">‹</button>
-              <button type="button" class="paginacao-onsen-alvo">1</button>
-              <span class="paginacao-onsen-elipse">…</span>
-              <button type="button" class="paginacao-onsen-alvo" aria-current="page">3</button>
-              <button type="button" class="paginacao-onsen-alvo">4</button>
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            <span class="paginacao-onsen-info etched etched-dark">101–150 de 175</span>
+            <span class="paginacao-onsen-passos glass-panel">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">1</button>
+              <span class="paginacao-onsen-elipse etched etched-dark">…</span>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark" aria-current="page">3</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">4</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Próxima página">›</button>
             </span>
           </nav>
         </div>
@@ -461,13 +440,13 @@
         <!-- três páginas: cabem todas, nunca há reticência para esconder uma única página -->
         <div class="card-well p-3">
           <nav class="paginacao-onsen" aria-label="Páginas do registro">
-            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">51–75 de 75</span>
-            <span class="paginacao-onsen-passos glass-panel rounded-full!">
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Página anterior">‹</button>
-              <button type="button" class="paginacao-onsen-alvo">1</button>
-              <button type="button" class="paginacao-onsen-alvo" aria-current="page">2</button>
-              <button type="button" class="paginacao-onsen-alvo">3</button>
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            <span class="paginacao-onsen-info etched etched-dark">51–75 de 75</span>
+            <span class="paginacao-onsen-passos glass-panel">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">1</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark" aria-current="page">2</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">3</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Próxima página">›</button>
             </span>
           </nav>
         </div>
@@ -475,12 +454,12 @@
         <!-- duas páginas: idem, sem reticência -->
         <div class="card-well p-3">
           <nav class="paginacao-onsen" aria-label="Páginas do registro">
-            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–50 de 68</span>
-            <span class="paginacao-onsen-passos glass-panel rounded-full!">
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
-              <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
-              <button type="button" class="paginacao-onsen-alvo">2</button>
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            <span class="paginacao-onsen-info etched etched-dark">1–50 de 68</span>
+            <span class="paginacao-onsen-passos glass-panel">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" disabled aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark" aria-current="page">1</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark">2</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Próxima página">›</button>
             </span>
           </nav>
         </div>
@@ -488,16 +467,16 @@
         <!-- estado de falta: uma página só, nenhum gesto possível -->
         <div class="card-well p-3">
           <nav class="paginacao-onsen" aria-label="Páginas do registro">
-            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–14 de 14</span>
-            <span class="paginacao-onsen-passos glass-panel rounded-full!">
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
-              <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
-              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Próxima página">›</button>
+            <span class="paginacao-onsen-info etched etched-dark">1–14 de 14</span>
+            <span class="paginacao-onsen-passos glass-panel">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" disabled aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo etched etched-dark" aria-current="page">1</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" disabled aria-label="Próxima página">›</button>
             </span>
           </nav>
         </div>
 
-        <p class="text-xs text-base-content/60">O número é <strong>estado</strong> e segue a seta de ordenação: repouso gravado, o atual com o sulco cheio — grande (<span class="text-code">etched-onsen-lg</span>), porque o alvo passou dos 32px. A seta é <strong>gesto</strong> e segue o botão gravado: enche sob o ponteiro, nunca fica presa acesa. Um leve <span class="text-code">scale</span> no hover é só afordância. Sem destino, o sulco fica vazio — nunca cinza de desabilitado com moldura. E a régua é sempre <strong>primeira, atual, última</strong>: só ganha um vizinho de cortesia (2, ou a penúltima) quando a atual está literalmente na ponta — nunca no meio, e nunca para esconder uma página só.</p>
+        <p class="text-xs text-base-content/60">O número é <strong>estado</strong> e segue a seta de ordenação: repouso gravado, o atual com o sulco cheio — na <strong>mesma medida</strong> do repouso, agora a do glifo, para a troca não pular de fio para vala. A seta é <strong>gesto</strong> e segue o botão gravado: enche sob o ponteiro, nunca fica presa acesa. Um leve <span class="text-code">scale</span> no hover é só afordância. Sem destino, o sulco fica vazio — visível sobre a placa, nunca cinza de desabilitado com moldura. E a régua é sempre <strong>primeira, atual, última</strong>: só ganha um vizinho de cortesia (2, ou a penúltima) quando a atual está literalmente na ponta — nunca no meio, e nunca para esconder uma página só.</p>
       </div>
 
       <!-- estado: quem não dirige -->
@@ -1272,14 +1251,14 @@
           <!-- partial: competencias/partials/_paginacao_execucoes.html — volta por hx-swap-oob junto com o corpo -->
           <div class="card-well p-3">
             <nav class="paginacao-onsen" aria-label="Páginas do registro">
-              <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–50 de 600</span>
-              <span class="paginacao-onsen-passos glass-panel rounded-full!">
-                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
-                <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
-                <button type="button" class="paginacao-onsen-alvo">2</button>
-                <span class="paginacao-onsen-elipse">…</span>
-                <button type="button" class="paginacao-onsen-alvo">12</button>
-                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+              <span class="paginacao-onsen-info etched etched-dark">1–50 de 600</span>
+              <span class="paginacao-onsen-passos glass-panel">
+                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" disabled aria-label="Página anterior">‹</button>
+                <button type="button" class="paginacao-onsen-alvo etched etched-dark" aria-current="page">1</button>
+                <button type="button" class="paginacao-onsen-alvo etched etched-dark">2</button>
+                <span class="paginacao-onsen-elipse etched etched-dark">…</span>
+                <button type="button" class="paginacao-onsen-alvo etched etched-dark">12</button>
+                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" aria-label="Próxima página">›</button>
               </span>
             </nav>
           </div>
@@ -1456,11 +1435,11 @@
 
           <div class="card-well p-3">
             <nav class="paginacao-onsen" aria-label="Páginas do registro">
-              <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–2 de 2</span>
-              <span class="paginacao-onsen-passos glass-panel rounded-full!">
-                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
-                <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
-                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Próxima página">›</button>
+              <span class="paginacao-onsen-info etched etched-dark">1–2 de 2</span>
+              <span class="paginacao-onsen-passos glass-panel">
+                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" disabled aria-label="Página anterior">‹</button>
+                <button type="button" class="paginacao-onsen-alvo etched etched-dark" aria-current="page">1</button>
+                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta etched etched-dark" disabled aria-label="Próxima página">›</button>
               </span>
             </nav>
           </div>
