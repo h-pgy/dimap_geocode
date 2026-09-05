@@ -138,11 +138,11 @@
             <input type="checkbox" id="editar-campo-base" class="campo-onsen-toggle"{% if realce.cargo_base %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Cargo base</span>
             <div class="campo-onsen-linha">
-              <p class="campo-onsen-valor">{{ perfil.cargo_base.nome }}</p>
+              <p class="campo-onsen-valor">{% include "cargos/partials/_rotulo_cargo_base.html" with cargo=perfil.cargo_base %}</p>
               <div class="campo-onsen-campo">
                 <select name="cargo_base" class="select select-glass {{ realce.cargo_base }}" data-select-onsen>
                   {% for cargo in cargos_base %}
-                    <option value="{{ cargo.pk }}"{% if cargo.pk == valores.cargo_base_id %} selected{% endif %}>{{ cargo.nome }}</option>
+                    <option value="{{ cargo.pk }}"{% if cargo.pk == valores.cargo_base_id %} selected{% endif %}{% if cargo.extinto %} data-extinto="true" title="Cargo Extinto"{% endif %}>{{ cargo.nome }}</option>
                   {% endfor %}
                 </select>
               </div>

@@ -1,8 +1,12 @@
 from apps.cargos.acoes_declaradas import (
     ACAO_CRIAR_CARGO,
+    ACAO_CRIAR_CARGO_BASE,
     ACAO_EDITAR_CARGO,
+    ACAO_EDITAR_CARGO_BASE,
     ACAO_EXTINGUIR_CARGO,
+    ACAO_EXTINGUIR_CARGO_BASE,
     ACAO_REATIVAR_CARGO,
+    ACAO_REATIVAR_CARGO_BASE,
 )
 from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE,
@@ -46,6 +50,10 @@ def _construir_registro() -> RegistroAcoes:
             ACAO_EDITAR_CARGO,
             ACAO_EXTINGUIR_CARGO,
             ACAO_REATIVAR_CARGO,
+            ACAO_CRIAR_CARGO_BASE,
+            ACAO_EDITAR_CARGO_BASE,
+            ACAO_EXTINGUIR_CARGO_BASE,
+            ACAO_REATIVAR_CARGO_BASE,
         )
     )
 

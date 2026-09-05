@@ -31,8 +31,7 @@ from apps.user_admin.exercicio import (
     retorno_eh_revogacao,
 )
 from apps.user_admin.exoneracao import previa_da_exoneracao, previa_da_reintegracao
-from apps.cargos.consulta import cargos_nomeaveis
-from apps.cargos.models import CargoBase
+from apps.cargos.consulta import cargos_base_nomeaveis, cargos_nomeaveis
 from apps.user_admin.models import (
     Impedimento,
     Perfil,
@@ -201,7 +200,7 @@ def contexto_modal_perfil(
     pede `unidade.sigla`, `cargo_base.nome`, o avatar e a tarja de titular."""
     return (
         contexto_do_modal_de_unidade(ids_permitidos)
-        | _catalogos_de_lotacao(ids_permitidos, perfil.cargo_comissao_id)
+        | _catalogos_de_lotacao(ids_permitidos, perfil.cargo_base_id, perfil.cargo_comissao_id)
         | _icone_administrador()
         | {
             "perfil": perfil,
@@ -939,12 +938,13 @@ def _texto_periodo_corrido(periodo: Periodo) -> str:
 
 def _catalogos_de_lotacao(
     ids_permitidos: Collection[int] | None = None,
+    cargo_base_atual: int | None = None,
     cargo_comissao_atual: int | None = None,
 ) -> dict[str, Any]:
     return catalogo_de_unidades(ids_permitidos) | {
-        "cargos_base": CargoBase.objects.order_by("nome"),
         # Cadastro passa `None` (ninguém ocupa nada ainda); edição passa o cargo gravado — o
-        # extinto do próprio servidor segue ofertado, e só ele (SPEC user_admin/029).
+        # extinto do próprio servidor segue ofertado, e só ele (SPECs user_admin/029 e 030).
+        "cargos_base": cargos_base_nomeaveis(cargo_base_atual),
         "cargos_comissao": cargos_nomeaveis(cargo_comissao_atual),
     }
 

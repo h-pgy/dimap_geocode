@@ -37,6 +37,9 @@ class CargoBase(models.Model):
         max_length=20,
         unique=True,
     )
+    # O dia do ato que o retirou da nomeação (SPEC user_admin/030), mesma forma de
+    # `CargoComissao.extinto_em`: nula é cargo vigente, e é o que a reativação devolve.
+    extinto_em = models.DateField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Cargo base"
@@ -44,6 +47,10 @@ class CargoBase(models.Model):
 
     def __str__(self) -> str:
         return self.sigla
+
+    @property
+    def extinto(self) -> bool:
+        return self.extinto_em is not None
 
 
 class CargoComissao(models.Model):

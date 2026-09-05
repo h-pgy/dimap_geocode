@@ -31,4 +31,31 @@ urlpatterns = [
         views.gravar_reativacao_cargo,
         name="gravar_reativacao_cargo",
     ),
+    # O catálogo de cargo base (SPEC user_admin/030): mesmo molde de rotas do de cima.
+    path("base/", views.listar_cargos_base, name="listar_cargos_base"),
+    path("base/corpo/", views.corpo_cargos_base, name="corpo_cargos_base"),
+    path("base/novo/", views.modal_criar_cargo_base, name="modal_criar_cargo_base"),
+    path(
+        "base/novo/gravar/",
+        views.gravar_criacao_cargo_base,
+        name="gravar_criacao_cargo_base",
+    ),
+    path("base/editar/", views.modal_editar_cargo_base, name="modal_editar_cargo_base"),
+    path(
+        "base/<int:cargo>/editar/gravar/",
+        views.gravar_edicao_cargo_base,
+        name="gravar_edicao_cargo_base",
+    ),
+    path("base/extinguir/", views.modal_extinguir_cargo_base, name="modal_extinguir_cargo_base"),
+    path(
+        "base/<int:cargo>/extinguir/gravar/",
+        views.gravar_extincao_cargo_base,
+        name="gravar_extincao_cargo_base",
+    ),
+    path("base/reativar/", views.modal_reativar_cargo_base, name="modal_reativar_cargo_base"),
+    path(
+        "base/<int:cargo>/reativar/gravar/",
+        views.gravar_reativacao_cargo_base,
+        name="gravar_reativacao_cargo_base",
+    ),
 ]

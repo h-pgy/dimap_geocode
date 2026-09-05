@@ -21,3 +21,21 @@ class LinhaCargo(BaseModel):
 
 
 ConsultaCargos = ConsultaListagem[ColunaCargo]
+
+
+class ColunaCargoBase(StrEnum):
+    SIGLA = "sigla"
+    NOME = "nome"
+
+
+class LinhaCargoBase(BaseModel):
+    """Uma linha já materializada da tabela de cargos base (SPEC user_admin/030): sem `padrao` nem
+    `natureza`, que cargo base não tem."""
+
+    pk: int
+    sigla: str
+    nome: str
+    extinto: bool = False
+
+
+ConsultaCargosBase = ConsultaListagem[ColunaCargoBase]

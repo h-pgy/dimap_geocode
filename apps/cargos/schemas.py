@@ -1,10 +1,10 @@
 """
-DTOs das telas de cargo em comissão (SPEC user_admin/029). A view constrói o DTO e deixa o
-`PydanticValidationMiddleware` interceptar o `ValidationError` — nunca `try/except` na view (§7.2).
-Os dois atos que gravam (`NovaCargo`, `EdicaoCargo`) fogem dessa regra de propósito: a recusa deles
-volta como o próprio formulário, e é por isso que passam pelo `LeitorDeFormulario` em vez do
-middleware (SPEC formularios/001). Extinguir e reativar recebem o cargo já resolvido pela rota — sem
-DTO próprio, porque não há campo algum a validar (§6).
+DTOs das telas dos dois catálogos de cargo (SPECs user_admin/029 e 030). A view constrói o DTO e
+deixa o `PydanticValidationMiddleware` interceptar o `ValidationError` — nunca `try/except` na view
+(§7.2). Os atos que gravam (`NovaCargo`, `EdicaoCargo`, `NovaCargoBase`, `EdicaoCargoBase`) fogem
+dessa regra de propósito: a recusa deles volta como o próprio formulário, e é por isso que passam
+pelo `LeitorDeFormulario` em vez do middleware (SPEC formularios/001). Extinguir e reativar recebem
+o cargo já resolvido pela rota — sem DTO próprio, porque não há campo algum a validar (§6).
 """
 
 from typing import Annotated
@@ -50,3 +50,20 @@ class EdicaoCargo(BaseModel):
     nivel: NivelOpcional = None
     e_chefia: Checkbox = False
     alta_administracao: Checkbox = False
+
+
+class NovaCargoBase(BaseModel):
+    """Cargo base não tem natureza nem nível (SPEC user_admin/030): só identificação."""
+
+    model_config = ConfigDict(frozen=True)
+
+    nome: NomeDeCargo
+    sigla: SiglaDeCargo
+
+
+class EdicaoCargoBase(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    cargo_id: int
+    nome: NomeDeCargo
+    sigla: SiglaDeCargo

@@ -22,7 +22,7 @@
       <span class="text-overline">Cargo base</span>
       <select name="cargo_base" class="select select-glass {{ realce.cargo_base }}" data-select-onsen>
         {% for cargo in cargos_base %}
-          <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_base_id %}selected{% endif %}>{{ cargo.nome }}</option>
+          <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_base_id %}selected{% endif %}{% if cargo.extinto %} data-extinto="true" title="Cargo Extinto"{% endif %}>{{ cargo.nome }}</option>
         {% endfor %}
       </select>
     </label>

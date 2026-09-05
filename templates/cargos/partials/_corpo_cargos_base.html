@@ -1,0 +1,50 @@
+{# Corpo da tabela de cargos base (SPEC user_admin/030) — alvo exclusivo de swap do HTMX, e alvo do #}
+{# hx-swap-oob dos quatro atos, mesmo molde de `_corpo_cargos.html`.                                 #}
+<tbody id="corpo-cargos-base"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% for linha in linhas %}
+    <tr{% if linha.extinto %} class="linha-extinta"{% endif %}>
+      <td class="text-code text-base-content/80">{{ linha.sigla }}</td>
+      <td>{% include "cargos/partials/_rotulo_cargo_base.html" with cargo=linha %}</td>
+      <td class="text-right">
+        {% if perms.cargos.editar_cargo_base %}
+          <button type="button"
+                  class="btn btn-ghost btn-glass btn-xs btn-circle"
+                  title="Editar {{ linha.nome }}"
+                  hx-get="{% url 'cargos:modal_editar_cargo_base' %}?cargo={{ linha.pk }}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms">
+            <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+          </button>
+        {% endif %}
+      </td>
+      <td class="text-right">
+        {% if not linha.extinto and perms.cargos.extinguir_cargo_base %}
+          <button type="button"
+                  class="btn btn-ghost btn-glass btn-xs btn-circle"
+                  title="Extinguir {{ linha.nome }}"
+                  hx-get="{% url 'cargos:modal_extinguir_cargo_base' %}?cargo={{ linha.pk }}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms">
+            <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+          </button>
+        {% elif linha.extinto and perms.cargos.reativar_cargo_base %}
+          <button type="button"
+                  class="btn btn-ghost btn-glass btn-xs btn-circle"
+                  title="Reativar {{ linha.nome }}"
+                  hx-get="{% url 'cargos:modal_reativar_cargo_base' %}?cargo={{ linha.pk }}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms">
+            <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+          </button>
+        {% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="4" class="table-onsen-vazio">
+        <span class="etched text-3xl block mb-2">⌕</span>
+        Nenhum cargo corresponde aos filtros.
+      </td>
+    </tr>
+  {% endfor %}
+</tbody>

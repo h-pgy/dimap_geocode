@@ -1,0 +1,4 @@
+{# O rótulo do cargo base (SPEC user_admin/030): só o nome, sem o `padrão ·` que cargo base não    #}
+{# tem. Extinto NÃO ganha texto nenhum — mesmo tratamento de `_rotulo_cargo.html`: tom de warning e  #}
+{# o aviso no tooltip. #}
+<span class="rotulo-cargo{% if cargo.extinto %} rotulo-cargo-extinto{% endif %}"{% if cargo.extinto %} title="Cargo Extinto"{% endif %}>{{ cargo.nome }}</span>

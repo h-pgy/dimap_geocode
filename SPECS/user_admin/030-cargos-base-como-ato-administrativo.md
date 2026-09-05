@@ -1,12 +1,17 @@
 ---
 spec: user_admin/030
-versao: v1
-atualizado_em: 2026-09-04
-testes_tdd: false
-implementado: false
+versao: v2
+atualizado_em: 2026-09-05
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: implementado — os 14 testes da SPEC passam; migração gerada e pendente de aplicação pelo
+    usuário. O teste de listagem virou `test_corpo_sempre_traz_os_extintos_marcados`, no molde
+    final de user_admin/029 (Caveats): a listagem nasce direto com o toggle 100% client-side, sem
+    passar pela versão que fala com o servidor — o §8 tinha ficado com o nome antigo
+    (`test_listagem_esconde_extintos_sem_o_toggle`) de antes dessa correção existir.
 ---
 
 # SPEC user_admin/030 — Cargos base como ato administrativo
@@ -273,8 +278,9 @@ registro.
   sigla, ocupado ou extinto, sem recusa nenhuma. *(marker `banco`)*
 - `test_veredito_recusa_ato_repetido_cargo_base` — extinguir o já extinto e reativar o vigente são
   recusados com motivo; domínio puro, sem banco.
-- `test_listagem_esconde_extintos_sem_o_toggle` — a tabela de cargos base só traz extintos com o
-  toggle ligado. *(marker `banco`)*
+- `test_corpo_sempre_traz_os_extintos_marcados` — o servidor sempre manda o extinto, com
+  `class="linha-extinta"`; esconder é 100% client-side (`filtro_linha_extinta.js`, mesmo módulo de
+  user_admin/029), fora do alcance deste teste. *(marker `banco`)*
 - `test_listagem_aberta_a_qualquer_autenticado` — servidor sem caneta alguma recebe 200 na lista, e
   ela não traz os gestos de ato. *(marker `banco`)*
 

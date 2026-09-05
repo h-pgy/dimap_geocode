@@ -1,7 +1,8 @@
 """
-Os DTOs do cargo em comissão como ato administrativo (SPEC user_admin/029): o domínio não conhece
-`CargoComissao` — do cargo só precisa da identidade, e de cada ato só precisa do que a regra dele
-avalia.
+Os DTOs dos dois catálogos de cargo como ato administrativo (SPECs user_admin/029 e 030): o domínio
+não conhece `CargoComissao` nem `CargoBase` — de cada cargo só precisa da identidade, e de cada ato
+só precisa do que a regra dele avalia. Os dois catálogos vivem no mesmo submódulo sem compartilhar
+DTO: `IdentidadeCargo` carrega `padrao`, que cargo base não tem.
 """
 
 from pydantic import BaseModel, ConfigDict
@@ -56,3 +57,27 @@ class Veredito(BaseModel):
 
     pode: bool
     motivo: str = ""
+
+
+class IdentidadeCargoBase(BaseModel):
+    """O cargo base projetado (SPEC user_admin/030): sem `padrao`, que só `CargoComissao` tem."""
+
+    model_config = ConfigDict(frozen=True)
+
+    cargo_id: int
+    nome: str
+
+
+class PreviaDaExtincaoCargoBase(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    cargo: IdentidadeCargoBase
+    ocupantes: int
+    ja_extinto: bool = False
+
+
+class PreviaDaReativacaoCargoBase(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    cargo: IdentidadeCargoBase
+    ja_vigente: bool = False

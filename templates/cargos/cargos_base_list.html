@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Cargos base · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+  {% include "cargos/partials/_glifos_cargo.html" %}
+  {% include "cargos/partials/_glifos_cargo_base.html" %}
+
+  {# Mesma moldura das páginas administrativas: fundo à deriva e conteúdo na shell. #}
+  <div class="admin-shell">
+    <div class="max-w-6xl mx-auto px-4 py-24 flex flex-col gap-4">
+      {% include "partials/_botao_voltar_painel.html" %}
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Cargos base</h1>
+          <p class="text-sm text-base-content/70 mt-1">
+            {{ total_cargos_base }} cargo{{ total_cargos_base|pluralize:"s" }}. Toda nomeação se
+            apoia neste catálogo — consultar é aberto a todo servidor; alterá-lo, só ao
+            administrador do sistema.
+          </p>
+        </div>
+
+        {% include "cargos/partials/_barra_acoes_cargos_base.html" %}
+        {% include "cargos/partials/_tabela_cargos_base.html" %}
+      </div>
+    </div>
+  </div>
+
+  {# Poço do modal, irmão do conteúdo: formulário aninhado é HTML inválido, e aqui fora ele escapa   #}
+  {# do contexto de empilhamento da .admin-shell. Nasce vazio — os cards e a barra o montam.         #}
+  <div id="poco-modal" class="poco-modal"></div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/tabela_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/filtro_linha_extinta.js' %}"></script>
+{% endblock %}

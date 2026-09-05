@@ -5,9 +5,13 @@ poço, e é aqui que toda ação inscrita no registro precisa ter o seu card —
 
 from apps.cargos.acoes_declaradas import (
     ACAO_CRIAR_CARGO,
+    ACAO_CRIAR_CARGO_BASE,
     ACAO_EDITAR_CARGO,
+    ACAO_EDITAR_CARGO_BASE,
     ACAO_EXTINGUIR_CARGO,
+    ACAO_EXTINGUIR_CARGO_BASE,
     ACAO_REATIVAR_CARGO,
+    ACAO_REATIVAR_CARGO_BASE,
 )
 from apps.competencias.acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
 from apps.unidades.acoes_declaradas import (
@@ -188,6 +192,22 @@ ABA_ADMINISTRACAO = Aba(
                 ItemAcao(acao=ACAO_EDITAR_CARGO, partial=PARTIAL_CARTAO_MODAL),
                 ItemAcao(acao=ACAO_EXTINGUIR_CARGO, partial=PARTIAL_CARTAO_MODAL),
                 ItemAcao(acao=ACAO_REATIVAR_CARGO, partial=PARTIAL_CARTAO_MODAL),
+            ),
+        ),
+        # Ao lado, o outro catálogo (SPEC user_admin/030): mesmo molde, sem natureza nem nível.
+        Grupo(
+            rotulo="Cargos Base",
+            itens=(
+                ItemLivre(
+                    slug="painel.lista_cargos_base",
+                    nome="Cargos base",
+                    tooltip="O catálogo de cargos base da DIMAP e quem os ocupa.",
+                    url_name="cargos:listar_cargos_base",
+                ),
+                ItemAcao(acao=ACAO_CRIAR_CARGO_BASE, partial=PARTIAL_CARTAO_MODAL),
+                ItemAcao(acao=ACAO_EDITAR_CARGO_BASE, partial=PARTIAL_CARTAO_MODAL),
+                ItemAcao(acao=ACAO_EXTINGUIR_CARGO_BASE, partial=PARTIAL_CARTAO_MODAL),
+                ItemAcao(acao=ACAO_REATIVAR_CARGO_BASE, partial=PARTIAL_CARTAO_MODAL),
             ),
         ),
     ),

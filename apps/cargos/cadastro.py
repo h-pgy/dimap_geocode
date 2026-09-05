@@ -1,7 +1,9 @@
 """
-Os dois atos que mantêm o catálogo de cargos em comissão (SPEC user_admin/029): criar grava um
-cargo novo, editar altera identificação sempre e natureza/nível só enquanto ninguém o ocupa — a
-trava (SPEC, §7) vive aqui, conferida no servidor, e não na tela.
+Os atos que mantêm os dois catálogos de cargo (SPECs user_admin/029 e 030): criar grava um cargo
+novo, editar altera identificação sempre. Em cargo em comissão, natureza/nível só mudam enquanto
+ninguém o ocupa — a trava (SPEC 029, §7) vive aqui, conferida no servidor, e não na tela; cargo base
+não tem campo nenhum que a ocupação proteja (SPEC 030, §2), e por isso `editar_cargo_base` não tem
+trava alguma.
 """
 
 from collections.abc import Mapping
@@ -12,8 +14,16 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from apps.cargos.consulta import ocupantes_no_quadro
-from apps.cargos.formularios import ler_edicao_cargo, ler_nova_cargo, recusa_de_natureza, traduzir_recusa
-from apps.cargos.models import CargoComissao
+from apps.cargos.formularios import (
+    ler_edicao_cargo,
+    ler_edicao_cargo_base,
+    ler_nova_cargo,
+    ler_nova_cargo_base,
+    recusa_de_natureza,
+    traduzir_recusa,
+    traduzir_recusa_base,
+)
+from apps.cargos.models import CargoBase, CargoComissao
 from apps.cargos.schemas import EdicaoCargo
 from apps.core.erros_formulario import de_validation_error
 from services.domain.cargos import IdentidadeCargo, PreviaDaEdicao, avaliar_edicao
@@ -26,6 +36,14 @@ class DesfechoCargo:
     operações de cadastro e às duas do ato de extinção/reativação (`apps/cargos/extincao.py`)."""
 
     cargo: CargoComissao | None
+    recusa: RecusaDeFormulario = RecusaDeFormulario()
+
+
+@dataclass(frozen=True)
+class DesfechoCargoBase:
+    """Mesma forma de `DesfechoCargo`, para o catálogo de cargo base (SPEC user_admin/030)."""
+
+    cargo: CargoBase | None
     recusa: RecusaDeFormulario = RecusaDeFormulario()
 
 
@@ -91,3 +109,36 @@ def _gravar(cargo: CargoComissao) -> DesfechoCargo:
     except ValidationError as recusa:
         return DesfechoCargo(cargo=None, recusa=traduzir_recusa(de_validation_error(recusa)))
     return DesfechoCargo(cargo=cargo)
+
+
+def criar_cargo_base(valores: Mapping[str, Any]) -> DesfechoCargoBase:
+    leitura = ler_nova_cargo_base(valores)
+    nova = leitura.dto
+    if nova is None:
+        return DesfechoCargoBase(cargo=None, recusa=leitura.recusa or RecusaDeFormulario())
+    cargo = CargoBase(nome=nova.nome, sigla=nova.sigla)
+    return _gravar_base(cargo)
+
+
+def editar_cargo_base(cargo: CargoBase, valores: Mapping[str, Any]) -> DesfechoCargoBase:
+    leitura = ler_edicao_cargo_base(valores)
+    if leitura.dto is None:
+        return DesfechoCargoBase(cargo=None, recusa=leitura.recusa or RecusaDeFormulario())
+    cargo.nome = leitura.dto.nome
+    cargo.sigla = leitura.dto.sigla
+    try:
+        with transaction.atomic():
+            cargo.full_clean()
+            cargo.save()
+    except ValidationError as recusa:
+        return DesfechoCargoBase(cargo=None, recusa=traduzir_recusa_base(de_validation_error(recusa)))
+    return DesfechoCargoBase(cargo=cargo)
+
+
+def _gravar_base(cargo: CargoBase) -> DesfechoCargoBase:
+    try:
+        cargo.full_clean()
+        cargo.save()
+    except ValidationError as recusa:
+        return DesfechoCargoBase(cargo=None, recusa=traduzir_recusa_base(de_validation_error(recusa)))
+    return DesfechoCargoBase(cargo=cargo)

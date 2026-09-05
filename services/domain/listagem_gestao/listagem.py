@@ -3,12 +3,14 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel
 from services.domain.listagem_gestao.models import (
     ColunaCargo,
+    ColunaCargoBase,
     ColunaServidor,
     ColunaT,
     ColunaUnidade,
     ConsultaListagem,
     FiltroColuna,
     LinhaCargo,
+    LinhaCargoBase,
     LinhaServidor,
     LinhaUnidade,
 )
@@ -67,7 +69,9 @@ class ListadorTabela(Generic[LinhaT, ColunaT]):
 ListarServidores = ListadorTabela[LinhaServidor, ColunaServidor]
 ListarUnidades = ListadorTabela[LinhaUnidade, ColunaUnidade]
 ListarCargos = ListadorTabela[LinhaCargo, ColunaCargo]
+ListarCargosBase = ListadorTabela[LinhaCargoBase, ColunaCargoBase]
 
 listar_servidores = ListarServidores()
 listar_unidades = ListarUnidades()
 listar_cargos = ListarCargos()
+listar_cargos_base = ListarCargosBase()
