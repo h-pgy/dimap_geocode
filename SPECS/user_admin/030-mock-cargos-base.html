@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/030 — Cargos base como ato administrativo (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`).
+       Sem Leaflet: a ortofoto é pré-gerada (SPEC design/010), não mapa vivo. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Carrega o tema e concatena as peças desta SPEC (nenhuma nova — ver §1) no MESMO bloco
+       text/tailwindcss. As de user_admin/029 (.rotulo-cargo, os ícones) ainda não foram portadas
+       para o tema, e este mock precisa delas: reaparecem aqui, idênticas ao que 029 já validou. -->
+  <script>
+    (async function carregarTema() {
+      const caminhos = [
+        "/static/src/tema-dimap.dev.css",
+        "../../static/src/tema-dimap.dev.css",
+        "../static/src/tema-dimap.dev.css"
+      ];
+      let css = null;
+      for (const caminho of caminhos) {
+        try {
+          const r = await fetch(caminho);
+          if (r.ok) { css = await r.text(); break; }
+        } catch (_) {}
+      }
+      if (css) {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-030").textContent;
+        document.head.appendChild(s);
+      } else {
+        (document.body || document.documentElement).insertAdjacentHTML(
+          "afterbegin",
+          "<p style='position:fixed;top:0;left:0;right:0;z-index:99999;margin:0;padding:1rem;background:#fff3f3;border-bottom:2px solid #b00;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — abra o mock por um servidor com raiz no projeto (Live Server). Via file:// o fetch é bloqueado.</p>"
+        );
+      }
+    })();
+  </script>
+
+  <!-- Nenhuma peça NOVA nesta SPEC — só reaproveita 029, ainda fora do tema. -->
+  <script type="text/css" id="tokens-spec-030">
+    @layer components {
+      /* ==================== ÁTOMO · RÓTULO DO CARGO (029) ==================== */
+      .rotulo-cargo { @apply text-inherit; }
+      .rotulo-cargo-extinto {
+        @apply text-warning underline decoration-dotted decoration-warning/45 underline-offset-4;
+      }
+
+      /* ==================== ÁTOMO · O EXTINTO DENTRO DO SELECT DE VIDRO (029) ==================== */
+      .select-onsen-option[data-extinto] { @apply text-warning; }
+      .select-onsen-option[data-extinto][aria-selected="true"] { @apply text-warning font-medium; }
+      .select-onsen-option[data-extinto][data-ativo="true"] { @apply text-warning; }
+      .select-onsen-trigger[data-extinto] { @apply text-warning; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content antialiased">
+  <!-- Filtro de gravação no gelo + glifos usados neste mock — os quatro gestos e o galão são os
+       mesmos de user_admin/029: cargo base e cargo em comissão são o mesmo conceito de "cargo". -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <g id="glifo-alerta"><path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/></g>
+      <g id="glifo-lixeira">
+        <path d="M4.2 6.8h15.6"/>
+        <path d="M9.6 6.8V4.6h4.8v2.2"/>
+        <path d="M6.6 6.8 7.6 19.4h8.8L17.4 6.8"/>
+        <path d="M10.4 10.4v5.4"/><path d="M13.6 10.4v5.4"/>
+      </g>
+      <g id="glifo-reativar">
+        <path d="M20.4 12a8.4 8.4 0 1 1-2.46-5.94"/>
+        <path d="M20.4 3.6v4.9h-4.9"/>
+      </g>
+
+      <!-- de user_admin/029 — o galão é "cargo", sem distinguir catálogo. -->
+      <g id="glifo-cargo">
+        <path d="M3.6 11.4 12 5.6l8.4 5.8"/>
+        <path d="M3.6 15.4 12 9.6l8.4 5.8"/>
+        <path d="M3.6 19.4 12 13.6l8.4 5.8"/>
+      </g>
+      <g id="g-criar-cargo">
+        <path d="M2.4 9.6 8 5.8l5.6 3.8"/><path d="M2.4 13.6 8 9.8l5.6 3.8"/><path d="M2.4 17.6 8 13.8l5.6 3.8"/>
+        <path d="M18.9 15.4v5.2"/><path d="M16.3 18h5.2"/>
+      </g>
+      <g id="g-editar-cargo">
+        <path d="M2.4 9.6 8 5.8l5.6 3.8"/><path d="M2.4 13.6 8 9.8l5.6 3.8"/><path d="M2.4 17.6 8 13.8l5.6 3.8"/>
+        <path d="M15.4 20.7h1.8L22 15.8a1 1 0 0 0-1.4-1.4L15.9 19.3v1.4z"/>
+      </g>
+      <g id="g-extinguir-cargo">
+        <path d="M2.4 9.6 8 5.8l5.6 3.8"/><path d="M2.4 13.6 8 9.8l5.6 3.8"/><path d="M2.4 17.6 8 13.8l5.6 3.8"/>
+        <path d="M15.4 15.9h6.4"/>
+        <path d="M17.5 15.9v-1.3h2.2v1.3"/>
+        <path d="M16.2 15.9 16.8 21.2h3.8l.6-5.3"/>
+      </g>
+      <g id="g-reativar-cargo">
+        <path d="M2.4 9.6 8 5.8l5.6 3.8"/><path d="M2.4 13.6 8 9.8l5.6 3.8"/><path d="M2.4 17.6 8 13.8l5.6 3.8"/>
+        <path d="M22 18.2a3.5 3.5 0 1 1-1.03-2.47"/>
+        <path d="M22 13.6v2.9h-2.9"/>
+      </g>
+      <g id="g-lista-cargos">
+        <path d="M2.4 9.6 8 5.8l5.6 3.8"/><path d="M2.4 13.6 8 9.8l5.6 3.8"/><path d="M2.4 17.6 8 13.8l5.6 3.8"/>
+        <path d="M16.2 11h5.6"/><path d="M16.2 15h5.6"/><path d="M16.2 19h5.6"/>
+      </g>
+      <g id="g-tornar-administrador">
+        <path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/>
+        <path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/>
+      </g>
+
+      <!-- NOVOS nesta SPEC: templates/cargos/partials/_glifos_cargo_base.html -->
+      <!-- O crachá funcional: cargo base é a identidade de quadro do servidor, não uma graduação —
+           por isso a foto e as linhas de texto, em vez do galão de três divisas do cargo em comissão. -->
+      <g id="glifo-cracha">
+        <rect x="6.4" y="4.8" width="11.2" height="15.6" rx="2.2"/>
+        <rect x="10.2" y="2.6" width="3.6" height="2.6" rx="1"/>
+        <circle cx="12" cy="10.6" r="2.4"/>
+        <path d="M8.4 15.6h7.2"/>
+        <path d="M8.4 18h4.8"/>
+      </g>
+      <!-- Mesmo gabarito das ações de cargo em comissão: o crachá à esquerda, o gesto no canto
+           inferior direito. -->
+      <g id="g-criar-cargo-base">
+        <rect x="3.2" y="4.4" width="8.8" height="13.6" rx="1.8"/>
+        <rect x="6.2" y="2.6" width="2.8" height="2.2" rx="0.8"/>
+        <circle cx="7.6" cy="9.2" r="1.7"/>
+        <path d="M5.2 13h4.8"/>
+        <path d="M5.2 15.2h3.2"/>
+        <path d="M18.9 15.4v5.2"/><path d="M16.3 18h5.2"/>
+      </g>
+      <g id="g-editar-cargo-base">
+        <rect x="3.2" y="4.4" width="8.8" height="13.6" rx="1.8"/>
+        <rect x="6.2" y="2.6" width="2.8" height="2.2" rx="0.8"/>
+        <circle cx="7.6" cy="9.2" r="1.7"/>
+        <path d="M5.2 13h4.8"/>
+        <path d="M5.2 15.2h3.2"/>
+        <path d="M15.4 20.7h1.8L22 15.8a1 1 0 0 0-1.4-1.4L15.9 19.3v1.4z"/>
+      </g>
+      <g id="g-extinguir-cargo-base">
+        <rect x="3.2" y="4.4" width="8.8" height="13.6" rx="1.8"/>
+        <rect x="6.2" y="2.6" width="2.8" height="2.2" rx="0.8"/>
+        <circle cx="7.6" cy="9.2" r="1.7"/>
+        <path d="M5.2 13h4.8"/>
+        <path d="M5.2 15.2h3.2"/>
+        <path d="M15.4 15.9h6.4"/>
+        <path d="M17.5 15.9v-1.3h2.2v1.3"/>
+        <path d="M16.2 15.9 16.8 21.2h3.8l.6-5.3"/>
+      </g>
+      <g id="g-reativar-cargo-base">
+        <rect x="3.2" y="4.4" width="8.8" height="13.6" rx="1.8"/>
+        <rect x="6.2" y="2.6" width="2.8" height="2.2" rx="0.8"/>
+        <circle cx="7.6" cy="9.2" r="1.7"/>
+        <path d="M5.2 13h4.8"/>
+        <path d="M5.2 15.2h3.2"/>
+        <path d="M22 18.2a3.5 3.5 0 1 1-1.03-2.47"/>
+        <path d="M22 13.6v2.9h-2.9"/>
+      </g>
+      <g id="g-lista-cargos-base">
+        <rect x="3.2" y="4.4" width="8.8" height="13.6" rx="1.8"/>
+        <rect x="6.2" y="2.6" width="2.8" height="2.2" rx="0.8"/>
+        <circle cx="7.6" cy="9.2" r="1.7"/>
+        <path d="M5.2 13h4.8"/>
+        <path d="M5.2 15.2h3.2"/>
+        <path d="M16.2 11h5.6"/><path d="M16.2 15h5.6"/><path d="M16.2 19h5.6"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 p-8 max-w-6xl mx-auto flex flex-col gap-16">
+    <header class="border-b border-base-200 pb-4">
+      <p class="text-overline text-agua-700">Mock de validação</p>
+      <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC user_admin/030 — Cargos base como ato administrativo</h1>
+      <p class="text-sm text-base-content/70 mt-1">Uma peça nova — o crachá — e o resto é composição do que user_admin/029 já validou, sem o nível/natureza que cargo base não tem: 2 · Átomos e 3 · Moléculas seguem omitidos.</p>
+    </header>
+
+    <!-- ==================================================================== -->
+    <!-- 1 · TOKENS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="tokens" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">1 · Tokens</h2>
+        <p class="text-xs text-base-content/70">O crachá funcional é a base: à esquerda em todo ícone de ação, inteiro quando o cargo aparece sozinho. Cargo base é a identidade de quadro do servidor — não uma graduação —, por isso a foto e as linhas de texto, em vez do galão de três divisas do cargo em comissão.</p>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-wrap items-end gap-10">
+        <div class="flex flex-col items-center gap-2">
+          <svg class="w-9 h-9 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cracha"/></svg>
+          <span class="text-overline">#glifo-cracha</span>
+        </div>
+
+        <div class="flex flex-col gap-3 pl-6 border-l border-white/60">
+          <div class="flex items-end gap-8">
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo-base"/></svg></span>
+              <span class="text-overline">criar_cargo_base</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo-base"/></svg></span>
+              <span class="text-overline">editar_cargo_base</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-extinguir-cargo-base"/></svg></span>
+              <span class="text-overline">extinguir_cargo_base</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-reativar-cargo-base"/></svg></span>
+              <span class="text-overline">reativar_cargo_base</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-cargos-base"/></svg></span>
+              <span class="text-overline">painel.lista_cargos_base</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4 pt-3 border-t border-white/60">
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo-base"/></svg></span>
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo-base"/></svg></span>
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-extinguir-cargo-base"/></svg></span>
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-reativar-cargo-base"/></svg></span>
+            <span class="text-overline">variante pequena · 20px</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 4 · ORGANISMOS                                                        -->
+    <!-- ==================================================================== -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">4 · Organismos</h2>
+        <p class="text-xs text-base-content/70">Os quatro modais fora da cena. Editar tem UMA face só: cargo base não tem natureza a travar, então nome e sigla seguem sempre abertos.</p>
+      </div>
+
+      <div class="grid gap-6 xl:grid-cols-2">
+        <!-- face: criar -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">criar cargo base · o formulário inteiro, sem alvo por definição</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo-base"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Cadastrar cargo base</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">O cargo passa a existir no catálogo e fica disponível para nomeação.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Identificação</p>
+              <div class="grid sm:grid-cols-3 gap-4">
+                <label class="form-field sm:col-span-2">
+                  <span class="text-overline">Nome</span>
+                  <input type="text" class="input input-glass" placeholder="Auditor Fiscal Tributário Municipal" />
+                </label>
+                <label class="form-field">
+                  <span class="text-overline">Sigla</span>
+                  <input type="text" class="input input-glass" placeholder="AFTM" />
+                </label>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Cadastrar cargo</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: criar, recusada -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">criar cargo base · recusa: o nome já existe no catálogo</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo-base"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Cadastrar cargo base</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">O cargo passa a existir no catálogo e fica disponível para nomeação.</p>
+              </div>
+            </div>
+
+            <!-- partial: partials/_tarja_recusa.html — inalterado nesta SPEC -->
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">Cargo não cadastrado</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>Já existe um cargo base com este nome.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Identificação</p>
+              <div class="grid sm:grid-cols-3 gap-4">
+                <label class="form-field sm:col-span-2">
+                  <span class="text-overline">Nome</span>
+                  <input type="text" class="input input-glass campo-realce-erro" value="Auditor Fiscal Tributário Municipal" />
+                </label>
+                <label class="form-field">
+                  <span class="text-overline">Sigla</span>
+                  <input type="text" class="input input-glass" value="AFTM" />
+                </label>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Cadastrar cargo</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: editar — única face: sem trava, ocupado ou extinto -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">editar cargo base · alvo ocupado E extinto: nome e sigla sempre livres</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo-base"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar cargo base</h2>
+                <p class="text-sm mt-0.5"><span class="rotulo-cargo rotulo-cargo-extinto" title="Cargo Extinto">Assistente Técnico de Fiscalização</span></p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Identificação</p>
+              <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                <div class="campo-onsen">
+                  <input type="checkbox" id="org-editar-nome" class="campo-onsen-toggle" />
+                  <span class="text-overline etched-rotulo">Nome</span>
+                  <div class="campo-onsen-linha">
+                    <p class="campo-onsen-valor">Assistente Técnico de Fiscalização</p>
+                    <div class="campo-onsen-campo">
+                      <input type="text" class="input input-glass" value="Assistente Técnico de Fiscalização" />
+                    </div>
+                    <label for="org-editar-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                      <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="campo-onsen">
+                  <input type="checkbox" id="org-editar-sigla" class="campo-onsen-toggle" />
+                  <span class="text-overline etched-rotulo">Sigla</span>
+                  <div class="campo-onsen-linha">
+                    <p class="campo-onsen-valor text-code">ATF</p>
+                    <div class="campo-onsen-campo">
+                      <input type="text" class="input input-glass" value="ATF" />
+                    </div>
+                    <label for="org-editar-sigla" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a sigla">
+                      <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Salvar alterações</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: editar, sem alvo -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">editar cargo base · estado de falta: aberto pelo card do painel, sem cargo escolhido</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo-base"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar cargo base</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">Escolha o cargo do catálogo que será alterado.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Cargo a editar</p>
+              <select class="select select-glass" data-select-onsen data-marcar-extintos>
+                <option value="" selected>— escolha o cargo —</option>
+                <option value="1">AFTM · Auditor Fiscal Tributário Municipal</option>
+                <option value="2">AAFA · Agente de Apoio Fiscal e Arrecadação</option>
+                <option value="3" data-extinto="true" title="Cargo Extinto">ATF · Assistente Técnico de Fiscalização</option>
+                <option value="4">ADM · Assistente de Administração</option>
+              </select>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm btn-disabled">Salvar alterações</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: extinguir -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">extinguir cargo base · alvo ocupado — ocupante não impede, e é isso que a tarja diz</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-extinguir-cargo-base"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir cargo base</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">O cargo sai das opções de nomeação. Quem já o ocupa continua nele.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Cargo a extinguir</p>
+              <select class="select select-glass" data-select-onsen>
+                <option>AFTM · Auditor Fiscal Tributário Municipal</option>
+                <option>AAFA · Agente de Apoio Fiscal e Arrecadação</option>
+              </select>
+            </div>
+
+            <div class="previa-ato">
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Ocupantes no quadro</span>
+                <span class="previa-ato-valor">8</span>
+              </div>
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Sigla</span>
+                <span class="previa-ato-valor">AFTM</span>
+              </div>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                Os <strong>8 servidores</strong> que ocupam o cargo <strong>continuam nele</strong>: seguem exercendo as competências do cargo e podendo receber concessão nova. O que muda é que <strong>ninguém mais é nomeado</strong> nele.
+              </p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-error btn-soft btn-sm">Extinguir o AFTM</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: extinguir, recusa do ato repetido -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">extinguir cargo base · o já extinto: recusado, com a saída para reativar</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-extinguir-cargo-base"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir cargo base</h2>
+                <p class="text-sm mt-0.5"><span class="rotulo-cargo rotulo-cargo-extinto" title="Cargo Extinto">Assistente Técnico de Fiscalização</span></p>
+              </div>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">Cargo não extinto</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>Este cargo já está extinto.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Fechar</label>
+              <button type="button" class="btn btn-onsen btn-sm gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+                Reativar o ATF
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: reativar -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">reativar cargo base · alvo extinto, ainda ocupado</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-reativar-cargo-base"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reativar cargo base</h2>
+                <p class="text-sm mt-0.5"><span class="rotulo-cargo rotulo-cargo-extinto" title="Cargo Extinto">Assistente Técnico de Fiscalização</span></p>
+              </div>
+            </div>
+
+            <div class="previa-ato">
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Ocupantes no quadro</span>
+                <span class="previa-ato-valor">2</span>
+              </div>
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Sigla</span>
+                <span class="previa-ato-valor">ATF</span>
+              </div>
+              <div class="previa-ato-tile card-well">
+                <span class="text-overline">Extinto em</span>
+                <span class="text-[17px] font-bold text-madeira-700 pt-1">04/09/2026</span>
+              </div>
+            </div>
+
+            <div class="tarja-vinculo flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-info" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">O cargo volta às opções de nomeação e perde a marca. Nada mais muda: quem o ocupa nunca deixou de ocupá-lo.</p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Reativar o ATF</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: reativar, sem alvo -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">reativar cargo base · estado de falta: nenhum cargo extinto no catálogo</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-reativar-cargo-base"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reativar cargo base</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">Escolha o cargo extinto que volta às opções de nomeação.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-8 text-center">
+              <span class="etched text-3xl block mb-2">⌕</span>
+              <p class="text-[13px] text-base-content/60">Nenhum cargo extinto no catálogo — não há o que reativar.</p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Fechar</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- a aba do painel com os dois grupos lado a lado -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">painel · Administração do Sistema — "Cargos Base" ao lado de "Cargos em Comissão" (029), mesma aba</span>
+        <div role="tablist" class="tabs glass-panel abas-onsen">
+          <label role="tab" class="tab">
+            <input type="radio" name="painel-organismo" checked />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Administração do Sistema</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Administração do Sistema</h2>
+              <p class="painel-descricao">Quem tem plenos poderes sobre o sistema e os catálogos de cargo sobre os quais toda nomeação se apoia. Consultar os catálogos é aberto a todo servidor; alterá-los, não.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Administradores</p>
+                <div class="menu-acoes-cartoes">
+                  <button type="button" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-tornar-administrador"/></svg></span>
+                      <div><p class="card-acao-nome">Tornar administrador</p><p class="card-acao-descricao">Dá ou retira os plenos poderes de um servidor sobre o sistema.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </button>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Cargos em Comissão</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-cargos"/></svg></span>
+                      <div><p class="card-acao-nome">Cargos em comissão</p><p class="card-acao-descricao">O catálogo de cargos da DIMAP, com nível, natureza e quem os ocupa.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <button type="button" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo"/></svg></span>
+                      <div><p class="card-acao-nome">Cadastrar cargo em comissão</p><p class="card-acao-descricao">Cria um cargo em comissão no catálogo da DIMAP.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </button>
+                  <button type="button" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo"/></svg></span>
+                      <div><p class="card-acao-nome">Editar cargo em comissão</p><p class="card-acao-descricao">Altera nome, sigla, nível e natureza de um cargo do catálogo.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </button>
+                  <button type="button" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-extinguir-cargo"/></svg></span>
+                      <div><p class="card-acao-nome">Extinguir cargo em comissão</p><p class="card-acao-descricao">Tira o cargo das opções de nomeação, sem afetar quem o ocupa.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </button>
+                  <button type="button" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-reativar-cargo"/></svg></span>
+                      <div><p class="card-acao-nome">Reativar cargo em comissão</p><p class="card-acao-descricao">Devolve o cargo extinto às opções de nomeação.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </button>
+                </div>
+              </div>
+              <!-- GRUPO NOVO desta SPEC -->
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Cargos Base</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#lista-de-cargos-base" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-cargos-base"/></svg></span>
+                      <div><p class="card-acao-nome">Cargos base</p><p class="card-acao-descricao">O catálogo de cargos base da DIMAP e quem os ocupa.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <button type="button" class="hover-3d card-acao-alvo" data-abrir="modal-criar-cargo-base">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo-base"/></svg></span>
+                      <div><p class="card-acao-nome">Cadastrar cargo base</p><p class="card-acao-descricao">Cria um cargo base no catálogo da DIMAP.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </button>
+                  <button type="button" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo-base"/></svg></span>
+                      <div><p class="card-acao-nome">Editar cargo base</p><p class="card-acao-descricao">Altera nome e sigla de um cargo do catálogo.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </button>
+                  <button type="button" class="hover-3d card-acao-alvo" data-abrir="modal-extinguir-cargo-base">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-extinguir-cargo-base"/></svg></span>
+                      <div><p class="card-acao-nome">Extinguir cargo base</p><p class="card-acao-descricao">Tira o cargo das opções de nomeação, sem afetar quem o ocupa.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </button>
+                  <button type="button" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-reativar-cargo-base"/></svg></span>
+                      <div><p class="card-acao-nome">Reativar cargo base</p><p class="card-acao-descricao">Devolve o cargo extinto às opções de nomeação.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 5 · TELA MONTADA                                                      -->
+    <!-- ==================================================================== -->
+    <section id="tela" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">5 · Tela montada</h2>
+        <p class="text-xs text-base-content/70">Ligue o toggle para revelar os extintos; clique no lápis, na lixeira ou no gesto de reativar para abrir o modal com o cargo da linha.</p>
+      </div>
+
+      <!-- ============ 5.1 · Lista de cargos base ============ -->
+      <div class="flex flex-col">
+
+        <!-- página: cargos/cargos_base_list.html -->
+        <div class="w-full">
+          <div class="max-w-4xl mx-auto w-full glass-panel p-6 sm:p-8 flex flex-col gap-5">
+
+            <!-- fica na página: cabeçalho, só arranjo -->
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Cargos base</h1>
+                <p class="text-sm text-base-content/70 mt-1">4 cargos no catálogo. Clique num cabeçalho para filtrar; na seta, para ordenar.</p>
+              </div>
+            </div>
+
+            <!-- partial: cargos/partials/_barra_acoes_cargos_base.html — o toggle troca o corpo da tabela -->
+            <div class="barra-acoes glass-panel">
+              <div class="barra-acoes-gestos">
+                <button type="button" class="btn btn-onsen btn-sm gap-1.5" data-abrir="modal-criar-cargo-base">
+                  <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo-base"/></svg></span>
+                  Novo cargo
+                </button>
+                <button type="button" class="btn btn-error btn-soft btn-sm gap-1.5" data-abrir="modal-extinguir-cargo-base">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                  Extinguir cargo
+                </button>
+              </div>
+              <div class="barra-acoes-gestos">
+                <label class="barra-acoes-chave">
+                  <input type="checkbox" class="toggle-onsen" id="toggle-extintos-base" aria-label="Mostrar cargos extintos" />
+                  <span class="text-overline">Mostrar cargos extintos</span>
+                </label>
+                <button type="button" class="btn-etched etched">✕ limpar filtros</button>
+              </div>
+            </div>
+
+            <!-- partial: cargos/partials/_tabela_cargos_base.html -->
+            <div class="card-well pb-2 table-onsen-poco" data-scroll-etched>
+              <div class="table-onsen-wrap" data-rolador>
+                <table class="table table-onsen" data-tabela-onsen>
+                  <thead data-cabecalho>
+                    <tr>
+                      <th class="w-24">
+                        <div class="th-onsen" data-coluna="sigla">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Sigla</span>
+                            <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por sigla">▲</button>
+                        </div>
+                      </th>
+                      <th>
+                        <div class="th-onsen" data-coluna="nome" aria-sort="ascending">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Nome</span>
+                            <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por nome">▲</button>
+                        </div>
+                      </th>
+                      <th class="w-28">
+                        <div class="th-onsen th-onsen-gravado">
+                          <span class="text-overline etched etched-rotulo">Ocupantes</span>
+                        </div>
+                      </th>
+                      <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
+                      <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
+                    </tr>
+                  </thead>
+
+                  <!-- partial: cargos/partials/_corpo_cargos_base.html — alvo do hx-get dos filtros e do toggle -->
+                  <tbody id="corpo-cargos-base">
+                    <tr>
+                      <td class="text-code">AFTM</td>
+                      <td><span class="rotulo-cargo td-nome-unidade">Auditor Fiscal Tributário Municipal</span></td>
+                      <td class="text-right">8</td>
+                      <td class="text-right">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar o cargo"
+                                data-abrir="modal-editar-cargo-base" data-cargo="AFTM · Auditor Fiscal Tributário Municipal" data-ocupantes="8">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                      </td>
+                      <td class="text-right">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir o cargo"
+                                data-abrir="modal-extinguir-cargo-base" data-cargo="AFTM · Auditor Fiscal Tributário Municipal" data-ocupantes="8">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="text-code">AAFA</td>
+                      <td><span class="rotulo-cargo td-nome-unidade">Agente de Apoio Fiscal e Arrecadação</span></td>
+                      <td class="text-right">4</td>
+                      <td class="text-right">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar o cargo"
+                                data-abrir="modal-editar-cargo-base" data-cargo="AAFA · Agente de Apoio Fiscal e Arrecadação" data-ocupantes="4">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                      </td>
+                      <td class="text-right">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir o cargo"
+                                data-abrir="modal-extinguir-cargo-base" data-cargo="AAFA · Agente de Apoio Fiscal e Arrecadação" data-ocupantes="4">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                    <!-- extinto: só aparece com o toggle ligado, e a marca é o rótulo — nenhum texto a mais -->
+                    <tr data-linha-extinta hidden>
+                      <td class="text-code text-warning">ATF</td>
+                      <td><span class="rotulo-cargo rotulo-cargo-extinto td-nome-unidade" title="Cargo Extinto">Assistente Técnico de Fiscalização</span></td>
+                      <td class="text-right">2</td>
+                      <td class="text-right">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar o cargo"
+                                data-abrir="modal-editar-cargo-base" data-cargo="ATF · Assistente Técnico de Fiscalização" data-ocupantes="2" data-extinto="true">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                      </td>
+                      <td class="text-right">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Reativar o cargo"
+                                data-abrir="modal-reativar-cargo-base" data-cargo="ATF · Assistente Técnico de Fiscalização" data-ocupantes="2" data-extinto="true">
+                          <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="text-code">ADM</td>
+                      <td><span class="rotulo-cargo td-nome-unidade">Assistente de Administração</span></td>
+                      <td class="text-right">5</td>
+                      <td class="text-right">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar o cargo"
+                                data-abrir="modal-editar-cargo-base" data-cargo="ADM · Assistente de Administração" data-ocupantes="5">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                      </td>
+                      <td class="text-right">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir o cargo"
+                                data-abrir="modal-extinguir-cargo-base" data-cargo="ADM · Assistente de Administração" data-ocupantes="5">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                  <!-- /partial -->
+                </table>
+              </div>
+              <div class="scroll-etched" data-barra aria-hidden="true">
+                <div class="scroll-etched-thumb" data-polegar></div>
+              </div>
+            </div>
+            <!-- /partial -->
+          </div>
+        </div>
+
+        <!-- partial: cargos/partials/_modal_criar_cargo_base.html — alvo do hx-get do card e do botão da barra -->
+        <input type="checkbox" id="modal-criar-cargo-base" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5">
+              <div class="flex items-start gap-3">
+                <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo-base"/></svg></span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Cadastrar cargo base</h2>
+                  <p class="text-sm text-base-content/70 mt-0.5">O cargo passa a existir no catálogo e fica disponível para nomeação.</p>
+                </div>
+              </div>
+
+              <div class="card-well p-5 flex flex-col gap-4">
+                <p class="text-overline">Identificação</p>
+                <div class="grid sm:grid-cols-3 gap-4">
+                  <label class="form-field sm:col-span-2">
+                    <span class="text-overline">Nome</span>
+                    <input type="text" class="input input-glass" placeholder="Auditor Fiscal Tributário Municipal" />
+                  </label>
+                  <label class="form-field">
+                    <span class="text-overline">Sigla</span>
+                    <input type="text" class="input input-glass" placeholder="AFTM" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="modal-action">
+                <label for="modal-criar-cargo-base" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="button" class="btn btn-onsen btn-sm">Cadastrar cargo</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-criar-cargo-base">Fechar</label>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: cargos/partials/_modal_editar_cargo_base.html — alvo do hx-get do lápis e do card -->
+        <input type="checkbox" id="modal-editar-cargo-base" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5">
+              <div class="flex items-start gap-3">
+                <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo-base"/></svg></span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar cargo base</h2>
+                  <p class="text-sm text-base-content/70 mt-0.5" data-alvo-editar>—</p>
+                </div>
+              </div>
+
+              <div class="card-well p-5 flex flex-col gap-4">
+                <p class="text-overline">Identificação</p>
+                <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                  <div class="campo-onsen">
+                    <input type="checkbox" id="tela-editar-nome-base" class="campo-onsen-toggle" />
+                    <span class="text-overline etched-rotulo">Nome</span>
+                    <div class="campo-onsen-linha">
+                      <p class="campo-onsen-valor" data-nome-editar>—</p>
+                      <div class="campo-onsen-campo">
+                        <input type="text" class="input input-glass" value="" />
+                      </div>
+                      <label for="tela-editar-nome-base" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                        <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="campo-onsen">
+                    <input type="checkbox" id="tela-editar-sigla-base" class="campo-onsen-toggle" />
+                    <span class="text-overline etched-rotulo">Sigla</span>
+                    <div class="campo-onsen-linha">
+                      <p class="campo-onsen-valor text-code" data-sigla-editar>—</p>
+                      <div class="campo-onsen-campo">
+                        <input type="text" class="input input-glass" value="" />
+                      </div>
+                      <label for="tela-editar-sigla-base" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a sigla">
+                        <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="modal-action">
+                <label for="modal-editar-cargo-base" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="button" class="btn btn-onsen btn-sm">Salvar alterações</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-editar-cargo-base">Fechar</label>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: cargos/partials/_modal_extinguir_cargo_base.html — alvo do hx-get da lixeira, do botão da barra e do card -->
+        <input type="checkbox" id="modal-extinguir-cargo-base" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5">
+              <div class="flex items-start gap-3">
+                <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-extinguir-cargo-base"/></svg></span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir cargo base</h2>
+                  <p class="text-sm text-base-content/70 mt-0.5">O cargo sai das opções de nomeação. Quem já o ocupa continua nele.</p>
+                </div>
+              </div>
+
+              <div class="card-well p-5 flex flex-col gap-4">
+                <p class="text-overline">Cargo a extinguir</p>
+                <select class="select select-glass" id="select-extinguir-cargo-base" data-select-onsen>
+                  <option value="">— escolha o cargo —</option>
+                  <option value="AFTM · Auditor Fiscal Tributário Municipal">AFTM · Auditor Fiscal Tributário Municipal</option>
+                  <option value="AAFA · Agente de Apoio Fiscal e Arrecadação">AAFA · Agente de Apoio Fiscal e Arrecadação</option>
+                  <option value="ADM · Assistente de Administração">ADM · Assistente de Administração</option>
+                </select>
+              </div>
+
+              <!-- partial: cargos/partials/_previa_do_cargo_base.html — alvo do hx-get do select acima -->
+              <div id="previa-extinguir-base" class="flex flex-col gap-4"></div>
+              <!-- /partial -->
+
+              <div class="modal-action">
+                <label for="modal-extinguir-cargo-base" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="button" class="btn btn-error btn-soft btn-sm btn-disabled" id="confirmar-extinguir-base">Extinguir</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-extinguir-cargo-base">Fechar</label>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: cargos/partials/_modal_reativar_cargo_base.html — alvo do hx-get do gesto da linha extinta e do card -->
+        <input type="checkbox" id="modal-reativar-cargo-base" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5">
+              <div class="flex items-start gap-3">
+                <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-reativar-cargo-base"/></svg></span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reativar cargo base</h2>
+                  <p class="text-sm mt-0.5"><span class="rotulo-cargo rotulo-cargo-extinto" title="Cargo Extinto" data-alvo-reativar>—</span></p>
+                </div>
+              </div>
+
+              <div class="previa-ato">
+                <div class="previa-ato-tile card-well">
+                  <span class="text-overline">Ocupantes no quadro</span>
+                  <span class="previa-ato-valor" data-ocupantes-reativar>1</span>
+                </div>
+                <div class="previa-ato-tile card-well">
+                  <span class="text-overline">Sigla</span>
+                  <span class="previa-ato-valor" data-sigla-reativar>—</span>
+                </div>
+                <div class="previa-ato-tile card-well">
+                  <span class="text-overline">Extinto em</span>
+                  <span class="text-[17px] font-bold text-madeira-700 pt-1">04/09/2026</span>
+                </div>
+              </div>
+
+              <div class="tarja-vinculo flex items-start gap-2">
+                <svg class="w-5 h-5 shrink-0 text-info" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                <p class="text-[13px] text-base-content/80">O cargo volta às opções de nomeação e perde a marca. Nada mais muda: quem o ocupa nunca deixou de ocupá-lo.</p>
+              </div>
+
+              <div class="modal-action">
+                <label for="modal-reativar-cargo-base" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="button" class="btn btn-onsen btn-sm" data-confirmar-reativar>Reativar</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-reativar-cargo-base">Fechar</label>
+        </div>
+        <!-- /partial -->
+      </div>
+
+      <!-- ============ 5.2 · O extinto no cadastro/edição de servidor ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">o extinto no campo de cargo base — mesmo tratamento do cargo em comissão (029): quem já o ocupa continua vendo o seu</span>
+
+        <!-- página: user_admin/partials/_secao_lotacao.html — inalterado fora do data-extinto -->
+        <div class="w-full">
+          <div class="max-w-2xl mx-auto w-full glass-panel p-6 sm:p-8 flex flex-col gap-4">
+            <div class="campo-onsen">
+              <input type="checkbox" id="tela-campo-base" class="campo-onsen-toggle" checked />
+              <span class="text-overline etched-rotulo">Cargo base</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor"><span class="rotulo-cargo rotulo-cargo-extinto" title="Cargo Extinto">Assistente Técnico de Fiscalização</span></p>
+                <div class="campo-onsen-campo">
+                  <select class="select select-glass" data-select-onsen data-marcar-extintos>
+                    <option value="1">AFTM · Auditor Fiscal Tributário Municipal</option>
+                    <option value="2">AAFA · Agente de Apoio Fiscal e Arrecadação</option>
+                    <option value="3" data-extinto="true" title="Cargo Extinto" selected>Assistente Técnico de Fiscalização</option>
+                    <option value="4">ADM · Assistente de Administração</option>
+                  </select>
+                  <span class="form-field-hint">O extinto continua na lista porque é o cargo gravado deste servidor — trocar por outro o tira de vez.</span>
+                </div>
+                <label for="tela-campo-base" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o cargo base">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Sem este módulo os selects seguem nativos: marcar o campo não carrega o componente. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+  <!-- E sem este a barra gravada do poço da tabela não é medida: o sulco fica sem polegar. -->
+  <script type="module" src="/static/src/js/ui/scroll_etched.js"></script>
+
+  <script>
+    // A linha que o select_onsen.js ganha em user_admin/029: o marcador do <option> desce ao item
+    // desenhado. Aqui ela roda de fora, sobre o que o módulo já montou.
+    function marcarExtintosNosSelects() {
+      document.querySelectorAll("select[data-marcar-extintos]").forEach((select) => {
+        const casca = select.closest(".select-onsen");
+        if (!casca) return;
+        const itens = casca.querySelectorAll(".select-onsen-option");
+        Array.from(select.options).forEach((opcao, indice) => {
+          if (opcao.dataset.extinto && itens[indice]) itens[indice].dataset.extinto = "true";
+        });
+        const gatilho = casca.querySelector(".select-onsen-trigger");
+        const escolhida = select.options[select.selectedIndex];
+        if (gatilho) gatilho.toggleAttribute("data-extinto", Boolean(escolhida?.dataset.extinto));
+        select.addEventListener("change", () => {
+          const nova = select.options[select.selectedIndex];
+          if (gatilho) gatilho.toggleAttribute("data-extinto", Boolean(nova?.dataset.extinto));
+        });
+      });
+    }
+    window.addEventListener("load", marcarExtintosNosSelects);
+  </script>
+
+  <script>
+    // Coreografia do mock. No servidor: o toggle troca o corpo da tabela, e o lápis, a lixeira, o
+    // gesto de reativar e os cards trazem o modal já com o cargo escolhido. Sem chave condicional
+    // nem poço travado: cargo base não tem natureza, então editar é sempre a mesma face.
+    const CARGOS_BASE = {
+      "AFTM · Auditor Fiscal Tributário Municipal": { sigla: "AFTM", nome: "Auditor Fiscal Tributário Municipal", ocupantes: 8 },
+      "AAFA · Agente de Apoio Fiscal e Arrecadação": { sigla: "AAFA", nome: "Agente de Apoio Fiscal e Arrecadação", ocupantes: 4 },
+      "ATF · Assistente Técnico de Fiscalização":    { sigla: "ATF",  nome: "Assistente Técnico de Fiscalização",  ocupantes: 2 },
+      "ADM · Assistente de Administração":           { sigla: "ADM",  nome: "Assistente de Administração",         ocupantes: 5 },
+    };
+
+    const toggleExtintosBase = document.getElementById("toggle-extintos-base");
+    const modalEditarBase = document.getElementById("modal-editar-cargo-base");
+    const modalReativarBase = document.getElementById("modal-reativar-cargo-base");
+    const selectExtinguirBase = document.getElementById("select-extinguir-cargo-base");
+    const previaExtinguirBase = document.getElementById("previa-extinguir-base");
+    const confirmarExtinguirBase = document.getElementById("confirmar-extinguir-base");
+
+    function tileBase(rotulo, conteudo) {
+      return `<div class="previa-ato-tile card-well"><span class="text-overline">${rotulo}</span>${conteudo}</div>`;
+    }
+
+    function vestirEdicaoBase(chave) {
+      const dados = CARGOS_BASE[chave];
+      if (!dados) return;
+      const caixa = modalEditarBase.nextElementSibling;
+      caixa.querySelector("[data-alvo-editar]").textContent = chave;
+      caixa.querySelector("[data-nome-editar]").textContent = dados.nome;
+      caixa.querySelector("[data-sigla-editar]").textContent = dados.sigla;
+    }
+
+    function vestirReativacaoBase(chave) {
+      const dados = CARGOS_BASE[chave];
+      if (!dados) return;
+      const caixa = modalReativarBase.nextElementSibling;
+      caixa.querySelector("[data-alvo-reativar]").textContent = chave;
+      caixa.querySelector("[data-sigla-reativar]").textContent = dados.sigla;
+      caixa.querySelector("[data-ocupantes-reativar]").textContent = dados.ocupantes;
+      caixa.querySelector("[data-confirmar-reativar]").textContent = `Reativar o ${dados.sigla}`;
+    }
+
+    function desenharPreviaExtincaoBase(chave) {
+      const dados = CARGOS_BASE[chave];
+      if (!dados) {
+        previaExtinguirBase.innerHTML = `<div class="previa-ato">
+          ${tileBase("Ocupantes no quadro", '<span class="previa-ato-vazio">—</span>')}
+          ${tileBase("Sigla", '<span class="previa-ato-vazio">—</span>')}
+        </div>`;
+        confirmarExtinguirBase.classList.add("btn-disabled");
+        confirmarExtinguirBase.textContent = "Extinguir";
+        return;
+      }
+      const ocupantes = dados.ocupantes
+        ? `<span class="previa-ato-valor">${dados.ocupantes}</span>`
+        : '<span class="previa-ato-vazio">Ninguém ocupa</span>';
+      const tarja = dados.ocupantes
+        ? `<div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+             <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+             <p class="text-[13px] text-base-content/80">Os <strong>${dados.ocupantes} servidores</strong> que ocupam o cargo <strong>continuam nele</strong>: seguem exercendo as competências do cargo e podendo receber concessão nova. O que muda é que <strong>ninguém mais é nomeado</strong> nele.</p>
+           </div>`
+        : `<div class="tarja-vinculo flex items-start gap-2">
+             <svg class="w-5 h-5 shrink-0 text-info" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+             <p class="text-[13px] text-base-content/80">Ninguém ocupa o <strong>${dados.sigla}</strong>: o cargo sai do catálogo de nomeação sem deixar nada para trás.</p>
+           </div>`;
+      previaExtinguirBase.innerHTML = `<div class="previa-ato">
+        ${tileBase("Ocupantes no quadro", ocupantes)}
+        ${tileBase("Sigla", `<span class="previa-ato-valor">${dados.sigla}</span>`)}
+      </div>${tarja}`;
+      confirmarExtinguirBase.classList.remove("btn-disabled");
+      confirmarExtinguirBase.textContent = `Extinguir o ${dados.sigla}`;
+    }
+
+    // No servidor a escolha já vem no partial e o `htmx:afterSwap` remonta a casca do select. Aqui
+    // o mock escolhe em memória, então precisa acertar o rótulo do gatilho na mão.
+    function escolherNoSelectBase(chave) {
+      selectExtinguirBase.value = chave;
+      const rotulo = selectExtinguirBase.closest(".select-onsen")?.querySelector(".select-onsen-trigger span");
+      if (rotulo) rotulo.textContent = selectExtinguirBase.options[selectExtinguirBase.selectedIndex]?.textContent ?? "";
+    }
+
+    document.querySelectorAll("[data-abrir]").forEach((gatilho) => {
+      gatilho.addEventListener("click", () => {
+        const chave = gatilho.dataset.cargo || "";
+        const alvo = document.getElementById(gatilho.dataset.abrir);
+        if (!alvo) return;
+        if (gatilho.dataset.abrir === "modal-editar-cargo-base") vestirEdicaoBase(chave);
+        if (gatilho.dataset.abrir === "modal-reativar-cargo-base") vestirReativacaoBase(chave);
+        if (gatilho.dataset.abrir === "modal-extinguir-cargo-base") {
+          escolherNoSelectBase(chave);
+          desenharPreviaExtincaoBase(chave);
+        }
+        alvo.checked = true;
+      });
+    });
+
+    selectExtinguirBase.addEventListener("change", () => desenharPreviaExtincaoBase(selectExtinguirBase.value));
+
+    toggleExtintosBase.addEventListener("change", () => {
+      document.querySelectorAll("[data-linha-extinta]").forEach((linha) => {
+        linha.hidden = !toggleExtintosBase.checked;
+      });
+    });
+
+    desenharPreviaExtincaoBase("");
+  </script>
+</body>
+</html>

@@ -33,7 +33,7 @@
     <div class="min-w-0 sm:col-span-2">
       <p class="text-overline">Cargo em comissão</p>
       <p class="valor-leitura {% if perfil.cargo_comissao %}text-base-content/90{% else %}text-base-content/40{% endif %}">
-        {% if perfil.cargo_comissao %}{{ perfil.cargo_comissao.padrao }} · {{ perfil.cargo_comissao.nome }}{% else %}— sem cargo em comissão —{% endif %}
+        {% if perfil.cargo_comissao %}{% include "cargos/partials/_rotulo_cargo.html" with cargo=perfil.cargo_comissao %}{% else %}— sem cargo em comissão —{% endif %}
       </p>
     </div>
   </div>

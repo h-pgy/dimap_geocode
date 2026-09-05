@@ -2,11 +2,13 @@ from collections.abc import Sequence
 from typing import Generic, TypeVar
 from pydantic import BaseModel
 from services.domain.listagem_gestao.models import (
+    ColunaCargo,
     ColunaServidor,
     ColunaT,
     ColunaUnidade,
     ConsultaListagem,
     FiltroColuna,
+    LinhaCargo,
     LinhaServidor,
     LinhaUnidade,
 )
@@ -64,6 +66,8 @@ class ListadorTabela(Generic[LinhaT, ColunaT]):
 
 ListarServidores = ListadorTabela[LinhaServidor, ColunaServidor]
 ListarUnidades = ListadorTabela[LinhaUnidade, ColunaUnidade]
+ListarCargos = ListadorTabela[LinhaCargo, ColunaCargo]
 
 listar_servidores = ListarServidores()
 listar_unidades = ListarUnidades()
+listar_cargos = ListarCargos()

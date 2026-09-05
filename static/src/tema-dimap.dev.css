@@ -652,6 +652,16 @@ html[data-theme="dimap"] {
   }
   .select-onsen-vazio { @apply px-3 py-2 text-xs text-base-content/60; }
 
+  /* O extinto dentro do select de vidro (SPEC user_admin/029). Vem DEPOIS de [aria-selected] e      */
+  /* [data-ativo] no arquivo: mesma força de seletor no marcado, e quem vence é a ordem — o extinto   */
+  /* continua amarelo sob o realce da seta, que ali só muda o fundo.                                  */
+  .select-onsen-option[data-extinto] { @apply text-warning; }
+  .select-onsen-option[data-extinto][aria-selected="true"] { @apply text-warning font-medium; }
+  .select-onsen-option[data-extinto][data-ativo="true"] { @apply text-warning; }
+  /* O gatilho carrega a mesma marca do item escolhido: quem ocupa cargo extinto abre o campo e lê    */
+  /* o estado sem precisar abrir a lista.                                                             */
+  .select-onsen-trigger[data-extinto] { @apply text-warning; }
+
   /* Disco de vidro da paleta: as cavidades se distribuem pelo ângulo --a escrito no markup, então
      a molécula não depende de quantas cores a paleta oferece. */
   .palette-disc {
@@ -831,6 +841,16 @@ html[data-theme="dimap"] {
   .td-nome-unidade {
     @apply max-w-xs break-words whitespace-normal text-sm leading-snug;
     color: rgba(13, 27, 42, 0.85);
+  }
+
+  /* Rótulo do cargo em comissão (SPEC user_admin/029): a base não pinta — o rótulo aparece dentro de
+     link, badge, meta de pessoa e célula de tabela, e cada um já tem a sua tinta. A classe existe
+     para o modificador ter onde pousar. */
+  .rotulo-cargo { @apply text-inherit; }
+  /* O extinto é o MESMO texto — a marca é a tinta e o sublinhado pontilhado que anuncia o tooltip.
+     Sem o tracejado, o title não tem afordância nenhuma e ninguém passa o cursor. */
+  .rotulo-cargo-extinto {
+    @apply text-warning underline decoration-dotted decoration-warning/45 underline-offset-4;
   }
 
   /* Link destacado de tabela com micro-zoom de afordância no hover (SPEC user_admin/019) */
@@ -1183,6 +1203,12 @@ html[data-theme="dimap"] {
   .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-abre { @apply hidden; }
   .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-fecha { @apply inline; }
 
+  /* Cadeado do campo travado (SPEC user_admin/029): não é botão, nada acontece ao clicar. É a marca
+     do que a edição não alcança — ao lado do lápis do que ela alcança —, e o motivo mora no tooltip. */
+  .campo-onsen-cadeado {
+    @apply grid place-items-center w-7 h-7 shrink-0 rounded-full text-base-content/45;
+  }
+
   /* Painel que cresce (SPEC user_admin/017): traz o cadastro de unidade para dentro do modal de
      edição do servidor. A grade é o único jeito de animar altura sem fixar um valor em pixels que
      o conteúdo desmente: 0fr → 1fr. */
@@ -1413,6 +1439,24 @@ html[data-theme="dimap"] {
   .chave-onsen:has(input:focus-visible) {
     @apply outline-none border-agua-500;
     box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+
+  /* Modificador da .chave-onsen para a natureza do cargo em comissão (SPEC user_admin/029): a       */
+  /* chave segue intocada, só a grade e a largura do polegar mudam — a posição 2 já vem certa da     */
+  /* regra base (translateX(100%) é 100% do polegar, que aqui mede um terço do trilho).              */
+  .chave-onsen-tripla { @apply grid-cols-3; }
+  /* Três rótulos num trilho só, e um deles é uma palavra longa e indivisível. grid-cols-3 é         */
+  /* minmax(0,1fr): a coluna vale um terço e nada a alarga — quem tem de caber é o texto. Daí o       */
+  /* registro menor, a folga lateral curta e a quebra liberada. min-w-0 desfaz o min-width:auto do    */
+  /* item de grade, que sozinho já empurrava a coluna além do terço, e break-words é a rede: em tela  */
+  /* estreita a palavra parte em vez de vazar a pílula.                                              */
+  .chave-onsen-tripla .chave-onsen-opcao { @apply grid place-items-center min-w-0 px-2; }
+  .chave-onsen-tripla .chave-onsen-rotulo {
+    @apply whitespace-normal break-words text-[11px] tracking-[0.06em];
+  }
+  .chave-onsen-tripla .chave-onsen-polegar { width: calc(33.3333% - 0.1667rem); }
+  .chave-onsen-tripla:has(.chave-onsen-opcao:nth-of-type(3) input:checked) .chave-onsen-polegar {
+    @apply translate-x-[200%];
   }
 
   /* Chip de concessão (SPEC autorizacao/008): um cargo que exerce a atribuição, com o alvo de       */

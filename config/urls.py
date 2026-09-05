@@ -13,6 +13,7 @@ urlpatterns: list[URLResolver | URLPattern] = [
     path("", include("apps.mapping.urls")),
     path("gestao/", include("apps.user_admin.urls")),
     path("gestao/unidades/", include("apps.unidades.urls")),
+    path("gestao/cargos/", include("apps.cargos.urls")),
     path("competencias/", include("apps.competencias.urls")),
     path("", include("apps.search.urls")),
     path("logradouro/", include("apps.logradouro_matcher.urls")),

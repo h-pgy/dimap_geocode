@@ -1,0 +1,8 @@
+{# Envelope do swap fora de banda dos quatro atos (SPEC user_admin/029, Caveats): <tbody> não fica  #}
+{# de pé sozinho fora de uma <table>, e o alvo do POST é #poco-modal — sem tabela nenhuma ao redor.  #}
+{# O <template> é o que o próprio HTMX recomenda para os "elementos difíceis" (tr/td/th/thead/tbody/ #}
+{# .../li) quando o oob-swap não está adjacente a uma tabela de verdade; sem ele, o oob falha         #}
+{# CALADO e o modal nunca fecha — o bug já aconteceu, ver Caveats.                                    #}
+<template>
+  {% include "cargos/partials/_corpo_cargos.html" %}
+</template>

@@ -158,13 +158,13 @@
             <span class="text-overline etched-rotulo">Cargo em comissão</span>
             <div class="campo-onsen-linha">
               <p class="campo-onsen-valor">
-                {% if perfil.cargo_comissao %}{{ perfil.cargo_comissao.padrao }} · {{ perfil.cargo_comissao.nome }}{% else %}— sem cargo em comissão —{% endif %}
+                {% if perfil.cargo_comissao %}{% include "cargos/partials/_rotulo_cargo.html" with cargo=perfil.cargo_comissao %}{% else %}— sem cargo em comissão —{% endif %}
               </p>
               <div class="campo-onsen-campo">
                 <select name="cargo_comissao" class="select select-glass {{ realce.cargo_comissao }}" data-select-onsen>
                   <option value="">— sem cargo em comissão —</option>
                   {% for cargo in cargos_comissao %}
-                    <option value="{{ cargo.pk }}"{% if cargo.pk == valores.cargo_comissao_id %} selected{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>
+                    <option value="{{ cargo.pk }}"{% if cargo.pk == valores.cargo_comissao_id %} selected{% endif %}{% if cargo.extinto %} data-extinto="true" title="Cargo Extinto"{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>
                   {% endfor %}
                 </select>
                 {% if perfil.e_titular %}

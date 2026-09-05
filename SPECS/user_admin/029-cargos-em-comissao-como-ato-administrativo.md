@@ -1,12 +1,22 @@
 ---
 spec: user_admin/029
-versao: v1
-atualizado_em: 2026-09-04
-testes_tdd: false
-implementado: false
+versao: v6
+atualizado_em: 2026-09-05
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: a listagem entra no mesmo grupo dos quatro atos, na aba nova — e é ela quem
+    mantém a aba de pé para quem não administra o sistema
+  - v3: implementado — os 25 testes da SPEC passam; migração gerada e pendente de aplicação pelo usuário
+  - v4: dois Caveats novos, de dois bugs de produção já corrigidos — campo travado sem hidden
+    apaga o próprio valor, e hidden duplicando o name de um toggle HTMX perde a corrida contra ele
+  - v5: o toggle "Mostrar cargos extintos" deixa de falar com o servidor — filtro 100%
+    client-side (`filtro_linha_extinta.js`), depois de um segundo bug do mesmo gênero (o swap
+    fora de banda dos quatro atos esquecia o estado do toggle); Caveat reescrito, teste trocado
+  - v6: Caveat novo — modal preso porque um <tbody> oob-swap sozinho não sobrevive fora de uma
+    <table>; envelope <template> em `_corpo_cargos_oob.html`, confirmado em produção
 ---
 
 # SPEC user_admin/029 — Cargos em comissão como ato administrativo
@@ -36,8 +46,10 @@ cargo em extinção.
 - [ ] Os quatro atos ficam **registrados** com a operação (`criar`, `editar`, `extinguir`,
       `reativar`), `alvo_tipo="cargo_comissao"` e o **nome do cargo**.
 - [ ] O painel ganha a aba **Administração do Sistema**, por último, com **Tornar administrador** —
-      que sai de *Atribuições* — e os quatro cards de cargo; a **lista** entra no grupo "Cargos em
-      Comissão" que já existe vazio na aba *Estrutura Administrativa*.
+      que sai de *Atribuições* — e, num grupo "Cargos em Comissão" só, a **lista** e os quatro cards
+      de cargo. A aba **não é privativa**: a lista é leitura aberta e não passa por caneta, então
+      quem não administra o sistema abre a aba e vê o catálogo, e nada mais. O grupo homônimo que
+      nascera vazio na *Estrutura Administrativa* é removido — ficou sem ocupante.
 - [ ] O design foi aprovado no mock, e as peças novas foram portadas para o tema e o styleguide
       antes de qualquer template da aplicação usá-las.
 
@@ -350,8 +362,8 @@ ABA_ADMINISTRACAO = Aba(
     rotulo="Administração do Sistema",
     titulo="Administração do Sistema",
     descricao=(
-        "Os atos que não decorrem de dirigir unidade alguma: quem tem plenos poderes sobre o "
-        "sistema e o catálogo de cargos em comissão sobre o qual toda nomeação se apoia."
+        "Quem tem plenos poderes sobre o sistema e o catálogo de cargos em comissão sobre o qual "
+        "toda nomeação se apoia. Consultar o catálogo é aberto a todo servidor; alterá-lo, não."
     ),
     grupos=(
         # Sai de ABA_ATRIBUICOES, onde o grupo se chamava "Administração do Sistema" — o nome agora
@@ -360,9 +372,19 @@ ABA_ADMINISTRACAO = Aba(
             rotulo="Administradores",
             itens=(ItemAcao(acao=ACAO_TORNAR_ADMINISTRADOR, partial=PARTIAL_CARTAO_MODAL),),
         ),
+        # Um grupo só: consultar e alterar o mesmo catálogo é o mesmo assunto, e a cascata já
+        # separa os dois — `ItemLivre` não passa por caneta (`resolucao.py`, `_visivel`), os quatro
+        # `ItemAcao` passam. É por isso que a lista vem primeiro: é ela quem sobra, e é ela quem
+        # mantém a aba de pé para quem não administra o sistema.
         Grupo(
             rotulo="Cargos em Comissão",
             itens=(
+                ItemLivre(
+                    slug="painel.lista_cargos",
+                    nome="Cargos em comissão",
+                    tooltip="O catálogo de cargos da DIMAP, com nível, natureza e quem os ocupa.",
+                    url_name="cargos:listar_cargos",
+                ),
                 ItemAcao(acao=ACAO_CRIAR_CARGO, partial=PARTIAL_CARTAO_MODAL),
                 ItemAcao(acao=ACAO_EDITAR_CARGO, partial=PARTIAL_CARTAO_MODAL),
                 ItemAcao(acao=ACAO_EXTINGUIR_CARGO, partial=PARTIAL_CARTAO_MODAL),
@@ -372,19 +394,9 @@ ABA_ADMINISTRACAO = Aba(
     ),
 )
 
-# O grupo que nasceu vazio na aba da estrutura recebe a listagem — que é leitura aberta e, por
-# isso, não cabe numa aba que só o administrador enxerga.
-Grupo(
-    rotulo="Cargos em Comissão",
-    itens=(
-        ItemLivre(
-            slug="painel.lista_cargos",
-            nome="Cargos em comissão",
-            tooltip="O catálogo de cargos da DIMAP, com nível, natureza e quem os ocupa.",
-            url_name="cargos:listar_cargos",
-        ),
-    ),
-)
+# ABA_ESTRUTURA perde o `Grupo(rotulo="Cargos em Comissão", itens=())` que a SPEC painel/001 deixou
+# reservado: o assunto inteiro passou a morar na aba nova, e grupo vazio permanente é declaração
+# morta.
 
 PAINEL = ContratoPainel(
     abas=(ABA_MINHA_CONTA, ABA_RECURSOS_HUMANOS, ABA_ESTRUTURA, ABA_ATRIBUICOES, ABA_ADMINISTRACAO),
@@ -426,8 +438,70 @@ compra granularidade de concessão nenhuma — ela existe só para o rastro dist
 são quatro pastas de ícone, quatro cards e quatro linhas no registro para o que poderia ser uma ação
 com quatro operações.
 
+**A aba "Administração do Sistema" não é privativa de administrador.** A lista é `ItemLivre`, e a
+cascata do painel não tem caneta que a esconda: todo servidor autenticado passa a ver a aba, com um
+card só. O custo é um rótulo que promete mais do que entrega para quem não administra o sistema — e
+a alternativa, deixar a lista noutra aba, separaria consulta e ato do mesmo catálogo.
+
 **`ACAO_TORNAR_ADMINISTRADOR` muda de aba.** Nenhum dado muda e a competência é a mesma, mas quem já
 sabia onde o card estava precisa reaprender.
+
+**Bug já cometido e corrigido — campo travado sem hidden apaga o próprio valor.** No modal de editar,
+quando o cargo está ocupado, nível/natureza viram texto somente-leitura e o bloco editável (com os
+`<input>` reais `nivel`/`e_chefia`/`alta_administracao`) simplesmente não é renderizado. Sem um
+`<input type="hidden">` carregando o valor JÁ GRAVADO para cada um desses três campos, o POST manda
+o padrão do DTO (`""`/`False`) para todos eles — e a trava (`_natureza_mudou`, que compara o que
+veio com o que está gravado) acusa "mudança" em QUALQUER edição, mesmo trocar só a sigla. Live: bastou
+editar a sigla do Secretário Executivo (cargo de alta administração, ocupado) para reproduzir. A
+regra para qualquer campo travado por regra de negócio (não por `disabled`, que o servidor já ignora
+por natureza): se a tela não desenha o `<input>` real, ela precisa desenhar um `<input type="hidden">`
+com o valor atual no lugar dele — travar não é omitir o campo do formulário.
+
+**O toggle "Mostrar cargos extintos" NÃO fala com o servidor — é filtro 100% client-side
+(`static/src/js/ui/filtro_linha_extinta.js`), depois de dois bugs seguidos na versão que ia ao
+servidor.** Primeiro: o `<input type="hidden" name="extintas">` que viajava dentro do `<thead>` (para
+a filtragem/ordenação preservarem o estado) tinha o MESMO `name` do próprio toggle — quando ele
+disparava a requisição, o `hx-include="#tabela-cargos thead"` incluía os dois valores, e a query
+string resultante carregava `extintas` duas vezes; `QueryDict.dict()` do Django fica com a ÚLTIMA
+ocorrência, que — pela ordem em que o HTMX monta os parâmetros (o valor do próprio elemento disparador
+primeiro, os de `hx-include` depois) — era sempre o hidden, ou seja, sempre o estado ANTERIOR ao
+clique. Efeito: clicar no toggle não mudava nada. Corrigido eliminando a duplicata (a tabela passou a
+incluir o próprio toggle no seu `hx-include`, por `id`, como fonte única).
+
+Isso resolvia a colisão, mas deixava um segundo problema: a tabela só sabe o estado do toggle
+enquanto for ELA quem dispara a requisição (filtro de coluna, ordenação). Os OUTROS quatro atos
+(criar/editar/extinguir/reativar) recarregam a tabela por um swap fora de banda que não passa pelo
+toggle — e o servidor, sem saber o que ele mostrava, sempre voltava a esconder os extintos. Efeito:
+abrir e fechar qualquer modal com o toggle ligado desliga a visão de extintos sem que ninguém tenha
+clicado nele. **A causa raiz dos dois bugs é a mesma: fazer o estado do toggle ATRAVESSAR uma
+requisição HTTP para o servidor decidir o que renderizar.** A correção final tira o servidor da
+jogada: ele manda SEMPRE todas as linhas (extintas inclusive, marcadas com `.linha-extinta`), e o
+toggle esconde ou revela no próprio navegador — em qualquer swap, disparado por quem for, o toggle
+sobrevive porque não é filho do que troca, e `filtro_linha_extinta.js` reaplica a marca a cada
+`htmx:afterSwap`. Nenhum `?extintas=` na query string, nenhum hidden, nenhuma rota lendo o parâmetro.
+**Regra geral: um filtro puramente de exibição (esconder/revelar o que já está na tela, sem mudar
+QUAIS dados existem) é candidato a ser client-side desde o início — só vale a viagem ao servidor
+quando o filtro muda o CONJUNTO de dados buscado.** A listagem de cargo base (SPEC user_admin/030)
+tem a mesma tabela com o mesmo toggle — nasça já assim, sem passar pelas duas versões anteriores.
+
+**Bug já cometido e corrigido — `<tbody>` sozinho não sobrevive a um oob-swap fora de uma
+`<table>`.** Os quatro atos fecham o modal e atualizam a tabela na mesma resposta: um `<tbody
+id="corpo-cargos" hx-swap-oob="true">` inteiro, devolvido para o alvo do POST — `#poco-modal`, que
+não tem `<table>` nenhuma ao redor. `tbody`/`tr`/`td`/`th`/`thead`/`li` (e companhia) são, pela
+própria doc do HTMX, elementos "difíceis": fora do contexto de uma tabela (ou lista) de verdade, o
+parser não os reconhece como nó de topo, e o oob-swap falha CALADO — sem erro no console, sem 4xx/5xx,
+o `<tbody>` simplesmente não é achado nem trocado, e como não sobra mais nada na resposta o `#poco-
+modal` deveria esvaziar mesmo assim, mas o efeito observado foi o modal parecer preso (o POST
+"funcionava" no servidor — registrava o ato, gravava a extinção/reativação/edição — mas a tela não
+saía do lugar). A correção foi envelopar a resposta OOB num `<template>`
+(`_corpo_cargos_oob.html`, só para essa resposta — o `_corpo_cargos.html` cru continua sendo o alvo
+DIRETO do filtro de coluna e da ordenação, que troca um `<tbody>` já dentro de uma `<table>` e por
+isso nunca teve esse problema): o HTMX explicitamente recomenda `<template>` para envelopar oob-swap
+desses elementos quando o alvo não está adjacente a uma tabela/lista real. **Regra geral: todo
+oob-swap de `tr`/`td`/`th`/`thead`/`tbody`/`tfoot`/`colgroup`/`caption`/`col`/`li` cujo alvo (o POST
+que o disparou) não esteja dentro do mesmo tipo de contêiner precisa vir dentro de um `<template>` —
+nunca cru.** A listagem de cargo base (SPEC user_admin/030), com o mesmo par tabela+modal, também
+precisa desse envelope se reusar o padrão.
 
 ## 8 · Testes (TDD)
 
@@ -448,7 +522,8 @@ sabia onde o card estava precisa reaprender.
 - `test_edicao_livre_quando_ninguem_ocupa` — sem ocupante, nível e natureza mudam. *(marker `banco`)*
 - `test_veredito_recusa_ato_repetido` — extinguir o já extinto e reativar o vigente são recusados
   com motivo; domínio puro, sem banco.
-- `test_listagem_esconde_extintos_sem_o_toggle` — a tabela só traz extintos com o toggle ligado.
+- `test_corpo_sempre_traz_os_extintos_marcados` — o servidor sempre manda o extinto, com
+  `class="linha-extinta"`; esconder é 100% client-side (Caveats), fora do alcance deste teste.
   *(marker `banco`)*
 - `test_listagem_aberta_a_qualquer_autenticado` — servidor sem caneta alguma recebe 200 na lista, e
   ela não traz os gestos de ato. *(marker `banco`)*

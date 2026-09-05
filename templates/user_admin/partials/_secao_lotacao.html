@@ -31,7 +31,7 @@
       <select name="cargo_comissao" class="select select-glass {{ realce.cargo_comissao }}" data-select-onsen>
         <option value="">— sem cargo em comissão —</option>
         {% for cargo in cargos_comissao %}
-          <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_comissao_id %}selected{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>
+          <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_comissao_id %}selected{% endif %}{% if cargo.extinto %} data-extinto="true" title="Cargo Extinto"{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>
         {% endfor %}
       </select>
       <span class="form-field-hint">Opcional. A chefia é o que abre as ações privativas da unidade.</span>

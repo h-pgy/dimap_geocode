@@ -64,6 +64,9 @@ class CargoComissao(models.Model):
         max_length=200,
         unique=True,
     )
+    # O dia do ato que o retirou da nomeação (SPEC user_admin/029). Nula é cargo vigente, e é o
+    # que a reativação devolve — mesma forma de `Unidade.extinta_em` e `Perfil.exonerado_em`.
+    extinto_em = models.DateField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Cargo em comissão"
@@ -95,6 +98,10 @@ class CargoComissao(models.Model):
     @property
     def natureza(self) -> str:
         return ROTULO_CHEFIA if self.e_chefia else ROTULO_ASSESSORAMENTO
+
+    @property
+    def extinto(self) -> bool:
+        return self.extinto_em is not None
 
     @property
     def padrao(self) -> str:

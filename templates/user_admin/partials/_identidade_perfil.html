@@ -25,7 +25,9 @@
       <span class="badge badge-info badge-soft">{{ perfil.unidade.sigla }}</span>
       <span class="badge badge-ponto badge-sm">{{ perfil.cargo_base.nome }}</span>
       {% if perfil.cargo_comissao %}
-        <span class="badge badge-poligono badge-sm">{{ perfil.cargo_comissao.padrao }} · {{ perfil.cargo_comissao.natureza }}</span>
+        <span class="badge badge-poligono badge-sm">
+          <span class="rotulo-cargo{% if perfil.cargo_comissao.extinto %} rotulo-cargo-extinto{% endif %}"{% if perfil.cargo_comissao.extinto %} title="Cargo Extinto"{% endif %}>{{ perfil.cargo_comissao.padrao }} · {{ perfil.cargo_comissao.natureza }}</span>
+        </span>
       {% endif %}
     </div>
   </div>

@@ -42,7 +42,11 @@ function montarTrigger(casca, select) {
   trigger.setAttribute("aria-expanded", "false");
   const rotulo = document.createElement("span");
   rotulo.className = "truncate";
-  rotulo.textContent = select.options[select.selectedIndex]?.textContent ?? "";
+  const selecionada = select.options[select.selectedIndex];
+  rotulo.textContent = selecionada?.textContent ?? "";
+  // O gatilho carrega a marca do cargo extinto que a opção escolhida já tem (SPEC user_admin/029) —
+  // mesmo caminho pelo qual ele já leva o campo-realce- do <select> até aqui.
+  if (selecionada?.dataset.extinto) trigger.dataset.extinto = "true";
   trigger.appendChild(rotulo);
   casca.appendChild(trigger);
   return { trigger, rotulo };
@@ -87,6 +91,7 @@ function montarOpcoes(lista, select, identificador) {
     // O item nunca recebe foco: quem anda é o realce, e o Tab continua saindo do campo.
     item.tabIndex = -1;
     item.dataset.indice = String(indice);
+    if (opcao.dataset.extinto) item.dataset.extinto = "true";
     item.textContent = opcao.textContent;
     lista.appendChild(item);
     return item;
@@ -166,6 +171,11 @@ function aprimorar(select) {
     const indice = Number(item.dataset.indice);
     select.selectedIndex = indice;
     rotulo.textContent = select.options[indice].textContent;
+    if (item.dataset.extinto) {
+      trigger.dataset.extinto = "true";
+    } else {
+      delete trigger.dataset.extinto;
+    }
     itens.forEach((candidato, i) => candidato.setAttribute("aria-selected", String(i === indice)));
     // change nativo: é assim que o HTMX (e qualquer outro ouvinte) vê a escolha, sem saber que
     // existe casca.

@@ -3,6 +3,12 @@ poço, e é aqui que toda ação inscrita no registro precisa ter o seu card —
 `painel.E004` derruba a subida.
 """
 
+from apps.cargos.acoes_declaradas import (
+    ACAO_CRIAR_CARGO,
+    ACAO_EDITAR_CARGO,
+    ACAO_EXTINGUIR_CARGO,
+    ACAO_REATIVAR_CARGO,
+)
 from apps.competencias.acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
 from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE,
@@ -132,9 +138,6 @@ ABA_ESTRUTURA = Aba(
                 ItemAcao(acao=ACAO_EXTINGUIR_UNIDADE, partial=PARTIAL_CARTAO_MODAL),
             ),
         ),
-        # Nasce sem item nenhum (SPEC §4) e, pela cascata, não renderiza. Declarado porque o lugar
-        # dele na estrutura já está decidido.
-        Grupo(rotulo="Cargos em Comissão", itens=()),
     ),
 )
 
@@ -150,15 +153,46 @@ ABA_ATRIBUICOES = Aba(
     grupos=(
         Grupo(rotulo="Atribuições das unidades", itens=(ItemAcao(acao=ACAO_DEFINIR_ATRIBUICAO),)),
         Grupo(rotulo="Competências e Delegações", itens=(ItemAcao(acao=ACAO_CONCEDER),)),
-        # Plenos poderes não é competência de unidade nem delegação: grupo próprio, que some inteiro
-        # para quem não é superusuário.
+    ),
+)
+
+ABA_ADMINISTRACAO = Aba(
+    slug="painel.administracao_sistema",
+    rotulo="Administração do Sistema",
+    titulo="Administração do Sistema",
+    descricao=(
+        "Quem tem plenos poderes sobre o sistema e o catálogo de cargos em comissão sobre o qual "
+        "toda nomeação se apoia. Consultar o catálogo é aberto a todo servidor; alterá-lo, não."
+    ),
+    grupos=(
+        # Sai de ABA_ATRIBUICOES, onde o grupo se chamava "Administração do Sistema" — o nome agora
+        # é o da aba, e o grupo passa a nomear o que reúne.
         Grupo(
-            rotulo="Administração do Sistema",
+            rotulo="Administradores",
             itens=(ItemAcao(acao=ACAO_TORNAR_ADMINISTRADOR, partial=PARTIAL_CARTAO_MODAL),),
+        ),
+        # Um grupo só: consultar e alterar o mesmo catálogo é o mesmo assunto, e a cascata já
+        # separa os dois — `ItemLivre` não passa por caneta (`resolucao.py`, `_visivel`), os quatro
+        # `ItemAcao` passam. É por isso que a lista vem primeiro: é ela quem sobra, e é ela quem
+        # mantém a aba de pé para quem não administra o sistema.
+        Grupo(
+            rotulo="Cargos em Comissão",
+            itens=(
+                ItemLivre(
+                    slug="painel.lista_cargos",
+                    nome="Cargos em comissão",
+                    tooltip="O catálogo de cargos da DIMAP, com nível, natureza e quem os ocupa.",
+                    url_name="cargos:listar_cargos",
+                ),
+                ItemAcao(acao=ACAO_CRIAR_CARGO, partial=PARTIAL_CARTAO_MODAL),
+                ItemAcao(acao=ACAO_EDITAR_CARGO, partial=PARTIAL_CARTAO_MODAL),
+                ItemAcao(acao=ACAO_EXTINGUIR_CARGO, partial=PARTIAL_CARTAO_MODAL),
+                ItemAcao(acao=ACAO_REATIVAR_CARGO, partial=PARTIAL_CARTAO_MODAL),
+            ),
         ),
     ),
 )
 
 PAINEL = ContratoPainel(
-    abas=(ABA_MINHA_CONTA, ABA_RECURSOS_HUMANOS, ABA_ESTRUTURA, ABA_ATRIBUICOES),
+    abas=(ABA_MINHA_CONTA, ABA_RECURSOS_HUMANOS, ABA_ESTRUTURA, ABA_ATRIBUICOES, ABA_ADMINISTRACAO),
 )
