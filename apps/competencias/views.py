@@ -6,6 +6,7 @@ tem como conhecer (Caveats da SPEC 008) — só ela é conferida aqui dentro."""
 
 from typing import cast
 
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -22,6 +23,7 @@ from apps.competencias.consulta import alcance_do_perfil, dirige
 from apps.competencias.context import (
     contexto_catalogo,
     contexto_confirmar_remocao,
+    contexto_corpo_execucoes,
     contexto_da_tela,
     contexto_da_tela_conceder,
     contexto_modal_conceder,
@@ -30,6 +32,7 @@ from apps.competencias.context import (
     contexto_painel_concessoes,
     contexto_poco,
     contexto_poco_concessoes,
+    contexto_registro_acoes,
 )
 from apps.competencias.delegacao import delegar_competencia, encerrar_delegacao
 from apps.competencias.formularios import ler_nova_delegacao
@@ -49,6 +52,23 @@ TEMPLATE_PAINEL_CONCESSOES = "competencias/partials/_painel_concessoes.html"
 TEMPLATE_MODAL_CONCEDER = "competencias/partials/_modal_conceder.html"
 TEMPLATE_MODAL_DELEGAR = "competencias/partials/_modal_delegar.html"
 TEMPLATE_POCO_CONCESSOES = "competencias/partials/_poco_concessoes.html"
+TEMPLATE_REGISTRO_ACOES_LIST = "competencias/registro_acoes_list.html"
+TEMPLATE_CORPO_EXECUCOES = "competencias/partials/_resposta_corpo_execucoes.html"
+
+
+@login_required
+def listar_registro_acoes(request: HttpRequest) -> HttpResponse:
+    """Sem `acao_protegida` (SPEC painel/002, §7): ler o registro não é ato administrativo, e
+    ninguém é recusado aqui — o que o alcance faz é decidir o que cada um vê, não se entra."""
+    return render(request, TEMPLATE_REGISTRO_ACOES_LIST, contexto_registro_acoes(_perfil(request), request.GET.dict()))
+
+
+@login_required
+def corpo_execucoes(request: HttpRequest) -> HttpResponse:
+    """Alvo do swap: só o `<tbody>`. Recebe card e cabeçalho na MESMA query string — é isso que faz
+    mudar um critério não apagar os filtros, e vice-versa —, e recalcula o alcance a cada chamada:
+    ele nunca viaja pelo cliente."""
+    return render(request, TEMPLATE_CORPO_EXECUCOES, contexto_corpo_execucoes(_perfil(request), request.GET.dict()))
 
 
 @acao_protegida(ACAO_DEFINIR_ATRIBUICAO)

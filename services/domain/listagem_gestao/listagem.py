@@ -1,9 +1,9 @@
 from collections.abc import Sequence
-from typing import Generic, TypeVar
-from pydantic import BaseModel
+from typing import Generic
 from services.domain.listagem_gestao.models import (
     ColunaCargo,
     ColunaCargoBase,
+    ColunaExecucao,
     ColunaServidor,
     ColunaT,
     ColunaUnidade,
@@ -11,12 +11,12 @@ from services.domain.listagem_gestao.models import (
     FiltroColuna,
     LinhaCargo,
     LinhaCargoBase,
+    LinhaExecucao,
     LinhaServidor,
+    LinhaT,
     LinhaUnidade,
 )
 from services.utils.normalization import normalize_text
-
-LinhaT = TypeVar("LinhaT", bound=BaseModel)
 
 
 class ListadorTabela(Generic[LinhaT, ColunaT]):
@@ -70,8 +70,10 @@ ListarServidores = ListadorTabela[LinhaServidor, ColunaServidor]
 ListarUnidades = ListadorTabela[LinhaUnidade, ColunaUnidade]
 ListarCargos = ListadorTabela[LinhaCargo, ColunaCargo]
 ListarCargosBase = ListadorTabela[LinhaCargoBase, ColunaCargoBase]
+ListarExecucoes = ListadorTabela[LinhaExecucao, ColunaExecucao]
 
 listar_servidores = ListarServidores()
 listar_unidades = ListarUnidades()
 listar_cargos = ListarCargos()
 listar_cargos_base = ListarCargosBase()
+listar_execucoes = ListarExecucoes()

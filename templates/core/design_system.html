@@ -2557,6 +2557,104 @@
           <p class="form-field-hint">A identidade visual não muda de seção para seção: a lente é a mesma do mapa do produto, só o que está sob ela é outro. É sobre ele que esta página roda — as peças abaixo estão na condição real de uso.</p>
         </div>
       </div>
+
+      <!-- Registro de Ações (SPEC painel/002) -->
+      <div class="flex flex-col gap-2">
+        <p class="text-overline px-2">Registro de Ações <span class="text-[10px] font-normal text-base-content/50">(SPEC painel/002)</span></p>
+        <div class="glass-panel p-6 grid gap-6 sm:grid-cols-2">
+          <div class="card-well p-4 flex flex-col gap-3">
+            <span class="text-overline">.td-momento</span>
+            <div class="td-momento">05/09/2026<span class="td-momento-hora">14:32</span></div>
+            <p class="text-xs text-base-content/60">Data e hora empilhadas, em algarismo tabular: a coluna alinha sozinha e não quebra.</p>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-3">
+            <span class="text-overline">.marca-cobertura</span>
+            <div>
+              <span class="link-tabela-onsen">Célia Nakamura</span>
+              <span class="marca-cobertura">respondendo por Marina Toledo</span>
+            </div>
+            <p class="text-xs text-base-content/60">O âmbar é o mesmo que nomeia o afastamento na calha (SPEC user_admin/015).</p>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-3">
+            <span class="text-overline">.td-alvo</span>
+            <div class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-11 : user_admin.criar_servidor</div>
+            <div class="td-alvo td-alvo-vazio">sem alvo informado</div>
+            <p class="text-xs text-base-content/60">Estados: com alvo e o de falta — a ação que não chamou <span class="text-code">registrar_ato</span>.</p>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-3">
+            <span class="text-overline">.campo-periodo</span>
+            <label class="form-field">
+              <span class="text-overline">Período</span>
+              <span class="campo-periodo">
+                <input type="date" class="input input-glass input-sm" value="2026-08-06">
+                <span class="campo-periodo-traco">até</span>
+                <input type="date" class="input input-glass input-sm" value="2026-09-05">
+              </span>
+              <span class="form-field-hint">Nasce nos últimos 30 dias.</span>
+            </label>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-3 sm:col-span-2">
+            <span class="text-overline">.card-busca</span>
+            <div class="card-well card-busca">
+              <div class="card-busca-topo">
+                <span class="text-overline">Busca no registro</span>
+                <a href="#" class="btn-etched btn-etched-sm etched">✕ limpar busca</a>
+              </div>
+              <div class="card-busca-grade">
+                <label class="form-field">
+                  <span class="text-overline">Unidade</span>
+                  <select class="select select-glass select-sm" data-select-onsen>
+                    <option value="7" selected>DIMAP-1 · Divisão de Avaliação</option>
+                    <option value="11">DIMAP-11 · Seção de Avaliação Predial</option>
+                  </select>
+                  <span class="form-field-hint">Mostra a unidade e o que ela dirige abaixo.</span>
+                </label>
+                <label class="form-field card-busca-largo">
+                  <span class="text-overline">Período</span>
+                  <span class="campo-periodo">
+                    <input type="date" class="input input-glass input-sm" value="2026-08-06">
+                    <span class="campo-periodo-traco">até</span>
+                    <input type="date" class="input input-glass input-sm" value="2026-09-05">
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-3 sm:col-span-2">
+            <span class="text-overline">.paginacao-onsen</span>
+            <div class="card-well p-3">
+              <nav class="paginacao-onsen" aria-label="Páginas do registro">
+                <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–50 de 600</span>
+                <span class="paginacao-onsen-passos glass-panel rounded-full!">
+                  <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
+                  <button type="button" class="paginacao-onsen-alvo etched etched-lg etched-deeper" aria-current="page">1</button>
+                  <button type="button" class="paginacao-onsen-alvo etched etched-lg etched-deeper">2</button>
+                  <span class="paginacao-onsen-elipse">…</span>
+                  <button type="button" class="paginacao-onsen-alvo etched etched-lg etched-deeper">12</button>
+                  <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+                </span>
+              </nav>
+            </div>
+            <div class="card-well p-3">
+              <nav class="paginacao-onsen" aria-label="Páginas do registro">
+                <span class="paginacao-onsen-info etched etched-lg etched-rotulo">51–75 de 75</span>
+                <span class="paginacao-onsen-passos glass-panel rounded-full!">
+                  <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Página anterior">‹</button>
+                  <button type="button" class="paginacao-onsen-alvo etched etched-lg etched-deeper">1</button>
+                  <button type="button" class="paginacao-onsen-alvo etched etched-lg etched-deeper" aria-current="page">2</button>
+                  <button type="button" class="paginacao-onsen-alvo etched etched-lg etched-deeper">3</button>
+                  <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+                </span>
+              </nav>
+            </div>
+            <p class="text-xs text-base-content/60">O número é <span class="text-code">.etched .etched-lg .etched-deeper</span> em repouso — a tinta funda lê contra o vidro claro da pílula — e enche de água (<span class="text-code">[aria-current]</span>) quando é a página em curso. A régua é sempre primeira, atual, última, com um vizinho de cortesia só quando a atual está na ponta. A seta é gesto, não estado: enche sob o ponteiro e apaga sem resposta quando não há para onde ir.</p>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-3 sm:col-span-2">
+            <span class="text-overline">.table-onsen-larga + .scroll-etched-h</span>
+            <p class="text-xs text-base-content/60 mb-1">Segundo eixo do poço de tabela (<span class="text-code">.table-onsen-poco</span>): a barra deitada gêmea da vertical, com a coluna dela subtraída da calha das duas — só quando a tabela é larga o bastante para rolar na horizontal (ver a tela montada em <span class="text-code">competencias/registro_acoes_list.html</span>).</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <footer class="text-center text-xs text-base-content/60 pb-8 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">

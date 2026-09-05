@@ -169,6 +169,20 @@ ABA_ADMINISTRACAO = Aba(
         "toda nomeação se apoia. Consultar o catálogo é aberto a todo servidor; alterá-lo, não."
     ),
     grupos=(
+        # Primeiro grupo da aba (SPEC painel/002): o histórico não é um assunto ao lado dos cargos,
+        # é o que atravessa todos eles. Item livre — ler o registro não é ato administrativo — e
+        # por isso é ele quem mantém a aba de pé para quem não administra o sistema.
+        Grupo(
+            rotulo="Registro de Ações",
+            itens=(
+                ItemLivre(
+                    slug="painel.lista_registro_acoes",
+                    nome="Registro de Ações",
+                    tooltip="Os atos praticados no seu alcance: quem, com qual cargo, sobre o quê e se podia.",
+                    url_name="competencias:listar_registro_acoes",
+                ),
+            ),
+        ),
         # Sai de ABA_ATRIBUICOES, onde o grupo se chamava "Administração do Sistema" — o nome agora
         # é o da aba, e o grupo passa a nomear o que reúne.
         Grupo(

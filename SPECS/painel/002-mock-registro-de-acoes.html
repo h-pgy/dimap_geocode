@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC painel/002 — Registro de Ações (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`).
+       Sem Leaflet: a ortofoto é pré-gerada (SPEC design/010), não mapa vivo. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Carrega o tema e concatena as peças desta SPEC no MESMO bloco text/tailwindcss. -->
+  <script>
+    (async function carregarTema() {
+      const caminhos = [
+        "/static/src/tema-dimap.dev.css",
+        "../../static/src/tema-dimap.dev.css",
+        "../static/src/tema-dimap.dev.css"
+      ];
+      let css = null;
+      for (const caminho of caminhos) {
+        try {
+          const r = await fetch(caminho);
+          if (r.ok) { css = await r.text(); break; }
+        } catch (_) {}
+      }
+      if (css) {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-002").textContent;
+        document.head.appendChild(s);
+      } else {
+        (document.body || document.documentElement).insertAdjacentHTML(
+          "afterbegin",
+          "<p style='position:fixed;top:0;left:0;right:0;z-index:99999;margin:0;padding:1rem;background:#fff3f3;border-bottom:2px solid #b00;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — abra o mock por um servidor com raiz no projeto (Live Server). Via file:// o fetch é bloqueado.</p>"
+        );
+      }
+    })();
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec-002">
+    @layer components {
+      /* ==================== ÁTOMO · CÉLULA DE TEMPO ==================== */
+      .td-momento { @apply whitespace-nowrap text-xs leading-tight tabular-nums text-base-content/75; }
+      .td-momento-hora { @apply block text-[11px] tabular-nums text-base-content/50; }
+
+      /* ==================== ÁTOMO · MARCA DE COBERTURA ==================== */
+      .marca-cobertura { @apply block text-[11px] leading-tight text-warning; }
+
+      /* ==================== ÁTOMO · ALVO DO ATO ==================== */
+      .td-alvo { @apply text-[11px] leading-tight text-base-content/70; }
+      .td-alvo-vazio { @apply text-base-content/35; }
+
+      /* ==================== MOLÉCULA · CAMPO DE PERÍODO ==================== */
+      .campo-periodo { @apply flex items-center gap-2; }
+      .campo-periodo > input { @apply min-w-0 flex-1; }
+      .campo-periodo-traco { @apply shrink-0 text-base-content/45; }
+
+      /* ==================== ÁTOMO · TABELA LARGA ==================== */
+      /* Sem largura mínima a tabela de nove colunas se espreme dentro do poço em vez de rolar:
+         .table-onsen é w-full e as células quebram. O modificador é de cada tabela, não do
+         componente — tabela curta não deve nascer rolando. */
+      .table-onsen-larga { @apply min-w-[74rem]; }
+
+      /* ==================== MOLÉCULA · BARRA GRAVADA HORIZONTAL ==================== */
+      /* A gêmea da .scroll-etched deitada: o rolador esconde as duas barras nativas
+         (scrollbar-width: none), e sem esta a tabela larga rolaria sem afordância nenhuma. */
+      /* A medida da coluna da barra sobe do rolador para o POÇO. As duas barras são irmãs do
+         rolador, não filhas: dali elas nunca enxergariam a variável, e a deitada correria por baixo
+         da em pé. O rolador continua com a declaração dele, no mesmo valor — nada muda para as
+         tabelas de um eixo só. */
+      .table-onsen-poco { --coluna-barra: 1.125rem; }
+      .scroll-etched-h {
+        @apply absolute left-2 h-2.5 rounded-full pointer-events-none transition-opacity duration-300;
+        right: calc(0.5rem + var(--coluna-barra, 0px));
+        /* Na calha do poço (pb-4), não sobre a última linha. */
+        bottom: 0.25rem;
+        background: rgba(255, 255, 255, 0.16);
+        box-shadow: inset 0 2px 5px rgba(7, 58, 84, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+      }
+      .scroll-etched-h-thumb {
+        @apply absolute inset-y-0 left-0 rounded-full cursor-grab pointer-events-auto;
+        border: 2px solid transparent;
+        background-clip: content-box;
+        background-color: rgba(13, 27, 42, 0.14);
+        transition: background-color 700ms ease, box-shadow 700ms ease;
+      }
+      .scroll-etched-ativa .scroll-etched-h-thumb {
+        background-color: rgba(0, 150, 199, 0.5);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        transition-duration: 150ms;
+      }
+      .scroll-etched-h-thumb:hover,
+      .scroll-etched-h-thumb:active {
+        background-color: rgba(0, 119, 182, 0.75);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(72, 202, 228, 0.7);
+        transition-duration: 150ms;
+      }
+      .scroll-etched-h-thumb:active { @apply cursor-grabbing; }
+      /* A vertical sobe para não cruzar com a deitada. Regra por presença: tabela sem eixo
+         horizontal não muda em nada. */
+      .table-onsen-poco:has(.scroll-etched-h) .scroll-etched { bottom: 1.25rem; }
+
+      /* ==================== MOLÉCULA · PAGINAÇÃO GRAVADA ==================== */
+      .paginacao-onsen { @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-2; }
+      /* Mesma medida e mesma gravação dos números ao lado — a régua e o passo são a MESMA placa,
+         e um rótulo pequeno ao lado de alvos de 40px é o que fazia o lado esquerdo parecer caído.
+         .etched-rotulo porque este sulco NOMEIA uma contagem — a tinta sobe até a leitura normal. */
+      .paginacao-onsen-info { @apply text-base font-medium leading-none tabular-nums; }
+      /* A pílula de vidro dá destaque ao passo — sem ela os alvos boiavam soltos sobre o poço. */
+      .paginacao-onsen-passos { @apply flex items-center gap-1 p-1; }
+      /* O número é ESTADO e segue a mesma lógica da seta de ordenação (.sort-etched): repouso em
+         tinta discreta, sem sulco aceso — o sulco só ENCHE quando a página está em curso, o mesmo
+         par repouso/entintado do resto do sistema, na medida grande (etched-onsen-lg: o botão
+         passou dos 32px). O swell no hover é só afordância — nunca prende, nunca entinta sozinho. */
+      .paginacao-onsen-alvo {
+        @apply w-10 h-10 shrink-0 flex items-center justify-center rounded-xl;
+        @apply text-base font-medium leading-none tabular-nums cursor-pointer;
+        @apply transition-all duration-300 origin-center;
+        color: rgba(13, 27, 42, 0.4);
+      }
+      .paginacao-onsen-alvo:not(:disabled):hover { @apply scale-[1.1]; color: rgba(13, 27, 42, 0.55); }
+      /* Página em curso: a depressão ENCHE — o mesmo entintado do .sort-etched sob aria-sort. */
+      .paginacao-onsen-alvo[aria-current="page"] {
+        filter: url(#etched-onsen-lg) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      /* A seta é GESTO, não estado: enche sob o ponteiro, como o .btn-etched — nunca fica presa acesa. */
+      .paginacao-onsen-seta { @apply text-xl; }
+      .paginacao-onsen-seta:not(:disabled):hover {
+        filter: url(#etched-onsen-lg) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      /* Sem para onde ir: sulco vazio, sem resposta ao ponteiro — nunca cinza de desabilitado com moldura. */
+      .paginacao-onsen-alvo:disabled { @apply cursor-default; color: rgba(13, 27, 42, 0.12); }
+      .paginacao-onsen-elipse { @apply w-6 text-center text-base leading-none; color: rgba(13, 27, 42, 0.25); }
+
+      /* ==================== ORGANISMO · CARD DE BUSCA ==================== */
+      .card-busca { @apply flex flex-col gap-3 p-4; }
+      .card-busca-topo { @apply flex flex-wrap items-center justify-between gap-3; }
+      .card-busca-grade { @apply grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3; }
+      .card-busca-largo { @apply sm:col-span-2; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content antialiased">
+  <!-- Filtro de gravação no gelo + glifos deste mock. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="2.2" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1.6" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.7" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="1.1" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <!-- NOVO nesta SPEC: static/src/acoes/painel/lista_registro_acoes/icones/grande.svg -->
+      <g id="g-lista-registro-acoes">
+        <path d="M3.8 6.2h12.4"/>
+        <path d="M3.8 10.6h9.6"/>
+        <path d="M3.8 15h5.2"/>
+        <circle cx="16.4" cy="16.4" r="4.9"/>
+        <path d="M14.1 15.4h4.6"/>
+        <path d="M14.5 17.6h3.8"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 p-8 max-w-6xl mx-auto flex flex-col gap-16">
+    <header class="border-b border-base-200 pb-4">
+      <p class="text-overline text-agua-700">Mock de validação</p>
+      <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC painel/002 — Registro de Ações</h1>
+      <p class="text-sm text-base-content/70 mt-1">Nenhum token novo: 1 · Tokens omitido. O card de busca é poço, a tabela é a de sempre — gestos sobem, campos afundam. Nove colunas pedem rolagem horizontal, e a barra gravada ganha o eixo deitado.</p>
+    </header>
+
+    <!-- ==================================================================== -->
+    <!-- 2 · ÁTOMOS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">2 · Átomos</h2>
+        <p class="text-xs text-base-content/70">Três células de linha e o glifo do cartão do painel.</p>
+      </div>
+
+      <div class="glass-panel p-6 grid gap-6 sm:grid-cols-2">
+        <!-- .td-momento -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <span class="text-overline">.td-momento</span>
+          <div class="td-momento">
+            05/09/2026
+            <span class="td-momento-hora">14:32</span>
+          </div>
+          <p class="text-xs text-base-content/60">Data e hora empilhadas, em algarismo tabular: a coluna alinha sozinha e não quebra.</p>
+        </div>
+
+        <!-- .marca-cobertura -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <span class="text-overline">.marca-cobertura</span>
+          <div>
+            <span class="link-tabela-onsen">Célia Nakamura</span>
+            <span class="marca-cobertura">respondendo por Marina Toledo</span>
+          </div>
+          <div>
+            <span class="link-tabela-onsen">Marina Toledo</span>
+          </div>
+          <p class="text-xs text-base-content/60">Estados: com cobertura e sem. O âmbar é o mesmo que nomeia o afastamento na calha (SPEC user_admin/015).</p>
+        </div>
+
+        <!-- .td-alvo -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <span class="text-overline">.td-alvo</span>
+          <div class="td-alvo">
+            <span class="text-overline block">unidade_acao</span>
+            DIMAP-11 : user_admin.criar_servidor
+          </div>
+          <div class="td-alvo td-alvo-vazio">sem alvo informado</div>
+          <p class="text-xs text-base-content/60">Estados: com alvo e o de falta — a ação que não chamou <code class="text-code">registrar_ato</code>.</p>
+        </div>
+
+        <!-- badges de autorização — composição daisyUI, sem classe nova -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <span class="text-overline">Autorização · sem classe nova</span>
+          <div class="flex items-center gap-3">
+            <span class="badge badge-success badge-soft badge-sm">Autorizada</span>
+            <span class="badge badge-error badge-soft badge-sm">Negada</span>
+          </div>
+          <p class="text-xs text-base-content/60">Estado do sistema é cor semântica do daisyUI — a negativa é o que se procura numa auditoria, e ela precisa saltar.</p>
+        </div>
+
+        <!-- glifo do cartão do painel -->
+        <div class="card-well p-4 flex flex-col gap-3 sm:col-span-2">
+          <span class="text-overline">Glifo · painel.lista_registro_acoes</span>
+          <div class="flex items-center gap-8">
+            <span class="icone-acao icone-acao-grande text-agua-700">
+              <svg viewBox="0 0 24 24"><use href="#g-lista-registro-acoes"/></svg>
+            </span>
+            <span class="icone-acao icone-acao-pequeno text-agua-700">
+              <svg viewBox="0 0 24 24"><use href="#g-lista-registro-acoes"/></svg>
+            </span>
+          </div>
+          <p class="text-xs text-base-content/60">Lista com carimbo: as três linhas do registro e o selo sobre a última. O carimbo não traz visto nem cruz — o registro guarda as duas coisas.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 3 · MOLÉCULAS                                                         -->
+    <!-- ==================================================================== -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">3 · Moléculas</h2>
+        <p class="text-xs text-base-content/70">O par de datas lido como um campo só.</p>
+      </div>
+
+      <div class="glass-panel p-6 grid gap-6 sm:grid-cols-2">
+        <!-- .campo-periodo — preenchido -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <span class="text-overline">.campo-periodo · preenchido</span>
+          <label class="form-field">
+            <span class="text-overline">Período</span>
+            <span class="campo-periodo">
+              <input type="date" class="input input-glass input-sm" value="2026-08-06">
+              <span class="campo-periodo-traco">até</span>
+              <input type="date" class="input input-glass input-sm" value="2026-09-05">
+            </span>
+            <span class="form-field-hint">Nasce nos últimos 30 dias.</span>
+          </label>
+        </div>
+
+        <!-- .campo-periodo — em branco -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <span class="text-overline">.campo-periodo · em branco</span>
+          <label class="form-field">
+            <span class="text-overline">Período</span>
+            <span class="campo-periodo">
+              <input type="date" class="input input-glass input-sm">
+              <span class="campo-periodo-traco">até</span>
+              <input type="date" class="input input-glass input-sm">
+            </span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 4 · ORGANISMOS                                                        -->
+    <!-- ==================================================================== -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">4 · Organismos</h2>
+        <p class="text-xs text-base-content/70">O card de busca nos seus dois estados. A diferença entre eles é uma peça a mais, não um campo apagado.</p>
+      </div>
+
+      <!-- estado: quem dirige -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <span class="text-overline">.card-busca · quem dirige</span>
+        <div class="card-well card-busca">
+          <div class="card-busca-topo">
+            <span class="text-overline">Busca no registro</span>
+            <button type="button" class="btn-etched btn-etched-sm etched">✕ limpar busca</button>
+          </div>
+          <div class="card-busca-grade">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select class="select select-glass select-sm" data-select-onsen>
+                <option value="7" selected>DIMAP-1 · Divisão de Avaliação</option>
+                <option value="11">DIMAP-11 · Seção de Avaliação Predial</option>
+                <option value="12">DIMAP-12 · Seção de Avaliação Territorial</option>
+                <option value="13">DIMAP-13 · Seção de Estudos de Mercado</option>
+              </select>
+              <span class="form-field-hint">Mostra a unidade e o que ela dirige abaixo.</span>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select class="select select-glass select-sm" data-select-onsen>
+                <option value="" selected>— todos —</option>
+                <option value="1">Marina Toledo</option>
+                <option value="2">Paulo Rezende</option>
+                <option value="3">Célia Nakamura</option>
+                <option value="4">Ricardo Amorim</option>
+                <option value="5">Beatriz Sanches</option>
+                <option value="6">Henrique Vilela</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Cargo base</span>
+              <select class="select select-glass select-sm" data-select-onsen>
+                <option value="" selected>— todos —</option>
+                <option value="1">AFTM · Auditor Fiscal Tributário Municipal</option>
+                <option value="2">AAFA · Agente de Apoio Fiscal e Arrecadação</option>
+                <option value="3">ADM · Assistente de Administração</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Cargo em Comissão</span>
+              <select class="select select-glass select-sm" data-select-onsen>
+                <option value="" selected>— todos —</option>
+                <option value="1">Diretor de Divisão</option>
+                <option value="2">Chefe de Seção</option>
+                <option value="3">Assistente Técnico</option>
+              </select>
+            </label>
+            <label class="form-field card-busca-largo">
+              <span class="text-overline">Período</span>
+              <span class="campo-periodo">
+                <input type="date" class="input input-glass input-sm" value="2026-08-06">
+                <span class="campo-periodo-traco">até</span>
+                <input type="date" class="input input-glass input-sm" value="2026-09-05">
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- .paginacao-onsen nos seus estados -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">.paginacao-onsen</span>
+
+        <!-- primeira página de muitas: o vizinho (2) some só quando o vão até o fim é maior que 1 -->
+        <div class="card-well p-3">
+          <nav class="paginacao-onsen" aria-label="Páginas do registro">
+            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–50 de 600</span>
+            <span class="paginacao-onsen-passos glass-panel rounded-full!">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
+              <button type="button" class="paginacao-onsen-alvo">2</button>
+              <span class="paginacao-onsen-elipse">…</span>
+              <button type="button" class="paginacao-onsen-alvo">12</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            </span>
+          </nav>
+        </div>
+
+        <!-- meio do caminho: primeira, atual, última — nenhum vizinho de cortesia no meio -->
+        <div class="card-well p-3">
+          <nav class="paginacao-onsen" aria-label="Páginas do registro">
+            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">201–250 de 600</span>
+            <span class="paginacao-onsen-passos glass-panel rounded-full!">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo">1</button>
+              <span class="paginacao-onsen-elipse">…</span>
+              <button type="button" class="paginacao-onsen-alvo" aria-current="page">5</button>
+              <span class="paginacao-onsen-elipse">…</span>
+              <button type="button" class="paginacao-onsen-alvo">12</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            </span>
+          </nav>
+        </div>
+
+        <!-- quatro páginas, atual perto do início: o vizinho (2) preenche o mesmo vão do 1º exemplo -->
+        <div class="card-well p-3">
+          <nav class="paginacao-onsen" aria-label="Páginas do registro">
+            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">51–100 de 175</span>
+            <span class="paginacao-onsen-passos glass-panel rounded-full!">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo">1</button>
+              <button type="button" class="paginacao-onsen-alvo" aria-current="page">2</button>
+              <span class="paginacao-onsen-elipse">…</span>
+              <button type="button" class="paginacao-onsen-alvo">4</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            </span>
+          </nav>
+        </div>
+
+        <!-- quatro páginas, atual perto do fim: o espelho do exemplo acima -->
+        <div class="card-well p-3">
+          <nav class="paginacao-onsen" aria-label="Páginas do registro">
+            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">101–150 de 175</span>
+            <span class="paginacao-onsen-passos glass-panel rounded-full!">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo">1</button>
+              <span class="paginacao-onsen-elipse">…</span>
+              <button type="button" class="paginacao-onsen-alvo" aria-current="page">3</button>
+              <button type="button" class="paginacao-onsen-alvo">4</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            </span>
+          </nav>
+        </div>
+
+        <!-- três páginas: cabem todas, nunca há reticência para esconder uma única página -->
+        <div class="card-well p-3">
+          <nav class="paginacao-onsen" aria-label="Páginas do registro">
+            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">51–75 de 75</span>
+            <span class="paginacao-onsen-passos glass-panel rounded-full!">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo">1</button>
+              <button type="button" class="paginacao-onsen-alvo" aria-current="page">2</button>
+              <button type="button" class="paginacao-onsen-alvo">3</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            </span>
+          </nav>
+        </div>
+
+        <!-- duas páginas: idem, sem reticência -->
+        <div class="card-well p-3">
+          <nav class="paginacao-onsen" aria-label="Páginas do registro">
+            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–50 de 68</span>
+            <span class="paginacao-onsen-passos glass-panel rounded-full!">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
+              <button type="button" class="paginacao-onsen-alvo">2</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+            </span>
+          </nav>
+        </div>
+
+        <!-- estado de falta: uma página só, nenhum gesto possível -->
+        <div class="card-well p-3">
+          <nav class="paginacao-onsen" aria-label="Páginas do registro">
+            <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–14 de 14</span>
+            <span class="paginacao-onsen-passos glass-panel rounded-full!">
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
+              <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
+              <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Próxima página">›</button>
+            </span>
+          </nav>
+        </div>
+
+        <p class="text-xs text-base-content/60">O número é <strong>estado</strong> e segue a seta de ordenação: repouso gravado, o atual com o sulco cheio — grande (<span class="text-code">etched-onsen-lg</span>), porque o alvo passou dos 32px. A seta é <strong>gesto</strong> e segue o botão gravado: enche sob o ponteiro, nunca fica presa acesa. Um leve <span class="text-code">scale</span> no hover é só afordância. Sem destino, o sulco fica vazio — nunca cinza de desabilitado com moldura. E a régua é sempre <strong>primeira, atual, última</strong>: só ganha um vizinho de cortesia (2, ou a penúltima) quando a atual está literalmente na ponta — nunca no meio, e nunca para esconder uma página só.</p>
+      </div>
+
+      <!-- estado: quem não dirige -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <span class="text-overline">.card-busca · quem não dirige</span>
+        <div class="card-well card-busca">
+          <div class="card-busca-topo">
+            <span class="text-overline">Busca no registro</span>
+            <button type="button" class="btn-etched btn-etched-sm etched">✕ limpar busca</button>
+          </div>
+          <div class="card-busca-grade">
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select class="select select-glass select-sm" data-select-onsen>
+                <option value="" selected>— todos —</option>
+                <option value="4">Ricardo Amorim</option>
+                <option value="5">Beatriz Sanches</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Cargo base</span>
+              <select class="select select-glass select-sm" data-select-onsen>
+                <option value="" selected>— todos —</option>
+                <option value="1">AFTM · Auditor Fiscal Tributário Municipal</option>
+                <option value="2">AAFA · Agente de Apoio Fiscal e Arrecadação</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Cargo em Comissão</span>
+              <select class="select select-glass select-sm" data-select-onsen>
+                <option value="" selected>— todos —</option>
+                <option value="3">Assistente Técnico</option>
+              </select>
+            </label>
+            <label class="form-field card-busca-largo">
+              <span class="text-overline">Período</span>
+              <span class="campo-periodo">
+                <input type="date" class="input input-glass input-sm" value="2026-08-06">
+                <span class="campo-periodo-traco">até</span>
+                <input type="date" class="input input-glass input-sm" value="2026-09-05">
+              </span>
+            </label>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">Sem o controle de unidade — não em cinza. A ausência da peça é a mensagem, como a coluna que não responde na bandeja do cabeçalho.</p>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 5 · TELA MONTADA                                                      -->
+    <!-- ==================================================================== -->
+    <section id="tela" class="flex flex-col gap-10">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">5 · Tela montada</h2>
+        <p class="text-xs text-base-content/70">Clique num cabeçalho para filtrar dentro do que a busca trouxe; na seta, para ordenar. A tabela rola nos dois eixos: 50 linhas por página e nove colunas, cada eixo com a sua barra gravada.</p>
+      </div>
+
+      <!-- ============ 5.1 · Quem dirige a DIMAP-1 ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline text-agua-700">5.1 · Quem dirige — DIMAP-1 e o que pende dela</span>
+
+        <!-- página: competencias/registro_acoes_list.html -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+
+          <!-- fica na página: cabeçalho, só arranjo -->
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Registro de Ações</h1>
+            <p class="text-sm text-base-content/70 mt-1">
+              600 atos praticados na DIMAP-1 e nas unidades abaixo dela, entre 06/08/2026 e 05/09/2026.
+            </p>
+          </div>
+
+          <!-- partial: competencias/partials/_busca_execucoes.html — dispara hx-get para #corpo-execucoes -->
+          <div class="card-well card-busca">
+            <div class="card-busca-topo">
+              <span class="text-overline">Busca no registro</span>
+              <button type="button" class="btn-etched btn-etched-sm etched">✕ limpar busca</button>
+            </div>
+            <div class="card-busca-grade">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="7" selected>DIMAP-1 · Divisão de Avaliação</option>
+                  <option value="11">DIMAP-11 · Seção de Avaliação Predial</option>
+                  <option value="12">DIMAP-12 · Seção de Avaliação Territorial</option>
+                  <option value="13">DIMAP-13 · Seção de Estudos de Mercado</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="" selected>— todos —</option>
+                  <option value="1">Marina Toledo</option>
+                  <option value="2">Paulo Rezende</option>
+                  <option value="3">Célia Nakamura</option>
+                  <option value="4">Ricardo Amorim</option>
+                  <option value="5">Beatriz Sanches</option>
+                  <option value="6">Henrique Vilela</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Cargo base</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="" selected>— todos —</option>
+                  <option value="1">AFTM · Auditor Fiscal Tributário Municipal</option>
+                  <option value="2">AAFA · Agente de Apoio Fiscal e Arrecadação</option>
+                  <option value="3">ADM · Assistente de Administração</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Cargo em Comissão</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="" selected>— todos —</option>
+                  <option value="1">Diretor de Divisão</option>
+                  <option value="2">Chefe de Seção</option>
+                  <option value="3">Assistente Técnico</option>
+                </select>
+              </label>
+              <label class="form-field card-busca-largo">
+                <span class="text-overline">Período</span>
+                <span class="campo-periodo">
+                  <input type="date" class="input input-glass input-sm" value="2026-08-06">
+                  <span class="campo-periodo-traco">até</span>
+                  <input type="date" class="input input-glass input-sm" value="2026-09-05">
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- partial: competencias/partials/_tabela_execucoes.html -->
+          <div class="card-well pb-4 table-onsen-poco" data-scroll-etched>
+            <div class="table-onsen-wrap" data-rolador>
+              <table class="table table-onsen table-onsen-larga" data-tabela-onsen>
+                <thead data-cabecalho>
+                  <tr>
+                    <th class="w-24"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Momento</span></div></th>
+                    <th class="w-44">
+                      <div class="th-onsen" data-coluna="servidor">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Servidor</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por servidor">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-28">
+                      <div class="th-onsen" data-coluna="unidade">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Unidade</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por unidade">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-24">
+                      <div class="th-onsen" data-coluna="cargo">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Cargo base</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por cargo base">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-44">
+                      <div class="th-onsen" data-coluna="comissao">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Cargo em Comissão</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por cargo em comissão">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-48">
+                      <div class="th-onsen" data-coluna="acao">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Ação</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por ação">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-28">
+                      <div class="th-onsen" data-coluna="operacao">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Operação</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por operação">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-56">
+                      <div class="th-onsen" data-coluna="alvo">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Alvo</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por alvo">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-28"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Autorização</span></div></th>
+                  </tr>
+                </thead>
+
+                <!-- partial: competencias/partials/_corpo_execucoes.html — alvo do hx-get do card E do cabeçalho -->
+                <tbody id="corpo-execucoes">
+                  <tr>
+                    <td><span class="td-momento">05/09/2026<span class="td-momento-hora">14:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Marina Toledo</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Diretor de Divisão</span></td>
+                    <td><span class="td-nome-unidade">Conceder competência</span></td>
+                    <td><span class="text-code text-xs">conceder</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-11 : user_admin.criar_servidor</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">05/09/2026<span class="td-momento-hora">06:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Paulo Rezende</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#D84F7F"></span><span class="text-code">DIMAP-11</span></a></td>
+                    <td><span class="text-code text-xs">AAFA</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Editar cadastro de servidor</span></td>
+                    <td><span class="text-code text-xs">editar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 655.031-8</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">04/09/2026<span class="td-momento-hora">22:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Célia Nakamura</a>
+                      <span class="marca-cobertura">respondendo por Marina Toledo</span></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Assistente Técnico</span></td>
+                    <td><span class="td-nome-unidade">Extinguir unidade</span></td>
+                    <td><span class="td-alvo-vazio text-xs">—</span></td>
+                    <td><span class="td-alvo td-alvo-vazio">sem alvo informado</span></td>
+                    <td><span class="badge badge-error badge-soft badge-sm">Negada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">04/09/2026<span class="td-momento-hora">14:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Ricardo Amorim</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir titular</span></td>
+                    <td><span class="text-code text-xs">definir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-11</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">04/09/2026<span class="td-momento-hora">06:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Beatriz Sanches</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">ADM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade td-alvo-vazio">—</span></td>
+                    <td><span class="td-nome-unidade">Cadastrar servidor</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">04/09/2026<span class="td-momento-hora">03:32</span></span></td>
+                    <td><span class="td-alvo-vazio text-sm">—</span></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#B45309"></span><span class="text-code text-warning" title="Unidade extinta">DIMAP-13</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Designar substituto</span></td>
+                    <td><span class="text-code text-xs">designar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">substituicao</span>RF 400.912-3 → RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">03/09/2026<span class="td-momento-hora">19:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Marina Toledo</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Diretor de Divisão</span></td>
+                    <td><span class="td-nome-unidade">Revogar competência</span></td>
+                    <td><span class="text-code text-xs">revogar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-13 : cargos.criar_cargo</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">03/09/2026<span class="td-momento-hora">11:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Paulo Rezende</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#D84F7F"></span><span class="text-code">DIMAP-11</span></a></td>
+                    <td><span class="text-code text-xs">AAFA</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir atribuição da unidade</span></td>
+                    <td><span class="text-code text-xs">atribuir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-12 : unidades.editar_unidade</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">03/09/2026<span class="td-momento-hora">03:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Célia Nakamura</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Assistente Técnico</span></td>
+                    <td><span class="td-nome-unidade">Registrar impedimento</span></td>
+                    <td><span class="text-code text-xs">registrar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 400.912-3</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">02/09/2026<span class="td-momento-hora">19:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Ricardo Amorim</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Criar unidade</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-134</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">02/09/2026<span class="td-momento-hora">16:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Beatriz Sanches</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">ADM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade td-alvo-vazio">—</span></td>
+                    <td><span class="td-nome-unidade">Conceder competência</span></td>
+                    <td><span class="text-code text-xs">conceder</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-11 : user_admin.criar_servidor</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">02/09/2026<span class="td-momento-hora">08:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Henrique Vilela</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#B45309"></span><span class="text-code text-warning" title="Unidade extinta">DIMAP-13</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Editar cadastro de servidor</span></td>
+                    <td><span class="text-code text-xs">editar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 655.031-8</span></td>
+                    <td><span class="badge badge-error badge-soft badge-sm">Negada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">02/09/2026<span class="td-momento-hora">00:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Marina Toledo</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Diretor de Divisão</span></td>
+                    <td><span class="td-nome-unidade">Extinguir unidade</span></td>
+                    <td><span class="td-alvo-vazio text-xs">—</span></td>
+                    <td><span class="td-alvo td-alvo-vazio">sem alvo informado</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">01/09/2026<span class="td-momento-hora">16:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Paulo Rezende</a>
+                      <span class="marca-cobertura">respondendo por Marina Toledo</span></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#D84F7F"></span><span class="text-code">DIMAP-11</span></a></td>
+                    <td><span class="text-code text-xs">AAFA</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir titular</span></td>
+                    <td><span class="text-code text-xs">definir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-11</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">01/09/2026<span class="td-momento-hora">08:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Célia Nakamura</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Assistente Técnico</span></td>
+                    <td><span class="td-nome-unidade">Cadastrar servidor</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">01/09/2026<span class="td-momento-hora">05:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Ricardo Amorim</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Designar substituto</span></td>
+                    <td><span class="text-code text-xs">designar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">substituicao</span>RF 400.912-3 → RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">31/08/2026<span class="td-momento-hora">21:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Beatriz Sanches</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">ADM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade td-alvo-vazio">—</span></td>
+                    <td><span class="td-nome-unidade">Revogar competência</span></td>
+                    <td><span class="text-code text-xs">revogar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-13 : cargos.criar_cargo</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">31/08/2026<span class="td-momento-hora">13:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Henrique Vilela</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#B45309"></span><span class="text-code text-warning" title="Unidade extinta">DIMAP-13</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir atribuição da unidade</span></td>
+                    <td><span class="text-code text-xs">atribuir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-12 : unidades.editar_unidade</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">31/08/2026<span class="td-momento-hora">05:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Marina Toledo</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Diretor de Divisão</span></td>
+                    <td><span class="td-nome-unidade">Registrar impedimento</span></td>
+                    <td><span class="text-code text-xs">registrar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 400.912-3</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">30/08/2026<span class="td-momento-hora">21:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Paulo Rezende</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#D84F7F"></span><span class="text-code">DIMAP-11</span></a></td>
+                    <td><span class="text-code text-xs">AAFA</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Criar unidade</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-134</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">30/08/2026<span class="td-momento-hora">18:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Célia Nakamura</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Assistente Técnico</span></td>
+                    <td><span class="td-nome-unidade">Conceder competência</span></td>
+                    <td><span class="text-code text-xs">conceder</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-11 : user_admin.criar_servidor</span></td>
+                    <td><span class="badge badge-error badge-soft badge-sm">Negada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">30/08/2026<span class="td-momento-hora">10:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Ricardo Amorim</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Editar cadastro de servidor</span></td>
+                    <td><span class="text-code text-xs">editar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 655.031-8</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">30/08/2026<span class="td-momento-hora">02:32</span></span></td>
+                    <td><span class="td-alvo-vazio text-sm">—</span></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">ADM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade td-alvo-vazio">—</span></td>
+                    <td><span class="td-nome-unidade">Extinguir unidade</span></td>
+                    <td><span class="td-alvo-vazio text-xs">—</span></td>
+                    <td><span class="td-alvo td-alvo-vazio">sem alvo informado</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">29/08/2026<span class="td-momento-hora">18:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Henrique Vilela</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#B45309"></span><span class="text-code text-warning" title="Unidade extinta">DIMAP-13</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir titular</span></td>
+                    <td><span class="text-code text-xs">definir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-11</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">29/08/2026<span class="td-momento-hora">10:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Marina Toledo</a>
+                      <span class="marca-cobertura">respondendo por Marina Toledo</span></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Diretor de Divisão</span></td>
+                    <td><span class="td-nome-unidade">Cadastrar servidor</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">29/08/2026<span class="td-momento-hora">07:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Paulo Rezende</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#D84F7F"></span><span class="text-code">DIMAP-11</span></a></td>
+                    <td><span class="text-code text-xs">AAFA</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Designar substituto</span></td>
+                    <td><span class="text-code text-xs">designar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">substituicao</span>RF 400.912-3 → RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">28/08/2026<span class="td-momento-hora">23:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Célia Nakamura</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Assistente Técnico</span></td>
+                    <td><span class="td-nome-unidade">Revogar competência</span></td>
+                    <td><span class="text-code text-xs">revogar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-13 : cargos.criar_cargo</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">28/08/2026<span class="td-momento-hora">15:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Ricardo Amorim</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir atribuição da unidade</span></td>
+                    <td><span class="text-code text-xs">atribuir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-12 : unidades.editar_unidade</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">28/08/2026<span class="td-momento-hora">07:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Beatriz Sanches</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">ADM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade td-alvo-vazio">—</span></td>
+                    <td><span class="td-nome-unidade">Registrar impedimento</span></td>
+                    <td><span class="text-code text-xs">registrar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 400.912-3</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">27/08/2026<span class="td-momento-hora">23:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Henrique Vilela</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#B45309"></span><span class="text-code text-warning" title="Unidade extinta">DIMAP-13</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Criar unidade</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-134</span></td>
+                    <td><span class="badge badge-error badge-soft badge-sm">Negada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">27/08/2026<span class="td-momento-hora">20:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Marina Toledo</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Diretor de Divisão</span></td>
+                    <td><span class="td-nome-unidade">Conceder competência</span></td>
+                    <td><span class="text-code text-xs">conceder</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-11 : user_admin.criar_servidor</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">27/08/2026<span class="td-momento-hora">12:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Paulo Rezende</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#D84F7F"></span><span class="text-code">DIMAP-11</span></a></td>
+                    <td><span class="text-code text-xs">AAFA</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Editar cadastro de servidor</span></td>
+                    <td><span class="text-code text-xs">editar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 655.031-8</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">27/08/2026<span class="td-momento-hora">04:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Célia Nakamura</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Assistente Técnico</span></td>
+                    <td><span class="td-nome-unidade">Extinguir unidade</span></td>
+                    <td><span class="td-alvo-vazio text-xs">—</span></td>
+                    <td><span class="td-alvo td-alvo-vazio">sem alvo informado</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">26/08/2026<span class="td-momento-hora">20:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Ricardo Amorim</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir titular</span></td>
+                    <td><span class="text-code text-xs">definir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-11</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">26/08/2026<span class="td-momento-hora">12:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Beatriz Sanches</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">ADM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade td-alvo-vazio">—</span></td>
+                    <td><span class="td-nome-unidade">Cadastrar servidor</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">26/08/2026<span class="td-momento-hora">09:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Henrique Vilela</a>
+                      <span class="marca-cobertura">respondendo por Marina Toledo</span></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#B45309"></span><span class="text-code text-warning" title="Unidade extinta">DIMAP-13</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Designar substituto</span></td>
+                    <td><span class="text-code text-xs">designar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">substituicao</span>RF 400.912-3 → RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">26/08/2026<span class="td-momento-hora">01:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Marina Toledo</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Diretor de Divisão</span></td>
+                    <td><span class="td-nome-unidade">Revogar competência</span></td>
+                    <td><span class="text-code text-xs">revogar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-13 : cargos.criar_cargo</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">25/08/2026<span class="td-momento-hora">17:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Paulo Rezende</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#D84F7F"></span><span class="text-code">DIMAP-11</span></a></td>
+                    <td><span class="text-code text-xs">AAFA</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir atribuição da unidade</span></td>
+                    <td><span class="text-code text-xs">atribuir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-12 : unidades.editar_unidade</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">25/08/2026<span class="td-momento-hora">09:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Célia Nakamura</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Assistente Técnico</span></td>
+                    <td><span class="td-nome-unidade">Registrar impedimento</span></td>
+                    <td><span class="text-code text-xs">registrar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 400.912-3</span></td>
+                    <td><span class="badge badge-error badge-soft badge-sm">Negada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">25/08/2026<span class="td-momento-hora">01:32</span></span></td>
+                    <td><span class="td-alvo-vazio text-sm">—</span></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Criar unidade</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-134</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">24/08/2026<span class="td-momento-hora">22:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Beatriz Sanches</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">ADM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade td-alvo-vazio">—</span></td>
+                    <td><span class="td-nome-unidade">Conceder competência</span></td>
+                    <td><span class="text-code text-xs">conceder</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-11 : user_admin.criar_servidor</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">24/08/2026<span class="td-momento-hora">14:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Henrique Vilela</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#B45309"></span><span class="text-code text-warning" title="Unidade extinta">DIMAP-13</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Editar cadastro de servidor</span></td>
+                    <td><span class="text-code text-xs">editar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 655.031-8</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">24/08/2026<span class="td-momento-hora">06:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Marina Toledo</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Diretor de Divisão</span></td>
+                    <td><span class="td-nome-unidade">Extinguir unidade</span></td>
+                    <td><span class="td-alvo-vazio text-xs">—</span></td>
+                    <td><span class="td-alvo td-alvo-vazio">sem alvo informado</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">23/08/2026<span class="td-momento-hora">22:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Paulo Rezende</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#D84F7F"></span><span class="text-code">DIMAP-11</span></a></td>
+                    <td><span class="text-code text-xs">AAFA</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir titular</span></td>
+                    <td><span class="text-code text-xs">definir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-11</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">23/08/2026<span class="td-momento-hora">14:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Célia Nakamura</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Assistente Técnico</span></td>
+                    <td><span class="td-nome-unidade">Cadastrar servidor</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">23/08/2026<span class="td-momento-hora">11:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Ricardo Amorim</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Designar substituto</span></td>
+                    <td><span class="text-code text-xs">designar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">substituicao</span>RF 400.912-3 → RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">23/08/2026<span class="td-momento-hora">03:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Beatriz Sanches</a>
+                      <span class="marca-cobertura">respondendo por Marina Toledo</span></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0F766E"></span><span class="text-code">DIMAP-12</span></a></td>
+                    <td><span class="text-code text-xs">ADM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade td-alvo-vazio">—</span></td>
+                    <td><span class="td-nome-unidade">Revogar competência</span></td>
+                    <td><span class="text-code text-xs">revogar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-13 : cargos.criar_cargo</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">22/08/2026<span class="td-momento-hora">19:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Henrique Vilela</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#B45309"></span><span class="text-code text-warning" title="Unidade extinta">DIMAP-13</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Definir atribuição da unidade</span></td>
+                    <td><span class="text-code text-xs">atribuir</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade_acao</span>DIMAP-12 : unidades.editar_unidade</span></td>
+                    <td><span class="badge badge-error badge-soft badge-sm">Negada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">22/08/2026<span class="td-momento-hora">11:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Marina Toledo</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#0096C7"></span><span class="text-code">DIMAP-1</span></a></td>
+                    <td><span class="text-code text-xs">AFTM</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Diretor de Divisão</span></td>
+                    <td><span class="td-nome-unidade">Registrar impedimento</span></td>
+                    <td><span class="text-code text-xs">registrar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 400.912-3</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">22/08/2026<span class="td-momento-hora">03:32</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Paulo Rezende</a></td>
+                    <td><a href="#" class="link-sigla-onsen"><span class="dot-unidade" style="--cor-unidade:#D84F7F"></span><span class="text-code">DIMAP-11</span></a></td>
+                    <td><span class="text-code text-xs">AAFA</span></td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Criar unidade</span></td>
+                    <td><span class="text-code text-xs">criar</span></td>
+                    <td><span class="td-alvo"><span class="text-overline block">unidade</span>DIMAP-134</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="scroll-etched" data-barra aria-hidden="true">
+              <div class="scroll-etched-thumb" data-polegar></div>
+            </div>
+            <div class="scroll-etched-h" data-barra-h aria-hidden="true">
+              <div class="scroll-etched-h-thumb" data-polegar-h></div>
+            </div>
+          </div>
+
+          <!-- partial: competencias/partials/_paginacao_execucoes.html — volta por hx-swap-oob junto com o corpo -->
+          <div class="card-well p-3">
+            <nav class="paginacao-onsen" aria-label="Páginas do registro">
+              <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–50 de 600</span>
+              <span class="paginacao-onsen-passos glass-panel rounded-full!">
+                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
+                <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
+                <button type="button" class="paginacao-onsen-alvo">2</button>
+                <span class="paginacao-onsen-elipse">…</span>
+                <button type="button" class="paginacao-onsen-alvo">12</button>
+                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" aria-label="Próxima página">›</button>
+              </span>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 5.2 · Quem não dirige ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline text-agua-700">5.2 · Quem não dirige — só a própria unidade</span>
+
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Registro de Ações</h1>
+            <p class="text-sm text-base-content/70 mt-1">
+              2 atos praticados na DIMAP-12, entre 06/08/2026 e 05/09/2026.
+            </p>
+          </div>
+
+          <div class="card-well card-busca">
+            <div class="card-busca-topo">
+              <span class="text-overline">Busca no registro</span>
+              <button type="button" class="btn-etched btn-etched-sm etched">✕ limpar busca</button>
+            </div>
+            <div class="card-busca-grade">
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="" selected>— todos —</option>
+                  <option value="4">Ricardo Amorim</option>
+                  <option value="5">Beatriz Sanches</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Cargo base</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="" selected>— todos —</option>
+                  <option value="1">AFTM · Auditor Fiscal Tributário Municipal</option>
+                  <option value="3">ADM · Assistente de Administração</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Cargo em Comissão</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="" selected>— todos —</option>
+                  <option value="2">Chefe de Seção</option>
+                </select>
+              </label>
+              <label class="form-field card-busca-largo">
+                <span class="text-overline">Período</span>
+                <span class="campo-periodo">
+                  <input type="date" class="input input-glass input-sm" value="2026-08-06">
+                  <span class="campo-periodo-traco">até</span>
+                  <input type="date" class="input input-glass input-sm" value="2026-09-05">
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card-well pb-4 table-onsen-poco" data-scroll-etched>
+            <div class="table-onsen-wrap" data-rolador>
+              <table class="table table-onsen table-onsen-larga" data-tabela-onsen>
+                <thead data-cabecalho>
+                  <tr>
+                    <th class="w-24"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Momento</span></div></th>
+                    <th class="w-44">
+                      <div class="th-onsen" data-coluna="servidor">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Servidor</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por servidor">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-28">
+                      <div class="th-onsen" data-coluna="unidade">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Unidade</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por unidade">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-24">
+                      <div class="th-onsen" data-coluna="cargo">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Cargo base</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por cargo base">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-44">
+                      <div class="th-onsen" data-coluna="comissao">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Cargo em Comissão</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por cargo em comissão">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-48">
+                      <div class="th-onsen" data-coluna="acao">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Ação</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por ação">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-28">
+                      <div class="th-onsen" data-coluna="operacao">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Operação</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por operação">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-56">
+                      <div class="th-onsen" data-coluna="alvo">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Alvo</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por alvo">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-28"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Autorização</span></div></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="td-momento">03/09/2026<span class="td-momento-hora">09:15</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Ricardo Amorim</a></td>
+                    <td>
+                      <a href="#" class="link-sigla-onsen">
+                        <span class="dot-unidade" style="--cor-unidade:#0F766E"></span>
+                        <span class="text-code">DIMAP-12</span>
+                      </a>
+                    </td>
+                    <td class="text-code text-xs">AFTM</td>
+                    <td><span class="rotulo-cargo td-nome-unidade">Chefe de Seção</span></td>
+                    <td><span class="td-nome-unidade">Cadastrar servidor</span></td>
+                    <td class="text-code text-xs">criar</td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 812.447-1</span></td>
+                    <td><span class="badge badge-success badge-soft badge-sm">Autorizada</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-momento">28/08/2026<span class="td-momento-hora">13:20</span></span></td>
+                    <td><a href="#" class="link-tabela-onsen">Beatriz Sanches</a></td>
+                    <td>
+                      <a href="#" class="link-sigla-onsen">
+                        <span class="dot-unidade" style="--cor-unidade:#0F766E"></span>
+                        <span class="text-code">DIMAP-12</span>
+                      </a>
+                    </td>
+                    <td class="text-code text-xs">ADM</td>
+                    <td><span class="rotulo-cargo td-nome-unidade td-alvo-vazio">—</span></td>
+                    <td><span class="td-nome-unidade">Editar cadastro de servidor</span></td>
+                    <td class="text-code text-xs">editar</td>
+                    <td><span class="td-alvo"><span class="text-overline block">servidor</span>RF 655.031-8</span></td>
+                    <td><span class="badge badge-error badge-soft badge-sm">Negada</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="scroll-etched" data-barra aria-hidden="true">
+              <div class="scroll-etched-thumb" data-polegar></div>
+            </div>
+            <div class="scroll-etched-h" data-barra-h aria-hidden="true">
+              <div class="scroll-etched-h-thumb" data-polegar-h></div>
+            </div>
+          </div>
+
+          <div class="card-well p-3">
+            <nav class="paginacao-onsen" aria-label="Páginas do registro">
+              <span class="paginacao-onsen-info etched etched-lg etched-rotulo">1–2 de 2</span>
+              <span class="paginacao-onsen-passos glass-panel rounded-full!">
+                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Página anterior">‹</button>
+                <button type="button" class="paginacao-onsen-alvo" aria-current="page">1</button>
+                <button type="button" class="paginacao-onsen-alvo paginacao-onsen-seta" disabled aria-label="Próxima página">›</button>
+              </span>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 5.3 · Estado de falta ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline text-agua-700">5.3 · Estado de falta — a busca não encontrou nada</span>
+
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Registro de Ações</h1>
+            <p class="text-sm text-base-content/70 mt-1">
+              Nenhum ato na DIMAP-13, entre 01/01/2026 e 31/01/2026.
+            </p>
+          </div>
+
+          <div class="card-well card-busca">
+            <div class="card-busca-topo">
+              <span class="text-overline">Busca no registro</span>
+              <button type="button" class="btn-etched btn-etched-sm etched">✕ limpar busca</button>
+            </div>
+            <div class="card-busca-grade">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="7">DIMAP-1 · Divisão de Avaliação</option>
+                  <option value="13" selected>DIMAP-13 · Seção de Estudos de Mercado</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="" selected>— todos —</option>
+                  <option value="6">Henrique Vilela</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Cargo base</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="" selected>— todos —</option>
+                  <option value="1">AFTM · Auditor Fiscal Tributário Municipal</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Cargo em Comissão</span>
+                <select class="select select-glass select-sm" data-select-onsen>
+                  <option value="" selected>— todos —</option>
+                  <option value="2">Chefe de Seção</option>
+                </select>
+              </label>
+              <label class="form-field card-busca-largo">
+                <span class="text-overline">Período</span>
+                <span class="campo-periodo">
+                  <input type="date" class="input input-glass input-sm" value="2026-01-01">
+                  <span class="campo-periodo-traco">até</span>
+                  <input type="date" class="input input-glass input-sm" value="2026-01-31">
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card-well pb-4 table-onsen-poco" data-scroll-etched>
+            <div class="table-onsen-wrap" data-rolador>
+              <table class="table table-onsen table-onsen-larga" data-tabela-onsen>
+                <thead data-cabecalho>
+                  <tr>
+                    <th class="w-24"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Momento</span></div></th>
+                    <th class="w-44">
+                      <div class="th-onsen" data-coluna="servidor">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Servidor</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por servidor">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-28">
+                      <div class="th-onsen" data-coluna="unidade">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Unidade</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por unidade">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-24">
+                      <div class="th-onsen" data-coluna="cargo">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Cargo base</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por cargo base">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-44">
+                      <div class="th-onsen" data-coluna="comissao">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Cargo em Comissão</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por cargo em comissão">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-48">
+                      <div class="th-onsen" data-coluna="acao">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Ação</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por ação">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-28">
+                      <div class="th-onsen" data-coluna="operacao">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Operação</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por operação">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-56">
+                      <div class="th-onsen" data-coluna="alvo">
+                        <label class="th-onsen-campo">
+                          <span class="text-overline">Alvo</span>
+                          <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                        </label>
+                        <button type="button" class="sort-etched etched" aria-label="Ordenar por alvo">▲</button>
+                      </div>
+                    </th>
+                    <th class="w-28"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Autorização</span></div></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="9" class="table-onsen-vazio">
+                      Nenhum ato praticado no período e no recorte escolhidos.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="scroll-etched" data-barra aria-hidden="true">
+              <div class="scroll-etched-thumb" data-polegar></div>
+            </div>
+            <div class="scroll-etched-h" data-barra-h aria-hidden="true">
+              <div class="scroll-etched-h-thumb" data-polegar-h></div>
+            </div>
+          </div>
+
+          <!-- sem paginação: uma página de zero linha é widget desenhado sobre o nada -->
+        </div>
+      </div>
+
+      <!-- ============ 5.4 · O cartão no painel ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline text-agua-700">5.4 · O cartão na aba Administração do Sistema</span>
+
+        <!-- página: painel/painel.html — grupo novo, primeiro da aba -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+          <span class="text-overline">Registro de Ações</span>
+          <div class="card-well p-4">
+            <div class="menu-acoes-cartoes">
+              <!-- partial: painel/partials/_card_item.html — o mesmo cartão das duas naturezas de item -->
+              <a href="#" class="hover-3d card-acao-alvo">
+                <div class="glass-bg glass-edge glass-shadow card-acao">
+                  <span class="icone-acao icone-acao-grande icone-acao-acende">
+                    <svg viewBox="0 0 24 24"><use href="#g-lista-registro-acoes"/></svg>
+                  </span>
+                  <div>
+                    <p class="card-acao-nome">Registro de Ações</p>
+                    <p class="card-acao-descricao">Os atos praticados no seu alcance: quem, com qual cargo, sobre o quê e se podia.</p>
+                  </div>
+                </div>
+                <div></div><div></div><div></div><div></div>
+                <div></div><div></div><div></div><div></div>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Sem este módulo os selects seguem nativos: marcar o campo não carrega o componente. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+  <!-- E sem este a barra gravada do poço da tabela não é medida: o sulco fica sem polegar. -->
+  <script type="module" src="/static/src/js/ui/scroll_etched.js"></script>
+  <!-- A ordenação do cabeçalho e o limpar-filtros. -->
+  <script type="module" src="/static/src/js/ui/tabela_onsen.js"></script>
+
+  <script>
+    // O eixo deitado da barra gravada — o que scroll_etched.js ganha nesta SPEC. Mesma estrutura do
+    // módulo vertical: mede, acende e ARRASTA. Só medida sai daqui; a pele inteira mora no CSS.
+    const LARGURA_MINIMA_POLEGAR = 28;
+    const REPOUSO_MS = 900;
+
+    function montarEixoHorizontal(poco) {
+      const rolador = poco.querySelector("[data-rolador]");
+      const barra = poco.querySelector("[data-barra-h]");
+      const polegar = poco.querySelector("[data-polegar-h]");
+      if (!rolador || !barra || !polegar) return;
+      const conteudo = rolador.firstElementChild;
+
+      function desenhar() {
+        const trilho = barra.clientWidth;
+        const rolavel = rolador.scrollWidth - rolador.clientWidth;
+        barra.classList.toggle("scroll-etched-ociosa", rolavel <= 0);
+        // O tema chega por fetch e o compilador do browser o processa depois: até lá o trilho mede
+        // zero e a conta sairia com lixo. Quem traz de volta é o ResizeObserver da própria barra.
+        if (rolavel <= 0 || trilho <= 0) return;
+        const largura = Math.max(
+          trilho * (rolador.clientWidth / rolador.scrollWidth),
+          LARGURA_MINIMA_POLEGAR);
+        polegar.style.width = `${largura}px`;
+        polegar.style.transform = `translateX(${(rolador.scrollLeft / rolavel) * (trilho - largura)}px)`;
+      }
+
+      let repouso;
+      function acender() {
+        barra.classList.add("scroll-etched-ativa");
+        clearTimeout(repouso);
+        repouso = setTimeout(() => barra.classList.remove("scroll-etched-ativa"), REPOUSO_MS);
+      }
+
+      rolador.addEventListener("scroll", () => {
+        acender();
+        desenhar();
+      });
+
+      const observador = new ResizeObserver(desenhar);
+      observador.observe(rolador);
+      observador.observe(barra);
+      if (conteudo) observador.observe(conteudo);
+      desenhar();
+
+      polegar.addEventListener("pointerdown", (evento) => {
+        evento.preventDefault();
+        const partidaX = evento.clientX;
+        const partidaScroll = rolador.scrollLeft;
+        // Converte pixel de trilho em pixel de conteúdo: o polegar percorre o vão, não o trilho todo.
+        const razao =
+          (rolador.scrollWidth - rolador.clientWidth) /
+          (barra.clientWidth - polegar.offsetWidth);
+        const arrastar = (movimento) => {
+          rolador.scrollLeft = partidaScroll + (movimento.clientX - partidaX) * razao;
+        };
+        polegar.setPointerCapture(evento.pointerId);
+        polegar.addEventListener("pointermove", arrastar);
+        polegar.addEventListener(
+          "pointerup",
+          () => polegar.removeEventListener("pointermove", arrastar),
+          { once: true });
+      });
+    }
+
+    document.querySelectorAll("[data-scroll-etched]").forEach(montarEixoHorizontal);
+  </script>
+</body>
+</html>

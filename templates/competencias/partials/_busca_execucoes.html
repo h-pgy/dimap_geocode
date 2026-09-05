@@ -1,0 +1,65 @@
+{# O card de busca do registro (SPEC painel/002): dispara hx-get a cada troca de campo, e inclui   #}
+{# o cabeçalho da tabela — mudar um critério aqui preserva os filtros do cabeçalho, e vice-versa.    #}
+<form id="busca-execucoes"
+      hx-get="{% url 'competencias:corpo_execucoes' %}"
+      hx-trigger="change"
+      hx-target="#corpo-execucoes"
+      hx-swap="outerHTML"
+      hx-include="#tabela-execucoes thead">
+  <div class="card-well card-busca">
+    <div class="card-busca-topo">
+      <span class="text-overline">Busca no registro</span>
+      {# Recarrega a página inteira: o jeito mais simples de zerar card e cabeçalho de uma vez, #}
+      {# sem estado de formulário duplicado em JavaScript. #}
+      <a href="{% url 'competencias:listar_registro_acoes' %}" class="btn-etched btn-etched-sm etched">✕ limpar busca</a>
+    </div>
+    <div class="card-busca-grade">
+      {% if unidades %}
+        <label class="form-field">
+          <span class="text-overline">Unidade</span>
+          <select name="unidade_partida" class="select select-glass select-sm" data-select-onsen>
+            {% for unidade in unidades %}
+              <option value="{{ unidade.pk }}"{% if unidade.pk == unidade_escolhida %} selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">Mostra a unidade e o que ela dirige abaixo.</span>
+        </label>
+      {% endif %}
+      <label class="form-field">
+        <span class="text-overline">Servidor</span>
+        <select name="perfil" class="select select-glass select-sm" data-select-onsen>
+          <option value=""{% if not perfil_escolhido %} selected{% endif %}>— todos —</option>
+          {% for servidor in servidores %}
+            <option value="{{ servidor.pk }}"{% if servidor.pk == perfil_escolhido %} selected{% endif %}>{{ servidor.nome }} {{ servidor.sobrenome }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="form-field">
+        <span class="text-overline">Cargo base</span>
+        <select name="cargo_base" class="select select-glass select-sm" data-select-onsen>
+          <option value=""{% if not cargo_base_escolhido %} selected{% endif %}>— todos —</option>
+          {% for cargo in cargos_base %}
+            <option value="{{ cargo.pk }}"{% if cargo.pk == cargo_base_escolhido %} selected{% endif %}>{{ cargo.sigla }} · {{ cargo.nome }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="form-field">
+        <span class="text-overline">Cargo em Comissão</span>
+        <select name="cargo_comissao" class="select select-glass select-sm" data-select-onsen>
+          <option value=""{% if not cargo_comissao_escolhido %} selected{% endif %}>— todos —</option>
+          {% for cargo in cargos_comissao %}
+            <option value="{{ cargo.pk }}"{% if cargo.pk == cargo_comissao_escolhido %} selected{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="form-field card-busca-largo">
+        <span class="text-overline">Período</span>
+        <span class="campo-periodo">
+          <input type="date" name="inicio" class="input input-glass input-sm" value="{{ busca.inicio|date:'Y-m-d' }}">
+          <span class="campo-periodo-traco">até</span>
+          <input type="date" name="fim" class="input input-glass input-sm" value="{{ busca.fim|date:'Y-m-d' }}">
+        </span>
+      </label>
+    </div>
+  </div>
+</form>

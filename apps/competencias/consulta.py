@@ -163,6 +163,41 @@ def alcance_do_perfil(perfil: Perfil, com_extintas: bool = False) -> frozenset[i
     )
 
 
+def alcance_de_leitura(perfil: Perfil) -> frozenset[int]:
+    """Até onde este perfil PODE ler o registro (SPEC painel/002): a própria unidade sempre, mais a
+    subárvore de cada unidade que dirige.
+
+    Sem `if` para nenhum dos dois papéis, e é isso que a expressão mostra. Quem não dirige nada cai
+    no caso base — `alcance_do_perfil` devolve conjunto vazio e sobra a lotação. O superusuário
+    recebe o organograma inteiro pelo mesmo caminho: `ramos_do_alcance` já o trata na origem, para
+    não espalhar `is_superuser` por quem a consulta.
+
+    `com_extintas=True` porque o registro é histórico: unidade extinta ontem praticou atos que
+    continuam sendo dela, e sumir com eles do alcance de quem a dirigia apagaria justamente o
+    período que se quer auditar.
+    """
+    return frozenset({perfil.unidade_id}) | alcance_do_perfil(perfil, com_extintas=True)
+
+
+def unidades_lidas(perfil: Perfil, unidade_escolhida: int | None) -> frozenset[int]:
+    """O que a tela lê AGORA (SPEC painel/002): a subárvore da unidade de onde se parte, contida no
+    alcance.
+
+    A unidade nunca é ausência — quem não escolhe parte da própria, e é essa escolha implícita que
+    faz a página nascer no ramo do leitor em vez de no registro inteiro.
+
+    A interseção é a regra toda, e ela resolve os dois papéis de uma vez: para quem não dirige, o
+    alcance é uma unidade só e a subárvore da própria lotação encolhe para ela; para quem dirige,
+    a subárvore é o ramo e o alcance a deixa passar inteira. Fora do alcance nem se pergunta à
+    árvore — é vazio, e não 403, porque aqui o alcance recorta o resultado, não barra a entrada.
+    """
+    alcance = alcance_de_leitura(perfil)
+    partida = unidade_escolhida or perfil.unidade_id
+    if partida not in alcance:
+        return frozenset()
+    return frozenset(posicao_de(partida, com_extintas=True).ego.ids) & alcance
+
+
 def _slugs_estruturais() -> frozenset[str]:
     return frozenset(
         implementada.acao.slug for implementada in REGISTRO.todas() if implementada.acao.estrutural

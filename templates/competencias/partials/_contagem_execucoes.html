@@ -1,0 +1,3 @@
+{# A contagem do registro (acima da tabela): o mesmo tom do subtítulo da página — não é título,   #}
+{# é leitura de apoio — e o mesmo total que a paginação já soma, sem recalcular nada aqui.          #}
+<p id="contagem-execucoes" class="text-sm text-base-content/70"{% if oob %} hx-swap-oob="true"{% endif %}>{{ pagina.total_linhas }} registro{{ pagina.total_linhas|pluralize }} encontrado{{ pagina.total_linhas|pluralize }}</p>

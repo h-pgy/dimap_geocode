@@ -1,0 +1,44 @@
+{# A paginação do registro (SPEC painel/002): vive FORA da <table> — <tbody> não tem irmão que a  #}
+{# acomode — e volta por swap fora de banda junto com o corpo, como a barra de cargos já faz.       #}
+{# Ausente quando não há linha nenhuma: uma página de zero linha é widget desenhado sobre o nada.   #}
+{# Um <button> sem <form> ao redor não tem name/value incluído por HTMX — a coleta de parâmetros só #}
+{# olha input/select/textarea. `target:` restringe o clique aos próprios alvos (nunca à legenda ou  #}
+{# à reticência), e `hx-vals` lê o número ali, no `data-pagina` de quem foi clicado.                #}
+<div id="paginacao-execucoes"
+     hx-get="{% url 'competencias:corpo_execucoes' %}"
+     hx-trigger="click target:.paginacao-onsen-alvo"
+     hx-target="#corpo-execucoes"
+     hx-swap="outerHTML"
+     hx-include="#tabela-execucoes thead, #busca-execucoes"
+     hx-vals='js:{pagina: event.target.dataset.pagina}'
+     {% if oob %}hx-swap-oob="true"{% endif %}>
+  {% if pagina.total_linhas %}
+    <div class="card-well p-3">
+      <nav class="paginacao-onsen" aria-label="Páginas do registro">
+        <span class="paginacao-onsen-info etched etched-lg etched-rotulo">{{ pagina_inicio }}–{{ pagina_fim }} de {{ pagina.total_linhas }}</span>
+        <span class="paginacao-onsen-passos glass-panel rounded-full!">
+          <button type="button"
+                  data-pagina="{{ pagina.numero|add:"-1" }}"
+                  class="paginacao-onsen-alvo paginacao-onsen-seta"
+                  {% if pagina.numero == 1 %}disabled{% endif %}
+                  aria-label="Página anterior">‹</button>
+          {% for numero in paginas_visiveis %}
+            {% if numero %}
+              <button type="button"
+                      data-pagina="{{ numero }}"
+                      class="paginacao-onsen-alvo etched etched-lg etched-deeper"
+                      {% if numero == pagina.numero %}aria-current="page"{% endif %}>{{ numero }}</button>
+            {% else %}
+              <span class="paginacao-onsen-elipse">…</span>
+            {% endif %}
+          {% endfor %}
+          <button type="button"
+                  data-pagina="{{ pagina.numero|add:"1" }}"
+                  class="paginacao-onsen-alvo paginacao-onsen-seta"
+                  {% if pagina.numero == pagina.total_paginas %}disabled{% endif %}
+                  aria-label="Próxima página">›</button>
+        </span>
+      </nav>
+    </div>
+  {% endif %}
+</div>
