@@ -10,7 +10,7 @@ import pytest
 
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, CargoComissao
+from apps.cargos.models import CargoBase, CargoComissao
 
 banco = pytest.mark.banco
 

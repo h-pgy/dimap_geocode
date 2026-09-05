@@ -10,6 +10,7 @@ from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.cargos.models import CargoBase, CargoComissao
 from apps.competencias.atribuicao import cargos_que_perdem
 from apps.competencias.catalogo import acoes_oferecidas
 from apps.competencias.comandos import ComandoAtribuicao
@@ -20,7 +21,7 @@ from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.context import contexto_organograma
 from apps.unidades.models import Unidade
 from apps.unidades.paleta import hex_da_cor
-from apps.user_admin.models import CargoBase, CargoComissao, Perfil
+from apps.user_admin.models import Perfil
 from services.domain.arvore_hierarquica import NoHierarquia
 from services.domain.autorizacao import VarianteIcone
 from services.utils.erros_formulario import RecusaDeFormulario

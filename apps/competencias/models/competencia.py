@@ -10,8 +10,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
+from apps.cargos.models import CargoBase, CargoComissao
 from apps.unidades.models import Unidade
-from apps.user_admin.models import CargoBase, CargoComissao
 
 from .acao import Acao
 

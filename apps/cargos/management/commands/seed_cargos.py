@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.user_admin.seeds import carregar_seed_cargos
+from apps.cargos.seeds import carregar_seed_cargos
 
 
 class Command(BaseCommand):

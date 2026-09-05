@@ -11,7 +11,7 @@ from apps.competencias.models import AtribuicaoUnidade, Concessao
 from apps.competencias.schemas import AcaoImplementada, RegistroAcoes
 from apps.competencias.sync import sincronizar_acoes
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase
+from apps.cargos.models import CargoBase
 from services.domain.autorizacao import Acao as AcaoContrato
 
 banco = pytest.mark.banco

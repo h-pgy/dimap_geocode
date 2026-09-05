@@ -17,14 +17,13 @@ from django.utils import timezone
 
 import pytest
 
+from apps.cargos.models import CargoBase, CargoComissao
 from apps.competencias.models import Acao, Delegacao
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.unidades.titularidade import definir_titular
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
 from apps.user_admin.exoneracao import exonerar_servidor, reintegrar_servidor
 from apps.user_admin.models import (
-    CargoBase,
-    CargoComissao,
     Impedimento,
     Perfil,
     Substituicao,

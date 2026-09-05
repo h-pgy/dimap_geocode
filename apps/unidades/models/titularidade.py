@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from services.domain.titularidade import RequisitoTitularidade, avaliar_titularidade
 
 if TYPE_CHECKING:
-    from apps.user_admin.models import CargoComissao
+    from apps.cargos.models import CargoComissao
 
 
 def cargo_titulariza(

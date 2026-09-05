@@ -13,7 +13,7 @@ from django.db import transaction
 
 from pydantic import BaseModel
 
-from apps.user_admin.models import CargoBase, CargoComissao
+from apps.cargos.models import CargoBase, CargoComissao
 from services.utils.io import read_json_from_folder, subpasta_de_data
 
 NOME_SUBPASTA_SEED = "seed"

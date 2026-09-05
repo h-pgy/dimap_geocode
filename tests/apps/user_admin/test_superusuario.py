@@ -11,7 +11,8 @@ from django.core.management import call_command
 import pytest
 
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, CargoComissao, Perfil
+from apps.cargos.models import CargoBase, CargoComissao
+from apps.user_admin.models import Perfil
 
 banco = pytest.mark.banco
 

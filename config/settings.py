@@ -346,6 +346,9 @@ INSTALLED_APPS = [
     "apps.core",
     # Antes de user_admin: o Perfil é lotado numa unidade, e a dependência é de mão única.
     "apps.unidades",
+    # Antes de user_admin: é Perfil que aponta para o cargo, e a leitura da lista deve seguir a
+    # direção da dependência.
+    "apps.cargos",
     "apps.user_admin",
     "apps.autenticacao",
     "apps.competencias",

@@ -6,8 +6,9 @@ Público porque a pergunta é da unidade e três telas a fazem: a página da uni
 servidor que a titulariza e o seletor de alcance de `competencias`.
 """
 
+from apps.cargos.models import CargoComissao
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoComissao, Perfil
+from apps.user_admin.models import Perfil
 from services.domain.titularidade import EstadoDaDirecao
 
 # O organograma fala em padrão de cargo, não em número de nível (SPEC user_admin/016).

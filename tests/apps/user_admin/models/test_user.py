@@ -19,9 +19,8 @@ from django.utils import timezone
 import pytest
 
 from apps.unidades.models import CorUnidade, TipoUnidade, Unidade
+from apps.cargos.models import CargoBase, CargoComissao
 from apps.user_admin.models import (
-    CargoBase,
-    CargoComissao,
     Impedimento,
     Perfil,
     TipoImpedimento,

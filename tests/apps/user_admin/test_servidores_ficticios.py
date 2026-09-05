@@ -20,9 +20,8 @@ from apps.user_admin.ficticios import (
     remover_servidores_ficticios,
 )
 from apps.unidades.models import CorUnidade, TipoUnidade, Unidade
+from apps.cargos.models import CargoBase, CargoComissao
 from apps.user_admin.models import (
-    CargoBase,
-    CargoComissao,
     Impedimento,
     Perfil,
     TipoImpedimento,

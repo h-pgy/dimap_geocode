@@ -25,7 +25,8 @@ from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, Execuca
 from apps.user_admin.cadastro import ERRO_DOMINIO
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, CargoComissao, Perfil, TipoImpedimento
+from apps.cargos.models import CargoBase, CargoComissao
+from apps.user_admin.models import Perfil, TipoImpedimento
 from apps.user_admin.schemas import NovaSubstituicao, NovoImpedimento
 from apps.unidades.titularidade import definir_titular
 

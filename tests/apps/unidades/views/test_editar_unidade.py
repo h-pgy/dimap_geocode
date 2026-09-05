@@ -19,7 +19,8 @@ import pytest
 
 from apps.competencias.models import ExecucaoAcao
 from apps.unidades.models import CorUnidade, TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, CargoComissao, Perfil
+from apps.cargos.models import CargoBase, CargoComissao
+from apps.user_admin.models import Perfil
 from apps.unidades.titularidade import definir_titular
 
 banco = pytest.mark.banco

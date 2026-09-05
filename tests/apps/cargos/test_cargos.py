@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 
 import pytest
 
-from apps.user_admin.models import CargoComissao
+from apps.cargos.models import CargoComissao
 
 
 def _cargo(**overrides: object) -> CargoComissao:

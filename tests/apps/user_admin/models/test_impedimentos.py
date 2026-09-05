@@ -16,7 +16,8 @@ from django.utils import timezone
 import pytest
 
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, Impedimento, Perfil, TipoImpedimento
+from apps.cargos.models import CargoBase
+from apps.user_admin.models import Impedimento, Perfil, TipoImpedimento
 
 banco = pytest.mark.banco
 

@@ -17,7 +17,8 @@ import pytest
 from apps.autenticacao import recuperacao
 from apps.autenticacao.schemas import PedidoRecuperacaoInput
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, Perfil
+from apps.cargos.models import CargoBase
+from apps.user_admin.models import Perfil
 from services.utils.smtp import MensagemEmail
 
 banco = pytest.mark.banco

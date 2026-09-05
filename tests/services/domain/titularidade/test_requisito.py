@@ -6,7 +6,7 @@ precisa alcançar o mínimo do tipo. Domínio puro, sem Django.
 
 from services.domain.titularidade import RequisitoTitularidade, avaliar_titularidade
 
-# Escala do cargo em comissão (CargoComissao.nivel): 1..6 — ver apps/user_admin/models/cargos.py.
+# Escala do cargo em comissão (CargoComissao.nivel): 1..6 — ver apps/cargos/models/cargos.py.
 NIVEL_MAXIMO_DO_CARGO = 6
 
 

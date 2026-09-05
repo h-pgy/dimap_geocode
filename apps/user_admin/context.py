@@ -31,9 +31,8 @@ from apps.user_admin.exercicio import (
     retorno_eh_revogacao,
 )
 from apps.user_admin.exoneracao import previa_da_exoneracao, previa_da_reintegracao
+from apps.cargos.models import CargoBase, CargoComissao
 from apps.user_admin.models import (
-    CargoBase,
-    CargoComissao,
     Impedimento,
     Perfil,
     Substituicao,

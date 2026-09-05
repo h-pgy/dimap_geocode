@@ -19,12 +19,11 @@ from django.utils import timezone
 
 from pydantic import BaseModel
 
+from apps.cargos.models import CargoBase, CargoComissao
 from apps.unidades.models import Unidade, cargo_titulariza
 from apps.unidades.titularidade import definir_titular
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
 from apps.user_admin.models import (
-    CargoBase,
-    CargoComissao,
     Impedimento,
     Perfil,
     TipoImpedimento,

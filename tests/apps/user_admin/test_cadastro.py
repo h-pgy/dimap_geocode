@@ -19,7 +19,8 @@ from apps.core import entrega_email
 from apps.user_admin import cadastro
 from apps.user_admin.cadastro import ERRO_DOMINIO, ERRO_ENVIO, ERRO_SEM_CANETA, criar_servidor
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, Perfil
+from apps.cargos.models import CargoBase
+from apps.user_admin.models import Perfil
 from services.utils.smtp import MensagemEmail, ResultadoEnvio, SmtpEnvioError
 
 banco = pytest.mark.banco

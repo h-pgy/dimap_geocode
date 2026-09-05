@@ -15,7 +15,8 @@ from apps.competencias.utils import instanciar_acao
 from apps.painel.estrutura import Aba, ContratoPainel, Grupo, ItemAcao, ItemLivre
 from apps.painel.resolucao import MontagemPainel, ResolvedorPainel
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, Perfil
+from apps.cargos.models import CargoBase
+from apps.user_admin.models import Perfil
 from services.domain.autorizacao import VarianteIcone
 
 banco = pytest.mark.banco

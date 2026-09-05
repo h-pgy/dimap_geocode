@@ -19,7 +19,8 @@ import pytest
 from apps.autenticacao import reenvio
 from apps.autenticacao.schemas import ReenvioSenhaInput
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, Perfil
+from apps.cargos.models import CargoBase
+from apps.user_admin.models import Perfil
 from services.domain.email import EmailAcessoInput
 from services.utils.smtp import SmtpEnvioError
 

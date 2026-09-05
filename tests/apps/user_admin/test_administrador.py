@@ -13,7 +13,8 @@ import pytest
 from apps.competencias.consulta import alcance_do_perfil
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.administrador import ERRO_AUTO_REVOGACAO, mudar_administrador
-from apps.user_admin.models import CargoBase, Perfil
+from apps.cargos.models import CargoBase
+from apps.user_admin.models import Perfil
 from apps.user_admin.schemas import MudancaDeAdministrador
 
 banco = pytest.mark.banco

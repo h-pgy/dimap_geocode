@@ -24,7 +24,8 @@ from apps.competencias.models import AtribuicaoUnidade, Concessao, ExecucaoAcao
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.unidades.titularidade import definir_titular
 from apps.user_admin.exercicio import registrar_impedimento
-from apps.user_admin.models import CargoBase, CargoComissao, Perfil, TipoImpedimento
+from apps.cargos.models import CargoBase, CargoComissao
+from apps.user_admin.models import Perfil, TipoImpedimento
 from apps.user_admin.schemas import NovoImpedimento
 
 banco = pytest.mark.banco

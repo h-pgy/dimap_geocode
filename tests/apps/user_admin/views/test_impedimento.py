@@ -27,9 +27,8 @@ from apps.competencias.models import AtribuicaoUnidade, Concessao, ExecucaoAcao
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.unidades.titularidade import definir_titular
 from apps.user_admin.exercicio import designar_substituto, registrar_impedimento
+from apps.cargos.models import CargoBase, CargoComissao
 from apps.user_admin.models import (
-    CargoBase,
-    CargoComissao,
     Impedimento,
     Perfil,
     Substituicao,

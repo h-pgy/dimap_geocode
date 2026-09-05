@@ -25,7 +25,8 @@ from apps.autenticacao import recuperacao, reenvio
 from apps.autenticacao.schemas import ReenvioSenhaInput
 from apps.mapping import context as mapping_context
 from apps.unidades.models import TipoUnidade, Unidade
-from apps.user_admin.models import CargoBase, Perfil
+from apps.cargos.models import CargoBase
+from apps.user_admin.models import Perfil
 
 banco = pytest.mark.banco
 
