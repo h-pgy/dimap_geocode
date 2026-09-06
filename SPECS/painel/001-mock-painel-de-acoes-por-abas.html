@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC painel/001 — Painel de ações por abas (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* MOLÉCULA · ABAS. A fita e a face são a MESMA placa — o material vem composto no HTML
+         (.glass-panel), e nem a aba aberta nem a face pintam coisa alguma por cima: não há emenda
+         entre as duas para desencontrar, nem um segundo backdrop-filter para devolver outro tom.
+         Daqui saem só o arranjo e a peça da aba. */
+      .abas-onsen { @apply p-2; }
+      /* A folga lateral da aba casa com a da face: o rótulo da fita e o título do corpo caem na
+         mesma vertical. Vai na aba, e não no invólucro — o daisyUI declara --tab-p na própria aba,
+         e o valor do pai nunca chegaria. */
+      .abas-onsen > .tab { --tab-p: 1.25rem; }
+      /* A aba é rótulo e fio, e nada mais: gravados em repouso, cheios de água quando ela abre — o
+         mesmo par do resto do sistema. Fundo aqui recortaria a placa em duas. */
+      .abas-onsen-rotulo {
+        @apply block text-[13px] font-bold uppercase tracking-[0.12em] whitespace-nowrap;
+      }
+      /* Só medida: o material é o .etched-line / .etched-line-inked, composto no HTML. Ancorado
+         embaixo para os fios de todas as abas caírem na mesma linha. */
+      .abas-onsen-fio { @apply absolute inset-x-2 bottom-1 h-[3px]; }
+      /* Duas faces no DOM, e não uma que troca de tinta: a do fio aberto é um gradiente de dez
+         paradas que só se reusa por composição. O rótulo não pode fazer o mesmo — o nome sairia
+         duplicado para quem lê por leitor de tela. */
+      .abas-onsen-fio-aberta { @apply hidden; }
+      .abas-onsen > .tab:has(input:checked) .abas-onsen-fio-repouso { @apply hidden; }
+      .abas-onsen > .tab:has(input:checked) .abas-onsen-fio-aberta { @apply block; }
+      /* Espelha o .etched-inked, que não se alcança por seletor a partir daqui. */
+      .abas-onsen > .tab:has(input:checked) .abas-onsen-rotulo {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      /* Só a aba fechada responde ao hover: na aberta ele lavaria a água do rótulo. */
+      .abas-onsen > .tab:not(:has(input:checked)):hover .abas-onsen-rotulo { @apply text-base-content/80; }
+      /* O foco de teclado é do rádio, que o daisyUI deixa invisível dentro do rótulo. */
+      .abas-onsen > .tab:has(input:focus-visible) {
+        @apply outline-2 outline-offset-[-5px] outline-agua-400/70;
+      }
+
+      /* ORGANISMO · FACE DA ABA. Quem mostra e esconde é o .tab-content do daisyUI; a face não
+         tem material próprio porque ela É a placa. A folga casa com a --tab-p da fita. */
+      .painel-face { @apply p-5 space-y-5; }
+      .painel-titulo    { @apply text-[24px] font-bold text-madeira-700 leading-tight; }
+      .painel-descricao { @apply text-[15px] text-base-content/90 leading-relaxed max-w-[70ch]; }
+      .painel-grupos    { @apply flex flex-col gap-4; }
+
+      /* MOLÉCULA · GRUPO DO PAINEL. Só o arranjo interno: o poço é o `.card-well`, composto no HTML,
+         e a grade de cartões é o `.menu-acoes-cartoes` que já existe. */
+      .grupo-painel { @apply flex flex-col gap-2 p-4; }
+      /* MOLÉCULA · ITENS AVULSOS DA ABA — fora de qualquer poço, acima ou abaixo dos grupos. */
+      .painel-avulsos { @apply flex flex-wrap items-center justify-center gap-4 py-1; }
+
+      /* .quadro-glifo — vitrine de EXPOSIÇÃO. Não é peça do projeto, não vai para o tema. */
+      .quadro-glifo { @apply p-5 flex flex-col items-center justify-center gap-3 text-center; }
+      /* A gravação que `.card-acao .icone-acao-acende` dá ao glifo, aqui fora do cartão. */
+      .demo-glifo-gravado { @apply text-agua-700/85; filter: url(#etched-onsen-lg); }
+      /* .demo-* — andaimes do mock. Também não vão para o tema. */
+      .demo-secao { @apply max-w-5xl mx-auto px-4 py-10 flex flex-col gap-5; }
+      .demo-rotulo { @apply text-[11px] uppercase tracking-[0.14em] font-medium text-rocha-700; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- defs da gravação (SPEC user_admin/013): sem eles .etched existe e não desenha nada. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sombraInterna"/><feMergeNode in="luzInterna"/></feMerge>
+      </filter>
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sombraInterna"/><feMergeNode in="luzInterna"/></feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Glifos das ações já desenhadas (static/src/acoes/**/icones/grande.svg) + os três novos. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="g-criar-servidor"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M18.5 6.5v5"/><path d="M16 9h5"/></g>
+      <g id="g-editar-servidor"><path d="M4 20.2h4L18.6 9.6a2.1 2.1 0 0 0-3-3L5 17.2v3z"/><path d="m14.4 7.8 3 3"/></g>
+      <g id="g-impedimento"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M9 14.5h6"/></g>
+      <g id="g-substituto"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/></g>
+      <g id="g-criar-unidade"><path d="M1.6 8 7.6 4l6 4z"/><path d="M4 9.8v7.6"/><path d="M7.6 9.8v7.6"/><path d="M11.2 9.8v7.6"/><path d="M2.6 17.4h10"/><path d="M1.6 20.4h12"/><path d="M18.9 15.4v5.2"/><path d="M16.3 18h5.2"/></g>
+      <g id="g-editar-unidade"><path d="M1.6 8 7.6 4l6 4z"/><path d="M4 9.8v7.6"/><path d="M7.6 9.8v7.6"/><path d="M11.2 9.8v7.6"/><path d="M2.6 17.4h10"/><path d="M1.6 20.4h12"/><path d="M15.4 20.7h1.8L22 15.8a1 1 0 0 0-1.4-1.4L15.9 19.3v1.4z"/></g>
+      <g id="g-unidade-raiz"><path d="M1.6 8 7.6 4l6 4z"/><path d="M4 9.8v7.6"/><path d="M7.6 9.8v7.6"/><path d="M11.2 9.8v7.6"/><path d="M2.6 17.4h10"/><path d="M1.6 20.4h12"/><path d="m18.4 15 1.1 2.2 2.5.36-1.8 1.75.42 2.47-2.22-1.17-2.22 1.17.43-2.47-1.8-1.75 2.48-.36z"/></g>
+      <g id="g-atribuicao"><rect x="2.5" y="7" width="19" height="13" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="M2.5 12.5h8"/><path d="M13.5 12.5h8"/><rect x="10.5" y="11" width="3" height="3" rx="0.75"/></g>
+      <g id="g-conceder"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></g>
+      <g id="g-administrador"><path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/><path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/></g>
+
+      <!-- novos: painel.meus_dados, painel.senha, painel.sair -->
+      <g id="g-meus-dados"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><circle cx="8.5" cy="10.5" r="2.2"/><path d="M5 16c0-1.9 1.6-3.2 3.5-3.2S12 14.1 12 16"/><path d="M15 9.5h4"/><path d="M15 13h4"/></g>
+      <g id="g-senha"><circle cx="7.5" cy="12" r="3.6"/><path d="M11.1 12H21"/><path d="M18.2 12v3.1"/><path d="M15.2 12v2.3"/></g>
+      <g id="g-sair"><path d="M14.5 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8"/><path d="m17.5 8.5 4 3.5-4 3.5"/><path d="M21.5 12H10"/></g>
+      <g id="g-lista-servidores"><circle cx="6.5" cy="7" r="2.3"/><path d="M3 12.2c0-1.9 1.6-3 3.5-3s3.5 1.1 3.5 3"/><path d="M13.5 6h7.5"/><path d="M13.5 9.5h5.5"/><path d="M3 16.5h18"/><path d="M3 20h12"/></g>
+      <g id="g-lista-unidades"><path d="M1.6 8 7.6 4l6 4z"/><path d="M4 9.8v7.6"/><path d="M7.6 9.8v7.6"/><path d="M11.2 9.8v7.6"/><path d="M2.6 17.4h10"/><path d="M1.6 20.4h12"/><path d="M16.5 10h5.5"/><path d="M16.5 14h5.5"/><path d="M16.5 18h5.5"/></g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10">
+
+    <header class="demo-secao">
+      <h1 class="text-[30px] font-black tracking-tight text-madeira-700">SPEC painel/001 — mock de validação</h1>
+      <p class="painel-descricao">Painel de ações por abas.</p>
+    </header>
+
+    <!-- ============================================================ -->
+    <!-- 2 · ÁTOMOS                                                    -->
+    <!-- ============================================================ -->
+    <section id="atomos" class="demo-secao">
+      <p class="demo-rotulo">2 · Átomos</p>
+
+      <!-- glifos novos, na medida grande do cartão -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Glifos novos · static/src/acoes/painel/&lt;nome&gt;/icones/grande.svg</p>
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-4">
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande icone-acao-acende demo-glifo-gravado"><svg viewBox="0 0 24 24"><use href="#g-meus-dados"/></svg></span>
+            <p class="text-code text-[12px]">painel.meus_dados</p>
+          </div>
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande icone-acao-acende demo-glifo-gravado"><svg viewBox="0 0 24 24"><use href="#g-senha"/></svg></span>
+            <p class="text-code text-[12px]">painel.senha</p>
+          </div>
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande icone-acao-acende demo-glifo-gravado"><svg viewBox="0 0 24 24"><use href="#g-sair"/></svg></span>
+            <p class="text-code text-[12px]">painel.sair</p>
+          </div>
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande icone-acao-acende demo-glifo-gravado"><svg viewBox="0 0 24 24"><use href="#g-lista-servidores"/></svg></span>
+            <p class="text-code text-[12px]">painel.lista_servidores</p>
+          </div>
+          <div class="card-well quadro-glifo">
+            <span class="icone-acao icone-acao-grande icone-acao-acende demo-glifo-gravado"><svg viewBox="0 0 24 24"><use href="#g-lista-unidades"/></svg></span>
+            <p class="text-code text-[12px]">painel.lista_unidades</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 3 · MOLÉCULAS                                                 -->
+    <!-- ============================================================ -->
+    <section id="moleculas" class="demo-secao">
+      <p class="demo-rotulo">3 · Moléculas</p>
+
+      <!-- .abas-onsen — fita e face na mesma placa; a aba aberta enche o fio de água -->
+      <div class="flex flex-col gap-4">
+        <p class="text-overline drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">.abas-onsen — a fita e a face são a mesma placa: a aba é rótulo e fio, gravados em repouso e cheios de água quando ela abre</p>
+        <div role="tablist" class="tabs glass-panel abas-onsen">
+          <label role="tab" class="tab">
+            <input type="radio" name="mol-abas" checked />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Minha conta</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <p class="text-[15px] text-base-content/80">A face da primeira aba — a mesma placa em que a fita está gravada, sem emenda entre as duas.</p>
+          </div>
+          <label role="tab" class="tab">
+            <input type="radio" name="mol-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Recursos Humanos</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <p class="text-[15px] text-base-content/80">A face da segunda aba.</p>
+          </div>
+          <label role="tab" class="tab">
+            <input type="radio" name="mol-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Estrutura Administrativa</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <p class="text-[15px] text-base-content/80">A face da terceira aba.</p>
+          </div>
+          <label role="tab" class="tab">
+            <input type="radio" name="mol-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Atribuições</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <p class="text-[15px] text-base-content/80">A face da quarta aba. Clique para trocar; Tab e as setas percorrem pelo teclado.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-col gap-5">
+        <p class="text-overline">.grupo-painel — cheio</p>
+        <!-- .card-well + .text-overline + .menu-acoes-cartoes: nada novo além do arranjo. -->
+        <div class="card-well grupo-painel">
+          <p class="text-overline">Servidores</p>
+          <div class="menu-acoes-cartoes">
+            <!-- ItemLivre: view aberta, some para ninguém -->
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-servidores"/></svg></span>
+                <div><p class="card-acao-nome">Lista de servidores</p><p class="card-acao-descricao">Todo o quadro, filtrável por unidade, cargo e situação.</p></div>
+              </div>
+              <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-servidor"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Cadastrar servidor</p>
+                  <p class="card-acao-descricao">Cadastra um servidor e entrega a ele a senha de primeiro acesso.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-servidor"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Editar cadastro de servidor</p>
+                  <p class="card-acao-descricao">Altera identificação, lotação, cargos e foto de um servidor.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+            </a>
+          </div>
+        </div>
+
+        <p class="text-overline">.grupo-painel — um cartão só</p>
+        <div class="card-well grupo-painel">
+          <p class="text-overline">Meus dados</p>
+          <div class="menu-acoes-cartoes">
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-meus-dados"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Meus dados</p>
+                  <p class="card-acao-descricao">Sua identificação, lotação e cargos, como o sistema os registra.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+            </a>
+          </div>
+        </div>
+
+        <p class="text-overline">.painel-avulsos — o item fora de qualquer poço, com template próprio</p>
+        <div class="painel-avulsos">
+          <form method="post" action="#">
+            <button type="submit" class="btn-etched btn-etched-swell etched">Encerrar sessão</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 4 · ORGANISMOS                                                -->
+    <!-- ============================================================ -->
+    <section id="organismos" class="demo-secao">
+      <p class="demo-rotulo">4 · Organismos</p>
+
+      <p class="text-overline drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">.painel-face — o corpo da aba: título, descrição, grupos e avulsos</p>
+      <div role="tablist" class="tabs glass-panel abas-onsen">
+          <label role="tab" class="tab">
+            <input type="radio" name="org-abas" checked />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Minha conta</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Minha conta</h2>
+              <p class="painel-descricao">Seus dados de acesso e identificação no sistema. Não são atos administrativos: estão disponíveis para todo servidor autenticado, qualquer que seja o cargo ou a unidade.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Meus dados</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-meus-dados"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Meus dados</p>
+                        <p class="card-acao-descricao">Sua identificação, lotação e cargos, como o sistema os registra.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Senha</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-senha"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Alterar senha</p>
+                        <p class="card-acao-descricao">Troca a senha de acesso, informando a atual.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div class="painel-avulsos">
+              <!-- partial: painel/partials/_botao_sair.html — o item avulso com template próprio -->
+              <form method="post" action="#">
+                <button type="submit" class="btn-etched btn-etched-swell etched">Encerrar sessão</button>
+              </form>
+            </div>
+          </div>
+
+          <label role="tab" class="tab">
+            <input type="radio" name="org-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Recursos Humanos</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Recursos Humanos</h2>
+              <p class="painel-descricao">O quadro de pessoal da DIMAP: quem está cadastrado, onde está lotado e quais cargos ocupa — e quem está afastado ou respondendo pelo cargo de outro. Alcança as unidades que você dirige e as subordinadas a elas.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Servidores</p>
+                <div class="menu-acoes-cartoes">
+                  <!-- ItemLivre: view aberta, some para ninguém -->
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-servidores"/></svg></span>
+                      <div><p class="card-acao-nome">Lista de servidores</p><p class="card-acao-descricao">Todo o quadro, filtrável por unidade, cargo e situação.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-servidor"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Cadastrar servidor</p>
+                        <p class="card-acao-descricao">Cadastra um servidor e entrega a ele a senha de primeiro acesso.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-servidor"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Editar cadastro de servidor</p>
+                        <p class="card-acao-descricao">Altera identificação, lotação, cargos e foto de um servidor.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Impedimentos e Substituições</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-impedimento"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Registrar impedimento de servidor</p>
+                        <p class="card-acao-descricao">Registra o impedimento que tira um servidor do exercício — e o devolve antes do prazo.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-substituto"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Designar substituto</p>
+                        <p class="card-acao-descricao">Designa quem responde pelo cargo de um servidor impedido — troca e encerra a cobertura.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 5 · TELA MONTADA                                              -->
+    <!-- ============================================================ -->
+    <section id="tela" class="demo-secao">
+      <p class="demo-rotulo">5 · Tela montada</p>
+
+      <!-- ---------------------------------------------------------- -->
+      <!-- estado: superusuário — nada some                            -->
+      <!-- ---------------------------------------------------------- -->
+      <p class="text-overline drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">estado: superusuário — todas as abas, todos os grupos</p>
+
+      <!-- página: painel/painel.html -->
+      <div class="flex flex-col gap-6">
+
+        <!-- fica na página: o cabeçalho de quem está na sessão, nunca trocado sozinho -->
+        <div class="flex flex-col gap-1 px-1">
+          <p class="text-overline drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">Área do usuário</p>
+          <p class="text-[18px] font-bold text-rocha-950 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">Ana Ribeiro · DIMAP</p>
+        </div>
+
+        <!-- partial: painel/partials/_abas.html -->
+        <div role="tablist" class="tabs glass-panel abas-onsen">
+
+          <label role="tab" class="tab">
+            <input type="radio" name="su-abas" checked />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Minha conta</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <!-- partial: painel/partials/_face_aba.html — um por aba resolvida -->
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Minha conta</h2>
+              <p class="painel-descricao">Seus dados de acesso e identificação no sistema. Não são atos administrativos: estão disponíveis para todo servidor autenticado, qualquer que seja o cargo ou a unidade.</p>
+            </div>
+            <div class="painel-grupos">
+              <!-- partial: painel/partials/_grupo.html -->
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Meus dados</p>
+                <div class="menu-acoes-cartoes">
+                  <!-- partial: painel/partials/_card_item.html — o padrão de todo item -->
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-meus-dados"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Meus dados</p>
+                        <p class="card-acao-descricao">Sua identificação, lotação e cargos, como o sistema os registra.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <!-- /partial -->
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Senha</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-senha"/></svg></span>
+                      <div>
+                        <p class="card-acao-nome">Alterar senha</p>
+                        <p class="card-acao-descricao">Troca a senha de acesso, informando a atual.</p>
+                      </div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <!-- /partial -->
+            </div>
+            <div class="painel-avulsos">
+              <!-- partial: painel/partials/_botao_sair.html — o item avulso com template próprio -->
+              <form method="post" action="#">
+                <button type="submit" class="btn-etched btn-etched-swell etched">Encerrar sessão</button>
+              </form>
+              <!-- /partial -->
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <label role="tab" class="tab">
+            <input type="radio" name="su-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Recursos Humanos</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Recursos Humanos</h2>
+              <p class="painel-descricao">O quadro de pessoal da DIMAP: quem está cadastrado, onde está lotado e quais cargos ocupa — e quem está afastado ou respondendo pelo cargo de outro. Alcança as unidades que você dirige e as subordinadas a elas.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Servidores</p>
+                <div class="menu-acoes-cartoes">
+                  <!-- ItemLivre: view aberta, some para ninguém -->
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-servidores"/></svg></span>
+                      <div><p class="card-acao-nome">Lista de servidores</p><p class="card-acao-descricao">Todo o quadro, filtrável por unidade, cargo e situação.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <!-- reuso: competencias/partials/_card_acao.html (SPEC autorizacao/006) -->
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-servidor"/></svg></span>
+                      <div><p class="card-acao-nome">Cadastrar servidor</p><p class="card-acao-descricao">Cadastra um servidor e entrega a ele a senha de primeiro acesso.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-servidor"/></svg></span>
+                      <div><p class="card-acao-nome">Editar cadastro de servidor</p><p class="card-acao-descricao">Altera identificação, lotação, cargos e foto de um servidor.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Impedimentos e Substituições</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-impedimento"/></svg></span>
+                      <div><p class="card-acao-nome">Registrar impedimento de servidor</p><p class="card-acao-descricao">Registra o impedimento que tira um servidor do exercício — e o devolve antes do prazo.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-substituto"/></svg></span>
+                      <div><p class="card-acao-nome">Designar substituto</p><p class="card-acao-descricao">Designa quem responde pelo cargo de um servidor impedido — troca e encerra a cobertura.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <label role="tab" class="tab">
+            <input type="radio" name="su-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Estrutura Administrativa</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Estrutura Administrativa</h2>
+              <p class="painel-descricao">A forma da DIMAP: as unidades que a compõem, como se subordinam, os cargos em comissão que existem e quem responde pela direção de cada uma.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Organograma</p>
+                <div class="menu-acoes-cartoes">
+                  <!-- ItemLivre: view aberta, some para ninguém -->
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-unidades"/></svg></span>
+                      <div><p class="card-acao-nome">Ver o organograma</p><p class="card-acao-descricao">A árvore de unidades e a tabela filtrável que a acompanha.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-unidade"/></svg></span>
+                      <div><p class="card-acao-nome">Cadastrar unidade</p><p class="card-acao-descricao">Cria uma unidade abaixo de outra que você dirige.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-unidade"/></svg></span>
+                      <div><p class="card-acao-nome">Editar unidade</p><p class="card-acao-descricao">Altera nome, sigla, tipo e unidade superior de uma unidade.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-unidade-raiz"/></svg></span>
+                      <div><p class="card-acao-nome">Criar unidade raiz</p><p class="card-acao-descricao">Cria a unidade de topo de um organograma, que não responde a nenhuma outra.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <!-- estado de falta: "Cargos em Comissão" não tem ação inscrita e o grupo não é renderizado -->
+            </div>
+          </div>
+
+          <label role="tab" class="tab">
+            <input type="radio" name="su-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Atribuições</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Atribuições e Competências</h2>
+              <p class="painel-descricao">Quem pode praticar cada ato administrativo. Primeiro a unidade recebe a atribuição da ação; depois a competência é distribuída entre os cargos que a exercem, e pode ser delegada nominalmente a um servidor.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Atribuições das unidades</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-atribuicao"/></svg></span>
+                      <div><p class="card-acao-nome">Definir atribuições da unidade</p><p class="card-acao-descricao">Define quais ações a unidade exerce.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Competências e Delegações</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-conceder"/></svg></span>
+                      <div><p class="card-acao-nome">Conceder competência</p><p class="card-acao-descricao">Distribui as atribuições da unidade entre os cargos.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Administração do Sistema</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-administrador"/></svg></span>
+                      <div><p class="card-acao-nome">Tornar administrador</p><p class="card-acao-descricao">Torna um servidor administrador do sistema — e desfaz.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- /partial -->
+        </div>
+      </div>
+
+      <!-- ---------------------------------------------------------- -->
+      <!-- estado: chefe de unidade — a cascata corta grupo e aba      -->
+      <!-- ---------------------------------------------------------- -->
+      <p class="text-overline mt-6 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">estado: chefe de unidade — sem "Administração do Sistema", sem "Criar unidade raiz"</p>
+
+      <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-1 px-1">
+          <p class="text-overline drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">Área do usuário</p>
+          <p class="text-[18px] font-bold text-rocha-950 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">Carlos Menezes · DIMAP-1</p>
+        </div>
+
+        <div role="tablist" class="tabs glass-panel abas-onsen">
+          <label role="tab" class="tab">
+            <input type="radio" name="ch-abas" checked />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Minha conta</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Minha conta</h2>
+              <p class="painel-descricao">Seus dados de acesso e identificação no sistema. Não são atos administrativos: estão disponíveis para todo servidor autenticado, qualquer que seja o cargo ou a unidade.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Meus dados</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-meus-dados"/></svg></span>
+                      <div><p class="card-acao-nome">Meus dados</p><p class="card-acao-descricao">Sua identificação, lotação e cargos, como o sistema os registra.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Senha</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-senha"/></svg></span>
+                      <div><p class="card-acao-nome">Alterar senha</p><p class="card-acao-descricao">Troca a senha de acesso, informando a atual.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div class="painel-avulsos">
+              <!-- partial: painel/partials/_botao_sair.html — o item avulso com template próprio -->
+              <form method="post" action="#">
+                <button type="submit" class="btn-etched btn-etched-swell etched">Encerrar sessão</button>
+              </form>
+            </div>
+          </div>
+
+          <label role="tab" class="tab">
+            <input type="radio" name="ch-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Recursos Humanos</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Recursos Humanos</h2>
+              <p class="painel-descricao">O quadro de pessoal da DIMAP: quem está cadastrado, onde está lotado e quais cargos ocupa — e quem está afastado ou respondendo pelo cargo de outro. Alcança as unidades que você dirige e as subordinadas a elas.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Servidores</p>
+                <div class="menu-acoes-cartoes">
+                  <!-- ItemLivre: view aberta, some para ninguém -->
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-servidores"/></svg></span>
+                      <div><p class="card-acao-nome">Lista de servidores</p><p class="card-acao-descricao">Todo o quadro, filtrável por unidade, cargo e situação.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-servidor"/></svg></span>
+                      <div><p class="card-acao-nome">Cadastrar servidor</p><p class="card-acao-descricao">Cadastra um servidor e entrega a ele a senha de primeiro acesso.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-servidor"/></svg></span>
+                      <div><p class="card-acao-nome">Editar cadastro de servidor</p><p class="card-acao-descricao">Altera identificação, lotação, cargos e foto de um servidor.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Impedimentos e Substituições</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-impedimento"/></svg></span>
+                      <div><p class="card-acao-nome">Registrar impedimento de servidor</p><p class="card-acao-descricao">Registra o impedimento que tira um servidor do exercício — e o devolve antes do prazo.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-substituto"/></svg></span>
+                      <div><p class="card-acao-nome">Designar substituto</p><p class="card-acao-descricao">Designa quem responde pelo cargo de um servidor impedido — troca e encerra a cobertura.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <label role="tab" class="tab">
+            <input type="radio" name="ch-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Estrutura Administrativa</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Estrutura Administrativa</h2>
+              <p class="painel-descricao">A forma da DIMAP: as unidades que a compõem, como se subordinam, os cargos em comissão que existem e quem responde pela direção de cada uma.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Organograma</p>
+                <div class="menu-acoes-cartoes">
+                  <!-- ItemLivre: view aberta, some para ninguém -->
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-unidades"/></svg></span>
+                      <div><p class="card-acao-nome">Ver o organograma</p><p class="card-acao-descricao">A árvore de unidades e a tabela filtrável que a acompanha.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-unidade"/></svg></span>
+                      <div><p class="card-acao-nome">Cadastrar unidade</p><p class="card-acao-descricao">Cria uma unidade abaixo de outra que você dirige.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-unidade"/></svg></span>
+                      <div><p class="card-acao-nome">Editar unidade</p><p class="card-acao-descricao">Altera nome, sigla, tipo e unidade superior de uma unidade.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <label role="tab" class="tab">
+            <input type="radio" name="ch-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Atribuições</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Atribuições e Competências</h2>
+              <p class="painel-descricao">Quem pode praticar cada ato administrativo. Primeiro a unidade recebe a atribuição da ação; depois a competência é distribuída entre os cargos que a exercem, e pode ser delegada nominalmente a um servidor.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Atribuições das unidades</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-atribuicao"/></svg></span>
+                      <div><p class="card-acao-nome">Definir atribuições da unidade</p><p class="card-acao-descricao">Define quais ações a unidade exerce.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Competências e Delegações</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-conceder"/></svg></span>
+                      <div><p class="card-acao-nome">Conceder competência</p><p class="card-acao-descricao">Distribui as atribuições da unidade entre os cargos.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------------------------------------------------------- -->
+      <!-- estado de falta: nenhuma caneta — só a aba básica sobra     -->
+      <!-- ---------------------------------------------------------- -->
+      <p class="text-overline mt-6 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">estado de falta: servidor sem caneta alguma — sobram a aba básica e o que é leitura aberta; "Atribuições" some inteira</p>
+
+      <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-1 px-1">
+          <p class="text-overline drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">Área do usuário</p>
+          <p class="text-[18px] font-bold text-rocha-950 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">Marina Duarte · DIMAP-3</p>
+        </div>
+
+        <div role="tablist" class="tabs glass-panel abas-onsen">
+          <label role="tab" class="tab">
+            <input type="radio" name="sc-abas" checked />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Minha conta</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Minha conta</h2>
+              <p class="painel-descricao">Seus dados de acesso e identificação no sistema. Não são atos administrativos: estão disponíveis para todo servidor autenticado, qualquer que seja o cargo ou a unidade.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Meus dados</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-meus-dados"/></svg></span>
+                      <div><p class="card-acao-nome">Meus dados</p><p class="card-acao-descricao">Sua identificação, lotação e cargos, como o sistema os registra.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Senha</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-senha"/></svg></span>
+                      <div><p class="card-acao-nome">Alterar senha</p><p class="card-acao-descricao">Troca a senha de acesso, informando a atual.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div class="painel-avulsos">
+              <!-- partial: painel/partials/_botao_sair.html — o item avulso com template próprio -->
+              <form method="post" action="#">
+                <button type="submit" class="btn-etched btn-etched-swell etched">Encerrar sessão</button>
+              </form>
+            </div>
+          </div>
+
+          <label role="tab" class="tab">
+            <input type="radio" name="sc-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Recursos Humanos</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Recursos Humanos</h2>
+              <p class="painel-descricao">O quadro de pessoal da DIMAP: quem está cadastrado, onde está lotado e quais cargos ocupa — e quem está afastado ou respondendo pelo cargo de outro. Alcança as unidades que você dirige e as subordinadas a elas.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Servidores</p>
+                <div class="menu-acoes-cartoes">
+                  <!-- os atos deste grupo sumiram; o item livre segurou o grupo de pé -->
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-servidores"/></svg></span>
+                      <div><p class="card-acao-nome">Lista de servidores</p><p class="card-acao-descricao">Todo o quadro, filtrável por unidade, cargo e situação.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <label role="tab" class="tab">
+            <input type="radio" name="sc-abas" />
+            <span class="abas-onsen-rotulo etched etched-rotulo">Estrutura Administrativa</span>
+            <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+            <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+          </label>
+          <div role="tabpanel" class="tab-content painel-face">
+            <div>
+              <h2 class="painel-titulo">Estrutura Administrativa</h2>
+              <p class="painel-descricao">A forma da DIMAP: as unidades que a compõem, como se subordinam, os cargos em comissão que existem e quem responde pela direção de cada uma.</p>
+            </div>
+            <div class="painel-grupos">
+              <div class="card-well grupo-painel">
+                <p class="text-overline">Organograma</p>
+                <div class="menu-acoes-cartoes">
+                  <a href="#" class="hover-3d card-acao-alvo">
+                    <div class="glass-bg glass-edge glass-shadow card-acao">
+                      <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-unidades"/></svg></span>
+                      <div><p class="card-acao-nome">Ver o organograma</p><p class="card-acao-descricao">A árvore de unidades e a tabela filtrável que a acompanha.</p></div>
+                    </div>
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <div class="h-16"></div>
+  </div>
+
+</body>
+</html>

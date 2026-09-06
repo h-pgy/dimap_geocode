@@ -1,0 +1,22 @@
+{# Cartão de uma atribuição (SPEC autorizacao/007): quantos cargos exercem, nunca quais — quem      #}
+{# exerce se distribui em "Conceder competência" (SPEC 008), que compõe a mesma `.card-atribuicao`. #}
+{% load icones %}
+{% icone_acao item.acao.slug item.variante_icone as svg %}
+<div class="card-atribuicao">
+  <div class="card-atribuicao-cabeca">
+    <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5">{{ svg|safe }}</span>
+    <div class="flex-1 min-w-0">
+      <p class="card-atribuicao-nome">{{ item.acao.nome }}</p>
+      <p class="{% if item.vazio %}card-atribuicao-vazio{% else %}card-atribuicao-descricao{% endif %}">{{ item.descricao }}</p>
+    </div>
+    <button type="button"
+            class="btn btn-glass btn-xs btn-circle"
+            aria-label="Retirar atribuição"
+            hx-get="{% url 'competencias:confirmar_remocao' %}"
+            hx-vals='{"unidade": "{{ unidade_alvo.pk }}", "acao": "{{ item.acao.slug }}"}'
+            hx-target="#poco-modal-remover"
+            hx-swap="innerHTML settle:150ms">
+      <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+    </button>
+  </div>
+</div>

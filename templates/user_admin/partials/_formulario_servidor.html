@@ -1,0 +1,41 @@
+{# Alvo do hx-post de gravar (SPEC criacao_usuarios/004): a recusa devolve este mesmo partial       #}
+{# preenchido, com o motivo na tarja; o sucesso troca o formulário inteiro pelo painel de conclusão #}
+{# (_cadastro_concluido.html), no mesmo alvo. hx-encoding: sem isto a foto não sobe — o HTMX manda  #}
+{# urlencoded por padrão.                                                                           #}
+<form id="form-servidor"
+      hx-post="{% url 'user_admin:gravar_servidor' %}"
+      hx-encoding="multipart/form-data"
+      hx-target="#form-servidor"
+      hx-swap="outerHTML"
+      class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Novo servidor</h1>
+    <p class="text-sm text-base-content/70 mt-1">O cadastro registra a competência administrativa: cargo e unidade definem o que a pessoa poderá praticar.</p>
+  </div>
+
+  {% include "partials/_tarja_recusa.html" with titulo="Cadastro não concluído" %}
+
+  {% include "user_admin/partials/_secao_identificacao.html" %}
+  {% if unidades %}
+    {% include "user_admin/partials/_secao_lotacao.html" %}
+  {% else %}
+    {# Sem unidade alcançada não há onde lotar: dizer isso é melhor do que oferecer lista vazia. #}
+    <div class="card-well p-5 flex flex-col gap-4">
+      <p class="text-overline">Lotação</p>
+      <div class="form-field">
+        <span class="text-overline">Unidade</span>
+        <p class="text-[15px] text-base-content/60 py-1.5">— nenhuma unidade ao seu alcance —</p>
+        <span class="form-field-hint">Você exerce a ação, mas não responde pela direção de unidade alguma. Peça a quem dirige.</span>
+      </div>
+    </div>
+  {% endif %}
+  {% if pode_administrador %}
+    {% include "user_admin/partials/_campo_administrador.html" with prefixo="cad" %}
+  {% endif %}
+  {% include "user_admin/partials/_campo_upload_foto.html" %}
+
+  <div class="flex justify-end gap-3 pt-1">
+    <a href="{% url 'user_admin:listar_servidores' %}" class="btn btn-ghost btn-glass">Cancelar</a>
+    <button type="submit" class="btn btn-onsen"{% if not unidades %} disabled{% endif %}>Salvar servidor</button>
+  </div>
+</form>

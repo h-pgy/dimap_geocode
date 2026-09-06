@@ -77,7 +77,14 @@
     "error-content": "#FEF2F2",
     "radius-selector": "1rem",
     "radius-field": "0.5rem",
-    "radius-box": "1rem"
+    "radius-box": "1rem",
+    "radius-placa": "0.625rem"
+  },
+  "profundidade": {
+    "descricao": "Tokens de poço do design system (SPEC design/006): a profundidade é uma só, e toda peça rebaixada bebe daqui. O segundo inset é o labio de luz na aresta de baixo — sem ele a sombra afunda a peca sem desenhar a quina.",
+    "sombra-poco": "inset 0 2px 7px rgba(7, 58, 84, 0.38), inset 0 -1px 0 rgba(255, 255, 255, 0.8)",
+    "sombra-poco-fina": "inset 0 1px 3px rgba(7, 58, 84, 0.3), inset 0 -1px 0 rgba(255, 255, 255, 0.7)",
+    "sombra-escavado": "inset 0 2px 7px rgba(7, 58, 84, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.75)"
   },
   "geometrias": {
     "descricao": "Cores default por tipo de geometria das camadas do mapa.",

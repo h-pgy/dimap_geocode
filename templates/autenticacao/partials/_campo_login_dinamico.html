@@ -1,0 +1,52 @@
+{# Molécula: o estado resolvido do RF (SPEC autenticacao/001) — botão de aura para o primeiro    #}
+{# acesso, ou o campo de senha padrão. RF inexistente cai no mesmo ramo do RF já ativo (anti-     #}
+{# enumeração, SPEC Caveats).                                                                     #}
+{% if estado.eh_primeiro_login %}
+  <div class="card-well p-3.5 bg-agua-50/70 border-agua-200 text-xs text-agua-900 leading-relaxed rounded-lg">
+    Detectamos que este é o seu <strong>primeiro acesso</strong>. Confirme sua senha de uso único recebida no e-mail institucional.
+  </div>
+  <div class="aura aura-onsen w-full">
+    <a href="{% url 'autenticacao:primeiro_login' %}?rf={{ estado.rf }}"
+       class="btn btn-onsen w-full gap-2 text-base font-bold shadow-md">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      Primeiro Login
+    </a>
+  </div>
+  {# O RF já resolvido viaja na query string, no mesmo molde do "Esqueci minha senha" do ramo de #}
+  {# senha: a tela de recuperação precisa dele para saber para qual e-mail o reenvio vai.        #}
+  <a href="{% url 'autenticacao:esqueci_senha' %}?rf={{ estado.rf }}"
+     class="btn-etched btn-etched-swell etched self-center">
+    Reenviar senha de uso único
+  </a>
+{% else %}
+  <div class="form-control gap-1">
+    <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>
+    <div class="input-olhinho-wrap">
+      <input type="password" name="password" id="login-senha" class="input input-glass pr-10 w-full" placeholder="••••••••" autofocus />
+      <button type="button" class="input-olhinho-btn" data-olhinho-alvo="#login-senha">
+        <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+        <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+        </svg>
+      </button>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-onsen w-full text-base font-bold shadow-md">Entrar</button>
+  {# O RF já resolvido viaja na query string: a tela de recuperação precisa dele para dizer para #}
+  {# qual e-mail o link vai.                                                                    #}
+  <a href="{% url 'autenticacao:esqueci_senha' %}?rf={{ estado.rf }}"
+     class="btn-etched btn-etched-swell etched self-center">
+    Esqueci minha senha
+  </a>
+  {% if estado.recuperacao_em_aberto %}
+    <div class="alert alert-info alert-soft text-xs">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <span>Já pedimos uma redefinição de senha para este RF: o link está no seu e-mail institucional.</span>
+    </div>
+  {% endif %}
+{% endif %}

@@ -1,0 +1,21 @@
+{# Modal de registrar impedimento da página do servidor (SPEC user_admin/015, ato na 023). Chega   #}
+{# por rota protegida com o toggle já marcado: abrir é chegar, fechar é o <label> desmarcando, sem #}
+{# JS de estado. O formulário é a face compartilhada com a rota direta.                             #}
+<input type="checkbox" id="modal-impedimento" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+    <div class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-xl font-bold tracking-tight text-madeira-700">Registrar impedimento</h2>
+        <p class="text-sm text-base-content/70 mt-1">{{ perfil.nome }} {{ perfil.sobrenome }} · {{ perfil.unidade.sigla }}</p>
+      </div>
+
+      {% include "user_admin/partials/_form_impedimento.html" %}
+
+      <div class="modal-action">
+        <label for="modal-impedimento" class="btn btn-glass btn-sm">Cancelar</label>
+      </div>
+    </div>
+  </div>
+  <label class="modal-backdrop" for="modal-impedimento">Fechar</label>
+</div>

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Painel · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-5xl mx-auto px-4 py-24 flex flex-col gap-6">
+      {# Texto direto sobre o fundo à deriva não sustenta contraste — o vidro é quem garante a      #}
+      {# leitura, como no widget do topo (base.html). Mesma largura da fita de abas logo abaixo:    #}
+      {# os dois são filhos do mesmo container em coluna, que os estica por igual.                  #}
+      <div class="glass-panel px-5 py-3 flex flex-col gap-0.5">
+        <p class="text-overline">Área do usuário</p>
+        <p class="text-[18px] font-bold text-rocha-950">
+          {{ request.user.nome }} {{ request.user.sobrenome }} · {{ request.user.unidade.sigla|default:"DIMAP" }}
+        </p>
+      </div>
+
+      {% include "painel/partials/_abas.html" %}
+    </div>
+  </div>
+
+  {# Poço do modal, irmão do conteúdo: alvo do hx-get dos cards cujo ato abre um modal            #}
+  {# (`painel/partials/_card_item_modal.html`) — mesma porta que `unidades_list.html` já usa.      #}
+  <div id="poco-modal" class="poco-modal"></div>
+{% endblock %}
+
+{% block scripts %}
+  {# Os modais de "Tornar administrador", "Registrar impedimento" e "Designar substituto" chegam  #}
+  {# por HTMX: sem este módulo já carregado, o select deles não é aprimorado — select_onsen.js     #}
+  {# reage a htmx:afterSwap (SPEC user_admin/011).                                                 #}
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/campo_data.js' %}"></script>
+{% endblock %}

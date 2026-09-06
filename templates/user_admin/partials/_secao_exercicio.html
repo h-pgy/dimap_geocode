@@ -1,0 +1,105 @@
+{# Seção de exercício e substituição (SPEC user_admin/015) — irmã de Identificação e Lotação, no    #}
+{# mesmo poço. Lista os impedimentos EM ABERTO (o vigente e os que vêm), cada um num cartão com o   #}
+{# afastamento e a agenda dele. É leitura: os atos gravam pelos diálogos, cujo submit ainda não tem #}
+{# destino — as rotas nascem protegidas no épico de ações (§3.5).                                   #}
+<div class="card-well p-5 flex flex-col gap-4">
+  <div class="flex items-center justify-between gap-4">
+    <p class="text-overline">Exercício</p>
+    <span class="badge {{ exercicio.selo.classe }} badge-soft">{{ exercicio.selo.rotulo }}</span>
+  </div>
+
+  {% if exercicio.exonerado %}
+    {# Não se afasta quem já não está: a cadeira do exonerado não é coberta, é preenchida —       #}
+    {# lotação e titularidade, não substituição. Reintegrar (SPEC user_admin/027) é o único ato   #}
+    {# desta seção que resta a quem não integra mais o quadro.                                    #}
+    <p class="text-[15px] text-base-content/90">{{ perfil.nome }} {{ perfil.sobrenome }} não integra mais o quadro da DIMAP.</p>
+    <p class="text-[13px] text-base-content/70">
+      Sem impedimento, sem substituto e sem caminho para designar um.
+    </p>
+    {% if pode_reintegrar %}
+      <div class="chamada-ato">
+        <button type="button"
+                hx-get="{% url 'user_admin:modal_exonerar_servidor' %}?servidor={{ perfil.pk }}"
+                hx-target="#poco-modal"
+                hx-swap="innerHTML settle:150ms"
+                class="btn btn-onsen btn-sm gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reintegrar"/></svg>
+          Reintegrar servidor
+        </button>
+      </div>
+    {% endif %}
+  {% else %}
+    {# Reflexo da SPEC 016: quando o afastado é o titular e não há substituto em exercício, a #}
+    {# unidade fica sem direção — e é aqui, na página de quem a causa, que isso se cobra. #}
+    {% if exercicio.alarme_sem_direcao %}
+      {% include "unidades/partials/_alarme_direcao.html" with titulo=exercicio.alarme_sem_direcao %}
+    {% endif %}
+
+    {% for cartao in exercicio.cartoes %}
+      {% include "user_admin/partials/_cartao_impedimento.html" %}
+    {% empty %}
+      <p class="text-[15px] text-base-content/90">Sem impedimento registrado.</p>
+    {% endfor %}
+
+    {% if exercicio.substituindo %}
+      {# O outro lado do mesmo registro: aqui não há afastamento próprio a mostrar, e o período #}
+      {# aparece duas vezes de propósito — o da substituição obriga, o do afastamento explica.  #}
+      <div class="glass-panel p-4">
+        <div class="card-well p-4 flex flex-col gap-2">
+          <p class="text-overline">Substituindo</p>
+          <div class="linha-pessoa">
+            {% include "user_admin/partials/_imagem_perfil.html" with perfil=exercicio.substituindo.perfil imagem=exercicio.substituindo.imagem cor_unidade_hex=exercicio.substituindo.cor_unidade_hex tamanho="w-10 h-10" halo_escala="0.5" %}
+            <div class="min-w-0">
+              <p class="linha-pessoa-nome">{{ exercicio.substituindo.perfil.nome }} {{ exercicio.substituindo.perfil.sobrenome }}</p>
+              <p class="linha-pessoa-meta">
+                {% if exercicio.substituindo.perfil.cargo_comissao %}{{ exercicio.substituindo.perfil.cargo_comissao.padrao }} · {{ exercicio.substituindo.perfil.cargo_comissao.nome }} · {% endif %}{{ exercicio.substituindo.periodo }}, dentro do afastamento {{ exercicio.substituindo.periodo_do_afastamento }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {# Os botões abrem ROTA, e não um checkbox (SPEC user_admin/023): é a rota protegida que monta #}
+    {# o modal, e ela não monta para quem não exerce a ação sobre este servidor. O gesto crítico   #}
+    {# (SPEC user_admin/027) fica separado dos demais por um fio, à direita (.chamada-ato-critica). #}
+    {% if pode_registrar_impedimento or pode_exonerar %}
+      <div class="chamada-ato">
+        {% if pode_registrar_impedimento %}
+          <button type="button"
+                  hx-get="{% url 'user_admin:modal_impedimento' perfil.pk %}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms"
+                  class="btn btn-glass btn-sm gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            Registrar impedimento
+          </button>
+          {# Voltar ao exercício é da PESSOA, não de um impedimento: por isso fica no rodapé da seção, #}
+          {# fora dos cartões, e encerra o que está valendo hoje.                                     #}
+          {% if exercicio.impedido %}
+            <button type="button"
+                    hx-get="{% url 'user_admin:modal_retorno' perfil.pk %}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms"
+                    class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              {% if retorno_eh_revogacao %}Revogar impedimento{% else %}Voltar ao exercício{% endif %}
+            </button>
+          {% endif %}
+        {% endif %}
+        {% if pode_exonerar %}
+          <span class="chamada-ato-critica">
+            <button type="button"
+                    hx-get="{% url 'user_admin:modal_exonerar_servidor' %}?servidor={{ perfil.pk }}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms"
+                    class="btn btn-error btn-soft btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-exonerar"/></svg>
+              Exonerar servidor
+            </button>
+          </span>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% endif %}
+</div>

@@ -1,6 +1,43 @@
 # syntax=docker/dockerfile:1
 # O build roda com o contexto na RAIZ (ver docker-compose.yml).
 
+# --- CSS (Tailwind 4 + daisyUI 5). Node é ferramenta de build: não sobra na imagem final. ---
+
+FROM node:24-alpine AS css-deps
+
+# As dependências ficam FORA de /app pelo mesmo motivo do venv em /opt/venv mais abaixo:
+# o bind mount do código em desenvolvimento esconderia /app/node_modules.
+ENV NODE_PATH=/opt/node/node_modules \
+    PATH=/opt/node/node_modules/.bin:$PATH
+
+WORKDIR /opt/node
+# `npm ci` exige o lock e nunca o reescreve: a falha de instalação acontece aqui, no build da
+# imagem, e não no meio de uma subida do compose.
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+WORKDIR /app
+
+# Alvo do serviço `tailwind` do compose: watch sobre o bind mount.
+FROM css-deps AS css-watch
+# Bind mount grava no host o uid cru do processo, sem tradução: rodar como `node` (uid 1000 na
+# imagem oficial) é o que impede o output.css de nascer pertencendo a root.
+USER node
+# --watch=always: o watch comum encerra quando o stdin fecha, que é o caso de container sem tty.
+CMD ["tailwindcss", "-i", "static/src/input.css", "-o", "static/dist/output.css", "--watch=always"]
+
+# Assa o CSS minificado para a imagem final.
+FROM css-deps AS css-build
+# Exatamente as pastas do @source do input.css, e só elas: esquecer uma aqui faria produção
+# compilar menos classes que desenvolvimento.
+COPY static ./static
+COPY templates ./templates
+COPY apps ./apps
+COPY services/utils/erros_formulario ./services/utils/erros_formulario
+RUN tailwindcss -i static/src/input.css -o static/dist/output.css --minify
+
+# --- Aplicação ---
+
 # Debian (trixie) pina as versões de GEOS, GDAL e PROJ — dependências de sistema
 # do GeoDjango que NÃO podem ser instaladas via uv/pip.
 FROM python:3.14-slim-trixie
@@ -37,6 +74,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Código da aplicação (em dev é sobreposto pelo bind mount do compose).
 COPY . .
+# O .dockerignore exclui static/dist, então nada do host atropela o CSS assado acima.
+COPY --from=css-build /app/static/dist/output.css static/dist/output.css
 # --- Fim da base comum. Daqui pra baixo é só do web. ---
 
 # Entrypoint: roda migrações e repassa o controle ao CMD/command (fica em /

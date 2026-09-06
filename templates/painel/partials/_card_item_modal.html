@@ -1,0 +1,21 @@
+{# O mesmo cartão de `_card_item.html`, mas para o ato cujo `url_name` abre um MODAL (fragmento sem #}
+{# `{% extends "base.html" %}`) — não uma tela: `<a href>` navegaria para o fragmento cru, sem CSS  #}
+{# nem HTMX. O gatilho é `hx-get` para `#poco-modal`, a mesma porta que a tela de origem do modal já #}
+{# usa (ex.: `unidades/partials/_barra_acoes_unidades.html`).                                        #}
+{% load icones %}
+{% icone_acao item.slug item.variante_icone as svg %}
+<button type="button"
+        hx-get="{{ item.url }}"
+        hx-target="#poco-modal"
+        hx-swap="innerHTML settle:150ms"
+        class="hover-3d card-acao-alvo">
+  <div class="glass-bg glass-edge glass-shadow card-acao">
+    {% include "competencias/partials/_icone_acao.html" with svg=svg variante=item.variante_icone %}
+    <div>
+      <p class="card-acao-nome">{{ item.nome }}</p>
+      <p class="card-acao-descricao">{{ item.tooltip }}</p>
+    </div>
+  </div>
+  <div></div><div></div><div></div><div></div>
+  <div></div><div></div><div></div><div></div>
+</button>

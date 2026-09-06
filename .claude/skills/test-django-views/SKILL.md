@@ -91,8 +91,57 @@ arquivos estáticos servidos — para isso, hoje, use um browser normalmente. O 
 `runserver` + `curl` foi tentado nesta skill e removido: não ficou bom (atrito de CSRF ao bater
 com `curl` cru); esse caso vai ser resolvido melhor numa iteração futura desta skill.
 
+## O smoke test escreve no banco de DESENVOLVIMENTO — sempre em transação desfeita
+
+`manage.py shell -c` abre o **banco real de desenvolvimento**, não o `test_<db>` que o pytest cria e
+descarta. Fixture montada solta no shell (unidade, tipo de unidade, perfil, cargo) **fica gravada**
+e vira lixo permanente no sistema — foi assim que unidades como `U-login`/`U9600001` apareceram na
+listagem.
+
+Toda fixture do smoke test nasce e morre dentro de uma `transaction.atomic()` que termina em
+rollback forçado:
+
+```bash
+uv run python manage.py shell -c "
+from django.db import transaction
+from django.test import Client
+from apps.unidades.models import TipoUnidade, Unidade
+
+class Desfazer(Exception):
+    pass
+
+try:
+    with transaction.atomic():
+        tipo = TipoUnidade.objects.create(
+            nome='Tipo Smoke',
+            nivel=10,
+            pode_ser_raiz=True,
+            nivel_minimo_titular=1,
+        )
+        unidade = Unidade.objects.create(nome='Unidade Smoke', sigla='SMOKE', tipo=tipo)
+
+        r = Client().get('/unidades/')
+        print('STATUS', r.status_code)
+        print(r.content.decode()[:2000])
+
+        # Nada do que foi criado acima sobrevive a esta linha.
+        raise Desfazer
+except Desfazer:
+    pass
+"
+```
+
+- O `Client()` roda no mesmo processo e na mesma conexão, então as requisições **enxergam** as
+  fixtures dentro da transação — inclusive views que abrem `atomic()` própria (viram savepoint).
+- A exceção própria (`Desfazer`) é o que garante o rollback sem engolir erro de verdade: qualquer
+  outra exceção continua subindo e aparecendo no stdout.
+- **Só leitura** (GET de página, busca, render de partial): não precisa de transação — mas também
+  não custa nada abrir uma.
+
 ## O que não fazer
 
+- Não crie fixture (unidade, perfil, cargo) direto no shell sem `transaction.atomic()` + rollback:
+  o banco do shell é o de desenvolvimento, e o registro fica lá para sempre.
 - Não tente montar token CSRF manualmente por `curl` para simular um POST — use `Client()` (que já
   ignora CSRF) para esse tipo de verificação de view.
 - Não confunda este smoke test com os testes automatizados de `pytest` — este pipeline é manual e

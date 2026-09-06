@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC autenticacao/001 — Login, primeiro acesso e OTP (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-001").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec-001">
+    @layer components {
+      /* ==================== ÁTOMO · OTP ====================
+         Fileira de caixas monoespaçadas com fundo de vidro, borda suave e realce em foco. */
+      .otp-onsen {
+        @apply flex items-center justify-center gap-2;
+      }
+      .otp-onsen .otp-caixa {
+        @apply w-10 h-13 sm:w-11 sm:h-14 text-center text-xl font-bold font-mono rounded-lg border border-base-300 bg-base-100/90 text-agua-700 focus:border-agua-500 focus:outline-none focus:ring-2 focus:ring-agua-400/30 transition-all;
+      }
+      .otp-onsen .otp-caixa.campo-realce-erro {
+        @apply border-error bg-error/10 text-error focus:ring-error/30;
+      }
+
+      /* ==================== ÁTOMO · ALTERNADOR DE SENHA (OLHINHO) ====================
+         Controle acoplado ao input de senha para alternar entre texto mascarado e plaintext. */
+      .input-olhinho-wrap {
+        @apply relative flex items-center w-full;
+      }
+      .input-olhinho-btn {
+        @apply absolute right-3 p-1.5 text-base-content/50 hover:text-agua-600 focus:outline-none transition-colors cursor-pointer;
+      }
+
+      /* ==================== ÁTOMO · PULSO DE CONVITE ====================
+         Respiro ciano de afordância num alvo em repouso: o brilho e o leve crescimento correm em
+         laço e param no hover/foco. O halo vem de `drop-shadow` (segue a silhueta e não disputa
+         com o `shadow-[inset_...]` do disco) e o `transform` fica no disco, nunca no invólucro do
+         tooltip — senão a bolha respiraria junto. */
+      .pulso-convite {
+        @apply transition-all duration-300;
+        animation: onsen-pulso-convite 2.8s ease-in-out infinite;
+      }
+      .pulso-convite:hover,
+      .pulso-convite:focus-visible,
+      .group:hover .pulso-convite,
+      .group:focus-visible .pulso-convite {
+        animation: none;
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 12px rgba(72, 202, 228, 0.9));
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pulso-convite { animation: none; }
+      }
+    }
+
+    @keyframes onsen-pulso-convite {
+      0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 2px rgba(72, 202, 228, 0.25)); }
+      50%      { transform: scale(1.07); filter: drop-shadow(0 0 12px rgba(72, 202, 228, 0.85)); }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-12 flex flex-col gap-12">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC autenticacao/001 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Login, Primeiro Acesso e OTP</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          <strong>1 · Átomos</strong> traz o campo OTP com 8 caixas (<span class="text-code">.otp-onsen</span>), o alternador de visibilidade de senha (<span class="text-code">.input-olhinho-wrap</span>) e o pulso de convite (<span class="text-code">.pulso-convite</span>).
+          <strong>2 · Moléculas</strong> traz o formulário de login dinâmico e o widget de topo (<span class="text-code">#widget-area-usuario</span>) nos estados anônimo (pulso, tooltip "Entrar no sistema" e link para login) e autenticado (avatar/foto com anel da unidade e link para o perfil).
+          <strong>3 · Telas montadas</strong> traz o modal compacto de Login sobre o mapa, a navegação responsiva e a tela de confirmação de senha de uso único (Primeiro Login).
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Átomos</h2>
+
+      <!-- 1.1 OTP -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · Campo OTP <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.otp-onsen</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            8 caixas monoespaçadas para código de uso único, com auto-avanço, backspace inteligente e suporte a colagem.
+          </p>
+        </div>
+
+        <div class="card-well p-6 flex flex-col gap-6 items-center">
+          <!-- estado: repouso / digitação -->
+          <div class="flex flex-col items-center gap-2">
+            <p class="text-xs font-semibold text-base-content/70">Estado: Em digitação (interativo com auto-avanço)</p>
+            <div class="otp-onsen" id="demo-otp">
+              <input type="text" maxlength="1" class="otp-caixa" value="8" />
+              <input type="text" maxlength="1" class="otp-caixa" value="3" />
+              <input type="text" maxlength="1" class="otp-caixa" value="5" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+              <input type="text" maxlength="1" class="otp-caixa" value="" placeholder="·" />
+            </div>
+          </div>
+
+          <!-- estado: preenchido -->
+          <div class="flex flex-col items-center gap-2 mt-2">
+            <p class="text-xs font-semibold text-base-content/70">Estado: Preenchido</p>
+            <div class="otp-onsen">
+              <input type="text" maxlength="1" class="otp-caixa" value="8" />
+              <input type="text" maxlength="1" class="otp-caixa" value="4" />
+              <input type="text" maxlength="1" class="otp-caixa" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa" value="2" />
+              <input type="text" maxlength="1" class="otp-caixa" value="1" />
+              <input type="text" maxlength="1" class="otp-caixa" value="7" />
+              <input type="text" maxlength="1" class="otp-caixa" value="3" />
+              <input type="text" maxlength="1" class="otp-caixa" value="0" />
+            </div>
+          </div>
+
+          <!-- estado: erro / realce -->
+          <div class="flex flex-col items-center gap-2 mt-2">
+            <p class="text-xs font-semibold text-error">Estado: Recusado / Código inválido (<span class="text-code">.campo-realce-erro</span>)</p>
+            <div class="otp-onsen">
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.2 Olhinho -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.2 · Input de senha com alternador <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.input-olhinho-wrap</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Alterna entre senha mascarada e texto plano via botão acoplado à direita do controle.
+          </p>
+        </div>
+
+        <div class="card-well p-6 max-w-md mx-auto w-full flex flex-col gap-4">
+          <div class="form-control gap-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Teste o alternador:</label>
+            <div class="input-olhinho-wrap">
+              <input type="password" id="demo-senha" class="input input-glass pr-10 w-full" value="SenhaForte123!" />
+              <button type="button" class="input-olhinho-btn" onclick="toggleSenha('demo-senha', this)" title="Alternar visibilidade">
+                <!-- Olho aberto -->
+                <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <!-- Olho fechado (inicialmente oculto) -->
+                <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1.3 Pulso de convite -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.3 · Pulso de convite <span class="text-sm font-normal text-base-content/60">— <span class="text-code">.pulso-convite</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Respiro ciano de afordância: o alvo em repouso brilha e cresce em laço para se anunciar como clicável, e o laço para no hover e no foco por teclado. Composto com o átomo <span class="text-code">.tooltip</span> do design system, que nomeia o destino.
+          </p>
+        </div>
+
+        <div class="card-well p-6 grid sm:grid-cols-3 gap-6 items-center justify-items-center">
+          <!-- estado: repouso (laço em execução) -->
+          <div class="flex flex-col items-center gap-3">
+            <p class="text-xs font-semibold text-base-content/70">Estado: Repouso (em laço)</p>
+            <div class="pulso-convite w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+              <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- estado: hover / foco (laço parado, expandido) -->
+          <div class="flex flex-col items-center gap-3">
+            <p class="text-xs font-semibold text-base-content/70">Estado: Hover / foco — passe o mouse</p>
+            <div class="pulso-convite w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]" tabindex="0">
+              <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- estado: composto com .tooltip, bolha aberta -->
+          <div class="flex flex-col items-center gap-3">
+            <p class="text-xs font-semibold text-base-content/70">Composto: <span class="text-code">.tooltip</span> aberto</p>
+            <div class="tooltip tooltip-bottom tooltip-open mt-1" data-tip="Entrar no sistema">
+              <div class="pulso-convite w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+                <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · MOLÉCULAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Moléculas</h2>
+
+      <!-- 2.1 Formulário Dinâmico de Login -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">2.1 · Formulário e slot dinâmico de login <span class="text-sm font-normal text-base-content/60">— <span class="text-code">_campo_login_dinamico.html</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            O campo de RF permanece sempre no topo e aplica a máscara <span class="text-code">123.456-7</span> conforme se digita — passar dos sete dígitos acende o campo em erro e nenhuma consulta é disparada. Completos os sete, o partial troca dinamicamente entre aguardo, primeiro login, login com senha e retorno de erro 422.
+          </p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
+
+          <!-- Estado 0: RF com dígitos em excesso -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[290px]">
+            <div class="flex flex-col gap-3">
+              <span class="text-overline text-error">0 · RF em excesso</span>
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Registro Funcional (RF)</label>
+                <input type="text" class="input input-glass campo-realce-erro w-full text-sm font-medium" value="835.916-09" aria-invalid="true" />
+              </div>
+              <p class="text-xs text-base-content/60 leading-relaxed">
+                O RF tem sete dígitos. O oitavo sai formatado à direita da máscara, acende o campo em erro e o slot dinâmico não é consultado.
+              </p>
+            </div>
+            <div class="p-2.5 bg-base-200/50 rounded-lg text-center text-xs text-base-content/50 border border-base-300/40">
+              Slot dinâmico congelado
+            </div>
+          </div>
+
+          <!-- Estado 1: Inicial / Digitar RF -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[290px]">
+            <div class="flex flex-col gap-3">
+              <span class="text-overline text-madeira-600">1 · Inicial / Repouso</span>
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Registro Funcional (RF)</label>
+                <input type="text" class="input input-glass w-full text-sm" placeholder="Ex: 123.456-7" value="" />
+              </div>
+              <p class="text-xs text-base-content/60 leading-relaxed">
+                Aguardando o servidor digitar o RF para consultar o estado cadastral.
+              </p>
+            </div>
+            <div class="p-2.5 bg-base-200/50 rounded-lg text-center text-xs text-base-content/50 border border-base-300/40">
+              Slot dinâmico vazio
+            </div>
+          </div>
+
+          <!-- Estado 2: Primeiro login -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[290px]">
+            <div class="flex flex-col gap-3">
+              <span class="text-overline text-madeira-600">2 · 1º Login Detectado</span>
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">RF</label>
+                <input type="text" class="input input-glass w-full text-sm font-medium" value="835.916-0" />
+              </div>
+              <div class="p-2.5 bg-agua-50/80 border border-agua-200 text-[11px] text-agua-900 leading-relaxed rounded-lg">
+                Detectamos que este é o seu <strong>primeiro acesso</strong>. Confirme sua senha de uso único.
+              </div>
+            </div>
+            <div class="aura aura-onsen w-full">
+              <button type="button" class="btn btn-onsen w-full gap-1.5 text-xs font-bold shadow-md">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Primeiro Login
+              </button>
+            </div>
+          </div>
+
+          <!-- Estado 3: Login com senha -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[290px]">
+            <div class="flex flex-col gap-3">
+              <span class="text-overline text-madeira-600">3 · Login com Senha</span>
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">RF</label>
+                <input type="text" class="input input-glass w-full text-sm font-medium" value="123.456-7" />
+              </div>
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>
+                <div class="input-olhinho-wrap">
+                  <input type="password" class="input input-glass pr-8 w-full text-sm" placeholder="••••••••" value="minhasenha" />
+                  <span class="input-olhinho-btn">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-onsen w-full text-xs font-bold shadow-md">
+              Entrar
+            </button>
+          </div>
+
+          <!-- Estado 4: Erro 422 (permite redigitar RF) -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[290px]">
+            <div class="flex flex-col gap-3">
+              <span class="text-overline text-error">4 · Erro (Status 422)</span>
+              <div class="p-2 bg-error/10 border border-error/30 text-[11px] text-error rounded-lg font-medium">
+                RF ou senha incorretos.
+              </div>
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">RF (editável)</label>
+                <input type="text" class="input input-glass w-full text-sm font-medium" value="835.916-0" />
+              </div>
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>
+                <div class="input-olhinho-wrap">
+                  <input type="password" class="input input-glass campo-realce-erro pr-8 w-full text-sm" value="errada123" />
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-onsen w-full text-xs font-bold shadow-md">
+              Entrar
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 2.2 Widget da Área do Usuário (Topo Direito) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">2.2 · Widget da Área do Usuário <span class="text-sm font-normal text-base-content/60">— <span class="text-code">#widget-area-usuario</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Ponto de entrada no canto superior direito do <span class="text-code">base.html</span>. Quando anônimo, convida ao login; quando autenticado, renderiza a foto ou o avatar de iniciais com anel na cor da unidade e direciona para a página do perfil.
+          </p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
+
+          <!-- Estado 1: Anônimo (Deslogado) -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[220px]">
+            <div class="flex flex-col gap-2">
+              <span class="text-overline text-madeira-600">1 · Anônimo (Deslogado)</span>
+              <p class="text-xs text-base-content/70">Ícone padrão com rótulo "Entrar", pulso de convite (<span class="text-code">.pulso-convite</span>) e tooltip "Entrar no sistema". O clique direciona para a rota de login (<span class="text-code">/login/</span>).</p>
+            </div>
+            <div class="flex justify-center py-2">
+              <a href="#form-login" class="group tooltip tooltip-bottom glass-panel rounded-full! p-1.5 flex items-center gap-3 cursor-pointer transition-glass hover:bg-white/60" data-tip="Entrar no sistema">
+                <div class="pulso-convite w-10 h-10 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+                  <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div class="pr-4 text-left">
+                  <p class="text-sm font-bold m-0 leading-tight">Entrar</p>
+                  <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">Área do Usuário</p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <!-- Estado 2: Autenticado (Avatar de Iniciais) -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[220px]">
+            <div class="flex flex-col gap-2">
+              <span class="text-overline text-madeira-600">2 · Autenticado (Iniciais)</span>
+              <p class="text-xs text-base-content/70">Bolinha com iniciais SVG e anel na cor da unidade. Clique direciona para <span class="text-code">pagina_perfil</span>.</p>
+            </div>
+            <div class="flex justify-center py-2">
+              <div class="glass-panel rounded-full! p-1.5 flex items-center gap-3 cursor-pointer transition-glass hover:bg-white/60">
+                <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade: #0077b6;">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-full h-full">
+                    <rect width="48" height="48" fill="#0077b6" />
+                    <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="#f8fafc" font-family="Roboto, sans-serif" font-weight="700" font-size="18">JS</text>
+                  </svg>
+                </div>
+                <div class="pr-4">
+                  <p class="text-sm font-bold m-0 leading-tight">João Silva</p>
+                  <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">DIMAP-1</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Estado 3: Autenticado (Foto do Perfil) -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[220px]">
+            <div class="flex flex-col gap-2">
+              <span class="text-overline text-madeira-600">3 · Autenticado (Foto)</span>
+              <p class="text-xs text-base-content/70">Bolinha com foto e anel na cor da unidade. Clique direciona para o perfil do servidor.</p>
+            </div>
+            <div class="flex justify-center py-2">
+              <div class="glass-panel rounded-full! p-1.5 flex items-center gap-3 cursor-pointer transition-glass hover:bg-white/60">
+                <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade: #2a9d8f;">
+                  <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80" alt="Foto" class="w-full h-full object-cover" />
+                </div>
+                <div class="pr-4">
+                  <p class="text-sm font-bold m-0 leading-tight">Mariana Costa</p>
+                  <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">DIMAP-2</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Estado 4: Tela Estreita / Mobile (< lg) -->
+          <div class="card-well p-4 flex flex-col gap-3 justify-between min-h-[220px]">
+            <div class="flex flex-col gap-2">
+              <span class="text-overline text-madeira-600">4 · Mobile (&lt; 1024px)</span>
+              <p class="text-xs text-base-content/70">Avatar compacto responsivo (<span class="text-code">w-9 h-9</span>) sem rótulo de texto, alinhado à navbar compacta. Sem o rótulo, o pulso e o tooltip são o que anunciam a entrada.</p>
+            </div>
+            <div class="flex justify-center items-center gap-4 py-3">
+              <div class="group tooltip tooltip-bottom glass-panel rounded-full! p-1.5 flex items-center justify-center cursor-pointer transition-glass hover:bg-white/60" data-tip="Entrar no sistema">
+                <div class="pulso-convite w-9 h-9 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+                  <svg class="w-4 h-4 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="glass-panel rounded-full! p-1.5 flex items-center justify-center cursor-pointer transition-glass hover:bg-white/60" title="Logado (Mobile)">
+                <div class="avatar-glass shrink-0 w-9 h-9" style="--cor-unidade: #0077b6;">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-full h-full">
+                    <rect width="48" height="48" fill="#0077b6" />
+                    <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="#f8fafc" font-family="Roboto, sans-serif" font-weight="700" font-size="18">JS</text>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · TELAS MONTADAS ============ -->
+    <section class="flex flex-col gap-10">
+      <h2 class="section-title px-2">3 · Telas Montadas</h2>
+
+      <!-- TELA A: LOGIN MODAL SOBRE O MAPA -->
+      <div class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-base-300/60 pb-4">
+          <div>
+            <h3 class="text-xl font-bold text-madeira-700">Tela de Login <span class="text-sm font-normal text-base-content/60">— <span class="text-code">apps/autenticacao/login.html</span></span></h3>
+            <p class="text-sm text-base-content/70 mt-1">Modal compacto de vidro sobre o mapa vivo, com resolução em tempo real do RF.</p>
+          </div>
+
+          <!-- Controle de simulação -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-base-200/60 p-1.5 rounded-lg border border-base-300 text-xs">
+            <span class="font-bold text-base-content/60 pl-1">Cenários:</span>
+            <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100" onclick="simularRf('limpo')">1. Inicial (RF Vazio)</button>
+            <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100" onclick="simularRf('primeiro_login')">2. 1º Login</button>
+            <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100" onclick="simularRf('ativo')">3. Com Senha</button>
+            <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100" onclick="simularRf('inexistente')">4. RF Inexistente</button>
+            <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100 text-error font-bold" onclick="simularRf('erro')">5. Erro 422</button>
+          </div>
+        </div>
+
+        <!-- Simulação do cabeçalho de topo / navbar com o widget de usuário -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="text-overline text-madeira-600">Simulação da Barra Superior (base.html)</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-base-content/60">Sessão:</span>
+              <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100" onclick="alternarSessaoMock('anonimo')">1. Anônimo (Entrar)</button>
+              <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100" onclick="alternarSessaoMock('iniciais')">2. Logado (Iniciais)</button>
+              <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100" onclick="alternarSessaoMock('foto')">3. Logado (Foto)</button>
+            </div>
+          </div>
+
+          <div class="relative w-full h-18 bg-base-100/40 rounded-2xl border border-base-300/50 px-4 flex items-center justify-between">
+            <!-- Chip da Marca -->
+            <div class="glass-panel rounded-full! px-4 py-2 flex items-center">
+              <span class="text-sm font-black tracking-tight text-madeira-700">DIMAP GeoCoder</span>
+            </div>
+
+            <!-- partial: base.html → #widget-area-usuario -->
+            <div id="nav-widget-demo" class="cursor-pointer" onclick="aoClicarWidgetTopo()">
+              <!-- Renderizado dinamicamente via JS alternarSessaoMock -->
+            </div>
+          </div>
+        </div>
+
+        <!-- O container centrado do Login (Modal compacto) -->
+        <div class="max-w-md mx-auto w-full py-4">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+            
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">DIMAP GeoCoder</h2>
+              <p class="text-xs text-base-content/60 mt-0.5">Plataforma Territorial da DIMAP</p>
+            </div>
+
+            <!-- página: autenticacao/login.html -->
+            <form id="form-login" class="flex flex-col gap-5">
+              
+              <!-- Tarja de erro (condicional a status 422) -->
+              <div id="tarja-erro-login" class="hidden p-3 bg-error/10 border border-error/30 text-xs text-error rounded-lg font-medium">
+                RF ou senha incorretos.
+              </div>
+
+              <!-- Campo RF fixo na página: sempre presente e editável -->
+              <!-- fica na página: o container da aplicação, a marca e o campo RF fixo -->
+              <div class="form-control gap-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Registro Funcional (RF)</label>
+                <input type="hidden" name="rf" id="rf-valor" value="" />
+                <input type="text" id="input-rf" inputmode="numeric" data-mascara="000.000-0" data-mascara-alvo="#rf-valor" class="input input-glass w-full" placeholder="Ex: 123.456-7" value="" oninput="aoDigitarRf()" autofocus />
+              </div>
+
+              <!-- partial: autenticacao/partials/_campo_login_dinamico.html — alvo de hx-post="{% url 'autenticacao:checar_rf' %}" -->
+              <div id="slot-dinamico-login" class="flex flex-col gap-5 transition-all">
+
+                <!-- ESTADO A: INICIAL / AGUARDANDO DIGITAÇÃO -->
+                <div id="estado-login-vazio" class="card-well p-3.5 text-center text-xs text-base-content/60 rounded-lg">
+                  Digite seu RF acima para acessar.
+                </div>
+
+                <!-- ESTADO B: PRIMEIRO LOGIN DETECTADO -->
+                <div id="estado-primeiro-login" class="hidden flex flex-col gap-4">
+                  <div class="card-well p-3.5 bg-agua-50/70 border-agua-200 text-xs text-agua-900 leading-relaxed rounded-lg">
+                    Detectamos que este é o seu <strong>primeiro acesso</strong>. Confirme sua senha de uso único recebida no e-mail institucional.
+                  </div>
+
+                  <div class="aura aura-onsen w-full">
+                    <a href="#tela-primeiro-login" class="btn btn-onsen w-full gap-2 text-base font-bold shadow-md">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Primeiro Login
+                    </a>
+                  </div>
+                </div>
+
+                <!-- ESTADO C: LOGIN COM SENHA NORMAL (Ativo, inexistente ou após erro) -->
+                <div id="estado-login-senha" class="hidden flex flex-col gap-5">
+                  <div class="form-control gap-1">
+                    <div class="flex justify-between items-center">
+                      <label class="text-xs font-bold uppercase tracking-wider text-base-content/70">Senha</label>
+                    </div>
+                    <div class="input-olhinho-wrap">
+                      <input type="password" id="login-senha" name="password" class="input input-glass pr-10 w-full" placeholder="••••••••" />
+                      <button type="button" class="input-olhinho-btn" onclick="toggleSenha('login-senha', this)">
+                        <svg class="w-5 h-5 icone-olho-aberto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <svg class="w-5 h-5 icone-olho-fechado hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md" onclick="simularSubmissaoLogin()">
+                    Entrar
+                  </button>
+                </div>
+
+              </div>
+              <!-- /partial -->
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA B: PRIMEIRO LOGIN COM OTP -->
+      <div id="tela-primeiro-login" class="glass-panel p-6 sm:p-10 flex flex-col gap-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-base-300/60 pb-4">
+          <div>
+            <h3 class="text-xl font-bold text-madeira-700">Tela de Primeiro Login <span class="text-sm font-normal text-base-content/60">— <span class="text-code">apps/autenticacao/primeiro_login.html</span></span></h3>
+            <p class="text-sm text-base-content/70 mt-1">Validação da senha temporária de 8 dígitos entregue por e-mail institucional.</p>
+          </div>
+
+          <div class="flex items-center gap-2 bg-base-200/60 p-1.5 rounded-lg border border-base-300 text-xs">
+            <span class="font-bold text-base-content/60 pl-1">Simular OTP:</span>
+            <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100" onclick="simularOtp(true)">Código Normal</button>
+            <button type="button" class="btn btn-xs btn-ghost hover:bg-base-100 text-error font-bold" onclick="simularOtp(false)">Código Inválido (422)</button>
+          </div>
+        </div>
+
+        <div class="max-w-md mx-auto w-full py-4">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-7 shadow-2xl border-white/70">
+            
+            <div class="flex flex-col gap-2 text-center">
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-agua-100 text-agua-700 mx-auto mb-1 shadow-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h2 class="text-2xl sm:text-3xl font-black text-madeira-700 tracking-tight">Primeiro Login</h2>
+              <p class="text-xs text-base-content/80 leading-relaxed px-2">
+                Confirme a <strong>senha de uso único</strong> de 8 dígitos recebida no e-mail institucional.
+              </p>
+            </div>
+
+            <!-- Informação do RF em foco -->
+            <div class="card-well p-3 flex items-center justify-between bg-base-100/60">
+              <span class="text-xs uppercase font-bold text-base-content/60">Servidor autenticando:</span>
+              <span class="font-mono font-bold text-agua-700">RF 8359160</span>
+            </div>
+
+            <!-- página: autenticacao/primeiro_login.html -->
+            <form class="flex flex-col gap-6">
+              
+              <!-- Tarja de erro OTP (condicional a status 422) -->
+              <div id="tarja-erro-otp" class="hidden p-3 bg-error/10 border border-error/30 text-xs text-error rounded-lg font-medium">
+                Senha de uso único inválida: confira o código recebido no e-mail institucional.
+              </div>
+
+              <!-- O campo OTP em destaque grande -->
+              <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-center text-base-content/70">Senha de uso único:</label>
+                <div class="otp-onsen my-2" id="otp-primeiro-login">
+                  <input type="text" maxlength="1" class="otp-caixa" value="8" />
+                  <input type="text" maxlength="1" class="otp-caixa" value="4" />
+                  <input type="text" maxlength="1" class="otp-caixa" value="9" />
+                  <input type="text" maxlength="1" class="otp-caixa" value="2" />
+                  <input type="text" maxlength="1" class="otp-caixa" value="1" />
+                  <input type="text" maxlength="1" class="otp-caixa" value="7" />
+                  <input type="text" maxlength="1" class="otp-caixa" value="3" />
+                  <input type="text" maxlength="1" class="otp-caixa" value="0" />
+                </div>
+                <p class="text-[11px] text-center text-base-content/50">Confira o código enviado para seu e-mail institucional.</p>
+              </div>
+
+              <!-- Botão com aura -->
+              <div class="aura aura-onsen w-full mt-1">
+                <button type="button" class="btn btn-onsen w-full text-base font-bold shadow-md">
+                  Confirmar e Definir Senha
+                </button>
+              </div>
+
+              <div class="text-center">
+                <a href="#form-login" class="text-xs text-base-content/60 hover:text-agua-600 transition-colors">Voltar para o login</a>
+              </div>
+            </form>
+            <!-- fica na página: tela inteira de confirmação de credencial provisória -->
+
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <script>
+    // Auto-avanço para os OTPs da página
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".otp-onsen").forEach(setupOtpInputs);
+    });
+
+    function setupOtpInputs(container) {
+      const inputs = Array.from(container.querySelectorAll("input"));
+      inputs.forEach((input, index) => {
+        input.addEventListener("input", () => {
+          if (input.value.length === 1 && index < inputs.length - 1) {
+            inputs[index + 1].focus();
+          }
+        });
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !input.value && index > 0) {
+            inputs[index - 1].focus();
+          }
+        });
+        input.addEventListener("paste", (e) => {
+          e.preventDefault();
+          const paste = (e.clipboardData || window.clipboardData).getData("text").trim();
+          if (paste) {
+            for (let i = 0; i < inputs.length; i++) {
+              if (paste[i]) inputs[i].value = paste[i];
+            }
+            const nextIdx = Math.min(paste.length, inputs.length - 1);
+            inputs[nextIdx].focus();
+          }
+        });
+      });
+    }
+
+    function toggleSenha(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const iconAberto = btn.querySelector(".icone-olho-aberto");
+      const iconFechado = btn.querySelector(".icone-olho-fechado");
+      if (input.type === "password") {
+        input.type = "text";
+        iconAberto.classList.add("hidden");
+        iconFechado.classList.remove("hidden");
+      } else {
+        input.type = "password";
+        iconAberto.classList.remove("hidden");
+        iconFechado.classList.add("hidden");
+      }
+    }
+
+    function simularRf(tipo, escrever = true) {
+      const inputRf = document.getElementById("input-rf");
+      const estadoVazio = document.getElementById("estado-login-vazio");
+      const estadoPrimeiro = document.getElementById("estado-primeiro-login");
+      const estadoSenha = document.getElementById("estado-login-senha");
+      const tarjaErro = document.getElementById("tarja-erro-login");
+      const inputSenha = document.getElementById("login-senha");
+
+      tarjaErro.classList.add("hidden");
+      if (inputSenha) {
+        inputSenha.classList.remove("campo-realce-erro");
+        inputSenha.value = "";
+      }
+
+      if (tipo === "limpo") {
+        if (escrever) inputRf.value = "";
+        estadoVazio.classList.remove("hidden");
+        estadoPrimeiro.classList.add("hidden");
+        estadoSenha.classList.add("hidden");
+        inputRf.focus();
+      } else if (tipo === "primeiro_login") {
+        if (escrever) inputRf.value = "8359160";
+        estadoVazio.classList.add("hidden");
+        estadoPrimeiro.classList.remove("hidden");
+        estadoSenha.classList.add("hidden");
+      } else if (tipo === "ativo") {
+        if (escrever) inputRf.value = "1234567";
+        estadoVazio.classList.add("hidden");
+        estadoPrimeiro.classList.add("hidden");
+        estadoSenha.classList.remove("hidden");
+      } else if (tipo === "inexistente") {
+        if (escrever) inputRf.value = "9999999";
+        // Anti-enumeração: exibe o campo comum de senha sem erro prévio
+        estadoVazio.classList.add("hidden");
+        estadoPrimeiro.classList.add("hidden");
+        estadoSenha.classList.remove("hidden");
+      } else if (tipo === "erro") {
+        if (escrever) inputRf.value = "8359160";
+        estadoVazio.classList.add("hidden");
+        estadoPrimeiro.classList.add("hidden");
+        estadoSenha.classList.remove("hidden");
+        tarjaErro.classList.remove("hidden");
+        if (inputSenha) {
+          inputSenha.value = "senhaerrada";
+          inputSenha.classList.add("campo-realce-erro");
+        }
+      }
+
+      aplicarMascara(inputRf);
+    }
+
+    // Espelho do módulo previsto em static/src/js/ui/campo_mascarado.js: opt-in por [data-mascara],
+    // com o gabarito ditando os separadores, a contagem de dígitos e o valor do campo oculto.
+    const SLOT_DE_DIGITO = "0";
+
+    function contarDigitos(texto) {
+      return texto.replace(/\D/g, "").length;
+    }
+
+    function formatar(digitos, gabarito) {
+      let saida = "";
+      let lidos = 0;
+      for (const marca of gabarito) {
+        if (lidos >= digitos.length) return saida;
+        if (marca === SLOT_DE_DIGITO) {
+          saida += digitos[lidos];
+          lidos += 1;
+        } else {
+          saida += marca;
+        }
+      }
+      return saida + digitos.slice(lidos);
+    }
+
+    function posicaoAposDigitos(texto, quantidade) {
+      if (quantidade === 0) return 0;
+      let vistos = 0;
+      for (let i = 0; i < texto.length; i += 1) {
+        if (!/\d/.test(texto[i])) continue;
+        vistos += 1;
+        if (vistos === quantidade) return i + 1;
+      }
+      return texto.length;
+    }
+
+    function aplicarMascara(campo) {
+      const gabarito = campo.dataset.mascara;
+      const limite = contarDigitos(gabarito);
+      const cursor = campo.selectionStart ?? campo.value.length;
+      const digitosAEsquerda = contarDigitos(campo.value.slice(0, cursor));
+      const digitos = campo.value.replace(/\D/g, "");
+
+      campo.value = formatar(digitos, gabarito);
+      if (document.activeElement === campo) {
+        const posicao = posicaoAposDigitos(campo.value, digitosAEsquerda);
+        campo.setSelectionRange(posicao, posicao);
+      }
+
+      const excede = digitos.length > limite;
+      campo.classList.toggle("campo-realce-erro", excede);
+      campo.setAttribute("aria-invalid", excede ? "true" : "false");
+      campo.dataset.digitosCompletos = digitos.length === limite ? "sim" : "nao";
+
+      const alvo = document.querySelector(campo.dataset.mascaraAlvo);
+      if (alvo) alvo.value = digitos;
+    }
+
+    function montarMascaras(raiz) {
+      raiz.querySelectorAll("[data-mascara]").forEach(aplicarMascara);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => montarMascaras(document));
+
+    function aoDigitarRf() {
+      const campoRf = document.getElementById("input-rf");
+      aplicarMascara(campoRf);
+
+      const tarjaErro = document.getElementById("tarja-erro-login");
+      tarjaErro.classList.add("hidden");
+
+      const digitos = document.getElementById("rf-valor").value;
+      if (!digitos) {
+        simularRf("limpo", false);
+        return;
+      }
+      // O que o filtro do hx-trigger faz: sem os sete dígitos, nenhuma consulta sai.
+      if (campoRf.dataset.digitosCompletos !== "sim") return;
+
+      if (digitos.startsWith("83")) {
+        simularRf("primeiro_login", false);
+      } else {
+        simularRf("ativo", false);
+      }
+    }
+
+    function simularSubmissaoLogin() {
+      // Simula submissão com erro para demonstrar recusa 422
+      simularRf("erro");
+    }
+
+    function simularOtp(valido) {
+      const tarjaErro = document.getElementById("tarja-erro-otp");
+      const inputs = document.querySelectorAll("#otp-primeiro-login .otp-caixa");
+      if (valido) {
+        tarjaErro.classList.add("hidden");
+        inputs.forEach((inp) => inp.classList.remove("campo-realce-erro"));
+      } else {
+        tarjaErro.classList.remove("hidden");
+        inputs.forEach((inp) => inp.classList.add("campo-realce-erro"));
+      }
+    }
+
+    // Controle da simulação do widget de usuário na navbar
+    let estadoSessaoAtual = "anonimo";
+
+    function alternarSessaoMock(estado) {
+      estadoSessaoAtual = estado;
+      const widget = document.getElementById("nav-widget-demo");
+      if (!widget) return;
+
+      if (estado === "anonimo") {
+        widget.innerHTML = `
+          <div class="group tooltip tooltip-bottom glass-panel rounded-full! p-1.5 flex items-center gap-3 transition-glass hover:bg-white/60" data-tip="Entrar no sistema">
+            <div class="pulso-convite w-9 h-9 lg:w-11 lg:h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+              <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div class="hidden lg:block pr-4 text-left">
+              <p class="text-sm font-bold m-0 leading-tight text-base-content">Entrar</p>
+              <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">Área do Usuário</p>
+            </div>
+          </div>
+        `;
+      } else if (estado === "iniciais") {
+        widget.innerHTML = `
+          <div class="glass-panel rounded-full! p-1.5 flex items-center gap-3 transition-glass hover:bg-white/60">
+            <div class="avatar-glass shrink-0 w-9 h-9 lg:w-11 lg:h-11" style="--cor-unidade: #0077b6;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-full h-full">
+                <rect width="48" height="48" fill="#0077b6" />
+                <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="#f8fafc" font-family="Roboto, sans-serif" font-weight="700" font-size="18">JS</text>
+              </svg>
+            </div>
+            <div class="hidden lg:block pr-4">
+              <p class="text-sm font-bold m-0 leading-tight text-base-content">João Silva</p>
+              <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">DIMAP-1</p>
+            </div>
+          </div>
+        `;
+      } else if (estado === "foto") {
+        widget.innerHTML = `
+          <div class="glass-panel rounded-full! p-1.5 flex items-center gap-3 transition-glass hover:bg-white/60">
+            <div class="avatar-glass shrink-0 w-9 h-9 lg:w-11 lg:h-11" style="--cor-unidade: #2a9d8f;">
+              <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80" alt="Foto" class="w-full h-full object-cover" />
+            </div>
+            <div class="hidden lg:block pr-4">
+              <p class="text-sm font-bold m-0 leading-tight text-base-content">Mariana Costa</p>
+              <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">DIMAP-2</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function aoClicarWidgetTopo() {
+      if (estadoSessaoAtual === "anonimo") {
+        const inputRf = document.getElementById("input-rf");
+        if (inputRf) {
+          inputRf.scrollIntoView({ behavior: "smooth", block: "center" });
+          inputRf.focus();
+        }
+      } else {
+        alert("Simulação: Redirecionando para a página de perfil (user_admin:pagina_perfil) do servidor autenticado.");
+      }
+    }
+
+    // Inicialização da navbar na carga
+    document.addEventListener("DOMContentLoaded", () => {
+      alternarSessaoMock("anonimo");
+    });
+  
+  </script>
+</body>
+</html>

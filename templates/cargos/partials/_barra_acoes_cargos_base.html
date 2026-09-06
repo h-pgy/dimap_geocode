@@ -1,0 +1,50 @@
+{# Barra de ações da listagem de cargos base (SPEC user_admin/030): Novo cargo, Extinguir e         #}
+{# Reativar só para quem administra o sistema — mesmo molde de `_barra_acoes_cargos.html`.           #}
+<div class="barra-acoes glass-panel">
+  <div class="barra-acoes-gestos">
+    {% if perms.cargos.criar_cargo_base %}
+      <button type="button"
+              class="btn btn-onsen btn-sm gap-1.5"
+              hx-get="{% url 'cargos:modal_criar_cargo_base' %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cracha"/></svg>
+        Novo cargo base
+      </button>
+    {% endif %}
+    {% if perms.cargos.extinguir_cargo_base %}
+      <button type="button"
+              class="btn btn-error btn-soft btn-sm gap-1.5"
+              hx-get="{% url 'cargos:modal_extinguir_cargo_base' %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+        Extinguir cargo base
+      </button>
+    {% endif %}
+    {% if perms.cargos.reativar_cargo_base %}
+      <button type="button"
+              class="btn btn-glass btn-sm gap-1.5"
+              hx-get="{% url 'cargos:modal_reativar_cargo_base' %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+        Reativar cargo base
+      </button>
+    {% endif %}
+  </div>
+  <div class="barra-acoes-gestos">
+    <label class="barra-acoes-chave">
+      {# 100% client-side (SPEC user_admin/029, Caveats): nasce assim desde a primeira versão —      #}
+      {# o servidor manda TODOS os cargos base, marcados com .linha-extinta, e é                     #}
+      {# `filtro_linha_extinta.js` quem esconde/revela.                                               #}
+      <input type="checkbox"
+             id="toggle-cargos-base-extintos"
+             class="toggle-onsen"
+             data-filtro-extintos="#tabela-cargos-base"
+             aria-label="Mostrar cargos extintos" />
+      <span class="text-overline">Mostrar cargos extintos</span>
+    </label>
+    <button type="button" class="btn-etched etched" data-limpar-filtros="#tabela-cargos-base">✕ limpar filtros</button>
+  </div>
+</div>

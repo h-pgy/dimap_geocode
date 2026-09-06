@@ -1,0 +1,13 @@
+{# A fita e a face do painel (SPEC painel/001): fita e face são a mesma placa — a aba básica é a   #}
+{# que abre, não a primeira da lista, porque é ela quem garante o painel nunca vazio.               #}
+<div role="tablist" class="tabs glass-panel abas-onsen">
+  {% for aba in painel.abas %}
+    <label role="tab" class="tab">
+      <input type="radio" name="painel-abas" {% if aba.basica %}checked{% endif %} />
+      <span class="abas-onsen-rotulo etched etched-rotulo">{{ aba.rotulo }}</span>
+      <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+      <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+    </label>
+    {% include "painel/partials/_face_aba.html" with aba=aba %}
+  {% endfor %}
+</div>

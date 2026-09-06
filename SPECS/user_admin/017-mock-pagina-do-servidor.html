@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/017 — A página do servidor (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server) —
+       aberto via file:// o fetch é bloqueado e o tema não carrega. -->
+  <script>
+    // Tema e peças desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
+    // vêm do @theme do tema, e um bloco separado que as usa em @apply cai com "unknown utility".
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-017").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
+  </script>
+
+  <!-- PEÇAS DESTA SPEC, que ainda não estão no tema. Guardadas em script[type=text/css] (inerte) e
+       concatenadas ao tema pelo loader acima. O campo que se abre no lápis (.campo-onsen), a bandeja
+       de indicadores (.stats-onsen) e a linha de pessoa vêm do tema, onde já foram portados. -->
+  <script type="text/css" id="tokens-spec-017">
+    @layer components {
+      /* ==================== MOLÉCULA · PAINEL QUE CRESCE ==================== */
+      /* A grade é o que permite animar altura sem fixar pixel que o conteúdo desmente: 0fr → 1fr. */
+      .painel-onsen { @apply grid transition-all duration-300 ease-in-out; grid-template-rows: 0fr; }
+      .painel-onsen-toggle { @apply sr-only; }
+      /* A folga vive DENTRO do recorte: sem ela o overflow corta a sombra da placa rente à borda e
+         a quina sai reta. A margem negativa devolve a largura, para o painel alinhar com o campo
+         acima; o respiro de cima é também o intervalo entre os dois. */
+      .painel-onsen-corpo { @apply overflow-hidden -mx-4 px-4 pt-6 pb-6 opacity-0 transition-opacity duration-300; }
+      .painel-onsen:has(> .painel-onsen-toggle:checked) { grid-template-rows: 1fr; }
+      .painel-onsen:has(> .painel-onsen-toggle:checked) > .painel-onsen-corpo { @apply opacity-100; }
+      /* O painel toma o lugar do gatilho: quem clicou não precisa mais dele, e o que cresce ocupa
+         exatamente onde a pergunta foi feita. */
+      *:has(> .painel-onsen > .painel-onsen-toggle:checked) .painel-onsen-gatilho { @apply hidden; }
+      /* Campo do painel é campo rebaixado, a mesma pele do .campo-onsen aberto: sobre placa erguida,
+         o .input-glass sozinho não diz que dá para escrever nele. */
+      .painel-onsen-corpo :where(input, select, .select-onsen-trigger) {
+        @apply bg-white/30! border-white/45! shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
+      }
+
+      /* ==================== ÁTOMO · BOTÃO DE TROCAR FOTO ==================== */
+      /* Irmão do .btn-criar-inline — círculo de gelo com a tinta ciana —, aqui pousado no retrato. */
+      .btn-foto {
+        @apply w-9 h-9 shrink-0 p-0 rounded-full backdrop-blur-[10px] bg-white/60 border border-white/70 text-agua-700
+               shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_4px_16px_rgba(7,58,84,0.22)]
+               transition-all duration-300 hover:bg-white/80 hover:shadow-[0_4px_20px_rgba(72,202,228,0.45)];
+      }
+
+      /* ============ VARIANTE DO ÁTOMO DA SPEC 013 · GRAVAÇÃO EM CORPO MENOR ============ */
+      /* O .btn-etched nasceu para o "limpar filtros", que é a única ação da bandeja. Ao lado de um
+         botão que grava, no mesmo tamanho, ele disputa a atenção em vez de ceder. */
+      .btn-etched-sm { @apply text-[12px] font-semibold tracking-[0.1em] px-1 py-0.5; }
+
+      /* ==================== MOLÉCULA · RETRATO EDITÁVEL ==================== */
+      .avatar-editavel { @apply relative w-fit; }
+      /* O botão pousa na quina do retrato: ao lado, com a legenda solta, sobrava vazio na linha.
+         O mt-0! desfaz o empurrão que o campo aberto dá no lápis — este não fica na linha do valor. */
+      .avatar-editavel > .btn-foto { @apply absolute bottom-0 right-0 translate-x-1 translate-y-1 mt-0!; }
+
+      /* ============ ALTERAÇÃO NA MOLÉCULA DA SPEC 016 · O LÁPIS QUE TAMBÉM FECHA ============ */
+      /* Aberto o campo, o mesmo botão desfaz — e nada dizia isso. No hover ele vira ✕. */
+      .campo-onsen-lapis-fecha { @apply hidden; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-abre { @apply hidden; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-fecha { @apply inline; }
+
+      /* ==================== COREOGRAFIA · ENTRADA DA PLACA ==================== */
+      /* O fragmento chega com o toggle já marcado: sem a fase de settle a placa apareceria pronta. */
+      .poco-modal .modal-box { @apply transition-[opacity,scale,translate] duration-150 ease-out; }
+      /* O important é contra o daisyUI, que entinta o estado aberto com um seletor mais específico. */
+      .poco-modal.htmx-settling .modal-box { @apply opacity-0! -translate-y-1!; }
+    }
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Glifos da página. Na aplicação: user_admin/partials/_glifos_servidor.html -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-titular">
+        <circle cx="9.5" cy="8" r="3.2"/>
+        <path d="M4 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="m18.4 3.6 1.1 2.2 2.5.36-1.8 1.75.42 2.47-2.22-1.17-2.22 1.17.43-2.47-1.8-1.75 2.48-.36z"/>
+      </g>
+      <g id="glifo-substituto">
+        <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+      </g>
+      <g id="glifo-hierarquia">
+        <rect x="9" y="3" width="6" height="4.4" rx="1.2"/>
+        <rect x="2.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <rect x="15.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <path d="M12 7.4v4.2"/><path d="M5.5 16.6v-5h13v5"/>
+      </g>
+      <g id="glifo-lapis">
+        <path d="M4 20.2h4L18.6 9.6a2.1 2.1 0 0 0-3-3L5 17.2v3z"/><path d="m14.4 7.8 3 3"/>
+      </g>
+      <g id="glifo-impedimento">
+        <rect x="3.2" y="5" width="17.6" height="16" rx="2.4"/><path d="M3.2 10h17.6"/>
+        <path d="M8 3v4"/><path d="M16 3v4"/><path d="m9.5 15.5 5 3.5"/><path d="m14.5 15.5-5 3.5"/>
+      </g>
+      <g id="glifo-retorno">
+        <path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/>
+      </g>
+      <g id="glifo-mais"><path d="M12 5v14"/><path d="M5 12h14"/></g>
+      <g id="glifo-foto">
+        <path d="M3.6 8.6h3.1l1.4-2.3h7.8l1.4 2.3h3.1a1.5 1.5 0 0 1 1.5 1.5v7.6a1.5 1.5 0 0 1-1.5 1.5H3.6a1.5 1.5 0 0 1-1.5-1.5v-7.6a1.5 1.5 0 0 1 1.5-1.5z"/>
+        <circle cx="12" cy="13.9" r="3.3"/>
+      </g>
+      <g id="glifo-alerta">
+        <path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/>
+      </g>
+
+      <!-- Filtro da gravação no gelo (SPEC 013) — repetido aqui só para o mock renderizar sozinho;
+           na aplicação ele vem de templates/partials/_filtros_gravacao.html, no base.html. -->
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC user_admin/017 · mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">A página do servidor</h1>
+      <p class="mt-4 max-w-2xl text-base-content/80 leading-relaxed">
+        Peça nova: o <strong class="text-agua-700">painel que cresce</strong>
+        (<span class="text-code">.painel-onsen</span>), que traz o cadastro de unidade para dentro do
+        modal de edição. O campo que se abre no lápis (<span class="text-code">.campo-onsen</span>) e a
+        bandeja de indicadores (<span class="text-code">.stats-onsen</span>) vêm da SPEC 016.
+      </p>
+      <div class="flex flex-wrap gap-2 mt-5">
+        <span class="badge badge-ponto">resumo em leitura</span>
+        <span class="badge badge-linha">modal de edição</span>
+        <span class="badge badge-poligono">painel de nova unidade</span>
+        <span class="badge badge-warning badge-soft">servidor afastado</span>
+      </div>
+    </header>
+
+    <!-- ==================== 2 · ÁTOMOS ==================== -->
+    <section class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">2.1 · Glifos da página — <code class="text-code">_glifos_servidor.html</code></p>
+        <div class="flex flex-wrap items-center gap-8">
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+            unidade de lotação
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+            titularidade
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+            editar
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            impedimento <span class="text-base-content/50">(SPEC 015)</span>
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+            cadastrar o que falta
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-error">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            unidade sem direção
+          </span>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">2.2 · Gatilho nomeado — composição de <code class="text-code">.btn-glass</code></p>
+        <div class="flex flex-wrap items-center gap-6">
+          <label class="btn btn-glass btn-xs gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+            Unidade não encontrada
+          </label>
+          <span class="text-[13px] text-base-content/60">— aberto o painel, ele sai de cena: o cadastro cresce no lugar dele.</span>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">2.3 · Botão de trocar foto — <code class="text-code">.btn-foto</code></p>
+        <div class="flex flex-wrap items-center gap-6">
+          <label class="btn btn-circle btn-foto" title="Trocar a foto">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+          </label>
+          <span class="text-[13px] text-base-content/60">
+            Irmão do <code class="text-code">.btn-criar-inline</code>: círculo de gelo com a tinta ciana.
+            Acende no hover e nunca fica solto — pousa na quina do retrato.
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3 · MOLÉCULAS ==================== -->
+    <section class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <h2 class="text-[24px] font-bold text-madeira-700">3 · Moléculas</h2>
+
+      <!-- .painel-onsen -->
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.1 · Painel que cresce — <code class="text-code">.painel-onsen</code></p>
+        <p class="text-[13px] text-base-content/70">
+          Clique no gatilho: o painel cresce da altura zero, sem trocar de tela e sem desfazer nada do
+          que está acima dele.
+        </p>
+
+        <!-- estado: fechado (padrão) × aberto (clicando o gatilho) -->
+        <div class="glass-panel rounded-2xl p-5 flex flex-col gap-3">
+          <div class="campo-onsen">
+            <span class="text-overline etched-rotulo">Unidade</span>
+            <div class="campo-onsen-linha">
+              <div class="flex-1 min-w-0">
+                <select class="select select-glass w-full" data-select-onsen>
+                  <option>DIMAP · Divisão do Mapa de Valores</option>
+                  <option>DIMAP-1 · Avaliação Imobiliária</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <label for="demo-painel" class="painel-onsen-gatilho btn btn-glass btn-xs gap-1.5 self-start">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+            Unidade não encontrada
+          </label>
+
+          <div class="painel-onsen">
+            <input type="checkbox" id="demo-painel" class="painel-onsen-toggle" />
+            <div class="painel-onsen-corpo">
+              <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4">
+                <div class="flex items-center justify-between gap-4">
+                  <p class="text-overline">Cadastrar unidade</p>
+                  <label for="demo-painel" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Fechar o painel">
+                    <span class="etched icon-etched">✕</span>
+                  </label>
+                </div>
+                <div class="card-well p-4 grid sm:grid-cols-3 gap-4">
+                  <label class="form-field sm:col-span-2">
+                    <span class="text-overline">Nome</span>
+                    <input type="text" class="input input-glass" placeholder="Seção de Aerofotogrametria" />
+                  </label>
+                  <label class="form-field">
+                    <span class="text-overline">Sigla</span>
+                    <input type="text" class="input input-glass" placeholder="DIMAP-3" />
+                  </label>
+                </div>
+                <div class="flex items-center justify-end gap-5">
+                  <label for="demo-painel" class="btn-etched btn-etched-sm etched">✕ cancelar</label>
+                  <button type="button" class="btn btn-onsen btn-sm">Criar unidade</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- .poco-modal — entrada da placa -->
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.2 · Entrada da placa — <code class="text-code">.poco-modal</code></p>
+        <p class="text-[13px] text-base-content/70">
+          O modal chega pronto do servidor, com o interruptor já marcado — inserido assim, ele
+          apareceria sem animação alguma. Quem devolve a entrada é a fase de
+          <code class="text-code">settle</code> do HTMX, que segura a placa esmaecida por 150ms.
+        </p>
+        <button type="button" id="simular-entrada" class="btn btn-glass btn-sm self-start gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+          Simular a chegada do modal
+        </button>
+      </div>
+
+      <!-- .stats-onsen (SPEC 016) nos indicadores do servidor -->
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.3 · Bandeja de indicadores do servidor — <code class="text-code">.stats-onsen</code></p>
+
+        <!-- estado: lotado e titular -->
+        <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+            </div>
+            <div class="stat-title">Unidade de lotação</div>
+            <div class="stat-value flex items-center gap-2">
+              <span class="dot-unidade w-3 h-3" style="--cor-unidade:#0077b6"></span>
+              DIMAP
+            </div>
+            <div class="stat-desc">Divisão do Mapa de Valores</div>
+            <div class="stat-actions">
+              <a href="#" class="btn btn-glass btn-xs">Ver a unidade</a>
+            </div>
+          </div>
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+            </div>
+            <div class="stat-title">Titularidade</div>
+            <div class="stat-value">Titular da DIMAP</div>
+            <div class="stat-desc">Dirige a unidade em que está lotada.</div>
+          </div>
+        </div>
+
+        <!-- estado de falta: não é titular -->
+        <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+            </div>
+            <div class="stat-title">Unidade de lotação</div>
+            <div class="stat-value flex items-center gap-2">
+              <span class="dot-unidade w-3 h-3" style="--cor-unidade:#0096c7"></span>
+              DIMAP-1
+            </div>
+            <div class="stat-desc">Avaliação Imobiliária</div>
+            <div class="stat-actions">
+              <a href="#" class="btn btn-glass btn-xs">Ver a unidade</a>
+            </div>
+          </div>
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+            </div>
+            <div class="stat-title">Titularidade</div>
+            <div class="stat-value text-base-content/40!">—</div>
+            <div class="stat-desc">Não é titular de unidade alguma.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- .campo-onsen (SPEC 016) com o lápis que agora também fecha -->
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.4 · Campo que se abre no lápis — <code class="text-code">.campo-onsen</code></p>
+        <p class="text-[13px] text-base-content/70">
+          Passe o mouse no lápis aceso do campo aberto: ele vira <strong>✕</strong>. Alteração da peça
+          da SPEC 016 — vale também para o modal da página da unidade.
+        </p>
+
+        <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4">
+          <!-- estado: lido -->
+          <div class="campo-onsen">
+            <input type="checkbox" id="demo-campo-lido" class="campo-onsen-toggle" />
+            <span class="text-overline etched-rotulo">Cargo base</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">Analista de Ordenamento Territorial</p>
+              <div class="campo-onsen-campo">
+                <select class="select select-glass" data-select-onsen>
+                  <option selected>Analista de Ordenamento Territorial</option>
+                  <option>Engenheiro</option>
+                </select>
+              </div>
+              <label for="demo-campo-lido" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o cargo base">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- estado: aberto, com o que a validação pode recusar dentro do campo -->
+          <div class="campo-onsen">
+            <input type="checkbox" id="demo-campo-aberto" class="campo-onsen-toggle" checked />
+            <span class="text-overline etched-rotulo">Cargo em comissão</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">CDA-IV <span class="text-base-content/50">· Diretora de Divisão</span></p>
+              <div class="campo-onsen-campo">
+                <select class="select select-glass" data-select-onsen>
+                  <option>— sem cargo em comissão —</option>
+                  <option selected>CDA-IV · Diretora de Divisão</option>
+                  <option>CDA-II · Assessora II</option>
+                </select>
+                <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                  <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                  <p class="text-[13px] text-base-content/80">Trocar por um cargo que não titulariza a DIMAP é <strong>recusado na validação</strong>: a unidade não fica com titular inválido gravado.</p>
+                </div>
+              </div>
+              <label for="demo-campo-aberto" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Fechar o campo">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- .avatar-editavel -->
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.5 · Retrato editável — <code class="text-code">.avatar-editavel</code></p>
+        <p class="text-[13px] text-base-content/70">
+          O retrato grande, a legenda embaixo dele e o botão na quina. Clicando, o poço de upload
+          cresce abaixo — o mesmo interruptor do <code class="text-code">.campo-onsen</code>.
+        </p>
+
+        <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-6">
+          <!-- estado: com foto -->
+          <div class="campo-onsen items-center">
+            <input type="checkbox" id="demo-foto" class="campo-onsen-toggle" />
+            <div class="avatar-editavel">
+              <div class="avatar-glass w-28 h-28" style="--cor-unidade:#0077b6">
+                <img src="https://i.pravatar.cc/240?img=47" alt="Foto de Helena Prado" class="w-full h-full object-cover" />
+              </div>
+              <label for="demo-foto" class="btn btn-circle btn-foto campo-onsen-lapis" title="Trocar a foto">
+                <span class="campo-onsen-lapis-abre">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+                </span>
+                <span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+            <p class="text-[13px] text-base-content/60 text-center mt-2">Foto cadastrada</p>
+            <div class="campo-onsen-campo w-full mt-2">
+              <label class="upload-well cursor-pointer">
+                <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+                </span>
+                <span class="text-sm font-medium">Arraste a nova foto ou clique para escolher</span>
+                <input type="file" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs" />
+              </label>
+            </div>
+          </div>
+
+          <!-- estado de falta: sem foto, o avatar de iniciais que o domínio desenha -->
+          <div class="campo-onsen items-center">
+            <input type="checkbox" id="demo-foto-vazia" class="campo-onsen-toggle" />
+            <div class="avatar-editavel">
+              <div class="avatar-glass w-28 h-28" style="--cor-unidade:#0096c7">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="MV">
+                  <circle cx="50" cy="50" r="50" fill="#0096C7"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">MV</text>
+                </svg>
+              </div>
+              <label for="demo-foto-vazia" class="btn btn-circle btn-foto campo-onsen-lapis" title="Escolher uma foto">
+                <span class="campo-onsen-lapis-abre">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+                </span>
+                <span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+            <p class="text-[13px] text-base-content/60 text-center mt-2">Sem foto · iniciais na cor da unidade</p>
+            <div class="campo-onsen-campo w-full mt-2">
+              <label class="upload-well cursor-pointer">
+                <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+                </span>
+                <span class="text-sm font-medium">Arraste a foto ou clique para escolher</span>
+                <input type="file" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 4 · ORGANISMOS ==================== -->
+    <section class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <h2 class="text-[24px] font-bold text-madeira-700">4 · Organismos</h2>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">4.1 · Resumo do servidor — estado de falta (sem cargo em comissão)</p>
+
+        <!-- partial: user_admin/partials/_secao_resumo_perfil.html -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Resumo</p>
+
+          <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="min-w-0">
+              <p class="text-overline">RF</p>
+              <p class="text-code text-[15px] mt-0.5">812.345-6</p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Nome</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">Marcos Vieira</p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Unidade</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">DIMAP-1 <span class="text-base-content/50">· Avaliação Imobiliária</span></p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Cargo base</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">Analista de Ordenamento Territorial</p>
+            </div>
+            <div class="min-w-0 sm:col-span-2">
+              <p class="text-overline">Cargo em comissão</p>
+              <p class="text-[15px] text-base-content/40 mt-0.5">— sem cargo em comissão —</p>
+            </div>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+              </div>
+              <div class="stat-title">Unidade de lotação</div>
+              <div class="stat-value flex items-center gap-2">
+                <span class="dot-unidade w-3 h-3" style="--cor-unidade:#0096c7"></span>
+                DIMAP-1
+              </div>
+              <div class="stat-desc">Avaliação Imobiliária</div>
+              <div class="stat-actions">
+                <a href="#" class="btn btn-glass btn-xs">Ver a unidade</a>
+              </div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              </div>
+              <div class="stat-title">Titularidade</div>
+              <div class="stat-value text-base-content/40!">—</div>
+              <div class="stat-desc">Não é titular de unidade alguma.</div>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+      </div>
+    </section>
+
+    <!-- ==================== 5 · A PÁGINA INTEIRA ==================== -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
+        5 · A página do servidor — a titular afastada, sem substituto
+      </h2>
+
+      <!-- página: user_admin/perfil.html -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6 max-w-3xl mx-auto w-full">
+
+        <!-- partial: user_admin/partials/_identidade_perfil.html — sem alteração (SPEC 007) -->
+        <div class="flex items-center gap-5">
+          <!-- partial: user_admin/partials/_imagem_perfil.html — foto ou iniciais -->
+          <div class="avatar-glass shrink-0 w-28 h-28" style="--cor-unidade:#0077b6">
+            <img src="https://i.pravatar.cc/240?img=47" alt="Foto de Helena Prado" class="w-full h-full object-cover" />
+          </div>
+          <!-- /partial -->
+          <div class="min-w-0">
+            <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Helena Prado</h3>
+            <p class="text-code text-sm mt-1">RF 999903</p>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <span class="badge badge-info badge-soft">DIMAP</span>
+              <span class="badge badge-ponto badge-sm">Analista de Ordenamento Territorial</span>
+              <span class="badge badge-poligono badge-sm">CDA-IV · Diretora de Divisão</span>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: user_admin/partials/_secao_resumo_perfil.html -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Resumo</p>
+
+          <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="min-w-0">
+              <p class="text-overline">RF</p>
+              <p class="text-code text-[15px] mt-0.5">999903</p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Nome</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">Helena Prado</p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Unidade</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">DIMAP <span class="text-base-content/50">· Divisão do Mapa de Valores</span></p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Cargo base</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">Analista de Ordenamento Territorial</p>
+            </div>
+            <div class="min-w-0 sm:col-span-2">
+              <p class="text-overline">Cargo em comissão</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">CDA-IV <span class="text-base-content/50">· Diretora de Divisão</span></p>
+            </div>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+              </div>
+              <div class="stat-title">Unidade de lotação</div>
+              <div class="stat-value flex items-center gap-2">
+                <span class="dot-unidade w-3 h-3" style="--cor-unidade:#0077b6"></span>
+                DIMAP
+              </div>
+              <div class="stat-desc">Divisão do Mapa de Valores</div>
+              <div class="stat-actions">
+                <a href="#" class="btn btn-glass btn-xs">Ver a unidade</a>
+              </div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              </div>
+              <div class="stat-title">Titularidade</div>
+              <div class="stat-value">Titular da DIMAP</div>
+              <div class="stat-desc">Dirige a unidade em que está lotada.</div>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: user_admin/partials/_secao_exercicio.html — sem alteração (SPEC 015); os
+             diálogos dela seguem renderizados com a página. Não estão neste mock: aqui os
+             <label for> de impedimento, retorno e designação são inertes de propósito. -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Exercício</p>
+            <span class="badge badge-warning badge-soft">Afastada</span>
+          </div>
+
+          <!-- partial: user_admin/partials/_alarme_direcao.html — SPEC 016, reflexo na página de quem causa a falta -->
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <p class="text-[15px] font-medium text-base-content/90">
+              A DIMAP está sem quem responda por ela. Helena Prado é a titular, está afastada e não há
+              substituto designado — designe um substituto aqui.
+            </p>
+          </div>
+          <!-- /partial -->
+
+          <!-- partial: user_admin/partials/_cartao_impedimento.html — a calha e as linhas de
+               substituição vêm dele, sem alteração (SPEC 015) -->
+          <div class="glass-panel p-4 flex flex-col gap-3">
+            <div class="card-well p-4 flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              <div class="min-w-0">
+                <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+                <p class="text-[13px] text-base-content/60">10/08/2026 → 28/08/2026 · vigente</p>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex flex-col gap-3">
+              <div class="relative pb-12">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line"></div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca calha-marca-vazia" style="left:50%">
+                    <span class="text-[12px] font-medium">Sem substituto</span>
+                    <span class="text-[11px] opacity-80">10/08 → 28/08</span>
+                  </div>
+                </div>
+              </div>
+
+              <label for="modal-designar" class="btn btn-onsen btn-sm gap-2 self-start">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+                Designar substituto
+              </label>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <div class="flex flex-wrap justify-end gap-3">
+            <label for="modal-impedimento" class="btn btn-glass btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+              Registrar impedimento
+            </label>
+            <label for="modal-retorno" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-retorno"/></svg>
+              Voltar ao exercício
+            </label>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- fica na página: só arranjo — o botão que busca o modal (hx-get no #poco-modal) -->
+        <div class="flex justify-center pt-2">
+          <label for="modal-editar-perfil" class="btn btn-onsen btn-lg gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+            Editar servidor
+          </label>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== MODAL · EDITAR SERVIDOR ====================
+       partial: user_admin/partials/_modal_editar_perfil.html — chega por hx-get no poço abaixo; no
+       mock quem abre é o checkbox, porque não há servidor.
+       estados: campo lido (RF, Nome) × campo aberto (Unidade, Cargo em comissão) × painel de nova
+       unidade fechado, que o gatilho "Unidade não encontrada" abre -->
+  <div id="poco-modal" class="poco-modal">
+    <input type="checkbox" id="modal-editar-perfil" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+
+        <form class="flex flex-col gap-6">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+            <p class="text-sm text-base-content/70 mt-1">Helena Prado · RF 999903</p>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Identificação</p>
+            <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+              <!-- estado: campo lido -->
+              <div class="campo-onsen">
+                <input type="checkbox" id="editar-campo-rf" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">RF</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor text-code">999903</p>
+                  <div class="campo-onsen-campo">
+                    <input type="text" name="rf" class="input input-glass" value="999903" />
+                  </div>
+                  <label for="editar-campo-rf" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o RF">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+              <div class="campo-onsen">
+                <input type="checkbox" id="editar-campo-nome" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">Nome</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor">Helena</p>
+                  <div class="campo-onsen-campo">
+                    <input type="text" name="nome" class="input input-glass" value="Helena" />
+                  </div>
+                  <label for="editar-campo-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+              <div class="campo-onsen">
+                <input type="checkbox" id="editar-campo-sobrenome" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">Sobrenome</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor">Prado</p>
+                  <div class="campo-onsen-campo">
+                    <input type="text" name="sobrenome" class="input input-glass" value="Prado" />
+                  </div>
+                  <label for="editar-campo-sobrenome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o sobrenome">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Lotação</p>
+            <div class="grid gap-x-8 gap-y-4">
+              <!-- estado: campo aberto, com o que a validação pode recusar dentro dele -->
+              <div class="campo-onsen">
+                <input type="checkbox" id="editar-campo-unidade" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">Unidade</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor">DIMAP <span class="text-base-content/50">· Divisão do Mapa de Valores</span></p>
+                  <div class="campo-onsen-campo">
+                    <select name="unidade" class="select select-glass" data-select-onsen>
+                      <option selected>DIMAP · Divisão do Mapa de Valores</option>
+                      <option>DIMAP-1 · Avaliação Imobiliária</option>
+                      <option>DIMAP-2 · Cadastro Territorial</option>
+                      <option>DECAD · Departamento de Cadastros</option>
+                    </select>
+                    <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                      <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                      <p class="text-[13px] text-base-content/80">Mover a titular da DIMAP para outra unidade é <strong>recusado na validação</strong>: a unidade não fica com titular de fora.</p>
+                    </div>
+                  </div>
+                  <label for="editar-campo-unidade" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a unidade">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- o gatilho e o painel ocupam o mesmo lugar: aberto o painel, o botão sai de cena -->
+              <label for="painel-nova-unidade" class="painel-onsen-gatilho btn btn-glass btn-xs gap-1.5 self-start">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+                Unidade não encontrada
+              </label>
+
+              <div class="painel-onsen">
+                <input type="checkbox" id="painel-nova-unidade" class="painel-onsen-toggle" />
+                <div class="painel-onsen-corpo">
+                  <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4">
+                    <div class="flex items-center justify-between gap-4">
+                      <div class="min-w-0">
+                        <p class="text-overline">Cadastrar unidade</p>
+                        <p class="text-[13px] text-base-content/60 mt-0.5">Criada aqui, ela passa a existir na lista acima.</p>
+                      </div>
+                      <label for="painel-nova-unidade" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Fechar o cadastro de unidade">
+                        <span class="etched icon-etched">✕</span>
+                      </label>
+                    </div>
+
+                    <!-- partial: user_admin/partials/_campos_unidade.html — sem alteração (SPEC 012),
+                         com o atributo form apontando para o formulário vazio no fim do modal -->
+                    <div class="card-well p-4 flex flex-col gap-4">
+                      <p class="text-overline">Identificação</p>
+                      <div class="grid sm:grid-cols-3 gap-4">
+                        <label class="form-field sm:col-span-2">
+                          <span class="text-overline">Nome</span>
+                          <input type="text" name="nome" form="form-nova-unidade" class="input input-glass" placeholder="Seção de Aerofotogrametria" />
+                        </label>
+                        <label class="form-field">
+                          <span class="text-overline">Sigla</span>
+                          <input type="text" name="sigla" form="form-nova-unidade" class="input input-glass" placeholder="DIMAP-3" />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div class="card-well p-4 flex flex-col gap-4">
+                      <p class="text-overline">Hierarquia</p>
+                      <div class="grid sm:grid-cols-2 gap-4">
+                        <div class="form-field">
+                          <span class="text-overline">Tipo</span>
+                          <select name="tipo" form="form-nova-unidade" class="select select-glass" data-select-onsen>
+                            <option>Seção</option>
+                            <option>Divisão</option>
+                            <option>Departamento</option>
+                          </select>
+                          <span class="form-field-hint">O tipo carrega o nível: é ele que diz o que pode subordinar o quê.</span>
+                        </div>
+                        <div class="form-field">
+                          <span class="text-overline">Unidade superior</span>
+                          <select name="pai" form="form-nova-unidade" class="select select-glass" data-select-onsen>
+                            <option>— sem unidade superior (raiz) —</option>
+                            <option selected>DIMAP · Divisão do Mapa de Valores</option>
+                            <option>DECAD · Departamento de Cadastros</option>
+                          </select>
+                          <span class="form-field-hint">Só tipo marcado como raiz dispensa unidade superior. Trocar aqui sugere a cor.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card-well p-4 flex flex-col gap-4">
+                      <p class="text-overline">Identidade visual</p>
+                      <!-- partial: user_admin/partials/_campo_cor_unidade.html (SPEC 012), com uma
+                           mudança: dropdown-right + dropdown-end. Para baixo o disco cairia fora do
+                           recorte do painel; para a direita, ancorado embaixo, ele cresce para cima
+                           e cabe inteiro. As oito cavidades se distribuem pelo ângulo --a. -->
+                      <div id="campo-cor-unidade" class="palette-field form-field">
+                        <span class="text-overline">Cor da unidade</span>
+                        <!-- o dropdown envolve só o gatilho: é a largura DELE que o disco usa para
+                             se deslocar. Envolvendo o campo inteiro, "para a direita" seria a
+                             largura do poço, e o disco sairia do painel -->
+                        <div class="dropdown dropdown-right dropdown-end w-fit">
+                          <div tabindex="0" role="button" class="btn btn-ghost btn-glass w-fit gap-3 px-3 h-12">
+                            <span class="paint-well-atual w-8 h-8 pointer-events-none" style="--tinta: #0077B6"></span>
+                            <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                          </div>
+                          <div tabindex="0" class="dropdown-content z-30 ml-2">
+                          <div class="palette-disc">
+                            <span class="paint-well-atual absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="--tinta: #0077B6"></span>
+                            <label class="paint-well" style="--a: 0deg;   --tinta: #0077B6" title="Água 700"><input type="radio" name="cor" value="agua-700" form="form-nova-unidade" class="sr-only" checked></label>
+                            <label class="paint-well" style="--a: 45deg;  --tinta: #023E8A" title="Água 800"><input type="radio" name="cor" value="agua-800" form="form-nova-unidade" class="sr-only"></label>
+                            <label class="paint-well" style="--a: 90deg;  --tinta: #415A77" title="Rocha 700"><input type="radio" name="cor" value="rocha-700" form="form-nova-unidade" class="sr-only"></label>
+                            <label class="paint-well" style="--a: 135deg; --tinta: #1B263B" title="Rocha 900"><input type="radio" name="cor" value="rocha-900" form="form-nova-unidade" class="sr-only"></label>
+                            <label class="paint-well" style="--a: 180deg; --tinta: #7F5539" title="Madeira 600"><input type="radio" name="cor" value="madeira-600" form="form-nova-unidade" class="sr-only"></label>
+                            <label class="paint-well" style="--a: 225deg; --tinta: #5E412F" title="Madeira 700"><input type="radio" name="cor" value="madeira-700" form="form-nova-unidade" class="sr-only"></label>
+                            <label class="paint-well" style="--a: 270deg; --tinta: #BC3A67" title="Sakura 600"><input type="radio" name="cor" value="sakura-600" form="form-nova-unidade" class="sr-only"></label>
+                            <label class="paint-well" style="--a: 315deg; --tinta: #97294F" title="Sakura 700"><input type="radio" name="cor" value="sakura-700" form="form-nova-unidade" class="sr-only"></label>
+                            </div>
+                          </div>
+                        </div>
+                        <span class="form-field-hint">Pinta o anel do avatar de quem é lotado aqui. A cor nasce da unidade superior.</span>
+                      </div>
+                      <!-- /partial -->
+                    </div>
+
+                    <!-- o ✕ do topo sai de vista quando o painel é longo: aqui embaixo, o mesmo
+                         gesto em registro gravado — secundário ao lado do que grava -->
+                    <div class="flex items-center justify-end gap-5">
+                      <label for="painel-nova-unidade" class="btn-etched btn-etched-sm etched">✕ cancelar</label>
+                      <button type="submit" form="form-nova-unidade" class="btn btn-onsen btn-sm">Criar unidade</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="campo-onsen">
+                <input type="checkbox" id="editar-campo-base" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">Cargo base</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor">Analista de Ordenamento Territorial</p>
+                  <div class="campo-onsen-campo">
+                    <select name="cargo_base" class="select select-glass" data-select-onsen>
+                      <option selected>Analista de Ordenamento Territorial</option>
+                      <option>Assistente de Gestão de Políticas Públicas</option>
+                      <option>Engenheiro</option>
+                    </select>
+                  </div>
+                  <label for="editar-campo-base" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o cargo base">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- estado: campo aberto com a recusa que só quem é titular carrega -->
+              <div class="campo-onsen">
+                <input type="checkbox" id="editar-campo-comissao" class="campo-onsen-toggle" />
+                <span class="text-overline etched-rotulo">Cargo em comissão</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor">CDA-IV <span class="text-base-content/50">· Diretora de Divisão</span></p>
+                  <div class="campo-onsen-campo">
+                    <select name="cargo_comissao" class="select select-glass" data-select-onsen>
+                      <option>— sem cargo em comissão —</option>
+                      <option selected>CDA-IV · Diretora de Divisão</option>
+                      <option>CDA-II · Assessora II</option>
+                      <option>CDA-VI · Diretora de Departamento</option>
+                    </select>
+                    <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                      <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                      <p class="text-[13px] text-base-content/80">Trocar por um cargo que não titulariza a DIMAP é <strong>recusado na validação</strong>: a unidade não fica com titular inválido gravado.</p>
+                    </div>
+                  </div>
+                  <label for="editar-campo-comissao" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o cargo em comissão">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Foto</p>
+            <div class="campo-onsen items-center">
+              <input type="checkbox" id="editar-campo-foto" class="campo-onsen-toggle" />
+              <div class="avatar-editavel">
+                <div class="avatar-glass w-28 h-28" style="--cor-unidade:#0077b6">
+                  <img src="https://i.pravatar.cc/240?img=47" alt="Foto de Helena Prado" class="w-full h-full object-cover" />
+                </div>
+                <label for="editar-campo-foto" class="btn btn-circle btn-foto campo-onsen-lapis" title="Trocar a foto">
+                  <span class="campo-onsen-lapis-abre">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+                  </span>
+                  <span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+              <p class="text-[13px] text-base-content/60 text-center mt-2">Foto cadastrada · o anel é a cor da DIMAP</p>
+
+              <div class="campo-onsen-campo w-full mt-2">
+                <label class="upload-well cursor-pointer">
+                  <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
+                  </span>
+                  <span class="text-sm font-medium">Arraste a nova foto ou clique para escolher</span>
+                  <input type="file" name="foto" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs" />
+                  <span class="form-field-hint">JPG ou PNG. Sem foto, o sistema desenha o avatar com as iniciais na cor da unidade.</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-action">
+            <label for="modal-editar-perfil" class="btn btn-glass btn-sm">Cancelar</label>
+            <label for="modal-editar-perfil" class="btn btn-onsen btn-sm">Salvar alterações</label>
+          </div>
+        </form>
+
+        <!-- O formulário do cadastro de unidade: vazio e irmão do de cima, nunca dentro dele. Os
+             campos dele moram lá em cima, ao pé do campo de lotação, e se ligam aqui pelo atributo
+             form — é o que permite o painel nascer onde a pergunta nasceu sem aninhar formulário. -->
+        <form id="form-nova-unidade" class="hidden"></form>
+
+      </div>
+      <label class="modal-backdrop" for="modal-editar-perfil">Fechar</label>
+    </div>
+  </div>
+
+  <!-- Marcar o campo com data-select-onsen não basta: o módulo precisa ser carregado na página
+       (SPEC user_admin/011). Sem ele o campo degrada no .select-glass nativo. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+
+  <script>
+    // Andaime do mock: na aplicação quem põe e tira .htmx-settling é o HTMX, e o modal chega do
+    // servidor já marcado — aqui o interruptor é virado à mão para a placa entrar do mesmo jeito.
+    document.getElementById("simular-entrada").addEventListener("click", () => {
+      const poco = document.getElementById("poco-modal");
+      poco.classList.add("htmx-settling");
+      document.getElementById("modal-editar-perfil").checked = true;
+      requestAnimationFrame(() => requestAnimationFrame(() => poco.classList.remove("htmx-settling")));
+    });
+  </script>
+</body>
+</html>

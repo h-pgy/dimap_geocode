@@ -1,0 +1,75 @@
+{# Bloco de prévia do ato (SPEC user_admin/025): serve às duas faces — o que sai na extinção, o que #}
+{# volta na reativação — e é o alvo do hx-get do select ao trocar de unidade dentro do modal.        #}
+{% if previa %}
+  <div class="previa-extincao">
+    {% if face == "reativar" %}
+      <div class="previa-extincao-tile card-well">
+        <span class="text-overline">Atribuições</span>
+        {% if previa.atribuicoes %}<span class="previa-extincao-valor">{{ previa.atribuicoes }}</span>{% else %}<span class="previa-extincao-vazio">Nenhuma a restaurar</span>{% endif %}
+      </div>
+      <div class="previa-extincao-tile card-well">
+        <span class="text-overline">Concessões</span>
+        {% if previa.concessoes %}<span class="previa-extincao-valor">{{ previa.concessoes }}</span>{% else %}<span class="previa-extincao-vazio">Nenhuma a restaurar</span>{% endif %}
+      </div>
+      <div class="previa-extincao-tile card-well">
+        <span class="text-overline">Volta a responder a</span>
+        <span class="pt-1 text-[17px] font-bold text-madeira-700">{{ previa.superior.sigla }}</span>
+      </div>
+    {% else %}
+      <div class="previa-extincao-tile card-well">
+        <span class="text-overline">Servidores</span>
+        {% if previa.servidores %}<span class="previa-extincao-valor">{{ previa.servidores }}</span>{% else %}<span class="previa-extincao-vazio">Nenhum lotado</span>{% endif %}
+      </div>
+      <div class="previa-extincao-tile card-well">
+        <span class="text-overline">Subordinadas</span>
+        {% if previa.subordinadas %}<span class="previa-extincao-valor">{{ previa.subordinadas }}</span>{% else %}<span class="previa-extincao-vazio">Nenhuma</span>{% endif %}
+      </div>
+      <div class="previa-extincao-tile card-well">
+        <span class="text-overline">Passam a responder a</span>
+        {% if previa.destino %}
+          <span class="pt-1 text-[17px] font-bold text-madeira-700">{{ previa.destino.sigla }}</span>
+        {% else %}
+          <span class="previa-extincao-vazio">Escolha a unidade acima.</span>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  {% if face == "reativar" %}
+    <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+      <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+      <p class="text-[13px] text-base-content/80">
+        Voltam a unidade e as competências que caíram com ela. <strong>Servidores e subordinadas não voltam</strong> — a lotação e a hierarquia se refazem uma a uma.
+      </p>
+    </div>
+  {% elif previa.servidores or previa.subordinadas %}
+    <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+      <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+      <p class="text-[13px] text-base-content/80">
+        Há hoje <strong>{{ previa.servidores }} servidor{{ previa.servidores|pluralize }}</strong> e <strong>{{ previa.subordinadas }} subordinada{{ previa.subordinadas|pluralize }}</strong> na {{ previa.unidade.sigla }}. Extinguindo, passam a responder à <strong>{{ previa.destino.sigla }}</strong>.
+      </p>
+    </div>
+  {% else %}
+    <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+      <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+      <p class="text-[13px] text-base-content/80">
+        Nada será transferido: a <strong>{{ previa.unidade.sigla }}</strong> não tem servidores lotados nem subordinadas.
+      </p>
+    </div>
+  {% endif %}
+{% else %}
+  <div class="previa-extincao">
+    <div class="previa-extincao-tile card-well">
+      <span class="text-overline">Servidores</span>
+      <span class="previa-extincao-vazio">—</span>
+    </div>
+    <div class="previa-extincao-tile card-well">
+      <span class="text-overline">Subordinadas</span>
+      <span class="previa-extincao-vazio">—</span>
+    </div>
+    <div class="previa-extincao-tile card-well">
+      <span class="text-overline">Passam a responder a</span>
+      <span class="previa-extincao-vazio">Escolha a unidade acima.</span>
+    </div>
+  </div>
+{% endif %}

@@ -1,0 +1,8 @@
+{# Campo de cor da unidade: rótulo, disco e dica — o disco em si é `_disco_de_paleta.html` (SPEC     #}
+{# user_admin/020), que o modal de edição compõe sem arrastar este invólucro. É este id o alvo do    #}
+{# hx-get disparado pelo select da unidade superior (SPEC 012).                                      #}
+<div id="campo-cor-unidade" class="form-field">
+  <span class="text-overline">Cor da unidade</span>
+  {% include "unidades/partials/_disco_de_paleta.html" with form_id="form-nova-unidade" %}
+  <span class="form-field-hint">Pinta o anel do avatar de quem é lotado aqui. Repetir tom entre unidades é permitido.</span>
+</div>

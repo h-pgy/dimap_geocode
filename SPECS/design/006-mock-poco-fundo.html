@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/006 — Profundidade do vidro sobre placa (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Sem peça própria: a recalibragem inteira vive no tema (--sombra-poco, --sombra-poco-fina e os
+       consumidores). O que já está no tema não se repete aqui. -->
+  <script type="text/css" id="tokens-spec"></script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- defs do filtro de gravação. Na aplicação: templates/partials/_filtros_gravacao.html. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sombraInterna"/><feMergeNode in="luzInterna"/></feMerge>
+      </filter>
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sombraInterna"/><feMergeNode in="luzInterna"/></feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC design/006 · mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Profundidade do vidro sobre placa</h1>
+      <p class="mt-4 max-w-2xl text-base-content/80 leading-relaxed">
+        O tier raso do tema — <span class="text-code">.card-well</span>,
+        <span class="text-code">.upload-well</span>, <span class="text-code">.toggle-onsen</span>,
+        <span class="text-code">.calha-cobertura</span> e os campos — passa a beber de um
+        <strong class="text-agua-700">valor só</strong> (<span class="text-code">--sombra-poco</span>),
+        e o <span class="text-code">.btn-glass</span> ganha o relevo oposto.
+      </p>
+      <div class="flex flex-wrap gap-2 mt-5">
+        <span class="badge badge-ponto">poço 0.38</span>
+        <span class="badge badge-linha">campo com poço em repouso</span>
+        <span class="badge badge-poligono">botão em relevo</span>
+        <span class="badge badge-neutral badge-soft">lápis .etched-deeper</span>
+      </div>
+    </header>
+
+    <!-- ==================== 1 · TOKENS ==================== -->
+    <section class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+      <h2 class="text-[24px] font-bold text-madeira-700">1 · Tokens</h2>
+      <p class="text-[13px] text-base-content/70 m-0">
+        Tudo abaixo consome <span class="text-code">--sombra-poco</span> pelo tema — é o mesmo pixel
+        que a aplicação desenha.
+      </p>
+
+      <div>
+        <p class="text-overline mb-2">.card-well</p>
+        <div class="card-well p-5">
+          <p class="text-sm font-bold text-madeira-700 m-0">Lotação</p>
+          <p class="text-[13px] text-base-content/70 m-0 mt-1">O poço, com o lábio de luz na aresta de baixo.</p>
+        </div>
+      </div>
+
+      <!-- empilhadas: onde a leitura pesa de verdade -->
+      <div>
+        <p class="text-overline mb-2">empilhadas</p>
+        <div class="flex flex-col gap-4">
+          <div class="card-well p-5"><p class="text-sm font-bold text-madeira-700 m-0">Resumo</p></div>
+          <div class="card-well p-5"><p class="text-sm font-bold text-madeira-700 m-0">Lotação</p></div>
+          <div class="card-well p-5"><p class="text-sm font-bold text-madeira-700 m-0">Hierarquia</p></div>
+        </div>
+      </div>
+
+      <!-- estado de falta -->
+      <div>
+        <p class="text-overline mb-2">estado: sem registro</p>
+        <div class="card-well p-6 text-center text-[13px] text-base-content/60">
+          Nenhuma lotação registrada para este servidor.
+        </div>
+      </div>
+
+      <!-- as outras peças do mesmo token -->
+      <div>
+        <p class="text-overline mb-2">.upload-well · .toggle-onsen · .calha-cobertura</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="upload-well">
+            <p class="text-[13px] text-base-content/70 m-0">Arraste a foto ou clique para escolher.</p>
+          </div>
+          <!-- SEM a classe .toggle do daisyUI: o tema desenha o controle inteiro (appearance-none
+               e ::after próprio), e o knob do daisyUI apareceria como disco opaco atrás da bolinha. -->
+          <div class="flex items-center gap-4">
+            <input type="checkbox" class="toggle-onsen" aria-label="Desligado" />
+            <input type="checkbox" class="toggle-onsen" aria-label="Ligado" checked />
+          </div>
+          <div class="calha-cobertura"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2 · ÁTOMOS ==================== -->
+    <section class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
+
+      <!-- campo de vidro: poço em repouso, aresta escura -->
+      <div>
+        <p class="text-overline mb-2">.input-glass · .select-glass</p>
+        <div class="card-well p-5 flex flex-col gap-3">
+          <input type="text" class="input input-glass" value="Helena" />
+          <input type="text" class="input input-glass" placeholder="Nome do servidor" />
+          <select class="select select-glass">
+            <option>Divisão de Avaliação</option>
+          </select>
+          <p class="text-[13px] text-base-content/60 m-0">Clique num campo: o anel de água entra por cima do poço, não no lugar dele.</p>
+        </div>
+      </div>
+
+      <!-- o lápis: botão em relevo + sulco de tinta mais funda -->
+      <div>
+        <p class="text-overline mb-2">.btn-glass + .etched-deeper</p>
+        <div class="card-well p-5 flex flex-col gap-3">
+          <div class="campo-onsen">
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor text-code">999903</p>
+              <span class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0">
+                <span class="etched icon-etched">✎</span>
+              </span>
+            </div>
+          </div>
+          <div class="campo-onsen">
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">Helena</p>
+              <span class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0">
+                <span class="etched icon-etched">✎</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- o mesmo relevo em botão maior, direto sobre a placa -->
+      <div>
+        <p class="text-overline mb-2">.btn-glass em corpo maior</p>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="btn btn-glass btn-circle">
+            <span class="etched icon-etched">✎</span>
+          </button>
+          <button type="button" class="btn btn-glass gap-2">
+            <span class="etched icon-etched">✎</span> Editar
+          </button>
+        </div>
+      </div>
+
+      <!-- estado: campo aberto, sulco entintado de água -->
+      <div>
+        <p class="text-overline mb-2">estado: campo aberto</p>
+        <div class="card-well p-5">
+          <div class="campo-onsen">
+            <input type="checkbox" id="mock-campo-aberto" class="campo-onsen-toggle" checked />
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">Helena</p>
+              <div class="campo-onsen-campo">
+                <input type="text" class="input input-glass w-full" value="Helena" />
+              </div>
+              <label for="mock-campo-aberto" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0">
+                <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- toggle: o trilho é o poço em pílula -->
+      <div>
+        <p class="text-overline mb-2">toggle — o trilho é o mesmo poço</p>
+        <div class="card-well p-5 flex items-center gap-4">
+          <input type="checkbox" class="toggle-onsen" />
+          <input type="checkbox" class="toggle-onsen" checked />
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 5 · A PÁGINA INTEIRA ==================== -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
+        5 · A página do servidor
+      </h2>
+
+      <!-- página: user_admin/perfil.html -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6 max-w-3xl mx-auto w-full">
+
+        <!-- partial: user_admin/partials/_identidade_perfil.html — sem alteração (SPEC 007) -->
+        <div class="flex items-center gap-5">
+          <div class="avatar-glass shrink-0 w-24 h-24" style="--cor-unidade:#0077b6">
+            <img src="https://i.pravatar.cc/240?img=12" alt="Foto de Helena Prado" class="w-full h-full object-cover" />
+          </div>
+          <div class="min-w-0">
+            <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Helena Prado</h3>
+            <p class="text-code text-sm mt-1">RF 999903</p>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: user_admin/partials/_secao_resumo_perfil.html -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Resumo</p>
+          <div class="flex flex-wrap gap-3">
+            <div class="stat card-well">
+              <div class="stat-title">Exercícios</div>
+              <div class="stat-value text-madeira-700">3</div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-title">Substituições</div>
+              <div class="stat-value text-madeira-700">1</div>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: user_admin/partials/_secao_exercicio.html — alvo de hx-swap ao encerrar impedimento -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Exercício</p>
+          <p class="text-[15px] text-base-content/90 m-0">Titular da Divisão de Avaliação</p>
+          <!-- estado: sem impedimento -->
+          <div class="card-well p-4 text-center text-[13px] text-base-content/60">
+            Nenhum impedimento vigente.
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: user_admin/partials/_secao_hierarquia.html -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Hierarquia</p>
+          <p class="text-[15px] text-base-content/90 m-0">DIMAP › DIMAP-1 › Divisão de Avaliação</p>
+        </div>
+        <!-- /partial -->
+
+        <!-- fica na página: só arranjo, nunca é trocado sozinho -->
+        <div class="flex justify-center pt-2">
+          <button type="button" class="btn btn-onsen btn-lg gap-2">
+            <span class="etched icon-etched">✎</span>
+            Editar servidor
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</body>
+</html>

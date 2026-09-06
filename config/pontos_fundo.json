@@ -1,0 +1,10 @@
+{
+  "anhangabau":  {"descricao": "Vale do Anhangabaú — Centro",       "lat": -23.5450, "lng": -46.6390},
+  "ibirapuera":  {"descricao": "Parque Ibirapuera — Zona Sul",      "lat": -23.5874, "lng": -46.6576},
+  "butanta":     {"descricao": "Cidade Universitária — Zona Oeste", "lat": -23.5595, "lng": -46.7313},
+  "itaquera":    {"descricao": "Arena Corinthians — Zona Leste",    "lat": -23.5453, "lng": -46.4742},
+  "anhembi":     {"descricao": "Campo de Marte — Zona Norte",       "lat": -23.5145, "lng": -46.6370},
+  "cantareira":  {"descricao": "Serra da Cantareira — Zona Norte",  "lat": -23.4585, "lng": -46.6300},
+  "jaragua":     {"descricao": "Pico do Jaraguá — Zona Noroeste",   "lat": -23.4570, "lng": -46.7660},
+  "interlagos":  {"descricao": "Autódromo de Interlagos — Sul",     "lat": -23.7010, "lng": -46.6975}
+}

@@ -1,0 +1,37 @@
+{# Barra de ações entre a árvore e a tabela (SPEC user_admin/025): Nova unidade, Extinguir unidade — #}
+{# com a unidade em foco, se houver — e o toggle "Mostrar unidades extintas". O toggle troca o       #}
+{# PAINEL inteiro: ligar as extintas muda a árvore, a barra (some a lixeira das linhas) e a tabela.  #}
+<div class="barra-acoes glass-panel">
+  <div class="barra-acoes-gestos">
+    <a href="{% url 'unidades:criar_unidade' %}" class="btn btn-onsen btn-sm gap-1.5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-unidade"/></svg>
+      Nova unidade
+    </a>
+    <button type="button"
+            class="btn btn-error btn-soft btn-sm gap-1.5"
+            hx-get="{% url 'unidades:extinguir_unidade' %}{% if unidade_em_foco %}?unidade={{ unidade_em_foco.pk }}{% endif %}"
+            hx-target="#poco-modal"
+            hx-swap="innerHTML settle:150ms">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+      Extinguir unidade
+    </button>
+  </div>
+  <div class="barra-acoes-gestos">
+    {# Sem JS: o checkbox é o próprio campo, e o `change` é o gatilho padrão do HTMX. `hx-include` #}
+    {# leva os filtros do cabeçalho, para que ligar as extintas não apague o que já estava filtrado. #}
+    <label class="barra-acoes-chave">
+      <input type="checkbox"
+             class="toggle-onsen"
+             name="extintas"
+             value="1"
+             {% if extintas %}checked{% endif %}
+             hx-get="{% url 'unidades:painel_unidades' %}"
+             hx-target="#painel-unidades"
+             hx-swap="outerHTML"
+             hx-include="#tabela-unidades thead"
+             aria-label="Mostrar unidades extintas" />
+      <span class="text-overline">Mostrar unidades extintas</span>
+    </label>
+    <button type="button" class="btn-etched etched" data-limpar-filtros="#tabela-unidades">✕ limpar filtros</button>
+  </div>
+</div>

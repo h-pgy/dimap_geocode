@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/011 — Campo de seleção de vidro (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server) —
+       aberto via file:// o fetch é bloqueado e o tema não carrega. -->
+  <script>
+    // Tema e tokens desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
+    // vêm do @theme do tema, e um bloco separado que as usa em @apply cai com "unknown utility".
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-011").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
+  </script>
+
+  <!-- TOKENS PROPOSTOS POR ESTA SPEC — ainda NÃO estão no tema-dimap.dev.css.
+       Guardados em script[type=text/css] (inerte) e concatenados ao tema pelo loader acima.
+       Ao implementar, estes blocos migram para lá tal e qual (fonte única, SPEC design/004). -->
+  <script type="text/css" id="tokens-spec-011">
+    @layer components {
+      /* ---------- Material: gelo espesso ---------- */
+      /* A espessura do vidro depende do que está ATRÁS: sobre o mapa (água clara) o gelo fino de
+         10px separa figura do fundo; sobre interface — formulário com tinta escura, selects, poços —
+         ele deixa passar demais. O espesso é a mesma receita em outro grau, não outro material. */
+      .glass-blur-thick { @apply backdrop-blur-[20px]; }
+      .glass-bg-thick   { @apply bg-gradient-to-br from-white/85 via-white/75 to-white/65; }
+      .glass-panel-thick {
+        @apply rounded-2xl backdrop-blur-[20px] bg-gradient-to-br from-white/85 via-white/75 to-white/65 border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_40px_rgba(7,58,84,0.3),0_0_28px_rgba(72,202,228,0.28)];
+      }
+
+      /* ---------- Molécula: campo de seleção de vidro (a lista, finalmente no DS) ---------- */
+      /* A lista nativa é desenhada pelo SO e não aceita token nenhum. Aqui o <select> continua
+         sendo o campo (fonte da verdade, envio, change para o HTMX) e ganha uma casca de vidro. */
+      .select-onsen         { @apply w-full; }
+      /* flex! porque o .select do daisyUI define o próprio display e as duas regras empatam. */
+      .select-onsen-trigger { @apply flex! w-full items-center justify-between text-left font-normal; }
+      /* A lista é popover: vive na TOP LAYER, então nenhum overflow a corta e nenhum stacking
+         context a soterra — dentro de painel de vidro (backdrop-filter cria contexto próprio) e de
+         caixa com rolagem, painel absoluto não tem chance. Posição e largura vêm do gatilho, e o
+         inset: auto derruba o inset: 0 que o navegador dá a todo popover. */
+      .select-onsen-panel {
+        @apply fixed m-0 p-2 overflow-hidden rounded-2xl backdrop-blur-[20px] bg-transparent bg-gradient-to-br from-white/85 via-white/75 to-white/65 border border-white/70 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_40px_rgba(7,58,84,0.3),0_0_28px_rgba(72,202,228,0.28)];
+        inset: auto;
+      }
+      .select-onsen-panel:popover-open { @apply flex flex-col gap-2; }
+      .select-onsen-busca { @apply h-9 text-sm shrink-0; }
+      .select-onsen-list  { @apply flex flex-col gap-1 min-h-0 max-h-60 overflow-y-auto overscroll-contain; }
+      .select-onsen-option {
+        @apply flex items-center gap-2 w-full text-left px-3 py-2 rounded-xl text-sm cursor-pointer transition-all duration-200 text-base-content;
+      }
+      /* A marca da escolha é tinta de água, como todo estado de seleção do sistema. A coluna existe
+         em todo item, marcado ou não: sem ela o rótulo dança de linha para linha. */
+      .select-onsen-option::before {
+        @apply w-4 shrink-0 text-center text-agua-700 font-bold opacity-0;
+        content: "✓";
+      }
+      .select-onsen-option[aria-selected="true"] { @apply font-medium text-agua-800; }
+      .select-onsen-option[aria-selected="true"]::before { @apply opacity-100; }
+      /* Realce do cursor: UM só marcador, movido pelo hover E pela seta. Não é :focus-visible
+         porque o navegador não o acende em foco programático depois de clique — a seta andava e a
+         tela não mudava. E não é branco porque sobre gelo espesso (white/85) branco não aparece:
+         quem acende é a água, como em todo estado ativo do sistema. */
+      .select-onsen-option[data-ativo="true"] {
+        @apply bg-agua-400/45 text-rocha-950 outline-none shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+      }
+      .select-onsen-vazio { @apply px-3 py-2 text-xs text-base-content/60; }
+
+    }
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+<body class="text-base-content">
+
+  <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC user_admin/011 · mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Campo de seleção de vidro</h1>
+      <p class="mt-4 max-w-2xl text-base-content/80 leading-relaxed">
+        O gatilho do campo de seleção já era vidro; a <strong class="text-base-content">lista que ele abre</strong> era
+        desenhada pelo sistema operacional — quadrada, branca chapada, imune a qualquer token. Aqui ela entra no design
+        system, junto com a <strong class="text-agua-700">segunda espessura do gelo</strong> que ela precisou:
+        <em>fino sobre o mapa, espesso sobre interface</em>.
+      </p>
+      <div class="flex flex-wrap gap-2 mt-5">
+        <span class="badge badge-ponto">gelo espesso</span>
+        <span class="badge badge-linha">lista na top layer</span>
+        <span class="badge badge-poligono">filtro por texto</span>
+        <span class="badge badge-info badge-soft">o select segue sendo o campo</span>
+      </div>
+    </header>
+
+    <!-- ============ 1 · TOKENS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Tokens de material</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · Espessura do gelo: fino sobre o mapa, espesso sobre interface</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Sobre a <strong>água clara do mapa</strong>, o gelo de 10px separa figura do fundo e a transparência é a
+            graça da coisa. Sobre <strong>interface</strong> — um formulário com tinta escura, campos e poços — o mesmo
+            vidro deixa passar demais e o texto disputa com o que está atrás. O espesso é a <strong>mesma receita em
+            outro grau</strong> (blur 20px, gelo mais leitoso, sombra um pouco mais funda), não outro material:
+            <span class="text-code">.glass-blur-thick</span>, <span class="text-code">.glass-bg-thick</span>,
+            <span class="text-code">.glass-panel-thick</span>. A lista deste componente é o primeiro consumidor.
+          </p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-5">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.glass-panel · blur 10px (sobre o mapa)</p>
+            <div class="relative h-44 rounded-2xl overflow-hidden border border-white/45">
+              <div class="absolute inset-0 flex">
+                <div class="flex-1 bg-agua-500"></div>
+                <div class="flex-1 bg-sakura-500"></div>
+                <div class="flex-1 bg-madeira-600"></div>
+              </div>
+              <div class="glass-panel absolute inset-6 flex items-center justify-center px-4 text-center">
+                <p class="text-sm font-bold text-madeira-700">Sobre cor forte, o fino perde leitura</p>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.glass-panel-thick · blur 20px (sobre interface)</p>
+            <div class="relative h-44 rounded-2xl overflow-hidden border border-white/45">
+              <div class="absolute inset-0 flex">
+                <div class="flex-1 bg-agua-500"></div>
+                <div class="flex-1 bg-sakura-500"></div>
+                <div class="flex-1 bg-madeira-600"></div>
+              </div>
+              <div class="glass-panel-thick absolute inset-6 flex items-center justify-center px-4 text-center">
+                <p class="text-sm font-bold text-madeira-700">O espesso devolve a tinta escura sobre gelo claro</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · ÁTOMOS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Átomos</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <div>
+          <h3 class="text-lg font-bold">2.1 · As peças da lista</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            O gatilho (<span class="text-code">.select-onsen-trigger</span>) é o
+            <span class="text-code">.select-glass</span> de hoje sobre um <span class="text-code">button</span>: mesma
+            altura, mesma seta, mesma pele. O item da lista (<span class="text-code">.select-onsen-option</span>) tem
+            <strong>dois estados que não se confundem</strong>: a <strong class="text-agua-700">escolha atual</strong>
+            (marca ✓ e tinta de água no texto, permanente) e o <strong>realce do cursor</strong>
+            (<span class="text-code">[data-ativo]</span>, fundo de água) — que é <strong>um só</strong> e obedece tanto
+            ao mouse quanto às setas. Branco não serve de realce aqui: o painel já é gelo espesso.
+          </p>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-5">
+          <div class="card-well p-5 flex flex-col gap-3">
+            <span class="text-overline">Gatilho (fechado)</span>
+            <button type="button" class="select select-glass select-onsen-trigger">
+              <span class="truncate">DIMAP-2 · Divisão de Cadastro</span>
+            </button>
+          </div>
+          <div class="card-well p-5 flex flex-col gap-3">
+            <span class="text-overline">Itens da lista (sobre gelo espesso)</span>
+            <div class="glass-panel-thick p-2 flex flex-col gap-1">
+              <button type="button" class="select-onsen-option" tabindex="-1">DIMAP-1 · Divisão de Avaliação Imobiliária <span class="ml-auto text-[10px] uppercase tracking-wider text-base-content/45">repouso</span></button>
+              <button type="button" class="select-onsen-option" tabindex="-1" aria-selected="true">DIMAP-2 · Divisão de Cadastro <span class="ml-auto text-[10px] uppercase tracking-wider text-base-content/45">escolhido</span></button>
+              <button type="button" class="select-onsen-option" tabindex="-1" data-ativo="true">DIMAP-3 · Divisão de Geoprocessamento <span class="ml-auto text-[10px] uppercase tracking-wider text-rocha-950/50">cursor</span></button>
+              <button type="button" class="select-onsen-option" tabindex="-1" aria-selected="true" data-ativo="true">SUREM · Subsecretaria da Receita Municipal <span class="ml-auto text-[10px] uppercase tracking-wider text-rocha-950/50">cursor + escolhido</span></button>
+              <p class="select-onsen-vazio">Nada encontrado. (estado vazio após o filtro)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · MOLÉCULAS ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">3 · Moléculas</h2>
+
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">3.1 · Campo de seleção de vidro — funcionando</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            O <span class="text-code">&lt;select&gt;</span> <strong>continua existindo</strong> e continua sendo o campo:
+            é ele que o servidor renderiza, é ele que vai no formulário e é nele que o JS escreve a escolha e dispara
+            <span class="text-code">change</span> — quem escuta <span class="text-code">change</span> (o HTMX, hoje ou
+            depois) não precisa saber que existe casca. O JS é utilitário de UI: pele, geometria e teclado.
+            <strong>Nenhuma regra, nenhum estado que o servidor não tenha.</strong>
+          </p>
+          <p class="text-sm text-base-content/70 mt-2">
+            A lista abre na <strong>top layer</strong> (popover): não é cortada pelo container, não fica atrás de
+            título nenhum, acompanha o gatilho quando a página rola e <strong>abre para cima</strong> quando falta
+            altura abaixo. Painel absoluto não resolvia: <span class="text-code">overflow</span> corta e todo
+            <span class="text-code">backdrop-filter</span> cria contexto de empilhamento próprio — nenhum
+            <span class="text-code">z-index</span> vence isso.
+          </p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="card-well p-5 flex flex-col gap-3">
+            <span class="text-overline">Catálogo grande · com filtro</span>
+            <select class="select select-glass" data-select-onsen>
+              <option>DIMAP-1 · Divisão de Avaliação Imobiliária</option>
+              <option selected>DIMAP-2 · Divisão de Cadastro</option>
+              <option>DIMAP-3 · Divisão de Geoprocessamento</option>
+              <option>SUREM · Subsecretaria da Receita Municipal</option>
+              <option>SF · Secretaria Municipal da Fazenda</option>
+              <option>DEPTRIB · Departamento de Tributação e Julgamento</option>
+              <option>ASSJUR · Assessoria Jurídica</option>
+            </select>
+            <span class="form-field-hint">Digite para filtrar (acento não atrapalha). Setas andam com o realce (dão a volta nas pontas), Home/End vão às pontas, Enter escolhe o realçado, Esc fecha — Esc e clique fora são do próprio navegador.</span>
+          </div>
+          <div class="card-well p-5 flex flex-col gap-3">
+            <span class="text-overline">Catálogo pequeno · sem filtro</span>
+            <select class="select select-glass" data-select-onsen>
+              <option value="">— sem cargo em comissão —</option>
+              <option>CDA-II · Diretor de Divisão</option>
+              <option>CDA-I · Assessor I</option>
+            </select>
+            <span class="form-field-hint">Com poucas opções o campo de filtro não aparece: seria ruído.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3.2 os três casos que quebravam -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">3.2 · Os casos que quebravam (abra os três)</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Cada um destes cortava ou soterrava a lista quando ela era um painel absoluto. Na top layer, os três
+            funcionam sem uma linha de exceção.
+          </p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">Dentro de caixa com rolagem</p>
+            <div class="card-well p-4 h-40 overflow-y-auto flex flex-col gap-3">
+              <p class="text-xs text-base-content/70">Esta caixa corta o que transborda — role e abra a lista.</p>
+              <select class="select select-glass" data-select-onsen>
+                <option>Divisão</option>
+                <option selected>Seção</option>
+                <option>Departamento</option>
+                <option>Coordenadoria</option>
+              </select>
+              <p class="text-xs text-base-content/70">Mais conteúdo para haver rolagem de verdade nesta caixa, e a lista acompanhar o gatilho enquanto você rola.</p>
+              <p class="text-xs text-base-content/70">E mais um parágrafo, para garantir a barra de rolagem.</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">Sob um título que ficava na frente</p>
+            <div class="card-well p-4 flex flex-col gap-3">
+              <select class="select select-glass" data-select-onsen>
+                <option selected>Escolha e veja passar por cima</option>
+                <option>Segunda opção</option>
+                <option>Terceira opção</option>
+              </select>
+              <h4 class="text-2xl font-bold tracking-tight text-madeira-700">Título grande logo abaixo</h4>
+              <p class="text-xs text-base-content/70">Antes, a lista abria atrás deste título.</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">Sobre gelo espesso (como no modal)</p>
+            <div class="glass-panel-thick p-4 flex flex-col gap-3">
+              <select class="select select-glass" data-select-onsen>
+                <option>SF · Secretaria Municipal da Fazenda</option>
+                <option selected>SUREM · Subsecretaria da Receita Municipal</option>
+                <option>DIMAP · Divisão de Mapeamento</option>
+              </select>
+              <p class="text-xs text-base-content/70">A lista não pode ser mais clara que a caixa que a contém — por isso ela também é espessa.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 4 · ORGANISMOS ============ -->
+    <section class="flex flex-col gap-8 pb-6">
+      <h2 class="section-title px-2">4 · Organismos</h2>
+
+      <div class="flex flex-col gap-2">
+        <p class="text-overline px-2">A lotação do servidor — onde o componente entra nesta iteração</p>
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6 max-w-3xl mx-auto w-full">
+          <div class="card-well p-5 flex flex-col gap-4">
+            <p class="text-overline">Lotação</p>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option>DIMAP-1 · Divisão de Avaliação Imobiliária</option>
+                  <option selected>DIMAP-2 · Divisão de Cadastro</option>
+                  <option>DIMAP-3 · Divisão de Geoprocessamento</option>
+                  <option>SUREM · Subsecretaria da Receita Municipal</option>
+                  <option>SF · Secretaria Municipal da Fazenda</option>
+                  <option>DEPTRIB · Departamento de Tributação e Julgamento</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <span class="text-overline">Cargo base</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option selected>Analista de Ordenamento Territorial</option>
+                  <option>Assistente de Gestão de Políticas Públicas</option>
+                  <option>Auditor Fiscal</option>
+                </select>
+              </div>
+              <div class="form-field sm:col-span-2">
+                <span class="text-overline">Cargo em comissão</span>
+                <select class="select select-glass" data-select-onsen>
+                  <option value="" selected>— sem cargo em comissão —</option>
+                  <option>CDA-II · Diretor de Divisão</option>
+                  <option>CDA-I · Assessor I</option>
+                </select>
+                <span class="form-field-hint">Os três campos já existiam: o que muda é a lista que eles abrem.</span>
+              </div>
+            </div>
+          </div>
+          <p class="form-field-hint px-1">
+            Este campo está perto do rodapé da página: abra o último e veja a lista <strong>abrir para cima</strong>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs text-base-content/60 pb-8 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+      Mock de validação da SPEC <span class="text-code">user_admin/011</span> · aprovado o design, os tokens migram para
+      <span class="text-code">static/src/tema-dimap.dev.css</span>, o utilitário para
+      <span class="text-code">static/src/js/ui/</span> e a peça se registra no styleguide da skill
+      <span class="text-code">componentes-frontend</span>.
+    </footer>
+  </main>
+
+  <script>
+    // Campo de seleção de vidro — ao implementar, isto vira static/src/js/ui/select_onsen.js
+    // (módulo ES + registro único no htmx.onLoad, como o JS do mapa). Utilitário de UI: constrói a
+    // casca, filtra por texto e escreve no <select>, que segue sendo o campo do formulário.
+    (() => {
+      // Filtro só aparece quando a lista é grande o bastante para justificar o campo extra.
+      const MINIMO_PARA_FILTRO = 6;
+      // Folga entre gatilho e lista (o mt-2 que o painel absoluto tinha) e altura abaixo da qual
+      // vale mais abrir para cima.
+      const FOLGA_PX = 8;
+      const ALTURA_CONFORTAVEL_PX = 220;
+      const PASSO_DA_SETA = { ArrowDown: 1, ArrowUp: -1 };
+
+      let sequencia = 0;
+
+      function normalizar(texto) {
+        return texto.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+      }
+
+      function montarCasca(select) {
+        const casca = document.createElement("div");
+        casca.className = "select-onsen";
+        select.parentNode.insertBefore(casca, select);
+        casca.appendChild(select);
+        // O select some da tela, não do formulário: continua enviando e recebendo change.
+        select.hidden = true;
+        return casca;
+      }
+
+      function montarTrigger(casca, select) {
+        const trigger = document.createElement("button");
+        trigger.type = "button";
+        trigger.className = "select select-glass select-onsen-trigger";
+        trigger.setAttribute("aria-haspopup", "listbox");
+        trigger.setAttribute("aria-expanded", "false");
+        const rotulo = document.createElement("span");
+        rotulo.className = "truncate";
+        rotulo.textContent = select.options[select.selectedIndex]?.textContent ?? "";
+        trigger.appendChild(rotulo);
+        casca.appendChild(trigger);
+        return { trigger, rotulo };
+      }
+
+      function montarPainel(casca, select, identificador) {
+        const painel = document.createElement("div");
+        painel.className = "select-onsen-panel";
+        painel.id = `${identificador}-painel`;
+        // popover=auto: top layer, fecha com Esc e com clique fora sem uma linha nossa.
+        painel.popover = "auto";
+
+        const busca = document.createElement("input");
+        busca.type = "search";
+        busca.className = "input input-glass select-onsen-busca";
+        busca.placeholder = "Filtrar…";
+        if (select.options.length >= MINIMO_PARA_FILTRO) painel.appendChild(busca);
+
+        const lista = document.createElement("div");
+        lista.className = "select-onsen-list";
+        lista.setAttribute("role", "listbox");
+
+        const vazio = document.createElement("p");
+        vazio.className = "select-onsen-vazio";
+        vazio.textContent = "Nada encontrado.";
+        vazio.hidden = true;
+
+        painel.appendChild(lista);
+        painel.appendChild(vazio);
+        casca.appendChild(painel);
+        return { painel, busca, lista, vazio };
+      }
+
+      function montarOpcoes(lista, select, identificador) {
+        return Array.from(select.options).map((opcao, indice) => {
+          const item = document.createElement("button");
+          item.type = "button";
+          item.className = "select-onsen-option";
+          item.id = `${identificador}-opcao-${indice}`;
+          item.setAttribute("role", "option");
+          item.setAttribute("aria-selected", String(indice === select.selectedIndex));
+          // O item nunca recebe foco: quem anda é o realce, e o Tab continua saindo do campo.
+          item.tabIndex = -1;
+          item.dataset.indice = String(indice);
+          item.textContent = opcao.textContent;
+          lista.appendChild(item);
+          return item;
+        });
+      }
+
+      function aprimorar(select) {
+        const identificador = `select-onsen-${(sequencia += 1)}`;
+        const casca = montarCasca(select);
+        const { trigger, rotulo } = montarTrigger(casca, select);
+        const { painel, busca, lista, vazio } = montarPainel(casca, select, identificador);
+        const itens = montarOpcoes(lista, select, identificador);
+
+        let ativo = null;
+
+        // Quem segura o teclado enquanto a lista está aberta — e, portanto, quem aponta para o
+        // item realçado.
+        function focado() {
+          return busca.isConnected ? busca : trigger;
+        }
+
+        function visiveis() {
+          return itens.filter((item) => !item.hidden);
+        }
+
+        // O realce é estado do componente, não foco do navegador: seta e mouse movem o MESMO
+        // marcador, e :focus-visible não acende em foco programático depois de clique.
+        function realcar(item) {
+          ativo?.removeAttribute("data-ativo");
+          ativo = item ?? null;
+          if (!ativo) {
+            focado().removeAttribute("aria-activedescendant");
+            return;
+          }
+          ativo.setAttribute("data-ativo", "true");
+          ativo.scrollIntoView({ block: "nearest" });
+          focado().setAttribute("aria-activedescendant", ativo.id);
+        }
+
+        function andar(passo) {
+          const candidatos = visiveis();
+          if (candidatos.length === 0) return;
+          const atual = candidatos.indexOf(ativo);
+          if (atual === -1) {
+            realcar(passo > 0 ? candidatos[0] : candidatos[candidatos.length - 1]);
+            return;
+          }
+          realcar(candidatos[(atual + passo + candidatos.length) % candidatos.length]);
+        }
+
+        function filtrar(termo) {
+          const alvo = normalizar(termo);
+          itens.forEach((item) => {
+            item.hidden = !normalizar(item.textContent).includes(alvo);
+          });
+          const candidatos = visiveis();
+          vazio.hidden = candidatos.length > 0;
+          // Filtrou, o realce vai para o primeiro que sobrou — a menos que o atual tenha sobrado.
+          realcar(candidatos.includes(ativo) ? ativo : candidatos[0]);
+        }
+
+        // A lista está na top layer, fora do fluxo: quem diz onde ela fica é o gatilho. Abre para
+        // cima quando não há altura confortável abaixo.
+        function posicionar() {
+          const caixa = trigger.getBoundingClientRect();
+          const abaixo = window.innerHeight - caixa.bottom - FOLGA_PX;
+          const acima = caixa.top - FOLGA_PX;
+          const paraCima = abaixo < ALTURA_CONFORTAVEL_PX && acima > abaixo;
+          painel.style.left = `${caixa.left}px`;
+          painel.style.width = `${caixa.width}px`;
+          painel.style.maxHeight = `${paraCima ? acima : abaixo}px`;
+          painel.style.top = paraCima ? "" : `${caixa.bottom + FOLGA_PX}px`;
+          painel.style.bottom = paraCima ? `${window.innerHeight - caixa.top + FOLGA_PX}px` : "";
+        }
+
+        function escolher(item) {
+          const indice = Number(item.dataset.indice);
+          select.selectedIndex = indice;
+          rotulo.textContent = select.options[indice].textContent;
+          itens.forEach((candidato, i) => candidato.setAttribute("aria-selected", String(i === indice)));
+          // change nativo: é assim que o HTMX (e qualquer outro ouvinte) vê a escolha.
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          painel.hidePopover();
+          trigger.focus();
+        }
+
+        // popovertarget: o navegador cuida de alternar, do Esc e do clique fora. A gente só posiciona
+        // e acompanha rolagem enquanto está aberto (a top layer não rola junto com o conteúdo).
+        trigger.popoverTargetElement = painel;
+        painel.addEventListener("beforetoggle", (evento) => {
+          const abrindo = evento.newState === "open";
+          trigger.setAttribute("aria-expanded", String(abrindo));
+          if (!abrindo) {
+            realcar(null);
+            window.removeEventListener("scroll", posicionar, true);
+            window.removeEventListener("resize", posicionar);
+            return;
+          }
+          busca.value = "";
+          filtrar("");
+          posicionar();
+          window.addEventListener("scroll", posicionar, true);
+          window.addEventListener("resize", posicionar);
+        });
+        // Só depois de aberto: o realce nasce na escolha atual (a seta continua de onde o usuário
+        // parou) e rolar até ela exige a lista já visível.
+        painel.addEventListener("toggle", (evento) => {
+          if (evento.newState !== "open") return;
+          realcar(itens[select.selectedIndex] ?? visiveis()[0]);
+          if (busca.isConnected) busca.focus();
+        });
+        busca.addEventListener("input", () => filtrar(busca.value));
+
+        // Um ouvinte só para o teclado: o painel é popover (vive na top layer), mas continua filho
+        // da casca no DOM, então o evento sobe até aqui venha ele do gatilho ou do campo de filtro.
+        casca.addEventListener("keydown", (evento) => {
+          if (!painel.matches(":popover-open")) {
+            if (!Object.hasOwn(PASSO_DA_SETA, evento.key)) return;
+            evento.preventDefault();
+            painel.showPopover();
+            return;
+          }
+          if (Object.hasOwn(PASSO_DA_SETA, evento.key)) {
+            evento.preventDefault();
+            andar(PASSO_DA_SETA[evento.key]);
+            return;
+          }
+          if (evento.key === "Home" || evento.key === "End") {
+            evento.preventDefault();
+            const candidatos = visiveis();
+            realcar(evento.key === "Home" ? candidatos[0] : candidatos[candidatos.length - 1]);
+            return;
+          }
+          if (evento.key !== "Enter") return;
+          // Sem este preventDefault o filtro submeteria o formulário (submissão implícita) e o
+          // gatilho reabriria a lista pelo clique sintético que o Enter dispara no invoker.
+          evento.preventDefault();
+          if (ativo) escolher(ativo);
+        });
+
+        // Delegação: hover e clique falam com o mesmo realce, sem um ouvinte por item.
+        lista.addEventListener("pointermove", (evento) => {
+          const item = evento.target.closest(".select-onsen-option");
+          if (item) realcar(item);
+        });
+        lista.addEventListener("click", (evento) => {
+          const item = evento.target.closest(".select-onsen-option");
+          if (item) escolher(item);
+        });
+      }
+
+      // O [hidden] marca o que já foi aprimorado: swap de HTMX pode reexecutar isto sem duplicar casca.
+      function aprimorarTodos() {
+        document.querySelectorAll("select[data-select-onsen]:not([hidden])").forEach(aprimorar);
+      }
+
+      document.addEventListener("DOMContentLoaded", aprimorarTodos);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{# Barra de ações da listagem de cargos (SPEC user_admin/029): Novo cargo, Extinguir e Reativar só  #}
+{# para quem administra o sistema — quem não administra fica só com o toggle e o limpar. `perms`     #}
+{# é UX (esconder o card não é a barreira); a barreira de verdade é a rota, via `acao_protegida`.     #}
+<div class="barra-acoes glass-panel">
+  <div class="barra-acoes-gestos">
+    {% if perms.cargos.criar_cargo_comissao %}
+      <button type="button"
+              class="btn btn-onsen btn-sm gap-1.5"
+              hx-get="{% url 'cargos:modal_criar_cargo' %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cargo"/></svg>
+        Novo cargo
+      </button>
+    {% endif %}
+    {% if perms.cargos.extinguir_cargo_comissao %}
+      <button type="button"
+              class="btn btn-error btn-soft btn-sm gap-1.5"
+              hx-get="{% url 'cargos:modal_extinguir_cargo' %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+        Extinguir cargo
+      </button>
+    {% endif %}
+    {% if perms.cargos.reativar_cargo_comissao %}
+      <button type="button"
+              class="btn btn-glass btn-sm gap-1.5"
+              hx-get="{% url 'cargos:modal_reativar_cargo' %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+        Reativar cargo
+      </button>
+    {% endif %}
+  </div>
+  <div class="barra-acoes-gestos">
+    <label class="barra-acoes-chave">
+      {# 100% client-side (SPEC, Caveats): o servidor manda TODOS os cargos, marcados com          #}
+      {# .linha-extinta, e é `filtro_linha_extinta.js` quem esconde/revela — sem round-trip nenhum. #}
+      {# Fazer o servidor saber do estado do toggle a cada requisição (filtro, ordenação, ou o swap #}
+      {# fora de banda dos quatro atos) é o que já quebrou duas vezes.                               #}
+      <input type="checkbox"
+             id="toggle-cargos-extintos"
+             class="toggle-onsen"
+             data-filtro-extintos="#tabela-cargos"
+             aria-label="Mostrar cargos extintos" />
+      <span class="text-overline">Mostrar cargos extintos</span>
+    </label>
+    <button type="button" class="btn-etched etched" data-limpar-filtros="#tabela-cargos">✕ limpar filtros</button>
+  </div>
+</div>

@@ -1,0 +1,63 @@
+{# Modal de extinguir cargo base (SPEC user_admin/030) — alvo do hx-get da lixeira (já com o cargo  #}
+{# escolhido), do botão da barra e do card do painel (sem cargo: mostra o select antes).             #}
+<input type="checkbox" id="modal-extinguir-cargo-base" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+    <form {% if cargo %}hx-post="{% url 'cargos:gravar_extincao_cargo_base' cargo.pk %}"{% endif %} hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-extinguir-cargo-base"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir cargo base</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">O cargo sai das opções de nomeação; quem já o ocupa continua nele.</p>
+        </div>
+      </div>
+
+      {% include "partials/_tarja_recusa.html" with titulo="Ato não realizado" %}
+
+      {% if cargo %}
+        <input type="hidden" name="cargo" value="{{ cargo.pk }}" />
+        <p class="text-sm text-base-content/80">{% include "cargos/partials/_rotulo_cargo_base.html" %}</p>
+      {% else %}
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Cargo a extinguir</p>
+          <select class="select select-glass {{ realce.cargo }}"
+                  data-select-onsen
+                  hx-get="{% url 'cargos:modal_extinguir_cargo_base' %}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms"
+                  name="cargo">
+            <option value="" selected>— escolha o cargo —</option>
+            {% for outro in cargos %}
+              <option value="{{ outro.pk }}">{{ outro.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
+      {% if previa %}
+        <div class="previa-extincao">
+          <div class="previa-extincao-tile card-well">
+            <span class="text-overline">Ocupantes hoje</span>
+            {% if previa.ocupantes %}<span class="previa-extincao-valor">{{ previa.ocupantes }}</span>{% else %}<span class="previa-extincao-vazio">Nenhum</span>{% endif %}
+          </div>
+        </div>
+        {% if previa.ocupantes %}
+          <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+            <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <p class="text-[13px] text-base-content/80">
+              Extinguir NÃO afeta quem já ocupa: <strong>{{ previa.ocupantes }} servidor{{ previa.ocupantes|pluralize }}</strong> continua exercendo a competência do cargo. O que muda é a nomeação — ninguém mais entra nele.
+            </p>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <div class="modal-action">
+        <label for="modal-extinguir-cargo-base" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-sm btn-error btn-soft"{% if not cargo %} disabled{% endif %}>
+          Extinguir{% if cargo %} {{ cargo.sigla }}{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-extinguir-cargo-base">Fechar</label>
+</div>

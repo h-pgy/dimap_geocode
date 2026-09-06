@@ -1,0 +1,9 @@
+<svg viewBox="0 0 24 24">
+  <rect x="3.2" y="4.4" width="8.8" height="13.6" rx="1.8"/>
+  <rect x="6.2" y="2.6" width="2.8" height="2.2" rx="0.8"/>
+  <circle cx="7.6" cy="9.2" r="1.7"/>
+  <path d="M5.2 13h4.8"/>
+  <path d="M5.2 15.2h3.2"/>
+  <path d="M22 18.2a3.5 3.5 0 1 1-1.03-2.47"/>
+  <path d="M22 13.6v2.9h-2.9"/>
+</svg>

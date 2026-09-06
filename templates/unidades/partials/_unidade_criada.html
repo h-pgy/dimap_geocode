@@ -1,0 +1,17 @@
+{# Resposta do hx-post de gravar, no lugar do #form-nova-unidade (SPEC user_admin/020) — mesma       #}
+{# coreografia de `_cadastro_concluido.html` (SPEC criacao_usuarios/004).                            #}
+<div class="glass-panel p-8 flex flex-col items-center gap-4 text-center">
+  <span class="icon-bubble w-16 h-16 bg-agua-500/15 border-agua-600/30 text-agua-700">
+    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
+  </span>
+  <div>
+    <h2 class="text-xl font-bold tracking-tight text-madeira-700">Unidade cadastrada</h2>
+    <p class="text-sm text-base-content/75 mt-1">
+      <span class="text-code">{{ unidade.sigla }}</span> · {{ unidade.nome }}
+    </p>
+  </div>
+  <div class="flex flex-wrap justify-center gap-3 pt-1">
+    <a href="{% url 'unidades:criar_unidade' %}" class="btn btn-glass btn-sm">Cadastrar outra</a>
+    <a href="{% url 'unidades:pagina_unidade' unidade.pk %}" class="btn btn-onsen btn-sm">Abrir a página da unidade</a>
+  </div>
+</div>

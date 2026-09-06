@@ -1,0 +1,22 @@
+{# Molécula: calha da cobertura (SPEC user_admin/015). O afastamento inteiro como bandeja funda —  #}
+{# o poço nunca se preenche; o que muda de estado é o fio no fundo dele. left/width vêm em texto   #}
+{# já formatado do context.py: float em template é localizado (pt-br), e "14,75%" não é CSS.       #}
+<div class="relative pb-12">
+  <div class="calha-cobertura{% if calha.aberta %} calha-cobertura-aberta{% endif %}">
+    <div class="calha-trilho etched-line">
+      {% for trecho in calha.trechos %}
+        <div class="calha-trecho etched-line-inked" style="left:{{ trecho.left }}%;width:{{ trecho.width }}%"></div>
+      {% endfor %}
+    </div>
+  </div>
+  {# Quem NOMEIA o buraco é o rótulo em âmbar: é ele que garante a leitura sem depender de #}
+  {# perceber diferença de tom no fio.                                                     #}
+  <div class="calha-marcas">
+    {% for marca in calha.marcas %}
+      <div class="calha-marca{% if marca.vazia %} calha-marca-vazia{% endif %}" style="left:{{ marca.left }}%">
+        <span class="text-[12px] font-medium{% if not marca.vazia %} text-base-content/90{% endif %}">{{ marca.rotulo }}</span>
+        <span class="text-[11px]{% if marca.vazia %} opacity-80{% else %} text-base-content/60{% endif %}">{{ marca.periodo }}</span>
+      </div>
+    {% endfor %}
+  </div>
+</div>

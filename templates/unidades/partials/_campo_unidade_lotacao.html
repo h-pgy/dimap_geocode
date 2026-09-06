@@ -1,0 +1,12 @@
+{# O select de lotação (SPEC user_admin/020), extraído das duas telas de servidor que o desenham    #}
+{# igual, agora com o invólucro que o swap fora de banda alcança. O invólucro existe porque a casca  #}
+{# de vidro (SPEC 011) SUBSTITUI o select no DOM: trocar só o <select> deixaria a casca velha na     #}
+{# tela. Ele carrega o `flex-1 min-w-0` que a regra de filho direto de `.form-field-inline-action`   #}
+{# dava ao select. Remontada a casca? Sim: `select_onsen.js` já reage a `htmx:afterSwap`.            #}
+<div id="campo-unidade-lotacao" class="flex-1 min-w-0"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
+  <select name="unidade" class="select select-glass {{ realce.unidade }}" data-select-onsen>
+    {% for unidade in unidades %}
+      <option value="{{ unidade.pk }}"{% if unidade.pk == selecionado %} selected{% endif %}>{{ unidade.sigla }} · {{ unidade.nome }}</option>
+    {% endfor %}
+  </select>
+</div>

@@ -1,0 +1,29 @@
+{# O corpo de UMA aba resolvida: título, descrição, os avulsos acima, os grupos e os avulsos       #}
+{# abaixo — nesta ordem, a mesma da declaração (SPEC painel/001).                                  #}
+<div role="tabpanel" class="tab-content painel-face">
+  <div>
+    <h2 class="painel-titulo">{{ aba.titulo }}</h2>
+    <p class="painel-descricao">{{ aba.descricao }}</p>
+  </div>
+  {% if aba.itens_acima %}
+    <div class="painel-avulsos">
+      {% for item in aba.itens_acima %}
+        {% include item.partial %}
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% if aba.grupos %}
+    <div class="painel-grupos">
+      {% for grupo in aba.grupos %}
+        {% include "painel/partials/_grupo.html" with grupo=grupo %}
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% if aba.itens_abaixo %}
+    <div class="painel-avulsos">
+      {% for item in aba.itens_abaixo %}
+        {% include item.partial %}
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>

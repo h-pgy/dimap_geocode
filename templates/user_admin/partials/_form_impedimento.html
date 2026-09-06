@@ -1,0 +1,46 @@
+{# A face do impedimento (SPEC user_admin/023): o formulário do ato, composto pelo modal da página  #}
+{# do servidor e pela rota direta — a mesma peça nos dois lugares. O alvo é o poço: a recusa o      #}
+{# remonta aberto, o sucesso o esvazia, e é isso que fecha o modal.                                 #}
+<form hx-post="{% url 'user_admin:gravar_impedimento' perfil.pk %}"
+      hx-target="#poco-modal"
+      hx-swap="innerHTML"
+      class="flex flex-col gap-5">
+
+  {% include "partials/_tarja_recusa.html" with titulo="O impedimento não foi registrado" %}
+
+  <label class="form-field">
+    <span class="text-overline">Tipo</span>
+    <select name="tipo" class="select select-glass {{ realce.tipo }}" data-select-onsen>
+      {% for tipo in exercicio.tipos_impedimento %}
+        <option value="{{ tipo.pk }}"{% if tipo.pk == valores.tipo %} selected{% endif %}>{{ tipo.nome }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <div class="grid sm:grid-cols-2 gap-4">
+    <label class="form-field">
+      <span class="text-overline">Início</span>
+      <input type="date" data-campo-data name="data_inicio" class="input input-glass {{ realce.data_inicio }}" value="{{ valores.data_inicio|default:'' }}" />
+    </label>
+    <label class="form-field">
+      <span class="text-overline">Fim</span>
+      <input type="date" data-campo-data name="data_fim" class="input input-glass {{ realce.data_fim }}" value="{{ valores.data_fim|default:'' }}" />
+      <span class="form-field-hint">Em branco, o prazo é indeterminado.</span>
+    </label>
+  </div>
+
+  {# SVG inline, e não `#glifo-retorno`: a rota direta não nasce dentro da página do servidor, e    #}
+  {# nem toda tela que compõe esta face carrega o sprite (mesmo motivo de `_tarja_recusa.html`).    #}
+  <div class="tarja-vinculo flex items-start gap-3">
+    <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4h4"/></svg>
+    <p class="text-[13px] text-base-content/80">
+      {{ perfil.nome }} sai do exercício <strong>na data de início</strong>, não agora — e volta
+      <strong>sozinho</strong> no dia seguinte ao fim, sem que ninguém precise clicar em nada.
+      Com o fim em branco, só volta por ato.
+    </p>
+  </div>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-onsen btn-sm">Registrar</button>
+  </div>
+</form>

@@ -1,0 +1,7 @@
+{# A resposta do swap do card e do cabeçalho (SPEC painel/002): o `<tbody>` — alvo do hx-swap —, e  #}
+{# a contagem e a paginação, fora de banda. Wrapper próprio, nunca incluído dentro da <table>: o    #}
+{# `<div>` da paginação ali dentro é conteúdo inválido de tabela, e o navegador o hospeda para fora #}
+{# — foi assim que a paginação "subiu" para cima da tabela.                                         #}
+{% include "competencias/partials/_corpo_execucoes.html" %}
+{% include "competencias/partials/_contagem_execucoes.html" with oob=True %}
+{% include "competencias/partials/_paginacao_execucoes.html" with oob=True %}

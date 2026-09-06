@@ -1,0 +1,82 @@
+{% load icones %}
+{% icone_acao acao_tornar_administrador.slug variante_icone_pequena as svg_administrador %}
+{# Seção de resumo do servidor (SPEC user_admin/017): RF, nome, e-mail (SPEC criacao_usuarios/004), #}
+{# unidade, cargo base e cargo em comissão em leitura — nenhum campo de formulário do cadastro fora #}
+{# do modal. O que o servidor não tem se lê aqui em vez de sumir da tela (Caveats).                 #}
+<div class="card-well p-5 flex flex-col gap-4">
+  <p class="text-overline">Resumo</p>
+
+  <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+    <div class="min-w-0">
+      <p class="text-overline">RF</p>
+      <p class="valor-leitura text-code">{{ perfil.rf }}</p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Nome</p>
+      <p class="valor-leitura text-base-content/90">{{ perfil.nome }} {{ perfil.sobrenome }}</p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">E-mail</p>
+      {# Cadastro anterior à criação por tela não tem e-mail (SPEC criacao_usuarios/004, Caveats). #}
+      <p class="valor-leitura {% if perfil.email %}text-base-content/90{% else %}text-base-content/40{% endif %}">
+        {{ perfil.email|default:"— sem e-mail cadastrado —" }}
+      </p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Unidade</p>
+      <p class="valor-leitura text-base-content/90">{{ perfil.unidade.sigla }} <span class="text-base-content/50">· {{ perfil.unidade.nome }}</span></p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Cargo base</p>
+      <p class="valor-leitura text-base-content/90">{{ perfil.cargo_base.nome }}</p>
+    </div>
+    <div class="min-w-0 sm:col-span-2">
+      <p class="text-overline">Cargo em comissão</p>
+      <p class="valor-leitura {% if perfil.cargo_comissao %}text-base-content/90{% else %}text-base-content/40{% endif %}">
+        {% if perfil.cargo_comissao %}{% include "cargos/partials/_rotulo_cargo.html" with cargo=perfil.cargo_comissao %}{% else %}— sem cargo em comissão —{% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+    <div class="stat card-well">
+      <div class="stat-figure">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+      </div>
+      <div class="stat-title">Unidade de lotação</div>
+      <div class="stat-value flex items-center gap-2">
+        <span class="dot-unidade w-3 h-3" style="--cor-unidade:{{ cor_unidade_hex }}"></span>
+        {{ perfil.unidade.sigla }}
+      </div>
+      <div class="stat-desc">{{ perfil.unidade.nome }}</div>
+      <div class="stat-actions">
+        <a href="{% url 'unidades:pagina_unidade' perfil.unidade_id %}" class="btn btn-glass btn-xs">Ver a unidade</a>
+      </div>
+    </div>
+    <div class="stat card-well">
+      <div class="stat-figure">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+      </div>
+      <div class="stat-title">Titularidade</div>
+      {% if unidade_dirigida %}
+        <div class="stat-value">Titular da {{ unidade_dirigida.sigla }}</div>
+        <div class="stat-desc">Dirige a unidade em que está lotado.</div>
+      {% else %}
+        <div class="stat-value text-base-content/40!">—</div>
+        <div class="stat-desc">Não é titular de unidade alguma.</div>
+      {% endif %}
+    </div>
+    {# SPEC user_admin/022. Célula afirmativa, ao contrário das duas de cima: ela só existe quando #}
+    {# há o que afirmar — "não é administrador" é o caso comum, e não notícia.                     #}
+    {% if perfil.is_superuser %}
+      <div class="stat card-well">
+        <div class="stat-figure">
+          <span class="icone-acao icone-acao-pequeno">{{ svg_administrador|safe }}</span>
+        </div>
+        <div class="stat-title">Administrador do Sistema</div>
+        <div class="stat-value">Sim</div>
+        <div class="stat-desc">Pratica ações para além da unidade em que está lotado(a), inclusive de alta administração.</div>
+      </div>
+    {% endif %}
+  </div>
+</div>

@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/013 — Gaveta lateral e a paleta (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== 1 · TOKENS ==================== */
+
+      /* medidas da gaveta */
+      html[data-theme="dimap"] {
+        --gaveta-largura: 24rem;
+        --gaveta-lateral-detalhe-largura: 22rem;
+        --gaveta-recuo: 2rem;
+      }
+
+      /* terceira densidade — hoje escrita dentro do .modal-box-glass, aqui como primitivos:
+         o gelo que SUBSTITUI o que está atrás, em vez de flutuar sobre ele. A gaveta é o segundo
+         lugar que precisa dela: sobre o mapa vivo, o gelo fino deixa o traço do mapa atravessar o
+         texto denso. */
+      .glass-blur-denso { @apply backdrop-blur-[28px]; }
+      .glass-bg-denso   { @apply bg-gradient-to-br from-white/97 via-white/93 to-white/88; }
+
+      /* .glass-drawer-panel-denso — a mesma densidade na direção da gaveta (luz pela borda direita) */
+      .glass-drawer-panel-denso {
+        @apply backdrop-blur-[28px] bg-gradient-to-l from-white/97 via-white/93 to-white/88 border-r border-white/80;
+        @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),12px_0_40px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.25)];
+      }
+
+      /* .glass-drawer-panel-recuado — o plano de trás é um degrau, não um andar: mesma densidade,
+         sem o brilho ciano, e a sombra da placa da frente apenas encostando na aresta esquerda. */
+      .glass-drawer-panel-recuado {
+        @apply backdrop-blur-[28px] bg-gradient-to-l from-white/94 via-white/90 to-white/85 border border-white/60;
+        box-shadow:
+          inset 16px 0 22px -16px rgba(7, 58, 84, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.85),
+          10px 0 28px rgba(7, 58, 84, 0.18);
+      }
+      /* os dois planos entram na regra de vidro sobre vidro (SPEC design/009) */
+      :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) .glass-panel:where(:not(.modal-box-glass)) { @apply bg-none; }
+      :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) :is(.card-well, .upload-well) { @apply bg-transparent; }
+
+      /* ==================== 2 · ÁTOMOS ==================== */
+
+      /* .paleta-gaveta */
+      .paleta-gaveta {
+        @apply absolute left-full top-1/2 -translate-y-1/2 z-20 pointer-events-auto;
+        @apply w-9 h-[4.5rem] rounded-r-full grid place-items-center cursor-pointer select-none;
+        @apply backdrop-blur-[28px] bg-gradient-to-r from-white/93 to-white/78 border border-l-0 border-white/80;
+        @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),8px_0_24px_rgba(7,58,84,0.28),0_0_20px_rgba(72,202,228,0.25)];
+        @apply transition-all duration-300;
+      }
+      .paleta-gaveta:hover { @apply from-white to-white/90; }
+      .paleta-gaveta:focus-visible { @apply outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_0_0_3px_rgba(0,150,199,0.3),8px_0_24px_rgba(7,58,84,0.28)]; }
+      /* a paleta do plano de trás: mesma forma, sem o brilho ciano */
+      .paleta-gaveta-recuada {
+        @apply from-white/90 to-white/74 border-white/60;
+        @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.85),8px_0_20px_rgba(7,58,84,0.18)];
+      }
+
+      /* .paleta-gaveta-glifo — espelhado, nunca girado: o sulco do .etched tem luz de cima, e
+         rotate-180 o devolveria em relevo. */
+      .paleta-gaveta-glifo { @apply w-5 h-5 transition-all duration-500; }
+      .paleta-gaveta:hover .paleta-gaveta-glifo {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+
+      /* ==================== 3 · MOLÉCULAS ==================== */
+
+      /* .gaveta-lateral — a casca e a coreografia.
+         absolute, não fixed: a âncora é a casca da home. */
+      .gaveta-lateral {
+        @apply absolute left-0 inset-y-0 z-30 pointer-events-none;
+        width: var(--gaveta-largura);
+        transform: translateX(-100%);
+        @apply transition-transform duration-500 ease-in-out;
+      }
+      .gaveta-lateral-toggle,
+      .gaveta-lateral-detalhe-toggle { @apply sr-only; }
+      .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) { transform: translateX(0); }
+      .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) .paleta-gaveta-glifo { @apply -scale-x-100; }
+
+      .gaveta-lateral-painel { @apply relative z-10 h-full w-full flex flex-col pointer-events-auto rounded-r-3xl; }
+      .gaveta-lateral-cabecalho { @apply shrink-0 pl-6 pr-9 pt-6 pb-4; }
+      .gaveta-lateral-corpo { @apply relative flex-1 min-h-0; }
+      .gaveta-lateral-rolador {
+        @apply h-full overflow-y-auto overscroll-contain;
+        scrollbar-width: none;
+      }
+      .gaveta-lateral-rolador::-webkit-scrollbar { display: none; }
+      .gaveta-lateral-conteudo { @apply flex flex-col gap-4 pl-6 pr-9 pb-6; }
+
+      /* .gaveta-lateral-detalhe — fechada, cabe inteira atrás da primeira: o translate é exatamente
+         (largura - recuo). Aberta, ela volta a zero. */
+      .gaveta-lateral-detalhe {
+        @apply absolute inset-y-4 z-0 origin-left rounded-r-3xl opacity-0 pointer-events-none;
+        left: calc(100% - var(--gaveta-recuo));
+        width: var(--gaveta-lateral-detalhe-largura);
+        transform: translateX(calc(-1 * (var(--gaveta-lateral-detalhe-largura) - var(--gaveta-recuo)))) scale(0.98);
+        @apply transition-all duration-500 ease-in-out;
+      }
+      /* Aberta, a segunda gaveta volta ao tamanho natural: quem diz que ela está atrás é a folga
+         vertical, a aresta da primeira por cima e o material sem brilho — não um encolhimento. */
+      .gaveta-lateral:has(> .gaveta-lateral-detalhe-toggle:checked) .gaveta-lateral-detalhe {
+        @apply opacity-100 pointer-events-auto;
+        transform: translateX(0) scale(1);
+      }
+      /* a faixa da esquerda é a parte enfiada sob a primeira gaveta, mais a paleta que pousa nela */
+      .gaveta-lateral-detalhe-conteudo {
+        @apply h-full overflow-y-auto overscroll-contain flex flex-col gap-4 py-6 pr-5;
+        padding-left: calc(var(--gaveta-recuo) + 2.75rem);
+        scrollbar-width: none;
+      }
+      .gaveta-lateral-detalhe-conteudo::-webkit-scrollbar { display: none; }
+
+      /* .mapa-gaveta-moldura — o poço em volta do mapa; empilha com .card-well no markup */
+      .mapa-gaveta-moldura { @apply flex flex-col gap-2 p-3; }
+      .mapa-gaveta-rotulo { @apply flex items-center justify-between px-1; }
+
+      /* .mapa-gaveta — dentro do poço, o mapa é PLACA ASSENTADA, não segundo poço: raio de placa,
+         aresta de luz e sombra por fora. É o que o levanta em vez de afundá-lo mais. */
+      .mapa-gaveta {
+        @apply relative isolate w-full h-52 overflow-hidden border border-white/70;
+        border-radius: var(--radius-placa);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.9),
+          0 8px 20px rgba(7, 58, 84, 0.3),
+          0 0 22px rgba(72, 202, 228, 0.25);
+      }
+      .mapa-gaveta .leaflet-container { @apply absolute inset-0 z-0 bg-white/20 saturate-[0.8] brightness-[1.05] contrast-[0.95]; }
+      /* a tinta de água límpida da home, no recorte da placa */
+      .mapa-gaveta::after {
+        content: "";
+        @apply absolute inset-0 z-10 pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60;
+      }
+      /* a lente da home em miniatura: vinheta ciana só na borda, sem tocar no miolo */
+      .mapa-gaveta::before {
+        content: "";
+        @apply absolute inset-0 z-20 pointer-events-none;
+        background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 119, 182, 0.22) 100%);
+      }
+
+      /* .gaveta-linha-detalhe — a linha que abre a segunda gaveta */
+      .gaveta-linha-detalhe {
+        @apply w-full flex items-center gap-3 text-left px-4 py-3 cursor-pointer transition-all duration-300;
+      }
+      .gaveta-linha-detalhe:hover { @apply bg-white/45; }
+      .gaveta-linha-glifo { @apply w-4 h-4 shrink-0 ml-auto transition-all duration-300; }
+      .gaveta-linha-detalhe:hover .gaveta-linha-glifo {
+        @apply translate-x-1;
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+
+      /* a busca sai de cena quando a gaveta abre — mesma direção da .glass-hide-up */
+      .tela-home:has(.gaveta-lateral-toggle:checked) .search-hero {
+        @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
+      }
+
+      /* ==================== andaime do mock ==================== */
+      /* moldura que faz as vezes da casca da home nas telas montadas */
+      .quadro-tela { @apply relative h-[34rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)]; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Os defs da gravação vêm do partial da própria aplicação (no produto, pelo base.html):
+       sem eles .etched e os glifos da paleta existem e não desenham nada. -->
+  <script type="module">
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((svg) => document.body.insertAdjacentHTML("afterbegin", svg.replace(TAG_DE_TEMPLATE, "").trim()));
+  </script>
+
+  <!-- Fundo: o mapa vivo da home, montado a partir de mapping/_mapa_fullscreen.html — a gaveta é
+       peça de home, e home é a única tela em que o mock carrega Leaflet (skill `mock`). -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC design/013 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Gaveta lateral e a paleta</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          A gaveta da entidade localizada entra pela esquerda da home. O que fica sobre o mapa quando
+          ela está recolhida é só a <strong>paleta</strong> — meio disco de gelo na borda. De dentro
+          dela sai uma segunda gaveta, num plano atrás.
+        </p>
+      </header>
+
+      <!-- 1 · TOKENS -->
+      <section id="tokens" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">1 · Tokens</h2>
+
+        <!-- medidas -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">medidas da gaveta</span>
+          <div class="card-well p-4 grid sm:grid-cols-3 gap-4">
+            <div>
+              <p class="text-code text-xs">--gaveta-largura</p>
+              <p class="text-xl font-bold tabular-nums">24rem</p>
+            </div>
+            <div>
+              <p class="text-code text-xs">--gaveta-lateral-detalhe-largura</p>
+              <p class="text-xl font-bold tabular-nums">22rem</p>
+            </div>
+            <div>
+              <p class="text-code text-xs">--gaveta-recuo</p>
+              <p class="text-xl font-bold tabular-nums">2rem</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- os três materiais de gaveta, lado a lado sobre o mapa -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">materiais de gaveta</span>
+          <div class="grid sm:grid-cols-3 gap-6">
+            <div class="flex flex-col gap-2">
+              <div class="glass-drawer-panel rounded-r-3xl h-44 p-5">
+                <p class="text-overline">.glass-drawer-panel</p>
+                <p class="text-sm mt-2 text-base-content/80">80 → 65 → 55 sobre 12px. O traço do mapa atravessa o texto.</p>
+              </div>
+              <span class="text-[11px] text-base-content/60 px-1">o que já existe — não serve à gaveta sobre o mapa</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="glass-drawer-panel-denso rounded-r-3xl h-44 p-5">
+                <p class="text-overline">.glass-drawer-panel-denso</p>
+                <p class="text-sm mt-2 text-base-content/80">97 → 93 → 88 sobre 28px — a densidade da caixa de modal.</p>
+              </div>
+              <span class="text-[11px] text-base-content/60 px-1">peça nova — plano da frente</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="glass-drawer-panel-recuado rounded-r-3xl h-44 p-5">
+                <p class="text-overline">.glass-drawer-panel-recuado</p>
+                <p class="text-sm mt-2 text-base-content/80">Mesma densidade, sem o brilho ciano; a sombra da frente encosta na aresta.</p>
+              </div>
+              <span class="text-[11px] text-base-content/60 px-1">peça nova — plano de trás</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">2 · Átomos</h2>
+
+        <!-- .paleta-gaveta -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.paleta-gaveta</span>
+          <div class="card-well p-6 flex flex-wrap items-center gap-16">
+            <!-- repouso -->
+            <div class="flex flex-col items-center gap-2">
+              <span class="relative block w-0 h-[4.5rem] mr-9">
+                <span class="paleta-gaveta">
+                  <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                </span>
+              </span>
+              <span class="text-[11px] text-base-content/60">recolhida — o glifo aponta para fora</span>
+            </div>
+            <!-- aberta -->
+            <div class="flex flex-col items-center gap-2">
+              <span class="relative block w-0 h-[4.5rem] mr-9">
+                <span class="paleta-gaveta">
+                  <svg class="etched paleta-gaveta-glifo -scale-x-100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                </span>
+              </span>
+              <span class="text-[11px] text-base-content/60">aberta — espelhado, não girado</span>
+            </div>
+            <!-- .paleta-gaveta-recuada -->
+            <div class="flex flex-col items-center gap-2">
+              <span class="relative block w-0 h-[4.5rem] mr-9">
+                <span class="paleta-gaveta paleta-gaveta-recuada">
+                  <svg class="etched paleta-gaveta-glifo -scale-x-100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                </span>
+              </span>
+              <span class="text-[11px] text-base-content/60">.paleta-gaveta-recuada — plano de trás</span>
+            </div>
+            <p class="text-xs text-base-content/70 max-w-xs">
+              O ponteiro sobre qualquer uma delas enche o sulco de água (ao vivo).
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <div class="grid lg:grid-cols-2 gap-8">
+          <!-- .mapa-gaveta -->
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.mapa-gaveta-moldura + .mapa-gaveta</span>
+            <div class="card-well mapa-gaveta-moldura">
+              <div class="mapa-gaveta-rotulo">
+                <span class="text-overline">Geometria</span>
+                <span class="badge badge-poligono badge-sm">Polígono</span>
+              </div>
+              <div class="mapa-gaveta">
+                <div id="mapa-molecula" class="absolute inset-0"></div>
+              </div>
+              <p class="text-xs text-base-content/70 px-1">
+                Leaflet vivo assentado no poço: arraste e dê zoom — o mapa de fundo não se mexe.
+              </p>
+            </div>
+          </div>
+
+          <!-- .gaveta-linha-detalhe -->
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.gaveta-linha-detalhe</span>
+            <div class="card-well p-4 flex flex-col gap-2">
+              <span class="card-well gaveta-linha-detalhe">
+                <span class="icon-bubble w-8 h-8 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </span>
+                <span>
+                  <span class="block text-sm font-bold leading-tight">Ficha fiscal</span>
+                  <span class="block text-xs text-base-content/70">Contribuinte e lançamento</span>
+                </span>
+                <svg class="etched gaveta-linha-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </span>
+              <p class="text-xs text-base-content/70 px-1">
+                Poço em repouso; o ponteiro acende o gelo e o sulco da seta enche de água.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- indicadores: composição de .card-well, sem peça nova -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">indicadores na gaveta — composição de .card-well</span>
+          <div class="card-well p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Terreno</p>
+              <p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+            </div>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Construída</p>
+              <p class="text-xl font-bold tabular-nums">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+            </div>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Testada</p>
+              <p class="text-xl font-bold tabular-nums">24,50 <span class="text-sm font-normal text-base-content/60">m</span></p>
+            </div>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Pavimentos</p>
+              <p class="text-xl font-bold tabular-nums">18</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          A moldura abaixo faz as vezes da casca da home. Acione a paleta na borda esquerda; depois,
+          uma das linhas de detalhe.
+        </p>
+
+        <!-- estado: recolhida → aberta → com a segunda gaveta (ao vivo na mesma moldura) -->
+        <!-- página: core/home.html -->
+        <div class="quadro-tela tela-home">
+
+          <!-- fica na página: a UI flutuante da busca, que já existe -->
+          <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4 transition-all duration-500 ease-in-out">
+            <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+              <div class="relative w-full flex items-center">
+                <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="search" value="Av. Paulista, 1578" class="input input-glass pl-11" />
+              </div>
+              <div class="search-hints flex justify-between px-2 pt-1 items-center">
+                <span class="text-overline">Pressione <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">Ctrl</kbd> + <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">K</kbd></span>
+                <div class="flex flex-wrap gap-2">
+                  <span class="badge badge-linha badge-sm whitespace-nowrap h-auto py-0.5">Logradouros</span>
+                  <span class="badge badge-ponto badge-sm whitespace-nowrap h-auto py-0.5">Endereços</span>
+                  <span class="badge badge-poligono badge-sm whitespace-nowrap h-auto py-0.5">Lotes</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- partial: search/partials/_gaveta_entidade.html — alvo de hx-swap ao comitar a busca -->
+          <div class="gaveta-lateral">
+            <input type="checkbox" id="gaveta-tela" class="gaveta-lateral-toggle">
+            <input type="checkbox" id="detalhe-tela" class="gaveta-lateral-detalhe-toggle">
+
+            <!-- partial: search/partials/_gaveta_detalhe.html — alvo de hx-swap ao abrir um detalhe -->
+            <aside class="gaveta-lateral-detalhe glass-drawer-panel-recuado">
+              <div class="gaveta-lateral-detalhe-conteudo">
+                <div>
+                  <p class="text-overline text-madeira-600">Detalhe</p>
+                  <h3 class="text-xl font-bold tracking-tight text-madeira-700 leading-tight">Ficha fiscal</h3>
+                  <p class="text-code text-xs mt-1">Contribuinte 098.112.0034-1</p>
+                </div>
+                <div class="card-well p-4 flex flex-col gap-3">
+                  <div>
+                    <p class="text-overline mb-0.5">Valor venal</p>
+                    <p class="text-2xl font-bold tabular-nums">R$ 4.982.310</p>
+                  </div>
+                  <div class="h-px w-full bg-rocha-950/10"></div>
+                  <div>
+                    <p class="text-overline mb-0.5">Exercício</p>
+                    <p class="font-bold tabular-nums">2026</p>
+                  </div>
+                </div>
+                <p class="text-sm text-base-content/80 leading-relaxed">
+                  Lançamento ativo, sem parcelamento em curso. A ficha reúne o que o cadastro do IPTU
+                  guarda sobre o contribuinte responsável pelo imóvel.
+                </p>
+                <div class="card-well p-4 flex flex-col gap-2">
+                  <p class="text-overline">Situação</p>
+                  <div class="flex flex-wrap gap-2">
+                    <span class="badge badge-success badge-soft font-bold">Lançado</span>
+                    <span class="badge badge-warning badge-soft font-bold">Tombado</span>
+                  </div>
+                </div>
+              </div>
+              <label for="detalhe-tela" class="paleta-gaveta paleta-gaveta-recuada" tabindex="0" aria-label="Fechar o detalhe">
+                <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </label>
+            </aside>
+
+            <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+              <header class="gaveta-lateral-cabecalho">
+                <p class="text-overline text-madeira-600">Entidade localizada</p>
+                <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
+                <p class="text-code text-sm font-medium mt-2">SQL 098.112.0034-1</p>
+              </header>
+
+              <div class="gaveta-lateral-corpo" data-scroll-etched>
+                <div class="gaveta-lateral-rolador" data-rolador>
+                  <div class="gaveta-lateral-conteudo">
+                    <div class="card-well mapa-gaveta-moldura">
+                      <div class="mapa-gaveta-rotulo">
+                        <span class="text-overline">Geometria</span>
+                        <span class="badge badge-poligono badge-sm">Polígono</span>
+                      </div>
+                      <div class="mapa-gaveta">
+                        <div id="mapa-gaveta-tela" class="absolute inset-0"></div>
+                      </div>
+                    </div>
+
+                    <div class="card-well p-4 flex gap-4 items-center">
+                      <div class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                      </div>
+                      <div>
+                        <p class="text-overline mb-0.5">Endereço principal</p>
+                        <p class="font-bold leading-tight">Av. Paulista, 1578</p>
+                        <p class="text-xs text-base-content/70">Bela Vista, São Paulo — SP</p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Terreno</p>
+                        <p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                      </div>
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Construída</p>
+                        <p class="text-xl font-bold tabular-nums">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                      </div>
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Testada</p>
+                        <p class="text-xl font-bold tabular-nums">24,50 <span class="text-sm font-normal text-base-content/60">m</span></p>
+                      </div>
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Pavimentos</p>
+                        <p class="text-xl font-bold tabular-nums">18</p>
+                      </div>
+                    </div>
+
+                    <p class="text-sm text-base-content/80 leading-relaxed">
+                      Lote de esquina na quadra fiscal 112, com frente para a Avenida Paulista e
+                      acesso secundário pela Rua Frei Caneca. A geometria vem do cadastro do IPTU.
+                    </p>
+
+                    <div class="card-well p-4 flex flex-col gap-4">
+                      <div>
+                        <p class="text-overline mb-2">Zoneamento (LPUOS)</p>
+                        <div class="flex items-center gap-3">
+                          <span class="badge bg-primary text-primary-content border-none font-bold px-3 py-3 shadow-[0_2px_12px_rgba(0,150,199,0.35)]">ZCOR-2</span>
+                          <span class="text-sm font-medium">Zona Corredor Comercial</span>
+                        </div>
+                      </div>
+                      <div class="h-px w-full bg-rocha-950/10"></div>
+                      <div>
+                        <p class="text-overline mb-2">Restrições históricas</p>
+                        <div class="flex items-center gap-3">
+                          <span class="badge badge-warning badge-soft font-bold px-3 py-3">Tombado</span>
+                          <span class="text-sm font-medium">CONPRESP 14/2012</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p class="text-overline pt-2">Mais detalhes</p>
+                    <label for="detalhe-tela" class="card-well gaveta-linha-detalhe">
+                      <span class="icon-bubble w-8 h-8 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                      </span>
+                      <span>
+                        <span class="block text-sm font-bold leading-tight">Ficha fiscal</span>
+                        <span class="block text-xs text-base-content/70">Contribuinte e lançamento</span>
+                      </span>
+                      <svg class="etched gaveta-linha-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                    </label>
+                    <label for="detalhe-tela" class="card-well gaveta-linha-detalhe">
+                      <span class="icon-bubble w-8 h-8 bg-madeira-400/15 border-madeira-500/30 text-madeira-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      </span>
+                      <span>
+                        <span class="block text-sm font-bold leading-tight">Histórico de lançamentos</span>
+                        <span class="block text-xs text-base-content/70">2019 a 2026</span>
+                      </span>
+                      <svg class="etched gaveta-linha-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                    </label>
+                    <label for="detalhe-tela" class="card-well gaveta-linha-detalhe">
+                      <span class="icon-bubble w-8 h-8 bg-sakura-500/15 border-sakura-600/30 text-sakura-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                      </span>
+                      <span>
+                        <span class="block text-sm font-bold leading-tight">Ofertas próximas</span>
+                        <span class="block text-xs text-base-content/70">Raio de 500 m</span>
+                      </span>
+                      <svg class="etched gaveta-linha-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                    </label>
+                  </div>
+                </div>
+                <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+
+            <label for="gaveta-tela" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </label>
+          </div>
+          <!-- /partial -->
+        </div>
+
+        <!-- estado: sem entidade localizada -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">estado de falta — gaveta aberta sem entidade</span>
+          <div class="quadro-tela h-[22rem]">
+            <div class="gaveta-lateral">
+              <input type="checkbox" id="gaveta-tela-vazia" class="gaveta-lateral-toggle" checked>
+              <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+                <header class="gaveta-lateral-cabecalho">
+                  <p class="text-overline text-madeira-600">Entidade localizada</p>
+                  <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Nenhuma</h2>
+                </header>
+                <div class="gaveta-lateral-corpo">
+                  <div class="gaveta-lateral-rolador">
+                    <div class="gaveta-lateral-conteudo">
+                      <div class="gaveta-vazia">
+                        <span class="etched etched-lg text-4xl leading-none">◇</span>
+                        <p>Busque um logradouro, um endereço ou um número de contribuinte para a gaveta se preencher.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <label for="gaveta-tela-vazia" class="paleta-gaveta" tabindex="0" aria-label="Recolher a gaveta">
+                <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import "/static/src/js/ui/scroll_etched.js";
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    // No produto tudo isto desce do servidor por json_script (settings do app mapping); o mock não
+    // tem Django por trás do Live Server, e é o único motivo de a config estar escrita aqui.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5614, -46.6559];
+
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers,
+        version: WMS.version,
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+
+    // O fundo vem do partial da própria home, com as tags de template removidas — o mock não
+    // recria a lente.
+    fetch("/templates/mapping/_mapa_fullscreen.html")
+      .then((r) => r.text())
+      .then((html) => {
+        document.getElementById("fundo-home").innerHTML = html.replace(TAG_DE_TEMPLATE, "").trim();
+        base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15));
+      });
+
+    const mapaMolecula = base(L.map("mapa-molecula", { attributionControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 17));
+    const mapaGaveta = base(L.map("mapa-gaveta-tela", { attributionControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 17));
+
+    // O Leaflet mede o container quando o mapa nasce, e aqui isso acontece com a gaveta ainda fora
+    // da tela: sem remedir no fim do deslize, os tiles saem cortados. Cola de Leaflet, não estado.
+    document.querySelectorAll(".gaveta-lateral").forEach((gaveta) => {
+      gaveta.addEventListener("transitionend", () => {
+        mapaGaveta.invalidateSize();
+      });
+    });
+
+    // Contorno do lote, só para o poço não abrir vazio.
+    const LOTE = {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [[
+          [-46.6567, -23.5608], [-46.6551, -23.5608],
+          [-46.6551, -23.5620], [-46.6567, -23.5620], [-46.6567, -23.5608],
+        ]],
+      },
+    };
+    [mapaMolecula, mapaGaveta].forEach((mapa) => {
+      const camada = L.geoJSON(LOTE, {
+        style: { color: "#D84F7F", weight: 3, opacity: 1, fillColor: "#D84F7F", fillOpacity: 0.35 },
+      }).addTo(mapa);
+      mapa.fitBounds(camada.getBounds(), { padding: [24, 24] });
+    });
+  </script>
+</body>
+</html>

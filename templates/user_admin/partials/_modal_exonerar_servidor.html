@@ -1,0 +1,62 @@
+{% load icones %}
+{# Modal de exonerar/reintegrar servidor (SPEC user_admin/027), servido pelas três portas — a face #}
+{# sai do ESTADO do servidor escolhido, nunca de qual porta abriu o modal. `direto` chega já        #}
+{# resolvido (seção Exercício, coluna da listagem): sem select algum, a face nasce pronta. Sem ele,  #}
+{# o card do painel escolhe unidade e, dentro dela, o servidor — mesmo par de `_modal_administrador.html`. #}
+{% icone_acao acao_exonerar_servidor.slug variante_icone_grande as svg %}
+<input type="checkbox" id="modal-exonerar-servidor" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+    <div class="flex flex-col gap-6">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-grande {% if face == 'reintegrar' %}text-agua-700{% else %}text-error{% endif %} shrink-0">{{ svg|safe }}</span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">
+            {% if face == "reintegrar" %}Reintegrar servidor{% else %}Exonerar servidor{% endif %}
+          </h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            {% if direto and face == "reintegrar" %}
+              Exonerado em {{ servidor.exonerado_em|date:"d/m/Y" }}.
+            {% elif direto %}
+              O servidor deixa o quadro da DIMAP e para de entrar no sistema.
+            {% else %}
+              Escolha a unidade e, dentro dela, o servidor.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      {% if not direto %}
+        <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+          <label class="form-field">
+            <span class="text-overline">Unidade</span>
+            <select name="unidade" class="select select-glass" data-select-onsen
+                    hx-get="{% url 'user_admin:opcoes_exoneracao' %}"
+                    hx-target="#campo-servidor-exoneracao"
+                    hx-swap="innerHTML">
+              <option value="">— escolha —</option>
+              {% for unidade in unidades %}
+                <option value="{{ unidade.pk }}">{{ unidade.sigla }} · {{ unidade.nome }}</option>
+              {% endfor %}
+            </select>
+            <span class="form-field-hint">Só as unidades do seu alcance.</span>
+          </label>
+          <label class="form-field" id="campo-servidor-exoneracao">
+            {% include "user_admin/partials/_opcoes_servidor.html" %}
+          </label>
+        </div>
+      {% endif %}
+
+      <div id="exoneracao-alvo" class="flex flex-col gap-5">
+        {% include "user_admin/partials/_face_exoneracao.html" %}
+      </div>
+
+      {% if not servidor %}
+        <div class="modal-action">
+          <label for="modal-exonerar-servidor" class="btn btn-glass btn-sm">Fechar</label>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  <label class="modal-backdrop" for="modal-exonerar-servidor">Fechar</label>
+</div>

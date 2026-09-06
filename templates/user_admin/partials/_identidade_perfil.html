@@ -1,0 +1,34 @@
+{% load icones %}
+{# Molécula: cabeçalho de identidade do servidor — a imagem grande à esquerda do nome (edição). #}
+{# A folga embaixo é o alcance do halo do disco w-28: a luz precisa acabar antes do poço do      #}
+{# Resumo, que nasce colado logo abaixo em toda página que compõe esta molécula.                 #}
+{% icone_acao acao_tornar_administrador.slug variante_icone_pequena as svg_administrador %}
+<div class="flex items-center gap-5 mb-6">
+  {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-28 h-28" halo_escala="2" %}
+  <div class="min-w-0">
+    <h1 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">{{ perfil.nome }} {{ perfil.sobrenome }}</h1>
+    <div class="flex flex-wrap items-center gap-3 mt-1">
+      <p class="text-code text-sm">RF {{ perfil.rf }}</p>
+      {% if perfil.is_superuser %}
+        <span class="badge badge-linha gap-1.5" title="É administrador do sistema">
+          <span class="icone-acao icone-acao-pequeno">{{ svg_administrador|safe }}</span>
+          Administrador
+        </span>
+      {% endif %}
+      {# SPEC user_admin/027: o selo carrega a data do ato — é a medida cheia, ao contrário do #}
+      {# badge-sm da listagem, que só nomeia a situação. #}
+      {% if perfil.exonerado %}
+        <span class="badge badge-warning badge-soft shrink-0">Exonerado em {{ perfil.exonerado_em|date:"d/m/Y" }}</span>
+      {% endif %}
+    </div>
+    <div class="flex flex-wrap gap-2 mt-2">
+      <span class="badge badge-info badge-soft">{{ perfil.unidade.sigla }}</span>
+      <span class="badge badge-ponto badge-sm">{{ perfil.cargo_base.nome }}</span>
+      {% if perfil.cargo_comissao %}
+        <span class="badge badge-poligono badge-sm">
+          <span class="rotulo-cargo{% if perfil.cargo_comissao.extinto %} rotulo-cargo-extinto{% endif %}"{% if perfil.cargo_comissao.extinto %} title="Cargo Extinto"{% endif %}>{{ perfil.cargo_comissao.padrao }} · {{ perfil.cargo_comissao.natureza }}</span>
+        </span>
+      {% endif %}
+    </div>
+  </div>
+</div>

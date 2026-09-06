@@ -1,0 +1,63 @@
+<input type="checkbox" id="modal-definir-titular" class="modal-toggle" />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+    {% if candidatos %}
+      <form hx-post="{% url 'unidades:gravar_definir_titular' %}"
+            hx-target="#poco-modal"
+            class="flex flex-col gap-6"
+            onsubmit="document.getElementById('modal-definir-titular').checked = false;">
+        {% csrf_token %}
+        <input type="hidden" name="unidade" value="{{ unidade.pk }}">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Definir titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {{ unidade.tipo.nome }} · hoje sem titular</p>
+        </div>
+
+        <label class="form-field">
+          <span class="text-overline">Servidores da {{ unidade.sigla }} que podem titularizar</span>
+          <select name="titular" class="select select-glass" data-select-onsen>
+            {% for candidato in candidatos %}
+              <option value="{{ candidato.pk }}">{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">A lista traz só quem é lotado na {{ unidade.sigla }} e tem cargo em comissão de chefia compatível com o mínimo do tipo ({{ cargo_minimo }}).</span>
+        </label>
+
+        <div class="tarja-vinculo flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+          <p class="text-[13px] text-base-content/80">Titularizar não muda lotação nem cargo: marca o vínculo de direção de quem já está aqui.</p>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-definir-titular" class="btn btn-glass btn-sm">Cancelar</label>
+          <button type="submit" class="btn btn-onsen btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+            Definir
+          </button>
+        </div>
+      </form>
+    {% else %}
+      <div class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Definir titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {{ unidade.tipo.nome }} · hoje sem titular</p>
+        </div>
+
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">Nenhum servidor da {{ unidade.sigla }} pode titularizar</p>
+            <p class="text-[13px] text-base-content/60 mt-1">Titularizar exige cargo em comissão de chefia compatível com o mínimo do tipo ({{ cargo_minimo }}).</p>
+          </div>
+        </div>
+
+        <p class="text-[13px] text-base-content/70">A unidade segue sem titular até que alguém com cargo compatível seja lotado nela, ou até que um dos servidores daqui receba o cargo. O caminho não é esta tela: é o cadastro do servidor.</p>
+
+        <div class="modal-action">
+          <label for="modal-definir-titular" class="btn btn-glass btn-sm">Fechar</label>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+  <label class="modal-backdrop" for="modal-definir-titular">Fechar</label>
+</div>

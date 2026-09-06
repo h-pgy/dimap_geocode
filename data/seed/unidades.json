@@ -1,0 +1,118 @@
+{
+  "tipos": [
+    {
+      "nome": "Equipe",
+      "nivel": 1,
+      "nivel_minimo_titular": 2
+    },
+    {
+      "nome": "Seção",
+      "nivel": 2,
+      "nivel_minimo_titular": 3
+    },
+    {
+      "nome": "Divisão",
+      "nivel": 3,
+      "nivel_minimo_titular": 4
+    },
+    {
+      "nome": "Departamento",
+      "nivel": 4,
+      "nivel_minimo_titular": 5
+    },
+    {
+      "nome": "Coordenação",
+      "nivel": 5,
+      "nivel_minimo_titular": 5
+    },
+    {
+      "nome": "Coordenadoria",
+      "nivel": 6,
+      "tipos_filhos_vedados": ["Divisão"],
+      "nivel_minimo_titular": 6
+    },
+    {
+      "nome": "Assessoria",
+      "nivel": 6,
+      "tipos_filhos_vedados": ["Divisão", "Departamento", "Coordenação"],
+      "nivel_minimo_titular": 5
+    },
+    {
+      "nome": "Subsecretaria",
+      "nivel": 7,
+      "tipos_filhos_vedados": ["Divisão"],
+      "exige_alta_administracao": true
+    },
+    {
+      "nome": "Secretaria Executiva",
+      "nivel": 8,
+      "tipos_filhos_vedados": ["Divisão", "Departamento"],
+      "exige_alta_administracao": true
+    },
+    {
+      "nome": "Gabinete da/do Secretária/o",
+      "nivel": 9,
+      "pode_ser_raiz": true,
+      "tipos_filhos_vedados": ["Divisão"],
+      "exige_alta_administracao": true
+    }
+  ],
+  "unidades": [
+    {
+      "nome": "Gabinete do Secretário Municipal da Fazenda",
+      "sigla": "SF-GAB",
+      "tipo": "Gabinete da/do Secretária/o",
+      "pai": null,
+      "cor": "rocha-900"
+    },
+    {
+      "nome": "Subsecretaria da Receita Municipal",
+      "sigla": "SUREM",
+      "tipo": "Subsecretaria",
+      "pai": "SF-GAB",
+      "cor": "madeira-700"
+    },
+    {
+      "nome": "Departamento de Cadastros",
+      "sigla": "DECAD",
+      "tipo": "Departamento",
+      "pai": "SUREM",
+      "cor": "sakura-700"
+    },
+    {
+      "nome": "Divisão do Mapa de Valores",
+      "sigla": "DIMAP",
+      "tipo": "Divisão",
+      "pai": "DECAD",
+      "cor": "agua-800"
+    },
+    {
+      "nome": "DIMAP-1",
+      "sigla": "DIMAP-1",
+      "tipo": "Seção",
+      "pai": "DIMAP",
+      "cor": "agua-700"
+    },
+    {
+      "nome": "DIMAP-2",
+      "sigla": "DIMAP-2",
+      "tipo": "Seção",
+      "pai": "DIMAP",
+      "cor": "rocha-700"
+    },
+    {
+      "nome": "DIMAP-3",
+      "sigla": "DIMAP-3",
+      "tipo": "Seção",
+      "pai": "DIMAP",
+      "cor": "madeira-600"
+    },
+    {
+      "nome": "DIMAP-4",
+      "sigla": "DIMAP-4",
+      "tipo": "Seção",
+      "pai": "DIMAP",
+      "cor": "sakura-600"
+    }
+  ]
+}

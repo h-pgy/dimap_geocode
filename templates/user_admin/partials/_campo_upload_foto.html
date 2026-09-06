@@ -1,0 +1,22 @@
+{# Molécula: campo de upload em poço rebaixado. O nome do arquivo escolhido é escrito pelo próprio #}
+{# navegador (file-input nativo) e soltar arquivo sobre ele funciona por comportamento nativo —    #}
+{# prévia local e realce de arraste exigiriam JS de estado (§7.2). Na edição, a prévia mostrada é  #}
+{# a imagem já gravada, servida pelo servidor. `imagem`, e não `perfil` — o cadastro recusado      #}
+{# (SPEC criacao_usuarios/004) reaproveita esta seção com um `perfil` que não é model nenhum, e     #}
+{# sem foto gravada para mostrar.                                                                  #}
+<div class="card-well p-5 flex flex-col gap-4">
+  <p class="text-overline">Foto</p>
+  <label class="upload-well cursor-pointer">
+    {% if imagem %}
+      {% include "user_admin/partials/_imagem_perfil.html" with tamanho="w-16 h-16" %}
+      <span class="text-sm font-medium">Substituir a foto atual</span>
+    {% else %}
+      <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L8 8m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      </span>
+      <span class="text-sm font-medium">Arraste a foto ou clique para escolher</span>
+    {% endif %}
+    <input type="file" name="foto" accept="image/*" class="file-input file-input-glass file-input-sm max-w-xs {{ realce.foto }}" />
+    <span class="form-field-hint">JPG ou PNG. Sem foto, o sistema desenha o avatar com as iniciais na cor da unidade.</span>
+  </label>
+</div>

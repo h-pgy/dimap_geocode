@@ -1,0 +1,16 @@
+{# O botão de confirmar do modal de extinguir/reativar (SPEC user_admin/025), extraído para valer   #}
+{# nos dois pontos em que precisa existir: dentro do modal na abertura, e como alvo do hx-swap-oob   #}
+{# da prévia — trocar de unidade no select muda a prévia E o estado deste botão, e os dois vivem em  #}
+{# blocos diferentes do DOM. `oob` liga o `hx-swap-oob`; o `id` é o mesmo nos dois casos, porque é   #}
+{# por ele que o HTMX encontra o botão a substituir quando a resposta não é dele quem o pediu.       #}
+<button type="submit"
+        id="botao-confirmar-ato"
+        {% if oob %}hx-swap-oob="outerHTML"{% endif %}
+        class="btn btn-sm {% if face == 'reativar' %}btn-onsen{% else %}btn-error btn-soft{% endif %}"
+        {% if face != "reativar" and not previa %}disabled{% endif %}>
+  {% if face == "reativar" %}
+    Reativar{% if previa %} a {{ previa.unidade.sigla }}{% endif %}
+  {% else %}
+    Extinguir{% if previa %} a {{ previa.unidade.sigla }}{% endif %}
+  {% endif %}
+</button>

@@ -6,8 +6,23 @@ description: Design system "Onsen de Inverno" e padronização dos componentes d
 # Design System "Onsen de Inverno" — DIMAP GeoCoder
 
 Esta skill define o design system do projeto e **como construir componentes com Atomic Design**.
-A referência visual validada vive em `examples/design_system.html` (styleguide sobre mapa vivo) e
-`examples/mock_ui.html` (aplicação mockada). Qualquer componente novo nasce seguindo o método do §2.
+Ela não lista o que existe — quem lista é a aplicação.
+
+**A cadeia tem um único ponto editável:**
+
+> átomo novo → `static/src/tema-dimap.dev.css` → o build emite → **`/design_system`** mostra.
+
+`tema-dimap.dev.css` é a fonte única (SPEC design/004); `static/dist/output.css` é o artefato que o
+build produz dela; e a rota `/design_system` é uma página da aplicação que carrega **esse mesmo
+arquivo**. Ninguém consegue registrar peça que a aplicação não tem, nem esquecer de registrar peça
+que ela tem.
+
+Consulte, sob demanda:
+- **`/design_system`** — o catálogo visual do que existe (é o contrato visual do projeto).
+- **`references/pecas.md`** — as armadilhas de uso de cada peça, que a tela não mostra.
+- **`references/paleta.json`** — os valores das escalas.
+
+Componente novo nasce seguindo o método do §2.
 
 ## 1. O Conceito: água límpida sob luz fria de inverno
 
@@ -39,14 +54,24 @@ Valores e materiais compartilhados, definidos **uma única vez** no CSS de entra
 - **Materiais de vidro**: classes `@apply` que agrupam utilities — `.glass-blur`, `.glass-bg`,
   `.glass-bg-deep`, `.glass-edge`, `.glass-shadow`, `.glass-glow` — e os **materiais compostos**
   `.glass-panel`, `.glass-panel-deep`, `.glass-drawer-panel`, `.card-well` (§5).
-- **Coreografia**: `.transition-glass`, `.glass-hide-up`, `.cinematic-blur-layer` (§7).
+- **Gravação no gelo** (`.etched`, `.etched-lg`, `.etched-inked`, `.etched-deeper`,
+  `.etched-rotulo`, SPEC user_admin/013): o registro **oposto** ao `.icon-glow` — onde ele acende,
+  este **escava**. O relevo segue a silhueta da própria forma, via **filtro SVG**
+  (`templates/partials/_filtros_gravacao.html`, incluído no `base.html`) — sem os `defs` no
+  documento a classe existe e não desenha nada. Três restrições andam com ele: **nunca carrega
+  informação**, só afordância; **só vale sobre vidro claro**; e quando o sulco precisa *nomear*
+  algo, a tinta sobe (`.etched-rotulo`). Duas medidas só — acima de ~32px, `.etched-lg`.
+- **Coreografia**: `.transition-glass`, `.glass-hide-up`, `.cinematic-blur-layer`, `.moldura-fixa` (§7).
 
 Regras dos tokens:
 - Cor nova **entra numa escala existente** ou não entra. Proibido hex solto no HTML/CSS de componente.
 - Material novo **compõe os tokens de vidro** existentes; não se inventa outro vocabulário de sombra/blur.
 - Token é classe com `@apply` **apenas de utilities Tailwind**. **NUNCA faça `@apply` de classe do
-  daisyUI** (`btn`, `input`, `badge`...): o build quebra e a folha inteira cai. A classe daisyUI fica
-  no HTML, empilhada com o token (§2.2).
+  daisyUI** (`btn`, `input`, `badge`...). Atenção à armadilha: no build da aplicação isso **compila
+  sem erro**, porque o daisyUI entra como `@plugin` e vira utility resolvível — mas nos mocks de
+  SPEC, onde ele é folha separada servida por CDN, a mesma linha derruba a folha inteira. A falha é
+  assimétrica: passa na aplicação e mata o mock. A classe daisyUI fica no HTML, empilhada com o
+  token (§2.2).
 
 ### 2.2 Átomos (elementos mínimos)
 O menor elemento com identidade própria: botão, input, badge, kbd, ícone, tooltip, toggle, loading.
@@ -59,20 +84,8 @@ O menor elemento com identidade própria: botão, input, badge, kbd, ícone, too
 <label  class="btn btn-ghost btn-glass btn-circle">…</label>
 ```
 
-Átomos existentes (ver todos renderizados em `examples/design_system.html`, seção 2):
-| Átomo | Classe do DS | Sobre |
-|---|---|---|
-| Botão de energia (CTA) | `.btn-onsen` | gradiente `agua-300→500`, tinta escura, glow ciano |
-| Botão de vidro | `.btn-glass` | gelo fosco circular/pill; ações secundárias e ícones |
-| Input de vidro | `.input-glass` | fundo `white/45`, foco com anel ciano |
-| Badges de geometria | `.badge-ponto` `.badge-linha` `.badge-poligono` | tipo do resultado/camada |
-| Badges semânticos | `badge-{info,success,warning,error} badge-soft` | estado do sistema (daisyUI puro) |
-| Ícone com brilho | `.icon-glow` | `agua-600` + drop-shadow ciano |
-| Overline | `.text-overline` | rótulo 11px caps `rocha-700` |
-| Código | `.text-code` | Roboto Mono `agua-700` (SQL, codlog) |
-
-Para criar um átomo novo: (1) confira se um componente daisyUI já resolve o comportamento;
-(2) crie **uma** classe `@apply` de utilities com a pele do DS; (3) registre-o no styleguide.
+Os átomos que existem estão renderizados em **`/design_system`**; as armadilhas de uso de
+cada um, em `references/pecas.md`.
 
 ### 2.3 Moléculas (combinações pequenas)
 Grupo de átomos funcionando como uma unidade: o grupo de busca (input + botão), o item de sugestão
@@ -80,6 +93,9 @@ Grupo de átomos funcionando como uma unidade: o grupo de busca (input + botão)
 o item de layer (cor + nome + badge + toggle + lixeira). Moléculas ganham classe própria **só quando
 têm layout interno recorrente** (`.suggestion-item`); caso contrário são apenas composição de átomos
 com utilities de layout no HTML.
+
+As peças que existem estão em **`/design_system`**; como cada uma é acionada e o que já
+quebrou nela, em `references/pecas.md` — leia antes de compor com uma delas.
 
 ### 2.4 Organismos (seções de domínio)
 Seções autônomas da interface: o painel de busca completo, a gaveta de detalhes do imóvel, o widget
@@ -91,12 +107,12 @@ de usuário, o painel de camadas do projeto. **Organismo = partial Django/HTMX**
   copiar blocos de utilities.
 
 ### 2.5 Checklist para qualquer componente novo
-1. Já existe no styleguide (`examples/design_system.html`)? **Reutilize.**
+1. Já existe em `/design_system`? **Reutilize.**
 2. O daisyUI tem o comportamento? Use o componente dele como base.
 3. Precisa de pele nova? Componha **tokens existentes**; se surgir cor/sombra nova, ela entra como
    token antes de aparecer em componente.
 4. Classe nova só com `@apply` de utilities; classe daisyUI empilhada no HTML.
-5. Renderize o novo componente no styleguide (é o contrato visual do projeto).
+5. Renderize o novo componente em `templates/core/design_system.html` (é o contrato visual).
 
 ## 3. Paleta
 
@@ -159,16 +175,22 @@ Título flutuando direto sobre o mapa recebe halo frio: `drop-shadow-[0_1px_3px_
 
 Receita: **blur 10px** + gradiente branco translúcido + aresta `white/60` + **sombra em duas
 camadas** — azul-fria `rgba(7,58,84,.25)` (separação) + ciana `rgba(72,202,228,.25)` (vida) — e o
-brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `references/design_system.css`.
+brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `static/src/tema-dimap.dev.css` (§8).
 
 | Material | Uso | Tinta |
 |---|---|---|
-| `.glass-panel` | painel flutuante padrão | escura |
+| `.glass-panel` | painel flutuante padrão (fino, 10px — **sobre o mapa**) | escura |
+| `.glass-panel-thick` | segunda espessura (blur 28px, 88%→76%, aresta `white/70`) — **vidro sobre interface**, onde o fino deixa passar demais. Primitivos `.glass-blur-thick` / `.glass-bg-thick`. Quem esconde o fundo é o **blur**: acima de ~90% de branco o material deixa de ler como gelo (SPEC design/008 v2) | escura |
 | `.glass-drawer-panel` | gaveta lateral (texto denso; blur 12px, mais opaco) | escura |
 | `.card-well` | poço rebaixado: sub-cards dentro de painéis (stats, metadados) | escura |
+| **empilhado** | vidro sobre vidro **não se repinta** (SPEC design/009): `.glass-panel`, `.card-well` e `.upload-well` dentro de outro material de vidro ficam só com desfoque, aresta e sombra — a pintura acontece uma vez por pilha. Regra de descendência no tema: **nenhum markup muda**, e a peça volta a pintar sozinha quando renderizada fora. Única exceção: `.modal-box-glass` | escura |
 | `.glass-panel-deep` | variante escura **pontual**: tooltips, contraste invertido | clara (`rocha-100`, acentos `agua-300`/`madeira-300`) |
+| `.th-onsen-bandeja` | bandeja do cabeçalho de tabela: `94%→86%` sobre blur 56px — a **única** densidade fora das três, e só porque ela separa um cabeçalho grudento das linhas que correm por trás (§2.3) | escura |
+| `.modal-glass` + `.modal-box-glass` | modal: a cena **embaça** o fundo a 16px (nunca escurece) e a caixa é a **terceira densidade** — 97%→88%, blur 28px, aresta `white/80` —, escrita no próprio `.modal-box-glass` (SPEC design/008 v2). O modal não flutua sobre a interface: ele a substitui enquanto está aberto, e é o único lugar em que a opacidade alta é o acerto. O `.glass-panel-thick` empilhado no markup continua ali e é vencido por ordem. Abre/fecha por `checkbox` nativo | escura |
 
 Regras:
+- **A pintura é uma por pilha** (SPEC design/009). Peça nova não precisa saber onde vai ser
+  renderizada: quem lê a profundidade é o CSS, no DOM. Não crie variante "aninhada" de peça alguma.
 - Blur fraco (2px) é proibido: não separa figura do fundo. O mapa continua legível com 10px.
 - Sombra preta pura é proibida; sombra **apenas ciana** também (não separa). Sempre as duas camadas.
 - Nunca borda branca opaca contínua; a aresta é translúcida (`white/60`) + inset highlight.
@@ -191,6 +213,16 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
   ~500ms) entre o mapa e o painel. O mapa embaça; nada escurece.
 - A "lente" é óptica simulada por overlays `pointer-events-none`. **Proibido distorcer o mapa
   geometricamente** (transforms/SVG displacement): desalinha os cliques do Leaflet.
+- **O snippet acima é da home** — é a única tela com Leaflet no fundo. Toda tela que não é a home
+  roda sobre o **fundo da área administrativa** — a mesma lente sobre a ortofoto **pré-gerada** em
+  tons de cinza, à deriva (SPEC design/010) —, e ele já existe pronto: `{% include
+  "mapping/_mapa_admin.html" %}`, que traz o canvas, a lente e o `.fundo-controle`. O `.fundo-controle`
+  tem posicionamento responsivo governado no CSS: em telas amplas (`xl:`), repousa fixo no canto
+  inferior direito (`xl:fixed xl:bottom-6 xl:right-6 xl:z-20`); em telas estreitas (< xl), entra no
+  fluxo como nova linha abaixo do conteúdo alinhado à direita (`self-end ml-auto mt-4`), e sob modais
+  abertos recolhe via `:root:has(.modal-toggle:checked)`. Página nova não recopia camada nenhuma — inclusive
+  `/design_system`, que faz `{% include "mapping/_mapa_admin.html" %}` como qualquer outra. Os mocks
+  de SPEC montam o mesmo conjunto por `examples/fundo-admin.js` da skill `mock`.
 
 ## 7. Coreografia, micro-interações e HTMX
 
@@ -217,20 +249,32 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
 **`static/src/tema-dimap.dev.css` é a FONTE ÚNICA do design system** (SPEC design/004): tema
 daisyUI como variáveis planas em `html[data-theme="dimap"]`, `@theme` (escalas do §3.1 + papéis
 do §3.2) e `@layer components` (tokens/átomos/moléculas). Editar o design system = editar esse
-arquivo. Três consumidores:
+arquivo. Dois consumidores, com mecanismos diferentes:
 
-1. **Aplicação (dev/CDN):** `base.html` inclui o arquivo server-side —
-   `<style type="text/tailwindcss">{% include "tema-dimap.dev.css" %}</style>`
-   (`static/src` está nos `DIRS` do template engine só para isso).
-2. **Mocks desta skill** (`examples/*.html`): loader JS faz fetch do arquivo e injeta o
-   `<style>`. **Exigem servidor com root na raiz do projeto** (ex.: Live Server) — não abrem
-   mais via `file://`.
-3. **Build de prod (futuro):** `static/src/input.css` é só o esqueleto
-   (`@import "tailwindcss"; @import "./tema-dimap.dev.css"; @plugin "daisyui"; @source ...`).
+1. **A aplicação, por build** (SPEC infraestrutura/004). `static/src/input.css` é a entrada —
+   ordem das camadas, `source(none)`, `@import` do tema, `@plugin "daisyui"` e os `@source` — e o
+   serviço `tailwind` do `docker compose` compila em watch para `static/dist/output.css`. Toda
+   página, `/design_system` inclusive, carrega esse arquivo por `{% static 'output.css' %}`. Não há
+   CDN: a aplicação não busca Tailwind nem daisyUI na rede.
+2. **Os mocks de SPEC**, por compilador de browser (`@tailwindcss/browser` + daisyUI por CDN):
+   fazem `fetch` do tema e o injetam num `<style type="text/tailwindcss">`, no mesmo bloco em que
+   escrevem as peças **novas** da SPEC. Precisam disso porque renderizam CSS que ainda não existe
+   em lugar nenhum — e por isso **exigem servidor com root na raiz** (Live Server); não abrem via
+   `file://`. Ver skill `mock`.
+
+Consequência do (1) para quem cria peça: só entra no CSS o que o `@source` descobre como literal em
+`templates/`, `apps/`, `static/src/js` ou `services/utils/erros_formulario`. Peça portada para o
+tema é imune a isso — vira `@layer components` e sai sempre.
 
 Cuidados que já quebraram build/render:
+- **A ordem das camadas é declarada no `input.css`, não herdada do `@import`.** O daisyUI emite os
+  componentes dele dentro de `utilities` e o design system vive em `components`; na ordem padrão do
+  Tailwind (`theme, base, components, utilities`) o daisyUI **vence** o tema, e o resultado é modal
+  opaco, foco sem halo e avisos sem cor — sem erro nenhum no build. Por isso a primeira linha é
+  `@layer properties, theme, base, utilities, components;`.
 - `@apply` **só de utilities** (nunca classes daisyUI) — ver §2.1.
 - `shadow-inner` não existe no Tailwind 4; use `shadow-[inset_...]` arbitrária.
+- **`!important` no CSS é proibido** (CLAUDE.md §3.4) — salvo se pré-aprovado e estritamente necessário. Nunca use em `style` inline.
 - Sintaxe de important no Tailwind 4 é sufixo: `bg-transparent!` (não `!bg-transparent`).
 - O CDN `@tailwindcss/browser` só processa `<style type="text/tailwindcss">` **inline** (não
   suporta `<link>`) — por isso o include (aplicação) e o fetch+inject (mocks). CSS de mock que
@@ -245,15 +289,18 @@ Cuidados que já quebraram build/render:
 
 ## 9. Arquivos de referência (ordem de consulta)
 
-1. **Styleguide vivo:** `examples/design_system.html` — tokens, átomos, moléculas e organismos
-   renderizados sobre o mapa real. **É o contrato visual**; componente novo é registrado aqui.
-2. **Aplicação mockada:** `examples/mock_ui.html` — o design system aplicado na UX completa
-   (barra única, gaveta, coreografia de foco).
-3. **CSS dos tokens:** `references/design_system.css` — o bloco `@layer components` pronto para o
-   CSS de entrada da produção.
+1. **Styleguide vivo:** a rota **`/design_system`** (`templates/core/design_system.html`) — tokens,
+   átomos, moléculas e organismos renderizados sobre o fundo oficial da área administrativa, com o
+   CSS compilado da própria aplicação. **É o contrato visual**; componente novo é registrado aqui.
+2. **Armadilhas de uso das peças:** `references/pecas.md` — como cada peça é acionada e o que já
+   quebrou nela. O que a tela não mostra.
+3. **CSS dos tokens:** `static/src/tema-dimap.dev.css` — a **fonte única** (§8). O espelho
+   `references/design_system.css` foi **apagado**: era órfão (ninguém o importava) e mostrava a
+   receita anterior à SPEC design/006. Não recriar.
 4. **Paleta:** `references/paleta.json` — escalas e papéis em JSON (fonte da verdade dos valores).
 5. **Referências visuais:** `references/onsen_inverno_moodboard.jpg`,
    `references/referencia_original_ui_1.jpg`, `references/referencia_original_ui_2.jpg` — a água
    límpida ciano, a luz fria e o nível de polimento esperado do vidro;
    `references/referencia_original_ui_3.jpg` — os macacos no onsen, origem do rosa da escala
-   **sakura** (§3.1).
+   **sakura** (§3.1); `references/referencia_etched_glass.jpg` — cristal gravado a ácido, onde o
+   traço tem gradação interna em vez de contorno: a leitura que o token `.etched` persegue (§2.1).

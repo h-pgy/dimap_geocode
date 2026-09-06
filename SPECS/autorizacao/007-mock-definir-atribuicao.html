@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC autorizacao/007 — Definir atribuição (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server) —
+       aberto via file:// o fetch é bloqueado e o tema não carrega. -->
+  <script>
+    // Tema e peças desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
+    // vêm do @theme do tema, e um bloco separado que as usa em @apply cai com "unknown utility".
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-007").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
+  </script>
+
+  <!-- PEÇAS FORA DO TEMA. As da SPEC 006 estão repetidas aqui só para o mock rodar sozinho e NÃO
+       são reimplementadas no porte; a .card-atribuicao é compartilhada com a SPEC 008, onde ganha
+       a faixa de chips. -->
+  <script type="text/css" id="tokens-spec-007">
+    @layer components {
+
+      /* ---- SPEC 006: não reimplementar no porte ---- */
+      .icone-acao { @apply inline-flex items-center justify-center shrink-0; }
+      .icone-acao svg {
+        @apply w-full h-full block;
+        fill: none; stroke: currentColor; stroke-width: 1.75;
+        stroke-linecap: round; stroke-linejoin: round;
+      }
+      .icone-acao-pequeno { @apply w-5 h-5; }
+      .icone-acao-grande  { @apply w-12 h-12; }
+      .icone-acao-acende { @apply transition-all duration-200; }
+      .card-acao .icone-acao-acende {
+        filter: url(#etched-onsen-lg);
+        @apply text-agua-700/85;
+      }
+      :is(.item-menu, .card-acao-alvo):hover .icone-acao-acende,
+      .item-menu:focus-visible .icone-acao-acende {
+        @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)];
+      }
+      .item-menu {
+        @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-(--radius-field)
+               text-left text-[15px] text-base-content/90
+               bg-white/25 border border-white/40
+               transition-all duration-200
+               hover:bg-white/60 hover:text-agua-700
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
+      }
+      .item-menu-rotulo { @apply flex-1 min-w-0 truncate font-medium; }
+      .item-menu-apoio  { @apply block text-[13px] font-normal text-base-content/60 truncate; }
+      .menu-acoes { @apply w-[22rem] max-w-[92vw] p-4 flex flex-col gap-3; }
+      .menu-acoes-lista { @apply flex flex-col gap-1.5; }
+      .card-acao {
+        @apply relative flex flex-col gap-3 p-5 h-full text-left rounded-2xl
+               transition-colors duration-300;
+      }
+      .card-acao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
+      .card-acao-descricao { @apply text-[13px] text-base-content/70 leading-relaxed; }
+      .card-acao-alvo { @apply h-full; }
+      .card-acao-alvo:hover .card-acao { @apply border-agua-500/50; }
+
+      /* ==================== MOLÉCULA · CARTÃO DA ATRIBUIÇÃO ====================
+         Compartilhada com a SPEC 008 (lá, com a faixa de chips de cargo). */
+      /* Sem hover-3d: o cartão contém botões, e o componente exige conteúdo não-interativo. */
+      .card-atribuicao {
+        @apply flex flex-col gap-3 p-4 rounded-(--radius-box)
+               bg-white/30 border border-white/45;
+      }
+      .card-atribuicao-cabeca { @apply flex items-start gap-3; }
+      .card-atribuicao-corpo  { @apply flex flex-wrap items-center gap-2; }
+      .card-atribuicao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
+      .card-atribuicao-descricao { @apply text-[13px] text-base-content/70; }
+      .card-atribuicao-vazio  { @apply text-[13px] italic text-base-content/55; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- defs da gravação (SPEC user_admin/013) — repetidos aqui só para o mock renderizar sozinho;
+       na aplicação vêm de templates/partials/_filtros_gravacao.html, no base.html. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-atribuicao">
+        <rect x="2.5" y="7" width="19" height="13" rx="2"/>
+        <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/>
+        <path d="M2.5 12.5h8"/><path d="M13.5 12.5h8"/>
+        <rect x="10.5" y="11" width="3" height="3" rx="0.75"/>
+      </g>
+      <g id="glifo-certidao">
+        <path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+        <path d="M14 3v5h5"/><path d="M8 13h8"/><path d="M8 17h5"/>
+      </g>
+      <g id="glifo-amostragem">
+        <circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/><path d="M11 8v6"/><path d="M8 11h6"/>
+      </g>
+      <g id="glifo-competencia">
+        <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/>
+      </g>
+      <g id="glifo-mais"><path d="M12 5v14"/><path d="M5 12h14"/></g>
+      <g id="glifo-x"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></g>
+      <g id="glifo-lixeira">
+        <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>
+      </g>
+      <g id="glifo-alerta"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 mx-auto max-w-4xl px-6 py-10 flex flex-col gap-10">
+
+    <header class="glass-panel p-6">
+      <p class="text-overline">SPEC autorizacao/007 · mock de validação</p>
+      <h1 class="text-[30px] font-black tracking-tight text-madeira-700">Definir atribuições da unidade</h1>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="badge badge-ponto">.card-atribuicao</span>
+        <span class="badge badge-linha">.card-acao (SPEC 006)</span>
+        <span class="badge badge-poligono">glifo da ação · maleta</span>
+        <span class="badge badge-neutral badge-soft">unidade sem atribuição</span>
+        <span class="badge badge-info badge-soft">organograma (SPEC user_admin/018)</span>
+      </div>
+    </header>
+
+    <!-- ==================== 2 · ÁTOMOS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-5">
+      <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
+
+      <!-- Nenhum átomo nasce aqui; o desenho novo é o glifo da ação — arquivo dela (SPEC 006),
+           não token do design system. -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">glifo de "Definir atribuições da unidade" · a maleta</span>
+        <div class="card-well p-5 flex flex-col gap-5">
+          <div class="flex flex-wrap items-start gap-10">
+            <div class="flex flex-col items-center gap-2 text-center">
+              <span class="icone-acao icone-acao-grande icon-glow"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+              <p class="text-[11px] text-base-content/60">grande · cartão do catálogo</p>
+              <p class="text-code text-[11px]">acoes/competencias/definir_atribuicao/icones/grande.svg</p>
+            </div>
+            <div class="flex flex-col items-center gap-2 text-center">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+              <p class="text-[11px] text-base-content/60">pequeno · linha do menu e cartão da atribuição</p>
+              <p class="text-code text-[11px]">acoes/competencias/definir_atribuicao/icones/pequeno.svg</p>
+            </div>
+          </div>
+          <p class="text-[13px] text-base-content/70">
+            A maleta é o <strong>portfólio de trabalho</strong> da unidade — na administração
+            pública, o que designa as áreas de responsabilidade do setor.
+          </p>
+        </div>
+      </div>
+
+      <!-- o glifo entre os vizinhos com que divide menu e catálogo: o que se aprova é a distinção -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">entre as outras ações · à mesma distância de leitura</span>
+        <div class="card-well p-5">
+          <div class="flex flex-wrap items-start gap-6">
+            <div class="flex flex-col items-center gap-2 text-center w-28">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+              <p class="text-[11px] leading-snug text-base-content/60">Definir atribuições da unidade</p>
+            </div>
+            <div class="flex flex-col items-center gap-2 text-center w-28">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+              <p class="text-[11px] leading-snug text-base-content/60">Conceder competência</p>
+            </div>
+            <div class="flex flex-col items-center gap-2 text-center w-28">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+              <p class="text-[11px] leading-snug text-base-content/60">Amostragem de ofertas</p>
+            </div>
+            <div class="flex flex-col items-center gap-2 text-center w-28">
+              <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <p class="text-[11px] leading-snug text-base-content/60">Emitir certidão de lançamento</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- os átomos do tema que a tela usa, sem redesenho -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">do tema, sem redesenho</span>
+        <div class="card-well p-5 flex flex-wrap items-center gap-6">
+          <button class="btn btn-onsen btn-sm">Atribuir</button>
+          <button class="btn btn-glass btn-sm btn-circle">
+            <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+          </button>
+          <button class="btn btn-glass btn-sm btn-circle">
+            <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+          </button>
+          <span class="text-overline">Overline</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3 · MOLÉCULAS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-5">
+      <h2 class="text-[24px] font-bold text-madeira-700">3 · Moléculas</h2>
+
+      <!-- .card-atribuicao — nesta tela sem a faixa de chips: aqui o que interessa é quantos cargos
+           caem junto se a atribuição sair. -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.card-atribuicao</span>
+        <div class="card-well p-5 grid gap-3 sm:grid-cols-2">
+          <!-- estado: com cargos exercendo -->
+          <div class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Amostragem de ofertas</p>
+                <p class="card-atribuicao-descricao">3 cargos exercem</p>
+              </div>
+              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- estado de falta: atribuição sem nenhum cargo ainda -->
+          <div class="card-atribuicao">
+            <div class="card-atribuicao-cabeca">
+              <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+              <div class="flex-1 min-w-0">
+                <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                <p class="card-atribuicao-vazio">nenhum cargo ainda</p>
+              </div>
+              <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- .card-acao (SPEC 006) reusado como item do catálogo -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">.card-acao · item do catálogo, sem redesenho</span>
+        <div class="card-well p-5 grid gap-4 sm:grid-cols-2">
+          <a href="#" class="hover-3d card-acao-alvo">
+            <div class="glass-bg glass-edge glass-shadow card-acao">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+              <div>
+                <p class="card-acao-nome">Conceder competência</p>
+                <p class="card-acao-descricao">Distribui as atribuições da unidade entre os cargos.</p>
+              </div>
+            </div>
+            <div></div><div></div><div></div><div></div>
+            <div></div><div></div><div></div><div></div>
+          </a>
+          <a href="#" class="hover-3d card-acao-alvo">
+            <div class="glass-bg glass-edge glass-shadow card-acao">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+              <div>
+                <p class="card-acao-nome">Definir atribuições da unidade</p>
+                <p class="card-acao-descricao">Define quais ações a unidade exerce.</p>
+              </div>
+            </div>
+            <div></div><div></div><div></div><div></div>
+            <div></div><div></div><div></div><div></div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 4 · ORGANISMOS ==================== -->
+    <section class="glass-panel p-6 flex flex-col gap-6">
+      <h2 class="text-[24px] font-bold text-madeira-700">4 · Organismos</h2>
+
+      <!-- seletor da unidade-alvo · organograma (SPEC user_admin/018) reusado sem redesenho:
+           escolher a unidade é mover o ego. Sem o chamado das irmãs e sem "ver toda a árvore" — o
+           que chega ao DOM já é só a subárvore alcançada, com a linha do nível aberta. -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">unidade-alvo · a dirigida e o que pende dela</span>
+        <div class="card-well p-5">
+          <div class="glass-panel rounded-2xl overflow-x-auto">
+            <div class="organograma">
+              <div class="no-arvore no-arvore-ego no-arvore-aberto">
+                <div class="card-unidade card-unidade-poco card-unidade-ego">
+                  <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão do Mapa de Valores">
+                    <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                    <span class="card-unidade-sigla">DIMAP</span>
+                    <span class="card-unidade-nome">Divisão do Mapa de Valores</span>
+                  </button>
+                </div>
+                <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                <div class="no-arvore-filhas">
+                  <div class="no-arvore no-arvore-primeiro">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-1 · Setor de Avaliações">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                        <span class="card-unidade-sigla">DIMAP-1</span>
+                        <span class="card-unidade-nome">Setor de Avaliações</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-2 · Setor de Cadastro Territorial">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#bc3a67"></span>
+                        <span class="card-unidade-sigla">DIMAP-2</span>
+                        <span class="card-unidade-nome">Setor de Cadastro Territorial</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-3 · Setor de Geoprocessamento">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                        <span class="card-unidade-sigla">DIMAP-3</span>
+                        <span class="card-unidade-nome">Setor de Geoprocessamento</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore no-arvore-ultimo">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-4 · Setor de Ofertas Imobiliárias">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#7f5539"></span>
+                        <span class="card-unidade-sigla">DIMAP-4</span>
+                        <span class="card-unidade-nome">Setor de Ofertas Imobiliárias</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- estado: duas unidades dirigidas — uma raiz para cada, sem tronco comum acima -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">duas unidades dirigidas · uma raiz para cada</span>
+        <div class="card-well p-5">
+          <div class="glass-panel rounded-2xl overflow-x-auto">
+            <div class="organograma">
+              <div class="no-arvore no-arvore-ego no-arvore-aberto">
+                <div class="card-unidade card-unidade-poco card-unidade-ego">
+                  <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão do Mapa de Valores">
+                    <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                    <span class="card-unidade-sigla">DIMAP</span>
+                    <span class="card-unidade-nome">Divisão do Mapa de Valores</span>
+                  </button>
+                </div>
+                <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                <div class="no-arvore-filhas">
+                  <div class="no-arvore no-arvore-primeiro">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-1 · Setor de Avaliações">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                        <span class="card-unidade-sigla">DIMAP-1</span>
+                        <span class="card-unidade-nome">Setor de Avaliações</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-2 · Setor de Cadastro Territorial">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#bc3a67"></span>
+                        <span class="card-unidade-sigla">DIMAP-2</span>
+                        <span class="card-unidade-nome">Setor de Cadastro Territorial</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-3 · Setor de Geoprocessamento">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                        <span class="card-unidade-sigla">DIMAP-3</span>
+                        <span class="card-unidade-nome">Setor de Geoprocessamento</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore no-arvore-ultimo">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-4 · Setor de Ofertas Imobiliárias">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#7f5539"></span>
+                        <span class="card-unidade-sigla">DIMAP-4</span>
+                        <span class="card-unidade-nome">Setor de Ofertas Imobiliárias</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="no-arvore">
+                <div class="card-unidade card-unidade-repouso glass-panel">
+                  <button class="card-unidade-gatilho" type="button" title="DICAD · Divisão de Cadastro Imobiliário">
+                    <span class="dot-unidade w-9 h-9" style="--cor-unidade:#97294f"></span>
+                    <span class="card-unidade-sigla">DICAD</span>
+                    <span class="card-unidade-nome">Divisão de Cadastro Imobiliário</span>
+                  </button>
+                </div>
+                <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                <div class="no-arvore-filhas">
+                  <div class="no-arvore no-arvore-primeiro">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DICAD-1 · Setor de Cadastro Fiscal">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                        <span class="card-unidade-sigla">DICAD-1</span>
+                        <span class="card-unidade-nome">Setor de Cadastro Fiscal</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore no-arvore-ultimo">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DICAD-2 · Setor de Atendimento">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                        <span class="card-unidade-sigla">DICAD-2</span>
+                        <span class="card-unidade-nome">Setor de Atendimento</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- estado de falta: o perfil não dirige unidade alguma -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">estado de falta · não dirige unidade alguma</span>
+        <div class="card-well p-8 text-center">
+          <p class="text-[15px] text-base-content/80">Você não dirige nenhuma unidade.</p>
+          <p class="text-[13px] text-base-content/60">Sem unidade dirigida não há atribuição a definir.</p>
+        </div>
+      </div>
+
+      <!-- estado de falta: unidade recém-criada, sem nenhuma atribuição -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">poço da unidade · sem nenhuma atribuição</span>
+        <div class="glass-panel p-5 flex flex-col gap-4">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="dot-unidade w-9 h-9 shrink-0" style="--cor-unidade:#7f5539"></span>
+              <div class="min-w-0">
+                <p class="text-overline">Unidade-alvo</p>
+                <p class="text-[18px] font-bold text-madeira-700 leading-tight">DIMAP-4</p>
+                <p class="text-[13px] text-base-content/70">Setor de Ofertas Imobiliárias · Seção · subordinada à DIMAP</p>
+              </div>
+            </div>
+            <label for="modal-catalogo" class="btn btn-onsen btn-sm gap-2">
+              <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+              Atribuir ação
+            </label>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-3">
+            <div class="flex flex-col gap-1">
+              <p class="text-overline">Ações atribuídas</p>
+              <p class="text-[13px] text-base-content/70">O que a unidade exerce. Quem exerce cada uma se define em <em>Conceder competência</em>.</p>
+            </div>
+            <div class="py-6 text-center">
+              <p class="text-[15px] text-base-content/80">Esta unidade ainda não exerce nenhuma ação.</p>
+              <p class="text-[13px] text-base-content/60">Atribua a primeira para que os cargos possam recebê-la.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- a ação vista de fora, no menu de administrador (SPECs 005 e 006) — REFERÊNCIA, não
+           entregável: onde este painel aparece na área administrativa é de outra SPEC (007 §4).
+           O cabeçalho e a linha são os que o organismo implementado produz: "Ações" fixo e o
+           item mostrando só o nome_curto. -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline">no menu de administrador · referência</span>
+        <div class="glass-panel menu-acoes">
+          <p class="text-overline">Ações</p>
+          <div class="menu-acoes-lista">
+            <a href="#" class="item-menu">
+              <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+              <span class="item-menu-rotulo">Atribuições</span>
+            </a>
+            <a href="#" class="item-menu">
+              <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+              <span class="item-menu-rotulo">Competências</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-well p-4 flex flex-wrap items-center gap-3">
+        <span class="text-overline">estados dos modais</span>
+        <label for="modal-catalogo" class="btn btn-glass btn-sm">Catálogo</label>
+        <label for="modal-catalogo-vazio" class="btn btn-glass btn-sm">Catálogo esgotado</label>
+        <label for="modal-remover" class="btn btn-glass btn-sm">Confirmar remoção</label>
+      </div>
+    </section>
+
+    <!-- ==================== 5 · TELA MONTADA ==================== -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
+        5 · Tela montada — unidade com atribuições
+      </h2>
+
+      <!-- página: competencias/definir_atribuicao.html -->
+      <div class="glass-panel p-5 flex flex-col gap-4">
+
+        <!-- partial: competencias/partials/_seletor_unidade_alvo.html — cada card faz hx-get da
+             unidade e troca o painel abaixo; a árvore não é trocada -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <p class="text-overline">Escolha a unidade</p>
+          <div class="glass-panel rounded-2xl overflow-x-auto">
+            <div class="organograma">
+              <div class="no-arvore no-arvore-caminho no-arvore-aberto">
+                <div class="card-unidade card-unidade-poco">
+                  <button class="card-unidade-gatilho" type="button" title="DIMAP · Divisão do Mapa de Valores">
+                    <span class="dot-unidade w-9 h-9" style="--cor-unidade:#023e8a"></span>
+                    <span class="card-unidade-sigla">DIMAP</span>
+                    <span class="card-unidade-nome">Divisão do Mapa de Valores</span>
+                  </button>
+                </div>
+                <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                <div class="no-arvore-filhas">
+                  <div class="no-arvore no-arvore-primeiro no-arvore-ego no-arvore-aberto">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-poco card-unidade-ego">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-1 · Setor de Avaliações">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#0077b6"></span>
+                        <span class="card-unidade-sigla">DIMAP-1</span>
+                        <span class="card-unidade-nome">Setor de Avaliações</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-2 · Setor de Cadastro Territorial">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#bc3a67"></span>
+                        <span class="card-unidade-sigla">DIMAP-2</span>
+                        <span class="card-unidade-nome">Setor de Cadastro Territorial</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-3 · Setor de Geoprocessamento">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#415a77"></span>
+                        <span class="card-unidade-sigla">DIMAP-3</span>
+                        <span class="card-unidade-nome">Setor de Geoprocessamento</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                  <div class="no-arvore no-arvore-ultimo">
+                    <span class="etched-line no-arvore-barra"></span>
+                    <span class="etched-line no-arvore-fio"></span>
+                    <div class="card-unidade card-unidade-repouso glass-panel">
+                      <button class="card-unidade-gatilho" type="button" title="DIMAP-4 · Setor de Ofertas Imobiliárias">
+                        <span class="dot-unidade w-9 h-9" style="--cor-unidade:#7f5539"></span>
+                        <span class="card-unidade-sigla">DIMAP-4</span>
+                        <span class="card-unidade-nome">Setor de Ofertas Imobiliárias</span>
+                      </button>
+                    </div>
+                    <span class="etched-line no-arvore-fio no-arvore-desce"></span>
+                    <p class="no-arvore-vazio">Nenhuma unidade subordinada.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: competencias/partials/_painel_atribuicoes.html — alvo de hx-swap ao escolher a
+             unidade na árvore -->
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="dot-unidade w-9 h-9 shrink-0" style="--cor-unidade:#0077b6"></span>
+              <div class="min-w-0">
+                <p class="text-overline">Unidade-alvo</p>
+                <p class="text-[18px] font-bold text-madeira-700 leading-tight">DIMAP-1</p>
+                <p class="text-[13px] text-base-content/70">Setor de Avaliações · Seção · subordinada à DIMAP</p>
+              </div>
+            </div>
+            <label for="modal-catalogo" class="btn btn-onsen btn-sm gap-2">
+              <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+              Atribuir ação
+            </label>
+          </div>
+          <!-- partial: competencias/partials/_poco_atribuicoes.html — alvo de hx-swap ao atribuir e
+               ao remover -->
+          <div class="card-well p-4 flex flex-col gap-3">
+            <div class="flex flex-col gap-1">
+              <p class="text-overline">Ações atribuídas · 3</p>
+              <p class="text-[13px] text-base-content/70">O que a unidade exerce. Quem exerce cada uma se define em <em>Conceder competência</em>.</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <!-- partial: competencias/partials/_card_atribuicao.html — um por atribuição -->
+              <div class="card-atribuicao">
+                <div class="card-atribuicao-cabeca">
+                  <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <p class="card-atribuicao-nome">Amostragem de ofertas</p>
+                    <p class="card-atribuicao-descricao">3 cargos exercem</p>
+                  </div>
+                  <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                    <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                  </label>
+                </div>
+              </div>
+              <!-- /partial -->
+              <div class="card-atribuicao">
+                <div class="card-atribuicao-cabeca">
+                  <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-competencia"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <p class="card-atribuicao-nome">Conceder competência</p>
+                    <p class="card-atribuicao-descricao">1 cargo exerce</p>
+                  </div>
+                  <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                    <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                  </label>
+                </div>
+              </div>
+              <div class="card-atribuicao">
+                <div class="card-atribuicao-cabeca">
+                  <span class="icone-acao icone-acao-pequeno icon-etched mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <p class="card-atribuicao-nome">Emitir certidão de lançamento</p>
+                    <p class="card-atribuicao-vazio">nenhum cargo ainda</p>
+                  </div>
+                  <label for="modal-remover" class="btn btn-glass btn-xs btn-circle" aria-label="Retirar atribuição">
+                    <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- /partial -->
+        </div>
+        <!-- /partial -->
+      </div>
+      <!-- fica na página: o arranjo do painel; os modais são irmãos dele, no fim do documento -->
+    </section>
+
+  </div>
+
+  <!-- partial: competencias/partials/_modal_catalogo.html — alvo de hx-get do botão "Atribuir ação"
+       Fica FORA do painel e de qualquer formulário: form aninhado é HTML inválido. -->
+  <input type="checkbox" id="modal-catalogo" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+      <div>
+        <p class="text-overline">Atribuir ação</p>
+        <p class="text-[18px] font-bold text-rocha-950">DIMAP-1</p>
+        <p class="text-[13px] text-base-content/70">Ações do catálogo que esta unidade ainda não exerce.</p>
+      </div>
+
+      <!-- o catálogo cresce a cada ação do projeto: o poço rola, com a barra gravada da SPEC
+           user_admin/013 -->
+      <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+        <div class="table-onsen-wrap max-h-[22rem]" data-rolador>
+          <div class="grid gap-4 sm:grid-cols-2 p-2">
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-atribuicao"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Definir atribuições da unidade</p>
+                  <p class="card-acao-descricao">Define quais ações a unidade exerce.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Emitir certidão de lançamento</p>
+                  <p class="card-acao-descricao">Atesta que o imóvel está lançado no IPTU sob determinado contribuinte.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Emitir laudo de avaliação</p>
+                  <p class="card-acao-descricao">Consolida a amostra e o valor apurado num documento assinado.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Consultar a planta genérica de valores</p>
+                  <p class="card-acao-descricao">Mostra o valor de referência vigente para o trecho.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-amostragem"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Registrar oferta imobiliária</p>
+                  <p class="card-acao-descricao">Guarda uma oferta coletada, com a localização e as características.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+            <a href="#" class="hover-3d card-acao-alvo">
+              <div class="glass-bg glass-edge glass-shadow card-acao">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-certidao"/></svg></span>
+                <div>
+                  <p class="card-acao-nome">Exportar a amostra em planilha</p>
+                  <p class="card-acao-descricao">Leva a amostra levantada para fora do sistema.</p>
+                </div>
+              </div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </a>
+          </div>
+        </div>
+        <div class="scroll-etched" data-barra aria-hidden="true">
+          <div class="scroll-etched-thumb" data-polegar></div>
+        </div>
+      </div>
+
+      <p class="text-[13px] text-base-content/70">
+        Atribuir dá a competência <strong>à unidade</strong>. Quem a exerce ainda não muda: a
+        distribuição entre os cargos é feita em <em>Conceder competência</em>.
+      </p>
+
+      <div class="modal-action">
+        <label for="modal-catalogo" class="btn btn-glass btn-sm">Fechar</label>
+      </div>
+    </div>
+    <!-- Fechar clicando fora: a cena EMBAÇA, nunca escurece (§5 do DS). -->
+    <label class="modal-backdrop" for="modal-catalogo">Fechar</label>
+  </div>
+  <!-- /partial -->
+
+  <!-- estado de falta: catálogo esgotado — a unidade já exerce tudo que existe -->
+  <input type="checkbox" id="modal-catalogo-vazio" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+      <div>
+        <p class="text-overline">Atribuir ação</p>
+        <p class="text-[18px] font-bold text-rocha-950">DIMAP-1</p>
+      </div>
+      <div class="card-well p-8 text-center">
+        <p class="text-[15px] text-base-content/80">Esta unidade já exerce todas as ações do catálogo.</p>
+      </div>
+      <div class="modal-action">
+        <label for="modal-catalogo-vazio" class="btn btn-glass btn-sm">Fechar</label>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-catalogo-vazio">Fechar</label>
+  </div>
+
+  <!-- partial: competencias/partials/_modal_remover.html — alvo de hx-get do botão de retirar, que
+       traz a contagem real de concessões -->
+  <input type="checkbox" id="modal-remover" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg></span>
+        <div>
+          <p class="text-overline">Retirar atribuição</p>
+          <p class="text-[18px] font-bold text-rocha-950">Amostragem de ofertas</p>
+          <p class="text-[13px] text-base-content/70">DIMAP-1</p>
+        </div>
+      </div>
+
+      <div class="card-well p-4 flex flex-col gap-1">
+        <p class="text-[15px] text-base-content/90">
+          <strong>3 cargos</strong> perdem esta competência junto com a atribuição.
+        </p>
+        <p class="text-[13px] text-base-content/70">
+          Diretor de Divisão · Chefe de Seção · Auditor Fiscal Tributário Municipal
+        </p>
+      </div>
+
+      <p class="text-[13px] text-base-content/70">
+        Os servidores nesses cargos deixam de executar a ação no próximo acesso. Reatribuir depois não
+        devolve as concessões.
+      </p>
+
+      <div class="modal-action">
+        <label for="modal-remover" class="btn btn-glass btn-sm">Cancelar</label>
+        <label for="modal-remover" class="btn btn-onsen btn-sm">Retirar mesmo assim</label>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-remover">Fechar</label>
+  </div>
+  <!-- /partial -->
+  <!-- Percorrer o organograma é estado visual do controle (SPEC user_admin/018): o módulo move o
+       ego e escava o caminho sobre a árvore que já está no DOM. -->
+  <script type="module" src="/static/src/js/ui/arvore_hierarquica.js"></script>
+
+  <!-- A barra gravada do catálogo é montada pelo módulo no poço marcado com data-scroll-etched
+       (SPEC user_admin/013); sem ele o poço rola com a barra nativa escondida. -->
+  <script type="module" src="/static/src/js/ui/scroll_etched.js"></script>
+</body>
+</html>

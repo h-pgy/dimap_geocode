@@ -1,7 +1,17 @@
-/* Esqueleto de BUILD (prod, quando houver — CLAUDE.md, "Estrutura do Projeto"): o design system em si vive em
-   tema-dimap.dev.css (fonte única, SPEC design/004), compartilhado com o base.html (include
-   server-side) e com os mocks da skill componentes-frontend (fetch via Live Server). */
-@import "tailwindcss";
+/* Entrada do build (SPEC infraestrutura/004): o design system em si vive em tema-dimap.dev.css
+   (fonte única, SPEC design/004), compartilhado com os mocks da skill componentes-frontend. */
+
+/* A ordem das camadas é declarada aqui, e não herdada do @import: o padrão do Tailwind põe
+   `components` ANTES de `utilities`, e o daisyUI emite os componentes dele dentro de `utilities` —
+   com isso o daisyUI venceria o design system, que vive em @layer components. Servido por CDN a
+   ordem saía invertida por acidente (a folha do daisyUI registrava base/utilities primeiro, e
+   `components`, nome novo, ia para o fim da fila); aqui ela é intencional. */
+@layer properties, theme, base, utilities, components;
+
+/* source(none) desliga a varredura automática da raiz do projeto: sem ela o Tailwind engoliria
+   SPECS/, wireframes/ e os mocks das skills — inclusive path data de SVG —, e o CSS de
+   desenvolvimento viraria um superconjunto do assado em produção. */
+@import "tailwindcss" source(none);
 @import "./tema-dimap.dev.css";
 @plugin "daisyui";
 
@@ -9,3 +19,9 @@
    Toda nova pasta de templates precisa ser declarada aqui. */
 @source "../../templates";
 @source "../../apps";
+/* O JS de UI (select_onsen) monta classes em código: sem esta fonte, a casca de vidro sairia sem
+   pele no build. */
+@source "./js";
+/* Único módulo de services/ que entrega classe pronta ao template. Varrer services/ inteiro
+   arrastaria domain/email/, cujos comentários e chaves de dicionário virariam candidatos falsos. */
+@source "../../services/utils/erros_formulario";

@@ -1,0 +1,15 @@
+{# Resposta dos hx-post de registrar impedimento e de voltar ao exercício (SPEC user_admin/023), no #}
+{# lugar do #poco-modal. Vazio de propósito: o poço recebe isto, e é assim que o modal fecha — o    #}
+{# toggle sai do documento junto com a caixa. A seção entra pelo hx-swap-oob, no lugar dela.        #}
+<div id="secao-exercicio" hx-swap-oob="outerHTML">
+  {% include "user_admin/partials/_secao_exercicio.html" %}
+</div>
+{% if unidade %}
+  <div id="painel-unidade" hx-swap-oob="outerHTML">
+    {% include "unidades/partials/_identidade_unidade.html" %}
+    {% include "unidades/partials/_secao_resumo_unidade.html" %}
+    {% include "unidades/partials/_secao_direcao.html" %}
+    {% include "unidades/partials/_secao_hierarquia.html" %}
+  </div>
+{% endif %}
+

@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/024 — Designar substituto como ato administrativo (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .quadro-glifo — vitrine de EXPOSIÇÃO. Não é peça do projeto, não vai para o tema. */
+      .quadro-glifo { @apply p-5 flex flex-col items-center justify-center gap-3 text-center; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- defs da gravação (SPEC user_admin/013): sem eles .etched existe e não desenha nada. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-impedimento">
+        <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17"/>
+        <path d="M8 3v4"/><path d="M16 3v4"/><path d="M10 14v4"/><path d="M14 14v4"/>
+      </g>
+      <g id="glifo-substituto">
+        <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+      </g>
+      <g id="glifo-alerta">
+        <path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-14">
+
+    <!-- ============ CAPA ============ -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC user_admin/024 — mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Designar substituto como ato administrativo</h1>
+      <div class="card-well p-4 mt-6">
+        <p class="text-overline mb-2">Como ler esta página</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">
+          Os modais de designar, trocar e encerrar da página do servidor ganham rota e destino HTMX,
+          comportando recusa com <span class="text-code">.campo-realce-erro</span>. O que se aprova aqui como
+          tela nova é o <strong>modal da rota direta</strong> (<span class="text-code">user_admin:modal_designar_substituto</span>),
+          nos seus 7 estados (vazio, unidade escolhida, servidor em exercício com formulário, afastamento já coberto,
+          sem impedimento, sem cargo em comissão, recusa de data) e o <strong>par de ícones</strong> da ação.
+          Nenhuma peça nova de design system.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============ 1 · ÍCONES DA AÇÃO ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">1 · Ícones da ação</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.1 · O par <span class="text-sm font-normal text-base-content/60">— <span class="text-code">static/src/acoes/user_admin/designar_substituto/icones/</span></span></h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Composto de <span class="text-code">#glifo-substituto</span>: o servidor com a seta indicando a assunção.
+            Herda a cor do texto — nenhuma cor escrita dentro do SVG.
+          </p>
+        </div>
+        <div class="card-well p-6 flex flex-wrap items-center gap-10">
+          <!-- variante: pequeno (linha de menu) -->
+          <div class="quadro-glifo">
+            <span class="icone-acao icone-acao-pequeno text-agua-700">
+              <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <span class="text-code text-xs">pequeno.svg</span>
+          </div>
+          <!-- variante: grande (cabeçalho do modal, cartão de ação) -->
+          <div class="quadro-glifo">
+            <span class="icone-acao icone-acao-grande text-agua-700">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <span class="text-code text-xs">grande.svg</span>
+          </div>
+          <!-- em uso: a linha do menu -->
+          <div class="flex-1 min-w-[15rem]">
+            <div class="card-well p-3 flex items-center gap-3">
+              <span class="icone-acao icone-acao-pequeno icone-acao-acende text-agua-700">
+                <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                  <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                  <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+                </svg>
+              </span>
+              <span class="text-sm font-medium">Substituto</span>
+            </div>
+            <p class="form-field-hint mt-2">no <span class="text-code">MENU_ADMINISTRADOR</span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · TELA MONTADA — o modal da rota direta ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">2 · Modal da rota direta</h2>
+
+      <!-- partial: user_admin/partials/_modal_designar_substituto.html — hx-get de user_admin:modal_designar_substituto, alvo #poco-modal -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <div>
+          <p class="text-overline">Abra cada estado</p>
+          <p class="text-sm text-base-content/70 mt-1">
+            A tela própria da ação, pinçada pelo menu de administração: escolhe-se a unidade, depois o
+            servidor dentro dela, e a <strong>face</strong> do modal reflete o estado gravado do escolhido.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <label for="m-vazio" class="btn btn-glass btn-sm">1 · Vazio <span class="text-base-content/50">— nada escolhido</span></label>
+          <label for="m-unidade" class="btn btn-glass btn-sm">2 · Unidade escolhida <span class="text-base-content/50">— falta o servidor</span></label>
+          <label for="m-formulario" class="btn btn-glass btn-sm">3 · Form de designação <span class="text-base-content/50">— afastado com lacuna</span></label>
+          <label for="m-coberto" class="btn btn-glass btn-sm">4 · Afastamento coberto <span class="text-base-content/50">— sem lacuna</span></label>
+          <label for="m-sem-impedimento" class="btn btn-glass btn-sm">5 · Sem impedimento <span class="text-base-content/50">— nada a substituir</span></label>
+          <label for="m-sem-cargo" class="btn btn-glass btn-sm">6 · Sem cargo em comissão <span class="text-base-content/50">— sem competência</span></label>
+          <label for="m-recusa" class="btn btn-glass btn-sm">7 · Recusa <span class="text-base-content/50">— fim antes do início</span></label>
+        </div>
+      </div>
+      <!-- /partial -->
+    </section>
+
+    <!-- ============ 3 · CARTÃO DE SUBSTITUIÇÃO NA PÁGINA DA UNIDADE ============ -->
+    <section class="flex flex-col gap-8">
+      <h2 class="section-title px-2">3 · Cartão de substituição na página da unidade</h2>
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <p class="text-overline">Página da unidade · /gestao/unidades/&lt;pk&gt;</p>
+          <p class="text-sm text-base-content/70 mt-1">
+            Quando a unidade está com o titular impedido e sem substituto vigente (<strong>sem direção</strong>),
+            o cartão do substituto oferece o botão <span class="text-code">Designar substituto</span>, abrindo o modal
+            de designação diretamente para o afastamento vigente do titular.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Estado A: Titular impedido, sem substituto (SEM DIREÇÃO) — exibe o botão -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between gap-4">
+              <span class="text-overline font-semibold text-error">Unidade sem direção</span>
+              <span class="badge badge-error badge-soft">Sem direção</span>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+              <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] font-medium text-base-content/90">A DIMAP-1 está sem quem responda por ela. Helena Ramos é a titular, está afastada e não há substituto designado.</p>
+            </div>
+
+            <div class="glass-panel stats stats-onsen stats-vertical">
+              <div class="stat stat-vaga card-well">
+                <div class="stat-figure text-error/70!">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+                </div>
+                <div class="stat-title">Substituto</div>
+                <div class="stat-value text-base-content/40!">—</div>
+                <div class="stat-desc">Não há substituição vigente.</div>
+                <div class="pt-2">
+                  <label for="m-modal-unidade" class="btn btn-onsen btn-sm gap-2 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+                    Designar substituto
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Estado B: Substituto designado — exibe o substituto ativo -->
+          <div class="card-well p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between gap-4">
+              <span class="text-overline font-semibold text-success">Unidade coberta</span>
+              <span class="badge badge-success badge-soft">Dirigida pelo substituto</span>
+            </div>
+
+            <div class="glass-panel stats stats-onsen stats-vertical">
+              <div class="stat card-well">
+                <div class="stat-figure">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+                </div>
+                <div class="stat-title">Substituto</div>
+                <div class="stat-value">
+                  <div class="linha-pessoa">
+                    <div class="avatar placeholder">
+                      <div class="w-11 h-11 rounded-full ring-2 ring-sakura-500/50 bg-base-300 text-base-content font-bold flex items-center justify-center">
+                        <span>BT</span>
+                      </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="linha-pessoa-nome">Bruno Teixeira</p>
+                      <p class="linha-pessoa-meta">RF 745.112-0 · CDA-3 · Chefe de Seção</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ESTADO 1: VAZIO -->
+  <div class="poco-modal">
+    <input type="checkbox" id="m-vazio" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+              <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor substituído.</p>
+            </div>
+          </div>
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select class="select select-glass" data-select-onsen>
+                <option value="">— escolha —</option>
+                <option>DIMAP-1 · Avaliação</option>
+                <option>DIMAP-2 · Cadastro</option>
+              </select>
+              <span class="form-field-hint">Só as unidades do seu alcance.</span>
+            </label>
+            <!-- partial: user_admin/partials/_opcoes_servidor.html — hx-get de user_admin:opcoes_substituicao -->
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select class="select select-glass" disabled>
+                <option value="">— escolha a unidade primeiro —</option>
+              </select>
+            </label>
+            <!-- /partial -->
+          </div>
+          <!-- partial: alvo do hx-get de user_admin:face_substituicao — nasce vazio -->
+          <div id="face-substituicao" class="hidden"></div>
+          <!-- /partial -->
+          <div class="modal-action">
+            <label for="m-vazio" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-vazio">Fechar</label>
+  </div>
+
+  <!-- ESTADO 2: UNIDADE ESCOLHIDA -->
+  <div class="poco-modal">
+    <input type="checkbox" id="m-unidade" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+              <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor substituído.</p>
+            </div>
+          </div>
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select class="select select-glass" data-select-onsen>
+                <option>DIMAP-1 · Avaliação</option>
+              </select>
+              <span class="form-field-hint">Só as unidades do seu alcance.</span>
+            </label>
+            <!-- partial: user_admin/partials/_opcoes_servidor.html -->
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select class="select select-glass" data-select-onsen>
+                <option value="">— escolha —</option>
+                <option>Ana Ramos · RF 812.345-6</option>
+                <option>Bruno Teixeira · RF 745.112-0</option>
+              </select>
+            </label>
+            <!-- /partial -->
+          </div>
+          <div class="modal-action">
+            <label for="m-unidade" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-unidade">Fechar</label>
+  </div>
+
+  <!-- ESTADO 3: FORMULÁRIO DE DESIGNAÇÃO (AFASTADO COM LACUNA) -->
+  <div class="poco-modal">
+    <input type="checkbox" id="m-formulario" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+              <p class="text-sm text-base-content/70 mt-1">Ana Ramos · DIMAP-1 · <span class="badge badge-warning badge-soft align-middle">afastada</span></p>
+            </div>
+          </div>
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select class="select select-glass" data-select-onsen>
+                <option>DIMAP-1 · Avaliação</option>
+              </select>
+            </label>
+            <!-- partial: user_admin/partials/_opcoes_servidor.html -->
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select class="select select-glass" data-select-onsen><option>Ana Ramos · RF 812.345-6</option></select>
+            </label>
+            <!-- /partial -->
+          </div>
+
+          <!-- partial: user_admin/partials/_face_substituicao.html -->
+          <form class="flex flex-col gap-5">
+            <!-- Seletor de impedimento quando há mais de um em aberto -->
+            <label class="form-field">
+              <span class="text-overline">Afastamento a cobrir</span>
+              <select name="impedimento" class="select select-glass" data-select-onsen>
+                <option value="1">Férias · 01/09/2026 → 20/09/2026</option>
+                <option value="2">Licença médica · 01/10/2026 → 15/10/2026</option>
+              </select>
+            </label>
+
+            <!-- Card com a calha do afastamento -->
+            <div class="card-well p-4 flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <span class="text-overline">Cobertura do afastamento</span>
+                <span class="text-xs text-warning font-medium">Período descoberto</span>
+              </div>
+              <div class="relative pb-8">
+                <div class="calha-cobertura">
+                  <div class="calha-trilho etched-line"></div>
+                </div>
+                <div class="calha-marcas">
+                  <div class="calha-marca calha-marca-vazia" style="left:50%">
+                    <span class="text-[12px] font-medium">Sem substituto</span>
+                    <span class="text-[11px] opacity-80">01/09 → 20/09</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Seleção de substituto com toggle de outras unidades -->
+            <div class="form-field group">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-overline">Substituto</span>
+                <label class="flex items-center gap-2 shrink-0 cursor-pointer">
+                  <span class="text-xs text-base-content/60">Outras unidades</span>
+                  <input type="checkbox" class="toggle-onsen" aria-label="Liberar outras unidades" />
+                </label>
+              </div>
+
+              <div class="flex flex-col gap-1.5 group-has-[.toggle-onsen:checked]:hidden">
+                <select name="substituto" class="select select-glass" data-select-onsen>
+                  <option value="10">Bruno Teixeira · RF 745.112-0 · Analista</option>
+                  <option value="11">Carlos Drummond · RF 612.981-1 · CDA-3 · Chefe</option>
+                </select>
+                <span class="form-field-hint">
+                  A DIMAP-1 inteira, menos quem estiver afastado ou cobrindo outra pessoa no período.
+                </span>
+              </div>
+
+              <div class="hidden flex-col gap-1.5 group-has-[.toggle-onsen:checked]:flex">
+                <select name="substituto" class="select select-glass" data-select-onsen>
+                  <option value="20">Mariana Lopes · RF 519.223-4 · DIMAP · Diretora</option>
+                  <option value="10">Bruno Teixeira · RF 745.112-0 · DIMAP-1 · Analista</option>
+                </select>
+                <span class="form-field-hint">
+                  Só servidores de unidades dentro do seu alcance hierárquico.
+                </span>
+              </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Substitui a partir de</span>
+                <input type="date" name="data_inicio" class="input input-glass" value="2026-09-01" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Substitui até</span>
+                <input type="date" name="data_fim" class="input input-glass" value="2026-09-20" />
+                <span class="form-field-hint">Em branco, segue o fim do afastamento.</span>
+              </label>
+            </div>
+
+            <div class="flex justify-end">
+              <button type="submit" class="btn btn-onsen btn-sm">Designar</button>
+            </div>
+          </form>
+          <!-- /partial -->
+
+          <div class="modal-action">
+            <label for="m-formulario" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-formulario">Fechar</label>
+  </div>
+
+  <!-- ESTADO 4: AFASTAMENTO JÁ TOTALMENTE COBERTO -->
+  <div class="poco-modal">
+    <input type="checkbox" id="m-coberto" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+              <p class="text-sm text-base-content/70 mt-1">Ana Ramos · DIMAP-1 · <span class="badge badge-warning badge-soft align-middle">afastada</span></p>
+            </div>
+          </div>
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select class="select select-glass" data-select-onsen>
+                <option>DIMAP-1 · Avaliação</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select class="select select-glass" data-select-onsen><option>Ana Ramos · RF 812.345-6</option></select>
+            </label>
+          </div>
+
+          <!-- partial: user_admin/partials/_face_substituicao.html — afastamento coberto -->
+          <div class="flex flex-col gap-5">
+            <div class="tarja-vinculo flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                O afastamento atual (<strong>Férias · 01/09 → 20/09</strong>) já está totalmente coberto por
+                <strong>Bruno Teixeira</strong>. Para trocar ou encerrar a cobertura existente, use a página do servidor.
+              </p>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <div class="modal-action">
+            <label for="m-coberto" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-coberto">Fechar</label>
+  </div>
+
+  <!-- ESTADO 5: SEM IMPEDIMENTO EM ABERTO -->
+  <div class="poco-modal">
+    <input type="checkbox" id="m-sem-impedimento" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+              <p class="text-sm text-base-content/70 mt-1">Bruno Teixeira · DIMAP-1 · <span class="badge badge-success badge-soft align-middle">em exercício</span></p>
+            </div>
+          </div>
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select class="select select-glass" data-select-onsen>
+                <option>DIMAP-1 · Avaliação</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select class="select select-glass" data-select-onsen><option>Bruno Teixeira · RF 745.112-0</option></select>
+            </label>
+          </div>
+
+          <!-- partial: user_admin/partials/_face_substituicao.html — sem impedimento -->
+          <div class="flex flex-col gap-5">
+            <div class="tarja-vinculo flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                Bruno está em exercício e não possui afastamentos registrados ou programados. Registre um impedimento antes de designar cobertura.
+              </p>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <div class="modal-action">
+            <label for="m-sem-impedimento" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-sem-impedimento">Fechar</label>
+  </div>
+
+  <!-- ESTADO 6: SEM CARGO EM COMISSÃO -->
+  <div class="poco-modal">
+    <input type="checkbox" id="m-sem-cargo" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+              <p class="text-sm text-base-content/70 mt-1">Carla Dias · DIMAP-1 · <span class="badge badge-warning badge-soft align-middle">afastada</span></p>
+            </div>
+          </div>
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+            <label class="form-field">
+              <span class="text-overline">Unidade</span>
+              <select class="select select-glass" data-select-onsen>
+                <option>DIMAP-1 · Avaliação</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Servidor</span>
+              <select class="select select-glass" data-select-onsen><option>Carla Dias · RF 621.003-8</option></select>
+            </label>
+          </div>
+
+          <!-- partial: user_admin/partials/_face_substituicao.html — sem cargo -->
+          <div class="flex flex-col gap-5">
+            <div class="tarja-vinculo flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                Carla não ocupa cargo em comissão. Apenas cargos de direção e chefia geram competência administrativa a ser coberta por substituição.
+              </p>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <div class="modal-action">
+            <label for="m-sem-cargo" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-sem-cargo">Fechar</label>
+  </div>
+
+  <!-- ESTADO 7: RECUSA DE FORMULÁRIO (FIM ANTES DO INÍCIO / FORA DO ALCANCE) -->
+  <div class="poco-modal">
+    <input type="checkbox" id="m-recusa" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+              <p class="text-sm text-base-content/70 mt-1">Ana Ramos · DIMAP-1</p>
+            </div>
+          </div>
+
+          <!-- partial: partials/_tarja_recusa.html -->
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+            <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+            <div>
+              <p class="text-[13px] font-semibold text-base-content/90">A substituição não foi gravada</p>
+              <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                <li>Substitui até: não pode ser anterior ao início da substituição.</li>
+              </ul>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <form class="flex flex-col gap-5">
+            <div class="form-field group">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-overline">Substituto</span>
+                <label class="flex items-center gap-2 shrink-0 cursor-pointer">
+                  <span class="text-xs text-base-content/60">Outras unidades</span>
+                  <input type="checkbox" class="toggle-onsen" />
+                </label>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <select name="substituto" class="select select-glass" data-select-onsen>
+                  <option value="10">Bruno Teixeira · RF 745.112-0 · Analista</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Substitui a partir de</span>
+                <input type="date" name="data_inicio" class="input input-glass" value="2026-09-10" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Substitui até</span>
+                <!-- realce no controle recusado: .campo-realce-erro -->
+                <input type="date" name="data_fim" class="input input-glass campo-realce-erro" value="2026-09-02" />
+              </label>
+            </div>
+
+            <div class="flex justify-end">
+              <button type="submit" class="btn btn-onsen btn-sm">Designar</button>
+            </div>
+          </form>
+
+          <div class="modal-action">
+            <label for="m-recusa" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-recusa">Fechar</label>
+  </div>
+
+  <!-- MODAL DISPARADO DA PÁGINA DA UNIDADE (user_admin:modal_designar) -->
+  <div class="poco-modal">
+    <input type="checkbox" id="m-modal-unidade" class="modal-toggle" />
+    <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-start gap-3">
+            <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+                <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Designar substituto</h2>
+              <p class="text-sm text-base-content/70 mt-1">Helena Ramos · Titular da DIMAP-1 · <span class="badge badge-warning badge-soft align-middle">afastada</span></p>
+            </div>
+          </div>
+
+          <div class="card-well p-4 flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-impedimento"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">Férias</p>
+              <p class="text-[13px] text-base-content/60">01/09/2026 → 20/09/2026 · Afastamento vigente</p>
+            </div>
+          </div>
+
+          <form class="flex flex-col gap-5">
+            <div class="form-field group">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-overline">Substituto</span>
+                <label class="flex items-center gap-2 shrink-0 cursor-pointer">
+                  <span class="text-xs text-base-content/60">Outras unidades</span>
+                  <input type="checkbox" class="toggle-onsen" aria-label="Liberar outras unidades" />
+                </label>
+              </div>
+
+              <div class="flex flex-col gap-1.5 group-has-[.toggle-onsen:checked]:hidden">
+                <select name="substituto" class="select select-glass" data-select-onsen>
+                  <option value="10">Bruno Teixeira · RF 745.112-0 · Analista</option>
+                  <option value="11">Carlos Drummond · RF 612.981-1 · CDA-3 · Chefe</option>
+                </select>
+                <span class="form-field-hint">
+                  A DIMAP-1 inteira, menos quem estiver afastado ou cobrindo outra pessoa no período.
+                </span>
+              </div>
+
+              <div class="hidden flex-col gap-1.5 group-has-[.toggle-onsen:checked]:flex">
+                <select name="substituto" class="select select-glass" data-select-onsen>
+                  <option value="20">Mariana Lopes · RF 519.223-4 · DIMAP · Diretora</option>
+                  <option value="10">Bruno Teixeira · RF 745.112-0 · DIMAP-1 · Analista</option>
+                </select>
+                <span class="form-field-hint">
+                  Só servidores de unidades dentro do seu alcance hierárquico.
+                </span>
+              </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Substitui a partir de</span>
+                <input type="date" name="data_inicio" class="input input-glass" value="2026-09-01" />
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Substitui até</span>
+                <input type="date" name="data_fim" class="input input-glass" value="2026-09-20" />
+                <span class="form-field-hint">Em branco, segue o fim do afastamento.</span>
+              </label>
+            </div>
+
+            <div class="flex justify-end">
+              <button type="submit" class="btn btn-onsen btn-sm">Designar</button>
+            </div>
+          </form>
+
+          <div class="modal-action">
+            <label for="m-modal-unidade" class="btn btn-glass btn-sm">Fechar</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="m-modal-unidade">Fechar</label>
+  </div>
+
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+</body>
+</html>

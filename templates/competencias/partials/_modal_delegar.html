@@ -1,0 +1,66 @@
+{# Modal de delegação nominal de competência estrutural (SPEC autorizacao/009) #}
+<input type="checkbox" id="modal-delegacao" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+    <form class="flex flex-col gap-5"
+          hx-post="{% url 'competencias:delegar_servidor' %}"
+          hx-target="#poco-concessoes"
+          hx-swap="outerHTML">
+      <input type="hidden" name="unidade" value="{{ unidade_alvo.pk }}" />
+      <input type="hidden" name="atribuicao" value="{{ atribuicao.pk }}" />
+
+      <div>
+        <p class="text-overline">Delegar competência estrutural</p>
+        <p class="text-[18px] font-bold text-rocha-950">{{ atribuicao.acao.nome }}</p>
+        <p class="text-[13px] text-base-content/70">{{ unidade_alvo.sigla }} · {{ unidade_alvo.nome }}</p>
+      </div>
+
+      {% include "partials/_tarja_recusa.html" with titulo="A delegação não foi gravada" %}
+
+      <div class="flex flex-col gap-4">
+        <label class="form-field">
+          <span class="text-overline">Servidor designado</span>
+          <select name="delegado" class="select select-glass w-full {{ realce.delegado }}" data-select-onsen>
+            <option value="">— selecione um servidor do ramo —</option>
+            {% for grupo in candidatos_agrupados %}
+              <optgroup label="{{ grupo.rotulo }}">
+                {% for candidato in grupo.servidores %}
+                  <option value="{{ candidato.pk }}"{% if valores.delegado == candidato.pk|stringformat:"s" or valores.delegado == candidato.pk %} selected{% endif %}>
+                    {{ candidato.nome }} {{ candidato.sobrenome }}{% if candidato.cargo_base %} · {{ candidato.cargo_base.sigla }}{% endif %}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }}{% endif %} (RF {{ candidato.rf }})
+                  </option>
+                {% endfor %}
+              </optgroup>
+            {% endfor %}
+          </select>
+        </label>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="form-field">
+            <span class="text-overline">Início da vigência</span>
+            <input type="date" data-campo-data name="data_inicio" class="input input-glass w-full {{ realce.data_inicio }}" value="{{ valores.data_inicio|default:hoje }}" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Fim da vigência <span class="text-base-content/40 font-normal">(opcional)</span></span>
+            <input type="date" data-campo-data name="data_fim" class="input input-glass w-full {{ realce.data_fim }}" value="{{ valores.data_fim|default:'' }}" placeholder="indeterminado" />
+          </label>
+        </div>
+      </div>
+
+      <div class="tarja-vinculo tarja-vinculo-info flex items-start gap-2">
+        <svg class="w-5 h-5 shrink-0 text-agua-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <p class="text-[13px] text-base-content/80">
+          O servidor poderá executar este ato na <strong>{{ unidade_alvo.sigla }}</strong> e em <strong>todas as
+          unidades subordinadas</strong>. A delegação é nominal e não concede a titularidade da área.
+        </p>
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-delegacao" class="btn btn-glass btn-sm">Cancelar</label>
+        <div class="aura aura-onsen">
+          <button type="submit" class="btn btn-onsen btn-sm">Delegar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-delegacao">Fechar</label>
+</div>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Registro de Ações · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-6xl mx-auto px-4 py-24 flex flex-col gap-4">
+      {% include "partials/_botao_voltar_painel.html" %}
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Registro de Ações</h1>
+          <p class="text-sm text-base-content/70 mt-1">{{ subtitulo }}</p>
+        </div>
+
+        {% include "competencias/partials/_busca_execucoes.html" %}
+        {% include "competencias/partials/_tabela_execucoes.html" %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/tabela_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/campo_data.js' %}"></script>
+{% endblock %}

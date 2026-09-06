@@ -1,0 +1,15 @@
+{# O retorno para o hub de qualquer tela alcançada como página própria a partir de um card do      #}
+{# painel (SPEC painel/001, skill `painel`) — mesmo padrão de botão de `unidades/unidade_form.html`, #}
+{# que já tinha "Voltar para a lista de unidades" antes desta SPEC existir.                         #}
+{# Só aparece quando a navegação de fato partiu do painel (`veio_do_painel`, via Referer): chegar   #}
+{# aqui por outro caminho não tem para onde "voltar". A condição mora só aqui — nenhuma view         #}
+{# precisa calculá-la ou passá-la no contexto.                                                       #}
+{% load navegacao %}
+{% if request|veio_do_painel %}
+  <div>
+    <a href="{% url 'painel:painel' %}" class="btn btn-glass btn-sm gap-1.5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+      Voltar para a área do usuário
+    </a>
+  </div>
+{% endif %}

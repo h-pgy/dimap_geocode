@@ -1,0 +1,6 @@
+{# Resposta dos hx-post de definir, trocar e destituir titular (SPEC user_admin/026), no lugar do #poco-modal. #}
+{# O poço fica vazio — este partial não escreve nada nele —, e é isso que fecha o modal: o toggle sai do   #}
+{# documento junto com a caixa. A seção de direção entra pelo hx-swap-oob, no lugar dela na página.        #}
+<div id="secao-direcao" hx-swap-oob="outerHTML">
+  {% include "unidades/partials/_secao_direcao.html" %}
+</div>

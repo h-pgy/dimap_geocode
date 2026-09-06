@@ -1,0 +1,91 @@
+{# Modal de editar cargo base (SPEC user_admin/030) — alvo do hx-get do lápis (já com o cargo        #}
+{# escolhido) e do card do painel (sem cargo: mostra o select primeiro). Nome e sigla seguem         #}
+{# editáveis sempre, inclusive em cargo extinto e ocupado — cargo base não tem campo que a ocupação  #}
+{# proteja (SPEC, §2).                                                                                #}
+{% if cargo is None %}
+  <input type="checkbox" id="modal-editar-cargo-base" class="modal-toggle" checked />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo-base"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar cargo base</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">Escolha o cargo a editar.</p>
+        </div>
+      </div>
+      <div class="card-well p-5 flex flex-col gap-4 mt-5">
+        <p class="text-overline">Cargo a editar</p>
+        <select class="select select-glass"
+                data-select-onsen
+                hx-get="{% url 'cargos:modal_editar_cargo_base' %}"
+                hx-target="#poco-modal"
+                hx-swap="innerHTML settle:150ms"
+                name="cargo">
+          <option value="" selected>— escolha o cargo —</option>
+          {% for outro in cargos_editaveis %}
+            <option value="{{ outro.pk }}"{% if outro.extinto %} data-extinto="true" title="Cargo Extinto"{% endif %}>{{ outro.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-action">
+        <label for="modal-editar-cargo-base" class="btn btn-glass btn-sm">Cancelar</label>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-editar-cargo-base">Fechar</label>
+  </div>
+{% else %}
+  <input type="checkbox" id="modal-editar-cargo-base" class="modal-toggle" checked />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <form hx-post="{% url 'cargos:gravar_edicao_cargo_base' cargo.pk %}" hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-5">
+        <div class="flex items-start gap-3">
+          <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo-base"/></svg></span>
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar cargo base</h2>
+            <p class="text-sm text-base-content/70 mt-0.5">{% include "cargos/partials/_rotulo_cargo_base.html" %}</p>
+          </div>
+        </div>
+
+        {% include "partials/_tarja_recusa.html" with titulo="Alterações não gravadas" %}
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identificação</p>
+          <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-cargo-base-nome" class="campo-onsen-toggle"{% if realce.nome %} checked{% endif %} />
+              <span class="text-overline etched-rotulo">Nome</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">{{ cargo.nome }}</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome }}" />
+                </div>
+                <label for="editar-cargo-base-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-cargo-base-sigla" class="campo-onsen-toggle"{% if realce.sigla %} checked{% endif %} />
+              <span class="text-overline etched-rotulo">Sigla</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor text-code">{{ cargo.sigla }}</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="sigla" class="input input-glass {{ realce.sigla }}" value="{{ valores.sigla }}" />
+                </div>
+                <label for="editar-cargo-base-sigla" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a sigla">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-editar-cargo-base" class="btn btn-glass btn-sm">Cancelar</label>
+          <button type="submit" class="btn btn-onsen btn-sm">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-editar-cargo-base">Fechar</label>
+  </div>
+{% endif %}

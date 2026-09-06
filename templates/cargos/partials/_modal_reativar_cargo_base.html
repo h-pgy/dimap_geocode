@@ -1,0 +1,47 @@
+{# Modal de reativar cargo base (SPEC user_admin/030) — alvo do hx-get do gesto de reativar (já com #}
+{# o cargo escolhido), do botão da barra e do card do painel (sem cargo: mostra o select antes). Só  #}
+{# cargos extintos entram no select — é o que faz o gesto sempre ter efeito.                         #}
+<input type="checkbox" id="modal-reativar-cargo-base" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+    <form {% if cargo %}hx-post="{% url 'cargos:gravar_reativacao_cargo_base' cargo.pk %}"{% endif %} hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-reativar-cargo-base"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reativar cargo base</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">O cargo volta às opções de nomeação.</p>
+        </div>
+      </div>
+
+      {% include "partials/_tarja_recusa.html" with titulo="Ato não realizado" %}
+
+      {% if cargo %}
+        <input type="hidden" name="cargo" value="{{ cargo.pk }}" />
+        <p class="text-sm text-base-content/80">{% include "cargos/partials/_rotulo_cargo_base.html" %}</p>
+      {% else %}
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Cargo a reativar</p>
+          <select class="select select-glass {{ realce.cargo }}"
+                  data-select-onsen
+                  hx-get="{% url 'cargos:modal_reativar_cargo_base' %}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms"
+                  name="cargo">
+            <option value="" selected>— escolha o cargo —</option>
+            {% for outro in cargos %}
+              <option value="{{ outro.pk }}">{{ outro.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
+      <div class="modal-action">
+        <label for="modal-reativar-cargo-base" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-sm btn-onsen"{% if not cargo %} disabled{% endif %}>
+          Reativar{% if cargo %} {{ cargo.sigla }}{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-reativar-cargo-base">Fechar</label>
+</div>

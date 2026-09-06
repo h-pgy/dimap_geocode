@@ -1,0 +1,150 @@
+{
+  "cargo_base": [
+    { "nome": "Auditor Fiscal Tributário Municipal", "sigla": "AFTM" },
+    { "nome": "Assistente Administrativo de Gestão", "sigla": "AAG" },
+    {
+      "nome": "Analista de Planejamento e Desenvolvimento Organizacional - Contadoria",
+      "sigla": "APDO-Contador"
+    },
+    {
+      "nome": "Analista de Políticas Públicas e Gestão Governamental",
+      "sigla": "APPGG"
+    },
+    { "nome": "Arquiteto Urbanista", "sigla": "QEAG" }
+  ],
+  "cargo_comissao": [
+    {
+      "nome": "Secretária/o Municipal",
+      "sigla": "SEC",
+      "nivel": null,
+      "e_chefia": true,
+      "alta_administracao": true
+    },
+    {
+      "nome": "Chefia de Gabinete",
+      "sigla": "CHG",
+      "nivel": null,
+      "e_chefia": true,
+      "alta_administracao": true
+    },
+    {
+      "nome": "Subsecretária/o",
+      "sigla": "SUBSEC",
+      "nivel": null,
+      "e_chefia": true,
+      "alta_administracao": true
+    },
+    {
+      "nome": "Secretária/o Adjunta/o",
+      "sigla": "SAD",
+      "nivel": null,
+      "e_chefia": true,
+      "alta_administracao": true
+    },
+    {
+      "nome": "Secretário Executivo",
+      "sigla": "SAD-Exec",
+      "nivel": null,
+      "e_chefia": true,
+      "alta_administracao": true
+    },
+    {
+      "nome": "Diretor de Departamento",
+      "sigla": "CDA",
+      "nivel": 5,
+      "e_chefia": true,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Coordenador II",
+      "sigla": "CDA",
+      "nivel": 6,
+      "e_chefia": true,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Coordenador I",
+      "sigla": "CDA",
+      "nivel": 5,
+      "e_chefia": true,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Chefe de Assessoria Técnica II",
+      "sigla": "CDA",
+      "nivel": 6,
+      "e_chefia": true,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Chefe de Assessoria Técnica I",
+      "sigla": "CDA",
+      "nivel": 5,
+      "e_chefia": true,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Diretor de Divisão",
+      "sigla": "CDA",
+      "nivel": 4,
+      "e_chefia": true,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Chefe de Seção",
+      "sigla": "CDA",
+      "nivel": 3,
+      "e_chefia": true,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Líder de Equipe",
+      "sigla": "CDA",
+      "nivel": 2,
+      "e_chefia": true,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Assessor I",
+      "sigla": "CDA",
+      "nivel": 1,
+      "e_chefia": false,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Assessor II",
+      "sigla": "CDA",
+      "nivel": 2,
+      "e_chefia": false,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Assessor III",
+      "sigla": "CDA",
+      "nivel": 3,
+      "e_chefia": false,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Assessor IV",
+      "sigla": "CDA",
+      "nivel": 4,
+      "e_chefia": false,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Assessor V",
+      "sigla": "CDA",
+      "nivel": 5,
+      "e_chefia": false,
+      "alta_administracao": false
+    },
+    {
+      "nome": "Assessor VI",
+      "sigla": "CDA",
+      "nivel": 6,
+      "e_chefia": false,
+      "alta_administracao": false
+    }
+  ]
+}

@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/020 — Os três atos que mantêm o organograma (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Servir com root na RAIZ DO PROJETO (Live Server) — via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-020").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
+  </script>
+
+  <!-- Nenhum token novo nesta SPEC: tudo abaixo é composição de peça que já está no tema
+       (.campo-onsen, .palette-field, .paint-well, .etched, .tarja-vinculo, .campo-realce-*). -->
+  <script type="text/css" id="tokens-spec-020"></script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+<body class="text-base-content">
+
+  <!-- Fundo da área administrativa (SPEC user_admin/007) — reusado tal e qual. -->
+  <div class="fixed inset-0 z-0 pointer-events-none bg-[#dfeef4]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+  <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <!-- Glifos NOVOS. O prédio é o que já está desenhado nos ícones de criar_unidade e
+           editar_unidade: mesmas coordenadas, agora como peça nomeada. O modificador vai no canto
+           inferior direito, onde o + e o lápis daqueles ícones já moram. -->
+      <g id="glifo-unidade">
+        <path d="M1.6 8 7.6 4l6 4z"/>
+        <path d="M4 9.8v7.6"/><path d="M7.6 9.8v7.6"/><path d="M11.2 9.8v7.6"/>
+        <path d="M2.6 17.4h10"/>
+        <path d="M1.6 20.4h12"/>
+      </g>
+      <g id="glifo-raiz">
+        <use href="#glifo-unidade"/>
+        <path transform="translate(0 10.2)" d="m18.4 3.6 1.1 2.2 2.5.36-1.8 1.75.42 2.47-2.22-1.17-2.22 1.17.43-2.47-1.8-1.75 2.48-.36z"/>
+      </g>
+      <!-- Ícones de ação já desenhados, inlinados só para o cotejo da família. -->
+      <g id="icone-criar-unidade">
+        <use href="#glifo-unidade"/>
+        <path d="M18.9 15.4v5.2"/><path d="M16.3 18h5.2"/>
+      </g>
+      <g id="icone-editar-unidade">
+        <use href="#glifo-unidade"/>
+        <path d="M15.4 20.7h1.8L22 15.8a1 1 0 0 0-1.4-1.4L15.9 19.3v1.4z"/>
+      </g>
+      <g id="glifo-titular">
+        <circle cx="9.5" cy="8" r="3.2"/>
+        <path d="M4 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="m18.4 3.6 1.1 2.2 2.5.36-1.8 1.75.42 2.47-2.22-1.17-2.22 1.17.43-2.47-1.8-1.75 2.48-.36z"/>
+      </g>
+      <g id="glifo-hierarquia">
+        <rect x="9" y="3" width="6" height="4.4" rx="1.2"/>
+        <rect x="2.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <rect x="15.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <path d="M12 7.4v4.2"/><path d="M5.5 16.6v-5h13v5"/>
+      </g>
+      <g id="glifo-alerta"><path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/></g>
+      <!-- Filtro da gravação (SPEC 013), repetido só para o mock renderizar sozinho; na aplicação
+           vem de templates/partials/_filtros_gravacao.html. Sem os defs, .etched não desenha nada. -->
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sombraInterna"/><feMergeNode in="luzInterna"/></feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC user_admin/020 · mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Os três atos que mantêm o organograma</h1>
+      <p class="text-sm text-base-content/70 mt-3 max-w-2xl">
+        Só o que muda. O formulário de unidade, o modal de edição, o disco de paleta e a tabela já
+        estão implementados e não se revalidam aqui.
+      </p>
+    </header>
+
+    <!-- ============================================================ 2 · ÁTOMOS -->
+    <section class="flex flex-col gap-8">
+      <h2 class="text-overline text-madeira-600">2 · Átomos</h2>
+
+      <!-- #glifo-unidade e #glifo-raiz -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <p class="text-sm font-semibold text-madeira-700">A família da unidade</p>
+
+        <!-- a peça e o modificador que a especializa -->
+        <div class="flex flex-wrap items-end gap-10">
+          <div class="flex flex-col items-center gap-2">
+            <svg class="w-9 h-9 text-madeira-700" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-unidade"/></svg>
+            <span class="text-overline">#glifo-unidade</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <svg class="w-9 h-9 text-madeira-700" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-raiz"/></svg>
+            <span class="text-overline">#glifo-raiz</span>
+          </div>
+
+          <div class="flex items-end gap-8 border-l border-white/60 pl-10">
+            <div class="flex flex-col items-center gap-2">
+              <svg class="w-9 h-9 text-base-content/45" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#icone-criar-unidade"/></svg>
+              <span class="text-overline">ação: criar</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <svg class="w-9 h-9 text-base-content/45" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#icone-editar-unidade"/></svg>
+              <span class="text-overline">ação: editar</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <svg class="w-9 h-9 text-base-content/45" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              <span class="text-overline">#glifo-titular</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- estados: as medidas de uso -->
+        <div class="flex flex-wrap items-end gap-10 border-t border-white/60 pt-6">
+          <div class="flex flex-col items-center gap-2">
+            <svg class="w-5 h-5 text-info" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-raiz"/></svg>
+            <span class="text-overline">w-5 · tarja</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <svg class="w-8 h-8 text-madeira-700" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-raiz"/></svg>
+            <span class="text-overline">w-8 · item de menu</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <svg class="etched w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-raiz"/></svg>
+            <span class="text-overline">.etched</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 3 · MOLÉCULAS -->
+    <section class="flex flex-col gap-8">
+      <h2 class="text-overline text-madeira-600">3 · Moléculas</h2>
+
+      <!-- .palette-field no disco — extraído de _campo_cor_unidade.html para _disco_de_paleta.html -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <p class="text-sm font-semibold text-madeira-700">Disco de paleta como peça própria</p>
+
+        <div class="grid sm:grid-cols-2 gap-8">
+          <!-- estado: no campo do cadastro (rótulo + disco + dica) -->
+          <div class="card-well p-5">
+            <div class="form-field">
+              <span class="text-overline">Cor da unidade</span>
+              <div class="palette-field dropdown dropdown-right dropdown-end w-fit">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-glass w-fit gap-3 px-3 h-12">
+                  <span class="paint-well-atual w-8 h-8 pointer-events-none" style="--tinta: #0077B6"></span>
+                  <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+              </div>
+              <span class="form-field-hint">Pinta o anel do avatar de quem é lotado aqui. Repetir tom entre unidades é permitido.</span>
+            </div>
+          </div>
+
+          <!-- estado: aberto -->
+          <div class="card-well p-5 flex justify-center">
+            <div class="palette-field">
+              <div class="palette-disc">
+                <span class="paint-well-atual absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="--tinta: #0077B6"></span>
+                <label class="paint-well" style="--a: 0deg;   --tinta: #0077B6" title="Água 700"><input type="radio" name="cor-a" value="agua-700" class="sr-only" checked></label>
+                <label class="paint-well" style="--a: 45deg;  --tinta: #023E8A" title="Água 800"><input type="radio" name="cor-a" value="agua-800" class="sr-only"></label>
+                <label class="paint-well" style="--a: 90deg;  --tinta: #415A77" title="Rocha 700"><input type="radio" name="cor-a" value="rocha-700" class="sr-only"></label>
+                <label class="paint-well" style="--a: 135deg; --tinta: #1B263B" title="Rocha 900"><input type="radio" name="cor-a" value="rocha-900" class="sr-only"></label>
+                <label class="paint-well" style="--a: 180deg; --tinta: #7F5539" title="Madeira 600"><input type="radio" name="cor-a" value="madeira-600" class="sr-only"></label>
+                <label class="paint-well" style="--a: 225deg; --tinta: #5E412F" title="Madeira 700"><input type="radio" name="cor-a" value="madeira-700" class="sr-only"></label>
+                <label class="paint-well" style="--a: 270deg; --tinta: #BC3A67" title="Sakura 600"><input type="radio" name="cor-a" value="sakura-600" class="sr-only"></label>
+                <label class="paint-well" style="--a: 315deg; --tinta: #97294F" title="Sakura 700"><input type="radio" name="cor-a" value="sakura-700" class="sr-only"></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- .campo-onsen + disco — a cor no modal de edição -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <p class="text-sm font-semibold text-madeira-700">Cor no campo-onsen</p>
+
+        <div class="grid sm:grid-cols-2 gap-8">
+          <!-- estado: lido -->
+          <div class="card-well p-5">
+            <div class="campo-onsen">
+              <input type="checkbox" id="mk-cor-lida" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">Cor</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor"><span class="paint-well-atual inline-block align-middle w-8 h-8" style="--tinta: #7F5539"></span></p>
+                <div class="campo-onsen-campo"></div>
+                <label for="mk-cor-lida" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a cor">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- estado: aberto -->
+          <div class="card-well p-5">
+            <div class="campo-onsen">
+              <input type="checkbox" id="mk-cor-aberta" class="campo-onsen-toggle" checked />
+              <span class="text-overline etched-rotulo">Cor</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor"><span class="paint-well-atual inline-block align-middle w-8 h-8" style="--tinta: #7F5539"></span></p>
+                <div class="campo-onsen-campo">
+                  <div class="palette-field dropdown dropdown-right dropdown-end dropdown-open w-fit">
+                    <div tabindex="0" role="button" class="btn btn-ghost btn-glass w-fit gap-3 px-3 h-12">
+                      <span class="paint-well-atual w-8 h-8 pointer-events-none" style="--tinta: #7F5539"></span>
+                      <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                    </div>
+                    <div tabindex="0" class="dropdown-content z-30 ml-2">
+                      <div class="palette-disc">
+                        <span class="paint-well-atual absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="--tinta: #7F5539"></span>
+                        <label class="paint-well" style="--a: 0deg;   --tinta: #0077B6"><input type="radio" name="cor-b" value="agua-700" class="sr-only"></label>
+                        <label class="paint-well" style="--a: 45deg;  --tinta: #023E8A"><input type="radio" name="cor-b" value="agua-800" class="sr-only"></label>
+                        <label class="paint-well" style="--a: 90deg;  --tinta: #415A77"><input type="radio" name="cor-b" value="rocha-700" class="sr-only"></label>
+                        <label class="paint-well" style="--a: 135deg; --tinta: #1B263B"><input type="radio" name="cor-b" value="rocha-900" class="sr-only"></label>
+                        <label class="paint-well" style="--a: 180deg; --tinta: #7F5539"><input type="radio" name="cor-b" value="madeira-600" class="sr-only" checked></label>
+                        <label class="paint-well" style="--a: 225deg; --tinta: #5E412F"><input type="radio" name="cor-b" value="madeira-700" class="sr-only"></label>
+                        <label class="paint-well" style="--a: 270deg; --tinta: #BC3A67"><input type="radio" name="cor-b" value="sakura-600" class="sr-only"></label>
+                        <label class="paint-well" style="--a: 315deg; --tinta: #97294F"><input type="radio" name="cor-b" value="sakura-700" class="sr-only"></label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <label for="mk-cor-aberta" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a cor">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- campo de unidade superior: com gesto × gravado -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <p class="text-sm font-semibold text-madeira-700">Unidade superior — com gesto e gravada</p>
+
+        <div class="grid sm:grid-cols-2 gap-8">
+          <!-- estado: criar unidade comum -->
+          <div class="card-well p-5">
+            <div class="form-field">
+              <span class="text-overline">Unidade superior</span>
+              <select class="select select-glass">
+                <option>DIMAP · Divisão de Mapeamento</option>
+                <option>DIMAP-1 · Avaliação Imobiliária</option>
+              </select>
+              <span class="form-field-hint">Só tipo marcado como raiz dispensa unidade superior. Trocar aqui sugere a cor.</span>
+            </div>
+          </div>
+
+          <!-- estado: criar unidade raiz — gravado, sem afordância -->
+          <div class="card-well p-5">
+            <div class="form-field">
+              <span class="text-overline">Unidade superior</span>
+              <p class="etched etched-rotulo text-[15px] py-2.5">— sem unidade superior (raiz) —</p>
+              <div class="tarja-vinculo flex items-start gap-2 mt-2">
+                <svg class="w-5 h-5 shrink-0 text-info" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-raiz"/></svg>
+                <p class="text-[13px] text-base-content/80">
+                  Unidade <strong>raiz</strong>: não responde a nenhuma outra, e é dela que o
+                  organograma começa. Só quem administra o sistema pode criar uma.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 4 · ORGANISMOS -->
+    <section class="flex flex-col gap-8">
+      <h2 class="text-overline text-madeira-600">4 · Organismos</h2>
+
+      <!-- Modal de edição da unidade, nos três desfechos da gravação -->
+      <div class="flex flex-col gap-8">
+        <p class="text-sm font-semibold text-madeira-700">Modal de edição — gravou, recusou, falta confirmar</p>
+
+        <!-- estado: recusado (tarja crítica, campo aberto e em realce de erro) -->
+        <div class="glass-panel-thick modal-box-glass w-full max-w-2xl p-6 sm:p-8">
+          <form class="flex flex-col gap-6">
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar unidade</h2>
+              <p class="text-sm text-base-content/70 mt-1">DIMAP-2 · Cadastro Territorial</p>
+            </div>
+
+            <!-- partial: partials/_tarja_recusa.html -->
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">Alterações não gravadas</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>O tipo novo deixaria DIMAP-2-A, DIMAP-2-B sem subordinação.</li>
+                </ul>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Hierarquia</p>
+              <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                <!-- o campo recusado chega ABERTO: fechado, esconderia a própria recusa -->
+                <div class="campo-onsen">
+                  <input type="checkbox" id="mk-tipo-recusado" class="campo-onsen-toggle" checked />
+                  <span class="text-overline etched-rotulo">Tipo</span>
+                  <div class="campo-onsen-linha">
+                    <p class="campo-onsen-valor">Seção <span class="text-base-content/50">· nível 3</span></p>
+                    <div class="campo-onsen-campo">
+                      <select class="select select-glass campo-realce-erro">
+                        <option selected>Seção · nível 3</option>
+                        <option>Divisão · nível 2</option>
+                      </select>
+                    </div>
+                    <label for="mk-tipo-recusado" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0">
+                      <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="campo-onsen">
+                  <input type="checkbox" id="mk-pai-lido" class="campo-onsen-toggle" />
+                  <span class="text-overline etched-rotulo">Unidade superior</span>
+                  <div class="campo-onsen-linha">
+                    <p class="campo-onsen-valor">DIMAP <span class="text-base-content/50">· Divisão de Mapeamento</span></p>
+                    <div class="campo-onsen-campo"></div>
+                    <label for="mk-pai-lido" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0">
+                      <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Salvar alterações</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- estado: falta confirmar a transferência (alerta, não erro) -->
+        <div class="glass-panel-thick modal-box-glass w-full max-w-2xl p-6 sm:p-8">
+          <form class="flex flex-col gap-6">
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar unidade</h2>
+              <p class="text-sm text-base-content/70 mt-1">DIMAP-2 · Cadastro Territorial</p>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">Transferência pendente de confirmação</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>Transferir DIMAP-2: ela e todas as unidades abaixo dela passam a responder a SF-GAB. Se o destino estiver fora do seu alcance, você deixa de administrá-la. Confirme para gravar.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Hierarquia</p>
+              <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                <div class="campo-onsen">
+                  <input type="checkbox" id="mk-pai-alerta" class="campo-onsen-toggle" checked />
+                  <span class="text-overline etched-rotulo">Unidade superior</span>
+                  <div class="campo-onsen-linha">
+                    <p class="campo-onsen-valor">DIMAP <span class="text-base-content/50">· Divisão de Mapeamento</span></p>
+                    <div class="campo-onsen-campo">
+                      <select class="select select-glass campo-realce-alerta">
+                        <option>DIMAP · Divisão de Mapeamento</option>
+                        <option selected>SF-GAB · Gabinete</option>
+                      </select>
+                    </div>
+                    <label for="mk-pai-alerta" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0">
+                      <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Confirmar transferência</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Painel de nova unidade dentro do modal do servidor -->
+      <div class="flex flex-col gap-8">
+        <p class="text-sm font-semibold text-madeira-700">Painel de nova unidade — antes e depois de gravar</p>
+
+        <div class="glass-panel-thick modal-box-glass w-full max-w-2xl p-6 sm:p-8 flex flex-col gap-6">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+            <p class="text-sm text-base-content/70 mt-1">Maria Silva · RF 900900</p>
+          </div>
+
+          <!-- partial: unidades/partials/_campo_unidade_lotacao.html — alvo de hx-swap-oob ao gravar -->
+          <div class="form-field">
+            <span class="text-overline">Unidade de lotação</span>
+            <div class="form-field-inline-action flex items-center gap-2">
+              <div id="campo-unidade-lotacao" class="flex-1 min-w-0">
+                <select class="select select-glass">
+                  <option>DIMAP · Divisão de Mapeamento</option>
+                  <option selected>DIMAP-3 · Geoprocessamento</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-ghost btn-glass btn-sm shrink-0">+ nova</button>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <!-- partial: unidades/partials/_unidade_criada_e_selecionada.html — swap do bloco de campos -->
+          <div class="card-well p-5">
+            <div class="tarja-vinculo flex items-start gap-2">
+              <p class="text-[13px] text-base-content/80">
+                <strong>DIMAP-3</strong> criada e já selecionada na lotação.
+              </p>
+            </div>
+          </div>
+          <!-- /partial -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 5 · TELA MONTADA -->
+    <section class="flex flex-col gap-6">
+      <h2 class="text-overline text-madeira-600">5 · Tela montada — criar unidade raiz</h2>
+
+      <!-- página: unidades/unidade_form.html (raiz=True) -->
+      <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Nova unidade raiz</h1>
+          <p class="text-sm text-base-content/70 mt-1">O topo de um organograma: uma unidade que não responde a nenhuma outra.</p>
+        </div>
+
+        <!-- partial: unidades/partials/_campos_unidade.html — alvo de swap na recusa -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identificação</p>
+          <div class="grid sm:grid-cols-3 gap-4">
+            <label class="form-field sm:col-span-2">
+              <span class="text-overline">Nome</span>
+              <input type="text" class="input input-glass" placeholder="Secretaria Municipal da Fazenda" />
+            </label>
+            <label class="form-field">
+              <span class="text-overline">Sigla</span>
+              <input type="text" class="input input-glass" placeholder="SF" />
+            </label>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Hierarquia</p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="form-field">
+              <span class="text-overline">Tipo</span>
+              <select class="select select-glass">
+                <option>Secretaria · nível 0</option>
+                <option>Gabinete · nível 1</option>
+              </select>
+              <span class="form-field-hint">O tipo carrega o nível: é ele que diz o que pode subordinar o quê.</span>
+            </div>
+            <div class="form-field">
+              <span class="text-overline">Unidade superior</span>
+              <p class="etched etched-rotulo text-[15px] py-2.5">— sem unidade superior (raiz) —</p>
+              <div class="tarja-vinculo flex items-start gap-2 mt-2">
+                <svg class="w-5 h-5 shrink-0 text-info" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-raiz"/></svg>
+                <p class="text-[13px] text-base-content/80">
+                  Unidade <strong>raiz</strong>: não responde a nenhuma outra, e é dela que o
+                  organograma começa. Só quem administra o sistema pode criar uma.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identidade visual</p>
+          <div class="form-field">
+            <span class="text-overline">Cor da unidade</span>
+            <div class="palette-field dropdown dropdown-right dropdown-end w-fit">
+              <div tabindex="0" role="button" class="btn btn-ghost btn-glass w-fit gap-3 px-3 h-12">
+                <span class="paint-well-atual w-8 h-8 pointer-events-none" style="--tinta: #0077B6"></span>
+                <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </div>
+            <span class="form-field-hint">Pinta o anel do avatar de quem é lotado aqui. Repetir tom entre unidades é permitido.</span>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- fica na página: só arranjo, nunca é trocado sozinho -->
+        <div class="flex justify-end gap-3 pt-1">
+          <a href="#" class="btn btn-ghost btn-glass">Cancelar</a>
+          <button type="button" class="btn btn-onsen">Criar unidade raiz</button>
+        </div>
+      </form>
+    </section>
+
+  </main>
+</body>
+</html>

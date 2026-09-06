@@ -1,0 +1,22 @@
+{# O cartão do catálogo compõe as mesmas classes do `.card-acao` da SPEC 006, mudando só o gatilho: #}
+{# ali o cartão NAVEGA para a ação, aqui ele ATRIBUI a ação à unidade (SPEC autorizacao/007).        #}
+{% load icones %}
+{% icone_acao acao.slug variante_icone as svg %}
+{# O clicável continua sendo o elemento de fora: o .hover-3d exige conteúdo não-interativo nos 9  #}
+{# filhos diretos, e é por isso que o gatilho não pode ser um botão dentro do cartão.             #}
+<button type="button"
+        class="hover-3d card-acao-alvo"
+        hx-post="{% url 'competencias:atribuir' %}"
+        hx-vals='{"unidade": "{{ unidade_alvo.pk }}", "acao": "{{ acao.slug }}"}'
+        hx-target="#poco-atribuicoes"
+        hx-swap="outerHTML">
+  <div class="glass-bg glass-edge glass-shadow card-acao">
+    {% include "competencias/partials/_icone_acao.html" with svg=svg variante=variante_icone %}
+    <div>
+      <p class="card-acao-nome">{{ acao.nome }}</p>
+      <p class="card-acao-descricao">{{ acao.tooltip }}</p>
+    </div>
+  </div>
+  <div></div><div></div><div></div><div></div>
+  <div></div><div></div><div></div><div></div>
+</button>

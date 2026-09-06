@@ -1,0 +1,76 @@
+{# Modal de conceder (SPEC autorizacao/008): a natureza vem ANTES do catálogo — são duas listas     #}
+{# distintas, e o XOR da SPEC 002 fica visível na tela em vez de só na CheckConstraint (Caveats).    #}
+{# Fica FORA de qualquer outro formulário: form aninhado é HTML inválido — este é o próprio.         #}
+<input type="checkbox" id="modal-conceder" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+    <form class="flex flex-col gap-5"
+          hx-post="{% url 'competencias:conceder_cargo' %}"
+          hx-target="#poco-concessoes"
+          hx-swap="outerHTML">
+      <input type="hidden" name="unidade" value="{{ unidade_alvo.pk }}" />
+      <input type="hidden" name="atribuicao" value="{{ atribuicao.pk }}" />
+
+      <div>
+        <p class="text-overline">Conceder competência</p>
+        <p class="text-[18px] font-bold text-rocha-950">{{ atribuicao.acao.nome }}</p>
+        <p class="text-[13px] text-base-content/70">{{ unidade_alvo.sigla }} · {{ unidade_alvo.nome }}</p>
+      </div>
+
+      {# O grupo decide qual dos dois catálogos abaixo aparece. Tentativa em CSS puro (`.chave-onsen`  #}
+      {# + `has()`) esbarrou em limite do @tailwindcss/browser (CDN de dev) com seletor de atributo    #}
+      {# aninhado — a regra nascia sem efeito e os dois campos ficavam sempre visíveis. Estado visual  #}
+      {# de um controle é caso autorizado de JS puro (CLAUDE.md §7.2, aval do usuário na conversa):    #}
+      {# `data-chave-condicional` + `data-mostra-se` são o opt-in de `chave_condicional.js` — nenhuma  #}
+      {# regra de negócio nele, o campo escondido segue submetido em branco (`<option value="">`), o   #}
+      {# que a view lê como ausente. O `hidden` no segundo campo é o estado inicial sem JS.            #}
+      <div class="flex flex-col gap-4" data-chave-condicional>
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">Natureza do cargo</span>
+          <div class="card-well chave-onsen">
+            <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+            <label class="chave-onsen-opcao">
+              <input type="radio" name="natureza" value="base" class="sr-only" checked />
+              <span class="chave-onsen-rotulo etched etched-deeper">Cargo base</span>
+            </label>
+            <label class="chave-onsen-opcao">
+              <input type="radio" name="natureza" value="comissao" class="sr-only" />
+              <span class="chave-onsen-rotulo etched etched-deeper">Cargo em comissão</span>
+            </label>
+          </div>
+        </div>
+
+        <label class="form-field" data-mostra-se="base">
+          <span class="text-overline">Cargo</span>
+          <select name="cargo_base" class="select select-glass w-full" data-select-onsen>
+            <option value="">— selecione —</option>
+            {% for cargo in cargos_base %}
+              <option value="{{ cargo.pk }}">{{ cargo.nome }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="form-field" data-mostra-se="comissao" hidden>
+          <span class="text-overline">Cargo</span>
+          <select name="cargo_comissao" class="select select-glass w-full" data-select-onsen>
+            <option value="">— selecione —</option>
+            {% for cargo in cargos_comissao %}
+              <option value="{{ cargo.pk }}">{{ cargo.padrao }} · {{ cargo.nome }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+
+      <p class="text-[13px] text-base-content/70">
+        A concessão vale para <strong>todos</strong> os servidores deste cargo na unidade, e passa a
+        valer no próximo acesso deles.
+      </p>
+
+      <div class="modal-action">
+        <label for="modal-conceder" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">Conceder</button>
+      </div>
+    </form>
+  </div>
+  {# Fechar clicando fora: a cena EMBAÇA, nunca escurece (§5 do DS). #}
+  <label class="modal-backdrop" for="modal-conceder">Fechar</label>
+</div>

@@ -1,0 +1,10 @@
+{# O poço de um grupo resolvido: só o arranjo — .card-well + .text-overline + .menu-acoes-cartoes  #}
+{# já existem no tema. Grupo sem item algum não chega aqui: a cascata já o cortou (resolucao.py).  #}
+<div class="card-well grupo-painel">
+  <p class="text-overline">{{ grupo.rotulo }}</p>
+  <div class="menu-acoes-cartoes">
+    {% for item in grupo.itens %}
+      {% include item.partial %}
+    {% endfor %}
+  </div>
+</div>

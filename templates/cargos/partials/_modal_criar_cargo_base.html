@@ -1,0 +1,37 @@
+{# Modal de criar cargo base (SPEC user_admin/030) — alvo do hx-get da barra e do card do painel.   #}
+<input type="checkbox" id="modal-criar-cargo-base" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+    <form hx-post="{% url 'cargos:gravar_criacao_cargo_base' %}" hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo-base"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Cadastrar cargo base</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">O cargo passa a existir no catálogo e fica disponível para nomeação.</p>
+        </div>
+      </div>
+
+      {% include "partials/_tarja_recusa.html" with titulo="Cargo não cadastrado" %}
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Identificação</p>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <label class="form-field sm:col-span-2">
+            <span class="text-overline">Nome</span>
+            <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome }}" placeholder="Assistente de Administração" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Sigla</span>
+            <input type="text" name="sigla" class="input input-glass {{ realce.sigla }}" value="{{ valores.sigla }}" placeholder="ADM" />
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-criar-cargo-base" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">Cadastrar cargo</button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-criar-cargo-base">Fechar</label>
+</div>

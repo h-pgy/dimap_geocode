@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/008 — Recalibragem de opacidade do gelo espesso (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Servir com root na RAIZ DO PROJETO (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-008").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças e tokens desta SPEC para testes comparativos -->
+  <script type="text/css" id="tokens-spec-008">
+    @layer components {
+      /* ==================== TOKENS RECALIBRADOS (NÍVEL 3 - RECOMENDADO) ==================== */
+      /* Backdrop do modal: classes puras (sem inline style) */
+      .modal-glass-16 { @apply bg-transparent! backdrop-blur-[16px]; }
+      .modal-glass-12 { @apply bg-transparent! backdrop-blur-[12px]; }
+      .modal-glass-6  { @apply bg-transparent! backdrop-blur-[6px]; }
+
+      /* Placa de gelo espesso Nível 3 (97% -> 88% com blur 28px) */
+      .glass-panel-thick-denso {
+        @apply rounded-2xl backdrop-blur-[28px] bg-gradient-to-br from-white/97 via-white/93 to-white/88
+               border border-white/80
+               shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+      }
+
+      /* Placa de gelo espesso Nível 2 (94% -> 80% com blur 24px) */
+      .glass-panel-thick-medio {
+        @apply rounded-2xl backdrop-blur-[24px] bg-gradient-to-br from-white/94 via-white/88 to-white/80
+               border border-white/75
+               shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_16px_48px_rgba(7,58,84,0.32),0_0_32px_rgba(72,202,228,0.25)];
+      }
+
+      /* Placa Nível 1 Antiga (85% -> 65% com blur 20px) */
+      .glass-panel-thick-antigo {
+        @apply rounded-2xl backdrop-blur-[20px] bg-gradient-to-br from-white/85 via-white/75 to-white/65
+               border border-white/70
+               shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_40px_rgba(7,58,84,0.3),0_0_28px_rgba(72,202,228,0.28)];
+      }
+
+      /* .glass-panel-thick, .glass-blur-thick, .glass-bg-thick e .select-onsen-panel viviam aqui como
+         override local, de quando ainda não estavam no tema. No v2 foram removidos: o mock já busca a
+         fonte única, e a cópia congelaria a calibragem antiga e mascararia a vigente. Os níveis em
+         disputa continuam abaixo, sufixados — é para isso que este mock existe. */
+      .select-onsen-busca { @apply h-9 text-sm shrink-0; }
+      .select-onsen-list  { @apply flex flex-col gap-1 min-h-0 max-h-60 overflow-y-auto overscroll-contain; }
+      .select-onsen-option {
+        @apply flex items-center gap-2 w-full text-left px-3 py-2 rounded-xl text-sm cursor-pointer transition-all duration-200 text-base-content;
+      }
+      .select-onsen-option::before {
+        @apply w-4 shrink-0 text-center text-agua-700 font-bold opacity-0;
+        content: "✓";
+      }
+      .select-onsen-option[aria-selected="true"] { @apply font-medium text-agua-800; }
+      .select-onsen-option[aria-selected="true"]::before { @apply opacity-100; }
+      .select-onsen-option[data-ativo="true"] {
+        @apply bg-agua-400/45 text-rocha-950 outline-none shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+      }
+      .select-onsen-vazio { @apply px-3 py-2 text-xs text-base-content/60; }
+
+      /* Interatividade dos campos com lápis */
+      .campo-onsen-lapis-fecha { @apply hidden; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-abre { @apply hidden; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-fecha { @apply inline; }
+
+      /* Neutralização de artefato de GPU (SPEC design/007) */
+      .modal-toggle:not(:checked) + .modal,
+      .modal-toggle:not(:checked) + .modal *,
+      .modal:not(.modal-open):not([open]):not(:has(.modal-toggle:checked)),
+      .modal:not(.modal-open):not([open]):not(:has(.modal-toggle:checked)) *,
+      .select-onsen-panel:not(:popover-open) {
+        backdrop-filter: none !important;
+      }
+    }
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- defs do filtro de gravação e glifos -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sombraInterna"/><feMergeNode in="luzInterna"/></feMerge>
+      </filter>
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sombraInterna"/><feMergeNode in="luzInterna"/></feMerge>
+      </filter>
+      <g id="glifo-alerta"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></g>
+      <g id="glifo-mais"><path d="M12 5v14M5 12h14"/></g>
+      <g id="glifo-foto"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></g>
+    </defs>
+  </svg>
+
+  <main class="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 py-12 flex flex-col gap-12">
+
+    <!-- Cabeçalho -->
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC design/008 · mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Calibragem de Opacidade e Desfoque de Fundo para Modais</h1>
+      <p class="mt-4 max-w-3xl text-base-content/80 leading-relaxed">
+        Quando um modal abre em frente a um formulário com <strong>toasts coloridos, tabelas e avisos em amarelo/vermelho</strong>, precisamos de duas frentes:
+        (1) <strong>Aumentar o desfoque da cena por trás</strong> (<span class="text-code">.modal-glass</span> de 6px → 16px) para transformar o ruído de fundo em uma aquarela suave sem escurecer;
+        (2) <strong>Densificar a placa do modal</strong> (<span class="text-code">.glass-panel-thick</span> de 85%→65% para <strong class="text-agua-700">88%→76%</strong> com blur 28px), blindando o contraste dos campos sem que o material deixe de ler como gelo.
+      </p>
+      <div class="flex flex-wrap gap-2 mt-5">
+        <span class="badge badge-ponto">Backdrop blur 16px</span>
+        <span class="badge badge-linha">Placa 88% → 76%</span>
+        <span class="badge badge-poligono">Placa blur 28px</span>
+        <span class="badge badge-neutral badge-soft">Aresta border-white/70</span>
+      </div>
+      <div class="card-well p-4 mt-5">
+        <p class="text-[13px] text-base-content/80 m-0">
+          <strong>v2 (27/08).</strong> O v1 adotou o nível 3 do comparativo abaixo (97%→88% em branco) e a placa
+          passou a ler como <strong>papel</strong>: sem nada visível atrás, o gradiente perde a translucidez, a aresta
+          deixa de ter função e o brilho de quina vira contorno. A calibragem vigente é <strong>88%→76%</strong>, com o
+          blur de 28px intacto — quem esconde o fundo é o <strong>desfoque</strong>, não a opacidade. Os níveis
+          sufixados (<span class="text-code">-antigo</span>, <span class="text-code">-medio</span>,
+          <span class="text-code">-denso</span>) continuam aqui como registro da disputa.
+        </p>
+      </div>
+    </header>
+
+    <!-- ==================== 1 · TOKENS ==================== -->
+    <section id="tokens" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <div>
+        <h2 class="text-[24px] font-bold text-madeira-700">1 · Tokens — Comparativo direto sobre toasts e ruído de alta saturação</h2>
+        <p class="text-[13px] text-base-content/70 mt-1">
+          Abaixo temos toasts de alerta, erro e sucesso colocados intencionalmente no fundo para testar o isolamento visual das placas.
+        </p>
+      </div>
+
+      <!-- Fundo de teste com alta saturação e cores vivas -->
+      <div class="relative rounded-2xl p-6 overflow-hidden bg-white/40 border border-white/60 shadow-inner">
+        <!-- Toasts e badges vibrantes de fundo -->
+        <div class="flex flex-col gap-3 opacity-90 select-none pointer-events-none">
+          <div class="alert alert-warning shadow-md flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-xl">⚠️</span>
+              <div>
+                <p class="font-bold text-sm">Atenção: Servidor com substituição pendente de homologação</p>
+                <p class="text-xs">Portaria SUREM 129/2026 expira em 3 dias corridos.</p>
+              </div>
+            </div>
+            <button class="btn btn-xs btn-warning">Revisar</button>
+          </div>
+          <div class="alert alert-error shadow-md flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-xl">⛔</span>
+              <div>
+                <p class="font-bold text-sm">Erro Crítico: Titularidade vacante na Divisão DIMAP-1</p>
+                <p class="text-xs">A unidade não pode emitir pareceres sem responsável formal designado.</p>
+              </div>
+            </div>
+            <button class="btn btn-xs btn-error">Designar Agora</button>
+          </div>
+          <div class="alert alert-success shadow-md flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-xl">✓</span>
+              <div>
+                <p class="font-bold text-sm">Sucesso: Cadastro de Unidade DECAD sincronizado com GeoSampa</p>
+                <p class="text-xs">342 lotes e geometrias atualizados no banco local.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Três placas de comparação sobrepostas aos toasts -->
+        <div class="grid md:grid-cols-3 gap-6 mt-6">
+          <!-- 1. Gelo Antigo (85% -> 65%) -->
+          <div class="glass-panel-thick-antigo p-5 flex flex-col gap-3 relative border-warning/60">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-warning font-bold">1. Antigo (85%→65%)</span>
+              <span class="badge badge-xs badge-warning badge-soft">20px blur</span>
+            </div>
+            <p class="text-xs text-base-content/70">O amarelo/vermelho do fundo vaza e suja o texto do modal.</p>
+            <div class="card-well p-3 mt-1">
+              <p class="text-sm font-bold text-madeira-700">Campo de Edição</p>
+              <p class="text-xs text-base-content/80 mt-1">Note a poluição das letras com as cores do fundo.</p>
+            </div>
+          </div>
+
+          <!-- 2. Gelo Médio (94% -> 80%) -->
+          <div class="glass-panel-thick-medio p-5 flex flex-col gap-3 relative">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-info font-bold">2. Médio (94%→80%)</span>
+              <span class="badge badge-xs badge-info badge-soft">24px blur</span>
+            </div>
+            <p class="text-xs text-base-content/70">Bloqueia bastante, mas ainda permite ver tons fortes.</p>
+            <div class="card-well p-3 mt-1">
+              <p class="text-sm font-bold text-madeira-700">Campo de Edição</p>
+              <p class="text-xs text-base-content/80 mt-1">Contraste melhorado, leitura segura.</p>
+            </div>
+          </div>
+
+          <!-- 3. Gelo Denso: o nível que o v1 adotou (97% -> 88%) e o v2 recuou -->
+          <div class="glass-panel-thick-denso p-5 flex flex-col gap-3 relative ring-2 ring-agua-500/50">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-agua-800 font-bold">3. Denso (97%→88%)</span>
+              <span class="badge badge-xs badge-success badge-soft">28px blur</span>
+            </div>
+            <p class="text-xs text-base-content/70">Perfeito sobre toasts: bloqueia o ruído e preserva o gelo.</p>
+            <div class="card-well p-3 mt-1">
+              <p class="text-sm font-bold text-madeira-700">Campo de Edição</p>
+              <p class="text-xs text-base-content/80 mt-1">Leitura 100% nítida com aresta e brilho intactos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2 · ÁTOMOS E SELECTS ==================== -->
+    <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <div>
+        <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos e Selects sobre Gelo Denso</h2>
+        <p class="text-[13px] text-base-content/70 mt-1">
+          O componente <span class="text-code">data-select-onsen</span> na densidade vigente (88%→76%) abrindo na Top Layer.
+        </p>
+      </div>
+
+      <div class="glass-panel-thick p-6 flex flex-col gap-5">
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-2">
+            <span class="text-overline etched-rotulo">Select longo (com filtro de busca)</span>
+            <select class="select select-glass" data-select-onsen>
+              <option selected>DIMAP-1 · Divisão de Geoprocessamento</option>
+              <option>DIMAP-2 · Divisão de Avaliação Imobiliária</option>
+              <option>DIMAP-3 · Divisão de Cadastro Territorial</option>
+              <option>DIMAP-GAB · Gabinete da Diretoria</option>
+              <option>DECAD · Departamento de Cadastros</option>
+              <option>SUREM · Subsecretaria da Receita Municipal</option>
+              <option>SEHAB · Secretaria Municipal de Habitação</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-2">
+            <span class="text-overline etched-rotulo">Select curto</span>
+            <select class="select select-glass" data-select-onsen>
+              <option selected>Especialista em Meio Ambiente</option>
+              <option>Analista de Planejamento Urbano</option>
+              <option>Auditor Fiscal Tributário</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3 · TELA MONTADA E TESTE DE MODAIS AO VIVO ==================== -->
+    <section id="tela" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <div class="flex flex-col gap-2">
+        <h2 class="text-[24px] font-bold text-madeira-700">3 · Teste Interativo de Modais sobre Toasts e Formulário Real</h2>
+        <p class="text-[13px] text-base-content/70">
+          Abra os modais abaixo para ver como cada combinação de <strong>desfoque de fundo (backdrop)</strong> e <strong>opacidade de placa</strong> se comporta em cima de toasts coloridos e tabelas:
+        </p>
+      </div>
+
+      <!-- Barra de Ações Rápidas de Teste -->
+      <div class="grid sm:grid-cols-3 gap-4">
+        
+        <!-- Opção 1: Antigo -->
+        <label for="modal-teste-antigo" class="btn btn-glass flex flex-col items-start p-4 h-auto gap-1 border-warning/40 hover:border-warning cursor-pointer">
+          <div class="flex items-center justify-between w-full">
+            <span class="font-bold text-sm text-rocha-950">1. Regime Antigo</span>
+            <span class="badge badge-warning badge-xs">85%→65%</span>
+          </div>
+          <p class="text-xs text-base-content/70 font-normal">Backdrop 6px · Placa 20px blur</p>
+        </label>
+
+        <!-- Opção 2: Médio -->
+        <label for="modal-teste-medio" class="btn btn-glass flex flex-col items-start p-4 h-auto gap-1 border-info/40 hover:border-info cursor-pointer">
+          <div class="flex items-center justify-between w-full">
+            <span class="font-bold text-sm text-rocha-950">2. Regime Médio</span>
+            <span class="badge badge-info badge-xs">94%→80%</span>
+          </div>
+          <p class="text-xs text-base-content/70 font-normal">Backdrop 12px · Placa 24px blur</p>
+        </label>
+
+        <!-- Opção 3: Denso Recomendado -->
+        <label for="modal-teste-denso" class="btn btn-onsen flex flex-col items-start p-4 h-auto gap-1 shadow-lg cursor-pointer">
+          <div class="flex items-center justify-between w-full">
+            <span class="font-bold text-sm text-white">3. Denso + Fundo Fosco ★</span>
+            <span class="badge badge-success badge-xs">88%→76%</span>
+          </div>
+          <p class="text-xs text-white/90 font-normal">Backdrop 16px · Placa 28px blur</p>
+        </label>
+
+      </div>
+
+      <!-- Página Administrativa de Fundo com Toasts e Dados Reais -->
+      <div class="relative rounded-2xl p-6 bg-white/35 border border-white/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] flex flex-col gap-6">
+        
+        <!-- Toasts de alerta no formulário -->
+        <div class="flex flex-col gap-3">
+          <div class="alert alert-warning shadow-sm flex items-center justify-between py-2 px-4">
+            <span class="text-xs font-medium">⚠️ 2 substituições de chefia aguardando assinatura da portaria</span>
+            <span class="badge badge-warning badge-sm">Pendente</span>
+          </div>
+          <div class="alert alert-error shadow-sm flex items-center justify-between py-2 px-4">
+            <span class="text-xs font-medium">⛔ Unidade DECAD-3 sem titular há mais de 15 dias</span>
+            <span class="badge badge-error badge-sm">Crítico</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-overline text-madeira-700">Administração de Cadastro</p>
+            <h3 class="text-2xl font-bold text-rocha-950">Quadro Geral de Servidores</h3>
+          </div>
+          <span class="badge badge-neutral">12 servidores listados</span>
+        </div>
+
+        <!-- Tabela densa de fundo -->
+        <div class="card-well overflow-hidden">
+          <table class="table w-full text-left">
+            <thead class="bg-white/40 border-b border-white/50 text-overline">
+              <tr>
+                <th class="p-3">Servidor / RF</th>
+                <th class="p-3">Unidade</th>
+                <th class="p-3">Cargo Base</th>
+                <th class="p-3">Situação</th>
+                <th class="p-3 text-right">Ação</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/40 text-sm">
+              <tr>
+                <td class="p-3">
+                  <p class="font-bold text-rocha-950">Carlos Eduardo Mendes</p>
+                  <p class="text-xs text-code text-agua-800">RF 654.321.0</p>
+                </td>
+                <td class="p-3">DIMAP-1 · Geoprocessamento</td>
+                <td class="p-3">Analista de Planejamento Urbano</td>
+                <td class="p-3"><span class="badge badge-success badge-soft badge-sm">Titular</span></td>
+                <td class="p-3 text-right">
+                  <label for="modal-teste-denso" class="btn btn-ghost btn-glass btn-xs cursor-pointer">Editar</label>
+                </td>
+              </tr>
+              <tr>
+                <td class="p-3">
+                  <p class="font-bold text-rocha-950">Beatriz Lima de Castro</p>
+                  <p class="text-xs text-code text-agua-800">RF 890.123.4</p>
+                </td>
+                <td class="p-3">DIMAP-2 · Avaliação</td>
+                <td class="p-3">Especialista em Meio Ambiente</td>
+                <td class="p-3"><span class="badge badge-info badge-soft badge-sm">Exercício</span></td>
+                <td class="p-3 text-right">
+                  <label for="modal-teste-denso" class="btn btn-ghost btn-glass btn-xs cursor-pointer">Editar</label>
+                </td>
+              </tr>
+              <tr>
+                <td class="p-3">
+                  <p class="font-bold text-rocha-950">Fernando de Albuquerque</p>
+                  <p class="text-xs text-code text-agua-800">RF 512.987.1</p>
+                </td>
+                <td class="p-3">DIMAP-GAB · Gabinete</td>
+                <td class="p-3">Auditor Fiscal Tributário</td>
+                <td class="p-3"><span class="badge badge-warning badge-soft badge-sm">Substituto</span></td>
+                <td class="p-3 text-right">
+                  <label for="modal-teste-denso" class="btn btn-ghost btn-glass btn-xs cursor-pointer">Editar</label>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 4 · DECISÃO APROVADA E ESPECIFICAÇÃO DE PORTE ==================== -->
+    <section id="porte" class="glass-panel p-6 sm:p-8 flex flex-col gap-5 border-l-4 border-l-agua-500">
+      <div class="flex items-center gap-3">
+        <span class="badge badge-success font-bold">OPÇÃO 3 APROVADA</span>
+        <h2 class="text-[20px] font-bold text-madeira-700 m-0">Recalibragem Aprovada para o Design System</h2>
+      </div>
+
+      <p class="text-sm text-base-content/90 leading-relaxed m-0">
+        A <strong>Opção 3 (Denso + Fundo Fosco)</strong> foi validada e aprovada pelo usuário. O contraste contra ruídos coloridos e tabelas de alta densidade ficou blindado sem perder o relevo tátil do gelo Onsen.
+      </p>
+
+      <div class="grid md:grid-cols-2 gap-6 mt-2">
+        <!-- O que VAI migrar -->
+        <div class="card-well p-5 flex flex-col gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-success font-bold text-base">✓</span>
+            <p class="text-sm font-bold text-rocha-950 m-0">O que MIGRA para static/src/tema-dimap.dev.css</p>
+          </div>
+          <ul class="text-xs text-base-content/80 flex flex-col gap-2 m-0 pl-4 list-disc">
+            <li><span class="text-code">.glass-blur-thick</span>: atualizado para <code class="text-agua-800 font-semibold">backdrop-blur-[28px]</code>.</li>
+            <li><span class="text-code">.glass-bg-thick</span>: atualizado para <code class="text-agua-800 font-semibold">bg-gradient-to-br from-white/88 via-white/82 to-white/76</code> (v2 — o v1 adotou 97%→88% e a placa virou papel branco).</li>
+            <li><span class="text-code">.glass-panel-thick</span>: passa a compor a nova densidade (88%→76%, blur 28px, aresta <code class="text-agua-800 font-semibold">border-white/70</code>, brilho de quina <code class="text-agua-800 font-semibold">0.9</code> e sombra profunda).</li>
+            <li><span class="text-code">.modal-glass</span>: desfoque de backdrop atualizado para <code class="text-agua-800 font-semibold">backdrop-blur-[16px]</code>.</li>
+            <li><span class="text-code">.select-onsen-panel</span>: popover atualizado para a mesma receita — 28px de blur e 88%→76%.</li>
+            <li><span class="text-code">.btn-glass</span> (v2): <code class="text-agua-800 font-semibold">bg-white/40</code>, hover <code class="text-agua-800 font-semibold">white/60</code> — sobre a placa espessa, dois brancos altos encostados apagam a figura do botão.</li>
+          </ul>
+        </div>
+
+        <!-- O que NÃO migra -->
+        <div class="card-well p-5 flex flex-col gap-3 opacity-80">
+          <div class="flex items-center gap-2">
+            <span class="text-error font-bold text-base">✕</span>
+            <p class="text-sm font-bold text-rocha-950 m-0">O que NÃO migra (descarte de prototipagem)</p>
+          </div>
+          <ul class="text-xs text-base-content/80 flex flex-col gap-2 m-0 pl-4 list-disc">
+            <li>Classes comparativas de teste: <span class="text-code">.glass-panel-thick-antigo</span>, <span class="text-code">.glass-panel-thick-medio</span>, <span class="text-code">.glass-panel-thick-denso</span>.</li>
+            <li>Classes intermediárias de backdrop: <span class="text-code">.modal-glass-6</span>, <span class="text-code">.modal-glass-12</span>, <span class="text-code">.modal-glass-16</span> (o próprio <span class="text-code">.modal-glass</span> já assume 16px).</li>
+            <li>Marcação dos modais de teste duplicados e os alerts/toasts artificiais de ruído.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== DIÁLOGOS DE TESTE ==================== -->
+
+  <!-- 1. MODAL no nível 3 (Backdrop 16px + Placa 97%→88%): o que o v1 adotou e o v2 recuou -->
+  <input type="checkbox" id="modal-teste-denso" class="modal-toggle" />
+  <div class="modal modal-glass-16" role="dialog">
+    <div class="modal-box glass-panel-thick-denso modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+              <span class="badge badge-success badge-sm">Denso (97%→88% · Fundo 16px)</span>
+            </div>
+            <p class="text-sm text-base-content/70 mt-1">Carlos Eduardo Mendes · RF 654.321.0</p>
+          </div>
+          <label for="modal-teste-denso" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Fechar">
+            <span class="etched icon-etched">✕</span>
+          </label>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identificação</p>
+          <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="campo-onsen">
+              <input type="checkbox" id="demo-denso-rf" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">RF</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor text-code">654.321.0</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="rf" class="input input-glass" value="654.321.0" />
+                </div>
+                <label for="demo-denso-rf" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar RF">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="campo-onsen">
+              <input type="checkbox" id="demo-denso-nome" class="campo-onsen-toggle" checked />
+              <span class="text-overline etched-rotulo">Nome</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">Carlos Eduardo Mendes</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="nome" class="input input-glass" value="Carlos Eduardo Mendes" />
+                </div>
+                <label for="demo-denso-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar Nome">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Lotação e Hierarquia</p>
+          <div class="grid gap-4">
+            <div class="campo-onsen">
+              <input type="checkbox" id="demo-denso-unidade" class="campo-onsen-toggle" checked />
+              <span class="text-overline etched-rotulo">Unidade</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">DIMAP-1 <span class="text-base-content/50">· Divisão de Geoprocessamento</span></p>
+                <div class="campo-onsen-campo">
+                  <select name="unidade" class="select select-glass" data-select-onsen>
+                    <option selected>DIMAP-1 · Divisão de Geoprocessamento</option>
+                    <option>DIMAP-2 · Divisão de Avaliação Imobiliária</option>
+                    <option>DIMAP-3 · Divisão de Cadastro Territorial</option>
+                    <option>DIMAP-GAB · Gabinete da Diretoria</option>
+                    <option>DECAD · Departamento de Cadastros</option>
+                    <option>SUREM · Subsecretaria da Receita Municipal</option>
+                  </select>
+                  <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                    <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                    <p class="text-[13px] text-base-content/80">Mover para outra unidade exige transferência prévia de titularidade.</p>
+                  </div>
+                </div>
+                <label for="demo-denso-unidade" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar Unidade">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-teste-denso" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-teste-denso" class="btn btn-onsen btn-sm">Salvar alterações</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-teste-denso">Fechar</label>
+  </div>
+
+  <!-- 2. MODAL MÉDIO (Backdrop 12px + Placa 94%→80%) -->
+  <input type="checkbox" id="modal-teste-medio" class="modal-toggle" />
+  <div class="modal modal-glass-12" role="dialog">
+    <div class="modal-box glass-panel-thick-medio modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+              <span class="badge badge-info badge-sm">Médio (94%→80% · Fundo 12px)</span>
+            </div>
+            <p class="text-sm text-base-content/70 mt-1">Carlos Eduardo Mendes · RF 654.321.0</p>
+          </div>
+          <label for="modal-teste-medio" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Fechar">
+            <span class="etched icon-etched">✕</span>
+          </label>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identificação</p>
+          <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="campo-onsen">
+              <span class="text-overline etched-rotulo">RF</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor text-code">654.321.0</p>
+              </div>
+            </div>
+            <div class="campo-onsen">
+              <span class="text-overline etched-rotulo">Nome</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">Carlos Eduardo Mendes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Lotação e Hierarquia</p>
+          <div class="campo-onsen">
+            <span class="text-overline etched-rotulo">Unidade</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">DIMAP-1 <span class="text-base-content/50">· Divisão de Geoprocessamento</span></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-teste-medio" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-teste-medio" class="btn btn-onsen btn-sm">Salvar alterações</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-teste-medio">Fechar</label>
+  </div>
+
+  <!-- 3. MODAL ANTIGO (Backdrop 6px + Placa 85%→65%) -->
+  <input type="checkbox" id="modal-teste-antigo" class="modal-toggle" />
+  <div class="modal modal-glass-6" role="dialog">
+    <div class="modal-box glass-panel-thick-antigo modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar servidor</h2>
+              <span class="badge badge-warning badge-sm">Antigo (85%→65% · Fundo 6px)</span>
+            </div>
+            <p class="text-sm text-base-content/70 mt-1">Carlos Eduardo Mendes · RF 654.321.0</p>
+          </div>
+          <label for="modal-teste-antigo" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Fechar">
+            <span class="etched icon-etched">✕</span>
+          </label>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identificação</p>
+          <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="campo-onsen">
+              <span class="text-overline etched-rotulo">RF</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor text-code">654.321.0</p>
+              </div>
+            </div>
+            <div class="campo-onsen">
+              <span class="text-overline etched-rotulo">Nome</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">Carlos Eduardo Mendes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Lotação e Hierarquia</p>
+          <div class="campo-onsen">
+            <span class="text-overline etched-rotulo">Unidade</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">DIMAP-1 <span class="text-base-content/50">· Divisão de Geoprocessamento</span></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-teste-antigo" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-teste-antigo" class="btn btn-onsen btn-sm">Salvar alterações</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-teste-antigo">Fechar</label>
+  </div>
+
+  <!-- Módulo oficial do Select Onsen -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+</body>
+</html>

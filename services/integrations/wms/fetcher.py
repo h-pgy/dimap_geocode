@@ -1,6 +1,6 @@
 import requests
 
-from .exceptions import WmsHttpError, WmsResponseNotImageError
+from .exceptions import WmsHttpError, WmsResponseNotImageError, WmsTimeoutError
 from .models import WmsConnectionConfig, WmsImage, WmsMapRequest
 
 IMAGE_PREFIX = "image/"
@@ -34,7 +34,16 @@ class WmsFetcher:
     def fetch_map(self, request: WmsMapRequest) -> WmsImage:
         base_url = self.config.base_url_for(raster=request.raster)
         params = self._build_params(request)
-        resp = requests.get(base_url, params=params)
+        try:
+            resp = requests.get(
+                base_url,
+                params=params,
+                timeout=self.config.request_timeout_seconds,
+            )
+        except requests.Timeout as exc:
+            raise WmsTimeoutError(
+                f"WMS não respondeu em {self.config.request_timeout_seconds}s ({base_url})"
+            ) from exc
         if self.verbose:
             print(f"[WmsFetcher] {resp.url}")
         try:

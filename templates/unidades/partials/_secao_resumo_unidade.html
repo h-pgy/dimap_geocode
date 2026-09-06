@@ -1,0 +1,50 @@
+{# Seção de resumo (SPEC user_admin/016): nome, sigla, tipo e o cargo mínimo do titular em texto — #}
+{# quem só quer o porte da unidade não deveria precisar abrir o modal de edição (Caveats).          #}
+<div class="card-well p-5 flex flex-col gap-4">
+  <p class="text-overline">Resumo</p>
+
+  <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+    <div class="min-w-0">
+      <p class="text-overline">Nome</p>
+      <p class="text-[15px] text-base-content/90 mt-0.5">{{ unidade.nome }}</p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Sigla</p>
+      <p class="text-[15px] text-base-content/90 mt-0.5">{{ unidade.sigla }}</p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Tipo de unidade</p>
+      <p class="text-[15px] text-base-content/90 mt-0.5">{{ unidade.tipo.nome }} <span class="text-base-content/50">· nível {{ unidade.tipo.nivel }}</span></p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Cargo mínimo do titular</p>
+      <p class="text-[15px] text-base-content/90 mt-0.5">{{ cargo_minimo }}</p>
+    </div>
+  </div>
+
+  <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+    <div class="stat card-well">
+      <div class="stat-figure">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
+      </div>
+      <div class="stat-title">Servidores lotados</div>
+      <div class="stat-value">{{ total_lotados }}</div>
+      <div class="stat-actions">
+        <a href="{% url 'user_admin:listar_servidores' %}?unidade={{ unidade.sigla }}" class="btn btn-glass btn-xs">Ver na listagem</a>
+      </div>
+    </div>
+    {% if unidade.pai %}
+      <div class="stat card-well">
+        <div class="stat-figure">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+        </div>
+        <div class="stat-title">Unidade superior</div>
+        <div class="stat-value flex items-center gap-2">
+          <span class="dot-unidade w-3 h-3" style="--cor-unidade:{{ pai_cor_hex }}"></span>
+          {{ unidade.pai.sigla }}
+        </div>
+        <div class="stat-desc">{{ unidade.pai.nome }}</div>
+      </div>
+    {% endif %}
+  </div>
+</div>

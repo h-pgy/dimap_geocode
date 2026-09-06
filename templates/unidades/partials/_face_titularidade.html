@@ -1,0 +1,102 @@
+{% load static %}
+{% if titular %}
+  <form hx-post="{% url 'unidades:gravar_definir_titular' %}"
+        hx-target="#poco-modal"
+        hx-swap="innerHTML"
+        class="flex flex-col gap-5">
+    {% csrf_token %}
+    <input type="hidden" name="unidade" value="{{ unidade.pk }}">
+
+    <div class="tarja-vinculo flex items-center justify-between">
+      <div class="linha-pessoa">
+        {% include "user_admin/partials/_imagem_perfil.html" with perfil=titular imagem=titular_imagem cor_unidade_hex=titular_cor_unidade_hex tamanho="w-9 h-9" halo_escala="0.5" %}
+        <div>
+          <p class="text-xs text-base-content/60 uppercase font-medium tracking-wider">Titular Atual</p>
+          <p class="text-sm font-bold text-madeira-700">{{ titular.nome }} {{ titular.sobrenome }} · RF {{ titular.rf }}</p>
+        </div>
+      </div>
+      <span class="badge badge-success badge-soft badge-sm">Em exercício</span>
+    </div>
+
+    {% if candidatos %}
+      <label class="form-field">
+        <span class="text-overline">Substituir por outro servidor da {{ unidade.sigla }}</span>
+        <select name="titular" class="select select-glass w-full" data-select-onsen>
+          {% for candidato in candidatos %}
+            {% if candidato.pk != titular.pk %}
+              <option value="{{ candidato.pk }}">{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </label>
+    {% endif %}
+
+    <div class="modal-action flex items-center justify-between pt-2">
+      <button type="button"
+              hx-post="{% url 'unidades:gravar_destituir_titular' %}"
+              hx-vals='{"unidade": "{{ unidade.pk }}"}'
+              hx-target="#poco-modal"
+              hx-swap="innerHTML"
+              class="btn btn-glass btn-sm text-error gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+        Destituir titular
+      </button>
+      <div class="flex gap-2">
+        <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = '';">Fechar</button>
+        {% if candidatos %}
+          <button type="submit" class="btn btn-onsen btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+            Trocar titular
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+{% elif candidatos %}
+  <form hx-post="{% url 'unidades:gravar_definir_titular' %}"
+        hx-target="#poco-modal"
+        hx-swap="innerHTML"
+        class="flex flex-col gap-5">
+    {% csrf_token %}
+    <input type="hidden" name="unidade" value="{{ unidade.pk }}">
+
+    <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+      <svg class="w-5 h-5 shrink-0 text-error mt-0.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+      <div class="text-xs">
+        <p class="font-bold text-madeira-700">A {{ unidade.sigla }} está sem titular</p>
+        <p class="text-base-content/80 mt-0.5">Selecione um dos servidores aptos lotados nesta unidade para assumir a chefia.</p>
+      </div>
+    </div>
+
+    <label class="form-field">
+      <span class="text-overline">Servidor que assumirá a direção da {{ unidade.sigla }}</span>
+      <select name="titular" class="select select-glass w-full" data-select-onsen>
+        {% for candidato in candidatos %}
+          <option value="{{ candidato.pk }}">{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <div class="modal-action flex items-center justify-end gap-2 pt-2">
+      <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = '';">Fechar</button>
+      <button type="submit" class="btn btn-onsen btn-sm gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-check"/></svg>
+        Definir titular
+      </button>
+    </div>
+  </form>
+{% else %}
+  <div class="flex flex-col gap-5">
+    <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+      <svg class="w-5 h-5 shrink-0 text-error mt-0.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+      <div class="text-xs">
+        <p class="font-bold text-madeira-700">Nenhum servidor da {{ unidade.sigla }} pode titularizar</p>
+        <p class="text-base-content/80 mt-0.5">Titularizar exige cargo em comissão de chefia compatível com o tipo (mínimo {{ cargo_minimo }}). Lote um servidor com cargo compatível na unidade para poder nomeá-lo.</p>
+      </div>
+    </div>
+
+    <div class="modal-action flex items-center justify-end gap-2 pt-2">
+      <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = '';">Fechar</button>
+    </div>
+  </div>
+{% endif %}

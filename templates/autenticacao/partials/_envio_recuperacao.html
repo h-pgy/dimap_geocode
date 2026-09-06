@@ -1,0 +1,34 @@
+{# Alvo do `hx-post` de `enviar_link_recuperacao` (SPEC autenticacao/003): as faces do pedido de   #}
+{# envio. A espera vem do servidor em segundos e o contador só a consome — quem recusa o envio     #}
+{# dentro da janela é a rota, e o botão indisponível é afordância, não a regra.                    #}
+{% if desfecho.recusa.mensagens %}
+  {% include "partials/_tarja_recusa.html" with erros=desfecho.recusa.mensagens titulo="Não foi possível enviar o link" %}
+{% elif desfecho.espera_segundos %}
+  <div class="card-well p-4 text-xs text-base-content/70 leading-relaxed" data-contagem-reenvio="{{ desfecho.espera_segundos }}">
+    A mensagem acabou de ser enviada para <strong>{{ desfecho.email }}</strong>. Se ela não chegar,
+    peça outra em <span class="text-code" data-reenvio-relogio>{{ desfecho.espera_segundos }} s</span>.
+  </div>
+{% elif desfecho.link_a_exibir %}
+  <div class="card-well p-4 flex flex-col gap-3">
+    <div class="alert alert-warning alert-soft text-xs">
+      <span>Envio de e-mail desligado: o link aparece aqui só em desenvolvimento.</span>
+    </div>
+    <div class="card-well p-3 flex items-center gap-3">
+      <span class="text-code text-xs break-all leading-relaxed grow">{{ desfecho.link_a_exibir }}</span>
+      <button type="button" class="btn btn-glass btn-sm btn-copiar shrink-0" data-estado="pronto" data-copiar-senha="{{ desfecho.link_a_exibir }}">
+        <span data-face="pronto"><span class="icon-etched">⧉</span> copiar</span>
+        <span data-face="copiado">✓ copiado</span>
+        <span data-face="falhou">✕ falhou</span>
+      </button>
+    </div>
+  </div>
+{% elif desfecho.enviado %}
+  <div class="alert alert-success alert-soft text-xs">
+    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+    <span>Link enviado para <strong>{{ desfecho.email }}</strong>.</span>
+  </div>
+{% else %}
+  {# RF sem conta recuperável, alcançado só por POST direto fora desta tela (o botão não existe  #}
+  {# nos outros estados): nenhuma mensagem que confirme ou negue a conta (SPEC, Caveats).         #}
+  <div class="card-well p-4 text-xs text-base-content/70">Nada a fazer para este pedido.</div>
+{% endif %}

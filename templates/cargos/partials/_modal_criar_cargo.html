@@ -1,0 +1,73 @@
+{# Modal de criar cargo em comissão (SPEC user_admin/029) — alvo do hx-get da barra e do card do    #}
+{# painel. A natureza é a chave-onsen-tripla: decorativa, os dois hidden é que o servidor lê         #}
+{# (`static/src/js/ui/natureza_cargo.js`).                                                           #}
+<input type="checkbox" id="modal-criar-cargo" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+    <form hx-post="{% url 'cargos:gravar_criacao_cargo' %}" hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-criar-cargo"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Cadastrar cargo em comissão</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">O cargo passa a existir no catálogo e fica disponível para nomeação.</p>
+        </div>
+      </div>
+
+      {% include "partials/_tarja_recusa.html" with titulo="Cargo não cadastrado" %}
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Identificação</p>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <label class="form-field sm:col-span-2">
+            <span class="text-overline">Nome</span>
+            <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome }}" placeholder="Diretor de Divisão" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Sigla</span>
+            <input type="text" name="sigla" class="input input-glass {{ realce.sigla }}" value="{{ valores.sigla }}" placeholder="CDA" />
+          </label>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4" data-chave-condicional data-natureza-cargo>
+        <p class="text-overline">Natureza e nível</p>
+        <div class="card-well chave-onsen chave-onsen-tripla w-full">
+          <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+          <label class="chave-onsen-opcao">
+            <input type="radio" name="natureza" value="assessoramento" class="sr-only" checked />
+            <span class="chave-onsen-rotulo etched etched-deeper">Assessoramento</span>
+          </label>
+          <label class="chave-onsen-opcao">
+            <input type="radio" name="natureza" value="chefia" class="sr-only" />
+            <span class="chave-onsen-rotulo etched etched-deeper">Chefia</span>
+          </label>
+          <label class="chave-onsen-opcao">
+            <input type="radio" name="natureza" value="alta_administracao" class="sr-only" />
+            <span class="chave-onsen-rotulo etched etched-deeper">Alta administração</span>
+          </label>
+        </div>
+        <input type="hidden" name="e_chefia" value="" data-campo-e-chefia />
+        <input type="hidden" name="alta_administracao" value="" data-campo-alta-administracao />
+        <div class="form-field" data-mostra-se="assessoramento chefia">
+          <span class="text-overline">Nível</span>
+          <select name="nivel" class="select select-glass {{ realce.nivel }}" data-select-onsen>
+            {% for numero, algarismo in nivel_opcoes %}
+              <option value="{{ numero }}"{% if valores.nivel == numero %} selected{% endif %}>{{ algarismo }}</option>
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">O nível compõe o padrão: sigla + algarismo romano.</span>
+        </div>
+        <div class="form-field" data-mostra-se="alta_administracao" hidden>
+          <span class="text-overline">Nível</span>
+          <p class="etched etched-rotulo text-[15px] py-2.5">— cargo da alta administração não tem nível —</p>
+        </div>
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-criar-cargo" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">Cadastrar cargo</button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-criar-cargo">Fechar</label>
+</div>

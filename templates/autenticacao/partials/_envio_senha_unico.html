@@ -1,0 +1,29 @@
+{# Alvo do `hx-post` de `reenviar_senha_unico` (SPEC autenticacao/004): as faces do pedido de       #}
+{# reenvio, no molde de `_envio_recuperacao.html`. O modal sai por out-of-band, como no cadastro.   #}
+{% if desfecho.recusa.mensagens %}
+  {# A senha antiga continua valendo: a transação desfez a troca. #}
+  {% include "partials/_tarja_recusa.html" with erros=desfecho.recusa.mensagens titulo="Não foi possível enviar a senha" %}
+{% elif desfecho.espera_segundos %}
+  <div class="card-well p-4 text-xs text-base-content/70 leading-relaxed" data-contagem-reenvio="{{ desfecho.espera_segundos }}">
+    A mensagem acabou de ser enviada para <strong>{{ desfecho.email }}</strong>. Se ela não chegar,
+    peça outra em <span class="text-code" data-reenvio-relogio>{{ desfecho.espera_segundos }} s</span>.
+  </div>
+{% elif desfecho.enviado %}
+  <div class="alert alert-success alert-soft text-xs">
+    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+    Senha de uso único enviada para <strong>{{ desfecho.email }}</strong>.
+  </div>
+{% elif senha_temporaria is not None %}
+  <div class="alert alert-warning alert-soft text-xs">
+    <span>Envio de e-mail desligado: a senha aparece no modal.</span>
+  </div>
+{% else %}
+  {# RF sem conta em primeiro acesso, alcançado só por POST direto: nenhuma mensagem que confirme #}
+  {# ou negue a conta.                                                                            #}
+  <div class="card-well p-4 text-xs text-base-content/70">Nada a fazer para este pedido.</div>
+{% endif %}
+{% if senha_temporaria is not None %}
+  <div id="poco-modal" hx-swap-oob="innerHTML">
+    {% include "user_admin/partials/_modal_senha_desenvolvimento.html" with perfil=desfecho.perfil instrucao="Nenhum e-mail foi enviado. Anote a senha e use-a agora para ativar sua conta." %}
+  </div>
+{% endif %}

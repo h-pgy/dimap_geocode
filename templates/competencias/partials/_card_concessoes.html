@@ -1,0 +1,128 @@
+{# Cartão de uma atribuição com quem a exerce (SPEC autorizacao/008 e 009): a mesma `.card-atribuicao` #}
+{# da SPEC 007 — aqui composta com `.card-atribuicao-corpo`. Cada cargo ou servidor delegado é uma LINHA  #}
+{# da tabela de vidro SIMPLES (`.tabela-onsen-simples`, design system) — a mesma `.table-onsen` da       #}
+{# SPEC user_admin/013, só a linha, sem cabeçalho, rolando depois de 3. A lata de lixo vai sempre       #}
+{# na segunda coluna: com uma coluna por linha, todas ficam empilhadas na mesma posição.                #}
+{% load icones %}
+{% icone_acao item.acao.slug item.variante_icone as svg %}
+<article class="card-atribuicao">
+  <div class="card-atribuicao-cabeca">
+    <span class="icone-acao icone-acao-grande">{{ svg|safe }}</span>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2">
+        <p class="card-atribuicao-nome">{{ item.acao.nome }}</p>
+        {% if item.acao.estrutural %}
+          <span class="badge badge-success badge-soft badge-sm font-medium">Estrutural</span>
+        {% endif %}
+      </div>
+      <p class="card-atribuicao-descricao">{{ item.acao.tooltip }}</p>
+    </div>
+    {% if item.acao.estrutural %}
+      {% if pode_delegar %}
+        <label for="modal-delegacao"
+               class="btn btn-glass btn-sm btn-circle btn-delegar"
+               aria-label="Delegar a um servidor"
+               hx-get="{% url 'competencias:modal_delegar' %}"
+               hx-vals='{"atribuicao": "{{ item.atribuicao.pk }}"}'
+               hx-target="#poco-modal-conceder"
+               hx-swap="innerHTML settle:150ms">
+          <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+        </label>
+      {% endif %}
+    {% else %}
+      <label for="modal-conceder"
+             class="btn btn-glass btn-sm btn-circle"
+             aria-label="Conceder a um cargo"
+             hx-get="{% url 'competencias:modal_conceder' %}"
+             hx-vals='{"atribuicao": "{{ item.atribuicao.pk }}"}'
+             hx-target="#poco-modal-conceder"
+             hx-swap="innerHTML settle:150ms">
+        <span class="icone-acao icone-acao-pequeno icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></span>
+      </label>
+    {% endif %}
+  </div>
+  <div class="card-atribuicao-corpo">
+    {% if item.acao.estrutural %}
+      {% if item.delegacoes %}
+        <div class="card-well p-2 w-full table-onsen-poco" data-scroll-etched>
+          <div class="table-onsen-wrap tabela-onsen-simples" data-rolador>
+            <table class="table table-onsen">
+              <tbody>
+                {% for delegacao in item.delegacoes %}
+                  <tr>
+                    <td>
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium">{{ delegacao.delegado.nome_completo }}</span>
+                        <span class="text-xs text-base-content/60">({{ delegacao.delegado.unidade.sigla }})</span>
+                        <span class="badge badge-info badge-soft badge-sm font-medium">Delegada</span>
+                      </div>
+                    </td>
+                    <td class="w-10">
+                      {% if pode_delegar %}
+                        <button type="button"
+                                class="lata-concessao"
+                                aria-label="Revogar"
+                                hx-post="{% url 'competencias:revogar_delegacao' %}"
+                                hx-vals='{"unidade": "{{ unidade_alvo.pk }}", "delegacao": "{{ delegacao.pk }}"}'
+                                hx-target="#poco-concessoes"
+                                hx-swap="outerHTML">
+                          <span class="icone-acao icone-acao-pequeno etched etched-deeper"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                        </button>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {# Duplicata visual da rolagem nativa: para teclado e leitor de tela ela não existe. #}
+          <div class="scroll-etched" data-barra aria-hidden="true">
+            <div class="scroll-etched-thumb" data-polegar></div>
+          </div>
+        </div>
+        {% if not pode_delegar %}
+          <span class="card-atribuicao-vazio">Competência de quem dirige a unidade.</span>
+        {% endif %}
+      {% else %}
+        {% if pode_delegar %}
+          <span class="card-atribuicao-vazio">Nenhum servidor delegado ainda.</span>
+        {% else %}
+          <span class="card-atribuicao-vazio">Competência de quem dirige a unidade.</span>
+        {% endif %}
+      {% endif %}
+    {% else %}
+      {% if item.concessoes %}
+        <div class="card-well p-2 w-full table-onsen-poco" data-scroll-etched>
+          <div class="table-onsen-wrap tabela-onsen-simples" data-rolador>
+            <table class="table table-onsen">
+              <tbody>
+                {% for concessao_item in item.concessoes %}
+                  <tr>
+                    <td>{{ concessao_item.rotulo }}</td>
+                    <td class="w-10">
+                      <button type="button"
+                              class="lata-concessao"
+                              aria-label="Revogar"
+                              hx-post="{% url 'competencias:revogar_cargo' %}"
+                              hx-vals='{"unidade": "{{ unidade_alvo.pk }}", "concessao": "{{ concessao_item.concessao.pk }}"}'
+                              hx-target="#poco-concessoes"
+                              hx-swap="outerHTML">
+                        <span class="icone-acao icone-acao-pequeno etched etched-deeper"><svg viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg></span>
+                      </button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {# Duplicata visual da rolagem nativa: para teclado e leitor de tela ela não existe. #}
+          <div class="scroll-etched" data-barra aria-hidden="true">
+            <div class="scroll-etched-thumb" data-polegar></div>
+          </div>
+        </div>
+      {% else %}
+        <span class="card-atribuicao-vazio">Nenhum cargo designado ainda.</span>
+      {% endif %}
+    {% endif %}
+  </div>
+</article>

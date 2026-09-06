@@ -1,0 +1,60 @@
+{% load execucoes %}
+{# O <tbody> do registro (SPEC painel/002) — alvo do swap do card E do cabeçalho — e, fora de      #}
+{# banda, a paginação: uma resposta, dois pedaços da tela.                                          #}
+<tbody id="corpo-execucoes">
+  {% for linha in pagina.linhas %}
+    <tr>
+      <td>
+        <span class="td-momento">{{ linha.momento|slice:":10" }}<span class="td-momento-hora">{{ linha.momento|slice:"11:16" }}</span></span>
+      </td>
+      <td>
+        {% if linha.servidor_pk %}
+          <a href="{% url 'user_admin:pagina_perfil' linha.servidor_pk %}" class="link-tabela-onsen">{{ linha.servidor }}</a>
+        {% else %}
+          <span class="td-alvo-vazio text-sm">{{ linha.servidor }}</span>
+        {% endif %}
+        {% if linha.substituindo %}
+          <span class="marca-cobertura">respondendo por {{ linha.substituindo }}</span>
+        {% endif %}
+      </td>
+      <td>
+        <a href="{% url 'unidades:pagina_unidade' linha.unidade_pk %}" class="link-sigla-onsen">
+          <span class="dot-unidade" style="--cor-unidade: {{ linha.cor_unidade }}"></span>
+          <span class="text-code">{{ linha.unidade }}</span>
+        </a>
+      </td>
+      <td><span class="text-code text-xs">{{ linha.cargo }}</span></td>
+      <td>
+        <span class="rotulo-cargo td-nome-unidade{% if linha.comissao == "—" %} td-alvo-vazio{% endif %}">{{ linha.comissao }}</span>
+      </td>
+      <td><span class="td-nome-unidade">{{ linha.acao }}</span></td>
+      <td>
+        {% if linha.operacao %}
+          <span class="text-code text-xs">{{ linha.operacao }}</span>
+        {% else %}
+          <span class="td-alvo-vazio text-xs">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if linha.alvo %}
+          <span class="td-alvo">
+            <span class="text-overline block">{{ linha.alvo|alvo_tipo }}</span>{{ linha.alvo|alvo_identificador }}
+          </span>
+        {% else %}
+          <span class="td-alvo td-alvo-vazio">sem alvo informado</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if linha.autorizado %}
+          <span class="badge badge-success badge-soft badge-sm">Autorizada</span>
+        {% else %}
+          <span class="badge badge-error badge-soft badge-sm">Negada</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="9" class="table-onsen-vazio">Nenhum ato praticado no período e no recorte escolhidos.</td>
+    </tr>
+  {% endfor %}
+</tbody>

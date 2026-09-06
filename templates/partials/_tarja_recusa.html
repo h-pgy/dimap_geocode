@@ -1,0 +1,16 @@
+{# Molécula extraída de _formulario_servidor.html (SPEC criacao_usuarios/005): composta dos átomos #}
+{# `.tarja-vinculo` + `.tarja-vinculo-critica`, já no tema — nenhum átomo novo nasce aqui. Lê       #}
+{# `erros` (sempre `recusa.mensagens`, inclusive as gerais, que não realçam controle algum) e       #}
+{# `titulo`, que cada tela escolhe. SVG inline, e não `#glifo-alerta`: nem toda página que inclui   #}
+{# esta molécula carrega o sprite de glifos do servidor (perfil_form.html não carrega).             #}
+{% if erros %}
+  <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+    <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+    <div>
+      <p class="text-[13px] font-semibold text-base-content/90">{{ titulo }}</p>
+      <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+        {% for erro in erros %}<li>{{ erro }}</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+{% endif %}

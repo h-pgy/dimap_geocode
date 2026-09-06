@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/007 — O desfoque do modal e a moldura fixa (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Servir com root na RAIZ DO PROJETO (Live Server); via file:// o fetch é bloqueado.
+       Enquanto a SPEC não é portada, a regra de neutralização vigente é RETIRADA do texto do tema
+       antes da injeção — sem isso o mock mostraria o comportamento atual e não reprovaria nada.
+       Portada, o tema já traz a nova e nada é retirado: é o que mantém o mock vivo depois da
+       entrega. Se nenhuma das duas estiver lá, ele avisa em vez de mostrar coisa errada. -->
+  <script>
+    const PORTA_DO_IRMAO = ".modal-toggle:checked + *";
+    const REGRA_SUPERADA = /\s*\.modal-toggle:not\(:checked\) \+ \.modal,[\s\S]*?backdrop-filter: none !important;\s*\}/;
+    const avisar = (msg) => (document.body || document.documentElement).insertAdjacentHTML(
+      "afterbegin", "<p style='padding:1rem;color:#b00;font-family:monospace'>" + msg + "</p>");
+
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const portada = css.includes(PORTA_DO_IRMAO);
+        if (!portada && !REGRA_SUPERADA.test(css)) {
+          avisar("nenhuma das duas regras de neutralização foi encontrada no tema — o mock não sabe o que está mostrando.");
+          return;
+        }
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = (portada ? css : css.replace(REGRA_SUPERADA, ""))
+          + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => avisar("tema-dimap.dev.css não carregou — sirva a RAIZ do projeto."));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .moldura-fixa é só o nome por onde a coreografia alcança as duas placas do topo: não
+         declara pele, medida nem posição — no porte este seletor entra na lista do .glass-hide-up */
+      :root:has(.modal-toggle:checked) .moldura-fixa {
+        @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
+      }
+
+      /* modal fechado: as quatro portas de abertura, a última delas o toggle irmão marcado */
+      .modal:not(.modal-open, [open], :has(.modal-toggle:checked), .modal-toggle:checked + *),
+      .modal:not(.modal-open, [open], :has(.modal-toggle:checked), .modal-toggle:checked + *) * {
+        backdrop-filter: none !important;
+      }
+
+      /* .quadro-mock — vitrine de EXPOSIÇÃO. Não é peça do projeto, não vai para o tema. */
+      .quadro-mock { @apply p-5 flex items-center justify-center gap-4 min-h-[8rem]; }
+    }
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- defs do filtro de gravação: sem eles a classe .etched existe e não desenha nada -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- ============================================================================
+       5 · TELA MONTADA — a moldura fixa é do layout, e por isso vive fora do
+       conteúdo, viva na página inteira. Rolando o mock ela acompanha; abrindo o
+       modal lá embaixo ela sai de cena.
+       ============================================================================ -->
+
+  <!-- fica na página: templates/base.html — a moldura é do layout, não de tela alguma -->
+  <a href="#" class="moldura-fixa fixed top-6 left-4 lg:left-6 z-20 glass-panel rounded-full! flex items-center justify-center w-12 h-12 lg:w-auto lg:h-auto lg:px-5 lg:py-2.5 transition-glass hover:bg-white/60">
+    <span class="hidden lg:inline text-lg font-black tracking-tight text-madeira-700">DIMAP GeoCoder</span>
+    <span class="lg:hidden text-xl font-black tracking-tight text-madeira-700">D</span>
+  </a>
+
+  <a href="#" id="widget-area-usuario" class="moldura-fixa fixed top-6 right-4 lg:right-6 z-20 glass-panel rounded-full! p-1.5 flex items-center lg:gap-3 cursor-pointer transition-glass hover:bg-white/60">
+    <div class="w-9 h-9 lg:w-11 lg:h-11 shrink-0">
+      <!-- .avatar-glass com o halo da unidade em sakura-700, a cor que a mancha carregava -->
+      <div class="avatar-glass shrink-0 w-full h-full" style="--cor-unidade: #97294F; --halo-escala: 0.5">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="HP">
+          <circle cx="50" cy="50" r="50" fill="#97294F"/>
+          <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">HP</text>
+        </svg>
+      </div>
+    </div>
+    <div class="hidden lg:block pr-4">
+      <p class="text-sm font-bold m-0 leading-tight">Henrique</p>
+      <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">DECAD</p>
+    </div>
+  </a>
+
+  <div class="relative z-10 max-w-5xl mx-auto px-4 py-24 flex flex-col gap-10">
+
+    <header class="glass-panel p-8">
+      <p class="text-overline text-madeira-600">SPEC design/007 — mock de validação</p>
+      <h1 class="text-[30px] font-black tracking-tight text-madeira-700 leading-tight mt-1">O desfoque do modal e a moldura fixa</h1>
+    </header>
+
+    <!-- ============ 1 · TOKENS ============ -->
+    <section id="tokens" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <div>
+        <h2 class="text-[24px] font-bold text-madeira-700 leading-tight">1 · Tokens</h2>
+        <p class="text-[15px] text-base-content/90 leading-relaxed mt-1">
+          <span class="text-code">.moldura-fixa</span> está viva nos cantos do topo desta página — é ela, não uma cópia.
+          Abaixo, o gesto que ela faz quando um modal entra em cena.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-5">
+        <!-- estado: em cena -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">em cena</p>
+          <div class="card-well quadro-mock">
+            <div class="glass-panel rounded-full! px-5 py-2.5">
+              <p class="text-lg font-black tracking-tight text-madeira-700 m-0">DIMAP GeoCoder</p>
+            </div>
+            <div class="glass-panel rounded-full! p-1.5 flex items-center gap-3">
+              <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade: #97294F; --halo-escala: 0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="50" fill="#97294F"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">HP</text>
+                </svg>
+              </div>
+              <div class="pr-4">
+                <p class="text-sm font-bold m-0 leading-tight">Henrique</p>
+                <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">DECAD</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- estado: cedendo o lugar -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">cedendo o lugar (modal aberto)</p>
+          <div class="card-well quadro-mock">
+            <div class="glass-panel rounded-full! px-5 py-2.5 glass-hide-up">
+              <p class="text-lg font-black tracking-tight text-madeira-700 m-0">DIMAP GeoCoder</p>
+            </div>
+            <div class="glass-panel rounded-full! p-1.5 flex items-center gap-3 glass-hide-up">
+              <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade: #97294F; --halo-escala: 0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="50" fill="#97294F"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">HP</text>
+                </svg>
+              </div>
+              <div class="pr-4">
+                <p class="text-sm font-bold m-0 leading-tight">Henrique</p>
+                <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">DECAD</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 5 · TELA MONTADA ============ -->
+    <!-- página: painel/painel.html -->
+    <section id="tela" class="flex flex-col gap-6">
+
+      <div class="glass-panel px-5 py-3 flex flex-col gap-0.5">
+        <p class="text-overline">Área do usuário</p>
+        <p class="text-[18px] font-bold text-rocha-950">Henrique Pougy · DECAD</p>
+      </div>
+
+      <!-- partial: painel/partials/_abas.html -->
+      <div role="tablist" class="tabs glass-panel abas-onsen">
+        <label role="tab" class="tab">
+          <input type="radio" name="painel-abas" checked />
+          <span class="abas-onsen-rotulo etched etched-rotulo">Minha conta</span>
+          <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+          <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+        </label>
+        <!-- partial: painel/partials/_face_aba.html -->
+        <div role="tabpanel" class="tab-content painel-face">
+          <div>
+            <h2 class="painel-titulo">Minha conta</h2>
+            <p class="painel-descricao">Seus dados de acesso e identificação no sistema. Não são atos administrativos: estão disponíveis para todo servidor autenticado, qualquer que seja o cargo ou a unidade.</p>
+          </div>
+          <div class="painel-grupos">
+            <!-- partial: painel/partials/_grupo.html -->
+            <div class="card-well grupo-painel">
+              <p class="text-overline">Meus dados</p>
+              <div class="menu-acoes-cartoes">
+                <!-- partial: painel/partials/_card_item.html — item livre, navega -->
+                <a href="#" class="hover-3d card-acao-alvo">
+                  <div class="glass-bg glass-edge glass-shadow card-acao">
+                    <span class="icone-acao icone-acao-grande icone-acao-acende">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 5.5h16v13H4z"/>
+                        <path d="M8.6 10.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM6 16.3c0-1.4 1.2-2.3 2.6-2.3s2.6.9 2.6 2.3z"/>
+                        <path d="M13.6 10.2h4.6M13.6 12.4h4.6M13.6 14.6h3.1"/>
+                      </svg>
+                    </span>
+                    <div>
+                      <p class="card-acao-nome">Meus dados</p>
+                      <p class="card-acao-descricao">Sua identificação, lotação e cargos, como o sistema os registra.</p>
+                    </div>
+                  </div>
+                  <div></div><div></div><div></div><div></div>
+                  <div></div><div></div><div></div><div></div>
+                </a>
+              </div>
+            </div>
+
+            <div class="card-well grupo-painel">
+              <p class="text-overline">Quadro de pessoal</p>
+              <div class="menu-acoes-cartoes">
+                <!-- partial: painel/partials/_card_item_modal.html — abre o modal no #poco-modal -->
+                <label for="modal-administrador" class="hover-3d card-acao-alvo cursor-pointer">
+                  <div class="glass-bg glass-edge glass-shadow card-acao">
+                    <span class="icone-acao icone-acao-grande icone-acao-acende">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/>
+                        <path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/>
+                      </svg>
+                    </span>
+                    <div>
+                      <p class="card-acao-nome">Tornar administrador</p>
+                      <p class="card-acao-descricao">Concede a um servidor o alcance do organograma inteiro.</p>
+                    </div>
+                  </div>
+                  <div></div><div></div><div></div><div></div>
+                  <div></div><div></div><div></div><div></div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <label role="tab" class="tab">
+          <input type="radio" name="painel-abas" />
+          <span class="abas-onsen-rotulo etched etched-rotulo">Recursos Humanos</span>
+          <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+          <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+        </label>
+        <div role="tabpanel" class="tab-content painel-face">
+          <div>
+            <h2 class="painel-titulo">Recursos Humanos</h2>
+            <p class="painel-descricao">O quadro de pessoal da DIMAP — quem está lotado onde, que cargo ocupa e quem está afastado.</p>
+          </div>
+        </div>
+      </div>
+      <!-- /partial -->
+    </section>
+
+  </div>
+
+  <!-- fica na página: poço do modal, irmão do conteúdo — nunca dentro dele, senão o modal
+       nasce preso no contexto de empilhamento da casca e o controle do fundo passa por cima -->
+  <div id="poco-modal" class="poco-modal">
+      <!-- partial: user_admin/partials/_modal_administrador.html — alvo do hx-get do cartão -->
+      <input type="checkbox" id="modal-administrador" class="modal-toggle" />
+      <div class="modal modal-glass" role="dialog">
+        <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+          <div class="flex flex-col gap-6">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-grande text-agua-700 shrink-0">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/>
+                  <path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/>
+                </svg>
+              </span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Tornar administrador</h2>
+                <p class="text-sm text-base-content/70 mt-1">Escolha a unidade e, dentro dela, o servidor.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 grid sm:grid-cols-2 gap-4">
+              <label class="form-field">
+                <span class="text-overline">Unidade</span>
+                <select class="select select-glass">
+                  <option value="">— escolha —</option>
+                  <option>DECAD · Divisão de Cadastro</option>
+                  <option>DIMAP-2 · Cartografia</option>
+                </select>
+                <span class="form-field-hint">Todas as unidades: administrador alcança o organograma inteiro.</span>
+              </label>
+              <label class="form-field">
+                <span class="text-overline">Servidor</span>
+                <select class="select select-glass" disabled>
+                  <option>— escolha a unidade primeiro —</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="modal-action">
+              <label for="modal-administrador" class="btn btn-glass">Cancelar</label>
+              <button type="button" class="btn btn-onsen">Tornar administrador</button>
+            </div>
+          </div>
+        </div>
+        <label class="modal-backdrop" for="modal-administrador">Fechar</label>
+      </div>
+      <!-- /partial -->
+    </div>
+  </div>
+</body>
+</html>

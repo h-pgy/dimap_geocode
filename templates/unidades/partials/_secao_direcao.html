@@ -1,0 +1,107 @@
+{# Seção de direção (SPEC user_admin/016): quem dirige a unidade hoje, em uma de quatro respostas. #}
+{# O template escolhe a peça pelo enum; não remonta a causa com {% if %} sobre exercício.           #}
+<div id="secao-direcao" class="card-well p-5 flex flex-col gap-4">
+  <div class="flex items-center justify-between gap-4">
+    <p class="text-overline">Direção</p>
+    {% if direcao == "titular" %}
+      <span class="badge badge-success badge-soft">Dirigida pelo titular</span>
+    {% elif direcao == "substituto" %}
+      <span class="badge badge-success badge-soft">Dirigida pelo substituto</span>
+    {% elif direcao == "sem_direcao" %}
+      <span class="badge badge-error badge-soft">Sem direção</span>
+    {% else %}
+      <span class="badge badge-error badge-soft">Sem titular</span>
+    {% endif %}
+  </div>
+
+  {% if direcao == "sem_titular" %}
+    {% include "unidades/partials/_alarme_direcao.html" with titulo=alarme_sem_titular %}
+  {% elif direcao == "sem_direcao" %}
+    {% include "unidades/partials/_alarme_direcao.html" with titulo=alarme_sem_direcao %}
+  {% endif %}
+
+  <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+    <div class="stat {% if not titular %}stat-vaga{% endif %} card-well">
+      <div class="stat-figure{% if not titular %} text-error/70!{% endif %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="{% if titular %}#glifo-titular{% else %}#glifo-alerta{% endif %}"/></svg>
+      </div>
+      <div class="stat-title">Titular</div>
+      {% if titular %}
+        <div class="stat-value">
+          <div class="linha-pessoa">
+            {% include "user_admin/partials/_imagem_perfil.html" with perfil=titular imagem=titular_imagem cor_unidade_hex=titular_cor_unidade_hex tamanho="w-11 h-11" halo_escala="0.5" %}
+            <div class="min-w-0 flex-1">
+              <p class="linha-pessoa-nome">{{ titular.nome }} {{ titular.sobrenome }}</p>
+              <p class="linha-pessoa-meta">RF {{ titular.rf }}{% if titular.cargo_comissao %} · {{ titular.cargo_comissao.padrao }} · {{ titular.cargo_comissao.nome }}{% endif %}</p>
+            </div>
+            <a href="{% url 'user_admin:pagina_perfil' titular.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de {{ titular.nome }} {{ titular.sobrenome }}">
+              <span class="etched icon-etched">↗</span>
+            </a>
+          </div>
+        </div>
+        <div class="stat-desc"><span class="badge {{ titular_selo.classe }} badge-soft badge-sm">{{ titular_selo.rotulo }}</span></div>
+      {% else %}
+        <div class="stat-value">Sem titular</div>
+        <div class="stat-desc">Vaga aberta — o cargo não está ocupado.</div>
+      {% endif %}
+    </div>
+    <div class="stat {% if not substituto %}stat-vaga{% endif %} card-well">
+      <div class="stat-figure{% if not substituto %} text-error/70!{% endif %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+      </div>
+      <div class="stat-title">Substituto</div>
+      {% if substituto %}
+        <div class="stat-value">
+          <div class="linha-pessoa">
+            {% include "user_admin/partials/_imagem_perfil.html" with perfil=substituto imagem=substituto_imagem cor_unidade_hex=substituto_cor_unidade_hex tamanho="w-11 h-11" halo_escala="0.5" %}
+            <div class="min-w-0 flex-1">
+              <p class="linha-pessoa-nome">{{ substituto.nome }} {{ substituto.sobrenome }}</p>
+              <p class="linha-pessoa-meta">RF {{ substituto.rf }}{% if substituto.cargo_comissao %} · {{ substituto.cargo_comissao.padrao }} · {{ substituto.cargo_comissao.nome }}{% endif %}</p>
+            </div>
+            <a href="{% url 'user_admin:pagina_perfil' substituto.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de {{ substituto.nome }} {{ substituto.sobrenome }}">
+              <span class="etched icon-etched">↗</span>
+            </a>
+          </div>
+        </div>
+      {% elif titular %}
+        <div class="stat-value text-base-content/40!">—</div>
+        <div class="stat-desc">Não há substituição vigente.</div>
+        {% if direcao == "sem_direcao" and titular_impedimento and pode_designar_substituto %}
+          <div class="pt-2">
+            <button type="button"
+                    hx-get="{% url 'user_admin:modal_designar' titular.pk titular_impedimento.pk %}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms"
+                    class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              Designar substituto
+            </button>
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="stat-value">—</div>
+        <div class="stat-desc">Sem titular não há quem substituir: substitui-se uma pessoa, não uma vaga.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if pode_definir_titular %}
+    <div class="flex flex-wrap justify-end gap-3">
+      {% if titular %}
+        <label for="modal-destituir-titular" class="btn btn-glass btn-sm text-error hover:bg-error/10">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+          Destituir
+        </label>
+        <label for="modal-trocar-titular" class="btn btn-onsen btn-sm gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+          Trocar titular
+        </label>
+      {% else %}
+        <label for="modal-definir-titular" class="btn btn-onsen btn-sm gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+          Definir titular
+        </label>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

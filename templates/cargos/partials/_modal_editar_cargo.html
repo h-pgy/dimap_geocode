@@ -1,0 +1,150 @@
+{# Modal de editar cargo em comissão (SPEC user_admin/029) — alvo do hx-get do lápis (já com o cargo #}
+{# escolhido) e do card do painel (sem cargo: mostra o select primeiro). Nome e sigla seguem         #}
+{# editáveis sempre, inclusive em cargo extinto; nível e natureza travam sob ocupante (§7).          #}
+{% if cargo is None %}
+  <input type="checkbox" id="modal-editar-cargo" class="modal-toggle" checked />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar cargo em comissão</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">Escolha o cargo a editar.</p>
+        </div>
+      </div>
+      <div class="card-well p-5 flex flex-col gap-4 mt-5">
+        <p class="text-overline">Cargo a editar</p>
+        <select class="select select-glass"
+                data-select-onsen
+                hx-get="{% url 'cargos:modal_editar_cargo' %}"
+                hx-target="#poco-modal"
+                hx-swap="innerHTML settle:150ms"
+                name="cargo">
+          <option value="" selected>— escolha o cargo —</option>
+          {% for outro in cargos_editaveis %}
+            <option value="{{ outro.pk }}"{% if outro.extinto %} data-extinto="true" title="Cargo Extinto"{% endif %}>{{ outro.padrao }} · {{ outro.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-action">
+        <label for="modal-editar-cargo" class="btn btn-glass btn-sm">Cancelar</label>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-editar-cargo">Fechar</label>
+  </div>
+{% else %}
+  <input type="checkbox" id="modal-editar-cargo" class="modal-toggle" checked />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <form hx-post="{% url 'cargos:gravar_edicao_cargo' cargo.pk %}" hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-5">
+        <div class="flex items-start gap-3">
+          <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-editar-cargo"/></svg></span>
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar cargo em comissão</h2>
+            <p class="text-sm text-base-content/70 mt-0.5">{% include "cargos/partials/_rotulo_cargo.html" %}</p>
+          </div>
+        </div>
+
+        {% include "partials/_tarja_recusa.html" with titulo="Alterações não gravadas" %}
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identificação</p>
+          <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-cargo-nome" class="campo-onsen-toggle"{% if realce.nome %} checked{% endif %} />
+              <span class="text-overline etched-rotulo">Nome</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">{{ cargo.nome }}</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome }}" />
+                </div>
+                <label for="editar-cargo-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-cargo-sigla" class="campo-onsen-toggle"{% if realce.sigla %} checked{% endif %} />
+              <span class="text-overline etched-rotulo">Sigla</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor text-code">{{ cargo.sigla }}</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="sigla" class="input input-glass {{ realce.sigla }}" value="{{ valores.sigla }}" />
+                </div>
+                <label for="editar-cargo-sigla" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a sigla">
+                  <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if natureza_travada %}
+          <div class="card-well p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-overline">Natureza e nível</p>
+              <span class="campo-onsen-cadeado tooltip tooltip-left" data-tip="{{ ocupantes }} servidor(es) ocupam este cargo. Exonere-os antes de alterar nível, natureza ou alta administração.">
+                <svg class="w-4 h-4 etched" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+              </span>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div class="form-field">
+                <span class="text-overline">Natureza</span>
+                <p class="etched etched-rotulo text-[15px] py-2.5">{{ cargo.natureza }}</p>
+              </div>
+              <div class="form-field">
+                <span class="text-overline">Nível</span>
+                <p class="etched etched-rotulo text-[15px] py-2.5">{{ cargo.padrao }}</p>
+              </div>
+            </div>
+            {# Travado não é ausente: sem estes três, o POST manda nivel/e_chefia/alta_administracao #}
+            {# vazios e a trava (que compara o que veio com o que está gravado) acusaria mudança em  #}
+            {# QUALQUER edição — nome ou sigla incluídos — de um cargo ocupado. #}
+            <input type="hidden" name="nivel" value="{% if cargo.nivel %}{{ cargo.nivel }}{% endif %}" />
+            <input type="hidden" name="e_chefia" value="{% if cargo.e_chefia %}on{% endif %}" />
+            <input type="hidden" name="alta_administracao" value="{% if cargo.alta_administracao %}on{% endif %}" />
+          </div>
+        {% else %}
+          <div class="card-well p-5 flex flex-col gap-4" data-chave-condicional data-natureza-cargo>
+            <p class="text-overline">Natureza e nível</p>
+            <div class="card-well chave-onsen chave-onsen-tripla w-full">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="natureza" value="assessoramento" class="sr-only"{% if not valores.e_chefia %} checked{% endif %} />
+                <span class="chave-onsen-rotulo etched etched-deeper">Assessoramento</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="natureza" value="chefia" class="sr-only"{% if valores.e_chefia and not valores.alta_administracao %} checked{% endif %} />
+                <span class="chave-onsen-rotulo etched etched-deeper">Chefia</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="natureza" value="alta_administracao" class="sr-only"{% if valores.alta_administracao %} checked{% endif %} />
+                <span class="chave-onsen-rotulo etched etched-deeper">Alta administração</span>
+              </label>
+            </div>
+            <input type="hidden" name="e_chefia" value="{% if valores.e_chefia %}on{% endif %}" data-campo-e-chefia />
+            <input type="hidden" name="alta_administracao" value="{% if valores.alta_administracao %}on{% endif %}" data-campo-alta-administracao />
+            <div class="form-field" data-mostra-se="assessoramento chefia"{% if valores.alta_administracao %} hidden{% endif %}>
+              <span class="text-overline">Nível</span>
+              <select name="nivel" class="select select-glass {{ realce.nivel }}" data-select-onsen>
+                {% for numero, algarismo in nivel_opcoes %}
+                  <option value="{{ numero }}"{% if valores.nivel == numero %} selected{% endif %}>{{ algarismo }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-field" data-mostra-se="alta_administracao"{% if not valores.alta_administracao %} hidden{% endif %}>
+              <span class="text-overline">Nível</span>
+              <p class="etched etched-rotulo text-[15px] py-2.5">— cargo da alta administração não tem nível —</p>
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="modal-action">
+          <label for="modal-editar-cargo" class="btn btn-glass btn-sm">Cancelar</label>
+          <button type="submit" class="btn btn-onsen btn-sm">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-editar-cargo">Fechar</label>
+  </div>
+{% endif %}

@@ -1,0 +1,21 @@
+{# O disco de paleta (SPEC user_admin/012), extraído do campo de cor do cadastro (SPEC user_admin/020) #}
+{# para que o modal de edição o componha dentro do `.campo-onsen` sem arrastar rótulo e dica da outra  #}
+{# tela. `form_id` só é escrito quando quem inclui declara: no cadastro os campos vivem FORA do <form> #}
+{# (SPEC user_admin/017) e precisam apontá-lo; no modal de edição eles estão dentro dele, e o atributo #}
+{# apontando para id inexistente desassociaria o rádio de qualquer formulário.                         #}
+{# `.palette-field` desce do campo para cá: é o ancestral do `:has(input:checked)` que acende o poço   #}
+{# atual, e os dois `.paint-well-atual` (gatilho e centro do disco) estão dentro deste invólucro.      #}
+<div class="palette-field dropdown dropdown-right dropdown-end w-fit">
+  <div tabindex="0" role="button" class="btn btn-ghost btn-glass w-fit gap-3 px-3 h-12">
+    <span class="paint-well-atual w-8 h-8 pointer-events-none" style="--tinta: {{ cor_hex }}"></span>
+    <svg class="w-4 h-4 icon-glow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+  </div>
+  <div tabindex="0" class="dropdown-content z-30 ml-2">
+    <div class="palette-disc">
+      <span class="paint-well-atual absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="--tinta: {{ cor_hex }}"></span>
+      {% for tom in tons %}
+        <label class="paint-well" style="--a: {{ tom.angulo }}deg; --tinta: {{ tom.hex }}" title="{{ tom.rotulo }}"><input type="radio" name="cor" value="{{ tom.slug }}"{% if form_id %} form="{{ form_id }}"{% endif %} class="sr-only"{% if tom.selecionado %} checked{% endif %}></label>
+      {% endfor %}
+    </div>
+  </div>
+</div>

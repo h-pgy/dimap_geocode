@@ -1,0 +1,14 @@
+{
+  "tipos": [
+    { "nome": "Férias", "sigla": null },
+    { "nome": "Licença para Tratar de Interesses Particulares", "sigla": "LIP" },
+    { "nome": "Licença para Tratamento de Saúde", "sigla": "LTS" },
+    { "nome": "Licença por Motivo de Doença em Pessoa da Família", "sigla": null },
+    { "nome": "Licença Maternidade", "sigla": null },
+    { "nome": "Licença Paternidade", "sigla": null },
+    { "nome": "Afastamento para Cursos e Congressos", "sigla": null },
+    { "nome": "Licença Médica de Curta Duração", "sigla": null },
+    { "nome": "Licença Gala", "sigla": null },
+    { "nome": "Licença Nojo", "sigla": null }
+  ]
+}

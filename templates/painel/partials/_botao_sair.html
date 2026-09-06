@@ -1,0 +1,6 @@
+{# Único item avulso com template próprio (SPEC painel/001): a rota só encerra a sessão por POST  #}
+{# com o token CSRF dela, e nenhum <a href> faz isso.                                              #}
+<form method="post" action="{{ item.url }}" class="self-center">
+  {% csrf_token %}
+  <button type="submit" class="btn-etched btn-etched-swell etched">{{ item.nome }}</button>
+</form>

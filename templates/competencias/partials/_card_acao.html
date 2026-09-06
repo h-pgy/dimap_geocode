@@ -1,0 +1,14 @@
+{% load icones %}
+{% icone_acao item.slug item.variante_icone as svg %}
+{# O clicável é o <a> de fora: o .hover-3d exige conteúdo não-interativo nos 9 filhos diretos. #}
+<a href="{{ item.url }}" class="hover-3d card-acao-alvo">
+  <div class="glass-bg glass-edge glass-shadow card-acao">
+    {% include "competencias/partials/_icone_acao.html" with svg=svg variante=item.variante_icone %}
+    <div>
+      <p class="card-acao-nome">{{ item.nome }}</p>
+      <p class="card-acao-descricao">{{ item.tooltip }}</p>
+    </div>
+  </div>
+  <div></div><div></div><div></div><div></div>
+  <div></div><div></div><div></div><div></div>
+</a>

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Primeiro Login · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-md mx-auto px-4 py-24">
+      <div class="glass-panel p-8 sm:p-9 flex flex-col gap-7 shadow-2xl border-white/70">
+
+        <div class="flex flex-col gap-2 text-center">
+          <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-agua-100 text-agua-700 mx-auto mb-1 shadow-sm">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-black text-madeira-700 tracking-tight">Primeiro Login</h2>
+          <p class="text-xs text-base-content/80 leading-relaxed px-2">
+            Confirme a <strong>senha de uso único</strong> de 8 dígitos recebida no e-mail institucional.
+          </p>
+        </div>
+
+        <div class="card-well p-3 flex items-center justify-between bg-base-100/60">
+          <span class="text-xs uppercase font-bold text-base-content/60">Servidor autenticando:</span>
+          <span class="font-mono font-bold text-agua-700">RF {{ rf }}</span>
+        </div>
+
+        <form method="post" action="{% url 'autenticacao:validar_otp' %}" class="flex flex-col gap-6">
+          {% csrf_token %}
+          <input type="hidden" name="rf" value="{{ rf|default:'' }}" />
+
+          {% if recusa %}
+            <div class="p-3 bg-error/10 border border-error/30 text-xs text-error rounded-lg font-medium">
+              {% for mensagem in recusa.mensagens %}{{ mensagem }}{% endfor %}
+            </div>
+          {% endif %}
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold uppercase tracking-wider text-center text-base-content/70">Senha de uso único:</label>
+            <input type="hidden" name="otp" id="otp-valor" value="" />
+            <div class="otp-onsen my-2" data-otp-alvo="#otp-valor">
+              {% for _ in "12345678" %}
+                <input type="text" inputmode="numeric" maxlength="1" class="otp-caixa {{ recusa.realce.otp }}" />
+              {% endfor %}
+            </div>
+            <p class="text-[11px] text-center text-base-content/50">Confira o código enviado para seu e-mail institucional.</p>
+          </div>
+
+          <div class="aura aura-onsen w-full mt-1">
+            <button type="submit" class="btn btn-onsen w-full text-base font-bold shadow-md">Primeiro Login</button>
+          </div>
+
+          <div class="text-center">
+            <a href="{% url 'autenticacao:login' %}" class="text-xs text-base-content/60 hover:text-agua-600 transition-colors">Voltar para o login</a>
+          </div>
+        </form>
+
+        {# Fora do <form> do código: formulário aninhado não existe em HTML, e o `hx-post` deste  #}
+        {# botão só troca a resposta abaixo dele.                                                 #}
+        <button type="button" class="btn btn-glass w-full font-bold"
+                hx-post="{% url 'autenticacao:reenviar_senha_unico' %}"
+                hx-vals='{"rf": "{{ rf }}"}'
+                hx-target="#resultado-reenvio-senha"
+                data-reenvio-acionador>
+          Reenviar senha de uso único
+        </button>
+        <div id="resultado-reenvio-senha" class="min-h-[1rem]"></div>
+
+      </div>
+    </div>
+  </div>
+  <div id="poco-modal" class="poco-modal"></div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/ui/otp_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/contagem_reenvio.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/copiar_senha.js' %}"></script>
+{% endblock %}

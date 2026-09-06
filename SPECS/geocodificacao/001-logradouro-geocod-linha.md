@@ -1,9 +1,11 @@
 ---
 spec: geocodificacao/001
 versao: v11
-atualizado_em: 2026-06-29
-implementado: false
+atualizado_em: 2026-09-04
+implementado: true
+testes_tdd: true
 changelog:
+  - v11: "[admin] atualização de flags: implementado e testes_tdd verdadeiros (código já estava em produção desde 2026-07-02)"
   - v1: versão inicial
   - v2: LineGeometry passa a validar a forma do GeoJSON (lista de posições) em vez de coordinates Any
   - v3: validação fatorada em primitivas compostas (ponto ⊂ linha ⊂ coleção de linhas), reusáveis por ponto/polígono

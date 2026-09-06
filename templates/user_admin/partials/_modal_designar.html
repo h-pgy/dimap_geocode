@@ -1,0 +1,105 @@
+{# Modal de designar substituto e a VARIANTE de trocar (SPEC user_admin/015, ato na 024) #}
+<input type="checkbox" id="modal-designar" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+    <form hx-post="{% if troca %}{% url 'user_admin:gravar_troca' perfil.pk troca.substituicao.pk %}{% else %}{% url 'user_admin:gravar_designacao' perfil.pk cartao.impedimento.pk %}{% endif %}"
+          hx-target="#poco-modal"
+          hx-swap="innerHTML"
+          class="flex flex-col gap-6">
+
+      <div>
+        <h2 class="text-xl font-bold tracking-tight text-madeira-700">{% if troca %}Trocar substituto{% else %}Designar substituto{% endif %}</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          {% if troca %}Quem passa a responder{% else %}Quem responde{% endif %} pelo cargo de {{ perfil.nome }} {{ perfil.sobrenome }} neste afastamento.
+        </p>
+      </div>
+
+      {% include "partials/_tarja_recusa.html" with titulo="A substituição não foi gravada" %}
+
+      {# Substituto DE QUÊ: placa fixa, não campo #}
+      <div class="tarja-vinculo flex items-center gap-3">
+        <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3.5 5h17v16h-17z"/><path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>
+        <div class="min-w-0">
+          <p class="text-[15px] font-medium text-base-content/90">{{ cartao.impedimento.tipo.nome }}</p>
+          <p class="text-[13px] text-base-content/60">{{ cartao.periodo }}</p>
+        </div>
+      </div>
+
+      {% if troca %}
+        <div class="tarja-vinculo flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/><path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            <strong>{{ troca.perfil.nome }} {{ troca.perfil.sobrenome }}</strong> responde pelo cargo em
+            {{ troca.periodo }}. A substituição dele é <strong>encerrada na véspera</strong> do dia em que
+            a nova assume e <strong>continua na lista</strong>, com o período que exerceu — trocar não
+            apaga quem passou.
+          </p>
+        </div>
+      {% endif %}
+
+      {# O alcance é estado do campo, não outro modal #}
+      <div class="form-field group">
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-overline">Servidor</span>
+          <label class="flex items-center gap-2 shrink-0 cursor-pointer">
+            <span class="text-xs text-base-content/60">Outras unidades</span>
+            <input type="checkbox" class="toggle-onsen" aria-label="Liberar outras unidades" />
+          </label>
+        </div>
+
+        <div class="flex flex-col gap-1.5 group-has-[.toggle-onsen:checked]:hidden">
+          <select name="substituto" class="select select-glass {{ realce.substituto }}" data-select-onsen>
+            {% for candidato in candidatos.unidade %}
+              <option value="{{ candidato.pk }}"{% if valores.substituto == candidato.pk|stringformat:"s" or valores.substituto == candidato.pk or troca and candidato.pk == troca.perfil.pk and not valores.substituto %} selected{% endif %}>{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">
+            A {{ perfil.unidade.sigla }} inteira, menos quem estiver <strong>afastado</strong> ou
+            <strong>cobrindo outra pessoa</strong> no período. Cargo em comissão não é exigido nem impede.
+          </span>
+        </div>
+
+        <div class="hidden flex-col gap-1.5 group-has-[.toggle-onsen:checked]:flex">
+          <select name="substituto" class="select select-glass {{ realce.substituto }}" data-select-onsen>
+            {% for candidato in candidatos.ampliado %}
+              <option value="{{ candidato.pk }}"{% if valores.substituto == candidato.pk|stringformat:"s" or valores.substituto == candidato.pk or troca and candidato.pk == troca.perfil.pk and not valores.substituto %} selected{% endif %}>{{ candidato.nome }} {{ candidato.sobrenome }} · RF {{ candidato.rf }} · {{ candidato.unidade.sigla }}{% if candidato.cargo_comissao %} · {{ candidato.cargo_comissao.padrao }} · {{ candidato.cargo_comissao.nome }}{% endif %}</option>
+            {% endfor %}
+          </select>
+          <span class="form-field-hint">
+            Liberado o alcance, a <strong>unidade superior vem primeiro</strong> — é de onde a cobertura
+            costuma vir. Um titular pode cobrir outro titular e responder pelas duas unidades; o que ele
+            não pode é cobrir duas pessoas ao mesmo tempo.
+          </span>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <label class="form-field">
+          <span class="text-overline">{% if troca %}Assume em{% else %}Substitui a partir de{% endif %}</span>
+          <input type="date" data-campo-data name="data_inicio" class="input input-glass {{ realce.data_inicio }}" value="{{ data_inicio }}" />
+          {% if troca %}<span class="form-field-hint">{{ troca.perfil.nome }} fica registrado até a véspera deste dia.</span>{% endif %}
+        </label>
+        <label class="form-field">
+          <span class="text-overline">Substitui até</span>
+          <input type="date" data-campo-data name="data_fim" class="input input-glass {{ realce.data_fim }}" value="{{ data_fim }}" />
+          {% if troca %}<span class="form-field-hint">Encurtar deixa o resto do afastamento descoberto.</span>{% endif %}
+        </label>
+      </div>
+      {% if not troca %}
+        <p class="form-field-hint -mt-4">
+          As datas vêm do <strong>primeiro pedaço descoberto</strong> do afastamento; sendo ele
+          indeterminado, <em>Substitui até</em> vem vazio, e vazio continua querendo dizer indeterminado.
+          Editáveis, os campos só podem <strong>estreitar</strong> — substituir quem está na cadeira não
+          é substituir —, e nunca por cima de outra substituição já designada. Se terminar antes, o resto
+          segue <strong>sem ninguém respondendo</strong> até que outra pessoa seja designada para ele.
+        </p>
+      {% endif %}
+
+      <div class="modal-action">
+        <label for="modal-designar" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">{% if troca %}Trocar{% else %}Designar{% endif %}</button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-designar">Fechar</label>
+</div>

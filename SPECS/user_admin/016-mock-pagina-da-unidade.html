@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/016 — A página da unidade (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fundo da área administrativa: o partial e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Este mock precisa ser servido com root na RAIZ DO PROJETO (ex.: Live Server) —
+       aberto via file:// o fetch é bloqueado e o tema não carrega. -->
+  <script>
+    // Tema e peças desta SPEC no MESMO bloco text/tailwindcss: as escalas agua/rocha/madeira/sakura
+    // vêm do @theme do tema, e um bloco separado que as usa em @apply cai com "unknown utility".
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-016").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto (Live Server), não abra via file://.</p>"));
+  </script>
+
+  <!-- PEÇAS DESTA SPEC, que ainda não estão no tema. Guardadas em script[type=text/css] (inerte) e
+       concatenadas ao tema pelo loader acima. O que a página usa da SPEC 015 — o raio da placa, a
+       linha de pessoa e a tarja de vínculo — vem do tema, onde já foi portado. -->
+  <script type="text/css" id="tokens-spec-016">
+    @layer components {
+      /* ==================== MOLÉCULA · BANDEJA DE INDICADORES ==================== */
+      /* Sem o important, a tinta do componente entra por baixo do gelo. */
+      .stats-onsen { @apply bg-transparent! w-full gap-3 p-3; }
+      /* A aresta tracejada do daisyUI vem num :not(:last-child) que empata em força com o seletor. */
+      .stats-onsen .stat { @apply px-4 py-3 gap-1.5 border-solid! border-white/45!; }
+      /* As partes do daisyUI têm pele própria: a tinta do sistema só entra por descendência. */
+      .stats-onsen .stat-title  { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
+      .stats-onsen .stat-value  { @apply text-[26px] leading-tight font-bold text-madeira-700 whitespace-normal; }
+      .stats-onsen .stat-desc   { @apply text-[13px] text-base-content/60 whitespace-normal; }
+      .stats-onsen .stat-figure { @apply self-end justify-self-end text-agua-600/60; }
+      /* Variante: célula do titular quando a unidade está vaga. */
+      .stat-vaga .stat-value { @apply text-error; }
+
+      /* ==================== MOLÉCULA · CAMPO QUE SE ABRE PARA EDIÇÃO ==================== */
+      .campo-onsen { @apply flex flex-col gap-1.5; }
+      .campo-onsen-toggle { @apply sr-only; }
+      .campo-onsen-linha { @apply flex items-center gap-2 min-w-0; }
+      .campo-onsen-valor { @apply flex-1 min-w-0 text-[15px] text-base-content/90 py-1.5; }
+      .campo-onsen-campo { @apply hidden flex-1 min-w-0; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-valor { @apply hidden; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-campo { @apply block; }
+      /* Aberto, o campo cresce e o botão sobe: centrado, ele flutuaria no meio da coluna. */
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-linha { @apply items-start; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis { @apply mt-1.5; }
+      .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis .icon-etched {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      /* O poço do campo aberto é a sombra do .card-well; o .input-glass entra por composição. */
+      .campo-onsen-campo :where(input, select, .select-onsen-trigger) {
+        @apply bg-white/30! border-white/45! shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
+      }
+    }
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #e3eff5; }
+  </style>
+</head>
+<body class="text-base-content">
+
+  <!-- Glifos da seção. Na aplicação viram partial de ícones, como os defs de gravação. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-titular">
+        <circle cx="9.5" cy="8" r="3.2"/>
+        <path d="M4 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="m18.4 3.6 1.1 2.2 2.5.36-1.8 1.75.42 2.47-2.22-1.17-2.22 1.17.43-2.47-1.8-1.75 2.48-.36z"/>
+      </g>
+      <g id="glifo-substituto">
+        <circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>
+        <path d="M16 9h5"/><path d="M18.5 6.5 21 9l-2.5 2.5"/>
+      </g>
+      <g id="glifo-servidores">
+        <circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6"/>
+        <path d="M16.8 5.6a3.2 3.2 0 0 1 0 4.8"/><path d="M18.4 14.9c1.9.8 3.1 2.5 3.1 5.1"/>
+      </g>
+      <g id="glifo-hierarquia">
+        <rect x="9" y="3" width="6" height="4.4" rx="1.2"/>
+        <rect x="2.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <rect x="15.5" y="16.6" width="6" height="4.4" rx="1.2"/>
+        <path d="M12 7.4v4.2"/><path d="M5.5 16.6v-5h13v5"/>
+      </g>
+      <g id="glifo-degrau"><path d="M3 20h5.5v-4.5H14V11h5.5V6.5"/></g>
+      <g id="glifo-lapis">
+        <path d="M4 20.2h4L18.6 9.6a2.1 2.1 0 0 0-3-3L5 17.2v3z"/><path d="m14.4 7.8 3 3"/>
+      </g>
+      <g id="glifo-alerta">
+        <path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/>
+      </g>
+
+      <!-- Filtro da gravação no gelo (SPEC 013) — repetido aqui só para o mock renderizar sozinho;
+           na aplicação ele vem de templates/partials/_filtros_gravacao.html, no base.html. Sem os
+           defs no documento a classe .etched existe e não desenha nada. -->
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+    <header class="glass-panel p-8 sm:p-10">
+      <p class="text-overline text-madeira-600">SPEC user_admin/016 · mock de validação</p>
+      <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">A página da unidade</h1>
+      <p class="mt-4 max-w-2xl text-base-content/80 leading-relaxed">
+        Peças novas: a <strong class="text-agua-700">bandeja de indicadores</strong>
+        (<span class="text-code">.stats-onsen</span>, com <span class="text-code">.stat-vaga</span>) e o
+        <strong class="text-agua-700">campo que se abre para edição</strong>
+        (<span class="text-code">.campo-onsen</span>).
+      </p>
+      <div class="flex flex-wrap gap-2 mt-5">
+        <span class="badge badge-ponto">bandeja de indicadores</span>
+        <span class="badge badge-linha">seção de direção</span>
+        <span class="badge badge-poligono">modal de titularidade</span>
+        <span class="badge badge-error badge-soft">unidade sem titular</span>
+      </div>
+    </header>
+
+    <!-- ==================== 2 · ÁTOMOS ==================== -->
+    <section class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <h2 class="text-[24px] font-bold text-madeira-700">2 · Átomos</h2>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">2.1 · Selo de direção — o <code class="text-code">badge</code> nas quatro respostas</p>
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="badge badge-success badge-soft">Dirigida pelo titular</span>
+          <span class="badge badge-success badge-soft">Dirigida pelo substituto</span>
+          <span class="badge badge-error badge-soft">Sem direção</span>
+          <span class="badge badge-error badge-soft">Sem titular</span>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">2.2 · Glifos da seção</p>
+        <div class="flex flex-wrap items-center gap-8">
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+            titular
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+            substituto <span class="text-base-content/50">(SPEC 015)</span>
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
+            servidores lotados
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+            unidade superior
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-base-content/80">
+            <svg class="w-6 h-6 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
+            cargo mínimo
+          </span>
+          <span class="inline-flex items-center gap-2 text-[13px] text-error">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            sem direção
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3 · MOLÉCULAS ==================== -->
+    <section class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+      <h2 class="text-[24px] font-bold text-madeira-700">3 · Moléculas</h2>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.1 · Bandeja de indicadores — <code class="text-code">.stats-onsen</code></p>
+        <!-- estado: cargo mínimo em padrão de cargo -->
+        <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
+            </div>
+            <div class="stat-title">Servidores lotados</div>
+            <div class="stat-value">14</div>
+            <div class="stat-desc">na DIMAP</div>
+          </div>
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+            </div>
+            <div class="stat-title">Unidade superior</div>
+            <div class="stat-value flex items-center gap-2">
+              <span class="dot-unidade w-3 h-3" style="--cor-unidade:#415a77"></span>
+              DECAD
+            </div>
+            <div class="stat-desc">Departamento de Cadastros</div>
+          </div>
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
+            </div>
+            <div class="stat-title">Cargo mínimo do titular</div>
+            <div class="stat-value">CDA-IV</div>
+            <div class="stat-desc">exigido do tipo Divisão</div>
+          </div>
+        </div>
+        <!-- estado: tipo que exige alta administração -->
+        <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
+            </div>
+            <div class="stat-title">Cargo mínimo do titular</div>
+            <div class="stat-value">Alta administração</div>
+            <div class="stat-desc">nenhum nível serve ao tipo Subsecretaria</div>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          Composição: <code class="text-code">.glass-panel</code> (bandeja) →
+          <code class="text-code">.card-well</code> (cada indicador).
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.2 · A célula de pessoa — a <code class="text-code">.linha-pessoa</code> dentro da bandeja</p>
+        <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+          <div class="stat card-well">
+            <div class="stat-figure">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+            </div>
+            <div class="stat-title">Titular</div>
+            <div class="stat-value">
+              <div class="linha-pessoa">
+                <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
+                  <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">HP</text></svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="linha-pessoa-nome">Helena Prado</p>
+                  <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
+                </div>
+                <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                  <span class="etched icon-etched">↗</span>
+                </a>
+              </div>
+            </div>
+            <div class="stat-desc"><span class="badge badge-success badge-soft badge-sm">Em exercício</span></div>
+          </div>
+          <!-- estado: vaga -->
+          <div class="stat stat-vaga card-well">
+            <div class="stat-figure text-error/70!">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            </div>
+            <div class="stat-title">Titular</div>
+            <div class="stat-value">Sem titular</div>
+            <div class="stat-desc">Nenhum servidor titulariza a DIMAP-2.</div>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          Composição: <code class="text-code">.stat</code> → <code class="text-code">.linha-pessoa</code> →
+          <code class="text-code">.avatar-glass</code> (foto ou iniciais, resolvidas no
+          <code class="text-code">_imagem_perfil.html</code>). À direita, a variante
+          <code class="text-code">.stat-vaga</code>.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.3 · O alarme — <code class="text-code">.tarja-vinculo-critica</code>, sem peça nova</p>
+        <!-- estado: sem titular -->
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">A DIMAP-2 está sem titular</p>
+            <p class="text-[13px] text-base-content/60">Nenhum servidor titulariza esta unidade. Enquanto durar, quem responde por ela é a direção da unidade superior.</p>
+          </div>
+        </div>
+        <!-- estado: sem direção -->
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+          <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">A DIMAP está sem quem responda por ela</p>
+            <p class="text-[13px] text-base-content/60">Helena Prado é a titular, está afastada e não há substituta designada.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.4 · A placa de resumo — sem peça nova</p>
+        <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+          <div class="min-w-0">
+            <p class="text-overline">Nome</p>
+            <p class="text-[15px] text-base-content/90 mt-0.5">Divisão do Mapa de Valores</p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-overline">Sigla</p>
+            <p class="text-[15px] text-base-content/90 mt-0.5">DIMAP</p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-overline">Tipo de unidade</p>
+            <p class="text-[15px] text-base-content/90 mt-0.5">Divisão <span class="text-base-content/50">· nível 3</span></p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-overline">Cargo mínimo do titular</p>
+            <p class="text-[15px] text-base-content/90 mt-0.5">CDA-IV <span class="text-base-content/50">· chefia</span></p>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          Composição: <code class="text-code">.glass-panel</code> fino com grade de
+          <code class="text-code">.text-overline</code> + valor em texto.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">3.5 · Campo que se abre para edição — <code class="text-code">.campo-onsen</code></p>
+        <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+          <div class="campo-onsen">
+            <input type="checkbox" id="demo-campo-lido" class="campo-onsen-toggle" />
+            <span class="text-overline etched-rotulo">Nome</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">Divisão do Mapa de Valores</p>
+              <div class="campo-onsen-campo">
+                <input type="text" class="input input-glass" value="Divisão do Mapa de Valores" />
+              </div>
+              <label for="demo-campo-lido" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                <span class="etched icon-etched">✎</span>
+              </label>
+            </div>
+          </div>
+          <div class="campo-onsen">
+            <input type="checkbox" id="demo-campo-aberto" class="campo-onsen-toggle" checked />
+            <span class="text-overline etched-rotulo">Sigla</span>
+            <div class="campo-onsen-linha">
+              <p class="campo-onsen-valor">DIMAP</p>
+              <div class="campo-onsen-campo">
+                <input type="text" class="input input-glass" value="DIMAP" />
+              </div>
+              <label for="demo-campo-aberto" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a sigla">
+                <span class="etched icon-etched">✎</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <p class="text-[13px] text-base-content/70">
+          À esquerda, <strong>lido</strong>; à direita, <strong>aberto</strong>. Composição:
+          <code class="text-code">.etched-rotulo</code> + valor em texto + o botão de vidro da SPEC 013, com
+          o campo em <code class="text-code">.input-glass</code> por dentro. Estado por
+          <code class="text-code">checkbox</code> + <code class="text-code">:has()</code>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ==================== 4 · ORGANISMOS ==================== -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
+        4 · Organismos — a seção de direção nos seus estados
+      </h2>
+
+      <!-- ESTADO 1 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 1 · Dirigida pelo titular</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Direção</p>
+            <span class="badge badge-success badge-soft">Dirigida pelo titular</span>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              </div>
+              <div class="stat-title">Titular</div>
+              <div class="stat-value">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">HP</text></svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="linha-pessoa-nome">Helena Prado</p>
+                    <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
+                  </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
+                </div>
+              </div>
+              <div class="stat-desc"><span class="badge badge-success badge-soft badge-sm">Em exercício</span></div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              </div>
+              <div class="stat-title">Substituto</div>
+              <div class="stat-value text-base-content/40!">—</div>
+              <div class="stat-desc">Não há substituição vigente.</div>
+            </div>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
+              </div>
+              <div class="stat-title">Servidores lotados</div>
+              <div class="stat-value">14</div>
+              <div class="stat-actions">
+                <a href="#" class="btn btn-glass btn-xs">Ver na listagem</a>
+              </div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+              </div>
+              <div class="stat-title">Unidade superior</div>
+              <div class="stat-value flex items-center gap-2">
+                <span class="dot-unidade w-3 h-3" style="--cor-unidade:#415a77"></span>
+                DECAD
+              </div>
+              <div class="stat-desc">Departamento de Cadastros</div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
+              </div>
+              <div class="stat-title">Cargo mínimo do titular</div>
+              <div class="stat-value">CDA-IV</div>
+              <div class="stat-desc">exigido do tipo Divisão</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap justify-end gap-3">
+            <label for="modal-destituir-titular" class="btn btn-glass btn-sm">Destituir</label>
+            <label for="modal-trocar-titular" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              Trocar titular
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO 2 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 2 · Dirigida pelo substituto — a titular está afastada, mas alguém cobre</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Direção</p>
+            <span class="badge badge-success badge-soft">Dirigida pelo substituto</span>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              </div>
+              <div class="stat-title">Titular</div>
+              <div class="stat-value">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">HP</text></svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="linha-pessoa-nome">Helena Prado</p>
+                    <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
+                  </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
+                </div>
+              </div>
+              <div class="stat-desc"><span class="badge badge-warning badge-soft badge-sm">Afastada</span> férias até 24/08/2026</div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              </div>
+              <div class="stat-title">Substituto — responde pela direção</div>
+              <div class="stat-value">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#415A77"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">RA</text></svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="linha-pessoa-nome">Rafael Andrade</p>
+                    <p class="linha-pessoa-meta">RF 999904 · CDA-III · Chefe de Seção</p>
+                  </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Rafael Andrade">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
+                </div>
+              </div>
+              <div class="stat-desc">desde 05/08/2026 · designado na página da titular</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap justify-end gap-3">
+            <label for="modal-destituir-titular" class="btn btn-glass btn-sm">Destituir</label>
+            <label for="modal-trocar-titular" class="btn btn-glass btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              Trocar titular
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO 3 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 3 · Sem direção — a titular está afastada e ninguém cobre</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Direção</p>
+            <span class="badge badge-error badge-soft">Sem direção</span>
+          </div>
+
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">A DIMAP está sem quem responda por ela</p>
+              <p class="text-[13px] text-base-content/60">Helena Prado é a titular, está afastada e não há substituta designada.</p>
+            </div>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              </div>
+              <div class="stat-title">Titular</div>
+              <div class="stat-value">
+                <div class="linha-pessoa">
+                  <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
+                    <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="38" font-weight="700" fill="#F2F8FB">HP</text></svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="linha-pessoa-nome">Helena Prado</p>
+                    <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
+                  </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
+                </div>
+              </div>
+              <div class="stat-desc"><span class="badge badge-warning badge-soft badge-sm">Afastada</span> férias até 24/08/2026</div>
+            </div>
+            <div class="stat stat-vaga card-well">
+              <div class="stat-figure text-error/70!">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              </div>
+              <div class="stat-title">Substituto</div>
+              <div class="stat-value">Não designado</div>
+              <div class="stat-desc">Designar é ato na página da titular.</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap justify-end gap-3">
+            <a href="#" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              Ir à página de Helena Prado
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO 4 -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline text-madeira-600">Estado 4 · Sem titular — a vaga aberta</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Direção</p>
+            <span class="badge badge-error badge-soft">Sem titular</span>
+          </div>
+
+          <div class="tarja-vinculo tarja-vinculo-critica flex items-center gap-3">
+            <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-base-content/90">A DIMAP-2 está sem titular</p>
+              <p class="text-[13px] text-base-content/60">Nenhum servidor titulariza esta unidade. Enquanto durar, quem responde por ela é a direção da unidade superior.</p>
+            </div>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat stat-vaga card-well">
+              <div class="stat-figure text-error/70!">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              </div>
+              <div class="stat-title">Titular</div>
+              <div class="stat-value">Sem titular</div>
+              <div class="stat-desc">Vaga aberta — o cargo não está ocupado.</div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              </div>
+              <div class="stat-title">Substituto</div>
+              <div class="stat-value text-base-content/40!">—</div>
+              <div class="stat-desc">Sem titular não há quem substituir: substitui-se uma pessoa, não uma vaga.</div>
+            </div>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
+              </div>
+              <div class="stat-title">Servidores lotados</div>
+              <div class="stat-value">6</div>
+              <div class="stat-actions">
+                <a href="#" class="btn btn-glass btn-xs">Ver na listagem</a>
+              </div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+              </div>
+              <div class="stat-title">Unidade superior</div>
+              <div class="stat-value flex items-center gap-2">
+                <span class="dot-unidade w-3 h-3" style="--cor-unidade:#0077b6"></span>
+                DIMAP
+              </div>
+              <div class="stat-desc">Divisão do Mapa de Valores</div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-degrau"/></svg>
+              </div>
+              <div class="stat-title">Cargo mínimo do titular</div>
+              <div class="stat-value">CDA-III</div>
+              <div class="stat-desc">exigido do tipo Seção</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap justify-end gap-3">
+            <label for="modal-titular-sem-candidatos" class="btn btn-glass btn-sm">Ver o caso sem candidatos</label>
+            <label for="modal-definir-titular" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              Definir titular
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 5 · A PÁGINA INTEIRA ==================== -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-[24px] font-bold text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)] px-2">
+        5 · A página da unidade — visualizar a DIMAP
+      </h2>
+
+      <!-- página: user_admin/unidade.html -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6 max-w-3xl mx-auto w-full">
+        <!-- partial: user_admin/partials/_identidade_unidade.html -->
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <h3 class="text-2xl font-bold tracking-tight text-madeira-700">DIMAP</h3>
+            <p class="text-sm text-base-content/70 mt-1">Divisão do Mapa de Valores</p>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <span class="badge badge-linha badge-sm">Divisão</span>
+              <span class="badge badge-info badge-soft">nível 3</span>
+              <span class="badge badge-ponto badge-sm">14 servidores</span>
+            </div>
+          </div>
+          <span class="dot-unidade w-6 h-6 mt-1" style="--cor-unidade:#0077b6"></span>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: user_admin/partials/_secao_resumo_unidade.html -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Resumo</p>
+
+          <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="min-w-0">
+              <p class="text-overline">Nome</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">Divisão do Mapa de Valores</p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Sigla</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">DIMAP</p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Tipo de unidade</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">Divisão <span class="text-base-content/50">· nível 3</span></p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-overline">Cargo mínimo do titular</p>
+              <p class="text-[15px] text-base-content/90 mt-0.5">CDA-IV <span class="text-base-content/50">· de chefia</span></p>
+            </div>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-servidores"/></svg>
+              </div>
+              <div class="stat-title">Servidores lotados</div>
+              <div class="stat-value">14</div>
+              <div class="stat-actions">
+                <a href="#" class="btn btn-glass btn-xs">Ver na listagem</a>
+              </div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+              </div>
+              <div class="stat-title">Unidade superior</div>
+              <div class="stat-value flex items-center gap-2">
+                <span class="dot-unidade w-3 h-3" style="--cor-unidade:#415a77"></span>
+                DECAD
+              </div>
+              <div class="stat-desc">Departamento de Cadastros</div>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: user_admin/partials/_secao_direcao.html — nos estados 3 e 4 ela inclui o
+             _alarme_direcao.html entre o selo e a bandeja -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-overline">Direção</p>
+            <span class="badge badge-success badge-soft">Dirigida pelo titular</span>
+          </div>
+
+          <div class="glass-panel stats stats-onsen stats-vertical sm:stats-horizontal">
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              </div>
+              <div class="stat-title">Titular</div>
+              <div class="stat-value">
+                <div class="linha-pessoa">
+                  <!-- partial: user_admin/partials/_imagem_perfil.html — foto ou iniciais -->
+                  <div class="avatar-glass shrink-0 w-11 h-11" style="--cor-unidade:#0077B6">
+                    <img src="https://i.pravatar.cc/160?img=47" alt="Foto de Helena Prado" class="w-full h-full object-cover" />
+                  </div>
+                  <!-- /partial -->
+                  <div class="min-w-0 flex-1">
+                    <p class="linha-pessoa-nome">Helena Prado</p>
+                    <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão</p>
+                  </div>
+                  <a href="#" class="btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Abrir a página de Helena Prado">
+                    <span class="etched icon-etched">↗</span>
+                  </a>
+                </div>
+              </div>
+              <div class="stat-desc"><span class="badge badge-success badge-soft badge-sm">Em exercício</span></div>
+            </div>
+            <div class="stat card-well">
+              <div class="stat-figure">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-substituto"/></svg>
+              </div>
+              <div class="stat-title">Substituto</div>
+              <div class="stat-value text-base-content/40!">—</div>
+              <div class="stat-desc">Não há substituição vigente.</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap justify-end gap-3">
+            <label for="modal-destituir-titular" class="btn btn-glass btn-sm">Destituir</label>
+            <label for="modal-trocar-titular" class="btn btn-onsen btn-sm gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+              Trocar titular
+            </label>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- fica na página: só arranjo — o botão que abre o modal de edição -->
+        <div class="flex justify-center pt-2">
+          <label for="modal-editar-unidade" class="btn btn-onsen btn-lg gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+            Editar unidade
+          </label>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== MODAL · EDITAR UNIDADE ====================
+       partial: user_admin/partials/_modal_editar_unidade.html — irmão do formulário, nunca dentro
+       dele; os campos por dentro são o _campos_unidade.html (SPEC 012), com instância.
+       estados: campo lido (Nome, Sigla) × campo aberto com aviso (Tipo, Unidade superior) -->
+  <input type="checkbox" id="modal-editar-unidade" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar unidade</h2>
+          <p class="text-sm text-base-content/70 mt-1">DIMAP · Divisão do Mapa de Valores</p>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Identificação</p>
+          <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-campo-nome" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">Nome</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">Divisão do Mapa de Valores</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="nome" class="input input-glass" value="Divisão do Mapa de Valores" />
+                </div>
+                <label for="editar-campo-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                  <span class="etched icon-etched">✎</span>
+                </label>
+              </div>
+            </div>
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-campo-sigla" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">Sigla</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">DIMAP</p>
+                <div class="campo-onsen-campo">
+                  <input type="text" name="sigla" class="input input-glass" value="DIMAP" />
+                </div>
+                <label for="editar-campo-sigla" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a sigla">
+                  <span class="etched icon-etched">✎</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Hierarquia</p>
+          <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-campo-tipo" class="campo-onsen-toggle" checked />
+              <span class="text-overline etched-rotulo">Tipo</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">Divisão <span class="text-base-content/50">· nível 3</span></p>
+                <div class="campo-onsen-campo">
+                  <select name="tipo" class="select select-glass" data-select-onsen>
+                    <option>Divisão</option>
+                    <option>Seção</option>
+                    <option>Departamento</option>
+                    <option>Coordenação</option>
+                  </select>
+                  <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                    <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                    <p class="text-[13px] text-base-content/80">Mudar para um tipo que o titular não satisfaça é <strong>recusado na validação</strong>: a unidade não fica com titular inválido gravado.</p>
+                  </div>
+                </div>
+                <label for="editar-campo-tipo" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o tipo">
+                  <span class="etched icon-etched">✎</span>
+                </label>
+              </div>
+            </div>
+            <div class="campo-onsen">
+              <input type="checkbox" id="editar-campo-pai" class="campo-onsen-toggle" />
+              <span class="text-overline etched-rotulo">Unidade superior</span>
+              <div class="campo-onsen-linha">
+                <p class="campo-onsen-valor">DECAD <span class="text-base-content/50">· Departamento de Cadastros</span></p>
+                <div class="campo-onsen-campo">
+                  <select name="pai" class="select select-glass" data-select-onsen>
+                    <option>DECAD · Departamento de Cadastros</option>
+                    <option>SUREM · Subsecretaria da Receita Municipal</option>
+                    <option value="">— sem unidade superior (raiz) —</option>
+                  </select>
+                  <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
+                    <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+                    <p class="text-[13px] text-base-content/80">É <strong>recusado na validação</strong> quando o nível não subordina ou quando o tipo do pai veda este filho.</p>
+                  </div>
+                </div>
+                <label for="editar-campo-pai" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar a unidade superior">
+                  <span class="etched icon-etched">✎</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-editar-unidade" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-editar-unidade" class="btn btn-onsen btn-sm">Salvar alterações</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-editar-unidade">Fechar</label>
+  </div>
+
+  <!-- ==================== MODAL · DEFINIR TITULAR ====================
+       partial: user_admin/partials/_modal_definir_titular.html — checkbox nativo, sempre fora de
+       qualquer formulário (formulário aninhado é HTML inválido).
+       estado: com candidatos -->
+  <input type="checkbox" id="modal-definir-titular" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Definir titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">DIMAP-2 · Seção · hoje sem titular</p>
+        </div>
+
+        <label class="form-field">
+          <span class="text-overline">Servidores da DIMAP-2 que podem titularizar</span>
+          <select name="titular" class="select select-glass" data-select-onsen>
+            <option value="999908">Rafael Andrade · RF 999904 · CDA-III · Chefe de Seção</option>
+            <option value="999911">Camila Rocha · RF 999915 · CDA-III · Chefe de Seção</option>
+            <option value="999917">Sérgio Vilela · RF 999917 · SUBSEC · Subsecretário</option>
+          </select>
+          <span class="form-field-hint">
+            A lista traz só quem é <strong>lotado na DIMAP-2</strong> e tem cargo em comissão
+            <strong>de chefia</strong> que satisfaz o mínimo do tipo Seção (CDA-III). Alta administração
+            satisfaz qualquer tipo; quem não tem cargo em comissão nunca titulariza.
+          </span>
+        </label>
+
+        <div class="tarja-vinculo flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 icon-glow" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-titular"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            Titularizar <strong>não muda lotação nem cargo</strong>: marca o vínculo de direção de quem já
+            está aqui. A unidade tem um titular só — e, definido este, o alarme de unidade sem titular sai
+            da tela.
+          </p>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-definir-titular" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-definir-titular" class="btn btn-onsen btn-sm">Definir</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-definir-titular">Fechar</label>
+  </div>
+
+  <!-- ==================== MODAL · DEFINIR TITULAR ====================
+       estado: sem nenhum candidato -->
+  <input type="checkbox" id="modal-titular-sem-candidatos" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <div class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Definir titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">DIMAP-2 · Seção · hoje sem titular</p>
+        </div>
+
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="min-w-0">
+            <p class="text-[15px] font-medium text-base-content/90">Nenhum servidor da DIMAP-2 pode titularizar</p>
+            <p class="text-[13px] text-base-content/60 mt-1">
+              Titularizar exige cargo em comissão <strong>de chefia</strong> de nível <strong>CDA-III</strong>
+              ou superior — ou alta administração. Dos 6 servidores lotados aqui, nenhum tem.
+            </p>
+          </div>
+        </div>
+
+        <p class="text-[13px] text-base-content/70">
+          A unidade segue sem titular até que alguém com cargo compatível seja lotado nela, ou até que um
+          dos servidores daqui receba o cargo. O caminho não é esta tela: é o cadastro do servidor.
+        </p>
+
+        <div class="modal-action">
+          <label for="modal-titular-sem-candidatos" class="btn btn-glass btn-sm">Fechar</label>
+          <a href="#" class="btn btn-onsen btn-sm">Ver servidores da DIMAP-2</a>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-titular-sem-candidatos">Fechar</label>
+  </div>
+
+  <!-- ==================== MODAL · TROCAR TITULAR ====================
+       partial: user_admin/partials/_modal_trocar_titular.html -->
+  <input type="checkbox" id="modal-trocar-titular" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-lg p-6 sm:p-8">
+      <form class="flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Trocar titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">DIMAP · Divisão do Mapa de Valores</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">Titular hoje</p>
+          <div class="tarja-vinculo">
+            <div class="linha-pessoa">
+              <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
+                <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#5E412F"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">HP</text></svg>
+              </div>
+              <!-- estado: .linha-pessoa sem o atalho de navegação -->
+              <div class="min-w-0 flex-1">
+                <p class="linha-pessoa-nome">Helena Prado</p>
+                <p class="linha-pessoa-meta">RF 999903 · CDA-IV · Diretora de Divisão · afastada</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <label class="form-field">
+          <span class="text-overline">Novo titular</span>
+          <select name="titular" class="select select-glass" data-select-onsen>
+            <option value="999906">Adriana Melo · RF 999906 · CDA-IV · Diretora de Divisão</option>
+            <option value="999910">Paulo Ferraz · RF 999910 · CDA-V · Diretor de Departamento</option>
+            <option value="999917">Sérgio Vilela · RF 999917 · SUBSEC · Subsecretário</option>
+          </select>
+          <span class="form-field-hint">Mesma lista de sempre: lotado na DIMAP, chefia, e o mínimo do tipo Divisão (CDA-IV).</span>
+        </label>
+
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <div class="min-w-0 text-[13px] text-base-content/80 flex flex-col gap-1">
+            <p><strong>Helena Prado é destituída na mesma operação</strong> — inclusive afastada. A troca é o caminho do afastamento que virou definitivo.</p>
+            <p>A substituição dela <strong>não</strong> é encerrada: ela cobre o cargo de Helena, não a direção da unidade, que passa a seguir o novo titular.</p>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <label for="modal-trocar-titular" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-trocar-titular" class="btn btn-onsen btn-sm">Trocar</label>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" for="modal-trocar-titular">Fechar</label>
+  </div>
+
+  <!-- ==================== MODAL · DESTITUIR TITULAR ====================
+       partial: user_admin/partials/_modal_destituir_titular.html -->
+  <input type="checkbox" id="modal-destituir-titular" class="modal-toggle" />
+  <div class="modal modal-glass" role="dialog">
+    <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-md p-6 sm:p-8">
+      <div class="flex flex-col gap-5">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Destituir titular</h2>
+          <p class="text-sm text-base-content/70 mt-1">Helena Prado deixa de dirigir a DIMAP.</p>
+        </div>
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            A DIMAP fica <strong>sem titular</strong> e passa a ser acusada como tal, aqui e na listagem, até
+            que outro seja definido. Lotação e cargo de Helena não mudam — o que se desfaz é o vínculo de
+            direção.
+          </p>
+        </div>
+        <div class="modal-action">
+          <label for="modal-destituir-titular" class="btn btn-glass btn-sm">Cancelar</label>
+          <label for="modal-destituir-titular" class="btn btn-error btn-soft btn-sm">Destituir</label>
+        </div>
+      </div>
+    </div>
+    <label class="modal-backdrop" for="modal-destituir-titular">Fechar</label>
+  </div>
+
+  <!-- Marcar o campo com data-select-onsen não basta: o módulo precisa ser carregado na página
+       (SPEC user_admin/011). Sem ele o campo degrada no .select-glass nativo. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load static %}
+{% load icones %}
+
+{% block title %}Servidores · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+  {# O gesto de exonerar/reintegrar por linha (SPEC user_admin/027) usa os mesmos glifos da página #}
+  {# do servidor. #}
+  {% include "user_admin/partials/_glifos_servidor.html" %}
+
+  {# Mesma moldura das páginas de formulário: o fundo fica parado e o conteúdo rola na shell. #}
+  <div class="admin-shell">
+    <div class="max-w-6xl mx-auto px-4 py-24 flex flex-col gap-4">
+      {% include "partials/_botao_voltar_painel.html" %}
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Servidores</h1>
+            <p class="text-sm text-base-content/70 mt-1">
+              {{ total_servidores }} cadastrado{{ total_servidores|pluralize:"s" }}. Clique num cabeçalho para filtrar; na seta, para ordenar.
+            </p>
+          </div>
+          <div class="flex items-center gap-4">
+            <button type="button" class="btn-etched etched" data-limpar-filtros="#tabela-servidores">✕ limpar filtros</button>
+            {# `perms` vem do context processor do auth, servido pelo backend de competência (SPEC  #}
+            {# autorizacao/003): esconder o botão não custa nada ao contexto da view, e quem barra   #}
+            {# de verdade é o `acao_protegida` da rota (SPEC criacao_usuarios/004).                  #}
+            {% if perms.user_admin.criar_servidor %}
+              {% icone_acao acao_criar_servidor.slug variante_icone_pequena as svg %}
+              <a href="{% url 'user_admin:criar_perfil' %}" class="btn btn-onsen btn-sm gap-2">
+                <span class="icone-acao icone-acao-pequeno">{{ svg|safe }}</span>
+                Novo servidor
+              </a>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-4">
+          {# Reuso literal de .toggle-onsen / .barra-acoes-chave (SPEC user_admin/025) — nenhuma   #}
+          {# peça nova. `hx-include` leva os filtros do cabeçalho, para que ligar os exonerados    #}
+          {# não apague o que já estava filtrado. #}
+          <label class="barra-acoes-chave">
+            <input type="checkbox"
+                   class="toggle-onsen"
+                   name="exonerados"
+                   value="1"
+                   {% if exonerados %}checked{% endif %}
+                   hx-get="{% url 'user_admin:corpo_servidores' %}"
+                   hx-target="#corpo-servidores"
+                   hx-swap="outerHTML"
+                   hx-include="#tabela-servidores thead"
+                   aria-label="Mostrar servidores exonerados" />
+            <span class="text-overline">Mostrar servidores exonerados</span>
+          </label>
+        </div>
+
+        {% include "user_admin/partials/_tabela_servidores.html" %}
+      </div>
+    </div>
+  </div>
+
+  {# Poço do modal: alvo do hx-get da coluna de exonerar/reintegrar de cada linha. #}
+  <div id="poco-modal" class="poco-modal"></div>
+{% endblock %}
+
+{% block scripts %}
+  {# Fundo à deriva — só existe onde existe o canvas administrativo #}
+  {# Sem estes módulos a barra gravada não desenha e a seta de ordenação não alterna: marcar o #}
+  {# markup não basta, o componente é opt-in por atributo e depende do módulo carregado.       #}
+  <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/tabela_onsen.js' %}"></script>
+{% endblock %}

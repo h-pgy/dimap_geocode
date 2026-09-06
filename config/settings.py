@@ -7,12 +7,21 @@ referencia as constantes, não o objeto de settings.
 """
 
 import json
+import re
 from datetime import time
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+
+from config.pontos_fundo import CatalogoPontosFundo
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -24,6 +33,67 @@ _GEOMETRIAS: dict[str, str] = _PALETA_DS["geometrias"]
 _ESCALAS: dict[str, dict[str, str]] = _PALETA_DS["escalas"]
 
 
+def _parse_lista_env(v: Any) -> list[str]:
+    """Parse resiliente de listas a partir de variáveis de ambiente.
+
+    Suporta listas nativas, strings JSON (ex: '["a", "b"]'), e strings separadas
+    por vírgula, ponto-e-vírgula, espaços ou quebras de linha, descartando itens
+    vazios e aspas residuais.
+    """
+    if v is None:
+        return []
+    if isinstance(v, (list, tuple, set)):
+        return [
+            str(item).strip().strip("'").strip('"')
+            for item in v
+            if str(item).strip().strip("'").strip('"')
+        ]
+    if isinstance(v, str):
+        v = v.strip()
+        if not v:
+            return []
+        if (v.startswith("[") and v.endswith("]")) or (v.startswith("(") and v.endswith(")")):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [
+                        str(item).strip().strip("'").strip('"')
+                        for item in parsed
+                        if str(item).strip().strip("'").strip('"')
+                    ]
+            except Exception:
+                pass
+            v = v[1:-1]
+
+        tokens = re.split(r"[,;\s]+", v)
+        return [
+            t.strip().strip("'").strip('"')
+            for t in tokens
+            if t.strip().strip("'").strip('"')
+        ]
+    return [str(v)]
+
+
+class _ResilientEnvSettingsSource(EnvSettingsSource):
+    """Fonte de env vars com fallback para valor bruto quando json.loads falha."""
+
+    def decode_complex_value(self, field_name: str, field: Any, value: Any) -> Any:
+        try:
+            return super().decode_complex_value(field_name, field, value)
+        except Exception:
+            return value
+
+
+class _ResilientDotEnvSettingsSource(DotEnvSettingsSource):
+    """Fonte de .env com fallback para valor bruto quando json.loads falha."""
+
+    def decode_complex_value(self, field_name: str, field: Any, value: Any) -> Any:
+        try:
+            return super().decode_complex_value(field_name, field, value)
+        except Exception:
+            return value
+
+
 class _Settings(BaseSettings):
     """Variáveis de ambiente do projeto (ver docker-compose.yml / .env.example)."""
 
@@ -33,11 +103,38 @@ class _Settings(BaseSettings):
         default="dev-insecure-secret-key-change-me", alias="DJANGO_SECRET_KEY"
     )
     debug: bool = Field(default=True, alias="DJANGO_DEBUG")
-    allowed_hosts: str = Field(default="*", alias="DJANGO_ALLOWED_HOSTS")
-    csrf_trusted_origins: str = Field(
-        default="https://*.ngrok-free.app,https://*.ngrok.app",
+    allowed_hosts: list[str] = Field(
+        default_factory=lambda: ["*"], alias="DJANGO_ALLOWED_HOSTS"
+    )
+    csrf_trusted_origins: list[str] = Field(
+        default_factory=lambda: [
+            "https://*.ngrok-free.app",
+            "https://*.ngrok.app",
+        ],
         alias="DJANGO_CSRF_TRUSTED_ORIGINS",
     )
+
+    @field_validator("allowed_hosts", "csrf_trusted_origins", mode="before")
+    @classmethod
+    def _parse_listas(cls, v: Any) -> list[str]:
+        return _parse_lista_env(v)
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        dotenv_file = getattr(dotenv_settings, "env_file", None)
+        return (
+            init_settings,
+            _ResilientEnvSettingsSource(settings_cls),
+            _ResilientDotEnvSettingsSource(settings_cls, dotenv_file),
+            file_secret_settings,
+        )
 
     postgres_db: str = Field(default="dimap_geocode", alias="POSTGRES_DB")
     postgres_user: str = Field(default="dimap", alias="POSTGRES_USER")
@@ -67,15 +164,33 @@ class _Settings(BaseSettings):
         alias="WMS_RASTER_URL",
     )
     wms_version: str = Field(default="1.3.0", alias="WMS_VERSION")
+    wms_request_timeout_seconds: float = Field(
+        default=30.0,
+        alias="WMS_REQUEST_TIMEOUT_SECONDS",
+    )
     wms_layer_ortofoto: str = Field(default="geoportal:ORTO_RGB_2020", alias="WMS_LAYER_ORTOFOTO")
     wms_layer_mapa_base: str = Field(
         default="geoportal:MapaBase_Politico", alias="WMS_LAYER_MAPA_BASE"
     )
+    # Sobrescreve o catálogo de config/pontos_fundo.json inteiro (SPEC design/010) — quem quiser
+    # outro recorte de pontos não edita o repositório, só o .env.
+    map_fundo_pontos: str | None = Field(default=None, alias="MAP_FUNDO_PONTOS")
     map_cor_linha: str = Field(default=_GEOMETRIAS["linha"], alias="MAP_COR_LINHA")
     map_cor_poligono: str = Field(default=_GEOMETRIAS["poligono"], alias="MAP_COR_POLIGONO")
     map_cor_ponto: str = Field(default=_GEOMETRIAS["ponto"], alias="MAP_COR_PONTO")
     map_cor_poligono_condominio: str = Field(
         default=_ESCALAS["sakura"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
+    )
+    map_tiles_publicos_url: str = Field(
+        default="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        alias="MAP_TILES_PUBLICOS_URL",
+    )
+    map_tiles_publicos_subdominios: str = Field(
+        default="abcd", alias="MAP_TILES_PUBLICOS_SUBDOMINIOS"
+    )
+    map_tiles_publicos_atribuicao: str = Field(
+        default="&copy; OpenStreetMap &copy; CARTO",
+        alias="MAP_TILES_PUBLICOS_ATRIBUICAO",
     )
 
     # Tipado como `time` para o Pydantic coagir o "HH:MM" do env: a aritmética da agenda
@@ -85,15 +200,44 @@ class _Settings(BaseSettings):
         alias="DTIME_ATUALIZACAO_ARQUIVOS",
     )
 
+    # Prefixo EMAIL_SMTP_ evita os nomes que o Django reserva para o send_mail dele
+    # (EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER...), que o projeto não usa.
+    email_smtp_host: str = Field(default="smtp.gmail.com", alias="EMAIL_SMTP_HOST")
+    email_smtp_porta: int = Field(default=587, alias="EMAIL_SMTP_PORTA")
+    email_smtp_usuario: str = Field(default="", alias="EMAIL_SMTP_USUARIO")
+    email_smtp_senha: str = Field(default="", alias="EMAIL_SMTP_SENHA")
+    email_remetente_nome: str = Field(default="DIMAP GeoCoder", alias="EMAIL_REMETENTE_NOME")
+    email_envio_habilitado: bool = Field(default=False, alias="EMAIL_ENVIO_HABILITADO")
+    email_smtp_timeout_seconds: float = Field(default=30.0, alias="EMAIL_SMTP_TIMEOUT_SECONDS")
+    email_smtp_max_retries: int = Field(default=2, alias="EMAIL_SMTP_MAX_RETRIES")
+    email_smtp_retry_wait_min_seconds: float = Field(
+        default=1.0,
+        alias="EMAIL_SMTP_RETRY_WAIT_MIN_SECONDS",
+    )
+    email_smtp_retry_wait_max_seconds: float = Field(
+        default=5.0,
+        alias="EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS",
+    )
+
+    # Fecha o cadastro de servidor (SPEC criacao_usuarios/004) aos domínios institucionais. O
+    # banco não conhece esta regra — só a rota de cadastro por tela.
+    enforce_prefeitura_email: bool = Field(default=True, alias="ENFORCE_PREFEITURA_EMAIL")
+
+    # Reenvio de credencial de primeiro acesso (SPEC autenticacao/004).
+    janela_reenvio_segundos: int = Field(default=120, alias="JANELA_REENVIO_SEGUNDOS")
+    prazo_mesma_senha_segundos: int = Field(default=300, alias="PRAZO_MESMA_SENHA_SEGUNDOS")
+    prazo_senha_anterior_segundos: int = Field(
+        default=24 * 3600,
+        alias="PRAZO_SENHA_ANTERIOR_SEGUNDOS",
+    )
+
 
 _env = _Settings()
 
 SECRET_KEY = _env.secret_key
 DEBUG = _env.debug
-ALLOWED_HOSTS = [host.strip() for host in _env.allowed_hosts.split(",") if host.strip()]
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip() for origin in _env.csrf_trusted_origins.split(",") if origin.strip()
-]
+ALLOWED_HOSTS = _env.allowed_hosts
+CSRF_TRUSTED_ORIGINS = _env.csrf_trusted_origins
 
 # WFS (GeoSampa → MDSF). A orquestração lê essas constantes e monta
 # WfsConnectionConfig para injetar no WfsFetcher (nunca o domínio lê daqui).
@@ -120,6 +264,7 @@ WMS_URL = _env.wms_url
 # não a define cai no WMS_URL geral (o JS resolve `b.url || wms.url`).
 WMS_RASTER_URL = _env.wms_raster_url
 WMS_VERSION = _env.wms_version
+WMS_REQUEST_TIMEOUT_SECONDS = _env.wms_request_timeout_seconds
 WMS_LAYER_ORTOFOTO = _env.wms_layer_ortofoto
 WMS_LAYER_MAPA_BASE = _env.wms_layer_mapa_base
 # Lista ordenada de bases; a 1ª é a visível por padrão.
@@ -142,8 +287,50 @@ MAP_COR_PONTO = _env.map_cor_ponto
 # Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (sakura-700).
 MAP_COR_POLIGONO_CONDOMINIO = _env.map_cor_poligono_condominio
 
+MAP_TILES_PUBLICOS_URL = _env.map_tiles_publicos_url
+MAP_TILES_PUBLICOS_SUBDOMINIOS = _env.map_tiles_publicos_subdominios
+MAP_TILES_PUBLICOS_ATRIBUICAO = _env.map_tiles_publicos_atribuicao
+MAP_TILES_PUBLICOS_ZOOM_MAXIMO = 20
+
+# Ortofotos de fundo pré-geradas da área administrativa (SPEC design/010). Mesmo padrão da
+# paleta: falha alto no boot se o arquivo sumir ou o ponto cair fora do município.
+_PONTOS_FUNDO_PADRAO = (BASE_DIR / "config" / "pontos_fundo.json").read_text()
+MAP_FUNDO_PONTOS = CatalogoPontosFundo.model_validate_json(
+    _env.map_fundo_pontos or _PONTOS_FUNDO_PADRAO
+).root
+MAP_FUNDO_DIR = BASE_DIR / "static" / "src" / "img" / "ortofotos_fundo"
+MAP_FUNDO_LARGURA_PX = 2000
+MAP_FUNDO_ALTURA_PX = 1250
+# Resolução do recorte, em metros de terreno por pixel (31983 é métrico de verdade).
+MAP_FUNDO_METROS_POR_PIXEL = 4.4
+
 # Horário do dia (fuso de TIME_ZONE) em que o daemon reextrai os parquets de data/.
 DTIME_ATUALIZACAO_ARQUIVOS = _env.dtime_atualizacao_arquivos
+
+# E-mail — SMTP do Gmail (services.utils.smtp).
+EMAIL_SMTP_HOST = _env.email_smtp_host
+EMAIL_SMTP_PORTA = _env.email_smtp_porta
+EMAIL_SMTP_USUARIO = _env.email_smtp_usuario
+EMAIL_SMTP_SENHA = _env.email_smtp_senha
+EMAIL_REMETENTE_NOME = _env.email_remetente_nome
+EMAIL_ENVIO_HABILITADO = _env.email_envio_habilitado
+EMAIL_SMTP_TIMEOUT_SECONDS = _env.email_smtp_timeout_seconds
+EMAIL_SMTP_MAX_RETRIES = _env.email_smtp_max_retries
+EMAIL_SMTP_RETRY_WAIT_MIN_SECONDS = _env.email_smtp_retry_wait_min_seconds
+EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS = _env.email_smtp_retry_wait_max_seconds
+
+# Cadastro de servidor (apps.user_admin.cadastro) — desligue só em ambiente de teste.
+ENFORCE_PREFEITURA_EMAIL = _env.enforce_prefeitura_email
+
+# Reenvio de credencial (apps.autenticacao.janela_envio e apps.autenticacao.reenvio).
+JANELA_REENVIO_SEGUNDOS = _env.janela_reenvio_segundos
+PRAZO_MESMA_SENHA_SEGUNDOS = _env.prazo_mesma_senha_segundos
+PRAZO_SENHA_ANTERIOR_SEGUNDOS = _env.prazo_senha_anterior_segundos
+
+# Recuperação de senha por e-mail (apps.autenticacao.recuperacao).
+RECUPERACAO_SENHA_VALIDADE_HORAS = 1
+# O nome é do Django: é ele que o `PasswordResetTokenGenerator.check_token` consulta.
+PASSWORD_RESET_TIMEOUT = RECUPERACAO_SENHA_VALIDADE_HORAS * 3600
 
 
 # Application definition
@@ -157,6 +344,15 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "apps.core",
+    # Antes de user_admin: o Perfil é lotado numa unidade, e a dependência é de mão única.
+    "apps.unidades",
+    # Antes de user_admin: é Perfil que aponta para o cargo, e a leitura da lista deve seguir a
+    # direção da dependência.
+    "apps.cargos",
+    "apps.user_admin",
+    "apps.autenticacao",
+    "apps.competencias",
+    "apps.painel",
     "apps.search",
     "apps.logradouro_matcher",
     "apps.lote_matcher",
@@ -178,21 +374,36 @@ MIDDLEWARE = [
     "apps.core.middleware.PydanticValidationMiddleware",
 ]
 
+# Perfil (apps.user_admin) concentra RF, cargo e unidade — o Perfil do CLAUDE.md §3.5.
+AUTH_USER_MODEL = "user_admin.Perfil"
+
+# `@login_required` sem isto cairia no default do Django (`/accounts/login/`, rota inexistente).
+# Caminho literal, e não o nome da rota: é o que `settings.LOGIN_URL` compara nos testes de
+# proteção de rota das demais ações (ex. apps/competencias/test_protecao.py).
+LOGIN_URL = "/login/"
+
+# Os dois backends, cada um com um papel; a ordem não decide nada, porque `has_perm` é verdadeiro
+# se qualquer um deles disser sim (SPEC autorizacao/003).
+AUTHENTICATION_BACKENDS = [
+    # Autenticação, e as permissions do admin.
+    "django.contrib.auth.backends.ModelBackend",
+    # Autorização por competência: só responde permissão, e é a única fonte das ações da plataforma.
+    "apps.competencias.backends.CompetenciaPermissionBackend",
+]
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        # static/src entra SÓ para o {% include "tema-dimap.dev.css" %} do base.html: o tema
-        # dev (fonte única do design system, SPEC design/004) é incluído server-side dentro do
-        # <style type="text/tailwindcss">.
-        "DIRS": [BASE_DIR / "templates", BASE_DIR / "static" / "src"],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.autenticacao.context_processors.contexto_usuario_autenticado",
             ],
         },
     },
@@ -238,5 +449,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static" / "dist", BASE_DIR / "static" / "src"]
+
+# Mídia enviada por upload (hoje só a foto de perfil, SPEC user_admin/006). Servir o
+# arquivo por rota é front-end e fica fora desta SPEC.
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

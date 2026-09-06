@@ -1,0 +1,10 @@
+{# Resposta do painel embutido (SPEC user_admin/020): o bloco de campos vira a confirmação, e o     #}
+{# campo de lotação lá fora se atualiza sozinho por swap fora de banda.                              #}
+<div id="campos-nova-unidade" class="contents">
+  <div class="tarja-vinculo flex items-start gap-2">
+    <p class="text-[13px] text-base-content/80">
+      <strong>{{ unidade.sigla }}</strong> criada e já selecionada na lotação.
+    </p>
+  </div>
+</div>
+{% include "unidades/partials/_campo_unidade_lotacao.html" with oob=True %}

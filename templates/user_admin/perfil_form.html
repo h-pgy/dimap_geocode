@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Novo servidor · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+
+  {# .admin-shell: o fundo fica parado e o conteúdo rola aqui dentro — a viewport travada do #}
+  {# base.html existe porque a página do produto é o mapa, e não se aplica a formulário.     #}
+  <div class="admin-shell">
+    <div class="max-w-3xl mx-auto px-4 py-24 flex flex-col gap-4">
+      {% include "partials/_botao_voltar_painel.html" %}
+      {% include "user_admin/partials/_formulario_servidor.html" %}
+    </div>
+  </div>
+
+  {# Irmão do formulário do servidor, nunca dentro dele: formulário aninhado é HTML inválido e o #}
+  {# navegador descarta o interno — o <label for> alcança o modal de qualquer lugar do documento. #}
+  {# Fora da .admin-shell, que é contexto de empilhamento (z-10): dentro dela os chips fixos do   #}
+  {# base.html (z-20) passariam por cima da placa.                                                #}
+  {% include "unidades/partials/_modal_nova_unidade.html" %}
+
+  {# Mesma razão do modal acima, e mais uma: `.glass-panel` do formulário tem `backdrop-filter`, e  #}
+  {# ancestral filtrado vira containing block de `fixed` — dentro dele a placa nasceria ancorada no #}
+  {# topo do formulário. Aqui fora ela é da tela. Quem a liga ao controle é o `:has()` do tema.     #}
+  {% if pode_administrador %}
+    {% include "user_admin/partials/_avisos_administrador.html" with prefixo="cad" %}
+  {% endif %}
+
+  {# Poço do modal da senha (SPEC criacao_usuarios/007), mesmo molde da perfil.html: nasce vazio, #}
+  {# o oob do cadastro o preenche, e fora da .admin-shell pelo mesmo motivo dos modais acima.      #}
+  <div id="poco-modal" class="poco-modal"></div>
+{% endblock %}
+
+{% block scripts %}
+  {# Fundo à deriva — só existe onde existe o canvas administrativo #}
+  {# Sem este módulo os selects da lotação seguem nativos: marcar o campo não carrega o componente #}
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+  {# Sem este módulo o botão de copiar a senha do modal de desenvolvimento fica mudo #}
+  <script type="module" src="{% static 'js/ui/copiar_senha.js' %}"></script>
+{% endblock %}

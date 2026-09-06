@@ -39,11 +39,40 @@ html[data-theme="dimap"] {
   --radius-selector: 1rem;
   --radius-field: 0.5rem;
   --radius-box: 1rem;
+  /* Terceiro raio (SPEC user_admin/015): a placa assentada dentro de um poço não é campo nem
+     caixa — quer ficar retangular, mas quina viva não pertence a um material em que toda aresta é
+     luz. Consumo em Tailwind 4: border-radius: var(--radius-placa) ou rounded-(--radius-placa);
+     o rounded-[--x] da v3 emite propriedade inválida e cai em raio zero. */
+  --radius-placa: 0.625rem;
+  /* Profundidade única dos poços do sistema (SPEC design/006). Enquanto o valor estava copiado em
+     cada peça, os poços eram livres para divergir — e divergiram. O segundo inset é o lábio de luz:
+     sem ele a sombra afunda a peça sem desenhar a quina, e o degrau não fecha. */
+  --sombra-poco: inset 0 2px 7px rgba(7, 58, 84, 0.38), inset 0 -1px 0 rgba(255, 255, 255, 0.8);
+  /* Mesma língua, outra escala: num pill de 24px o blur de 7px lava a altura inteira de escuro em
+     vez de desenhar um degrau. Vale para trilho e calha, não para poço de seção. */
+  --sombra-poco-fina: inset 0 1px 3px rgba(7, 58, 84, 0.3), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+  /* Escavado: o degrau acima do poço comum, para o que precisa ler como cavado DENTRO de uma
+     superfície que já é rebaixada. Nunca abaixo do --sombra-poco, ou o nome mente. */
+  --sombra-escavado: inset 0 2px 7px rgba(7, 58, 84, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.75);
   --size-selector: 0.25rem;
   --size-field: 0.25rem;
   --border: 1px;
   --depth: 1;
   --noise: 0;
+  /* Fundo de ortofoto à deriva (SPEC design/010): transbordo de cada lado e teto da translação —
+     ver .fundo-ortofoto__deriva/__imagem. --deriva-periodo tem 5 paradas (300s/220s/150s/90s/50s),
+     ajustadas pelo .fundo-controle; o valor aqui é só o ponto de partida antes do JS assumir. */
+  --deriva-margem: 200px;
+  --deriva-periodo: 150s;
+  /* Troca de fundo sem vão (SPEC design/011): duração do crossfade entre a camada que sai e a
+     que entra — ver .fundo-ortofoto__camada. */
+  --fundo-troca-duracao: 700ms;
+  /* Gaveta lateral (SPEC design/013). A largura é token porque a paleta se ancora na borda direita
+     da casca: fechada, é ela que põe o meio disco exatamente sobre a borda da tela. O recuo é o
+     quanto da segunda gaveta fica enfiado sob a primeira, e é também o que ela reserva à esquerda. */
+  --gaveta-largura: 24rem;
+  --gaveta-detalhe-largura: 22rem;
+  --gaveta-recuo: 2rem;
 }
 
 @theme {
@@ -131,9 +160,60 @@ html[data-theme="dimap"] {
   .glass-shadow  { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)]; }
   .glass-glow    { @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_32px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.5)]; }
 
+  /* Segunda espessura (SPEC user_admin/011, recalibrada na SPEC design/008): a espessura do gelo
+     depende do que está ATRÁS. Sobre o mapa (água clara) o fino de 10px separa figura do fundo; sobre
+     interface — formulário com tinta escura, selects, poços, toasts — o espesso (88%→76%, blur 28px)
+     bloqueia a poluição de fundo. Quem dissolve o que está atrás é o BLUR, não a opacidade: acima de ~90%
+     o gradiente vira papel branco e o material deixa de ler como gelo. */
+  .glass-blur-thick { @apply backdrop-blur-[28px]; }
+  .glass-bg-thick   { @apply bg-gradient-to-br from-white/88 via-white/82 to-white/76; }
+
+  /* Gravação no gelo (SPEC user_admin/013): o registro oposto ao .icon-glow — onde ele acende, este
+     escava. O relevo vem de filtro SVG porque box-shadow: inset só existe em caixa retangular e aqui
+     a sombra precisa seguir a silhueta do próprio glifo; os dois filter estão em
+     templates/partials/_filtros_gravacao.html, incluídos no base.html — sem eles a classe não
+     desenha nada. A tinta é quase transparente de propósito: quem desenha a forma é a luz, e por
+     isso a gravação NUNCA carrega informação, só afordância. Só vale sobre vidro claro. */
+  .etched {
+    filter: url(#etched-onsen);
+    color: rgba(13, 27, 42, 0.4);
+    @apply transition-all duration-300;
+  }
+  /* Os deslocamentos do filtro são px absolutos e não escalam com o font-size: acima de ~32px o
+     sulco de 1,4px vira um fio. São as duas únicas medidas. */
+  .etched-lg {
+    filter: url(#etched-onsen-lg);
+  }
+  /* O sulco enche de água quando o que ele marca fica ativo — o mesmo par repouso/entintado do
+     resto do sistema. */
+  .etched-inked {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .etched-deeper {
+    color: rgba(13, 27, 42, 0.3);
+  }
+  /* Gravação que NOMEIA: a tinta sobe até a legibilidade normal, e o relevo deixa de ser o único
+     portador da forma. */
+  .etched-rotulo {
+    color: rgba(13, 27, 42, 0.62);
+  }
+  /* Gravação que CONTA: numeral e passo, onde a forma tem que se ler sem apoio do vidro de baixo.
+     A tinta é a rocha-950 cheia e as duas bandas do filtro são opacas — quem carrega a informação
+     passa a ser a tinta, e o relevo só a acompanha. Medida do glifo: o `-lg` é escolhido pelo
+     tamanho do alvo, mas quem recebe o filtro é a forma, e num numeral de 16px a banda escura
+     grande cobre o desenho inteiro. */
+  .etched-dark {
+    filter: url(#etched-onsen-dark);
+    color: rgb(13, 27, 42);
+  }
+
   /* ==================== MATERIAIS COMPOSTOS ==================== */
   .glass-panel {
-    @apply rounded-2xl backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
+    @apply rounded-2xl backdrop-blur-[18px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
+  }
+  .glass-panel-thick {
+    @apply rounded-2xl backdrop-blur-[28px] bg-gradient-to-br from-white/88 via-white/82 to-white/76 border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
   }
   .glass-panel-deep {
     @apply rounded-2xl backdrop-blur-[8px] bg-gradient-to-br from-rocha-950/80 to-rocha-900/70 border border-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(7,58,84,0.35),0_0_24px_rgba(72,202,228,0.25)] text-rocha-100;
@@ -142,30 +222,853 @@ html[data-theme="dimap"] {
     @apply backdrop-blur-[12px] bg-gradient-to-l from-white/80 via-white/65 to-white/55 border-r border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),12px_0_40px_rgba(7,58,84,0.3),0_0_40px_rgba(72,202,228,0.25)];
   }
   .card-well {
-    @apply rounded-2xl bg-white/30 border border-white/45 shadow-[inset_0_2px_6px_rgba(7,58,84,0.15)];
+    @apply rounded-2xl bg-white/30 border border-white/45;
+    box-shadow: var(--sombra-poco);
   }
+
+  /* Modal de vidro (SPEC user_admin/012, recalibrado na SPEC design/008): o fundo EMBAÇA a 16px,
+     dissolvendo formulários densos e toasts sem escurecer a cena (§6 do design system).
+     O bg-transparent! derruba o véu escuro que o daisyUI põe em .modal e o base-100 opaco de .modal-box;
+     important é sufixo no Tailwind 4. */
+  .modal-glass { @apply bg-transparent! backdrop-blur-[16px]; }
+  /* TERCEIRA densidade (SPEC design/008 v2; primitivos em .glass-blur-denso/.glass-bg-denso, SPEC
+     design/013): a densidade de quem SUBSTITUI o que está atrás, em vez de flutuar sobre ele. O
+     modal precisa ganhar de um formulário inteiro; por isso a placa espessa geral ficou em 88%→76%
+     e esta em 97%→88%. A receita vem escrita aqui e não no .glass-panel-thick empilhado no markup —
+     esta regra vem depois no arquivo e vence, então nenhum dos modais precisa mudar. */
+  .modal-box-glass {
+    @apply bg-transparent! max-h-[85vh] overflow-y-auto backdrop-blur-[28px] bg-gradient-to-br from-white/97 via-white/93 to-white/88 border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+  }
+
+  /* Neutralização de artefato de GPU (SPEC design/007): modal fechado retém a textura do blur na
+     memória de vídeo (Chromium). A quarta porta é o toggle IRMÃO — o `:has()` o procura DENTRO do
+     `.modal` e não o encontra, e sem ela a regra alcança também o modal aberto, cujo desfoque de
+     fundo é o que dá foco ao ato. */
+  .modal:not(.modal-open, [open], :has(.modal-toggle:checked), .modal-toggle:checked + *),
+  .modal:not(.modal-open, [open], :has(.modal-toggle:checked), .modal-toggle:checked + *) * {
+    backdrop-filter: none !important;
+  }
+
+  /* Casca da área administrativa (SPEC user_admin/007): o fundo à deriva fica parado atrás e o
+     conteúdo rola aqui dentro — a viewport travada do base.html existe porque a página do produto
+     é o mapa, e não se aplica a formulário. */
+  .admin-shell { @apply absolute inset-0 z-10 overflow-y-auto overscroll-contain; }
+
+  /* Poço de upload: o card-well com aresta tracejada. Acende no hover/foco, nunca muda de cor. */
+  .upload-well {
+    @apply rounded-2xl bg-white/30 border border-dashed border-white/60 flex flex-col items-center gap-3 p-6 text-center transition-all duration-300;
+    box-shadow: var(--sombra-poco);
+  }
+  .upload-well:hover,
+  .upload-well:focus-within {
+    @apply bg-white/45 border-agua-500/60;
+    box-shadow: var(--sombra-poco), 0 0 22px rgba(72, 202, 228, 0.35);
+  }
+
+  /* Vidro sobre vidro (SPEC design/009): a translucidez é multiplicativa, e o material se pinta UMA
+     vez por pilha — quatro placas empilhadas chegam a 98% de branco, que é papel, não gelo.
+     Empilhada, a peça continua sendo peça pelo que não se repete: o desfoque (que compõe com o da
+     de baixo, como vidro sobre vidro faz), a aresta de luz e a sombra.
+
+     A profundidade é lida do DOM porque é o único lugar em que ela existe: o mesmo partial é
+     incluído em três lugares e é alvo de swap HTMX, então não tem como carregá-la numa classe.
+
+     Os :where() zeram a especificidade do que envolvem — a regra fica em (0,1,0), igual à da peça
+     base, vence por vir depois, e uma utility no markup ainda ganha das duas. Daí a posição: aqui,
+     depois de TODA peça cuja tinta ela apaga, .upload-well inclusive.
+
+     .modal-box-glass sai pelo :not(): a caixa do modal mantém a pele onde quer que esteja (SPEC
+     design/008 v2). E .glass-panel-thick não é alcançado — o polegar da .chave-onsen segue intocado. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  .glass-panel:where(:not(.modal-box-glass)) {
+    @apply bg-none;
+  }
+  /* O poço aninhado perde a tinta e fica com o degrau: profundidade é o que descreve um poço. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  :is(.card-well, .upload-well) {
+    @apply bg-transparent;
+  }
+  /* O poço de upload continua acendendo — só que a partir do transparente, e não de 30%: o mesmo
+     salto de 15 pontos que ele sempre teve. */
+  :where(.glass-panel, .glass-panel-thick, .glass-drawer-panel, .modal-box-glass, .card-well)
+  .upload-well:where(:hover, :focus-within) {
+    @apply bg-white/15;
+  }
+
+  /* Moldura da imagem de perfil: a unidade é luz atrás do disco, não anel. O hex vem em
+     --cor-unidade porque classe montada no template (ring-[cor]) some do build de produção.
+     Anel sólido saía de `outline`, aresta dura desenhada fora de uma caixa que não a reserva: em
+     w-28 pousava inteiro sobre o poço vizinho. Luz que esmaece atravessa o vizinho sem quebrá-lo.
+     --halo-escala é o alcance dela, que segue o diâmetro (padrão de w-9 a w-16; disco maior abre
+     no include). --halo-aro é o contato, e não escala: contato tem espessura de contato em
+     qualquer disco. Ele vem na opacidade da imagem, e os fades partem dele. */
+  .avatar-glass {
+    --halo-escala: 1;
+    --halo-aro: 3px;
+    @apply relative rounded-full overflow-hidden bg-white/40;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 8px 28px rgba(7, 58, 84, 0.28),
+      0 0 0 var(--halo-aro) color-mix(in srgb, var(--cor-unidade) 88%, transparent),
+      0 0 calc(11px * var(--halo-escala)) calc(var(--halo-aro) + 3px * var(--halo-escala))
+        color-mix(in srgb, var(--cor-unidade) 55%, transparent),
+      0 0 calc(24px * var(--halo-escala)) calc(var(--halo-aro) + 6px * var(--halo-escala))
+        color-mix(in srgb, var(--cor-unidade) 26%, transparent);
+  }
+  /* O domo do disco: a óptica simulada do mapa (§6) aplicada ao avatar — curvatura por luz, sem
+     deformar a malha. Só o aro curva; o miolo até 78% do raio é onde está o rosto, e mancha larga
+     ali não faz volume, faz véu. Porcentagem, não px: o disco vai de w-9 a w-28. */
+  .avatar-glass::after {
+    content: "";
+    @apply absolute inset-0 rounded-full pointer-events-none;
+    background:
+      radial-gradient(
+        circle at 50% 50%,
+        transparent 78%,
+        rgba(7, 58, 84, 0.1) 90%,
+        rgba(7, 58, 84, 0.26) 100%
+      ),
+      radial-gradient(
+        ellipse 72% 24% at 50% 3%,
+        rgba(255, 255, 255, 0.55),
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 60% 20% at 50% 98%,
+        rgba(202, 240, 248, 0.34),
+        transparent 72%
+      );
+  }
+
+  /* O SVG do avatar é markup do domínio (services/domain/avatar) e não carrega classe alguma:
+     quem o dimensiona é a moldura. */
+  .avatar-glass > svg { @apply w-full h-full; }
+  /* A imagem cede um pouco ao gelo por baixo: disco opaco no meio de uma cena de vidro é o único
+     corpo sólido da tela. A opacidade fica no FILHO, nunca no .avatar-glass — no pai ela levaria
+     junto o halo da unidade e o domo, que são luz e não podem esmaecer com a foto.
+     SVG de letras precisa de mais transparência para integrar melhor com o vidro e evitar
+     aparência pixelada — opacidade de cor sólida sobre fundo translúcido fica áspera. */
+  .avatar-glass > img { @apply opacity-[0.88]; }
+  .avatar-glass > svg { @apply opacity-[0.65]; }
 
   /* ==================== ÁTOMOS ==================== */
   .btn-onsen {
     @apply border-none rounded-xl font-bold text-rocha-950 bg-gradient-to-br from-agua-300 to-agua-500 shadow-[0_4px_20px_rgba(0,150,199,0.4)] transition-all duration-300 hover:brightness-105 hover:shadow-[0_4px_28px_rgba(0,150,199,0.55)];
   }
+  /* O relevo é o oposto do poço (SPEC design/006): a sombra fecha e escurece, porque sombra larga e
+     clara só separa contra o mapa — sobre a placa ela vira véu. */
   .btn-glass {
-    @apply rounded-full backdrop-blur-[10px] bg-white/50 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(7,58,84,0.2)] transition-all duration-300 hover:bg-white/70 hover:shadow-[0_4px_20px_rgba(72,202,228,0.4)];
+    @apply rounded-full backdrop-blur-[10px] bg-white/40 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_8px_rgba(7,58,84,0.38)] transition-all duration-300 hover:bg-white/60 hover:shadow-[0_4px_20px_rgba(72,202,228,0.4)];
   }
+  /* Botão de criação inline (SPEC user_admin/012): o gesto "não achei — cadastra agora". Mesma
+     receita de gelo do .btn-glass, em tinta ciana (água = ação) e no tamanho que casa com a altura
+     do controle ao lado. É o mesmo átomo para qualquer catálogo — unidade hoje, cargo depois. */
+  .btn-criar-inline {
+    @apply w-10 h-10 shrink-0 p-0 rounded-full backdrop-blur-[10px] bg-white/50 border border-white/60 text-agua-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(7,58,84,0.2)] transition-all duration-300;
+  }
+  .btn-criar-inline:hover {
+    @apply bg-white/70 text-agua-600 shadow-[0_4px_20px_rgba(72,202,228,0.4)];
+  }
+
+  /* Campo é coisa rebaixada (SPEC design/006): o poço vem em REPOUSO, não só no foco. Sobre a placa
+     o gelo claro deixava o campo mais claro que o próprio fundo, sem degrau nenhum. No foco o anel
+     de água entra POR CIMA do poço — sem repetir o inset aqui, focar o campo o desafundaria. */
   .input-glass {
-    @apply w-full rounded-xl bg-white/45 border-white/60 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/60 focus:border-agua-500 focus:outline-none focus:shadow-[0_0_0_3px_rgba(0,150,199,0.2),0_0_20px_rgba(72,202,228,0.35)];
+    @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/45 focus:border-agua-500 focus:outline-none;
+    box-shadow: var(--sombra-poco);
   }
+  .input-glass:focus {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+  /* Controles de vidro que faltavam: mesma receita do .input-glass, aplicada a select e file. */
+  .select-glass {
+    @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content backdrop-blur-[10px] transition-all duration-300 focus:bg-white/45 focus:border-agua-500 focus:outline-none;
+    box-shadow: var(--sombra-poco);
+  }
+  .select-glass:focus {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+  .file-input-glass {
+    @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content backdrop-blur-[10px] transition-all duration-300 focus:outline-none focus:border-agua-500;
+    box-shadow: var(--sombra-poco);
+  }
+
+  /* Controle em realce (SPEC criacao_usuarios/004): o halo semântico no CONTROLE, não no campo
+     inteiro — rótulo fora do realce mantém a linha alinhada com os vizinhos da grade. Mesma
+     receita do .input-glass:focus, com a cor do estado no lugar do ciano. */
+  .campo-realce-erro    { @apply border-error/60;   --halo-realce: 220, 38, 38; }
+  .campo-realce-alerta  { @apply border-warning/60; --halo-realce: 180, 83, 9; }
+  .campo-realce-info    { @apply border-info/60;    --halo-realce: 2, 132, 199; }
+  .campo-realce-sucesso { @apply border-success/60; --halo-realce: 5, 150, 105; }
+  .campo-realce-erro, .campo-realce-alerta, .campo-realce-info, .campo-realce-sucesso {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.18), 0 0 20px rgba(var(--halo-realce), 0.35);
+  }
+  .campo-realce-erro:focus, .campo-realce-alerta:focus, .campo-realce-info:focus, .campo-realce-sucesso:focus {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.28), 0 0 22px rgba(var(--halo-realce), 0.45);
+  }
+
+  /* ÁTOMO · GATILHO DO CALENDÁRIO (SPEC design/012). Mora DENTRO do poço do campo, então não é
+     botão de vidro: placa levantada dentro de cavidade fecha o degrau. O glifo enche de água e
+     incha junto com o campo em foco — a afordância chega antes do ponteiro. */
+  .campo-data-gatilho {
+    @apply absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center;
+    @apply w-7 h-7 rounded-lg cursor-pointer transition-all duration-300 origin-center;
+    filter: url(#etched-onsen);
+    color: rgba(13, 27, 42, 0.35);
+  }
+  .campo-data-gatilho:hover,
+  .campo-data:focus-within .campo-data-gatilho {
+    @apply scale-[1.12] bg-agua-400/20;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .campo-data-gatilho:focus-visible {
+    @apply outline-none shadow-[0_0_0_3px_rgba(0,150,199,0.25)];
+  }
+
+  /* ÁTOMO · CÉLULA DE CALENDÁRIO (SPEC design/012). A mesma célula serve dia, mês e ano. */
+  .calendario-celula {
+    @apply inline-flex items-center justify-center h-9 rounded-xl text-sm text-base-content;
+    @apply cursor-pointer transition-all duration-200 origin-center tabular-nums;
+  }
+  .calendario-celula:hover { @apply scale-[1.1] bg-agua-400/25 text-agua-800; }
+  .calendario-celula[data-fora] { @apply text-base-content/30; }
+  /* Hoje é referência, não escolha: aro de água, sem preenchimento. */
+  .calendario-celula[data-hoje] { @apply font-bold text-agua-700 shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5)]; }
+  .calendario-celula[aria-selected="true"] {
+    @apply font-bold text-rocha-950 bg-gradient-to-br from-agua-300 to-agua-500;
+    @apply shadow-[0_4px_16px_rgba(0,150,199,0.45)];
+  }
+  /* Cursor do teclado: UM só marcador, movido pela seta E pelo hover, pelo motivo do
+     .select-onsen-option — :focus-visible não acende em foco programático depois de clique. */
+  .calendario-celula[data-ativo="true"] {
+    @apply bg-agua-400/45 text-rocha-950 outline-none;
+    @apply shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+  }
+  .calendario-celula[aria-selected="true"][data-ativo="true"] {
+    @apply bg-gradient-to-br from-agua-300 to-agua-500 text-rocha-950;
+    @apply shadow-[inset_0_0_0_1px_rgba(255,255,255,0.9),0_4px_18px_rgba(0,150,199,0.55)];
+  }
+  .calendario-celula:disabled { @apply opacity-25 cursor-not-allowed; }
+  .calendario-celula:disabled:hover { @apply scale-100 bg-transparent text-base-content; }
+
+  /* ÁTOMO · OTP (SPEC autenticacao/001). O campo de código de uso único: 8 caixas monoespaçadas
+     com fundo de vidro e destaque em foco. */
+  .otp-onsen {
+    @apply flex items-center justify-center gap-2;
+  }
+  .otp-onsen .otp-caixa {
+    @apply w-10 h-13 sm:w-11 sm:h-14 text-center text-xl font-bold font-mono rounded-lg border border-base-300 bg-base-100/90 text-agua-700 focus:border-agua-500 focus:outline-none focus:ring-2 focus:ring-agua-400/30 transition-all;
+  }
+  .otp-onsen .otp-caixa.campo-realce-erro {
+    @apply border-error bg-error/10 text-error focus:ring-error/30;
+  }
+
+  /* ÁTOMO · ALTERNADOR DE SENHA / OLHINHO (SPEC autenticacao/001). Acoplado a um input de senha. */
+  .input-olhinho-wrap {
+    @apply relative flex items-center w-full;
+  }
+  .input-olhinho-btn {
+    @apply absolute right-3 p-1.5 text-base-content/50 hover:text-agua-600 focus:outline-none transition-colors cursor-pointer;
+  }
+
+  /* MOLÉCULA · CHECKLIST DE SENHA FORTE (SPEC autenticacao/002). Cada requisito acende em
+     `.atendido` conforme o servidor digita a nova senha. */
+  .checklist-senha {
+    @apply flex flex-col gap-1.5 p-3 rounded-lg bg-base-100/60 border border-base-300/60 text-xs;
+  }
+  .checklist-item {
+    @apply flex items-center gap-2 text-base-content/60 transition-colors;
+  }
+  .checklist-item.atendido {
+    @apply text-success font-medium;
+  }
+  .checklist-icone {
+    @apply w-4 h-4 rounded-full flex items-center justify-center text-[10px] bg-base-300 text-base-content/60 transition-all;
+  }
+  .checklist-item.atendido .checklist-icone {
+    @apply bg-success text-success-content font-bold;
+  }
+
+  /* ÁTOMO · A SENHA REVELADA (SPEC criacao_usuarios/007). O .text-code em medida de display: a
+     senha é o objeto da tela, não um dado dela. `select-all` faz um clique pegar os oito dígitos
+     inteiros — é o caminho manual, que precisa funcionar sozinho quando o botão de copiar não
+     estiver disponível. O `pl` compensa o tracking do último dígito, que sem isso desloca o
+     centro. */
+  .senha-revelada {
+    @apply font-mono font-bold text-4xl tracking-[0.3em] pl-[0.3em] text-agua-700 select-all;
+  }
+
+  /* ÁTOMO · BOTÃO DE COPIAR (SPEC criacao_usuarios/007). Três faces no DOM; quem escolhe é o
+     `data-estado` no próprio botão. Só o troca-faces mora aqui — o corpo do botão é o
+     .btn-glass, empilhado no HTML. A face de falha é peça, não ausência: sem ela o botão fica
+     mudo e parece ter copiado. */
+  .btn-copiar [data-face] { @apply hidden items-center gap-2; }
+  .btn-copiar[data-estado="pronto"]  [data-face="pronto"],
+  .btn-copiar[data-estado="copiado"] [data-face="copiado"],
+  .btn-copiar[data-estado="falhou"]  [data-face="falhou"] { @apply inline-flex; }
+  .btn-copiar[data-estado="copiado"] { @apply text-accent; }
+  .btn-copiar[data-estado="falhou"]  { @apply text-error; }
+
+  /* Cavidade de tinta: a tinta "molhada" vem em --tinta (hex resolvido na borda do app). */
+  .paint-well {
+    @apply w-9 h-9 rounded-full border border-white/70 shadow-[inset_0_2px_5px_rgba(7,58,84,0.45),0_1px_0_rgba(255,255,255,0.6)] cursor-pointer transition-all duration-300 hover:scale-110;
+    background-color: var(--tinta);
+  }
+  .paint-well:has(input:checked) {
+    @apply scale-110 ring-2 ring-white/90 shadow-[inset_0_2px_5px_rgba(7,58,84,0.45),0_0_18px_rgba(72,202,228,0.85)];
+  }
+  .paint-well-atual {
+    @apply w-14 h-14 rounded-full border-2 border-white/80 shadow-[inset_0_3px_8px_rgba(7,58,84,0.5)];
+    background-color: var(--tinta);
+  }
+
+  /* Seta de ordenação gravada (SPEC user_admin/013): alvo PRÓPRIO à direita da célula — dentro do
+     rótulo do filtro, clicar para ordenar afundaria a coluna. 15px porque abaixo de ~14px o
+     gradiente interno não tem pixels para graduar e a gravação parece chapada. */
+  .sort-etched {
+    @apply shrink-0 w-6 h-6 mt-0.5 flex items-center justify-center;
+    @apply text-[15px] leading-none cursor-pointer;
+    /* O átomo declara a própria tinta em vez de esperar .etched-deeper empilhado no markup: assim
+       uma seta nova nasce legível. Vence o .etched por vir depois, com a mesma especificidade. */
+    color: rgba(13, 27, 42, 0.3);
+  }
+  .sort-etched:hover { color: rgba(13, 27, 42, 0.45); }
+  /* Ordenando: a depressão enche. A semântica de verdade é o aria-sort do th — o relevo é
+     afordância, e afordância não carrega informação sozinha. */
+  .th-onsen[aria-sort] .sort-etched {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .th-onsen[aria-sort="descending"] .sort-etched { @apply rotate-180; }
+
+  /* Botão gravado: a mesma gravação em corpo maior (o "limpar filtros"). */
+  .btn-etched {
+    @apply inline-flex items-center gap-2 px-2 py-1 cursor-pointer;
+    @apply text-[15px] font-bold uppercase tracking-[0.12em];
+  }
+  .btn-etched:hover {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* Variante do .btn-etched (SPEC autenticacao/003): sem crachá de botão, porque o gesto é
+     secundário — a afordância é a gravação enchendo de água e o corpo crescendo um pouco sob o
+     ponteiro. O .btn-etched segue intocado: quem incha é só quem pede esta classe. */
+  .btn-etched-swell {
+    @apply transition-transform duration-300 origin-center;
+  }
+  .btn-etched-swell:hover {
+    @apply scale-[1.06];
+  }
+
+  /* Ícone gravado dentro de um botão de vidro: quem carrega a afordância é o botão, e o glifo só
+     diz qual gesto é — exatamente o registro do .etched. */
+  /* O glifo dentro de um botão de vidro mora sempre sobre placa, e ali a tinta de repouso do
+     .etched não se lê. O átomo declara a própria — vence o .etched por vir depois, com a mesma
+     especificidade — para que um glifo novo nasça legível sem depender de classe empilhada. */
+  .icon-etched { @apply text-[15px] leading-none; color: rgba(13, 27, 42, 0.3); }
+  .btn:hover .icon-etched {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* Ponto da unidade: o .paint-well em escala de marca. O hex chega em --cor-unidade, resolvido na
+     borda do app — classe montada no template o Tailwind não enxerga no @source. */
+  .dot-unidade {
+    @apply w-2.5 h-2.5 shrink-0 rounded-full border border-white/70;
+    @apply shadow-[inset_0_1px_2px_rgba(7,58,84,0.45),0_1px_0_rgba(255,255,255,0.6)];
+    background-color: var(--cor-unidade);
+  }
+
   .icon-glow     { @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)]; }
   .text-overline { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
   .text-code     { @apply font-mono text-agua-700; }
+  /* O valor de um par rótulo/valor em leitura, par do .text-overline (SPEC criacao_usuarios/005).
+     `wrap-anywhere` quebra DENTRO da palavra: e-mail é um token sem espaço, e `break-words` só
+     quebra onde já há oportunidade. Sem cor — quem compõe tem três (presente, ausente e o RF em
+     monoespaçada) e o átomo venceria o .text-code. */
+  .valor-leitura { @apply text-[15px] mt-0.5 wrap-anywhere; }
 
   .badge-ponto    { @apply border border-agua-600/40 bg-agua-500/15 text-agua-700 font-medium; }
   .badge-linha    { @apply border border-accent/40 bg-accent/10 text-accent font-medium; }
   .badge-poligono { @apply border border-sakura-500/50 bg-sakura-400/15 text-sakura-700 font-medium; }
 
+  /* Toggle de vidro (SPEC user_admin/015): o trilho é o poço do .card-well em pílula e o botão é a
+     gravação da SPEC 013 — um disco .etched em repouso que enche de água ao ir para o lado.
+     Ligado não é outra cor de trilho: é o mesmo par repouso/entintado do resto do sistema, e por
+     isso o controle não precisa de cor semântica, que aqui é do estado do servidor.
+     Depende dos defs de #etched-onsen, como toda gravação. */
+  .toggle-onsen {
+    @apply relative w-11 h-6 shrink-0 appearance-none cursor-pointer rounded-full
+           bg-white/30 border border-white/45
+           transition-all duration-300;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  .toggle-onsen::after {
+    @apply absolute top-1/2 left-1 w-4 h-4 -translate-y-1/2 rounded-full transition-all duration-300;
+    content: "";
+    background-color: rgba(13, 27, 42, 0.14);
+    filter: url(#etched-onsen);
+  }
+  /* O trilho clareia de leve: o degrau do poço continua, mas o material acusa que está ativo. */
+  .toggle-onsen:checked {
+    @apply bg-white/45 border-agua-500/50;
+  }
+  .toggle-onsen:checked::after {
+    @apply translate-x-5;
+    background-color: rgba(0, 119, 182, 0.85);
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+  .toggle-onsen:hover::after {
+    background-color: rgba(13, 27, 42, 0.3);
+  }
+  .toggle-onsen:checked:hover::after {
+    background-color: rgba(0, 119, 182, 0.85);
+  }
+  .toggle-onsen:focus-visible {
+    @apply outline-none border-agua-500;
+    box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+
+  /* Fio gravado e fio entintado (SPEC user_admin/015): a gravação aplicada a um traço em vez de a
+     um glifo. São só MATERIAL — não posicionam nem dimensionam nada; quem decide onde o fio corre
+     e por quanto é a peça que o usa. */
+  .etched-line {
+    @apply rounded-full;
+    background-color: rgba(13, 27, 42, 0.14);
+  }
+  /* As pontas esmaecem porque entre dois trechos vizinhos de estados diferentes uma aresta viva
+     leria como duas peças encostadas, e o que existe é um fio só mudando ao longo do tempo. Em
+     porcentagem (20% de cada ponta), para a transição ser proporcional ao trecho; com stops
+     intermediários, porque a rampa reta deixa uma quina de luz onde ela começa; e parando num tom
+     claro da mesma tinta, nunca no transparente — indo a zero, o vidro branco por baixo daria uma
+     auréola justamente onde a tinta acaba. O brilho é drop-shadow (segue o canal alfa), nunca
+     box-shadow (ignoraria o gradiente e desenharia a sombra da caixa). */
+  .etched-line-inked {
+    @apply rounded-full;
+    background-image: linear-gradient(
+      to right,
+      rgba(0, 119, 182, 0.32) 0%,
+      rgba(0, 119, 182, 0.4) 5%,
+      rgba(0, 119, 182, 0.56) 10%,
+      rgba(0, 119, 182, 0.73) 15%,
+      rgba(0, 119, 182, 0.85) 20%,
+      rgba(0, 119, 182, 0.85) 80%,
+      rgba(0, 119, 182, 0.73) 85%,
+      rgba(0, 119, 182, 0.56) 90%,
+      rgba(0, 119, 182, 0.4) 95%,
+      rgba(0, 119, 182, 0.32) 100%
+    );
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+  }
+
   /* ==================== MOLÉCULAS ==================== */
+  /* Campo de formulário: rótulo overline + controle + linha de ajuda. */
+  .form-field      { @apply flex flex-col gap-1.5; }
+  .form-field-hint { @apply text-xs text-base-content/60; }
+
+  /* Campo com criação inline (SPEC user_admin/012): o controle estica, o botão não. O .select-onsen
+     entra na conta porque, aprimorado o campo, quem ocupa a linha é a casca da SPEC 011 — o
+     <select> fica hidden e sairia do fluxo. */
+  .form-field-inline-action { @apply flex items-center gap-2; }
+  .form-field-inline-action > :where(select, input, .select-onsen) { @apply flex-1 min-w-0; }
+
+  /* Campo de seleção de vidro (SPEC user_admin/011): a lista nativa é desenhada pelo SO e não
+     aceita token nenhum. Aqui o select continua sendo o campo — fonte da verdade, envio, change
+     para o HTMX — e ganha uma casca de vidro montada por static/src/js/ui/select_onsen.js. */
+  .select-onsen { @apply w-full; }
+  /* flex! porque o .select do daisyUI define o próprio display e as duas regras empatam. */
+  .select-onsen-trigger { @apply flex! w-full items-center justify-between text-left font-normal; }
+  /* A lista é popover: vive na TOP LAYER, então nenhum overflow a corta e nenhum contexto de
+     empilhamento a soterra — dentro de painel de vidro (todo backdrop-filter cria contexto próprio)
+     e de caixa com rolagem, painel absoluto não tem chance, e z-index não resolve. Posição, largura
+     e altura máxima vêm do gatilho, escritas pelo JS; o inset: auto derruba o inset: 0 que o
+     navegador dá a todo popover. */
+  .select-onsen-panel {
+    @apply fixed m-0 p-2 overflow-hidden rounded-2xl backdrop-blur-[28px] bg-transparent bg-gradient-to-br from-white/88 via-white/82 to-white/76 border border-white/70 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+    inset: auto;
+  }
+  .select-onsen-panel:popover-open { @apply flex flex-col gap-2; }
+  .select-onsen-busca { @apply h-9 text-sm shrink-0; }
+  .select-onsen-list  { @apply flex flex-col gap-1 min-h-0 max-h-60 overflow-y-auto overscroll-contain; }
+  .select-onsen-option {
+    @apply flex items-center gap-2 w-full text-left px-3 py-2 rounded-xl text-sm cursor-pointer transition-all duration-200 text-base-content;
+  }
+  /* A marca da escolha é tinta de água, como todo estado de seleção do sistema. A coluna existe em
+     todo item, marcado ou não: sem ela o rótulo dança de linha para linha. */
+  .select-onsen-option::before {
+    @apply w-4 shrink-0 text-center text-agua-700 font-bold opacity-0;
+    content: "✓";
+  }
+  .select-onsen-option[aria-selected="true"] { @apply font-medium text-agua-800; }
+  .select-onsen-option[aria-selected="true"]::before { @apply opacity-100; }
+  /* Realce do cursor: UM só marcador, movido pelo hover E pela seta. Não é :focus-visible porque o
+     navegador não o acende em foco programático depois de clique — a seta andava e a tela não
+     mudava. E não é branco porque sobre gelo espesso branco não aparece: quem acende é a água. */
+  .select-onsen-option[data-ativo="true"] {
+    @apply bg-agua-400/45 text-rocha-950 outline-none shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+  }
+  .select-onsen-vazio { @apply px-3 py-2 text-xs text-base-content/60; }
+
+  /* O extinto dentro do select de vidro (SPEC user_admin/029). Vem DEPOIS de [aria-selected] e      */
+  /* [data-ativo] no arquivo: mesma força de seletor no marcado, e quem vence é a ordem — o extinto   */
+  /* continua amarelo sob o realce da seta, que ali só muda o fundo.                                  */
+  .select-onsen-option[data-extinto] { @apply text-warning; }
+  .select-onsen-option[data-extinto][aria-selected="true"] { @apply text-warning font-medium; }
+  .select-onsen-option[data-extinto][data-ativo="true"] { @apply text-warning; }
+  /* O gatilho carrega a mesma marca do item escolhido: quem ocupa cargo extinto abre o campo e lê    */
+  /* o estado sem precisar abrir a lista.                                                             */
+  .select-onsen-trigger[data-extinto] { @apply text-warning; }
+
+  /* Campo de data de vidro (SPEC design/012): o seletor nativo é desenhado pelo SO, não aceita token
+     nenhum e escreve no formato dele. Aqui o input[type="date"] continua sendo o campo — fonte da
+     verdade, envio, change para o HTMX — e ganha entrada em dd/mm/aaaa e calendário próprio, montados
+     por static/src/js/ui/campo_data.js. */
+  .campo-data { @apply relative w-full; }
+  .campo-data-entrada { @apply pr-9 tabular-nums; }
+
+  /* O painel é popover pelo mesmo motivo do .select-onsen-panel: top layer, fora de todo overflow e
+     de todo contexto de empilhamento. Display e posição ficam no :popover-open, e não na base —
+     regra de autor que declara display vence o display: none do navegador, e o painel fechado
+     apareceria. */
+  .calendario-onsen {
+    @apply p-3 w-64 rounded-2xl backdrop-blur-[28px] bg-transparent;
+    @apply bg-gradient-to-br from-white/88 via-white/82 to-white/76 border border-white/70 text-base-content;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+  }
+  .calendario-onsen:popover-open {
+    @apply fixed m-0 flex flex-col gap-2;
+    inset: auto;
+  }
+  .calendario-onsen:focus-visible { @apply outline-none; }
+  .calendario-onsen-topo   { @apply flex items-center justify-between gap-1; }
+  /* O corpo é UMA caixa: as faces se substituem dentro dela, e a altura mínima impede o painel de
+     saltar quando a grade de 42 dias dá lugar à de 12 meses. */
+  .calendario-onsen-corpo  { @apply flex flex-col gap-1 min-h-[16rem]; }
+  .calendario-onsen-semana { @apply grid grid-cols-7 gap-1 text-center; }
+  .calendario-onsen-grade  { @apply grid grid-cols-7 gap-1; }
+  .calendario-onsen-meses  { @apply grid grid-cols-3 gap-1.5 flex-1 content-center; }
+  .calendario-onsen-anos   { @apply grid grid-cols-4 gap-1.5 flex-1 content-center overflow-y-auto overscroll-contain; }
+  /* Quem manda na substituição é o data-face do corpo, e não classe posta por JS: neste projeto a
+     camada components vence utilities (ordem declarada no input.css), então um .hidden solto perde
+     para o display: grid da peça e a face escondida vaza embaixo da que está em cena. */
+  .calendario-onsen-corpo[data-face="dias"]  :is(.calendario-onsen-meses, .calendario-onsen-anos),
+  .calendario-onsen-corpo[data-face="meses"] :is(.calendario-onsen-semana, .calendario-onsen-grade, .calendario-onsen-anos),
+  .calendario-onsen-corpo[data-face="anos"]  :is(.calendario-onsen-semana, .calendario-onsen-grade, .calendario-onsen-meses) {
+    @apply hidden;
+  }
+  /* No topo da pilha o título para de subir — e para de se oferecer. */
+  .calendario-onsen-titulo[data-topo] { @apply pointer-events-none; }
+  .calendario-onsen-rodape { @apply flex items-center justify-between gap-2 pt-1 border-t border-white/50; }
+
+  /* Disco de vidro da paleta: as cavidades se distribuem pelo ângulo --a escrito no markup, então
+     a molécula não depende de quantas cores a paleta oferece. */
+  .palette-disc {
+    @apply relative w-56 h-56 rounded-full backdrop-blur-[10px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_rgba(7,58,84,0.25),0_0_24px_rgba(72,202,228,0.25)];
+  }
+  .palette-disc .paint-well {
+    @apply absolute top-1/2 left-1/2;
+    transform: translate(-50%, -50%) rotate(var(--a)) translate(4.75rem) rotate(calc(-1 * var(--a)));
+  }
+
+  /* Uma regra por tom de CorUnidade: o poço central e o swatch do gatilho espelham o radio marcado.
+     A paleta é fechada (oito tons), então o espelhamento custa oito linhas de CSS e dispensa o
+     estado de UI em JavaScript que o §7.2 não admite. */
+  .palette-field:has(input[value="agua-700"]:checked)    .paint-well-atual { background-color: #0077b6; }
+  .palette-field:has(input[value="agua-800"]:checked)    .paint-well-atual { background-color: #023e8a; }
+  .palette-field:has(input[value="rocha-700"]:checked)   .paint-well-atual { background-color: #415a77; }
+  .palette-field:has(input[value="rocha-900"]:checked)   .paint-well-atual { background-color: #1b263b; }
+  .palette-field:has(input[value="madeira-600"]:checked) .paint-well-atual { background-color: #7f5539; }
+  .palette-field:has(input[value="madeira-700"]:checked) .paint-well-atual { background-color: #5e412f; }
+  .palette-field:has(input[value="sakura-600"]:checked)  .paint-well-atual { background-color: #bc3a67; }
+  .palette-field:has(input[value="sakura-700"]:checked)  .paint-well-atual { background-color: #97294f; }
+
+  /* ---------- Tabela de vidro (SPEC user_admin/013) ----------
+     A inversão dos materiais que já existem: o corpo é poço rebaixado (.card-well, composto no
+     HTML) e o cabeçalho é placa de gelo sobre ele. A caixa rola por conta própria — a viewport
+     nunca rola na horizontal — e o cabeçalho gruda nela.
+     A folga do poço é padding do .card-well, FORA do rolador: com padding aqui, o recorte do
+     overflow acontece na padding box e o cabeçalho grudento pararia a exata medida dele acima da
+     linha de corte, deixando aparecer uma faixa de linha nítida. */
+  .table-onsen-wrap {
+    @apply relative overflow-auto overscroll-contain max-h-[32rem] rounded-2xl;
+    /* A coluna da barra gravada: reservada no rolador para que a LINHA não corra sob o polegar.
+       Em token porque a bandeja precisa da mesma medida para atravessá-la. */
+    --coluna-barra: 1.125rem;
+    padding-right: var(--coluna-barra);
+    scrollbar-width: none;
+  }
+  .table-onsen-wrap::-webkit-scrollbar { display: none; }
+  /* Âncora da barra — ela é irmã do rolador, não filha, senão rolaria com o conteúdo. */
+  .table-onsen-poco { @apply relative; }
+  /* Cabeçalho rente (SPEC design/009 v3): com a bandeja encostada na borda do poço, a folga do topo
+     deixa de existir e a barra gravada começa direto abaixo dela. O :has(thead) é o que separa a
+     tabela com cabeçalho do poço que só rola conteúdo — este mantém a folga em volta. */
+  .table-onsen-poco:has(thead) { --folga-topo: 0px; }
+
+  /* Barra de rolagem gravada: o trilho é o SULCO e o polegar é a ÁGUA que o enche — o par
+     repouso/entintado do sistema aplicado a um controle. Serve a QUALQUER .card-well rolável.
+     É elemento, não ::-webkit-scrollbar: o pseudo não existe no Firefox, no Chrome troca a barra
+     flutuante por uma clássica sempre visível, e em ambos ocupa a altura inteira do rolador — ela
+     correria ao lado da bandeja. Par com static/src/js/ui/scroll_etched.js. */
+  .scroll-etched {
+    @apply absolute right-2 w-2.5 rounded-full pointer-events-none;
+    /* Começa onde a bandeja termina; quem a mede é o JS (altura de elemento não se lê em CSS).
+       A folga do topo some no poço cuja bandeja encosta na borda — a barra a acompanha. */
+    top: calc(var(--folga-topo, 0.5rem) + var(--altura-cabecalho, 0px));
+    bottom: 0.5rem;
+    background: rgba(255, 255, 255, 0.16);
+    /* Mais fundo que o poço que o contém (--sombra-poco): sulco cavado no fundo de uma bacia não
+       pode ler mais claro que a bacia. */
+    box-shadow: inset 0 2px 5px rgba(7, 58, 84, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+    @apply transition-opacity duration-300;
+  }
+  /* Nada a rolar, nada a mostrar: sulco vazio é controle morto desenhado na tela. */
+  .scroll-etched-ociosa { @apply opacity-0; }
+  /* A borda transparente com background-clip afina o polegar DENTRO do sulco, em vez de desenhar
+     uma segunda barra por cima dele. Parado, ele é só gravação — a tinta de repouso do .etched. */
+  .scroll-etched-thumb {
+    @apply absolute inset-x-0 top-0 rounded-full cursor-grab pointer-events-auto;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    background-color: rgba(13, 27, 42, 0.14);
+    /* Longa só na volta: a água escorre do sulco, não é apagada. */
+    transition: background-color 700ms ease, box-shadow 700ms ease;
+  }
+  /* Entintado enquanto rola; quem conta o tempo é o JS, porque "parou de rolar" o CSS não enxerga. */
+  .scroll-etched-ativa .scroll-etched-thumb {
+    background-color: rgba(0, 150, 199, 0.5);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    transition-duration: 150ms;
+  }
+  .scroll-etched-thumb:hover,
+  .scroll-etched-thumb:active {
+    background-color: rgba(0, 119, 182, 0.75);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(72, 202, 228, 0.7);
+    transition-duration: 150ms;
+  }
+  .scroll-etched-thumb:active { @apply cursor-grabbing; }
+
+  /* Largura automática de propósito: as colunas se negociam com o conteúdo. */
+  .table-onsen {
+    @apply w-full text-sm;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  /* A bandeja é GELO, não papel: branco em cima, água pálida embaixo. É esse tom frio que faz a
+     peça ler como coisa POSTA sobre a superfície, e a coluna gravada ler como a superfície.
+     Duas formas do mesmo material: caixa inteira fora da tabela, segmentos dentro dela — não
+     existe elemento que envolva um <tr>, e como todo segmento repete o mesmo gradiente vertical na
+     mesma altura, as emendas somem.
+     A densidade fica acima do gelo espesso (94%→86%) porque a bandeja é a única coisa entre o
+     cabeçalho grudento e as linhas que correm por trás: desde que o poço aninhado deixou de pintar
+     (SPEC design/009), o blur de 56px sozinho não apaga o texto que emerge. Abaixo do modal
+     (97%→88%), que é o teto: acima dele a peça deixa de ler como gelo. */
+  .th-onsen-bandeja,
+  .table-onsen thead th::before {
+    @apply backdrop-blur-[56px] bg-gradient-to-b from-white/94 to-agua-100/86 border-y border-white/55;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9)];
+    background-color: transparent;
+  }
+  .th-onsen-bandeja { @apply flex items-stretch gap-5 p-2.5 rounded-2xl border-x; }
+  /* O material vai num ::before que forra a célula, e não no próprio th: quem tem backdrop-filter
+     vira backdrop root para os descendentes, e a faixa de dissolução (::after) enxergaria só o que
+     a bandeja pinta — nunca as linhas. Irmã dela, volta a ver a tabela inteira. */
+  .table-onsen thead th::before {
+    content: "";
+    @apply pointer-events-none absolute inset-0;
+  }
+  .table-onsen thead th:first-child::before { @apply rounded-l-2xl border-l; }
+  /* A bandeja ATRAVESSA a coluna da barra, ao contrário da linha: o polegar só começa abaixo do
+     cabeçalho, então não há o que desviar, e parar antes dela deixava um vazio no canto do poço.
+     O recorte do rolador é a padding box, então o negativo alcança a coluna sem ser cortado. */
+  .table-onsen thead th:last-child::before {
+    @apply rounded-r-2xl border-r;
+    right: calc(-1 * var(--coluna-barra, 0px));
+  }
+  /* A folga de 10px dá à sombra da peça espaço para morrer DENTRO da própria célula: cada th é
+     contexto de empilhamento próprio e o fundo de um corta em linha reta a sombra do vizinho. */
+  .table-onsen thead th { @apply sticky top-0 z-20 p-2.5 align-top; }
+
+  /* A borda de baixo da bandeja, em uma faixa só: sombra projetada no poço E dissolução do
+     desfoque — sem ela a linha que emerge passa de 56px de blur a nitidez total num pixel.
+     Faixa por célula, não box-shadow na bandeja: sombra de caixa vaza para os lados e, como cada
+     th empilha por conta própria, desenharia uma emenda escura a cada coluna. */
+  .table-onsen thead th::after {
+    content: "";
+    @apply pointer-events-none absolute left-0 right-0 top-full h-14;
+    /* Sem backdrop-filter: ele NÃO é atenuado por mask-image (Chromium aplica na caixa inteira e
+       corta a seco), e o degrau entre o borrado e o nítido lia como aresta dura no fim da sombra.
+       Quem esconde as linhas que passam sob o cabeçalho é o blur da bandeja, no ::before.
+       Sem o blur, a máscara também sai: ela multiplicaria o gradiente, que já cai sozinho até zero,
+       e a sombra apareceria atenuada duas vezes. Paradas intermediárias porque sombra é queda
+       gaussiana, não linear. */
+    background: linear-gradient(
+      to bottom,
+      rgba(7, 58, 84, 0.2) 0%,
+      rgba(7, 58, 84, 0.11) 26%,
+      rgba(7, 58, 84, 0.04) 55%,
+      rgba(7, 58, 84, 0) 85%
+    );
+  }
+  /* Nas pontas a faixa não pode terminar em esquadro sob o canto redondo da bandeja: a segunda
+     máscara a dissolve no comprimento do raio. intersect porque as duas valem ao mesmo tempo. */
+  .table-onsen thead th:first-child::after {
+    mask-image: linear-gradient(to right, transparent 0, black 1.75rem);
+  }
+  .table-onsen thead th:last-child::after {
+    mask-image: linear-gradient(to left, transparent 0, black 1.75rem);
+  }
+
+  /* Separador em LUZ, não em tinta: sobre gelo quem divide é a aresta branca. Sem zebra — alternar
+     opacidade sobre translúcido deixaria o mapa aparecer em faixas. */
+  .table-onsen tbody td {
+    @apply px-4 py-3 align-middle border-b border-white/65 transition-colors duration-200;
+    /* Um fio de tinta ACIMA da aresta branca: sozinha, a luz sobre gelo claro não separa e as linhas
+       leem chapadas. O par sombra-luz é o mesmo degrau do poço, na espessura de um fio. */
+    box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09);
+  }
+  .table-onsen tbody tr:last-child td { @apply border-b-0; box-shadow: none; }
+  .table-onsen tbody tr:hover td {
+    @apply bg-white/55;
+    box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09),
+      0 0 10px color-mix(in srgb, var(--color-agua-400) 25%, transparent);
+  }
+  .table-onsen-vazio { @apply px-4 py-10 text-center text-sm text-base-content/60; }
+
+  /* Célula de nome quebrando linha (SPEC user_admin/019): quebra em palavras para preservar a largura da tabela */
+  .td-nome-unidade {
+    @apply max-w-xs break-words whitespace-normal text-sm leading-snug;
+    color: rgba(13, 27, 42, 0.85);
+  }
+
+  /* Rótulo do cargo em comissão (SPEC user_admin/029): a base não pinta — o rótulo aparece dentro de
+     link, badge, meta de pessoa e célula de tabela, e cada um já tem a sua tinta. A classe existe
+     para o modificador ter onde pousar. */
+  .rotulo-cargo { @apply text-inherit; }
+  /* O extinto é o MESMO texto — a marca é a tinta e o sublinhado pontilhado que anuncia o tooltip.
+     Sem o tracejado, o title não tem afordância nenhuma e ninguém passa o cursor. */
+  .rotulo-cargo-extinto {
+    @apply text-warning underline decoration-dotted decoration-warning/45 underline-offset-4;
+  }
+
+  /* Link destacado de tabela com micro-zoom de afordância no hover (SPEC user_admin/019) */
+  .link-tabela-onsen {
+    @apply inline-flex items-center gap-1 font-medium text-madeira-700 transition-all duration-200 origin-left;
+  }
+  .link-tabela-onsen:hover {
+    @apply text-agua-700 scale-[1.06];
+  }
+
+  /* Link de sigla/unidade na tabela com micro-zoom de afordância e brilho ciano no hover (SPEC user_admin/013 v5) */
+  .link-sigla-onsen {
+    @apply inline-flex items-center gap-2 transition-all duration-200 origin-left;
+  }
+  .link-sigla-onsen:hover {
+    @apply scale-[1.06] drop-shadow-[0_0_6px_rgba(72,202,228,0.8)];
+  }
+  .link-sigla-onsen:hover .text-code {
+    @apply text-agua-600;
+  }
+
+  /* Linha em foco ativo (SPEC user_admin/021): destaque ciano suave com anel interno de água.
+     Sem important: as duas regras já ganham do hover comum por especificidade — o :not() carrega a
+     do atributo — e vêm depois dele no arquivo. */
+  .table-onsen tbody tr {
+    @apply cursor-pointer;
+  }
+  .table-onsen tbody tr:not([data-ativo="true"]):hover td {
+    @apply bg-white/65;
+  }
+  .table-onsen tbody tr[data-ativo="true"] td {
+    @apply bg-agua-400/35 text-rocha-950;
+    box-shadow: inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
+  }
+  .table-onsen tbody tr[data-ativo="true"] td:first-child {
+    box-shadow: inset 1px 0 0 rgba(0, 150, 199, 0.5), inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
+  }
+  .table-onsen tbody tr[data-ativo="true"] td:last-child {
+    box-shadow: inset -1px 0 0 rgba(0, 150, 199, 0.5), inset 0 1px 0 rgba(0, 150, 199, 0.5), inset 0 -1px 0 rgba(0, 150, 199, 0.5);
+  }
+  .table-onsen tbody tr[data-ativo="true"] .link-tabela-onsen,
+  .table-onsen tbody tr[data-ativo="true"] .link-sigla-onsen,
+  .table-onsen tbody tr[data-ativo="true"] a {
+    @apply text-agua-800 font-bold;
+  }
+
+  /* Linha pinçada (SPEC user_admin/021): escolhida uma unidade — no organograma ou na própria
+     tabela —, a linha dela sobe até o topo. Quem desliza é um CLONE em gelo espesso, porque <tr>
+     não aceita transform sem desmontar a grade da tabela; a original apaga no lugar e reaparece já
+     no topo ao fim do trajeto. Apaga, e não sai do fluxo: removê-la faria a tabela inteira pular
+     sob o clone em movimento.
+     O JS escreve só MEDIDA — a posição, a altura e a largura de cada coluna, que ele lê do DOM em
+     px, e a duração. A pele é toda daqui, e o material é o mesmo .glass-panel-thick que o clone
+     compõe no markup. */
+  .table-flutuante-clone {
+    @apply absolute left-0 w-full max-w-full z-40 overflow-hidden pointer-events-none;
+    box-sizing: border-box;
+    table-layout: fixed;
+    border-radius: var(--radius-placa);
+    top: var(--topo-pincagem);
+    height: var(--altura-pincagem);
+    transition: top var(--duracao-pincagem) cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .table-flutuante-clone tbody td { width: var(--largura-coluna); }
+  .table-onsen tbody tr.linha-pincada td { @apply opacity-15; }
+
+  /* Célula de cabeçalho: peça de gelo assentada na bandeja. As peças têm a mesma altura por
+     CONSTRUÇÃO — rótulo em uma linha e campo abrindo em todas ao mesmo tempo —, e é assim que o
+     cabeçalho cresce como uma peça só. Declarar altura aqui é o que travaria esse crescimento. */
+  .th-onsen {
+    @apply relative flex items-start gap-1.5 px-3 py-2 rounded-xl text-left whitespace-nowrap transition-all duration-300;
+    /* Em repouso a peça pode ser translúcida: quem esconde as linhas que rolam por baixo é a
+       BANDEJA, não ela. */
+    @apply backdrop-blur-[20px] bg-gradient-to-br from-white/68 via-white/56 to-white/46 border border-white/70;
+    /* Espalhamento negativo nas sombras de fora: recolhe o alcance lateral para dentro da folga da
+       célula, senão a sombra vaza para a coluna vizinha e morre cortada na emenda. */
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_-8px_rgba(7,58,84,0.32),0_0_14px_-6px_rgba(72,202,228,0.3)];
+  }
+  /* AFUNDADO = a coluna TEM FILTRO — não "alguém clicou". Estado é valor, não memória: o :has lê o
+     campo e o CSS desenha, sem estado de UI em JavaScript. O gelo segue opaco (só a direção da luz
+     inverte), senão as linhas apareceriam através do cabeçalho grudento. */
+  .th-onsen:focus-within,
+  .th-onsen:has(.th-onsen-input:not(:placeholder-shown)) {
+    @apply bg-none bg-agua-100/45 border-white/45 translate-y-px;
+    @apply shadow-[inset_0_3px_8px_rgba(7,58,84,0.28)];
+  }
+  /* O rótulo NÃO some quando a coluna afunda: o placeholder desaparece ao digitar e a coluna
+     ficaria anônima justamente enquanto se filtra. */
+  .th-onsen-campo { @apply flex-1 min-w-0 flex flex-col gap-0.5 cursor-pointer; }
+  /* O campo é nu: a moldura dele é a própria célula afundada. Em repouso ele existe no layout
+     (altura zero, invisível) para continuar focável — display:none tiraria o alvo do label. */
+  .th-onsen-input {
+    @apply w-full h-0 opacity-0 p-0 bg-transparent border-0 outline-none;
+    @apply text-sm font-normal normal-case tracking-normal text-base-content;
+    @apply placeholder:text-rocha-700/50 transition-all duration-300;
+  }
+  /* A RÉGUA ABRE INTEIRA: o campo de uma coluna abre o de todas as peças da mesma bandeja — é o
+     que mantém as alturas iguais e faz a tabela refluir uma vez, não a cada coluna. Afundar
+     continua sendo só de quem tem filtro: o campo é layout, o relevo é estado. */
+  :is(.table-onsen thead tr, .th-onsen-bandeja):has(.th-onsen-input:focus) .th-onsen-input,
+  :is(.table-onsen thead tr, .th-onsen-bandeja):has(.th-onsen-input:not(:placeholder-shown)) .th-onsen-input {
+    @apply h-6 opacity-100;
+  }
+  /* Coluna que não responde (situação, ações): NÃO HÁ PEÇA — o rótulo é gravado direto na bandeja.
+     A peça passa a significar uma coisa só, "esta coluna responde", e a ausência dela é a mensagem,
+     sem cinza de desabilitado nem cursor proibido. A geometria continua a mesma; sai só o material.
+     O -webkit-backdrop-filter vai junto porque o utility escreve as duas propriedades. */
+  .th-onsen-gravado {
+    background-image: none;
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
   .suggestion-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/50; }
-  .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.15)]; }
+  .icon-bubble     { @apply w-10 h-10 shrink-0 rounded-full flex items-center justify-center border shadow-[inset_0_2px_4px_rgba(7,58,84,0.38)]; }
 
   /* Painel de sugestões flutuante: altura máxima (o mapa continua protagonista) e cada seção
      rola por conta própria (título fixo, lista com scroll). */
@@ -183,9 +1086,149 @@ html[data-theme="dimap"] {
      contêiner ao final da transição. */
   .suggestion-panel.dismissing { @apply transition-all duration-500 ease-in-out opacity-0 -translate-y-3 scale-95 pointer-events-none; }
 
+  /* Linha de pessoa (SPEC user_admin/015): pessoa identificada em uma linha — moldura de avatar,
+     nome e a meta que a qualifica naquele contexto. Ganha classe porque o layout se repete (o
+     substituto designado, quem se está substituindo); o .avatar-glass entra pelo HTML. */
+  .linha-pessoa      { @apply flex items-center gap-3 min-w-0; }
+  .linha-pessoa-nome { @apply text-[15px] font-medium text-base-content/90 truncate; }
+  .linha-pessoa-meta { @apply text-[13px] text-base-content/60 truncate; }
+
+  /* Tarja de vínculo (SPEC user_admin/015): placa clara ASSENTADA dentro de um poço — a seção, o
+     poço do substituto ou o painel de um modal. Não é .card-well: poço dentro de poço perde o
+     degrau. As variantes trocam só a aresta, porque o que muda é o estado, não a natureza da
+     peça: âmbar é vínculo gravado que não vale hoje; vermelho é unidade sem direção, a única
+     condição da tela que trava competência administrativa. */
+  .tarja-vinculo {
+    @apply border border-white/60 bg-white/45 px-4 py-3
+           shadow-[inset_0_1px_0_rgba(255,255,255,0.8)];
+    border-radius: var(--radius-placa);
+  }
+  .tarja-vinculo-pendente { @apply border-warning/50 bg-warning/10; }
+  .tarja-vinculo-critica  { @apply border-error/50 bg-error/10; }
+
+  /* Calha da cobertura (SPEC user_admin/015): o afastamento inteiro como bandeja funda, com os
+     fios gravados correndo dentro e os nomes de quem responde por cada trecho. É só COMPOSIÇÃO E
+     MEDIDA — material nenhum nasce aqui. A bandeja nunca se preenche: o poço continua poço de
+     ponta a ponta, e o que muda de estado é o fio no fundo dele.
+     A régua é o calendário: left/width de cada trecho são a fração de DIAS que ele ocupa, medida
+     na orquestração (context.py) — um buraco de três semanas tem que parecer três vezes maior que
+     um de uma. É por isso que não é o `steps` do daisyUI, cuja métrica é a ordem. */
+  .calha-cobertura {
+    @apply relative w-full h-6 rounded-full bg-white/30 border border-white/45;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  /* Prazo indeterminado: a calha não termina, se dissolve. Desenhar um fim mentiria sobre um fim
+     que não existe — a mesma razão pela qual data_fim é nulo em vez de uma data-sentinela. */
+  .calha-cobertura-aberta {
+    mask-image: linear-gradient(to right, black 72%, transparent 100%);
+  }
+  /* A folga das pontas é a MESMA do trilho e das marcas: as duas réguas têm que coincidir. */
+  .calha-trilho { @apply absolute inset-x-2 top-1/2 -translate-y-1/2 h-1.5; }
+  .calha-trecho { @apply absolute inset-y-0; }
+  .calha-marcas { @apply absolute inset-x-2 top-0; }
+  /* O rótulo é ancorado no centro do seu trecho, abaixo da calha. Sem disco sobre a linha: o nome
+     já está aqui, e um por trecho empilharia peça sobre a mesma informação. */
+  .calha-marca {
+    @apply absolute top-7 -translate-x-1/2 flex flex-col items-center leading-tight
+           text-center w-24;
+  }
+  /* Quem NOMEIA o buraco é o rótulo em âmbar: é ele que garante a leitura sem depender de
+     perceber diferença de tom no fio. */
+  .calha-marca-vazia { @apply text-warning; }
+
+  /* Card da unidade no organograma (SPEC user_admin/018): largura fixa, porque é ela que faz as
+     barras do organograma casarem com o centro dos cards. */
+  .card-unidade {
+    @apply relative flex flex-col items-center gap-1.5 w-24 shrink-0 px-2 py-2.5 rounded-2xl text-center transition-all duration-300;
+  }
+  /* Em repouso o card é placa de gelo — o .glass-panel do tema, composto no HTML. O que muda aqui é
+     só o acender sob o cursor: a placa tem gradiente, então quem levanta a luz é o brilho, não uma
+     cor de fundo por cima. */
+  .card-unidade-repouso:hover { @apply brightness-[1.06] border-agua-500/40; }
+  /* Percorrido = escavado: tinta escura por dentro e o fio de luz na aresta de baixo, sobre um card
+     de 6rem. */
+  .card-unidade-poco {
+    @apply border border-white/45 bg-rocha-900/10;
+    box-shadow: var(--sombra-escavado);
+  }
+  /* O ego é o mesmo sulco, ACESO: a aresta enche de água e o gelo brilha em volta. O brilho é
+     também a afordância do segundo caminho — no ego, a chapa inteira abre a página. */
+  .card-unidade-ego {
+    @apply border-agua-500/70;
+    box-shadow: var(--sombra-escavado), 0 0 22px rgba(72, 202, 228, 0.5);
+  }
+  .card-unidade-ego:hover {
+    box-shadow: var(--sombra-escavado), 0 0 30px rgba(72, 202, 228, 0.75);
+  }
+  .card-unidade-ego .card-unidade-sigla { @apply text-agua-700; }
+  .card-unidade-gatilho { @apply flex flex-col items-center gap-1.5 w-full rounded-xl cursor-pointer; }
+  .card-unidade-gatilho:focus-visible { @apply outline-none shadow-[0_0_0_3px_rgba(0,150,199,0.2)]; }
+  .card-unidade-sigla { @apply text-[13px] font-bold leading-tight text-madeira-700 break-words transition-colors duration-300; }
+  /* Versão detalhada: o nome inteiro, que na versão simples só existe no tooltip. */
+  .card-unidade-nome { @apply hidden text-[11px] leading-snug text-base-content/65; }
+  /* Segundo caminho: o elo abaixo da sigla, em todo card escavado — quem está no caminho também se
+     abre. A chapa inteira como link era caminho invisível; ninguém achava. */
+  .card-unidade-pagina { @apply hidden p-0.5 rounded-full cursor-pointer transition-transform duration-300; }
+  .card-unidade-pagina:hover { @apply scale-125; }
+  /* Chamar as irmãs: a seta nasce NA PONTA da aresta que vai para elas, apontando para fora. Gira
+     no hover — é o giro que diz que ela abre alguma coisa. */
+  .no-arvore-irmas {
+    @apply hidden absolute -top-[7px] right-0 z-20 px-1 text-[15px] leading-none font-bold cursor-pointer transition-transform duration-300;
+  }
+  /* Na última irmã a aresta corre para o outro lado, e a seta acompanha, espelhada. */
+  .no-arvore-ultimo > .no-arvore-irmas { @apply right-auto left-0 scale-x-[-1]; }
+  .no-arvore-irmas:hover {
+    @apply rotate-45;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .no-arvore-ultimo > .no-arvore-irmas:hover { @apply -rotate-45; }
+
+  /* Organograma (SPEC user_admin/018): uma coluna por unidade — o que está acima e o que está
+     abaixo se lê no eixo Y, e as irmãs ficam lado a lado no eixo X. */
+  .no-arvore { @apply relative flex flex-col items-center shrink-0 px-1.5; }
+  /* Fio vertical entre o card e a barra do nível: só medida — o material é o .etched-line. */
+  .no-arvore-fio { @apply w-[3px] h-4 shrink-0; }
+  /* A barra de cada coluna encosta na da vizinha e forma a linha do nível; nas pontas ela para no
+     centro do card, e a coluna filha única fica com barra de largura zero. */
+  .no-arvore-barra { @apply absolute top-0 left-0 right-0 h-[3px]; }
+  .no-arvore-primeiro > .no-arvore-barra { @apply left-1/2; }
+  .no-arvore-ultimo > .no-arvore-barra { @apply right-1/2; }
+  /* Sem gap: o afastamento entre irmãs é padding da coluna, senão a linha do nível se parte. */
+  .no-arvore-filhas { @apply hidden items-start justify-center; }
+  .no-arvore-desce { @apply hidden; }
+  .no-arvore-vazio { @apply hidden w-24 pt-3 text-[11px] leading-snug text-center text-base-content/60; }
+  /* O organograma repousa numa PLACA, nunca num poço: poço dentro de poço perde o degrau, e é o
+     degrau que faz o caminho escavado se ler. */
+  .organograma { @apply flex justify-center min-w-max py-3 px-3; }
+
+  /* Desce um nível quem está no caminho (só o filho do caminho) e quem está aberto (a linha inteira
+     de filhas). */
+  .no-arvore-caminho > .no-arvore-desce,
+  .no-arvore-aberto > .no-arvore-desce { @apply block; }
+  .no-arvore-caminho > .no-arvore-filhas,
+  .no-arvore-aberto > .no-arvore-filhas { @apply flex; }
+  /* A ausência só é dita no ego: em "ver toda a árvore" ela apareceria em cada folha. */
+  .no-arvore-ego.no-arvore-aberto > .no-arvore-vazio { @apply block; }
+  .no-arvore-filhas > .no-arvore { @apply hidden; }
+  .no-arvore-filhas > .no-arvore-caminho,
+  .no-arvore-filhas > .no-arvore-ego,
+  .no-arvore-aberto > .no-arvore-filhas > .no-arvore { @apply flex; }
+  /* Detalhado é o ego e as filhas diretas dele — o resto do organograma fica simples. */
+  .no-arvore-ego > .card-unidade .card-unidade-nome,
+  .no-arvore-ego > .no-arvore-filhas > .no-arvore > .card-unidade .card-unidade-nome { @apply block; }
+  .no-arvore-caminho > .card-unidade > .card-unidade-pagina,
+  .no-arvore-ego > .card-unidade > .card-unidade-pagina { @apply block; }
+  .no-arvore-caminho > .no-arvore-irmas,
+  .no-arvore-ego > .no-arvore-irmas { @apply block; }
+
   /* ==================== COREOGRAFIA ==================== */
   .transition-glass { @apply transition-all duration-500 ease-in-out; }
-  .glass-hide-up    { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }
+  /* A moldura fixa do topo (marca e área do usuário) entra pela MESMA regra, e não por uma cópia
+     dela: o modal substitui a interface, e placa fixa deixada atrás vira, sob o desfoque, uma
+     mancha da cor da unidade no lugar da foto (SPEC design/007). */
+  .glass-hide-up,
+  :root:has(.modal-toggle:checked) .moldura-fixa { @apply opacity-0 -translate-y-5 scale-95 pointer-events-none; }
 
   /* Barra de busca flutuante: nasce em destaque (hero) e recolhe para o topo quando há resultado no
      DOM (CSS reage ao estado que o servidor controla — HATEOAS, sem JS de layout). #resultado-busca
@@ -221,6 +1264,704 @@ html[data-theme="dimap"] {
 
   /* Título de seção flutuando direto sobre o mapa: halo frio para leitura */
   .section-title { @apply text-2xl font-bold tracking-tight text-rocha-950 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]; }
+
+  /* Bandeja de indicadores (SPEC user_admin/016): o `.stats` do daisyUI composto sobre o material
+     do sistema — cada célula é um `.card-well`, e a bandeja em si fica sem tinta própria (o
+     important derruba o `bg-base-100` que o daisyUI põe em `.stats`). */
+  .stats-onsen { @apply bg-transparent! w-full gap-3 p-3; }
+  /* A aresta tracejada do daisyUI vem num :not(:last-child) que empata em força com o seletor. */
+  .stats-onsen .stat { @apply px-4 py-3 gap-1.5 border-solid! border-white/45!; }
+  /* As partes do daisyUI têm pele própria: a tinta do sistema só entra por descendência. */
+  .stats-onsen .stat-title  { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700/90; }
+  .stats-onsen .stat-value  { @apply text-[26px] leading-tight font-bold text-madeira-700 whitespace-normal; }
+  .stats-onsen .stat-desc   { @apply text-[13px] text-base-content/60 whitespace-normal; }
+  .stats-onsen .stat-figure { @apply self-end justify-self-end text-agua-600/60; }
+  /* Variante: célula do titular ou do substituto quando a unidade está vaga ou sem cobertura. */
+  .stat-vaga .stat-value { @apply text-error; }
+
+  /* Campo que se abre para edição (SPEC user_admin/016): lido por padrão, vira campo só quando o
+     lápis ao lado é aberto — o checkbox nativo controla o par via :has(), como o resto do sistema. */
+  .campo-onsen { @apply flex flex-col gap-1.5; }
+  .campo-onsen-toggle { @apply sr-only; }
+  .campo-onsen-linha { @apply flex items-center gap-2 min-w-0; }
+  /* wrap-anywhere (SPEC criacao_usuarios/005): o min-w-0 deixa a célula encolher, e sem a quebra
+     o e-mail longo sai dela por cima do lápis. */
+  .campo-onsen-valor { @apply flex-1 min-w-0 text-[15px] text-base-content/90 py-1.5 wrap-anywhere; }
+  .campo-onsen-campo { @apply hidden flex-1 min-w-0; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-valor { @apply hidden; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-campo { @apply block; }
+  /* Aberto, o campo cresce e o botão sobe: centrado, ele flutuaria no meio da coluna. */
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-linha { @apply items-start; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis { @apply mt-1.5; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis .icon-etched {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  /* ALTERAÇÃO (SPEC user_admin/017): aberto o campo, o mesmo lápis desfaz — e nada dizia isso. No
+     hover ele vira ✕, e o vale também para o modal da página da unidade. */
+  .campo-onsen-lapis-fecha { @apply hidden; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-abre { @apply hidden; }
+  .campo-onsen:has(> .campo-onsen-toggle:checked) .campo-onsen-lapis:where(:hover, :focus-visible) .campo-onsen-lapis-fecha { @apply inline; }
+
+  /* Cadeado do campo travado (SPEC user_admin/029): não é botão, nada acontece ao clicar. É a marca
+     do que a edição não alcança — ao lado do lápis do que ela alcança —, e o motivo mora no tooltip. */
+  .campo-onsen-cadeado {
+    @apply grid place-items-center w-7 h-7 shrink-0 rounded-full text-base-content/45;
+  }
+
+  /* Painel que cresce (SPEC user_admin/017): traz o cadastro de unidade para dentro do modal de
+     edição do servidor. A grade é o único jeito de animar altura sem fixar um valor em pixels que
+     o conteúdo desmente: 0fr → 1fr. */
+  .painel-onsen { @apply grid transition-all duration-300 ease-in-out; grid-template-rows: 0fr; }
+  .painel-onsen-toggle { @apply sr-only; }
+  /* A folga vive DENTRO do recorte: sem ela o overflow corta a sombra da placa e a quina sai reta. */
+  .painel-onsen-corpo { @apply overflow-hidden -mx-4 px-4 pt-6 pb-6 opacity-0 transition-opacity duration-300; }
+  .painel-onsen:has(> .painel-onsen-toggle:checked) { grid-template-rows: 1fr; }
+  .painel-onsen:has(> .painel-onsen-toggle:checked) > .painel-onsen-corpo { @apply opacity-100; }
+  /* O painel toma o lugar do gatilho, e o :has() sobe ao pai porque os dois moram em ramos diferentes. */
+  *:has(> .painel-onsen > .painel-onsen-toggle:checked) .painel-onsen-gatilho { @apply hidden; }
+
+  /* Botão de trocar foto (SPEC user_admin/017): irmão do .btn-criar-inline — círculo de gelo com a
+     tinta ciana —, pousado na quina do retrato. */
+  .btn-foto {
+    @apply w-9 h-9 shrink-0 p-0 rounded-full backdrop-blur-[10px] bg-white/60 border border-white/70 text-agua-700
+           shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_4px_16px_rgba(7,58,84,0.22)]
+           transition-all duration-300 hover:bg-white/80 hover:shadow-[0_4px_20px_rgba(72,202,228,0.45)];
+  }
+
+  /* Retrato editável (SPEC user_admin/017): o retrato grande com o botão de trocar na quina. */
+  .avatar-editavel { @apply relative w-fit; }
+  /* O mt-0! desfaz o empurrão que o campo aberto dá no lápis: este não fica na linha do valor. */
+  .avatar-editavel > .btn-foto { @apply absolute bottom-0 right-0 translate-x-1 translate-y-1 mt-0!; }
+
+  /* Variante do .btn-etched (SPEC user_admin/017): ao lado de um botão que grava, no mesmo tamanho,
+     o corpo cheio disputa a atenção em vez de ceder. */
+  .btn-etched-sm { @apply text-[12px] font-semibold tracking-[0.1em] px-1 py-0.5; }
+
+  /* Entrada da placa (SPEC user_admin/017): o fragmento chega com o toggle já marcado — sem a fase
+     de settle do HTMX ela apareceria pronta, sem animação alguma. */
+  .poco-modal .modal-box { @apply transition-[opacity,scale,translate] duration-150 ease-out; }
+  /* O important é contra o daisyUI, que entinta o estado aberto com seletor mais específico. */
+  .poco-modal.htmx-settling .modal-box { @apply opacity-0! -translate-y-1!; }
+
+  /* Ícone de ação (SPEC autorizacao/006): sem `color` no átomo — declará-la aqui venceria por
+     cascata a pele empilhada (.icon-glow é text-agua-600) e o brilho sumiria sem erro nenhum. */
+  .icone-acao { @apply inline-flex items-center justify-center shrink-0; }
+  .icone-acao svg {
+    @apply w-full h-full block;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* Duas medidas só, como no .etched: o traço do glifo é desenhado para uma delas. */
+  .icone-acao-pequeno { @apply w-5 h-5; }
+  .icone-acao-grande  { @apply w-12 h-12; }
+  .icone-acao-generico { @apply opacity-45; }
+
+  /* Pele do glifo dentro de item e cartão: quem acende é o hover do item, não o glifo. */
+  .icone-acao-acende { @apply transition-all duration-200; }
+  /* Medida grande do filtro: os deslocamentos da gravação são px absolutos, e no glifo de 48px o
+     sulco da medida pequena vira um fio. */
+  .card-acao .icone-acao-acende {
+    filter: url(#etched-onsen-lg);
+    @apply text-agua-700/85;
+  }
+  /* O hover troca o `filter` inteiro: a gravação sai e o brilho entra. */
+  :is(.item-menu, .card-acao-alvo):hover .icone-acao-acende,
+  .item-menu:focus-visible .icone-acao-acende {
+    @apply text-agua-600 drop-shadow-[0_0_6px_rgba(72,202,228,0.8)];
+  }
+
+  /* ÁTOMO · AURA (SPEC user_admin/022). A `aura` do daisyUI fica empilhada no HTML — `@apply` de
+     classe daisyUI derruba a folha inteira (skill componentes-frontend, §2.1). Aqui vai só a pele:
+     a água da escala do DS e o tempo da volta. */
+  .aura-onsen { @apply text-agua-500 bg-agua-200 duration-3000 rounded-xl; }
+
+  /* MOLÉCULA · BOTÃO DE ATO GRAVE (SPEC user_admin/022). Reusável por qualquer ação de peso do
+     sistema. O controle tem DUAS faces no DOM — quem escolhe é o estado no invólucro. Duas faces,
+     e não uma que troca de classe, porque cada uma manda uma coisa diferente e porque é o que
+     permite ao estado vir tanto do servidor (classe `.botao-aura-ligado` direto no invólucro)
+     quanto de um controle local (grupo de rádios irmão), sem o CSS saber a diferença. Nenhuma face
+     é redeclarada aqui: `.btn-onsen` e `.card-well` entram empilhados no HTML, intocados. */
+  .botao-aura > .botao-aura-acionado { @apply hidden; }
+  .botao-aura-ligado > .botao-aura-repouso,
+  .botao-aura-estado-ligado:checked ~ .botao-aura > .botao-aura-repouso { @apply hidden; }
+  .botao-aura-ligado > .botao-aura-acionado,
+  .botao-aura-estado-ligado:checked ~ .botao-aura > .botao-aura-acionado { @apply inline-flex; }
+  /* Acionado é estado consumado: a aura para de chamar quem já entrou. */
+  .botao-aura-ligado,
+  .botao-aura-estado-ligado:checked ~ .botao-aura { @apply bg-transparent text-transparent; }
+  /* A face afundada é o .card-well em corpo de botão: o gradiente sai, o poço fica. */
+  .botao-aura-acionado { @apply bg-none font-bold text-base-content/80; }
+  .botao-aura-acionado:hover { @apply bg-white/45; }
+
+  /* O estado (rádio ou checkbox, conforme o contexto) fica fora de vista — só ele decide,
+     nenhum JS de estado visual (§7.2). O aviso é overlay próprio, e não o `.modal` do daisyUI: sem
+     `.modal-open` nem `.modal-toggle` irmão, o reset de GPU do tema apagaria o `backdrop-filter`
+     dele. Mesmo material — a placa é o `.glass-panel-thick`, composto no HTML. */
+  .botao-aura-estado { @apply hidden; }
+  .botao-aura-aviso,
+  .botao-aura-aviso-revogar { @apply fixed inset-0 z-[1001] hidden items-center justify-center p-4 backdrop-blur-[16px]; }
+  /* `:has()` no documento, e não o combinador de irmão: ancestral com `backdrop-filter` — o
+     `.glass-panel` do formulário, o `.modal-box` do modal — vira containing block de `fixed`, e a
+     placa presa lá dentro nasce ancorada no topo do conteúdo, fora da vista de quem rolou até o
+     botão. O aviso mora, então, fora desses ramos, e é daqui que o estado do controle o alcança. */
+  :root:has(.botao-aura-pergunta:checked) .botao-aura-aviso { @apply flex; }
+  :root:has(.botao-aura-pergunta-revogar:checked) .botao-aura-aviso-revogar { @apply flex; }
+
+  /* Item de menu (SPEC autorizacao/006): a forma compacta. */
+  .item-menu {
+    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-(--radius-field)
+           text-left text-[15px] text-base-content/90
+           bg-white/25 border border-white/40
+           transition-all duration-200
+           hover:bg-white/60 hover:text-agua-700
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
+  }
+  .item-menu-rotulo { @apply flex-1 min-w-0 truncate font-medium; }
+  .item-menu-apoio  { @apply block text-[13px] font-normal text-base-content/60 truncate; }
+
+  /* Cartão de ação (SPEC autorizacao/006): a forma explicativa. Material: os tokens de gelo do tema
+     menos o .glass-blur — o backdrop-filter dentro do transform 3D do .hover-3d reamostra o fundo
+     errado e descola da peça durante o tilt. */
+  .card-acao {
+    @apply relative flex flex-col gap-3 p-5 h-full text-left rounded-2xl
+           transition-colors duration-300;
+  }
+  .card-acao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
+  .card-acao-descricao { @apply text-[13px] text-base-content/70 leading-relaxed; }
+  /* NUNCA declarar `display` aqui: o .hover-3d é `inline-grid` e posiciona as 8 zonas de detecção
+     por grid-area numa grade 3×3. */
+  .card-acao-alvo { @apply h-full; }
+  /* O hover acende a ARESTA, não o fundo: a placa é gradiente, e cor de fundo por baixo dele não
+     aparece — a mesma razão do .card-unidade-repouso:hover no tema. */
+  .card-acao-alvo:hover .card-acao { @apply border-agua-500/50; }
+
+  /* Menu de ações (SPEC autorizacao/006): o organismo que compõe item/cartão sobre o router. */
+  .menu-acoes { @apply w-[22rem] max-w-[92vw] p-4 flex flex-col gap-3; }
+  .menu-acoes-lista { @apply flex flex-col gap-1.5; }
+  /* Variante ampla: a forma de cartão precisa de largura, e o tilt precisa de respiro (p-2). */
+  .menu-acoes-amplo   { @apply w-[40rem]; }
+  .menu-acoes-cartoes {
+    @apply grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4 p-2;
+  }
+  .menu-acoes-vazio {
+    @apply px-3 py-6 text-center text-[13px] text-base-content/60;
+  }
+
+  /* Abas do painel (SPEC painel/001): a fita e a face são a MESMA placa — o material vem composto
+     no HTML (.glass-panel), e nem a aba aberta nem a face pintam nada por cima. A aba é rótulo e
+     fio, gravados em repouso, cheios de água quando ela abre — o mesmo par do resto do sistema. */
+  .abas-onsen { @apply p-2; }
+  /* A folga lateral da aba casa com a da face: o rótulo da fita e o título do corpo caem na mesma
+     vertical. Vai na aba, e não no invólucro — o daisyUI declara --tab-p na própria aba. */
+  .abas-onsen > .tab { --tab-p: 1.25rem; }
+  .abas-onsen-rotulo {
+    @apply block text-[13px] font-bold uppercase tracking-[0.12em] whitespace-nowrap;
+  }
+  /* Só medida: o material é o .etched-line / .etched-line-inked, composto no HTML. Ancorado embaixo
+     para os fios de todas as abas caírem na mesma linha. */
+  .abas-onsen-fio { @apply absolute inset-x-2 bottom-1 h-[3px]; }
+  /* Duas faces no DOM, e não uma que troca de tinta: a do fio aberto é um gradiente de dez paradas
+     que só se reusa por composição, e o rótulo não pode fazer o mesmo — sairia duplicado para quem
+     lê por leitor de tela. */
+  .abas-onsen-fio-aberta { @apply hidden; }
+  .abas-onsen > .tab:has(input:checked) .abas-onsen-fio-repouso { @apply hidden; }
+  .abas-onsen > .tab:has(input:checked) .abas-onsen-fio-aberta { @apply block; }
+  /* Espelha o .etched-inked, que não se alcança por seletor a partir daqui. */
+  .abas-onsen > .tab:has(input:checked) .abas-onsen-rotulo {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  /* Só a aba fechada responde ao hover: na aberta ele lavaria a água do rótulo. */
+  .abas-onsen > .tab:not(:has(input:checked)):hover .abas-onsen-rotulo { @apply text-base-content/80; }
+  /* O foco de teclado é do rádio, que o daisyUI deixa invisível dentro do rótulo. */
+  .abas-onsen > .tab:has(input:focus-visible) {
+    @apply outline-2 outline-offset-[-5px] outline-agua-400/70;
+  }
+
+  /* Face da aba do painel: quem mostra e esconde é o .tab-content do daisyUI; a face não tem
+     material próprio porque ela É a placa. A folga casa com a --tab-p da fita. */
+  .painel-face { @apply p-5 space-y-5; }
+  .painel-titulo    { @apply text-[24px] font-bold text-madeira-700 leading-tight; }
+  .painel-descricao { @apply text-[15px] text-base-content/90 leading-relaxed max-w-[70ch]; }
+  .painel-grupos    { @apply flex flex-col gap-4; }
+  /* Só o arranjo interno de um grupo: o poço é o .card-well, composto no HTML, e a grade de cartões
+     é o .menu-acoes-cartoes que já existe. */
+  .grupo-painel { @apply flex flex-col gap-2 p-4; }
+  /* Itens fora de qualquer poço da aba — acima ou abaixo dos grupos. */
+  .painel-avulsos { @apply flex flex-wrap items-center justify-center gap-4 py-1; }
+
+  /* Cartão da atribuição (SPEC autorizacao/007, compartilhado com a 008): uma competência da     */
+  /* unidade e quantos cargos a exercem. Sem .hover-3d — o cartão contém botões, e o componente    */
+  /* exige conteúdo não-interativo nos 9 filhos diretos.                                           */
+  .card-atribuicao {
+    @apply flex flex-col gap-3 p-4 rounded-(--radius-box)
+           bg-white/30 border border-white/45;
+  }
+  .card-atribuicao-cabeca { @apply flex items-start gap-3; }
+  /* Corpo é exclusivo da 008 — a 007 não o usa (Caveats): pode mudar de layout sem afetar a 007. */
+  .card-atribuicao-corpo  { @apply flex flex-col items-start gap-2; }
+  .card-atribuicao-nome      { @apply text-[15px] font-bold text-madeira-700 leading-snug; }
+  .card-atribuicao-descricao { @apply text-[13px] text-base-content/70; }
+  .card-atribuicao-vazio     { @apply text-[13px] italic text-base-content/55; }
+
+  /* Chave de duas posições (SPEC autorizacao/008): nome próprio porque .toggle-onsen já é o        */
+  /* interruptor liga/desliga da SPEC user_admin/015. Trilho único e metades de largura igual —     */
+  /* é isso que lê como UM controle. Os materiais vêm compostos no HTML: o poço do .card-well no     */
+  /* trilho, a espessura do .glass-panel-thick na pílula.                                            */
+  .chave-onsen { @apply relative inline-grid grid-cols-2 p-1 rounded-full; }
+  /* Metade do trilho menos a folga: translateX(100%) pousa exatamente na outra metade. O            */
+  /* rounded-full sobrepõe o raio do .glass-panel-thick e depende de vir DEPOIS dele no arquivo.      */
+  .chave-onsen-polegar {
+    @apply absolute z-0 top-1 bottom-1 left-1 rounded-full
+           transition-transform duration-500 ease-in-out;
+    width: calc(50% - 0.25rem);
+  }
+  .chave-onsen:has(.chave-onsen-opcao:nth-of-type(2) input:checked) .chave-onsen-polegar {
+    @apply translate-x-full;
+  }
+  .chave-onsen-opcao { @apply relative z-10 px-4 py-1.5 text-center cursor-pointer; }
+  /* Espelha o .etched-inked, que não se alcança por seletor a partir daqui. */
+  .chave-onsen-opcao:has(input:checked) .chave-onsen-rotulo {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .chave-onsen-opcao:hover .chave-onsen-rotulo { @apply text-base-content/60; }
+  .chave-onsen-rotulo {
+    @apply block text-[13px] font-bold uppercase tracking-[0.12em]
+           whitespace-nowrap transition-all duration-300;
+  }
+  /* O rádio é sr-only: o anel de foco aparece no TRILHO, nunca com :focus-within (acenderia também */
+  /* no clique de mouse). Soma ao --sombra-poco: `ring` reescreveria o box-shadow e apagaria o degrau. */
+  .chave-onsen:has(input:focus-visible) {
+    @apply outline-none border-agua-500;
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+
+  /* Modificador da .chave-onsen para a natureza do cargo em comissão (SPEC user_admin/029): a       */
+  /* chave segue intocada, só a grade e a largura do polegar mudam — a posição 2 já vem certa da     */
+  /* regra base (translateX(100%) é 100% do polegar, que aqui mede um terço do trilho).              */
+  .chave-onsen-tripla { @apply grid-cols-3; }
+  /* Três rótulos num trilho só, e um deles é uma palavra longa e indivisível. grid-cols-3 é         */
+  /* minmax(0,1fr): a coluna vale um terço e nada a alarga — quem tem de caber é o texto. Daí o       */
+  /* registro menor, a folga lateral curta e a quebra liberada. min-w-0 desfaz o min-width:auto do    */
+  /* item de grade, que sozinho já empurrava a coluna além do terço, e break-words é a rede: em tela  */
+  /* estreita a palavra parte em vez de vazar a pílula.                                              */
+  .chave-onsen-tripla .chave-onsen-opcao { @apply grid place-items-center min-w-0 px-2; }
+  .chave-onsen-tripla .chave-onsen-rotulo {
+    @apply whitespace-normal break-words text-[11px] tracking-[0.06em];
+  }
+  .chave-onsen-tripla .chave-onsen-polegar { width: calc(33.3333% - 0.1667rem); }
+  .chave-onsen-tripla:has(.chave-onsen-opcao:nth-of-type(3) input:checked) .chave-onsen-polegar {
+    @apply translate-x-[200%];
+  }
+
+  /* Chip de concessão (SPEC autorizacao/008): um cargo que exerce a atribuição, com o alvo de       */
+  /* remover explícito e separado do rótulo — não se revoga por clique ambíguo.                      */
+  .chip-concessao {
+    @apply inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full
+           text-[13px] font-medium text-base-content/90
+           bg-white/45 border border-white/60
+           transition-all duration-200 hover:bg-white/65;
+  }
+  .chip-concessao-remover {
+    @apply w-5 h-5 grid place-items-center rounded-full
+           text-base-content/45 transition-all duration-200
+           hover:text-error hover:bg-white/70;
+  }
+
+  /* Lata de lixo da concessão (SPEC autorizacao/008, ajuste): a mesma dupla repouso/entintado do   */
+  /* resto do sistema, composta explicitamente — `.etched-deeper` parado, `.etched-inked` sob o     */
+  /* cursor/foco — em vez do `.icon-etched` de botão, porque aqui quem carrega a afordância é a     */
+  /* PRÓPRIA linha da tabela, não um crachá de botão de vidro em volta do glifo.                     */
+  .lata-concessao {
+    @apply w-7 h-7 grid place-items-center cursor-pointer;
+  }
+  .lata-concessao:hover .etched-deeper,
+  .lata-concessao:focus-visible .etched-deeper {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* Tabela de vidro SIMPLES (SPEC autorizacao/008): a mesma `.table-onsen` — poço, linha, aresta em */
+  /* luz —, sem `<thead>`. Só a altura do rolador é peça própria: 3 linhas (2,75rem cada, da folga   */
+  /* py-3 + text-sm da célula) é o que cabe antes de rolar; o resto — `.card-well.table-onsen-poco`, */
+  /* `.table-onsen-wrap`, `.scroll-etched*` — é composição do que a SPEC user_admin/013 já entregou. */
+  .tabela-onsen-simples { @apply max-h-[8.5rem]; }
+  /* Realce da linha inteira sob o cursor, em ciano: sem cabeçalho, a linha é o único alvo da     */
+  /* tabela, e o realce discreto da tabela cheia não diz qual delas o clique atinge. Fica escopado */
+  /* aqui — a `.table-onsen` da SPEC user_admin/013 continua com o realce dela.                    */
+  .tabela-onsen-simples .table-onsen tbody tr:hover td {
+    @apply bg-agua-100/55;
+    box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09),
+      0 0 14px color-mix(in srgb, var(--color-agua-400) 55%, transparent);
+  }
+
+  /* ==================== FUNDO DE ORTOFOTO (SPEC design/010) ==================== */
+
+  /* .fundo-ortofoto — organismo: a casca que permanece, empilhando camadas absolutas
+     (SPEC design/011 — troca de fundo sem vão). */
+  .fundo-ortofoto {
+    @apply fixed inset-0 z-0 pointer-events-none overflow-hidden;
+  }
+  /* Desligado no <html>, não no elemento: o HTMX empilha camadas dentro de #fundo-ortofoto a
+     cada rodízio, e uma classe presa numa camada se perderia no descarte seguinte
+     (controle_fundo.js). */
+  html.fundo-desligado .fundo-ortofoto { @apply hidden; }
+
+  /* .fundo-ortofoto__camada — átomo: uma ortofoto e a deriva dela. Entra transparente; a classe
+     que a revela é posta pelo JS depois do decode(), nunca por timer (SPEC design/011). */
+  .fundo-ortofoto__camada {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity var(--fundo-troca-duracao) ease-out;
+  }
+  .fundo-ortofoto__camada--visivel { opacity: 1; }
+
+  /* .fundo-ortofoto__deriva — átomo: transborda a moldura e oscila no eixo vertical. brightness/
+     contrast são do MATERIAL da ortofoto (SPEC design/010 §3) — não da lente que fica por cima. */
+  .fundo-ortofoto__deriva {
+    position: absolute;
+    inset: calc(-1 * var(--deriva-margem));
+    filter: brightness(1.1) contrast(0.75);
+    animation-name: deriva-vertical;
+    animation-duration: calc(var(--deriva-periodo) / 2);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+  }
+
+  /* .fundo-ortofoto__imagem — átomo: a ortofoto, oscilando no dobro da frequência e na metade da
+     amplitude do pai (Lissajous 1:2 — a volta nunca repete o mesmo traço). Longhand porque o
+     shorthand de animation com calc(var()) não parseia. <img>, não background-image (SPEC
+     design/011): object-fit: cover é o equivalente exato do background-size: cover que sai daqui. */
+  .fundo-ortofoto__imagem {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    animation-name: deriva-horizontal;
+    animation-duration: calc(var(--deriva-periodo) / 4);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+  }
+
+  /* .range-onsen — átomo: o trilho é o poço em pílula do .toggle-onsen e o polegar é o disco
+     entintado da mesma família — mesmo vocabulário, escala de trilho contínuo. */
+  .range-onsen {
+    @apply w-full h-1.5 appearance-none cursor-pointer rounded-full bg-white/30 border border-white/45;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  .range-onsen::-webkit-slider-thumb {
+    @apply w-4 h-4 rounded-full;
+    -webkit-appearance: none;
+    background-color: rgba(0, 119, 182, 0.85);
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+  .range-onsen::-moz-range-thumb {
+    @apply w-4 h-4 rounded-full border-0;
+    background-color: rgba(0, 119, 182, 0.85);
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+
+  /* .btn-etched-mini — variante do .btn-etched (SPEC design/010) para o controle flutuante do
+     fundo; o átomo base segue intocado, usado como está pela autenticação e pela lista de
+     unidades (§3.4 do CLAUDE.md). */
+  .btn-etched-mini {
+    @apply text-[11px] px-1.5 py-0.5 gap-1.5 tracking-[0.1em];
+  }
+
+  /* .fundo-controle — molécula: .toggle-onsen, .btn-etched e .range-onsen compostos no controle
+     flutuante de liga/desliga e velocidade da deriva. */
+  .fundo-controle {
+    @apply flex flex-col gap-1.5 px-3 py-2 w-44;
+  }
+  .fundo-controle__cabecalho {
+    @apply flex items-center justify-between gap-4;
+  }
+  .fundo-controle__velocidade {
+    @apply flex items-center gap-1.5;
+  }
+  /* Fundo desligado: não há imagem a trocar nem velocidade a ajustar. */
+  .fundo-controle:has(.toggle-onsen:not(:checked)) .fundo-controle__corpo {
+    @apply opacity-35 pointer-events-none;
+  }
+
+  /* ==================== ÁTOMO · GLIFO GRAVADO DE GESTO CRÍTICO (SPEC user_admin/025) ============ */
+  /* Variante do .icon-etched: empilha-se nele e só troca a tinta que o hover acende — água vira a
+     semântica de erro. Precisa vir DEPOIS do .icon-etched no arquivo: mesma especificidade, e quem
+     vence é a ordem. */
+  .btn:hover .icon-etched-critico,
+  .btn:focus-visible .icon-etched-critico {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(220, 38, 38, 0.45));
+    color: rgba(220, 38, 38, 0.92);
+  }
+
+  /* ==================== MOLÉCULA · BARRA DE AÇÕES (SPEC user_admin/025) ========================= */
+  /* A placa de gestos entre a árvore e a tabela. Material composto no HTML (.glass-panel), e é a
+     pilha que decide a pele dele: dentro da placa da página a barra fica só com o desfoque, a
+     aresta e a sombra (SPEC design/009). Daqui saem só o layout e o raio de placa, que sobrepõe o
+     do painel por vir depois dele. */
+  .barra-acoes {
+    @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-2.5;
+    border-radius: var(--radius-placa);
+  }
+  .barra-acoes-gestos { @apply flex flex-wrap items-center gap-2; }
+  .barra-acoes-chave  { @apply flex items-center gap-2.5 cursor-pointer select-none; }
+
+  /* ==================== MOLÉCULA · PRÉVIA DO ATO (SPEC user_admin/025) =========================== */
+  /* Serve às duas faces: o que sai na extinção, o que volta na reativação. */
+  .previa-extincao { @apply grid gap-3 sm:grid-cols-3; }
+  .previa-extincao-tile { @apply flex flex-col gap-1 px-4 py-3; }
+  .previa-extincao-valor { @apply text-[26px] font-bold leading-none text-madeira-700; }
+  .previa-extincao-vazio { @apply text-[13px] leading-snug text-base-content/55; }
+
+  /* ==================== MODIFICADORES · UNIDADE EXTINTA (SPEC user_admin/025) ==================== */
+  /* A extinta só aparece com o toggle ligado, e quando aparece precisa ser LIDA: recuar a tinta a
+     apagava. Quem carrega o estado passa a ser o FUNDO, na semântica de erro do sistema, e a tinta
+     volta cheia. */
+  /* `bg-none` derruba o gradiente do .glass-panel, composto no HTML: sem isso a cor entraria por
+     baixo da placa de gelo e não apareceria. É a mesma razão pela qual o hover do card em repouso
+     levanta brilho em vez de pintar fundo. No organograma a SPEC design/009 já o apaga por
+     aninhamento; a declaração fica porque o modificador não pode depender da pilha em que o card é
+     renderizado — no styleguide ele aparece sozinho. */
+  .card-unidade-extinta { @apply bg-none bg-error/12 border-error/35; }
+  .card-unidade-extinta:hover { @apply border-error/50; }
+  /* A sigla vira gravação: `etched etched-rotulo` compostos no HTML — o registro que o design
+     system reserva para o sulco que NOMEIA, com a tinta subindo à legibilidade. Só a cor precisa de
+     regra: `.card-unidade-sigla` declara a própria e vence `.etched-rotulo` por vir depois no tema.
+     O relevo já chega pelo filtro do `.etched`. */
+  .card-unidade-extinta .card-unidade-sigla { color: rgba(13, 27, 42, 0.62); }
+  .linha-extinta td { @apply bg-error/8; }
+  /* Precisa vencer o `.table-onsen tbody tr:not([data-ativo="true"]):hover td` do tema (SPEC
+     user_admin/021), que é mais específico que a linha: sob o cursor a extinta continua vermelha,
+     só que mais acesa. O mesmo `:not()` no seletor preserva a linha pinçada — ali quem manda é a
+     água do foco, não o estado da unidade. */
+  .table-onsen tbody tr.linha-extinta:not([data-ativo="true"]):hover td { @apply bg-error/15; }
+
+  /* ==================== MOLÉCULA · PRÉVIA DO ATO (SPEC user_admin/027) =========================== */
+  /* Mesma forma de `.previa-extincao` (SPEC 025), sob nome genérico: serve a qualquer ato de duas
+     faces. Nasce peça nova, e não renomeia a existente — peça já implementada é intocável sem aval
+     explícito (CLAUDE.md §3.4). */
+  .previa-ato { @apply grid gap-3 sm:grid-cols-3; }
+  .previa-ato-tile { @apply flex flex-col gap-1 px-4 py-3; }
+  .previa-ato-valor { @apply text-[26px] font-bold leading-none text-madeira-700; }
+  .previa-ato-vazio { @apply text-[13px] leading-snug text-base-content/55; }
+
+  /* ==================== MOLÉCULA · CHAMADA DO ATO (SPEC user_admin/027) ========================== */
+  /* O rodapé de gestos das seções da página do servidor: o gesto crítico fica separado dos demais
+     por um fio, à direita. */
+  .chamada-ato { @apply flex flex-wrap items-center justify-end gap-3; }
+  .chamada-ato-critica { @apply pl-3 ml-1 border-l border-white/60; }
+
+  /* ==================== ÁTOMO · CÉLULA DE TEMPO (SPEC painel/002) ================================ */
+  .td-momento { @apply whitespace-nowrap text-xs leading-tight tabular-nums text-base-content/75; }
+  .td-momento-hora { @apply block text-[11px] tabular-nums text-base-content/50; }
+
+  /* ==================== ÁTOMO · MARCA DE COBERTURA (SPEC painel/002) ============================= */
+  .marca-cobertura { @apply block text-[11px] leading-tight text-warning; }
+
+  /* ==================== ÁTOMO · ALVO DO ATO (SPEC painel/002) ==================================== */
+  /* O identificador é um token sem espaço (`DITESTINHO:user_admin.registrar_impedimento_servidor`),
+     e o navegador não quebra em `:` nem em `.`: sem oportunidade de quebra ele vira a largura mínima
+     da célula, que em layout automático a coluna não pode desrespeitar. `anywhere` é o que reduz essa
+     mínima — `break-word` não reduz —, e o teto impede a coluna de retomar a folga da tabela. */
+  .td-alvo {
+    @apply block max-w-[15rem] text-[11px] leading-tight text-base-content/70;
+    overflow-wrap: anywhere;
+  }
+  .td-alvo-vazio { @apply text-base-content/35; }
+
+  /* ==================== MOLÉCULA · CAMPO DE PERÍODO (SPEC painel/002) ============================ */
+  .campo-periodo { @apply flex items-center gap-2; }
+  /* O :where alcança também a casca do campo de data (SPEC design/012), que ocupa a linha no lugar
+     do input assim que ele é aprimorado — mesmo caso do .form-field-inline-action com o select. */
+  .campo-periodo > :where(input, .campo-data) { @apply min-w-0 flex-1; }
+  .campo-periodo-traco { @apply shrink-0 text-base-content/45; }
+
+  /* ==================== ÁTOMO · TABELA LARGA (SPEC painel/002) =================================== */
+  /* Sem largura mínima a tabela de nove colunas se espreme dentro do poço em vez de rolar:
+     .table-onsen é w-full e as células quebram. O modificador é de cada tabela, não do
+     componente — tabela curta não deve nascer rolando. */
+  .table-onsen-larga { @apply min-w-[74rem]; }
+
+  /* ==================== MOLÉCULA · BARRA GRAVADA HORIZONTAL (SPEC painel/002) ==================== */
+  /* A gêmea da .scroll-etched deitada: o rolador esconde as duas barras nativas
+     (scrollbar-width: none), e sem esta a tabela larga rolaria sem afordância nenhuma. A medida
+     da coluna da barra sobe do rolador para o POÇO — as duas barras são irmãs do rolador, não
+     filhas: dali elas nunca enxergariam a variável, e a deitada correria por baixo da em pé. O
+     rolador continua com a declaração dele, no mesmo valor — nada muda para as tabelas de um eixo
+     só. */
+  .table-onsen-poco { --coluna-barra: 1.125rem; }
+  .scroll-etched-h {
+    @apply absolute left-2 h-2.5 rounded-full pointer-events-none transition-opacity duration-300;
+    right: calc(0.5rem + var(--coluna-barra, 0px));
+    /* Na calha do poço (pb-4), não sobre a última linha. */
+    bottom: 0.25rem;
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 2px 5px rgba(7, 58, 84, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+  }
+  .scroll-etched-h-thumb {
+    @apply absolute inset-y-0 left-0 rounded-full cursor-grab pointer-events-auto;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    background-color: rgba(13, 27, 42, 0.14);
+    transition: background-color 700ms ease, box-shadow 700ms ease;
+  }
+  .scroll-etched-ativa .scroll-etched-h-thumb {
+    background-color: rgba(0, 150, 199, 0.5);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    transition-duration: 150ms;
+  }
+  .scroll-etched-h-thumb:hover,
+  .scroll-etched-h-thumb:active {
+    background-color: rgba(0, 119, 182, 0.75);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(72, 202, 228, 0.7);
+    transition-duration: 150ms;
+  }
+  .scroll-etched-h-thumb:active { @apply cursor-grabbing; }
+  /* A vertical sobe para não cruzar com a deitada. Regra por presença: tabela sem eixo
+     horizontal não muda em nada. */
+  .table-onsen-poco:has(.scroll-etched-h) .scroll-etched { bottom: 1.25rem; }
+
+  /* ==================== MOLÉCULA · PAGINAÇÃO GRAVADA (SPEC painel/002) =========================== */
+  .paginacao-onsen { @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-2; }
+  /* Mesma medida e mesma gravação dos números ao lado — a régua e o passo são a MESMA placa, e um
+     rótulo pequeno ao lado de alvos de 40px é o que fazia o lado esquerdo parecer caído. */
+  .paginacao-onsen-info { @apply text-base font-medium leading-none tabular-nums; }
+  /* O raio é da própria molécula: empilhado como utility no markup, ele só venceria o .glass-panel
+     com important. */
+  .paginacao-onsen-passos { @apply flex items-center gap-1 p-1 rounded-full; }
+  /* Só layout e medida: a tinta de todo caractere daqui — número, seta e reticência — é o
+     `.etched-dark` composto no HTML. O swell no hover é só afordância — nunca prende, nunca
+     entinta sozinho. */
+  .paginacao-onsen-alvo {
+    @apply w-10 h-10 shrink-0 flex items-center justify-center rounded-xl;
+    @apply text-base font-medium leading-none tabular-nums cursor-pointer;
+    @apply transition-all duration-300 origin-center;
+  }
+  .paginacao-onsen-alvo:not(:disabled):hover { @apply scale-[1.1]; }
+  /* Página em curso: a depressão ENCHE — o mesmo entintado do .sort-etched sob aria-sort, na mesma
+     medida do repouso, então a troca não pula de fio pra sulco. */
+  .paginacao-onsen-alvo[aria-current="page"] {
+    filter: url(#etched-onsen-dark) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
+    color: rgba(0, 119, 182, 0.9);
+  }
+  /* A seta é GESTO, não estado: enche sob o ponteiro, como o .btn-etched — nunca fica presa acesa. */
+  .paginacao-onsen-seta { @apply text-xl; }
+  .paginacao-onsen-seta:not(:disabled):hover {
+    filter: url(#etched-onsen-dark) drop-shadow(0 0 7px rgba(72, 202, 228, 0.75));
+    color: rgba(0, 119, 182, 0.9);
+  }
+  /* Sem para onde ir: sulco vazio, sem resposta ao ponteiro — nunca cinza de desabilitado com
+     moldura. Vence o `.etched-dark` do markup pela pseudoclasse. */
+  .paginacao-onsen-alvo:disabled { @apply cursor-default; color: rgba(13, 27, 42, 0.22); }
+  .paginacao-onsen-elipse { @apply w-6 text-center text-base leading-none; }
+
+  /* ==================== ORGANISMO · CARD DE BUSCA (SPEC painel/002) ============================== */
+  .card-busca { @apply flex flex-col gap-3 p-4; }
+  .card-busca-topo { @apply flex flex-wrap items-center justify-between gap-3; }
+  .card-busca-grade { @apply grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3; }
+  .card-busca-largo { @apply sm:col-span-2; }
+
+  /* ==================== GAVETA INFERIOR (SPEC design/014) ======================================= */
+
+  /* TOKEN · a receita da gaveta lateral girada 90°. Placa própria, e não modificador da lateral,
+     porque o que muda no material é a DIREÇÃO: aresta de luz, queda do gradiente e sombra
+     projetada apontam todas para cima. */
+  .glass-drawer-bottom {
+    @apply backdrop-blur-[12px] bg-gradient-to-b from-white/80 via-white/65 to-white/55;
+    @apply border-t border-white/60;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_-12px_40px_rgba(7,58,84,0.3),0_0_40px_rgba(72,202,228,0.25)];
+  }
+
+  /* ÁTOMO · alça. A área de toque é a faixa inteira: o fio tem 6px de altura e ninguém acerta 6px
+     com o dedo. */
+  .gaveta-alca { @apply w-full h-6 shrink-0 flex items-center justify-center cursor-pointer; }
+  .gaveta-alca .etched-line { @apply w-16 h-1.5 transition-all duration-300; }
+  /* O entintado é dito pelo CONTÊINER, como na .lata-concessao: quem carrega a afordância é a alça,
+     não o fio. */
+  .gaveta-alca:hover .etched-line,
+  .gaveta-alca:focus-visible .etched-line {
+    @apply w-20;
+    background-color: rgba(0, 119, 182, 0.5);
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+  }
+  .gaveta-alca:focus-visible { @apply outline-none; }
+
+  /* MOLÉCULA · cabeçalho. A divisa é o par sombra-luz da linha da tabela: sozinha, a aresta branca
+     não separa sobre gelo claro. */
+  .gaveta-cabecalho {
+    @apply shrink-0 flex items-start justify-between gap-4 px-5 sm:px-8 pb-3 border-b border-white/65;
+    box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09);
+  }
+
+  /* MOLÉCULA · corpo e colunas. Em tela ampla quem rola é a coluna; empilhado o eixo inverte e quem
+     rola passa a ser o corpo, porque duas barras aninhadas num telefone disputam o mesmo gesto.
+     Colunas em flex-1, e não em grade de três: o número de colunas é o que a gaveta recebe. */
+  .gaveta-corpo { @apply flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain; }
+  .gaveta-coluna { @apply min-h-0 flex flex-col gap-3 px-5 sm:px-8 py-4; }
+  .gaveta-coluna + .gaveta-coluna {
+    @apply border-t border-white/65;
+    box-shadow: inset 0 2px 0 -1px rgba(7, 58, 84, 0.09);
+  }
+  @media (width >= 48rem) {
+    .gaveta-corpo  { @apply flex-row overflow-hidden; }
+    .gaveta-coluna { @apply flex-1 basis-0 overflow-y-auto overscroll-contain; }
+    .gaveta-coluna + .gaveta-coluna {
+      @apply border-t-0 border-l border-white/65;
+      box-shadow: inset 2px 0 0 -1px rgba(7, 58, 84, 0.09);
+    }
+  }
+  .gaveta-coluna:has(.table-onsen-poco) { @apply overflow-hidden; }
+
+  /* MOLÉCULA · a tabela é limitada pela GAVETA, não pelas 32rem do rolador padrão. Em flex, e não
+     em altura percentual: o poço tem folga própria e a porcentagem resolveria contra uma caixa que
+     ainda não tem medida. */
+  .tabela-onsen-gaveta { @apply flex-1 min-h-0 max-h-none; }
+
+  /* MOLÉCULA · figura assentada, no assento da .tarja-vinculo. A imagem cede ao gelo como a do
+     .avatar-glass: crua, ela briga com o material em volta. */
+  .gaveta-figura {
+    @apply overflow-hidden bg-white/25 border border-white/45;
+    border-radius: var(--radius-placa);
+    box-shadow: var(--sombra-poco);
+  }
+  .gaveta-figura > img { @apply w-full h-full object-cover opacity-[0.92]; }
+
+  /* MOLÉCULA · estado de falta escrito. Placa em branco se lê como "ainda não carregou". */
+  .gaveta-vazia {
+    @apply flex-1 min-h-0 flex flex-col items-center justify-center gap-3;
+    @apply px-8 py-6 text-center text-sm text-base-content/60;
+  }
+
+  /* ORGANISMO · metade da altura é TETO, não medida: a gaveta cresce com o conteúdo até ali. */
+  .gaveta-inferior {
+    @apply fixed inset-x-0 bottom-0 z-30 flex flex-col pt-1.5 rounded-t-3xl max-h-[50dvh];
+    @apply translate-y-full transition-transform duration-500 ease-in-out;
+  }
+  /* Irmão IMEDIATO, e não :root:has() nem `~`: assim duas gavetas convivem no mesmo documento sem
+     que marcar uma abra a outra. */
+  .gaveta-toggle { @apply sr-only; }
+  .gaveta-toggle:checked + .gaveta-inferior { @apply translate-y-0; }
+  /* Abaixo do tablet a gaveta é a tela: metade de 700px não comporta cabeçalho e conteúdo. Sem raio
+     no topo — folha que cobre tudo e ainda arredonda a quina deixa dois furos de mapa no ponto mais
+     alto da leitura. */
+  @media (width < 48rem) {
+    .gaveta-inferior { @apply h-[100dvh] max-h-none rounded-t-none; }
+  }
+
+  /* Vidro sobre vidro (SPEC design/009) alcançando a placa nova — no fim do arquivo, depois de toda
+     peça cuja tinta ela apaga, que é a mesma razão da posição da regra original. */
+  :where(.glass-drawer-bottom) .glass-panel:where(:not(.modal-box-glass)) { @apply bg-none; }
+  :where(.glass-drawer-bottom) :is(.card-well, .upload-well) { @apply bg-transparent; }
+  :where(.glass-drawer-bottom) .upload-well:where(:hover, :focus-within) { @apply bg-white/15; }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */
@@ -228,4 +1969,173 @@ html[data-theme="dimap"] {
   0%   { box-shadow: inset 0 0 0 1.5px rgba(72, 202, 228, 0.6), 0 0 0 rgba(72, 202, 228, 0); }
   55%  { box-shadow: inset 0 0 0 1.5px rgba(72, 202, 228, 0.95), 0 0 22px rgba(72, 202, 228, 0.6); }
   100% { box-shadow: inset 0 0 0 1.5px rgba(72, 202, 228, 0.6), 0 0 12px rgba(72, 202, 228, 0.4); }
+}
+
+/* |translate| ≤ margem em cada eixo ⇒ a borda do .fundo-ortofoto__deriva nunca entra na viewport,
+   em qualquer proporção de tela — `cover` cuida da proporção do PNG, que por isso não entra na
+   conta (SPEC design/010). */
+@keyframes deriva-vertical {
+  from { transform: translateY(calc(-1 * var(--deriva-margem))); }
+  to   { transform: translateY(var(--deriva-margem)); }
+}
+
+@keyframes deriva-horizontal {
+  from { transform: translateX(calc(var(--deriva-margem) / -2)); }
+  to   { transform: translateX(calc(var(--deriva-margem) / 2)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fundo-ortofoto__deriva,
+  .fundo-ortofoto__imagem { animation: none; }
+
+  /* ==================== GAVETA LATERAL (SPEC design/013) ======================================== */
+
+  /* TOKEN · a terceira densidade como primitivo, e não mais escrita só dentro do .modal-box-glass:
+     a gaveta responde à mesma pergunta que o modal — ela substitui o que está atrás enquanto está
+     aberta. Sobre o mapa vivo, o gelo fino deixa o traço do mapa atravessar o texto. */
+  .glass-blur-denso { @apply backdrop-blur-[28px]; }
+  .glass-bg-denso   { @apply bg-gradient-to-br from-white/97 via-white/93 to-white/88; }
+
+  /* TOKEN · a mesma densidade na direção da gaveta: a luz entra pela borda direita, a única solta. */
+  .glass-drawer-panel-denso {
+    @apply backdrop-blur-[28px] bg-gradient-to-l from-white/97 via-white/93 to-white/88 border-r border-white/80;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),12px_0_40px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.25)];
+  }
+
+  /* TOKEN · o plano de trás é um degrau, não um andar: mesma densidade, sem o brilho ciano, e a
+     sombra da placa da frente apenas encostando na aresta esquerda. É ela, e não um encolhimento,
+     que põe a segunda gaveta atrás. */
+  .glass-drawer-panel-recuado {
+    @apply backdrop-blur-[28px] bg-gradient-to-l from-white/94 via-white/90 to-white/85 border border-white/60;
+    box-shadow:
+      inset 16px 0 22px -16px rgba(7, 58, 84, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      10px 0 28px rgba(7, 58, 84, 0.18);
+  }
+
+  /* ÁTOMO · paleta. Meio disco: largura = raio, altura = diâmetro. Ancorada em left-full da casca,
+     ela serve aos dois estados com uma posição só — fechada, a casca está deslocada de -100% e a
+     paleta cai sobre a borda da tela; aberta, ela vai junto e vira a borda direita da gaveta. */
+  .paleta-gaveta {
+    @apply absolute left-full top-1/2 -translate-y-1/2 z-20 pointer-events-auto;
+    @apply w-9 h-[4.5rem] rounded-r-full grid place-items-center cursor-pointer select-none;
+    @apply backdrop-blur-[28px] bg-gradient-to-r from-white/93 to-white/78 border border-l-0 border-white/80;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),8px_0_24px_rgba(7,58,84,0.28),0_0_20px_rgba(72,202,228,0.25)];
+    @apply transition-all duration-300;
+  }
+  .paleta-gaveta:hover { @apply from-white to-white/90; }
+  .paleta-gaveta:focus-visible {
+    @apply outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_0_0_3px_rgba(0,150,199,0.3),8px_0_24px_rgba(7,58,84,0.28)];
+  }
+  .paleta-gaveta-recuada {
+    @apply from-white/90 to-white/74 border-white/60;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.85),8px_0_20px_rgba(7,58,84,0.18)];
+  }
+  /* O glifo é .etched no markup. Aberto ele é ESPELHADO, nunca girado: o sulco tem luz de cima, e
+     rotate-180 o devolveria em relevo. */
+  .paleta-gaveta-glifo { @apply w-5 h-5 transition-all duration-500; }
+  .paleta-gaveta:hover .paleta-gaveta-glifo {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* MOLÉCULA · moldura do mapa. O poço é a moldura (.card-well empilhado no markup) e o mapa dentro
+     dela é PLACA ASSENTADA — raio de placa, aresta de luz e sombra por fora. Poço dentro de poço
+     perderia o degrau, e aqui o que se quer é levantar o mapa. */
+  .mapa-gaveta-moldura { @apply flex flex-col gap-2 p-3; }
+  .mapa-gaveta-rotulo  { @apply flex items-center justify-between px-1; }
+  .mapa-gaveta {
+    @apply relative isolate w-full h-52 overflow-hidden border border-white/70;
+    border-radius: var(--radius-placa);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 8px 20px rgba(7, 58, 84, 0.3),
+      0 0 22px rgba(72, 202, 228, 0.25);
+  }
+  .mapa-gaveta .leaflet-container { @apply absolute inset-0 z-0 bg-white/20 saturate-[0.8] brightness-[1.05] contrast-[0.95]; }
+  /* A lente da home em miniatura (§6 do design system): tinta de água límpida e vinheta ciana só na
+     borda. Nada distorce o mapa geometricamente. */
+  .mapa-gaveta::after {
+    content: "";
+    @apply absolute inset-0 z-10 pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60;
+  }
+  .mapa-gaveta::before {
+    content: "";
+    @apply absolute inset-0 z-20 pointer-events-none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 119, 182, 0.22) 100%);
+  }
+
+  /* MOLÉCULA · linha que abre a segunda gaveta. A tinta de repouso vem do .card-well empilhado no
+     markup; sob o ponteiro o gelo acende e o sulco da seta enche de água e avança. */
+  .gaveta-linha-detalhe {
+    @apply w-full flex items-center gap-3 text-left px-4 py-3 cursor-pointer transition-all duration-300;
+  }
+  .gaveta-linha-detalhe:hover { @apply bg-white/45; }
+  .gaveta-linha-glifo { @apply w-4 h-4 shrink-0 ml-auto transition-all duration-300; }
+  .gaveta-linha-detalhe:hover .gaveta-linha-glifo {
+    @apply translate-x-1;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* ORGANISMO · a casca. absolute, e não fixed: a âncora é a casca da home, e é o que permite
+     renderizá-la dentro de um quadro no styleguide e nos mocks. */
+  .gaveta-lateral {
+    @apply absolute left-0 inset-y-0 z-30 pointer-events-none;
+    width: var(--gaveta-largura);
+    transform: translateX(-100%);
+    @apply transition-transform duration-500 ease-in-out;
+  }
+  /* Os interruptores moram DENTRO da casca, e o :has() os procura como filhos IMEDIATOS: assim duas
+     gavetas convivem no mesmo documento sem que marcar uma abra a outra, e a peça não depende de
+     classe nenhuma no ancestral. */
+  .gaveta-lateral-toggle,
+  .gaveta-lateral-detalhe-toggle { @apply sr-only; }
+  .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) { transform: translateX(0); }
+  .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) .paleta-gaveta-glifo { @apply -scale-x-100; }
+
+  .gaveta-lateral-painel    { @apply relative z-10 h-full w-full flex flex-col pointer-events-auto rounded-r-3xl; }
+  .gaveta-lateral-cabecalho { @apply shrink-0 pl-6 pr-9 pt-6 pb-4; }
+  .gaveta-lateral-corpo     { @apply relative flex-1 min-h-0; }
+  /* A barra nativa sai porque a gravada ocupa o lugar dela (.scroll-etched, opt-in por atributo). */
+  .gaveta-lateral-rolador {
+    @apply h-full overflow-y-auto overscroll-contain;
+    scrollbar-width: none;
+  }
+  .gaveta-lateral-rolador::-webkit-scrollbar { display: none; }
+  .gaveta-lateral-conteudo { @apply flex flex-col gap-4 pl-6 pr-9 pb-6; }
+
+  /* ORGANISMO · a segunda gaveta. Fechada, ela cabe inteira atrás da primeira — o translate é
+     exatamente (largura - recuo). Aberta, volta ao tamanho natural: quem diz que ela está atrás é a
+     folga vertical, a aresta da primeira por cima e o material sem brilho. */
+  .gaveta-lateral-detalhe {
+    @apply absolute inset-y-4 z-0 origin-left rounded-r-3xl opacity-0 pointer-events-none;
+    left: calc(100% - var(--gaveta-recuo));
+    width: var(--gaveta-detalhe-largura);
+    transform: translateX(calc(-1 * (var(--gaveta-detalhe-largura) - var(--gaveta-recuo)))) scale(0.98);
+    @apply transition-all duration-500 ease-in-out;
+  }
+  .gaveta-lateral:has(> .gaveta-lateral-detalhe-toggle:checked) .gaveta-lateral-detalhe {
+    @apply opacity-100 pointer-events-auto;
+    transform: translateX(0) scale(1);
+  }
+  /* A faixa da esquerda é a parte enfiada sob a primeira gaveta, mais a paleta que pousa nela. */
+  .gaveta-lateral-detalhe-conteudo {
+    @apply h-full overflow-y-auto overscroll-contain flex flex-col gap-4 py-6 pr-5;
+    padding-left: calc(var(--gaveta-recuo) + 2.75rem);
+    scrollbar-width: none;
+  }
+  .gaveta-lateral-detalhe-conteudo::-webkit-scrollbar { display: none; }
+
+  /* UI concorrente se recolhe: a busca sai por cima quando a gaveta abre, na mesma direção da
+     .glass-hide-up. */
+  .tela-home:has(.gaveta-lateral-toggle:checked) .search-hero {
+    @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
+  }
+
+  /* Vidro sobre vidro (SPEC design/009) alcançando as placas novas — no fim, depois de toda peça
+     cuja tinta ela apaga. */
+  :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) .glass-panel:where(:not(.modal-box-glass)) { @apply bg-none; }
+  :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) :is(.card-well, .upload-well) { @apply bg-transparent; }
+  :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) .upload-well:where(:hover, :focus-within) { @apply bg-white/15; }
 }

@@ -1,0 +1,7 @@
+{# A casca nunca é reescrita: é ela que garante que sempre há um recipiente com uma camada dentro. #}
+<div class="fundo-ortofoto" id="fundo-ortofoto"
+     hx-get="{% url 'mapping:fundo_ortofoto' %}"
+     hx-trigger="every 60s, click from:[data-trocar]"
+     hx-target="this" hx-swap="beforeend">
+  {% include "mapping/_camada_ortofoto.html" %}
+</div>

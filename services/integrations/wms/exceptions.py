@@ -13,6 +13,10 @@ class WmsHttpError(WmsError, requests.HTTPError):
     """
 
 
+class WmsTimeoutError(WmsError, requests.Timeout):
+    """Servidor WMS não respondeu dentro do timeout configurado."""
+
+
 class WmsResponseNotImageError(WmsError):
     """HTTP 200, mas o corpo não é imagem (provável ServiceException XML do WMS)."""
 

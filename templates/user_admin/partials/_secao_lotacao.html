@@ -1,0 +1,40 @@
+{# Seção de lotação: é a combinação cargo × unidade que define a competência administrativa.     #}
+{# data-select-onsen: o campo continua sendo o select — o componente de vidro (SPEC 011) é opt-in #}
+{# por atributo e depende do módulo carregado no bloco de scripts da página.                     #}
+<div class="card-well p-5 flex flex-col gap-4">
+  <p class="text-overline">Lotação</p>
+  <div class="grid sm:grid-cols-2 gap-4">
+    {# O rótulo aqui é <span>, não <label for>: o botão de criação já é um <label> e rótulo dentro #}
+    {# de rótulo confundiria o clique — quem abre o modal é ele (SPEC user_admin/012).            #}
+    <div class="form-field">
+      <span class="text-overline">Unidade</span>
+      <div class="form-field-inline-action">
+        {% include "unidades/partials/_campo_unidade_lotacao.html" with selecionado=perfil.unidade_id %}
+        <label for="modal-nova-unidade"
+               class="btn btn-circle btn-criar-inline tooltip tooltip-left"
+               data-tip="Cadastrar unidade que falta">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+        </label>
+      </div>
+      <span class="form-field-hint">Não achou a unidade? Cadastre sem sair desta tela.</span>
+    </div>
+    <label class="form-field">
+      <span class="text-overline">Cargo base</span>
+      <select name="cargo_base" class="select select-glass {{ realce.cargo_base }}" data-select-onsen>
+        {% for cargo in cargos_base %}
+          <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_base_id %}selected{% endif %}{% if cargo.extinto %} data-extinto="true" title="Cargo Extinto"{% endif %}>{{ cargo.nome }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="form-field sm:col-span-2">
+      <span class="text-overline">Cargo em comissão</span>
+      <select name="cargo_comissao" class="select select-glass {{ realce.cargo_comissao }}" data-select-onsen>
+        <option value="">— sem cargo em comissão —</option>
+        {% for cargo in cargos_comissao %}
+          <option value="{{ cargo.pk }}" {% if cargo.pk == perfil.cargo_comissao_id %}selected{% endif %}{% if cargo.extinto %} data-extinto="true" title="Cargo Extinto"{% endif %}>{{ cargo.padrao }} · {{ cargo.nome }}</option>
+        {% endfor %}
+      </select>
+      <span class="form-field-hint">Opcional. A chefia é o que abre as ações privativas da unidade.</span>
+    </label>
+  </div>
+</div>

@@ -1,0 +1,41 @@
+{# Modal de confirmação da remoção (SPEC autorizacao/007): alvo do hx-get do botão de retirar, que  #}
+{# traz a contagem REAL de concessões — abrir isto não apaga nada; só o POST abaixo apaga.           #}
+<input type="checkbox" id="modal-remover" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+    <div class="flex items-start gap-3">
+      <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg></span>
+      <div>
+        <p class="text-overline">Retirar atribuição</p>
+        <p class="text-[18px] font-bold text-rocha-950">{{ acao.nome }}</p>
+        <p class="text-[13px] text-base-content/70">{{ unidade_alvo.sigla }}</p>
+      </div>
+    </div>
+
+    {% if cargos %}
+      <div class="card-well p-4 flex flex-col gap-1">
+        <p class="text-[15px] text-base-content/90">
+          <strong>{{ resumo_cargos }}</strong>
+        </p>
+        <p class="text-[13px] text-base-content/70">{{ cargos|join:" · " }}</p>
+      </div>
+      <p class="text-[13px] text-base-content/70">
+        Os servidores nesses cargos deixam de executar a ação no próximo acesso. Reatribuir depois não
+        devolve as concessões.
+      </p>
+    {% endif %}
+
+    <div class="modal-action">
+      <label for="modal-remover" class="btn btn-glass btn-sm">Cancelar</label>
+      <button type="button"
+              class="btn btn-onsen btn-sm"
+              hx-post="{% url 'competencias:remover' %}"
+              hx-vals='{"unidade": "{{ unidade_alvo.pk }}", "acao": "{{ acao.slug }}"}'
+              hx-target="#poco-atribuicoes"
+              hx-swap="outerHTML">
+        Retirar mesmo assim
+      </button>
+    </div>
+  </div>
+  <label class="modal-backdrop" for="modal-remover">Fechar</label>
+</div>

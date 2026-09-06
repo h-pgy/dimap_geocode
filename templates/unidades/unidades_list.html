@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Unidades · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+  {% include "unidades/partials/_glifos_unidade.html" %}
+
+  {# Mesma moldura das páginas administrativas: fundo à deriva e conteúdo na shell. #}
+  <div class="admin-shell">
+    <div class="max-w-6xl mx-auto px-4 py-24 flex flex-col gap-4">
+      {% include "partials/_botao_voltar_painel.html" %}
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Unidades</h1>
+            <p class="text-sm text-base-content/70 mt-1">
+              {{ total_unidades }} unidade{{ total_unidades|pluralize:"s" }} cadastrada{{ total_unidades|pluralize:"s" }}. Clique na linha da tabela para situar na árvore, ou no nó para destacar na lista.
+            </p>
+          </div>
+          <button type="button" class="btn btn-glass btn-xs gap-1.5"
+                  data-abrir-tudo="#organograma-unidades"
+                  data-rotulo-recolher="Recolher a árvore">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-hierarquia"/></svg>
+            Ver toda a árvore
+          </button>
+        </div>
+
+        {# partial: unidades/partials/_painel_unidades.html — alvo do toggle e do hx-swap da        #}
+        {# conclusão do ato de extinguir (SPEC user_admin/025); o limpar filtros mora na barra.      #}
+        {% include "unidades/partials/_painel_unidades.html" %}
+      </div>
+    </div>
+  </div>
+
+  {# Poço do modal, irmão do conteúdo: formulário aninhado é HTML inválido, e aqui fora ele escapa   #}
+  {# do contexto de empilhamento da .admin-shell. Nasce vazio — a lixeira e a barra o montam.        #}
+  <div id="poco-modal" class="poco-modal"></div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/tabela_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/arvore_hierarquica.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/sincronia_unidades.js' %}"></script>
+  {# O modal do ato chega por HTMX: sem este módulo já carregado, o select dele não é aprimorado —  #}
+  {# select_onsen.js reage a htmx:afterSwap (SPEC user_admin/011).                                   #}
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+{% endblock %}
