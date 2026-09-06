@@ -560,6 +560,58 @@
           </div>
         </div>
       </div>
+      <!-- 1.10 Materiais da gaveta lateral (SPEC design/013) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h3 class="text-lg font-bold">1.10 · Materiais da gaveta lateral</h3>
+          <p class="text-sm text-base-content/70 mt-1">SPEC <span class="text-code">design/013</span>. A <strong>terceira densidade</strong> (97 → 93 → 88 sobre blur de 28px) deixou de morar só dentro do <span class="text-code">.modal-box-glass</span> e virou primitivo — <span class="text-code">.glass-blur-denso</span> e <span class="text-code">.glass-bg-denso</span>. É a densidade de quem <strong>substitui</strong> o que está atrás em vez de flutuar sobre ele, e a gaveta lateral é o segundo lugar que precisa dela: sobre o mapa vivo, o gelo fino deixa o traço do mapa atravessar o texto.</p>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-5">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.glass-drawer-panel</p>
+            <div class="relative h-40 rounded-2xl overflow-hidden border border-white/45">
+              <div class="absolute inset-0 flex">
+                <div class="flex-1 bg-agua-500"></div>
+                <div class="flex-1 bg-sakura-500"></div>
+                <div class="flex-1 bg-madeira-600"></div>
+              </div>
+              <div class="glass-drawer-panel absolute inset-y-0 left-0 w-2/3 rounded-r-3xl flex items-center px-4">
+                <p class="text-sm font-bold text-madeira-700">80 → 65 → 55 · blur 12px</p>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">O fino, de antes. Sobre o mapa vivo o traço atravessa o texto.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.glass-drawer-panel-denso</p>
+            <div class="relative h-40 rounded-2xl overflow-hidden border border-white/45">
+              <div class="absolute inset-0 flex">
+                <div class="flex-1 bg-agua-500"></div>
+                <div class="flex-1 bg-sakura-500"></div>
+                <div class="flex-1 bg-madeira-600"></div>
+              </div>
+              <div class="glass-drawer-panel-denso absolute inset-y-0 left-0 w-2/3 rounded-r-3xl flex items-center px-4">
+                <p class="text-sm font-bold text-madeira-700">97 → 93 → 88 · blur 28px</p>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">O plano da frente. Mesma direção do fino — aresta e sombra à direita.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.glass-drawer-panel-recuado</p>
+            <div class="relative h-40 rounded-2xl overflow-hidden border border-white/45">
+              <div class="absolute inset-0 flex">
+                <div class="flex-1 bg-agua-500"></div>
+                <div class="flex-1 bg-sakura-500"></div>
+                <div class="flex-1 bg-madeira-600"></div>
+              </div>
+              <div class="glass-drawer-panel-recuado absolute inset-y-4 left-0 w-2/3 rounded-r-3xl flex items-center px-4">
+                <p class="text-sm font-bold text-madeira-700">94 → 90 → 85 · sem brilho</p>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">O plano de trás: mesma densidade, sem o brilho ciano, com a sombra da placa da frente encostando na aresta esquerda.</p>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">O que põe a segunda gaveta atrás é <strong>material e folga</strong>, não escala: aberta, ela fica em <span class="text-code">scale(1)</span>. Encolher a placa é o caminho que a faz ler como miniatura, não como plano.</p>
+      </div>
       <!-- 1.9 Material da gaveta inferior (SPEC design/014) -->
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
         <div>
@@ -1056,6 +1108,38 @@
           </div>
           <p class="text-xs text-base-content/60">A <strong>mesma</strong> célula serve dia, mês e ano. O swell é a afordância — a peça cresce antes de qualquer cor entrar. <span class="text-code">[data-hoje]</span> é referência (aro, sem preenchimento) e <span class="text-code">[aria-selected]</span> é escolha (água cheia); <span class="text-code">[data-ativo]</span> é o cursor do teclado, o mesmo marcador que o hover move.</p>
         </div>
+      </div>
+      <!-- Paleta da gaveta lateral (SPEC design/013) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <p class="text-overline">.paleta-gaveta</p>
+        <div class="card-well p-6 flex flex-wrap items-center gap-14">
+          <div class="flex flex-col items-center gap-2">
+            <span class="relative block w-0 h-[4.5rem] mr-9">
+              <span class="paleta-gaveta">
+                <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </span>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">recolhida</p>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <span class="relative block w-0 h-[4.5rem] mr-9">
+              <span class="paleta-gaveta">
+                <svg class="etched paleta-gaveta-glifo -scale-x-100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </span>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">aberta</p>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <span class="relative block w-0 h-[4.5rem] mr-9">
+              <span class="paleta-gaveta paleta-gaveta-recuada">
+                <svg class="etched paleta-gaveta-glifo -scale-x-100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </span>
+            </span>
+            <p class="text-[10px] font-mono text-base-content/60">.paleta-gaveta-recuada</p>
+          </div>
+          <p class="text-xs text-base-content/60 max-w-xs">Passe o ponteiro: o sulco enche de água.</p>
+        </div>
+        <p class="text-xs text-base-content/60">Meio disco — largura = raio, altura = diâmetro. Ancorada em <span class="text-code">left-full</span> da casca, ela serve aos dois estados com <strong>uma posição só</strong>: recolhida, a casca está deslocada de <span class="text-code">-100%</span> e a paleta cai exatamente sobre a borda da tela; aberta, ela vai junto e vira a borda direita da gaveta. Aberta, o glifo é <strong>espelhado</strong> (<span class="text-code">-scale-x-100</span>), nunca girado: o sulco do <span class="text-code">.etched</span> tem luz de cima, e <span class="text-code">rotate-180</span> o devolveria em relevo.</p>
       </div>
       <!-- Alça da gaveta (SPEC design/014) -->
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
@@ -2441,6 +2525,49 @@
           <p class="text-xs text-base-content/60">Uma caixa só: a face de meses <strong>substitui</strong> a de dias e a de anos substitui a de meses, sem o painel mudar de altura (<span class="text-code">.calendario-onsen-corpo</span> tem altura mínima). Quem escolhe a face é o <span class="text-code">data-face</span> do corpo, e não classe posta por JS — neste projeto <span class="text-code">components</span> vence <span class="text-code">utilities</span>, e um <span class="text-code">.hidden</span> solto perderia para o <span class="text-code">display: grid</span> da peça. O título sobe a pilha enquanto tem caret; a descida é sempre por escolha. Em uso o painel é <span class="text-code">popover</span>, na top layer — aqui está aberto e fora dela só para o styleguide mostrar as faces.</p>
         </div>
       </div>
+      <!-- Peças da gaveta lateral (SPEC design/013) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <div>
+          <p class="text-overline">Peças da gaveta lateral</p>
+          <p class="text-sm text-base-content/70 mt-1">SPEC <span class="text-code">design/013</span>. Assentam sobre o <span class="text-code">.glass-drawer-panel-denso</span> (§1.10); aqui aparecem fora da casca, que é do organismo.</p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-8">
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.mapa-gaveta-moldura + .mapa-gaveta</span>
+            <div class="card-well p-5">
+              <div class="card-well mapa-gaveta-moldura">
+                <div class="mapa-gaveta-rotulo">
+                  <span class="text-overline">Geometria</span>
+                  <span class="badge badge-poligono badge-sm">Polígono</span>
+                </div>
+                <div class="mapa-gaveta">
+                  <img src="{% static 'img/ortofotos_fundo/anhangabau.png' %}" alt="Recorte do mapa" class="absolute inset-0 w-full h-full object-cover saturate-[0.8] brightness-[1.05] contrast-[0.95]">
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">A moldura é o <strong>poço</strong> e o mapa dentro dela é <strong>placa assentada</strong> — raio de placa, aresta de luz e sombra por <strong>fora</strong>. Poço dentro de poço perderia o degrau, e o que se quer aqui é levantar o mapa. Por cima vem a lente da home em miniatura: tinta de água límpida e vinheta ciana só na borda. No produto quem está dentro é o Leaflet; aqui é um recorte parado, para o styleguide não depender do WMS.</p>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.gaveta-linha-detalhe</span>
+            <div class="card-well p-5 flex flex-col gap-2">
+              <span class="card-well gaveta-linha-detalhe">
+                <span class="icon-bubble w-8 h-8 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </span>
+                <span>
+                  <span class="block text-sm font-bold leading-tight">Ficha fiscal</span>
+                  <span class="block text-xs text-base-content/70">Contribuinte e lançamento</span>
+                </span>
+                <svg class="etched gaveta-linha-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </span>
+              <p class="text-[10px] font-mono text-base-content/60 text-center">passe o ponteiro</p>
+            </div>
+            <p class="text-xs text-base-content/60">A linha que abre a segunda gaveta. A tinta de repouso vem do <span class="text-code">.card-well</span> empilhado no markup; sob o ponteiro o gelo <strong>acende</strong> e o sulco da seta enche de água e avança. O gatilho é um <span class="text-code">&lt;label for&gt;</span> — nenhum estado de gaveta vive em JavaScript.</p>
+          </div>
+        </div>
+      </div>
       <!-- Peças da gaveta inferior (SPEC design/014) -->
       <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
         <div>
@@ -3232,6 +3359,128 @@
         </div>
       </div>
 
+      <!-- Gaveta lateral (SPEC design/013) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">.gaveta-lateral <span class="font-normal text-base-content/60">— aqui dentro de um quadro; na home a âncora é a casca da tela</span></p>
+        <p class="text-sm text-base-content/80">A gaveta entra pela <strong>esquerda</strong> com o que a busca resolveu. Recolhida, o que fica sobre o mapa é só a <strong>paleta</strong>. De dentro dela sai uma segunda gaveta, num plano atrás. Acione a paleta na borda esquerda do quadro; depois, uma das linhas de detalhe.</p>
+
+        <div class="relative h-[34rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)]">
+          <div class="gaveta-lateral">
+            <input type="checkbox" id="gaveta-lateral-styleguide" class="gaveta-lateral-toggle" />
+            <input type="checkbox" id="gaveta-lateral-detalhe-styleguide" class="gaveta-lateral-detalhe-toggle" />
+
+            <aside class="gaveta-lateral-detalhe glass-drawer-panel-recuado" role="dialog" aria-label="Ficha fiscal">
+              <div class="gaveta-lateral-detalhe-conteudo">
+                <div>
+                  <p class="text-overline text-madeira-600">Detalhe</p>
+                  <h3 class="text-xl font-bold tracking-tight text-madeira-700 leading-tight">Ficha fiscal</h3>
+                  <p class="text-code text-xs mt-1">Contribuinte 098.112.0034-1</p>
+                </div>
+                <div class="card-well p-4 flex flex-col gap-3">
+                  <div>
+                    <p class="text-overline mb-0.5">Valor venal</p>
+                    <p class="text-2xl font-bold tabular-nums">R$ 4.982.310</p>
+                  </div>
+                  <div class="h-px w-full bg-rocha-950/10"></div>
+                  <div>
+                    <p class="text-overline mb-0.5">Exercício</p>
+                    <p class="font-bold tabular-nums">2026</p>
+                  </div>
+                </div>
+                <p class="text-sm text-base-content/80 leading-relaxed">Lançamento ativo, sem parcelamento em curso.</p>
+              </div>
+              <label for="gaveta-lateral-detalhe-styleguide" class="paleta-gaveta paleta-gaveta-recuada" tabindex="0" aria-label="Fechar o detalhe">
+                <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </label>
+            </aside>
+
+            <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+              <header class="gaveta-lateral-cabecalho">
+                <p class="text-overline text-madeira-600">Entidade localizada</p>
+                <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
+                <p class="text-code text-sm font-medium mt-2">SQL 098.112.0034-1</p>
+              </header>
+
+              <div class="gaveta-lateral-corpo" data-scroll-etched>
+                <div class="gaveta-lateral-rolador" data-rolador>
+                  <div class="gaveta-lateral-conteudo">
+                    <div class="card-well mapa-gaveta-moldura">
+                      <div class="mapa-gaveta-rotulo">
+                        <span class="text-overline">Geometria</span>
+                        <span class="badge badge-poligono badge-sm">Polígono</span>
+                      </div>
+                      <div class="mapa-gaveta">
+                        <img src="{% static 'img/ortofotos_fundo/anhangabau.png' %}" alt="Recorte do mapa" class="absolute inset-0 w-full h-full object-cover saturate-[0.8] brightness-[1.05] contrast-[0.95]">
+                      </div>
+                    </div>
+
+                    <div class="card-well p-4 flex gap-4 items-center">
+                      <div class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                      </div>
+                      <div>
+                        <p class="text-overline mb-0.5">Endereço principal</p>
+                        <p class="font-bold leading-tight">Av. Paulista, 1578</p>
+                        <p class="text-xs text-base-content/70">Bela Vista, São Paulo — SP</p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Terreno</p>
+                        <p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                      </div>
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Construída</p>
+                        <p class="text-xl font-bold tabular-nums">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                      </div>
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Testada</p>
+                        <p class="text-xl font-bold tabular-nums">24,50 <span class="text-sm font-normal text-base-content/60">m</span></p>
+                      </div>
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Pavimentos</p>
+                        <p class="text-xl font-bold tabular-nums">18</p>
+                      </div>
+                    </div>
+
+                    <p class="text-sm text-base-content/80 leading-relaxed">Lote de esquina na quadra fiscal 112, com frente para a Avenida Paulista e acesso secundário pela Rua Frei Caneca.</p>
+
+                    <p class="text-overline pt-2">Mais detalhes</p>
+                    <label for="gaveta-lateral-detalhe-styleguide" class="card-well gaveta-linha-detalhe">
+                      <span class="icon-bubble w-8 h-8 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                      </span>
+                      <span>
+                        <span class="block text-sm font-bold leading-tight">Ficha fiscal</span>
+                        <span class="block text-xs text-base-content/70">Contribuinte e lançamento</span>
+                      </span>
+                      <svg class="etched gaveta-linha-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                    </label>
+                    <label for="gaveta-lateral-detalhe-styleguide" class="card-well gaveta-linha-detalhe">
+                      <span class="icon-bubble w-8 h-8 bg-madeira-400/15 border-madeira-500/30 text-madeira-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      </span>
+                      <span>
+                        <span class="block text-sm font-bold leading-tight">Histórico de lançamentos</span>
+                        <span class="block text-xs text-base-content/70">2019 a 2026</span>
+                      </span>
+                      <svg class="etched gaveta-linha-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                    </label>
+                  </div>
+                </div>
+                <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+
+            <label for="gaveta-lateral-styleguide" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </label>
+          </div>
+        </div>
+
+        <p class="text-xs text-base-content/60">Abrir e fechar é <span class="text-code">checkbox</span> nativo, com os campos <strong>dentro</strong> da casca e lidos como filhos imediatos — <span class="text-code">.gaveta-lateral:has(&gt; .gaveta-lateral-toggle:checked)</span>: assim duas gavetas convivem no mesmo documento sem que marcar uma abra a outra, e a peça não depende de classe nenhuma no ancestral. A segunda gaveta é <strong>irmã</strong> do painel, com <span class="text-code">z</span> abaixo dele; fechada, ela cabe inteira atrás — o <span class="text-code">translateX</span> é exatamente <span class="text-code">(largura − recuo)</span>. O estado de falta usa a <span class="text-code">.gaveta-vazia</span> da gaveta inferior. Na home a casca recebe <span class="text-code">.tela-home</span>, que é por onde o CSS recolhe a barra de busca quando a gaveta abre.</p>
+      </div>
       <!-- Gaveta inferior (SPEC design/014) -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">.gaveta-inferior <span class="font-normal text-base-content/60">— a peça real vive no fim do documento, fixa no rodapé</span></p>

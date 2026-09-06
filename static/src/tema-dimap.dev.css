@@ -67,6 +67,12 @@ html[data-theme="dimap"] {
   /* Troca de fundo sem vão (SPEC design/011): duração do crossfade entre a camada que sai e a
      que entra — ver .fundo-ortofoto__camada. */
   --fundo-troca-duracao: 700ms;
+  /* Gaveta lateral (SPEC design/013). A largura é token porque a paleta se ancora na borda direita
+     da casca: fechada, é ela que põe o meio disco exatamente sobre a borda da tela. O recuo é o
+     quanto da segunda gaveta fica enfiado sob a primeira, e é também o que ela reserva à esquerda. */
+  --gaveta-largura: 24rem;
+  --gaveta-detalhe-largura: 22rem;
+  --gaveta-recuo: 2rem;
 }
 
 @theme {
@@ -225,12 +231,11 @@ html[data-theme="dimap"] {
      O bg-transparent! derruba o véu escuro que o daisyUI põe em .modal e o base-100 opaco de .modal-box;
      important é sufixo no Tailwind 4. */
   .modal-glass { @apply bg-transparent! backdrop-blur-[16px]; }
-  /* TERCEIRA densidade (SPEC design/008 v2): o modal é o único lugar em que a opacidade alta é o
-     acerto. Ele não flutua sobre interface — ele SUBSTITUI a interface enquanto está aberto, e o
-     diálogo precisa ganhar de um formulário inteiro atrás. Por isso a placa espessa geral desceu
-     para 88%→76% e a do modal ficou em 97%→88%: são densidades diferentes porque respondem a
-     perguntas diferentes. A receita vem escrita aqui e não no .glass-panel-thick empilhado no
-     markup — esta regra vem depois no arquivo e vence, então nenhum dos modais precisa mudar. */
+  /* TERCEIRA densidade (SPEC design/008 v2; primitivos em .glass-blur-denso/.glass-bg-denso, SPEC
+     design/013): a densidade de quem SUBSTITUI o que está atrás, em vez de flutuar sobre ele. O
+     modal precisa ganhar de um formulário inteiro; por isso a placa espessa geral ficou em 88%→76%
+     e esta em 97%→88%. A receita vem escrita aqui e não no .glass-panel-thick empilhado no markup —
+     esta regra vem depois no arquivo e vence, então nenhum dos modais precisa mudar. */
   .modal-box-glass {
     @apply bg-transparent! max-h-[85vh] overflow-y-auto backdrop-blur-[28px] bg-gradient-to-br from-white/97 via-white/93 to-white/88 border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
   }
@@ -1982,4 +1987,155 @@ html[data-theme="dimap"] {
 @media (prefers-reduced-motion: reduce) {
   .fundo-ortofoto__deriva,
   .fundo-ortofoto__imagem { animation: none; }
+
+  /* ==================== GAVETA LATERAL (SPEC design/013) ======================================== */
+
+  /* TOKEN · a terceira densidade como primitivo, e não mais escrita só dentro do .modal-box-glass:
+     a gaveta responde à mesma pergunta que o modal — ela substitui o que está atrás enquanto está
+     aberta. Sobre o mapa vivo, o gelo fino deixa o traço do mapa atravessar o texto. */
+  .glass-blur-denso { @apply backdrop-blur-[28px]; }
+  .glass-bg-denso   { @apply bg-gradient-to-br from-white/97 via-white/93 to-white/88; }
+
+  /* TOKEN · a mesma densidade na direção da gaveta: a luz entra pela borda direita, a única solta. */
+  .glass-drawer-panel-denso {
+    @apply backdrop-blur-[28px] bg-gradient-to-l from-white/97 via-white/93 to-white/88 border-r border-white/80;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),12px_0_40px_rgba(7,58,84,0.3),0_0_36px_rgba(72,202,228,0.25)];
+  }
+
+  /* TOKEN · o plano de trás é um degrau, não um andar: mesma densidade, sem o brilho ciano, e a
+     sombra da placa da frente apenas encostando na aresta esquerda. É ela, e não um encolhimento,
+     que põe a segunda gaveta atrás. */
+  .glass-drawer-panel-recuado {
+    @apply backdrop-blur-[28px] bg-gradient-to-l from-white/94 via-white/90 to-white/85 border border-white/60;
+    box-shadow:
+      inset 16px 0 22px -16px rgba(7, 58, 84, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      10px 0 28px rgba(7, 58, 84, 0.18);
+  }
+
+  /* ÁTOMO · paleta. Meio disco: largura = raio, altura = diâmetro. Ancorada em left-full da casca,
+     ela serve aos dois estados com uma posição só — fechada, a casca está deslocada de -100% e a
+     paleta cai sobre a borda da tela; aberta, ela vai junto e vira a borda direita da gaveta. */
+  .paleta-gaveta {
+    @apply absolute left-full top-1/2 -translate-y-1/2 z-20 pointer-events-auto;
+    @apply w-9 h-[4.5rem] rounded-r-full grid place-items-center cursor-pointer select-none;
+    @apply backdrop-blur-[28px] bg-gradient-to-r from-white/93 to-white/78 border border-l-0 border-white/80;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),8px_0_24px_rgba(7,58,84,0.28),0_0_20px_rgba(72,202,228,0.25)];
+    @apply transition-all duration-300;
+  }
+  .paleta-gaveta:hover { @apply from-white to-white/90; }
+  .paleta-gaveta:focus-visible {
+    @apply outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_0_0_3px_rgba(0,150,199,0.3),8px_0_24px_rgba(7,58,84,0.28)];
+  }
+  .paleta-gaveta-recuada {
+    @apply from-white/90 to-white/74 border-white/60;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.85),8px_0_20px_rgba(7,58,84,0.18)];
+  }
+  /* O glifo é .etched no markup. Aberto ele é ESPELHADO, nunca girado: o sulco tem luz de cima, e
+     rotate-180 o devolveria em relevo. */
+  .paleta-gaveta-glifo { @apply w-5 h-5 transition-all duration-500; }
+  .paleta-gaveta:hover .paleta-gaveta-glifo {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* MOLÉCULA · moldura do mapa. O poço é a moldura (.card-well empilhado no markup) e o mapa dentro
+     dela é PLACA ASSENTADA — raio de placa, aresta de luz e sombra por fora. Poço dentro de poço
+     perderia o degrau, e aqui o que se quer é levantar o mapa. */
+  .mapa-gaveta-moldura { @apply flex flex-col gap-2 p-3; }
+  .mapa-gaveta-rotulo  { @apply flex items-center justify-between px-1; }
+  .mapa-gaveta {
+    @apply relative isolate w-full h-52 overflow-hidden border border-white/70;
+    border-radius: var(--radius-placa);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 8px 20px rgba(7, 58, 84, 0.3),
+      0 0 22px rgba(72, 202, 228, 0.25);
+  }
+  .mapa-gaveta .leaflet-container { @apply absolute inset-0 z-0 bg-white/20 saturate-[0.8] brightness-[1.05] contrast-[0.95]; }
+  /* A lente da home em miniatura (§6 do design system): tinta de água límpida e vinheta ciana só na
+     borda. Nada distorce o mapa geometricamente. */
+  .mapa-gaveta::after {
+    content: "";
+    @apply absolute inset-0 z-10 pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60;
+  }
+  .mapa-gaveta::before {
+    content: "";
+    @apply absolute inset-0 z-20 pointer-events-none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 119, 182, 0.22) 100%);
+  }
+
+  /* MOLÉCULA · linha que abre a segunda gaveta. A tinta de repouso vem do .card-well empilhado no
+     markup; sob o ponteiro o gelo acende e o sulco da seta enche de água e avança. */
+  .gaveta-linha-detalhe {
+    @apply w-full flex items-center gap-3 text-left px-4 py-3 cursor-pointer transition-all duration-300;
+  }
+  .gaveta-linha-detalhe:hover { @apply bg-white/45; }
+  .gaveta-linha-glifo { @apply w-4 h-4 shrink-0 ml-auto transition-all duration-300; }
+  .gaveta-linha-detalhe:hover .gaveta-linha-glifo {
+    @apply translate-x-1;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* ORGANISMO · a casca. absolute, e não fixed: a âncora é a casca da home, e é o que permite
+     renderizá-la dentro de um quadro no styleguide e nos mocks. */
+  .gaveta-lateral {
+    @apply absolute left-0 inset-y-0 z-30 pointer-events-none;
+    width: var(--gaveta-largura);
+    transform: translateX(-100%);
+    @apply transition-transform duration-500 ease-in-out;
+  }
+  /* Os interruptores moram DENTRO da casca, e o :has() os procura como filhos IMEDIATOS: assim duas
+     gavetas convivem no mesmo documento sem que marcar uma abra a outra, e a peça não depende de
+     classe nenhuma no ancestral. */
+  .gaveta-lateral-toggle,
+  .gaveta-lateral-detalhe-toggle { @apply sr-only; }
+  .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) { transform: translateX(0); }
+  .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) .paleta-gaveta-glifo { @apply -scale-x-100; }
+
+  .gaveta-lateral-painel    { @apply relative z-10 h-full w-full flex flex-col pointer-events-auto rounded-r-3xl; }
+  .gaveta-lateral-cabecalho { @apply shrink-0 pl-6 pr-9 pt-6 pb-4; }
+  .gaveta-lateral-corpo     { @apply relative flex-1 min-h-0; }
+  /* A barra nativa sai porque a gravada ocupa o lugar dela (.scroll-etched, opt-in por atributo). */
+  .gaveta-lateral-rolador {
+    @apply h-full overflow-y-auto overscroll-contain;
+    scrollbar-width: none;
+  }
+  .gaveta-lateral-rolador::-webkit-scrollbar { display: none; }
+  .gaveta-lateral-conteudo { @apply flex flex-col gap-4 pl-6 pr-9 pb-6; }
+
+  /* ORGANISMO · a segunda gaveta. Fechada, ela cabe inteira atrás da primeira — o translate é
+     exatamente (largura - recuo). Aberta, volta ao tamanho natural: quem diz que ela está atrás é a
+     folga vertical, a aresta da primeira por cima e o material sem brilho. */
+  .gaveta-lateral-detalhe {
+    @apply absolute inset-y-4 z-0 origin-left rounded-r-3xl opacity-0 pointer-events-none;
+    left: calc(100% - var(--gaveta-recuo));
+    width: var(--gaveta-detalhe-largura);
+    transform: translateX(calc(-1 * (var(--gaveta-detalhe-largura) - var(--gaveta-recuo)))) scale(0.98);
+    @apply transition-all duration-500 ease-in-out;
+  }
+  .gaveta-lateral:has(> .gaveta-lateral-detalhe-toggle:checked) .gaveta-lateral-detalhe {
+    @apply opacity-100 pointer-events-auto;
+    transform: translateX(0) scale(1);
+  }
+  /* A faixa da esquerda é a parte enfiada sob a primeira gaveta, mais a paleta que pousa nela. */
+  .gaveta-lateral-detalhe-conteudo {
+    @apply h-full overflow-y-auto overscroll-contain flex flex-col gap-4 py-6 pr-5;
+    padding-left: calc(var(--gaveta-recuo) + 2.75rem);
+    scrollbar-width: none;
+  }
+  .gaveta-lateral-detalhe-conteudo::-webkit-scrollbar { display: none; }
+
+  /* UI concorrente se recolhe: a busca sai por cima quando a gaveta abre, na mesma direção da
+     .glass-hide-up. */
+  .tela-home:has(.gaveta-lateral-toggle:checked) .search-hero {
+    @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
+  }
+
+  /* Vidro sobre vidro (SPEC design/009) alcançando as placas novas — no fim, depois de toda peça
+     cuja tinta ela apaga. */
+  :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) .glass-panel:where(:not(.modal-box-glass)) { @apply bg-none; }
+  :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) :is(.card-well, .upload-well) { @apply bg-transparent; }
+  :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) .upload-well:where(:hover, :focus-within) { @apply bg-white/15; }
 }

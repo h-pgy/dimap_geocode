@@ -31,6 +31,7 @@ sem tirar o mapa da tela.
       vertical, a aresta da primeira por cima e o material sem brilho.
 - [ ] A segunda gaveta traz a **sua própria paleta** na borda externa, no material do plano recuado.
 - [ ] Recolher a primeira gaveta leva a segunda junto, sem que ela reapareça sozinha à frente.
+- [ ] A gaveta sem entidade resolvida mostra o **estado de falta escrito**, e não uma placa em branco.
 - [ ] A barra de busca **sai de cena** quando a gaveta abre e volta quando ela recolhe.
 - [ ] Nenhum estado de gaveta vive em JavaScript: abrir, recolher e o plano recuado são CSS.
 - [ ] O design foi aprovado no mock e as peças foram portadas para `static/src/tema-dimap.dev.css`
@@ -58,6 +59,7 @@ skill `mock`.
 - `@static/src/tema-dimap.dev.css` → `.modal-box-glass` e `--radius-placa`: a terceira densidade e o raio da placa assentada.
 - `@static/src/tema-dimap.dev.css` → `.etched` / `.etched-inked`: gravação do glifo da paleta.
 - `@static/src/js/ui/scroll_etched.js` + `.scroll-etched`: barra de rolagem do corpo da gaveta.
+- `@static/src/tema-dimap.dev.css` → `.gaveta-vazia`: o estado de falta escrito, da gaveta inferior.
 - `@static/src/tema-dimap.dev.css` → `.search-hero` / `.search-panel`: a UI que recolhe.
 - `@templates/mapping/_mapa_fullscreen.html` → a lente da home, atrás da qual a gaveta desliza.
 - `@static/src/js/mapa/criar_mapa.js` e `camada_base.js`: instância e base WMS do mapa da gaveta.
@@ -166,7 +168,7 @@ html[data-theme="dimap"] {
 @layer components {
   /* absolute, não fixed: a âncora é a casca da home (relative h-screen w-screen overflow-hidden),
      e é o que permite ao mock renderizar a tela montada dentro de um quadro. */
-  .gaveta-onsen {
+  .gaveta-lateral {
     @apply absolute left-0 inset-y-0 z-30 pointer-events-none;
     width: var(--gaveta-largura);
     transform: translateX(-100%);
@@ -174,12 +176,12 @@ html[data-theme="dimap"] {
   }
   /* O interruptor mora DENTRO da casca: a peça não depende de nenhuma classe no ancestral e pode
      ser incluída em qualquer tela. */
-  .gaveta-onsen:has(> .gaveta-toggle:checked) { transform: translateX(0); }
-  .gaveta-onsen:has(> .gaveta-toggle:checked) .paleta-gaveta-glifo { @apply rotate-180; }
+  .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) { transform: translateX(0); }
+  .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) .paleta-gaveta-glifo { @apply rotate-180; }
 
   /* Fechada, a segunda gaveta cabe inteira atrás da primeira — daí o translate de exatamente
      (largura - recuo). Aberta, ela só volta a zero: o quanto ela aparece já está na conta. */
-  .gaveta-detalhe {
+  .gaveta-lateral-detalhe {
     @apply absolute inset-y-4 z-0 origin-left opacity-0 pointer-events-none;
     left: calc(100% - var(--gaveta-recuo));
     width: var(--gaveta-detalhe-largura);
@@ -188,7 +190,7 @@ html[data-theme="dimap"] {
   }
   /* Aberta, ela volta ao tamanho natural: quem diz que está atrás é a folga vertical, a aresta da
      primeira por cima e o material sem brilho — não um encolhimento. */
-  .gaveta-onsen:has(> .gaveta-detalhe-toggle:checked) .gaveta-detalhe {
+  .gaveta-lateral:has(> .gaveta-lateral-detalhe-toggle:checked) .gaveta-lateral-detalhe {
     @apply opacity-100 pointer-events-auto;
     transform: translateX(0) scale(1);
   }
@@ -209,7 +211,7 @@ html[data-theme="dimap"] {
 
 ```css
 /* static/src/tema-dimap.dev.css — mesma direção do recolhimento que a .glass-hide-up já usa. */
-.tela-home:has(.gaveta-toggle:checked) .search-hero {
+.tela-home:has(.gaveta-lateral-toggle:checked) .search-hero {
   @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
 }
 ```
@@ -244,8 +246,19 @@ que a gaveta responde à mesma pergunta que o modal — ela substitui o que est�
 aberta, e sobre o mapa vivo o gelo fino deixa o traço atravessar o texto. O custo é que a densidade
 do modal deixa de poder ser calibrada sozinha: mexer nela passa a mexer na gaveta.
 
-A regra de vidro sobre vidro da SPEC design/009 passa a listar `.glass-drawer-panel-denso` e
-`.glass-drawer-panel-recuado` entre os materiais que apagam a tinta das placas aninhadas. É edição
+A SPEC design/014 já entrega uma gaveta — a inferior — para a **mesma pergunta**: mostrar o que a
+busca resolveu sem perder o mapa. As duas passam a conviver no design system, e a escolha de qual a
+home usa fica em aberto. O custo é um segundo organismo de gaveta a manter enquanto a decisão não
+vem, e a nota do styleguide da 014 que descreve o `.glass-drawer-bottom` como "a receita da gaveta
+lateral, mesma densidade e mesmo blur de 12px" deixa de valer para a lateral desta SPEC.
+
+A família `.gaveta-*` é da gaveta inferior, então a lateral se nomeia por inteiro
+(`.gaveta-lateral*`) — inclusive o interruptor, que de outro modo colidiria com o `.gaveta-toggle`
+já implementado. A razão é que os dois interruptores têm mecanismos diferentes de leitura de estado
+(irmão imediato lá, filho imediato aqui) e um nome só para os dois esconderia isso. O custo é um
+prefixo mais longo em todas as peças da casca.
+
+A regra de vidro sobre vidro da SPEC design/009 passa a listar `.glass-drawer-panel-denso` e `.glass-drawer-panel-recuado` entre os materiais que apagam a tinta das placas aninhadas. É edição
 de uma peça existente, e sem ela os poços dentro das gavetas pintariam branco onde toda outra placa
 aninhada já não pinta.
 

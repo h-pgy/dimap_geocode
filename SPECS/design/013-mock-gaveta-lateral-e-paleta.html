@@ -40,7 +40,7 @@
       /* medidas da gaveta */
       html[data-theme="dimap"] {
         --gaveta-largura: 24rem;
-        --gaveta-detalhe-largura: 22rem;
+        --gaveta-lateral-detalhe-largura: 22rem;
         --gaveta-recuo: 2rem;
       }
 
@@ -98,51 +98,51 @@
 
       /* ==================== 3 · MOLÉCULAS ==================== */
 
-      /* .gaveta-onsen — a casca e a coreografia.
+      /* .gaveta-lateral — a casca e a coreografia.
          absolute, não fixed: a âncora é a casca da home. */
-      .gaveta-onsen {
+      .gaveta-lateral {
         @apply absolute left-0 inset-y-0 z-30 pointer-events-none;
         width: var(--gaveta-largura);
         transform: translateX(-100%);
         @apply transition-transform duration-500 ease-in-out;
       }
-      .gaveta-toggle,
-      .gaveta-detalhe-toggle { @apply sr-only; }
-      .gaveta-onsen:has(> .gaveta-toggle:checked) { transform: translateX(0); }
-      .gaveta-onsen:has(> .gaveta-toggle:checked) .paleta-gaveta-glifo { @apply -scale-x-100; }
+      .gaveta-lateral-toggle,
+      .gaveta-lateral-detalhe-toggle { @apply sr-only; }
+      .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) { transform: translateX(0); }
+      .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) .paleta-gaveta-glifo { @apply -scale-x-100; }
 
-      .gaveta-onsen-painel { @apply relative z-10 h-full w-full flex flex-col pointer-events-auto rounded-r-3xl; }
-      .gaveta-onsen-cabecalho { @apply shrink-0 pl-6 pr-9 pt-6 pb-4; }
-      .gaveta-onsen-corpo { @apply relative flex-1 min-h-0; }
-      .gaveta-onsen-rolador {
+      .gaveta-lateral-painel { @apply relative z-10 h-full w-full flex flex-col pointer-events-auto rounded-r-3xl; }
+      .gaveta-lateral-cabecalho { @apply shrink-0 pl-6 pr-9 pt-6 pb-4; }
+      .gaveta-lateral-corpo { @apply relative flex-1 min-h-0; }
+      .gaveta-lateral-rolador {
         @apply h-full overflow-y-auto overscroll-contain;
         scrollbar-width: none;
       }
-      .gaveta-onsen-rolador::-webkit-scrollbar { display: none; }
-      .gaveta-onsen-conteudo { @apply flex flex-col gap-4 pl-6 pr-9 pb-6; }
+      .gaveta-lateral-rolador::-webkit-scrollbar { display: none; }
+      .gaveta-lateral-conteudo { @apply flex flex-col gap-4 pl-6 pr-9 pb-6; }
 
-      /* .gaveta-detalhe — fechada, cabe inteira atrás da primeira: o translate é exatamente
+      /* .gaveta-lateral-detalhe — fechada, cabe inteira atrás da primeira: o translate é exatamente
          (largura - recuo). Aberta, ela volta a zero. */
-      .gaveta-detalhe {
+      .gaveta-lateral-detalhe {
         @apply absolute inset-y-4 z-0 origin-left rounded-r-3xl opacity-0 pointer-events-none;
         left: calc(100% - var(--gaveta-recuo));
-        width: var(--gaveta-detalhe-largura);
-        transform: translateX(calc(-1 * (var(--gaveta-detalhe-largura) - var(--gaveta-recuo)))) scale(0.98);
+        width: var(--gaveta-lateral-detalhe-largura);
+        transform: translateX(calc(-1 * (var(--gaveta-lateral-detalhe-largura) - var(--gaveta-recuo)))) scale(0.98);
         @apply transition-all duration-500 ease-in-out;
       }
       /* Aberta, a segunda gaveta volta ao tamanho natural: quem diz que ela está atrás é a folga
          vertical, a aresta da primeira por cima e o material sem brilho — não um encolhimento. */
-      .gaveta-onsen:has(> .gaveta-detalhe-toggle:checked) .gaveta-detalhe {
+      .gaveta-lateral:has(> .gaveta-lateral-detalhe-toggle:checked) .gaveta-lateral-detalhe {
         @apply opacity-100 pointer-events-auto;
         transform: translateX(0) scale(1);
       }
       /* a faixa da esquerda é a parte enfiada sob a primeira gaveta, mais a paleta que pousa nela */
-      .gaveta-detalhe-conteudo {
+      .gaveta-lateral-detalhe-conteudo {
         @apply h-full overflow-y-auto overscroll-contain flex flex-col gap-4 py-6 pr-5;
         padding-left: calc(var(--gaveta-recuo) + 2.75rem);
         scrollbar-width: none;
       }
-      .gaveta-detalhe-conteudo::-webkit-scrollbar { display: none; }
+      .gaveta-lateral-detalhe-conteudo::-webkit-scrollbar { display: none; }
 
       /* .mapa-gaveta-moldura — o poço em volta do mapa; empilha com .card-well no markup */
       .mapa-gaveta-moldura { @apply flex flex-col gap-2 p-3; }
@@ -184,7 +184,7 @@
       }
 
       /* a busca sai de cena quando a gaveta abre — mesma direção da .glass-hide-up */
-      .tela-home:has(.gaveta-toggle:checked) .search-hero {
+      .tela-home:has(.gaveta-lateral-toggle:checked) .search-hero {
         @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
       }
 
@@ -235,7 +235,7 @@
               <p class="text-xl font-bold tabular-nums">24rem</p>
             </div>
             <div>
-              <p class="text-code text-xs">--gaveta-detalhe-largura</p>
+              <p class="text-code text-xs">--gaveta-lateral-detalhe-largura</p>
               <p class="text-xl font-bold tabular-nums">22rem</p>
             </div>
             <div>
@@ -414,13 +414,13 @@
           </div>
 
           <!-- partial: search/partials/_gaveta_entidade.html — alvo de hx-swap ao comitar a busca -->
-          <div class="gaveta-onsen">
-            <input type="checkbox" id="gaveta-tela" class="gaveta-toggle">
-            <input type="checkbox" id="detalhe-tela" class="gaveta-detalhe-toggle">
+          <div class="gaveta-lateral">
+            <input type="checkbox" id="gaveta-tela" class="gaveta-lateral-toggle">
+            <input type="checkbox" id="detalhe-tela" class="gaveta-lateral-detalhe-toggle">
 
             <!-- partial: search/partials/_gaveta_detalhe.html — alvo de hx-swap ao abrir um detalhe -->
-            <aside class="gaveta-detalhe glass-drawer-panel-recuado">
-              <div class="gaveta-detalhe-conteudo">
+            <aside class="gaveta-lateral-detalhe glass-drawer-panel-recuado">
+              <div class="gaveta-lateral-detalhe-conteudo">
                 <div>
                   <p class="text-overline text-madeira-600">Detalhe</p>
                   <h3 class="text-xl font-bold tracking-tight text-madeira-700 leading-tight">Ficha fiscal</h3>
@@ -454,16 +454,16 @@
               </label>
             </aside>
 
-            <div class="gaveta-onsen-painel glass-drawer-panel-denso">
-              <header class="gaveta-onsen-cabecalho">
+            <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+              <header class="gaveta-lateral-cabecalho">
                 <p class="text-overline text-madeira-600">Entidade localizada</p>
                 <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
                 <p class="text-code text-sm font-medium mt-2">SQL 098.112.0034-1</p>
               </header>
 
-              <div class="gaveta-onsen-corpo" data-scroll-etched>
-                <div class="gaveta-onsen-rolador" data-rolador>
-                  <div class="gaveta-onsen-conteudo">
+              <div class="gaveta-lateral-corpo" data-scroll-etched>
+                <div class="gaveta-lateral-rolador" data-rolador>
+                  <div class="gaveta-lateral-conteudo">
                     <div class="card-well mapa-gaveta-moldura">
                       <div class="mapa-gaveta-rotulo">
                         <span class="text-overline">Geometria</span>
@@ -575,31 +575,25 @@
         <div class="flex flex-col gap-2">
           <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">estado de falta — gaveta aberta sem entidade</span>
           <div class="quadro-tela h-[22rem]">
-            <div class="gaveta-onsen">
-              <input type="checkbox" id="gaveta-vazia" class="gaveta-toggle" checked>
-              <div class="gaveta-onsen-painel glass-drawer-panel-denso">
-                <header class="gaveta-onsen-cabecalho">
+            <div class="gaveta-lateral">
+              <input type="checkbox" id="gaveta-tela-vazia" class="gaveta-lateral-toggle" checked>
+              <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+                <header class="gaveta-lateral-cabecalho">
                   <p class="text-overline text-madeira-600">Entidade localizada</p>
                   <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Nenhuma</h2>
                 </header>
-                <div class="gaveta-onsen-corpo">
-                  <div class="gaveta-onsen-rolador">
-                    <div class="gaveta-onsen-conteudo">
-                      <div class="card-well p-6 flex flex-col items-center text-center gap-3">
-                        <span class="icon-bubble w-12 h-12 bg-rocha-500/10 border-rocha-500/25 text-rocha-600">
-                          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        </span>
-                        <p class="font-bold leading-tight">Nada localizado ainda</p>
-                        <p class="text-xs text-base-content/70">
-                          Busque um logradouro, um endereço ou um número de contribuinte para a
-                          gaveta se preencher.
-                        </p>
+                <div class="gaveta-lateral-corpo">
+                  <div class="gaveta-lateral-rolador">
+                    <div class="gaveta-lateral-conteudo">
+                      <div class="gaveta-vazia">
+                        <span class="etched etched-lg text-4xl leading-none">◇</span>
+                        <p>Busque um logradouro, um endereço ou um número de contribuinte para a gaveta se preencher.</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <label for="gaveta-vazia" class="paleta-gaveta" tabindex="0" aria-label="Recolher a gaveta">
+              <label for="gaveta-tela-vazia" class="paleta-gaveta" tabindex="0" aria-label="Recolher a gaveta">
                 <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
               </label>
             </div>
@@ -647,7 +641,7 @@
 
     // O Leaflet mede o container quando o mapa nasce, e aqui isso acontece com a gaveta ainda fora
     // da tela: sem remedir no fim do deslize, os tiles saem cortados. Cola de Leaflet, não estado.
-    document.querySelectorAll(".gaveta-onsen").forEach((gaveta) => {
+    document.querySelectorAll(".gaveta-lateral").forEach((gaveta) => {
       gaveta.addEventListener("transitionend", () => {
         mapaGaveta.invalidateSize();
       });
