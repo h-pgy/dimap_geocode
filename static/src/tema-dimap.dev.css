@@ -1864,6 +1864,99 @@ html[data-theme="dimap"] {
   .card-busca-topo { @apply flex flex-wrap items-center justify-between gap-3; }
   .card-busca-grade { @apply grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3; }
   .card-busca-largo { @apply sm:col-span-2; }
+
+  /* ==================== GAVETA INFERIOR (SPEC design/014) ======================================= */
+
+  /* TOKEN · a receita da gaveta lateral girada 90°. Placa própria, e não modificador da lateral,
+     porque o que muda no material é a DIREÇÃO: aresta de luz, queda do gradiente e sombra
+     projetada apontam todas para cima. */
+  .glass-drawer-bottom {
+    @apply backdrop-blur-[12px] bg-gradient-to-b from-white/80 via-white/65 to-white/55;
+    @apply border-t border-white/60;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_-12px_40px_rgba(7,58,84,0.3),0_0_40px_rgba(72,202,228,0.25)];
+  }
+
+  /* ÁTOMO · alça. A área de toque é a faixa inteira: o fio tem 6px de altura e ninguém acerta 6px
+     com o dedo. */
+  .gaveta-alca { @apply w-full h-6 shrink-0 flex items-center justify-center cursor-pointer; }
+  .gaveta-alca .etched-line { @apply w-16 h-1.5 transition-all duration-300; }
+  /* O entintado é dito pelo CONTÊINER, como na .lata-concessao: quem carrega a afordância é a alça,
+     não o fio. */
+  .gaveta-alca:hover .etched-line,
+  .gaveta-alca:focus-visible .etched-line {
+    @apply w-20;
+    background-color: rgba(0, 119, 182, 0.5);
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+  }
+  .gaveta-alca:focus-visible { @apply outline-none; }
+
+  /* MOLÉCULA · cabeçalho. A divisa é o par sombra-luz da linha da tabela: sozinha, a aresta branca
+     não separa sobre gelo claro. */
+  .gaveta-cabecalho {
+    @apply shrink-0 flex items-start justify-between gap-4 px-5 sm:px-8 pb-3 border-b border-white/65;
+    box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09);
+  }
+
+  /* MOLÉCULA · corpo e colunas. Em tela ampla quem rola é a coluna; empilhado o eixo inverte e quem
+     rola passa a ser o corpo, porque duas barras aninhadas num telefone disputam o mesmo gesto.
+     Colunas em flex-1, e não em grade de três: o número de colunas é o que a gaveta recebe. */
+  .gaveta-corpo { @apply flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain; }
+  .gaveta-coluna { @apply min-h-0 flex flex-col gap-3 px-5 sm:px-8 py-4; }
+  .gaveta-coluna + .gaveta-coluna {
+    @apply border-t border-white/65;
+    box-shadow: inset 0 2px 0 -1px rgba(7, 58, 84, 0.09);
+  }
+  @media (width >= 48rem) {
+    .gaveta-corpo  { @apply flex-row overflow-hidden; }
+    .gaveta-coluna { @apply flex-1 basis-0 overflow-y-auto overscroll-contain; }
+    .gaveta-coluna + .gaveta-coluna {
+      @apply border-t-0 border-l border-white/65;
+      box-shadow: inset 2px 0 0 -1px rgba(7, 58, 84, 0.09);
+    }
+  }
+  .gaveta-coluna:has(.table-onsen-poco) { @apply overflow-hidden; }
+
+  /* MOLÉCULA · a tabela é limitada pela GAVETA, não pelas 32rem do rolador padrão. Em flex, e não
+     em altura percentual: o poço tem folga própria e a porcentagem resolveria contra uma caixa que
+     ainda não tem medida. */
+  .tabela-onsen-gaveta { @apply flex-1 min-h-0 max-h-none; }
+
+  /* MOLÉCULA · figura assentada, no assento da .tarja-vinculo. A imagem cede ao gelo como a do
+     .avatar-glass: crua, ela briga com o material em volta. */
+  .gaveta-figura {
+    @apply overflow-hidden bg-white/25 border border-white/45;
+    border-radius: var(--radius-placa);
+    box-shadow: var(--sombra-poco);
+  }
+  .gaveta-figura > img { @apply w-full h-full object-cover opacity-[0.92]; }
+
+  /* MOLÉCULA · estado de falta escrito. Placa em branco se lê como "ainda não carregou". */
+  .gaveta-vazia {
+    @apply flex-1 min-h-0 flex flex-col items-center justify-center gap-3;
+    @apply px-8 py-6 text-center text-sm text-base-content/60;
+  }
+
+  /* ORGANISMO · metade da altura é TETO, não medida: a gaveta cresce com o conteúdo até ali. */
+  .gaveta-inferior {
+    @apply fixed inset-x-0 bottom-0 z-30 flex flex-col pt-1.5 rounded-t-3xl max-h-[50dvh];
+    @apply translate-y-full transition-transform duration-500 ease-in-out;
+  }
+  /* Irmão IMEDIATO, e não :root:has() nem `~`: assim duas gavetas convivem no mesmo documento sem
+     que marcar uma abra a outra. */
+  .gaveta-toggle { @apply sr-only; }
+  .gaveta-toggle:checked + .gaveta-inferior { @apply translate-y-0; }
+  /* Abaixo do tablet a gaveta é a tela: metade de 700px não comporta cabeçalho e conteúdo. Sem raio
+     no topo — folha que cobre tudo e ainda arredonda a quina deixa dois furos de mapa no ponto mais
+     alto da leitura. */
+  @media (width < 48rem) {
+    .gaveta-inferior { @apply h-[100dvh] max-h-none rounded-t-none; }
+  }
+
+  /* Vidro sobre vidro (SPEC design/009) alcançando a placa nova — no fim do arquivo, depois de toda
+     peça cuja tinta ela apaga, que é a mesma razão da posição da regra original. */
+  :where(.glass-drawer-bottom) .glass-panel:where(:not(.modal-box-glass)) { @apply bg-none; }
+  :where(.glass-drawer-bottom) :is(.card-well, .upload-well) { @apply bg-transparent; }
+  :where(.glass-drawer-bottom) .upload-well:where(:hover, :focus-within) { @apply bg-white/15; }
 }
 
 /* Pulso ciano de confirmação (usado por .suggestion-item.htmx-request) */

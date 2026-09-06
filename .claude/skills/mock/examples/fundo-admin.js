@@ -2,7 +2,8 @@
 //
 // Este módulo NÃO desenha fundo algum: ele busca as MESMAS peças que a aplicação usa —
 // `templates/mapping/_mapa_admin.html` e os partials que ele inclui (`_glifos_fundo.html`,
-// `_fundo_ortofoto.html`, `_controle_fundo.html`) — e as monta na página do mock. Trocar o fundo
+// `_fundo_ortofoto.html`, `_camada_ortofoto.html`, `_controle_fundo.html`) — e as monta na página
+// do mock. Trocar o fundo
 // do produto passa a trocar o de todos os mocks de uma vez, que é o oposto de cada mock recriar o
 // seu e envelhecer sozinho.
 //
@@ -16,7 +17,8 @@
 
 const PARTIAL_FUNDO = "/templates/mapping/_mapa_admin.html";
 const PARTIAL_GLIFOS = "/templates/mapping/_glifos_fundo.html";
-const PARTIAL_CANVAS = "/templates/mapping/_fundo_ortofoto.html";
+const PARTIAL_CASCA = "/templates/mapping/_fundo_ortofoto.html";
+const PARTIAL_CAMADA = "/templates/mapping/_camada_ortofoto.html";
 const PARTIAL_CONTROLE = "/templates/mapping/_controle_fundo.html";
 const MODULO_CONTROLE = "/static/src/js/ui/controle_fundo.js";
 const DIR_ORTOFOTOS = "/static/src/img/ortofotos_fundo/";
@@ -49,22 +51,31 @@ async function buscarPartial(caminho) {
   return (await resposta.text()).replace(TAG_DE_TEMPLATE, "").trim();
 }
 
+// A casca é `{% include %}` e mais nada — sem Django, o fetch cru devolve um recipiente vazio, e a
+// camada precisa ser aninhada aqui. O `{% static %}` do src some do mesmo jeito, e é a ortofoto
+// sorteada que o repõe; o `{% if not entrando %}` cai deixando a classe que revela a camada, que é
+// o certo: no mock não há JS de rodízio para acendê-la depois.
+function montarCanvas(casca, camada, chave) {
+  const molde = document.createElement("div");
+  molde.innerHTML = casca;
+  molde.firstElementChild.innerHTML = camada.replace(
+    'src=""',
+    `src="${DIR_ORTOFOTOS}${chave}.png"`,
+  );
+  return molde.innerHTML;
+}
+
 export async function montarFundoAdmin() {
   try {
     const chave = CHAVES_ORTOFOTO[Math.floor(Math.random() * CHAVES_ORTOFOTO.length)];
-    const [molde, glifos, canvas, controle] = await Promise.all([
+    const [molde, glifos, casca, camada, controle] = await Promise.all([
       buscarPartial(PARTIAL_FUNDO),
       buscarPartial(PARTIAL_GLIFOS),
-      buscarPartial(PARTIAL_CANVAS),
+      buscarPartial(PARTIAL_CASCA),
+      buscarPartial(PARTIAL_CAMADA),
       buscarPartial(PARTIAL_CONTROLE),
     ]);
-    // {% if %}/{% static %} some no fetch cru: a condição vira sempre-verdadeira e a url(''), que
-    // sobra vazia, ganha uma ortofoto real sorteada aqui — o único jeito de povoar o token sem
-    // um Django de pé por trás do Live Server.
-    const canvasPintado = canvas.replace(
-      "url('')",
-      `url('${DIR_ORTOFOTOS}${chave}.png')`,
-    );
+    const canvasPintado = montarCanvas(casca, camada, chave);
     // Ordem espelha _mapa_admin.html: glifos (invisível) → canvas (z-0) → lente (z-1, no molde
     // já sem o include) → controle (z-20).
     document.body.insertAdjacentHTML("afterbegin", glifos + canvasPintado + molde + controle);

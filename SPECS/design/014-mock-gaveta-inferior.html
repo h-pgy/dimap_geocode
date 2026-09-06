@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/014 — Gaveta inferior (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== 1 · TOKENS ==================== */
+
+      /* .glass-drawer-bottom */
+      .glass-drawer-bottom {
+        @apply backdrop-blur-[12px] bg-gradient-to-b from-white/80 via-white/65 to-white/55;
+        @apply border-t border-white/60;
+        @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_-12px_40px_rgba(7,58,84,0.3),0_0_40px_rgba(72,202,228,0.25)];
+      }
+
+      /* Vidro sobre vidro (SPEC design/009) alcançando a placa nova. */
+      :where(.glass-drawer-bottom) .glass-panel:where(:not(.modal-box-glass)) { @apply bg-none; }
+      :where(.glass-drawer-bottom) :is(.card-well, .upload-well) { @apply bg-transparent; }
+      :where(.glass-drawer-bottom) .upload-well:where(:hover, :focus-within) { @apply bg-white/15; }
+
+      /* ==================== 2 · ÁTOMOS ==================== */
+
+      /* .gaveta-alca */
+      .gaveta-alca { @apply w-full h-6 shrink-0 flex items-center justify-center cursor-pointer; }
+      .gaveta-alca .etched-line { @apply w-16 h-1.5 transition-all duration-300; }
+      .gaveta-alca:hover .etched-line,
+      .gaveta-alca:focus-visible .etched-line {
+        @apply w-20;
+        background-color: rgba(0, 119, 182, 0.5);
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+      }
+      .gaveta-alca:focus-visible { @apply outline-none; }
+
+      /* ==================== 3 · MOLÉCULAS ==================== */
+
+      /* .gaveta-cabecalho */
+      .gaveta-cabecalho {
+        @apply shrink-0 flex items-start justify-between gap-4 px-5 sm:px-8 pb-3 border-b border-white/65;
+        box-shadow: inset 0 -2px 0 -1px rgba(7, 58, 84, 0.09);
+      }
+
+      /* .gaveta-corpo e .gaveta-coluna — o número de colunas é o que a gaveta recebe, e não um
+         modificador por caso: uma ocupa a faixa inteira, três dividem em terços. */
+      .gaveta-corpo { @apply flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain; }
+      .gaveta-coluna { @apply min-h-0 flex flex-col gap-3 px-5 sm:px-8 py-4; }
+      .gaveta-coluna + .gaveta-coluna {
+        @apply border-t border-white/65;
+        box-shadow: inset 0 2px 0 -1px rgba(7, 58, 84, 0.09);
+      }
+      @media (width >= 48rem) {
+        .gaveta-corpo  { @apply flex-row overflow-hidden; }
+        .gaveta-coluna { @apply flex-1 basis-0 overflow-y-auto overscroll-contain; }
+        .gaveta-coluna + .gaveta-coluna {
+          @apply border-t-0 border-l border-white/65;
+          box-shadow: inset 2px 0 0 -1px rgba(7, 58, 84, 0.09);
+        }
+      }
+      .gaveta-coluna:has(.table-onsen-poco) { @apply overflow-hidden; }
+
+      /* .tabela-onsen-gaveta — quem limita a tabela é a gaveta, não as 32rem do rolador padrão. */
+      .tabela-onsen-gaveta { @apply flex-1 min-h-0 max-h-none; }
+
+      /* .gaveta-figura */
+      .gaveta-figura {
+        @apply overflow-hidden bg-white/25 border border-white/45;
+        border-radius: var(--radius-placa);
+        box-shadow: var(--sombra-poco);
+      }
+      .gaveta-figura > img { @apply w-full h-full object-cover opacity-[0.92]; }
+
+      /* .gaveta-vazia */
+      .gaveta-vazia {
+        @apply flex-1 min-h-0 flex flex-col items-center justify-center gap-3;
+        @apply px-8 py-6 text-center text-sm text-base-content/60;
+      }
+
+      /* ==================== 4 · ORGANISMO ==================== */
+
+      /* .gaveta-inferior */
+      .gaveta-inferior {
+        @apply fixed inset-x-0 bottom-0 z-30 flex flex-col pt-1.5 rounded-t-3xl max-h-[50dvh];
+        @apply translate-y-full transition-transform duration-500 ease-in-out;
+      }
+      .gaveta-toggle { @apply sr-only; }
+      .gaveta-toggle:checked + .gaveta-inferior { @apply translate-y-0; }
+      @media (width < 48rem) {
+        .gaveta-inferior { @apply h-[100dvh] max-h-none rounded-t-none; }
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Os defs da gravação vêm do partial da própria aplicação (no produto, pelo base.html):
+       sem eles .icon-etched não desenha o sulco no hover do botão de fechar. -->
+  <script type="module">
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((svg) => document.body.insertAdjacentHTML("afterbegin", svg.replace(TAG_DE_TEMPLATE, "").trim()));
+  </script>
+
+  <!-- O fundo é montado no topo do <body> pelo módulo do <head>; o conteúdo fica acima dele. -->
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 pb-[60vh] flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC design/014 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Gaveta inferior</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          A placa que sobe do rodapé com o que a busca resolveu: largura inteira, metade da altura
+          como teto, até três colunas e a <span class="text-code">.table-onsen</span> dentro. Abra
+          pelos gatilhos do fim da página; estreite a janela abaixo de 768px para ver a folha inteira.
+        </p>
+      </header>
+
+      <!-- 1 · TOKENS -->
+      <section id="tokens" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">1 · Tokens</h2>
+
+        <!-- .glass-drawer-bottom -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.glass-drawer-bottom</span>
+          <div class="card-well p-6 flex flex-col gap-6">
+            <!-- a placa nua: aresta de luz em cima, sombra projetada para cima -->
+            <div class="glass-drawer-bottom rounded-t-3xl h-28 flex items-end justify-center pb-4">
+              <span class="text-sm text-base-content/70">a mesma receita da gaveta lateral, girada 90°</span>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4">
+              <!-- vidro sobre vidro: o poço dentro da placa nova NÃO se repinta -->
+              <div class="glass-drawer-bottom rounded-t-3xl p-5 flex-1">
+                <p class="text-overline mb-2">Dentro da placa</p>
+                <div class="card-well p-4">
+                  <p class="text-overline mb-1">Área do terreno</p>
+                  <p class="text-xl font-bold">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <!-- o mesmo poço fora dela, com a tinta de sempre -->
+              <div class="flex-1 p-5">
+                <p class="text-overline mb-2">Fora dela</p>
+                <div class="card-well p-4">
+                  <p class="text-overline mb-1">Área do terreno</p>
+                  <p class="text-xl font-bold">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">2 · Átomos</h2>
+
+        <!-- .gaveta-alca -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.gaveta-alca</span>
+          <div class="card-well p-6 grid sm:grid-cols-2 gap-6">
+            <!-- repouso -->
+            <div class="flex flex-col items-center gap-2">
+              <div class="glass-drawer-bottom rounded-t-3xl w-full pt-1.5 pb-5">
+                <span class="gaveta-alca"><span class="etched-line"></span></span>
+              </div>
+              <span class="text-[11px] text-base-content/60">repouso</span>
+            </div>
+            <!-- ao vivo -->
+            <div class="flex flex-col items-center gap-2">
+              <div class="glass-drawer-bottom rounded-t-3xl w-full pt-1.5 pb-5">
+                <label class="gaveta-alca" tabindex="0"><span class="etched-line"></span></label>
+              </div>
+              <span class="text-[11px] text-base-content/60">passe o ponteiro: o sulco enche de água e se alonga</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .gaveta-cabecalho -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.gaveta-cabecalho</span>
+          <div class="card-well p-6">
+            <div class="glass-drawer-bottom rounded-t-3xl pt-1.5 pb-4">
+              <span class="gaveta-alca"><span class="etched-line"></span></span>
+              <header class="gaveta-cabecalho">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <h3 class="text-2xl font-bold tracking-tight leading-none text-madeira-700">Lote fiscal</h3>
+                    <span class="badge badge-poligono badge-sm">Polígono</span>
+                  </div>
+                  <p class="text-code text-sm font-medium mt-1.5">SQL 098.112.0034-1</p>
+                </div>
+                <button type="button" class="btn btn-glass btn-sm btn-circle" aria-label="Fechar">
+                  <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+              </header>
+            </div>
+          </div>
+        </div>
+
+        <!-- .gaveta-corpo + .gaveta-coluna -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.gaveta-corpo + .gaveta-coluna — uma, duas e três colunas</span>
+          <div class="card-well p-6 flex flex-col gap-6">
+            <!-- uma coluna -->
+            <div class="glass-drawer-bottom rounded-t-3xl">
+              <div class="gaveta-corpo">
+                <section class="gaveta-coluna">
+                  <p class="text-overline">Logradouro</p>
+                  <p class="text-sm">Avenida Paulista — do nº 1 ao nº 2.424, Bela Vista.</p>
+                </section>
+              </div>
+            </div>
+            <!-- duas colunas -->
+            <div class="glass-drawer-bottom rounded-t-3xl">
+              <div class="gaveta-corpo">
+                <section class="gaveta-coluna">
+                  <p class="text-overline">Identificação</p>
+                  <p class="text-sm">Av. Paulista, 1578</p>
+                </section>
+                <section class="gaveta-coluna">
+                  <p class="text-overline">Cadastro</p>
+                  <p class="text-sm">Contribuinte 098.112.0034-1</p>
+                </section>
+              </div>
+            </div>
+            <!-- três colunas -->
+            <div class="glass-drawer-bottom rounded-t-3xl">
+              <div class="gaveta-corpo">
+                <section class="gaveta-coluna">
+                  <p class="text-overline">Identificação</p>
+                  <p class="text-sm">Av. Paulista, 1578</p>
+                </section>
+                <section class="gaveta-coluna">
+                  <p class="text-overline">Cadastro</p>
+                  <p class="text-sm">Contribuinte 098.112.0034-1</p>
+                </section>
+                <section class="gaveta-coluna">
+                  <p class="text-overline">Lançamentos</p>
+                  <p class="text-sm">Exercícios de 2019 a 2026</p>
+                </section>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">Abaixo de 768px as colunas empilham e a divisa vira horizontal — estreite a janela.</p>
+          </div>
+        </div>
+
+        <!-- .gaveta-figura -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.gaveta-figura</span>
+          <div class="card-well p-6 grid sm:grid-cols-2 gap-6">
+            <!-- preenchida -->
+            <div class="flex flex-col gap-2">
+              <div class="gaveta-figura h-28">
+                <img src="/static/src/img/ortofotos_fundo/anhangabau.png" alt="Recorte da ortofoto sobre o lote">
+              </div>
+              <span class="text-[11px] text-base-content/60">com imagem</span>
+            </div>
+            <!-- estado de falta -->
+            <div class="flex flex-col gap-2">
+              <div class="gaveta-figura h-28 flex items-center justify-center">
+                <span class="text-xs text-base-content/55">Sem imagem para este lote</span>
+              </div>
+              <span class="text-[11px] text-base-content/60">sem imagem — o poço diz que não há, e não fica em branco</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- .gaveta-vazia -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.gaveta-vazia</span>
+          <div class="card-well p-6">
+            <div class="glass-drawer-bottom rounded-t-3xl pt-1.5 h-48 flex flex-col">
+              <span class="gaveta-alca"><span class="etched-line"></span></span>
+              <header class="gaveta-cabecalho">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <h3 class="text-2xl font-bold tracking-tight leading-none text-madeira-700">Quadra fiscal</h3>
+                    <span class="badge badge-poligono badge-sm">Polígono</span>
+                  </div>
+                  <p class="text-code text-sm font-medium mt-1.5">098.112</p>
+                </div>
+              </header>
+              <div class="gaveta-vazia">
+                <span class="etched etched-lg text-4xl leading-none">◇</span>
+                <p>Nenhuma informação pública cadastrada para esta quadra.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- .tabela-onsen-gaveta -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.tabela-onsen-gaveta</span>
+          <div class="card-well p-6">
+            <div class="glass-drawer-bottom rounded-t-3xl h-64 flex flex-col">
+              <div class="gaveta-corpo">
+                <section class="gaveta-coluna">
+                  <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+                    <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+                      <table class="table table-onsen">
+                        <thead data-cabecalho>
+                          <tr>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Exercício</span></div></th>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Valor venal</span></div></th>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Situação</span></div></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr><td class="text-code">2026</td><td class="tabular-nums">R$ 14.902.310</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+                          <tr><td class="text-code">2025</td><td class="tabular-nums">R$ 13.771.004</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+                          <tr><td class="text-code">2024</td><td class="tabular-nums">R$ 12.508.660</td><td><span class="badge badge-warning badge-soft badge-sm">Em revisão</span></td></tr>
+                          <tr><td class="text-code">2023</td><td class="tabular-nums">R$ 11.930.112</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+                          <tr><td class="text-code">2022</td><td class="tabular-nums">R$ 10.884.507</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+                          <tr><td class="text-code">2021</td><td class="tabular-nums">R$ 10.201.338</td><td><span class="badge badge-error badge-soft badge-sm">Em dívida</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="scroll-etched scroll-etched-ociosa" data-barra aria-hidden="true">
+                      <div class="scroll-etched-thumb" data-polegar></div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">4 · Organismos</h2>
+
+        <!-- .gaveta-inferior — anatomia: a peça inteira sem o `fixed`, que só existe na tela montada -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.gaveta-inferior — anatomia</span>
+          <div class="card-well p-6">
+            <div class="glass-drawer-bottom rounded-t-3xl pt-1.5 h-[22rem] flex flex-col">
+              <span class="gaveta-alca"><span class="etched-line"></span></span>
+              <header class="gaveta-cabecalho">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <h3 class="text-2xl font-bold tracking-tight leading-none text-madeira-700">Lote fiscal</h3>
+                    <span class="badge badge-poligono badge-sm">Polígono</span>
+                  </div>
+                  <p class="text-code text-sm font-medium mt-1.5">SQL 098.112.0034-1</p>
+                </div>
+                <button type="button" class="btn btn-glass btn-sm btn-circle" aria-label="Fechar">
+                  <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+              </header>
+              <div class="gaveta-corpo">
+                <section class="gaveta-coluna">
+                  <div class="gaveta-figura h-24">
+                    <img src="/static/src/img/ortofotos_fundo/anhangabau.png" alt="Recorte da ortofoto sobre o lote">
+                  </div>
+                  <div>
+                    <p class="font-bold leading-tight">Av. Paulista, 1578</p>
+                    <p class="text-xs text-base-content/70">Bela Vista, São Paulo — SP</p>
+                  </div>
+                </section>
+                <section class="gaveta-coluna">
+                  <div class="card-well p-4">
+                    <p class="text-overline mb-1">Área do terreno</p>
+                    <p class="text-xl font-bold">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                  </div>
+                  <div class="card-well p-4">
+                    <p class="text-overline mb-1">Área construída</p>
+                    <p class="text-xl font-bold">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                  </div>
+                </section>
+                <section class="gaveta-coluna">
+                  <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+                    <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+                      <table class="table table-onsen">
+                        <thead data-cabecalho>
+                          <tr>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Exercício</span></div></th>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Valor venal</span></div></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr><td class="text-code">2026</td><td class="tabular-nums">R$ 14.902.310</td></tr>
+                          <tr><td class="text-code">2025</td><td class="tabular-nums">R$ 13.771.004</td></tr>
+                          <tr><td class="text-code">2024</td><td class="tabular-nums">R$ 12.508.660</td></tr>
+                          <tr><td class="text-code">2023</td><td class="tabular-nums">R$ 11.930.112</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="scroll-etched scroll-etched-ociosa" data-barra aria-hidden="true">
+                      <div class="scroll-etched-thumb" data-polegar></div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+        <p class="text-sm text-base-content/75">
+          A gaveta real, sobre o fundo, nos seus estados. Cada gatilho abaixo é o que a resposta da
+          busca marcaria; a alça e o ✕ fecham.
+        </p>
+
+        <!-- fica na página: o seletor de estado do mock — no produto quem marca o toggle é a
+             resposta da busca. -->
+        <div class="card-well p-4 flex flex-wrap gap-3">
+          <label for="gaveta-fechada" class="btn btn-glass btn-sm">Fechada</label>
+          <label for="gaveta-lote" class="btn btn-onsen btn-sm">Lote fiscal — três colunas com tabela</label>
+          <label for="gaveta-quadra" class="btn btn-glass btn-sm">Quadra fiscal — sem informações</label>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- A gaveta é `fixed`: fica fora da casca de conteúdo, e o toggle é o IRMÃO IMEDIATO dela. -->
+
+  <!-- fica na página: o estado fechado, sem gaveta depois dele -->
+  <input type="radio" name="gaveta-mock" id="gaveta-fechada" class="gaveta-toggle" checked>
+
+  <!-- partial: search/partials/_gaveta_lote.html — alvo de hx-swap ao resolver a entidade -->
+  <input type="radio" name="gaveta-mock" id="gaveta-lote" class="gaveta-toggle">
+  <aside class="glass-drawer-bottom gaveta-inferior" role="dialog" aria-label="Lote fiscal">
+    <!-- no produto a alça aponta para o próprio toggle da gaveta; aqui, para o estado fechado -->
+    <label for="gaveta-fechada" class="gaveta-alca" tabindex="0" aria-label="Fechar"><span class="etched-line"></span></label>
+    <header class="gaveta-cabecalho">
+      <div class="min-w-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700">Lote fiscal</h2>
+          <span class="badge badge-poligono badge-sm">Polígono</span>
+        </div>
+        <p class="text-code text-sm font-medium mt-1.5">SQL 098.112.0034-1</p>
+      </div>
+      <label for="gaveta-fechada" class="btn btn-glass btn-sm btn-circle" aria-label="Fechar">
+        <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </label>
+    </header>
+    <div class="gaveta-corpo">
+      <!-- partial: search/partials/_gaveta_identificacao.html -->
+      <section class="gaveta-coluna">
+        <div class="gaveta-figura h-24">
+          <img src="/static/src/img/ortofotos_fundo/anhangabau.png" alt="Recorte da ortofoto sobre o lote">
+        </div>
+        <div>
+          <p class="font-bold leading-tight">Av. Paulista, 1578</p>
+          <p class="text-xs text-base-content/70">Bela Vista, São Paulo — SP</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="card-well p-3">
+            <p class="text-overline mb-0.5">Terreno</p>
+            <p class="text-lg font-bold">1.450 <span class="text-xs font-normal text-base-content/60">m²</span></p>
+          </div>
+          <div class="card-well p-3">
+            <p class="text-overline mb-0.5">Construída</p>
+            <p class="text-lg font-bold">8.920 <span class="text-xs font-normal text-base-content/60">m²</span></p>
+          </div>
+        </div>
+      </section>
+      <!-- /partial -->
+
+      <!-- partial: search/partials/_gaveta_cadastro.html -->
+      <section class="gaveta-coluna">
+        <div class="card-well p-4 flex flex-col gap-3">
+          <div>
+            <p class="text-overline">Contribuinte</p>
+            <p class="valor-leitura font-medium">Condomínio Edifício Paulista Center</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <p class="text-overline">Uso predominante</p>
+              <p class="valor-leitura">Comercial</p>
+            </div>
+            <div>
+              <p class="text-overline">Testada</p>
+              <p class="valor-leitura tabular-nums">32,00 m</p>
+            </div>
+          </div>
+        </div>
+        <div class="card-well p-4 flex flex-col gap-3">
+          <div>
+            <p class="text-overline mb-1.5">Zoneamento (LPUOS)</p>
+            <div class="flex items-center gap-3 flex-wrap">
+              <span class="badge bg-primary text-primary-content border-none font-bold px-3 py-3">ZCOR-2</span>
+              <span class="text-sm font-medium">Zona Corredor Comercial</span>
+            </div>
+          </div>
+          <div>
+            <p class="text-overline mb-1.5">Restrições</p>
+            <span class="badge badge-warning badge-soft font-bold px-3 py-3">Tombado</span>
+          </div>
+        </div>
+      </section>
+      <!-- /partial -->
+
+      <!-- partial: search/partials/_gaveta_lancamentos.html — alvo de hx-swap ao paginar -->
+      <section class="gaveta-coluna">
+        <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+          <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+            <table class="table table-onsen">
+              <thead data-cabecalho>
+                <tr>
+                  <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Exercício</span></div></th>
+                  <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Valor venal</span></div></th>
+                  <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Situação</span></div></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="text-code">2026</td><td class="tabular-nums">R$ 14.902.310</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+                <tr><td class="text-code">2025</td><td class="tabular-nums">R$ 13.771.004</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+                <tr><td class="text-code">2024</td><td class="tabular-nums">R$ 12.508.660</td><td><span class="badge badge-warning badge-soft badge-sm">Em revisão</span></td></tr>
+                <tr><td class="text-code">2023</td><td class="tabular-nums">R$ 11.930.112</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+                <tr><td class="text-code">2022</td><td class="tabular-nums">R$ 10.884.507</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+                <tr><td class="text-code">2021</td><td class="tabular-nums">R$ 10.201.338</td><td><span class="badge badge-error badge-soft badge-sm">Em dívida</span></td></tr>
+                <tr><td class="text-code">2020</td><td class="tabular-nums">R$ 9.744.820</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+                <tr><td class="text-code">2019</td><td class="tabular-nums">R$ 9.102.455</td><td><span class="badge badge-success badge-soft badge-sm">Quitado</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="scroll-etched scroll-etched-ociosa" data-barra aria-hidden="true">
+            <div class="scroll-etched-thumb" data-polegar></div>
+          </div>
+        </div>
+      </section>
+      <!-- /partial -->
+    </div>
+  </aside>
+  <!-- /partial -->
+
+  <!-- partial: search/partials/_gaveta_quadra.html — estado: sem informação pública -->
+  <input type="radio" name="gaveta-mock" id="gaveta-quadra" class="gaveta-toggle">
+  <aside class="glass-drawer-bottom gaveta-inferior" role="dialog" aria-label="Quadra fiscal">
+    <label for="gaveta-fechada" class="gaveta-alca" tabindex="0" aria-label="Fechar"><span class="etched-line"></span></label>
+    <header class="gaveta-cabecalho">
+      <div class="min-w-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700">Quadra fiscal</h2>
+          <span class="badge badge-poligono badge-sm">Polígono</span>
+        </div>
+        <p class="text-code text-sm font-medium mt-1.5">098.112</p>
+      </div>
+      <label for="gaveta-fechada" class="btn btn-glass btn-sm btn-circle" aria-label="Fechar">
+        <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </label>
+    </header>
+    <div class="gaveta-vazia">
+      <span class="etched etched-lg text-4xl leading-none">◇</span>
+      <p>Nenhuma informação pública cadastrada para esta quadra.</p>
+    </div>
+  </aside>
+  <!-- /partial -->
+
+  <script type="module" src="/static/src/js/ui/scroll_etched.js"></script>
+</body>
+</html>

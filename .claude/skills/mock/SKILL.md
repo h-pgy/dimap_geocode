@@ -64,7 +64,8 @@ O mock **não duplica o design system**. Ele faz `fetch` de `static/src/tema-dim
 Toda tela que **não é a home** roda sobre o **fundo da área administrativa** — a ortofoto
 pré-gerada em tons de cinza, à deriva, sob a lente de água (SPEC design/010). O mock **não recria
 esse fundo**: ele monta os mesmos partials que a aplicação usa — `templates/mapping/_mapa_admin.html`
-e os que ele inclui (`_glifos_fundo.html`, `_fundo_ortofoto.html`, `_controle_fundo.html`) — mais o
+e os que ele inclui (`_glifos_fundo.html`, `_fundo_ortofoto.html`, `_camada_ortofoto.html`,
+`_controle_fundo.html`) — mais o
 `static/src/js/ui/controle_fundo.js`, por um módulo só:
 
 ```html
