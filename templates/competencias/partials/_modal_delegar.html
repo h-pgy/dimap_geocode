@@ -37,11 +37,11 @@
         <div class="grid grid-cols-2 gap-3">
           <label class="form-field">
             <span class="text-overline">Início da vigência</span>
-            <input type="date" name="data_inicio" class="input input-glass w-full {{ realce.data_inicio }}" value="{{ valores.data_inicio|default:hoje }}" />
+            <input type="date" data-campo-data name="data_inicio" class="input input-glass w-full {{ realce.data_inicio }}" value="{{ valores.data_inicio|default:hoje }}" />
           </label>
           <label class="form-field">
             <span class="text-overline">Fim da vigência <span class="text-base-content/40 font-normal">(opcional)</span></span>
-            <input type="date" name="data_fim" class="input input-glass w-full {{ realce.data_fim }}" value="{{ valores.data_fim|default:'' }}" placeholder="indeterminado" />
+            <input type="date" data-campo-data name="data_fim" class="input input-glass w-full {{ realce.data_fim }}" value="{{ valores.data_fim|default:'' }}" placeholder="indeterminado" />
           </label>
         </div>
       </div>

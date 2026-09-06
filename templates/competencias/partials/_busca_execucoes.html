@@ -55,9 +55,9 @@
       <label class="form-field card-busca-largo">
         <span class="text-overline">Período</span>
         <span class="campo-periodo">
-          <input type="date" name="inicio" class="input input-glass input-sm" value="{{ busca.inicio|date:'Y-m-d' }}">
+          <input type="date" data-campo-data name="inicio" class="input input-glass input-sm" value="{{ busca.inicio|date:'Y-m-d' }}">
           <span class="campo-periodo-traco">até</span>
-          <input type="date" name="fim" class="input input-glass input-sm" value="{{ busca.fim|date:'Y-m-d' }}">
+          <input type="date" data-campo-data name="fim" class="input input-glass input-sm" value="{{ busca.fim|date:'Y-m-d' }}">
         </span>
       </label>
     </div>

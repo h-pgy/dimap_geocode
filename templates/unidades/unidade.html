@@ -77,6 +77,7 @@
   {# O modal de edição chega por HTMX depois: sem este módulo já carregado, os selects que ele traz #}
   {# não são aprimorados — select_onsen.js reage a htmx:afterSwap (SPEC user_admin/011).            #}
   <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/campo_data.js' %}"></script>
   {# Percorrer o organograma é estado visual do controle — sem este módulo a árvore fica no estado #}
   {# que o servidor entregou (SPEC user_admin/018 §7).                                             #}
   <script type="module" src="{% static 'js/ui/arvore_hierarquica.js' %}"></script>

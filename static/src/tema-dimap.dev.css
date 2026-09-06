@@ -402,6 +402,51 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco), 0 0 0 3px rgba(var(--halo-realce), 0.28), 0 0 22px rgba(var(--halo-realce), 0.45);
   }
 
+  /* ÁTOMO · GATILHO DO CALENDÁRIO (SPEC design/012). Mora DENTRO do poço do campo, então não é
+     botão de vidro: placa levantada dentro de cavidade fecha o degrau. O glifo enche de água e
+     incha junto com o campo em foco — a afordância chega antes do ponteiro. */
+  .campo-data-gatilho {
+    @apply absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center;
+    @apply w-7 h-7 rounded-lg cursor-pointer transition-all duration-300 origin-center;
+    filter: url(#etched-onsen);
+    color: rgba(13, 27, 42, 0.35);
+  }
+  .campo-data-gatilho:hover,
+  .campo-data:focus-within .campo-data-gatilho {
+    @apply scale-[1.12] bg-agua-400/20;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .campo-data-gatilho:focus-visible {
+    @apply outline-none shadow-[0_0_0_3px_rgba(0,150,199,0.25)];
+  }
+
+  /* ÁTOMO · CÉLULA DE CALENDÁRIO (SPEC design/012). A mesma célula serve dia, mês e ano. */
+  .calendario-celula {
+    @apply inline-flex items-center justify-center h-9 rounded-xl text-sm text-base-content;
+    @apply cursor-pointer transition-all duration-200 origin-center tabular-nums;
+  }
+  .calendario-celula:hover { @apply scale-[1.1] bg-agua-400/25 text-agua-800; }
+  .calendario-celula[data-fora] { @apply text-base-content/30; }
+  /* Hoje é referência, não escolha: aro de água, sem preenchimento. */
+  .calendario-celula[data-hoje] { @apply font-bold text-agua-700 shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5)]; }
+  .calendario-celula[aria-selected="true"] {
+    @apply font-bold text-rocha-950 bg-gradient-to-br from-agua-300 to-agua-500;
+    @apply shadow-[0_4px_16px_rgba(0,150,199,0.45)];
+  }
+  /* Cursor do teclado: UM só marcador, movido pela seta E pelo hover, pelo motivo do
+     .select-onsen-option — :focus-visible não acende em foco programático depois de clique. */
+  .calendario-celula[data-ativo="true"] {
+    @apply bg-agua-400/45 text-rocha-950 outline-none;
+    @apply shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+  }
+  .calendario-celula[aria-selected="true"][data-ativo="true"] {
+    @apply bg-gradient-to-br from-agua-300 to-agua-500 text-rocha-950;
+    @apply shadow-[inset_0_0_0_1px_rgba(255,255,255,0.9),0_4px_18px_rgba(0,150,199,0.55)];
+  }
+  .calendario-celula:disabled { @apply opacity-25 cursor-not-allowed; }
+  .calendario-celula:disabled:hover { @apply scale-100 bg-transparent text-base-content; }
+
   /* ÁTOMO · OTP (SPEC autenticacao/001). O campo de código de uso único: 8 caixas monoespaçadas
      com fundo de vidro e destaque em foco. */
   .otp-onsen {
@@ -670,6 +715,47 @@ html[data-theme="dimap"] {
   /* O gatilho carrega a mesma marca do item escolhido: quem ocupa cargo extinto abre o campo e lê    */
   /* o estado sem precisar abrir a lista.                                                             */
   .select-onsen-trigger[data-extinto] { @apply text-warning; }
+
+  /* Campo de data de vidro (SPEC design/012): o seletor nativo é desenhado pelo SO, não aceita token
+     nenhum e escreve no formato dele. Aqui o input[type="date"] continua sendo o campo — fonte da
+     verdade, envio, change para o HTMX — e ganha entrada em dd/mm/aaaa e calendário próprio, montados
+     por static/src/js/ui/campo_data.js. */
+  .campo-data { @apply relative w-full; }
+  .campo-data-entrada { @apply pr-9 tabular-nums; }
+
+  /* O painel é popover pelo mesmo motivo do .select-onsen-panel: top layer, fora de todo overflow e
+     de todo contexto de empilhamento. Display e posição ficam no :popover-open, e não na base —
+     regra de autor que declara display vence o display: none do navegador, e o painel fechado
+     apareceria. */
+  .calendario-onsen {
+    @apply p-3 w-64 rounded-2xl backdrop-blur-[28px] bg-transparent;
+    @apply bg-gradient-to-br from-white/88 via-white/82 to-white/76 border border-white/70 text-base-content;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_50px_rgba(7,58,84,0.34),0_0_36px_rgba(72,202,228,0.28)];
+  }
+  .calendario-onsen:popover-open {
+    @apply fixed m-0 flex flex-col gap-2;
+    inset: auto;
+  }
+  .calendario-onsen:focus-visible { @apply outline-none; }
+  .calendario-onsen-topo   { @apply flex items-center justify-between gap-1; }
+  /* O corpo é UMA caixa: as faces se substituem dentro dela, e a altura mínima impede o painel de
+     saltar quando a grade de 42 dias dá lugar à de 12 meses. */
+  .calendario-onsen-corpo  { @apply flex flex-col gap-1 min-h-[16rem]; }
+  .calendario-onsen-semana { @apply grid grid-cols-7 gap-1 text-center; }
+  .calendario-onsen-grade  { @apply grid grid-cols-7 gap-1; }
+  .calendario-onsen-meses  { @apply grid grid-cols-3 gap-1.5 flex-1 content-center; }
+  .calendario-onsen-anos   { @apply grid grid-cols-4 gap-1.5 flex-1 content-center overflow-y-auto overscroll-contain; }
+  /* Quem manda na substituição é o data-face do corpo, e não classe posta por JS: neste projeto a
+     camada components vence utilities (ordem declarada no input.css), então um .hidden solto perde
+     para o display: grid da peça e a face escondida vaza embaixo da que está em cena. */
+  .calendario-onsen-corpo[data-face="dias"]  :is(.calendario-onsen-meses, .calendario-onsen-anos),
+  .calendario-onsen-corpo[data-face="meses"] :is(.calendario-onsen-semana, .calendario-onsen-grade, .calendario-onsen-anos),
+  .calendario-onsen-corpo[data-face="anos"]  :is(.calendario-onsen-semana, .calendario-onsen-grade, .calendario-onsen-meses) {
+    @apply hidden;
+  }
+  /* No topo da pilha o título para de subir — e para de se oferecer. */
+  .calendario-onsen-titulo[data-topo] { @apply pointer-events-none; }
+  .calendario-onsen-rodape { @apply flex items-center justify-between gap-2 pt-1 border-t border-white/50; }
 
   /* Disco de vidro da paleta: as cavidades se distribuem pelo ângulo --a escrito no markup, então
      a molécula não depende de quantas cores a paleta oferece. */
@@ -1677,12 +1763,21 @@ html[data-theme="dimap"] {
   .marca-cobertura { @apply block text-[11px] leading-tight text-warning; }
 
   /* ==================== ÁTOMO · ALVO DO ATO (SPEC painel/002) ==================================== */
-  .td-alvo { @apply text-[11px] leading-tight text-base-content/70; }
+  /* O identificador é um token sem espaço (`DITESTINHO:user_admin.registrar_impedimento_servidor`),
+     e o navegador não quebra em `:` nem em `.`: sem oportunidade de quebra ele vira a largura mínima
+     da célula, que em layout automático a coluna não pode desrespeitar. `anywhere` é o que reduz essa
+     mínima — `break-word` não reduz —, e o teto impede a coluna de retomar a folga da tabela. */
+  .td-alvo {
+    @apply block max-w-[15rem] text-[11px] leading-tight text-base-content/70;
+    overflow-wrap: anywhere;
+  }
   .td-alvo-vazio { @apply text-base-content/35; }
 
   /* ==================== MOLÉCULA · CAMPO DE PERÍODO (SPEC painel/002) ============================ */
   .campo-periodo { @apply flex items-center gap-2; }
-  .campo-periodo > input { @apply min-w-0 flex-1; }
+  /* O :where alcança também a casca do campo de data (SPEC design/012), que ocupa a linha no lugar
+     do input assim que ele é aprimorado — mesmo caso do .form-field-inline-action com o select. */
+  .campo-periodo > :where(input, .campo-data) { @apply min-w-0 flex-1; }
   .campo-periodo-traco { @apply shrink-0 text-base-content/45; }
 
   /* ==================== ÁTOMO · TABELA LARGA (SPEC painel/002) =================================== */

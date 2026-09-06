@@ -3,7 +3,7 @@ spec: design/012
 versao: v1
 atualizado_em: 2026-09-05
 testes_tdd: false
-implementado: false
+implementado: true
 markers_obrigatorios: []
 changelog:
   - v1: versão inicial
@@ -114,8 +114,11 @@ function paraIso(br) {
 }
 
 // Escrever no nativo E disparar change é o contrato inteiro com o resto do sistema: HTMX, validação
-// do navegador e qualquer outro ouvinte continuam vendo o campo de sempre.
+// do navegador e qualquer outro ouvinte continuam vendo o campo de sempre. Só quando o valor MUDA:
+// a máscara reescreve o campo a cada tecla, e o card de busca do registro, que tem
+// hx-trigger="change" no form, dispararia um request por dígito.
 function escrever(nativo, iso) {
+  if (nativo.value === iso) return;
   nativo.value = iso;
   nativo.dispatchEvent(new Event("change", { bubbles: true }));
 }
@@ -314,10 +317,12 @@ view, nenhum DTO, nenhum `name` muda.
 | `templates/competencias/partials/_busca_execucoes.html` | `inicio`, `fim` (dentro do `.campo-periodo`) |
 | `templates/core/design_system.html` | as amostras do `.campo-periodo` + as peças novas nas seções 2 e 3 |
 
-O módulo entra nas páginas que hospedam esses partials, ao lado do `select_onsen.js` que elas já
-carregam: `templates/painel/painel.html`, `templates/user_admin/perfil.html`,
+O módulo entra em toda página que **alcança** um desses partials — a maioria deles chega por HTMX,
+então a conta não é "onde o campo é renderizado" e sim "de onde o modal pode ser aberto":
+`templates/painel/painel.html`, `templates/user_admin/perfil.html`, `templates/unidades/unidade.html`,
 `templates/competencias/conceder_competencia.html`, `templates/competencias/registro_acoes_list.html`
-e `templates/core/design_system.html`.
+e `templates/core/design_system.html`. Em todas ele fica ao lado do `select_onsen.js`, que já responde
+ao mesmo `htmx:afterSwap`.
 
 ```html
 {# Modais e formulários chegam por HTMX: o módulo reage a htmx:afterSwap, como o select_onsen.js. #}

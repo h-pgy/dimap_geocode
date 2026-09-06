@@ -709,8 +709,11 @@
       }
 
       // Escrever no nativo E disparar change é o contrato inteiro com o resto do sistema: HTMX e
-      // qualquer outro ouvinte continuam vendo o campo de sempre.
+      // qualquer outro ouvinte continuam vendo o campo de sempre. Só quando o valor MUDA: a máscara
+      // reescreve o campo a cada tecla, e um formulário com hx-trigger="change" dispararia um
+      // request por dígito.
       function escrever(iso) {
+        if (nativo.value === iso) return;
         nativo.value = iso;
         nativo.dispatchEvent(new Event("change", { bubbles: true }));
       }

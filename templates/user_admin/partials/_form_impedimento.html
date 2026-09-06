@@ -20,11 +20,11 @@
   <div class="grid sm:grid-cols-2 gap-4">
     <label class="form-field">
       <span class="text-overline">Início</span>
-      <input type="date" name="data_inicio" class="input input-glass {{ realce.data_inicio }}" value="{{ valores.data_inicio|default:'' }}" />
+      <input type="date" data-campo-data name="data_inicio" class="input input-glass {{ realce.data_inicio }}" value="{{ valores.data_inicio|default:'' }}" />
     </label>
     <label class="form-field">
       <span class="text-overline">Fim</span>
-      <input type="date" name="data_fim" class="input input-glass {{ realce.data_fim }}" value="{{ valores.data_fim|default:'' }}" />
+      <input type="date" data-campo-data name="data_fim" class="input input-glass {{ realce.data_fim }}" value="{{ valores.data_fim|default:'' }}" />
       <span class="form-field-hint">Em branco, o prazo é indeterminado.</span>
     </label>
   </div>

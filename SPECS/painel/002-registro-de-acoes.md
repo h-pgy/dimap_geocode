@@ -1,9 +1,9 @@
 ---
 spec: painel/002
-versao: v10
+versao: v12
 atualizado_em: 2026-09-05
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -25,6 +25,10 @@ changelog:
     homônima que o cabeçalho filtra na mesma query string
   - v10: todo caractere da paginação vira gravação que conta — cava escura própria, na medida do
     glifo
+  - v11: "[bugfix] a barra gravada deitada era desenho — o eixo horizontal nunca chegou ao
+    scroll_etched.js"
+  - v12: "[bugfix] o identificador do alvo, token sem espaço, impunha a largura mínima da coluna e
+    comia a folga da tabela"
 ---
 
 # SPEC painel/002 — Registro de Ações

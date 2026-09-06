@@ -230,8 +230,11 @@
         <div class="card-well p-4 flex flex-col gap-3">
           <span class="text-overline">.td-alvo</span>
           <div class="td-alvo">
-            <span class="text-overline block">unidade_acao</span>
-            DIMAP-11 : user_admin.criar_servidor
+            <span class="text-overline block">unidade_acao</span>DIMAP-11:user_admin.criar_servidor
+          </div>
+          <!-- alvo longo: o token sem espaço que decide a largura da coluna -->
+          <div class="td-alvo">
+            <span class="text-overline block">unidade_acao</span>DITESTINHO:user_admin.registrar_impedimento_servidor
           </div>
           <div class="td-alvo td-alvo-vazio">sem alvo informado</div>
           <p class="text-xs text-base-content/60">Estados: com alvo e o de falta — a ação que não chamou <code class="text-code">registrar_ato</code>.</p>
@@ -1628,77 +1631,10 @@
 
   <!-- Sem este módulo os selects seguem nativos: marcar o campo não carrega o componente. -->
   <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
-  <!-- E sem este a barra gravada do poço da tabela não é medida: o sulco fica sem polegar. -->
+  <!-- E sem este as barras gravadas do poço não são medidas: os sulcos ficam sem polegar. -->
   <script type="module" src="/static/src/js/ui/scroll_etched.js"></script>
   <!-- A ordenação do cabeçalho e o limpar-filtros. -->
   <script type="module" src="/static/src/js/ui/tabela_onsen.js"></script>
 
-  <script>
-    // O eixo deitado da barra gravada — o que scroll_etched.js ganha nesta SPEC. Mesma estrutura do
-    // módulo vertical: mede, acende e ARRASTA. Só medida sai daqui; a pele inteira mora no CSS.
-    const LARGURA_MINIMA_POLEGAR = 28;
-    const REPOUSO_MS = 900;
-
-    function montarEixoHorizontal(poco) {
-      const rolador = poco.querySelector("[data-rolador]");
-      const barra = poco.querySelector("[data-barra-h]");
-      const polegar = poco.querySelector("[data-polegar-h]");
-      if (!rolador || !barra || !polegar) return;
-      const conteudo = rolador.firstElementChild;
-
-      function desenhar() {
-        const trilho = barra.clientWidth;
-        const rolavel = rolador.scrollWidth - rolador.clientWidth;
-        barra.classList.toggle("scroll-etched-ociosa", rolavel <= 0);
-        // O tema chega por fetch e o compilador do browser o processa depois: até lá o trilho mede
-        // zero e a conta sairia com lixo. Quem traz de volta é o ResizeObserver da própria barra.
-        if (rolavel <= 0 || trilho <= 0) return;
-        const largura = Math.max(
-          trilho * (rolador.clientWidth / rolador.scrollWidth),
-          LARGURA_MINIMA_POLEGAR);
-        polegar.style.width = `${largura}px`;
-        polegar.style.transform = `translateX(${(rolador.scrollLeft / rolavel) * (trilho - largura)}px)`;
-      }
-
-      let repouso;
-      function acender() {
-        barra.classList.add("scroll-etched-ativa");
-        clearTimeout(repouso);
-        repouso = setTimeout(() => barra.classList.remove("scroll-etched-ativa"), REPOUSO_MS);
-      }
-
-      rolador.addEventListener("scroll", () => {
-        acender();
-        desenhar();
-      });
-
-      const observador = new ResizeObserver(desenhar);
-      observador.observe(rolador);
-      observador.observe(barra);
-      if (conteudo) observador.observe(conteudo);
-      desenhar();
-
-      polegar.addEventListener("pointerdown", (evento) => {
-        evento.preventDefault();
-        const partidaX = evento.clientX;
-        const partidaScroll = rolador.scrollLeft;
-        // Converte pixel de trilho em pixel de conteúdo: o polegar percorre o vão, não o trilho todo.
-        const razao =
-          (rolador.scrollWidth - rolador.clientWidth) /
-          (barra.clientWidth - polegar.offsetWidth);
-        const arrastar = (movimento) => {
-          rolador.scrollLeft = partidaScroll + (movimento.clientX - partidaX) * razao;
-        };
-        polegar.setPointerCapture(evento.pointerId);
-        polegar.addEventListener("pointermove", arrastar);
-        polegar.addEventListener(
-          "pointerup",
-          () => polegar.removeEventListener("pointermove", arrastar),
-          { once: true });
-      });
-    }
-
-    document.querySelectorAll("[data-scroll-etched]").forEach(montarEixoHorizontal);
-  </script>
 </body>
 </html>

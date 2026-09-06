@@ -76,12 +76,12 @@
       <div class="grid sm:grid-cols-2 gap-4">
         <label class="form-field">
           <span class="text-overline">{% if troca %}Assume em{% else %}Substitui a partir de{% endif %}</span>
-          <input type="date" name="data_inicio" class="input input-glass {{ realce.data_inicio }}" value="{{ data_inicio }}" />
+          <input type="date" data-campo-data name="data_inicio" class="input input-glass {{ realce.data_inicio }}" value="{{ data_inicio }}" />
           {% if troca %}<span class="form-field-hint">{{ troca.perfil.nome }} fica registrado até a véspera deste dia.</span>{% endif %}
         </label>
         <label class="form-field">
           <span class="text-overline">Substitui até</span>
-          <input type="date" name="data_fim" class="input input-glass {{ realce.data_fim }}" value="{{ data_fim }}" />
+          <input type="date" data-campo-data name="data_fim" class="input input-glass {{ realce.data_fim }}" value="{{ data_fim }}" />
           {% if troca %}<span class="form-field-hint">Encurtar deixa o resto do afastamento descoberto.</span>{% endif %}
         </label>
       </div>
