@@ -1,5 +1,5 @@
 ---
-spec: documentos_oficiais/002
+spec: documentos_oficiais/003
 versao: v1
 atualizado_em: 2026-09-06
 testes_tdd: false
@@ -9,7 +9,7 @@ changelog:
   - v1: versão inicial
 ---
 
-# SPEC documentos_oficiais/002 — Documento oficial como blocos e o papel timbrado da Fazenda
+# SPEC documentos_oficiais/003 — Documento oficial como blocos e o papel timbrado da Fazenda
 
 ## 1 · User story
 O administrador do cadastro gera um documento de amostra pelo terminal, no contexto de subir a emissão
@@ -150,7 +150,9 @@ class DocumentoAmostraInput(BaseModel):
 - Sandbox de aprovação (gerar em temporário, o servidor revisar, só então salvar) e o gerenciador de
   temporários que ele exige — SPEC própria, depois desta.
 - Assinatura digital, código de verificação e QR de autenticidade — sem dono ainda.
-- Tabela como bloco — sem dono ainda; entra quando houver documento que precise dela.
+- Tabela como bloco — o tipo de bloco, o escritor e os tokens de tabela do tema. O flowable e as
+  regras dele vêm da SPEC [documentos_oficiais/002](002-motor-de-tabela.md); o bloco entra quando
+  houver documento que precise dele.
 - Marcação de outra secretaria ou de outro papel timbrado — sem dono ainda; o registro de marcações
   nasce com uma só.
 

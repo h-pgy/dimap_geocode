@@ -36,12 +36,15 @@ coordenada de PDF nem veja o reportlab.
 
 `services/utils/pdf/` não modela domínio: é o vocabulário da **página**. Ele conhece milímetros,
 posições e faixas, e nada sobre o que o documento diz — quem sabe disso é o domínio que o consome
-(SPEC [documentos_oficiais/002](002-documento-oficial-timbrado.md)).
+(SPEC [documentos_oficiais/003](003-documento-oficial-timbrado.md)).
 
 A origem é o **canto superior esquerdo**, porque é como se lê uma página; o reportlab mede em pontos a
 partir do rodapé, e a conversão morre na `Folha` do §6.
 
-**`services/utils/pdf/models.py`**
+Os models são um pacote de dois vocabulários — a folha e o que cabe nela, e como uma linha se escreve
+—, reexportados pelo `__init__.py`.
+
+**`services/utils/pdf/models/pagina.py`**
 ```python
 class Orientacao(StrEnum):
     RETRATO = "retrato"
@@ -66,17 +69,18 @@ class TamanhoPagina(BaseModel):
 
 
 class FormatoPagina(BaseModel):
-    """O papel antes de orientado: é `na()` que decide qual lado vira largura."""
+    """O papel antes de orientado: é `orientar()` que decide qual lado vira largura."""
 
     model_config = ConfigDict(frozen=True)
 
     menor_lado_mm: float
     maior_lado_mm: float
 
-    def na(self, orientacao: Orientacao) -> TamanhoPagina: ...
+    def orientar(self, orientacao: Orientacao) -> TamanhoPagina: ...
 
 
 A4 = FormatoPagina(menor_lado_mm=210.0, maior_lado_mm=297.0)
+A3 = FormatoPagina(menor_lado_mm=297.0, maior_lado_mm=420.0)
 
 
 class Margens(BaseModel):
@@ -99,6 +103,11 @@ class Faixa(BaseModel):
     topo_mm: float
     largura_mm: float
     altura_mm: float
+```
+
+**`services/utils/pdf/models/texto.py`**
+```python
+from reportlab.lib.colors import Color
 
 
 class EstiloTexto(BaseModel):
@@ -112,11 +121,30 @@ class EstiloTexto(BaseModel):
     cor: Color
 ```
 
+**`services/utils/pdf/models/__init__.py`** — só reexporta (CLAUDE.md §7.2).
+```python
+from .pagina import A3, A4, Faixa, FormatoPagina, Margens, Orientacao, Posicao, TamanhoPagina
+from .texto import EstiloTexto
+
+__all__ = [
+    "A3",
+    "A4",
+    "EstiloTexto",
+    "Faixa",
+    "FormatoPagina",
+    "Margens",
+    "Orientacao",
+    "Posicao",
+    "TamanhoPagina",
+]
+```
+
 ## 4 · Fora de escopo
 - Os blocos do documento oficial, seus escritores, o tema e as marcas concretas (timbre, marca d'água,
-  rodapé) — SPEC `documentos_oficiais/002`.
+  rodapé) — SPEC `documentos_oficiais/003`.
 - Retrato e paisagem no mesmo documento — sem dono ainda; aqui a orientação é do documento.
-- Tabela como flowable de primeira classe — sem dono ainda; entra quando houver documento que precise.
+- Tabela — o flowable, as regras de estilo e o escritor dela: SPEC
+  [documentos_oficiais/002](002-motor-de-tabela.md).
 - Persistência do PDF gerado — o motor devolve bytes e quem chama decide o destino.
 
 ## 5 · Peças de referência a compor
@@ -129,6 +157,12 @@ Os comentários abaixo são didáticos, para a leitura da SPEC — **não são p
 **`services/utils/pdf/folha.py`** — a superfície de desenho, e a única peça do projeto que fala
 coordenada de PDF.
 ```python
+from reportlab.graphics import renderPDF
+from reportlab.graphics.shapes import Drawing
+from reportlab.lib.units import mm
+from reportlab.pdfgen.canvas import Canvas
+
+
 class Folha:
     """UMA página sendo pintada. Ela sabe que número é e quantas há no total — é isso que permite
     'Página X de Y' sem ninguém contar página."""
@@ -170,6 +204,12 @@ class Folha:
 **`services/utils/pdf/vetor.py`** — carregar o SVG e prepará-lo. `esmaecer` carrega a descoberta que
 mais importa nesta SPEC.
 ```python
+from reportlab.graphics.shapes import Drawing
+from reportlab.lib.colors import Color
+from reportlab.lib.units import mm
+from svglib.svglib import svg2rlg
+
+
 class CarregarVetor:
     """Callable: caminho de SVG → Drawing do reportlab, na largura pedida. Vetor de ponta a ponta:
     nada é rasterizado."""
@@ -367,6 +407,9 @@ class MarcacaoDocumento:
 volta, quando o total de páginas já existe. É isso que torna "última página" resolvível — inclusive
 para a camada de fundo, que no `onPage` do reportlab conheceria o número da página mas não o total.
 ```python
+from reportlab.pdfgen.canvas import Canvas
+
+
 class CanvasMarcado(Canvas):
     """Guarda cada página em vez de emiti-la, e só no `save` — com o total na mão — decide qual
     marcação vale em cada uma e a pinta."""
@@ -413,6 +456,10 @@ class CanvasMarcado(Canvas):
 **`services/utils/pdf/documento.py`** — flowables + marcação → bytes. O buffer é `BytesIO`: o reportlab
 escreve em qualquer file-like, então **não há arquivo temporário nem pasta a limpar**.
 ```python
+from reportlab.lib.units import mm
+from reportlab.platypus import Flowable, SimpleDocTemplate
+
+
 class DocumentoPdfInput(BaseModel):
     # `Flowable` é do reportlab e não tem schema Pydantic — ver Caveats.
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
@@ -444,7 +491,7 @@ class DocumentoPdf:
         return buffer.getvalue()
 
     def _tamanho(self, pedido: DocumentoPdfInput) -> TamanhoPagina:
-        return pedido.formato.na(pedido.marcacao.orientacao())
+        return pedido.formato.orientar(pedido.marcacao.orientacao())
 
     def _montar(self, buffer: BytesIO, pedido: DocumentoPdfInput) -> SimpleDocTemplate:
         tamanho = self._tamanho(pedido)
