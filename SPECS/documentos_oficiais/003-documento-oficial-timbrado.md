@@ -1,9 +1,9 @@
 ---
 spec: documentos_oficiais/003
-versao: v4
+versao: v5
 atualizado_em: 2026-09-07
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [artefato]
 changelog:
   - v1: versão inicial
@@ -11,6 +11,11 @@ changelog:
   - v3: tabela entra como bloco do documento, e a marcação da SF nasce como `MarcacaoDocumento`
   - v4: models viram submódulo, o tema vem do ambiente e as marcações concretas ganham pacote por
     papel timbrado
+  - v5: implementado — services/domain/documento_oficial/ (models, estilos, escritores, marcas,
+    marcacoes_concretas/fazenda_dimap, config, render, amostra), os dois comandos, o marker
+    `artefato` + `--all` + `publicar_artefato`, a skill `documento-oficial` e os 10 testes do §8; o
+    `RenderizarDocumentoOficial` ganhou um parâmetro `escritores` opcional (fora do snippet) para o
+    teste de bloco sem escritor injetar um registro incompleto; `sec_fazenda_vertical.svg` esmaecido
 ---
 
 # SPEC documentos_oficiais/003 — Documento oficial como blocos e o papel timbrado da Fazenda

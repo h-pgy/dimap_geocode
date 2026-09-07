@@ -34,10 +34,13 @@ dev = [
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
-addopts = "-m 'not integration and not banco'"
+addopts = "-m 'not integration and not banco and not artefato'"
+tmp_path_retention_count = 1
+tmp_path_retention_policy = "all"
 markers = [
     "integration: testes de integração com dados reais (rode com: pytest -m integration)",
     "banco: testes que exigem banco PostGIS de pé (rode com: pytest -m banco)",
+    "artefato: gera arquivo para conferência humana e imprime o caminho (rode com: pytest -m artefato)",
 ]
 
 [tool.mypy]

@@ -231,6 +231,59 @@ class _Settings(BaseSettings):
         alias="PRAZO_SENHA_ANTERIOR_SEGUNDOS",
     )
 
+    # Documento oficial timbrado (SPEC documentos_oficiais/003). Texto institucional e tema têm
+    # default no domínio: aqui só sobrepõe quem o ambiente de fato definir.
+    documento_logo_horizontal: Path | None = Field(default=None, alias="DOCUMENTO_LOGO_HORIZONTAL")
+    documento_logo_vertical: Path | None = Field(default=None, alias="DOCUMENTO_LOGO_VERTICAL")
+    documento_unidade: tuple[str, ...] | None = Field(default=None, alias="DOCUMENTO_UNIDADE")
+    documento_endereco: tuple[str, ...] | None = Field(default=None, alias="DOCUMENTO_ENDERECO")
+    documento_cor_tinta: str | None = Field(default=None, alias="DOCUMENTO_COR_TINTA")
+    documento_cor_tinta_secundaria: str | None = Field(
+        default=None, alias="DOCUMENTO_COR_TINTA_SECUNDARIA"
+    )
+    documento_cor_traco_tabela: str | None = Field(default=None, alias="DOCUMENTO_COR_TRACO_TABELA")
+    documento_cor_fundo_cabecalho_tabela: str | None = Field(
+        default=None, alias="DOCUMENTO_COR_FUNDO_CABECALHO_TABELA"
+    )
+    documento_fonte: str | None = Field(default=None, alias="DOCUMENTO_FONTE")
+    documento_fonte_negrito: str | None = Field(default=None, alias="DOCUMENTO_FONTE_NEGRITO")
+    documento_corpo_titulo_pt: float | None = Field(default=None, alias="DOCUMENTO_CORPO_TITULO_PT")
+    documento_corpo_subtitulo_pt: tuple[float, float, float] | None = Field(
+        default=None,
+        alias="DOCUMENTO_CORPO_SUBTITULO_PT",
+    )
+    documento_corpo_paragrafo_pt: float | None = Field(
+        default=None, alias="DOCUMENTO_CORPO_PARAGRAFO_PT"
+    )
+    documento_corpo_paragrafo_recuado_pt: float | None = Field(
+        default=None, alias="DOCUMENTO_CORPO_PARAGRAFO_RECUADO_PT"
+    )
+    documento_corpo_celula_pt: float | None = Field(default=None, alias="DOCUMENTO_CORPO_CELULA_PT")
+    documento_corpo_cabecalho_marca_pt: float | None = Field(
+        default=None, alias="DOCUMENTO_CORPO_CABECALHO_MARCA_PT"
+    )
+    documento_corpo_rodape_marca_pt: float | None = Field(
+        default=None, alias="DOCUMENTO_CORPO_RODAPE_MARCA_PT"
+    )
+    documento_fator_entrelinha: float | None = Field(
+        default=None, alias="DOCUMENTO_FATOR_ENTRELINHA"
+    )
+    documento_entrelinha_marca_mm: float | None = Field(
+        default=None, alias="DOCUMENTO_ENTRELINHA_MARCA_MM"
+    )
+
+    @field_validator("documento_unidade", "documento_endereco", mode="before")
+    @classmethod
+    def _parse_linhas_institucionais(cls, v: Any) -> tuple[str, ...] | None:
+        # `None` distingue "ambiente calado" de "lista vazia", e é ele que deixa o padrão do
+        # domínio valer; o `_parse_lista_env` sozinho devolveria `[]` nos dois casos.
+        return tuple(_parse_lista_env(v)) or None
+
+    @field_validator("documento_corpo_subtitulo_pt", mode="before")
+    @classmethod
+    def _parse_corpos_subtitulo(cls, v: Any) -> tuple[float, ...] | None:
+        return tuple(float(item) for item in _parse_lista_env(v)) or None
+
 
 _env = _Settings()
 
@@ -331,6 +384,33 @@ PRAZO_SENHA_ANTERIOR_SEGUNDOS = _env.prazo_senha_anterior_segundos
 RECUPERACAO_SENHA_VALIDADE_HORAS = 1
 # O nome é do Django: é ele que o `PasswordResetTokenGenerator.check_token` consulta.
 PASSWORD_RESET_TIMEOUT = RECUPERACAO_SENHA_VALIDADE_HORAS * 3600
+
+# Documento oficial timbrado (services.domain.documento_oficial). Os caminhos dos logotipos têm
+# default aqui porque dependem do BASE_DIR, que o domínio não conhece; unidade, endereço e tema
+# têm default no domínio — aqui só o que o ambiente de fato sobrepõe.
+DOCUMENTO_LOGO_HORIZONTAL = _env.documento_logo_horizontal or (
+    BASE_DIR / "static" / "src" / "img" / "documento_oficial" / "sec_fazenda_horizontal.svg"
+)
+DOCUMENTO_LOGO_VERTICAL = _env.documento_logo_vertical or (
+    BASE_DIR / "static" / "src" / "img" / "documento_oficial" / "sec_fazenda_vertical.svg"
+)
+DOCUMENTO_UNIDADE = _env.documento_unidade
+DOCUMENTO_ENDERECO = _env.documento_endereco
+DOCUMENTO_COR_TINTA = _env.documento_cor_tinta
+DOCUMENTO_COR_TINTA_SECUNDARIA = _env.documento_cor_tinta_secundaria
+DOCUMENTO_COR_TRACO_TABELA = _env.documento_cor_traco_tabela
+DOCUMENTO_COR_FUNDO_CABECALHO_TABELA = _env.documento_cor_fundo_cabecalho_tabela
+DOCUMENTO_FONTE = _env.documento_fonte
+DOCUMENTO_FONTE_NEGRITO = _env.documento_fonte_negrito
+DOCUMENTO_CORPO_TITULO_PT = _env.documento_corpo_titulo_pt
+DOCUMENTO_CORPO_SUBTITULO_PT = _env.documento_corpo_subtitulo_pt
+DOCUMENTO_CORPO_PARAGRAFO_PT = _env.documento_corpo_paragrafo_pt
+DOCUMENTO_CORPO_PARAGRAFO_RECUADO_PT = _env.documento_corpo_paragrafo_recuado_pt
+DOCUMENTO_CORPO_CELULA_PT = _env.documento_corpo_celula_pt
+DOCUMENTO_CORPO_CABECALHO_MARCA_PT = _env.documento_corpo_cabecalho_marca_pt
+DOCUMENTO_CORPO_RODAPE_MARCA_PT = _env.documento_corpo_rodape_marca_pt
+DOCUMENTO_FATOR_ENTRELINHA = _env.documento_fator_entrelinha
+DOCUMENTO_ENTRELINHA_MARCA_MM = _env.documento_entrelinha_marca_mm
 
 
 # Application definition
