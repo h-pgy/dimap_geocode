@@ -1,11 +1,12 @@
 ---
 spec: documentos_oficiais/001
-versao: v1
+versao: v2
 atualizado_em: 2026-09-06
 testes_tdd: false
 implementado: false
 changelog:
   - v1: versão inicial
+  - v2: esmaecer sai do caminho de geração e vira utilitário que clareia o SVG no lugar
 ---
 
 # SPEC documentos_oficiais/001 — Motor de PDF: folha em milímetros, marcação composta e bytes
@@ -22,7 +23,8 @@ coordenada de PDF nem veja o reportlab.
 - [ ] Cada marca declara a **posição e a altura que reserva**, e a área útil do corpo é o que sobra
       depois de todas: nada do corpo invade a faixa de uma marca, e a marca de fundo não reserva área.
 - [ ] A **marca de fundo é pintada sob o corpo**: o texto é lido por cima dela, sem perda de contraste.
-- [ ] Um vetor **esmaecido sai uniforme** apesar de ter centenas de traços sobrepostos.
+- [ ] Esmaecer é **preparação do ativo, e não etapa de geração**: um utilitário clareia o SVG **no
+      lugar** — uniforme apesar dos traços sobrepostos —, e o motor só carrega o SVG comitado.
 - [ ] A marca sabe **que página é e quantas há no total**: "Página X de Y" sai com Y igual ao total
       real de páginas.
 - [ ] Conteúdo mais longo que uma página **quebra e continua** na seguinte, sem cortar linha ao meio.
@@ -201,8 +203,8 @@ class Folha:
         return (self.tamanho.altura_mm - y_mm) * mm
 ```
 
-**`services/utils/pdf/vetor.py`** — carregar o SVG e prepará-lo. `esmaecer` carrega a descoberta que
-mais importa nesta SPEC.
+**`services/utils/pdf/vetor.py`** — carregar o SVG, e só. O que chega aqui já está pronto para ser
+pintado: se a marca é d'água, o SVG comitado já é o claro.
 ```python
 from reportlab.graphics.shapes import Drawing
 from reportlab.lib.colors import Color
@@ -223,32 +225,67 @@ class CarregarVetor:
         return desenho
 
 
-def esmaecer(desenho: Drawing, forca: float) -> Drawing:
-    """Clareia cada cor CONTRA O BRANCO do papel, em vez de aplicar transparência.
-
-    Alpha por forma seria o caminho óbvio e está errado aqui: um logotipo tem centenas de traços
-    sobrepostos, e alpha COMPÕE a cada camada — 0,08 repetido vinte vezes satura em quase opaco.
-    Clareando a cor, sobreposição não escurece: vinte formas cinza-claro empilhadas continuam
-    cinza-claro.
-    """
-    for atributo in ("fillColor", "strokeColor"):
-        cor = getattr(desenho, atributo, None)
-        if cor is not None:
-            setattr(desenho, atributo, _clarear(cor, forca))
-    for filho in getattr(desenho, "contents", ()):
-        esmaecer(filho, forca)
-    return desenho
-
-
-def _clarear(cor: Color, forca: float) -> Color:
-    return cor.clone(
-        red=cor.red + (1 - cor.red) * forca,
-        green=cor.green + (1 - cor.green) * forca,
-        blue=cor.blue + (1 - cor.blue) * forca,
-    )
-
-
 carregar_vetor = CarregarVetor()
+```
+
+**`services/utils/pdf/utils/esmaecer.py`** — fora do caminho de geração. Roda à mão, uma vez por marca,
+sobre o próprio arquivo; o motor nunca esmaece nada em tempo de request.
+```python
+import re
+from functools import partial
+from pathlib import Path
+
+# `fill:rgb(0%,65.1%,31.37%)` — a forma que os SVGs do projeto trazem.
+COR_SVG = re.compile(r"(fill|stroke):rgb\(([\d.]+)%,([\d.]+)%,([\d.]+)%\)")
+COR_NAO_SUPORTADA = re.compile(r"(?:fill|stroke):\s*(#[0-9a-fA-F]+|rgb\((?![\d.]+%))")
+
+
+class EsmaecerSvgInput(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    caminho: Path
+    forca: float
+
+
+class EsmaecerSvgOutput(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    caminho: Path
+    cores_clareadas: int
+
+
+class EsmaecerSvg:
+    """Callable: clareia cada cor do SVG CONTRA O BRANCO do papel, no próprio arquivo.
+
+    Clarear a cor, e não baixar a opacidade: alpha compõe a cada camada e mancha onde os traços se
+    sobrepõem — ver Caveats.
+    """
+
+    def __call__(self, pedido: EsmaecerSvgInput) -> EsmaecerSvgOutput:
+        return self.pipeline(pedido)
+
+    def pipeline(self, pedido: EsmaecerSvgInput) -> EsmaecerSvgOutput:
+        original = pedido.caminho.read_text()
+        self._recusar_cor_desconhecida(original)
+        claro, trocas = COR_SVG.subn(partial(self._clarear, forca=pedido.forca), original)
+        pedido.caminho.write_text(claro)
+        return EsmaecerSvgOutput(caminho=pedido.caminho, cores_clareadas=trocas)
+
+    def _clarear(self, achado: re.Match[str], forca: float) -> str:
+        canais = [self._canal(float(achado.group(i)), forca) for i in (2, 3, 4)]
+        return f"{achado.group(1)}:rgb({canais[0]}%,{canais[1]}%,{canais[2]}%)"
+
+    def _canal(self, valor: float, forca: float) -> float:
+        return round(valor + (100 - valor) * forca, 4)
+
+    def _recusar_cor_desconhecida(self, svg: str) -> None:
+        # Cor num formato que a regex não pega passaria intacta e sairia escura sob o texto — o
+        # inverso do que este utilitário existe para garantir.
+        if achados := set(COR_NAO_SUPORTADA.findall(svg)):
+            raise ValueError(f"SVG com cor em formato não suportado: {sorted(achados)}")
+
+
+esmaecer_svg = EsmaecerSvg()
 ```
 
 **`services/utils/pdf/marcacao.py`** — a composição. A `Marca` é ABC porque aqui a herança define
@@ -528,10 +565,19 @@ dev = [
 ```
 
 ## 7 · Caveats
-`esmaecer` clareia cada cor contra o branco em vez de aplicar transparência. Alpha por forma compõe a
-cada camada e satura num vetor de centenas de traços sobrepostos, chapando a marca por cima do corpo.
-O custo é que a técnica só funciona sobre fundo branco: documento impresso em papel colorido ou com
-fundo próprio precisaria de transparência de verdade.
+O esmaecimento é preparação de ativo, não etapa de geração: o utilitário clareia o SVG no próprio
+arquivo, e o motor o carrega como carregaria qualquer outro. In place, e não uma cópia clara ao lado:
+com dois arquivos, apontar o `settings` para o escuro não daria erro nenhum — sairia um documento
+ilegível que só se descobre olhando. Com um só, não há o que confundir. O custo é que o SVG saturado
+deixa de existir na árvore (o git o guarda) e a força do clareamento fica congelada no arquivo: mudar
+a intensidade é voltar o arquivo pelo git e rodar de novo.
+
+O utilitário clareia cada cor contra o branco em vez de aplicar transparência. Transparência aqui não é
+a via mais curta: `setFillAlpha` no canvas é inócuo com desenho do svglib — o renderer reaplica a
+opacidade nó a nó —, então exigiria percorrer a árvore inteira; e aí alpha compõe a cada camada e
+mancha onde os traços se sobrepõem. Medido no logotipo da Fazenda, de 650 traços: opacidade 0,08 varia
+de 238 a 168 de luminância, contra 237–243 clareando a cor. O custo é que a técnica só funciona sobre
+fundo branco: papel colorido ou com fundo próprio precisaria de transparência de verdade.
 
 A interface do módulo tipa objetos do reportlab — `Flowable`, `Drawing`, `Canvas` e `Color` —, com
 `arbitrary_types_allowed` nos models que os carregam. `services/utils/pdf/` é uma casca fina sobre a
@@ -577,8 +623,9 @@ que nada recuse — o teste de faixa pega o caso conhecido, não todos.
   empilhadas na ordem declarada, e nenhuma faixa invade a outra.
 - `test_marca_de_fundo_fica_atras_do_corpo` — no content stream da página, o desenho da marca de fundo
   precede o texto do corpo.
-- `test_esmaecer_nao_escurece_com_sobreposicao` — todo traço do desenho esmaecido sai acima do limiar
-  de clareza, inclusive os que se sobrepõem, e nenhuma cor conserva o valor original.
+- `test_esmaecer_clareia_no_lugar_e_recusa_cor_que_nao_entende` — o SVG passa a ter toda cor acima do
+  limiar de clareza, nenhuma conservando o valor original; SVG com cor em formato não previsto levanta
+  **antes** de escrever, deixando o arquivo intacto.
 - `test_marcacao_resolve_pela_especificidade` — página nomeada em `marcacoes_especificas` vence
   primeira e última; extremo vence a principal; num documento de uma página só, `primeira` vence
   `ultima`; sem override algum, a principal vale em todas.

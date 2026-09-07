@@ -1,12 +1,13 @@
 ---
 spec: documentos_oficiais/003
-versao: v1
+versao: v2
 atualizado_em: 2026-09-06
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [artefato]
 changelog:
   - v1: versão inicial
+  - v2: marca d'água usa SVG já claro, clareado no lugar pelo comando `esmaecer_svg`
 ---
 
 # SPEC documentos_oficiais/003 — Documento oficial como blocos e o papel timbrado da Fazenda
@@ -26,6 +27,8 @@ administrativo emitir documento de verdade.
       de contraste.
 - [ ] A marcação nasce com **unidade, endereço e logotipos padrão**, e cada um é substituível na
       construção — sem edição de código e sem que o domínio leia configuração.
+- [ ] `uv run python manage.py esmaecer_svg <caminho> --forca 0.93` clareia um SVG no lugar — é assim
+      que a marca d'água vira ativo claro, e a emissão do documento não clareia nada.
 - [ ] `uv run python manage.py gerar_documento_amostra <caminho>` grava um PDF de amostra com todos os
       tipos de bloco e mais de uma página.
 - [ ] Teste que produz arquivo para conferência humana roda atrás do marker **`artefato`**, grava fora
@@ -124,13 +127,13 @@ class MarcacaoConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     logo_horizontal: Path
+    # O SVG da marca d'água já é o claro no repositório: a marca não clareia nada.
     logo_vertical: Path
     # Um nível por item, e não uma linha só: é a marca que decide se empilha ou junta.
     unidade: tuple[str, ...] = UNIDADE_PADRAO
     endereco: tuple[str, ...] = ENDERECO_PADRAO
     largura_timbre_mm: float = 58.0
     largura_marca_dagua_mm: float = 105.0
-    forca_marca_dagua: float = 0.93
 
 
 class DocumentoAmostraInput(BaseModel):
@@ -157,8 +160,9 @@ class DocumentoAmostraInput(BaseModel):
   nasce com uma só.
 
 ## 5 · Peças de referência a compor
-- `@services/utils/pdf` → `Marca`, `Marcacao`, `MarcacaoDocumento`, `gerar_pdf`, `carregar_vetor` e
-  `esmaecer`: o motor entregue pela SPEC 001.
+- `@services/utils/pdf` → `Marca`, `Marcacao`, `MarcacaoDocumento`, `gerar_pdf` e `carregar_vetor`: o
+  motor entregue pela SPEC 001. De lá vem também o `esmaecer_svg`, que prepara o ativo e não roda na
+  emissão.
 - `@services/domain/email` → o padrão de bloco, registro de escritores e tema próprio.
 - `@services/utils/io` → `escrever_atomico`: a gravação do arquivo pelo comando de amostra.
 - `@services/utils/smtp/config.py` → `SmtpSettingsLike` e `build_smtp_config`: o padrão de Protocol +
@@ -166,7 +170,7 @@ class DocumentoAmostraInput(BaseModel):
 - `@static/src/img/documento_oficial/sec_fazenda_horizontal.svg` → o logotipo do cabeçalho, vetorial,
   237,84 × 75,58 pt.
 - `@static/src/img/documento_oficial/sec_fazenda_vertical.svg` → o logotipo da marca d'água, vetorial,
-  168,16 × 144,41 pt.
+  168,16 × 144,41 pt. Ainda saturado: é ele que o `esmaecer_svg` clareia.
 - Skills: `ontologia`, `escrever-testes`, `management-commands`.
 
 ## 6 · Snippets
@@ -278,13 +282,17 @@ class TimbreHorizontal(Marca):
 
 
 class MarcaDagua(Marca):
-    """O logotipo vertical, clareado, no meio do papel. Reserva ZERO: o corpo passa por cima."""
+    """O logotipo vertical no meio do papel. Reserva ZERO: o corpo passa por cima.
+
+    O SVG que chega aqui já é o claro — clarear é preparação de ativo (SPEC 001), e não trabalho
+    repetido a cada emissão.
+    """
 
     posicao = Posicao.FUNDO
     altura_mm = 0.0
 
-    def __init__(self, caminho_svg: Path, largura_mm: float, forca: float) -> None:
-        self._desenho = esmaecer(carregar_vetor(caminho_svg, largura_mm), forca)
+    def __init__(self, caminho_svg: Path, largura_mm: float) -> None:
+        self._desenho = carregar_vetor(caminho_svg, largura_mm)
 
     def __call__(self, faixa: Faixa, folha: Folha) -> None:
         # Centralizada na FOLHA, e não na faixa: a marca de fundo ignora a moldura das outras.
@@ -362,7 +370,6 @@ def marcacao_secretaria_fazenda(config: MarcacaoConfig) -> Marcacao:
             MarcaDagua(
                 config.logo_vertical,
                 config.largura_marca_dagua_mm,
-                config.forca_marca_dagua,
             ),
             RodapeEndereco(config.endereco),
             NumeracaoPaginas(),
@@ -412,6 +419,25 @@ class MontarDocumentoAmostra:
 
 
 montar_documento_amostra = MontarDocumentoAmostra()
+```
+
+**`apps/core/management/commands/esmaecer_svg.py`** — o comando é fino e roda **à mão**, sobre o próprio
+arquivo: quem acrescenta uma marca d'água nova clareia o SVG uma vez e comita.
+```python
+class Command(BaseCommand):
+    help = "Clareia um SVG no lugar, para uso como marca d'água."
+
+    def add_arguments(self, parser: ArgumentParser) -> None:
+        parser.add_argument("caminho", type=Path)
+        parser.add_argument("--forca", type=float, default=0.93)
+
+    def handle(self, *args: object, **options: object) -> None:
+        resultado = esmaecer_svg(
+            EsmaecerSvgInput(caminho=options["caminho"], forca=options["forca"])
+        )
+        self.stdout.write(
+            self.style.SUCCESS(f"{resultado.cores_clareadas} cores clareadas em {resultado.caminho}.")
+        )
 ```
 
 **`apps/core/management/commands/gerar_documento_amostra.py`** — o comando é fino: lê `settings`, monta
@@ -471,13 +497,16 @@ def pytest_configure(config: pytest.Config) -> None:
 
 **`.claude/skills/documento-oficial/SKILL.md`** — entregável desta SPEC, não subproduto: o gerador é
 infraestrutura que outras ações vão consumir, e sem a skill cada ação nova descobre o vocabulário
-lendo `services/domain/documento_oficial/`. Cobre: os blocos existentes e o que cada um carrega, e que
-bloco novo é subtipo + escritor no registro; escrever um documento criando o módulo do caso de uso ao
-lado de `amostra.py`; compor a marcação com `MarcacaoDocumento` (principal obrigatória,
+lendo `services/domain/documento_oficial/`. Cobre: os blocos existentes e o que cada um carrega, e
+que bloco novo é subtipo + escritor no registro; escrever um documento criando o módulo do caso de
+uso ao lado de `amostra.py`; compor a marcação com `MarcacaoDocumento` (principal obrigatória,
 `primeira`/`ultima`, `marcacoes_especificas` keyword-only, ordem de resolução, orientação do
 documento); onde os valores moram (unidade e endereço no domínio, caminhos dos logotipos em
-`settings`, via `build_marcacao_config`); conferir com `uv run pytest -m artefato`; e o que **não**
-fazer — desenhar fora dos escritores, escrever hex ou medida fora do tema, persistir o PDF aqui.
+`settings`, via `build_marcacao_config`); a marca d'água: **perguntar ao usuário** onde está o SVG e
+se deve esmaecê-lo — se sim, rodar `esmaecer_svg` sobre o arquivo e usar esse caminho; se não, usar
+o caminho como veio, sem clarear nada na emissão; conferir com `uv run pytest -m artefato`; e o que
+**não** fazer — desenhar fora dos escritores, escrever hex ou medida fora do tema, persistir o PDF
+aqui.
 
 ## 7 · Caveats
 O documento oficial tem tema próprio — preto sobre branco, serifado, justificado —, e não porta a
