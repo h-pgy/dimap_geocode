@@ -17,6 +17,8 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "openpyxl>=3.1",
     "pillow>=12.0",
+    "reportlab>=4.2",
+    "svglib>=1.5",
 ]
 
 [dependency-groups]
@@ -27,6 +29,7 @@ dev = [
     "django-stubs>=6.0.5",
     "pandas-stubs>=2.2",
     "pytest-django>=4.12.0",
+    "pypdf>=5.1",
 ]
 
 [tool.pytest.ini_options]
@@ -39,6 +42,12 @@ markers = [
 
 [tool.mypy]
 plugins = ["mypy_django_plugin.main"]
+
+[[tool.mypy.overrides]]
+# reportlab não publica stubs nem `py.typed`; services/utils/pdf é a única costura do projeto
+# com ele (SPEC documentos_oficiais/001, Caveats), então o ignore fica isolado ao pacote.
+module = ["reportlab.*"]
+ignore_missing_imports = true
 
 [tool.django-stubs]
 django_settings_module = "config.settings"

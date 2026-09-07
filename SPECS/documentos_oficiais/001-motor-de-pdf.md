@@ -1,12 +1,14 @@
 ---
 spec: documentos_oficiais/001
-versao: v2
+versao: v3
 atualizado_em: 2026-09-06
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: esmaecer sai do caminho de geração e vira utilitário que clareia o SVG no lugar
+  - v3: implementado — services/utils/pdf/ (folha, marcação, marcação de documento, numeração,
+    esmaecer, vetor, documento) e os 11 testes do §8, seguindo os snippets do §6 à risca
 ---
 
 # SPEC documentos_oficiais/001 — Motor de PDF: folha em milímetros, marcação composta e bytes

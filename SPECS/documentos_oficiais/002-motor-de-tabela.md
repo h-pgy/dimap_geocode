@@ -1,11 +1,14 @@
 ---
 spec: documentos_oficiais/002
-versao: v1
-atualizado_em: 2026-09-06
-testes_tdd: false
-implementado: false
+versao: v2
+atualizado_em: 2026-09-07
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
+  - v2: implementado — services/utils/pdf/tabela/ (regras, estilo, escritor) e models/tabela.py,
+    seguindo os testes do §8; o peso da coluna fluida sai normalizado pela soma das fluidas do
+    pedido, e não como percentual bruto do snippet (§7, Caveats)
 ---
 
 # SPEC documentos_oficiais/002 — Motor de tabela: coluna que só vira medida na página
@@ -337,6 +340,15 @@ __all__ = [
 a SPEC 001 já traz, e o `pypdf` de teste também.
 
 ## 7 · Caveats
+O peso da `ColunaFluida` não vira `f"{peso}%"` direto, como o snippet de `_largura` sugeria: o
+reportlab só reparte o restante inteiro quando os percentuais de uma linha somam exatamente 100 —
+testado empiricamente contra a biblioteca antes de escrever o teste. Com o peso padrão (1.0) em
+duas colunas fluidas, a soma bruta (2) deixa quase toda a largura sem coluna nenhuma. Por isso
+`_larguras` normaliza cada peso pela soma das fluidas do **mesmo pedido** antes de formatar o
+percentual — o peso passa a se comportar como peso relativo (equivalente a `flex-grow`), e o padrão
+de 1.0 para várias fluidas reparte o restante em partes iguais. O custo é que `_largura` deixa de
+ser pura por coluna: precisa do total de peso do conjunto, calculado uma vez em `_larguras`.
+
 A célula da tabela é sempre `Paragraph`, nunca `str`, e o texto é escapado ali. String crua não quebra
 linha no reportlab: estoura a coluna e sai cortada sem aviso. O custo é que a célula não aceita
 marcação nenhuma — negrito numa palavra pede regra ou bloco novo — e que cada célula carrega um

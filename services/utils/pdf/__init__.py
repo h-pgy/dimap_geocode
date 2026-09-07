@@ -1,0 +1,71 @@
+from .documento import DocumentoPdf, DocumentoPdfInput, gerar_pdf
+from .documento_marcado import MarcacaoDocumento
+from .folha import Folha
+from .marcacao import Marca, Marcacao
+from .models import (
+    A3,
+    A4,
+    Alinhamento,
+    Coluna,
+    ColunaFixa,
+    ColunaFluida,
+    ComandoTabela,
+    EstiloTexto,
+    Faixa,
+    FormatoPagina,
+    Grade,
+    Margens,
+    Orientacao,
+    Posicao,
+    TamanhoPagina,
+)
+from .numeracao import CanvasMarcado
+from .tabela import (
+    EstiloTabela,
+    FundoDoCabecalho,
+    GradeDeLinhas,
+    RegraTabela,
+    Respiro,
+    TabelaInput,
+    TabelaPdf,
+    ZebraDoCorpo,
+    tabela_pdf,
+)
+from .vetor import CarregarVetor, carregar_vetor
+
+__all__ = [
+    "A3",
+    "A4",
+    "Alinhamento",
+    "CanvasMarcado",
+    "CarregarVetor",
+    "Coluna",
+    "ColunaFixa",
+    "ColunaFluida",
+    "ComandoTabela",
+    "DocumentoPdf",
+    "DocumentoPdfInput",
+    "EstiloTabela",
+    "EstiloTexto",
+    "Faixa",
+    "Folha",
+    "FormatoPagina",
+    "FundoDoCabecalho",
+    "Grade",
+    "GradeDeLinhas",
+    "Marca",
+    "Marcacao",
+    "MarcacaoDocumento",
+    "Margens",
+    "Orientacao",
+    "Posicao",
+    "RegraTabela",
+    "Respiro",
+    "TabelaInput",
+    "TabelaPdf",
+    "TamanhoPagina",
+    "ZebraDoCorpo",
+    "carregar_vetor",
+    "gerar_pdf",
+    "tabela_pdf",
+]
