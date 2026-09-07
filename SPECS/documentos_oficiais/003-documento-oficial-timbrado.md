@@ -1,6 +1,6 @@
 ---
 spec: documentos_oficiais/003
-versao: v7
+versao: v8
 atualizado_em: 2026-09-07
 testes_tdd: true
 implementado: true
@@ -22,6 +22,8 @@ changelog:
   - v7: o cabeçalho vira UMA marca com o timbre à esquerda e a unidade à direita, o papel declara
     `margem_vertical_mm` para o rodapé não sair na aresta da folha, e a marca d'água é reesmaecida
     a 0,85 — a 0,93 ela não se via no papel
+  - v8: abrir o artefato no visualizador vira opt-in pela flag `--open`; o default de
+    `publicar_artefato` é só gravar e imprimir o caminho
 ---
 
 # SPEC documentos_oficiais/003 — Documento oficial como blocos e o papel timbrado da Fazenda
@@ -1007,13 +1009,20 @@ aqui porque este é o primeiro serviço que gera arquivo para olho humano, e ser
 a exportação que vierem depois. O contrato completo está na skill `escrever-testes` (§3.6 e §4.2).
 ```python
 @pytest.fixture
-def publicar_artefato(tmp_path, capsys) -> Callable[[str, bytes], Path]:
-    """Grava o artefato onde ele sobreviva à sessão, imprime onde ele está e chama
-    `abrir_artefato`."""
+def publicar_artefato(tmp_path, capsys, pytestconfig) -> Callable[[str, bytes], Path]:
+    """Grava o artefato onde ele sobreviva à sessão e imprime onde ele está; sob `--open`,
+    também chama `abrir_artefato`."""
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--all", action="store_true", help="Roda a suíte inteira, markers inclusive.")
+    # A suíte inteira de artefatos abriria uma janela por arquivo; abrir é gesto de conferência
+    # manual, então é opt-in.
+    parser.addoption(
+        "--open",
+        action="store_true",
+        help="Abre cada artefato gerado no visualizador padrão do SO.",
+    )
 
 
 def pytest_configure(config: pytest.Config) -> None:

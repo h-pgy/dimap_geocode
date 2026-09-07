@@ -71,7 +71,7 @@ O `addopts` no `pyproject.toml` exclui markers pesados da execução padrão par
 | **Unitários** | `uv run pytest` | Domínio puro, validações, fakes em memória | Nenhum (sem I/O real, sem banco) |
 | **Integração** | `uv run pytest -m integration` | Leitura de dados reais (`data/*.parquet`, WFS) | Parquets presentes em `data/` |
 | **Banco** | `uv run pytest -m banco` | Persistência com PostGIS / ORM Django | Banco PostGIS de pé (`docker compose`) |
-| **Artefato** | `uv run pytest -m artefato` | Geração de arquivo para conferência humana (PDF, PNG, CSV) | Nenhum |
+| **Artefato** | `uv run pytest -m artefato` (`--open` para abrir os arquivos) | Geração de arquivo para conferência humana (PDF, PNG, CSV) | Nenhum |
 | **Tudo** | `uv run pytest --all` | Todas as camadas acima de uma vez | Os pré-requisitos de cada uma |
 
 ### 3.1 Testes unitários rápidos (sem marker)
@@ -109,6 +109,7 @@ def test_persistencia_cargo() -> None:
 ### 3.5 Marker `artefato` — o teste cujo produto é um arquivo
 - Alguns serviços produzem **arquivo para olho humano**: o PDF de um documento oficial, o PNG de um snapshot do mapa, um CSV de exportação. Nenhuma asserção prova que o desenho saiu certo — quem aprova é quem abre.
 - Esses testes recebem `@pytest.mark.artefato`, gravam pela fixture `publicar_artefato` (§4.2) e **imprimem o caminho**. A asserção que resta é mínima (o arquivo existe e não está vazio); o julgamento é humano.
+- Por padrão o arquivo é só gravado. **`--open`** (§3.6) abre cada artefato no visualizador do SO — é para a conferência de um punhado de artefatos na tela, não para rodar a camada inteira.
 - Ficam fora da suíte padrão porque **teste que depende de humano não pode reprovar build de ninguém**.
 - A SPEC que introduz um deles declara `markers_obrigatorios: [artefato]` no front-matter: a conferência visual passa a fazer parte do gate de `implementado: true`.
 
@@ -128,6 +129,20 @@ def pytest_configure(config: pytest.Config) -> None:
 ```
 
 - `-m <marker>` explícito continua sendo o caminho para rodar **uma** camada isolada.
+
+### 3.7 Abrir os artefatos na tela: a flag `--open`
+- Declarada no mesmo `pytest_addoption`, ela liga a abertura de cada arquivo publicado por `publicar_artefato` no visualizador padrão do SO:
+
+```python
+parser.addoption(
+    "--open",
+    action="store_true",
+    help="Abre cada artefato gerado no visualizador padrão do SO.",
+)
+```
+
+- **O default é não abrir:** a camada `artefato` cresce com o sistema, e abrir uma janela por arquivo torna `-m artefato` inutilizável. Quem quer conferir na tela pede: `uv run pytest -m artefato --open`.
+- A flag não muda o que é gravado nem o caminho impresso — o `pytest-current` continua sendo o jeito de deixar o leitor de PDF aberto e só recarregar.
 
 ### 3.4 Extensibilidade de markers
 - A lista de markers (`integration`, `banco`) não é fechada. Novos markers podem ser introduzidos durante o desenvolvimento se houver uma nova categoria de teste com requisitos específicos de ambiente ou custo de execução.

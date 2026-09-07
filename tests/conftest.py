@@ -40,10 +40,12 @@ def _resetar_catalogos_singleton() -> Generator[None, None, None]:
 def publicar_artefato(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    pytestconfig: pytest.Config,
 ) -> Callable[[str, bytes], Path]:
-    """Grava o artefato onde ele sobreviva à sessão, imprime onde ele está e tenta abri-lo no
-    visualizador padrão do SO — o produto de um teste `artefato` é o arquivo, não uma
-    asserção; a abertura é conveniência best-effort e nunca falha o teste."""
+    """Grava o artefato onde ele sobreviva à sessão e imprime onde ele está — o produto de um
+    teste `artefato` é o arquivo, não uma asserção. Sob `--open`, também abre cada artefato no
+    visualizador padrão do SO; a abertura é conveniência best-effort e nunca falha o teste."""
+    abrir = pytestconfig.getoption("--open")
 
     def publicar(nome: str, conteudo: bytes) -> Path:
         destino = tmp_path / nome
@@ -53,7 +55,8 @@ def publicar_artefato(
         estavel = tmp_path.parent.parent / "pytest-current" / tmp_path.name / nome
         with capsys.disabled():
             print(f"\n  {nome} → {estavel}")
-        abrir_artefato(estavel)
+        if abrir:
+            abrir_artefato(estavel)
         return destino
 
     return publicar
@@ -61,6 +64,13 @@ def publicar_artefato(
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--all", action="store_true", help="Roda a suíte inteira, markers inclusive.")
+    # A suíte inteira de artefatos abriria uma janela por arquivo; abrir é gesto de conferência
+    # manual, então é opt-in.
+    parser.addoption(
+        "--open",
+        action="store_true",
+        help="Abre cada artefato gerado no visualizador padrão do SO.",
+    )
 
 
 def pytest_configure(config: pytest.Config) -> None:
