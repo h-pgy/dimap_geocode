@@ -64,7 +64,17 @@ class Imagem(BlocoDocumento):
     largura_mm: float
 
 
+class QrCode(BlocoDocumento):
+    """O bloco guarda o que o símbolo DIZ, nunca a imagem dele: o QR é derivado do conteúdo, e
+    guardá-lo pronto seria o mesmo dado em dois lugares."""
+
+    tipo: Literal["qr_code"] = "qr_code"
+    conteudo: str = Field(min_length=1)
+    # Sem default, como na `Imagem`: quanto o símbolo ocupa é decisão do documento, não do tema.
+    largura_mm: float
+
+
 Bloco = Annotated[
-    Titulo | Subtitulo | Paragrafo | Lista | Tabela | Imagem,
+    Titulo | Subtitulo | Paragrafo | Lista | Tabela | Imagem | QrCode,
     Field(discriminator="tipo"),
 ]

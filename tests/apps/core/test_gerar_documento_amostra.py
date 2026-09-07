@@ -18,6 +18,7 @@ from services.domain.documento_oficial import (
     marcacao_fazenda_dimap,
     montar_documento_amostra,
     montar_tema,
+    url_de_conferencia,
 )
 
 SVG_RETANGULO = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10" viewBox="0 0 20 10">
@@ -72,4 +73,31 @@ def test_amostra_para_conferencia(publicar_artefato: Callable[[str, bytes], Path
     )
 
     caminho = publicar_artefato("documento_amostra.pdf", renderizado.pdf)
+    assert caminho.stat().st_size > 0
+
+
+# ---------------------------------------------------------------------------
+# QR de verificação no corpo E no rodapé, para conferir com o celular
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.artefato
+def test_amostra_com_qr_no_corpo_e_no_rodape(
+    publicar_artefato: Callable[[str, bytes], Path],
+) -> None:
+    ambiente = settings.ALLOWED_HOSTS[0]
+    conteudo = montar_documento_amostra(
+        DocumentoAmostraInput(ambiente=ambiente, momento=timezone.now())
+    )
+    tema = montar_tema(build_tema_config(settings))
+    marcacao = marcacao_fazenda_dimap(
+        build_marcacao_config(settings),
+        tema,
+        qr_verificacao=url_de_conferencia(ambiente),
+    )
+    renderizado = RenderizarDocumentoOficial(tema)(
+        RenderizarDocumentoInput(conteudo=conteudo, marcacao=marcacao)
+    )
+
+    caminho = publicar_artefato("documento_amostra_qr.pdf", renderizado.pdf)
     assert caminho.stat().st_size > 0

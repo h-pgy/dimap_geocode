@@ -6,9 +6,18 @@ from typing import Any
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Flowable, ListFlowable, ListItem, Paragraph
 
-from services.utils.pdf import TabelaInput, carregar_vetor, tabela_pdf
+from services.utils.pdf import (
+    QrCodePdfInput,
+    TabelaInput,
+    VetorNomeado,
+    VetorReferenciado,
+    carregar_vetor,
+    qr_code_pdf,
+    tabela_pdf,
+)
+from services.utils.qr_code import QrCodeInput, gerar_qr_code
 
-from .models import BlocoTextual, Imagem, Lista, Paragrafo, Subtitulo, Tabela, Tema, Titulo
+from .models import BlocoTextual, Imagem, Lista, Paragrafo, QrCode, Subtitulo, Tabela, Tema, Titulo
 
 
 def _texto(bruto: str) -> str:
@@ -106,6 +115,27 @@ class EscritorImagem:
         return desenho
 
 
+class EscritorQrCode:
+    """O bloco diz o que o QR carrega; gerar o símbolo é do utilitário e assentá-lo é do motor.
+    Sem `Tema` no construtor: um QR não tem cor, fonte nem entrelinha a herdar."""
+
+    def __call__(self, bloco: QrCode) -> Flowable:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: QrCode) -> Flowable:
+        # `VetorReferenciado`, e não o `Drawing` cru: o símbolo entra no arquivo uma vez, e o mesmo
+        # QR repetido no corpo vira referência em vez de bytes novos.
+        return VetorReferenciado(self._vetor(bloco))
+
+    def _vetor(self, bloco: QrCode) -> VetorNomeado:
+        return qr_code_pdf(
+            QrCodePdfInput(
+                simbolo=gerar_qr_code(QrCodeInput(conteudo=bloco.conteudo)),
+                largura_mm=bloco.largura_mm,
+            )
+        )
+
+
 def montar_escritores(tema: Tema) -> dict[str, Callable[[Any], Flowable]]:
     # O registro é a única lista de tipos do módulo: bloco novo entra aqui e em lugar nenhum mais.
     return {
@@ -115,4 +145,5 @@ def montar_escritores(tema: Tema) -> dict[str, Callable[[Any], Flowable]]:
         "lista": EscritorLista(tema),
         "tabela": EscritorTabela(tema),
         "imagem": EscritorImagem(tema),
+        "qr_code": EscritorQrCode(),
     }

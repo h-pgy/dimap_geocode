@@ -3,12 +3,14 @@ from io import BytesIO
 import pytest
 from pydantic import ValidationError
 from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, Paragraph, Table
 from pypdf import PdfReader
 
 from services.domain.documento_oficial import (
     Lista,
     Paragrafo,
+    QrCode,
     Subtitulo,
     Tabela,
     TemaConfig,
@@ -22,6 +24,7 @@ from services.utils.pdf import (
     DocumentoPdfInput,
     Marcacao,
     MarcacaoDocumento,
+    VetorReferenciado,
     gerar_pdf,
 )
 
@@ -151,3 +154,21 @@ def test_texto_de_bloco_eh_escapado() -> None:
     # visíveis no papel em vez dos caracteres originais.
     assert "&amp;" not in texto
     assert "&lt;" not in texto
+
+
+# ---------------------------------------------------------------------------
+# Bloco de QR: vira o símbolo do conteúdo, na largura declarada, centralizado
+# ---------------------------------------------------------------------------
+
+
+def test_bloco_de_qr_vira_o_simbolo_do_conteudo() -> None:
+    tema = montar_tema(TemaConfig())
+    escritores = montar_escritores(tema)
+
+    flowable = escritores["qr_code"](
+        QrCode(conteudo="https://exemplo.sp.gov.br/verificar", largura_mm=30.0)
+    )
+
+    assert isinstance(flowable, VetorReferenciado)
+    assert flowable.hAlign == "CENTER"
+    assert flowable.width == pytest.approx(30.0 * mm)

@@ -6,6 +6,7 @@ from .models import (
     DocumentoAmostraInput,
     Lista,
     Paragrafo,
+    QrCode,
     Subtitulo,
     Tabela,
     Titulo,
@@ -28,6 +29,12 @@ TEXTO_CELULA_LONGO = (
     "Texto longo o bastante para quebrar dentro da própria célula, em vez de estourar a coluna ou "
     "sair cortado na borda da tabela."
 )
+
+
+def url_de_conferencia(ambiente: str) -> str:
+    """O que os DOIS QRs da amostra dizem — o do corpo e o do rodapé. Montar a URL nos dois pontos
+    de chamada deixaria a conferência passar com um deles apontando para outro lugar."""
+    return f"https://{ambiente}/documentos/amostra"
 
 
 class MontarDocumentoAmostra:
@@ -81,6 +88,7 @@ class MontarDocumentoAmostra:
                 linhas=self._linhas_tabela(pedido),
             ),
             Paragrafo(texto=PARAGRAFO_LONGO),
+            QrCode(conteudo=url_de_conferencia(pedido.ambiente), largura_mm=60.0),
         )
 
     def _linhas_tabela(self, pedido: DocumentoAmostraInput) -> tuple[tuple[str, ...], ...]:

@@ -25,6 +25,7 @@ Um documento é `ConteudoDocumento(titulo, nome_arquivo, blocos=(...))`. Cada bl
 | `Lista` | `ordenada` (bool), `itens` | um bloco por lista inteira, não por item — a numeração é a posição |
 | `Tabela` | `colunas`, `cabecalho` (opcional), `linhas` | ver §2 |
 | `Imagem` | `caminho` (já resolvido), `largura_mm` | SVG vetorial, nunca raster (fora de escopo da SPEC 003) |
+| `QrCode` | `conteudo`, `largura_mm` | o símbolo, não o desenho — ver §8 |
 
 Texto de bloco **nunca** vira marcação do reportlab: `escritores.py` escapa via `html.escape` antes
 de montar o `Paragraph`. Célula de tabela é escapada uma vez só, pelo motor da SPEC 002 — não
@@ -82,10 +83,11 @@ compõe as marcas de `marcas.py` na ordem em que se empilham — nunca edite o m
 outro papel.
 
 As marcas de `marcas.py`: `TimbreHorizontal`, `CabecalhoUnidade`, `RodapeEndereco`, `MarcaDagua`,
-`NumeracaoPaginas` e a composta `CabecalhoTimbrado` (timbre à esquerda, unidade à direita, na mesma
-faixa). Marcas na mesma `Posicao` **somam altura**: duas no topo empilham, e é por isso que o
-cabeçalho da SF é uma composta, não duas soltas. Toda `Marcacao` declara `margem_vertical_mm` — a
-borda que nem as marcas ocupam; sem ela o rodapé sai na aresta da folha e a impressora o corta.
+`NumeracaoPaginas`, `QrCodeRodape` e as compostas `CabecalhoTimbrado` (timbre à esquerda, unidade à
+direita) e `RodapeComQr` (texto empilhado à esquerda, QR à direita — ver §8). Marcas na mesma
+`Posicao` **somam altura**: duas no topo empilham, e é por isso que o cabeçalho da SF é uma
+composta, não duas soltas. Toda `Marcacao` declara `margem_vertical_mm` — a borda que nem as marcas
+ocupam; sem ela o rodapé sai na aresta da folha e a impressora o corta.
 
 `MarcacaoDocumento` (motor da SPEC 001) aceita:
 
@@ -143,7 +145,40 @@ O teste `test_amostra_para_conferencia` imprime o caminho do PDF gerado — abra
 `uv run python manage.py gerar_documento_amostra <caminho>` faz o mesmo fora da suíte de testes,
 gravando com os logotipos e o tema do ambiente atual (útil para provar um `.env` específico).
 
-## 8 · O que NÃO fazer
+## 8 · QR de verificação: bloco no corpo, marca no rodapé
+
+`services/utils/qr_code/` gera o símbolo (SVG em bytes) a partir de um `QrCodeInput(conteudo=...)`
+— sempre QR padrão (nunca Micro QR), com a zona de silêncio já contada em `modulos`.
+`services/utils/pdf/qr_code.py` (`qr_code_pdf`) especializa esse símbolo para o papel: recebe o
+`QrCodeSvg` e a largura pedida, e devolve o `VetorNomeado` que qualquer escritor/marca planta na
+página pelo mesmo caminho de imagem do motor (`carregar_vetor`, `folha.vetor`).
+
+O que recusa, e onde:
+
+- **Conteúdo vazio** — `QrCodeInput`/bloco `QrCode` recusam na construção (`min_length=1`).
+- **Conteúdo maior do que cabe** no maior símbolo — `gerar_qr_code` levanta `ValueError` dizendo o
+  tamanho, em vez de truncar.
+- **Largura que deixa o módulo abaixo de `MODULO_MINIMO_MM` (0,5 mm)** — `QrCodePdfInput` recusa na
+  construção, antes de qualquer render; símbolo pequeno demais sai bonito no PDF e só falha no
+  celular de quem confere.
+
+No corpo, o bloco `QrCode(conteudo, largura_mm)` entra no registro de `escritores.py`
+(`EscritorQrCode`) e sai como `VetorReferenciado` — centralizado, como qualquer outro bloco. No
+rodapé, `QrCodeRodape(conteudo, largura_mm)` é uma `Marca` que se encosta na borda DIREITA da
+faixa; `RodapeComQr(texto, qr_code, respiro_mm)` compõe o endereço e a paginação (agrupados por
+`MarcasEmpilhadas`, de `services.utils.pdf`) à esquerda da mesma faixa — o espelho do
+`CabecalhoTimbrado`. `marcacao_fazenda_dimap` recebe `qr_verificacao: str | None`: `None` mantém o
+pé de sempre (duas marcas soltas); uma URL troca o pé inteiro pelo `RodapeComQr`. Conferir com o
+celular: `uv run pytest -m artefato` grava a amostra com o QR no corpo e no rodapé — os dois
+dizem a MESMA URL, montada uma vez por `url_de_conferencia()` em `amostra.py`.
+
+O mesmo símbolo em posições/páginas diferentes é **um Form XObject só**: `VetorNomeado` carrega o
+desenho e o NOME que o identifica no arquivo (`services/utils/pdf/forma.py`), e `DesenharForma`
+escreve o form na primeira ocorrência e só referencia nas demais — mecanismo do motor, não do QR;
+`qr_code_pdf` só deriva o nome do hash do SVG + largura, para que conteúdos diferentes (ou larguras
+diferentes do mesmo conteúdo) nunca colidam no mesmo form.
+
+## 9 · O que NÃO fazer
 
 - ❌ Desenhar fora de um escritor — nenhum código monta `Paragraph`/`Table`/`Drawing` fora de
   `escritores.py` (ou do escritor de um bloco novo).
@@ -155,3 +190,7 @@ gravando com os logotipos e o tema do ambiente atual (útil para provar um `.env
   comando (`escrever_atomico`) ou responder é da view (`Content-Disposition`), nunca do domínio.
 - ❌ Editar `marcacoes_concretas/fazenda_dimap.py` para outro papel timbrado — módulo novo ao lado.
 - ❌ Repetir a validação de linha×coluna da tabela no bloco — ela já existe no motor da SPEC 002.
+- ❌ Guardar o SVG do QR pronto num bloco/marca — ele é DERIVADO do conteúdo a cada montagem
+  (§8); persistir o desenho duplicaria o mesmo dado em dois lugares.
+- ❌ Montar a URL de verificação em mais de um ponto de chamada — o bloco do corpo e a marca do
+  rodapé precisam dizer exatamente a mesma coisa (§8).

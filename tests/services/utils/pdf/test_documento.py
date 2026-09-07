@@ -13,6 +13,7 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph
 from services.utils.pdf.documento import DocumentoPdfInput, gerar_pdf
 from services.utils.pdf.documento_marcado import MarcacaoDocumento
 from services.utils.pdf.folha import Folha
+from services.utils.pdf.forma import VetorNomeado
 from services.utils.pdf.marcacao import Marca, Marcacao
 from services.utils.pdf.models import A4, EstiloTexto, Faixa, Orientacao, Posicao
 from services.utils.pdf.vetor import carregar_vetor
@@ -35,7 +36,7 @@ class _MarcaVetor(Marca):
 
     def __call__(self, faixa: Faixa, folha: Folha) -> None:
         desenho = carregar_vetor(self._caminho, largura_mm=faixa.largura_mm or 20.0)
-        folha.vetor(faixa.esquerda_mm, faixa.topo_mm, desenho, self._nome)
+        folha.vetor(faixa.esquerda_mm, faixa.topo_mm, VetorNomeado(desenho=desenho, nome=self._nome))
 
 
 class _MarcaNumeracao(Marca):

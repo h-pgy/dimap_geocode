@@ -95,3 +95,25 @@ class Marcacao:
 
     def _reservado(self, posicao: Posicao) -> float:
         return sum(marca.altura_mm for marca in self._marcas if marca.posicao is posicao)
+
+
+class MarcasEmpilhadas(Marca):
+    """Marcas uma sob a outra dentro de UMA faixa. Declaradas soltas na `Marcacao`, cada uma
+    reserva a sua e some a altura de todas; agrupadas, elas viram uma coluna que pode ficar ao lado
+    de outra coisa."""
+
+    def __init__(self, marcas: tuple[Marca, ...], posicao: Posicao) -> None:
+        self._marcas = marcas
+        # A posição é do GRUPO, não de classe: quem agrupa é que sabe se a coluna é do alto ou do pé,
+        # e as marcas agrupadas deixam de responder por si na `Marcacao`.
+        self.posicao = posicao
+        self.altura_mm = sum(marca.altura_mm for marca in marcas)
+
+    def __call__(self, faixa: Faixa, folha: Folha) -> None:
+        topo = faixa.topo_mm
+        for marca in self._marcas:
+            marca(self._faixa_da(faixa, topo, marca), folha)
+            topo += marca.altura_mm
+
+    def _faixa_da(self, faixa: Faixa, topo_mm: float, marca: Marca) -> Faixa:
+        return faixa.model_copy(update={"topo_mm": topo_mm, "altura_mm": marca.altura_mm})

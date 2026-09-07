@@ -19,6 +19,9 @@ class MarcacaoConfig(BaseModel):
     endereco: tuple[str, ...] = ENDERECO_PADRAO
     largura_timbre_mm: float = 58.0
     largura_marca_dagua_mm: float = 105.0
+    # 25 mm é o menor valor em que uma URL de verificação com correção QUARTIL ainda deixa cada
+    # módulo acima do mínimo de impressão (services/utils/pdf/qr_code.py).
+    largura_qr_rodape_mm: float = 25.0
     margem_lateral_mm: float = 25.0
     margem_vertical_mm: float = 15.0
     respiro_mm: float = 8.0

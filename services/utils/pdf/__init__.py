@@ -1,7 +1,8 @@
 from .documento import DocumentoPdf, DocumentoPdfInput, gerar_pdf
 from .documento_marcado import MarcacaoDocumento
 from .folha import Folha
-from .marcacao import Marca, Marcacao
+from .forma import DesenharForma, VetorNomeado, VetorReferenciado, desenhar_forma
+from .marcacao import Marca, Marcacao, MarcasEmpilhadas
 from .models import (
     A3,
     A4,
@@ -20,6 +21,7 @@ from .models import (
     TamanhoPagina,
 )
 from .numeracao import CanvasMarcado
+from .qr_code import MODULO_MINIMO_MM, QrCodePdf, QrCodePdfInput, qr_code_pdf
 from .tabela import (
     EstiloTabela,
     FundoDoCabecalho,
@@ -43,6 +45,7 @@ __all__ = [
     "ColunaFixa",
     "ColunaFluida",
     "ComandoTabela",
+    "DesenharForma",
     "DocumentoPdf",
     "DocumentoPdfInput",
     "EstiloTabela",
@@ -53,19 +56,27 @@ __all__ = [
     "FundoDoCabecalho",
     "Grade",
     "GradeDeLinhas",
+    "MODULO_MINIMO_MM",
     "Marca",
     "Marcacao",
     "MarcacaoDocumento",
     "Margens",
+    "MarcasEmpilhadas",
     "Orientacao",
     "Posicao",
+    "QrCodePdf",
+    "QrCodePdfInput",
     "RegraTabela",
     "Respiro",
     "TabelaInput",
     "TabelaPdf",
     "TamanhoPagina",
+    "VetorNomeado",
+    "VetorReferenciado",
     "ZebraDoCorpo",
     "carregar_vetor",
+    "desenhar_forma",
     "gerar_pdf",
+    "qr_code_pdf",
     "tabela_pdf",
 ]

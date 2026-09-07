@@ -1,4 +1,4 @@
-from .amostra import MontarDocumentoAmostra, montar_documento_amostra
+from .amostra import MontarDocumentoAmostra, montar_documento_amostra, url_de_conferencia
 from .config import DocumentoSettingsLike, build_marcacao_config, build_tema_config
 from .escritores import montar_escritores
 from .estilos import MontarTema, montar_tema
@@ -8,6 +8,8 @@ from .marcas import (
     CabecalhoUnidade,
     MarcaDagua,
     NumeracaoPaginas,
+    QrCodeRodape,
+    RodapeComQr,
     RodapeEndereco,
     TimbreHorizontal,
 )
@@ -25,6 +27,7 @@ from .models import (
     MarcacaoConfig,
     PaletaDocumento,
     Paragrafo,
+    QrCode,
     RenderizarDocumentoInput,
     Subtitulo,
     Tabela,
@@ -56,8 +59,11 @@ __all__ = [
     "NumeracaoPaginas",
     "PaletaDocumento",
     "Paragrafo",
+    "QrCode",
+    "QrCodeRodape",
     "RenderizarDocumentoInput",
     "RenderizarDocumentoOficial",
+    "RodapeComQr",
     "RodapeEndereco",
     "Subtitulo",
     "Tabela",
@@ -72,4 +78,5 @@ __all__ = [
     "montar_documento_amostra",
     "montar_escritores",
     "montar_tema",
+    "url_de_conferencia",
 ]

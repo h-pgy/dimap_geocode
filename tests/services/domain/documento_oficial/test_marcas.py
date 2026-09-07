@@ -10,12 +10,15 @@ from services.domain.documento_oficial import (
     CabecalhoTimbrado,
     CabecalhoUnidade,
     MarcacaoConfig,
+    NumeracaoPaginas,
+    QrCodeRodape,
+    RodapeComQr,
     RodapeEndereco,
     TemaConfig,
     TimbreHorizontal,
     montar_tema,
 )
-from services.utils.pdf import A4, Faixa, Folha, Orientacao
+from services.utils.pdf import A4, Faixa, Folha, MarcasEmpilhadas, Orientacao, Posicao
 
 SVG_RETANGULO = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10" viewBox="0 0 20 10">
 <rect x="0" y="0" width="20" height="10" fill="#336633" />
@@ -126,3 +129,59 @@ def test_cabecalho_poe_a_unidade_ao_lado_do_timbre(tmp_path: Path) -> None:
     # A unidade não passa da margem direita que a faixa do cabeçalho já respeita.
     borda_direita = faixa_unidade.esquerda_mm + faixa_unidade.largura_mm
     assert borda_direita == faixa.esquerda_mm + faixa.largura_mm
+
+
+# ---------------------------------------------------------------------------
+# Rodapé com QR: texto empilhado à esquerda, símbolo encostado na direita
+# ---------------------------------------------------------------------------
+
+
+class _QrCodeEspiado(QrCodeRodape):
+    """Registra a faixa recebida, como `_UnidadeEspiada` acima."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        self.faixas_recebidas: list[Faixa] = []
+
+    def __call__(self, faixa: Faixa, folha: Folha) -> None:
+        self.faixas_recebidas.append(faixa)
+        super().__call__(faixa, folha)
+
+
+def test_rodape_empilha_texto_a_esquerda_e_encosta_o_qr_na_direita() -> None:
+    tema = montar_tema(TemaConfig())
+    texto = MarcasEmpilhadas(
+        (
+            RodapeEndereco(ENDERECO_PADRAO, tema.estilo_rodape_marca, tema.entrelinha_marca_mm),
+            NumeracaoPaginas(tema.estilo_rodape_marca, tema.entrelinha_marca_mm),
+        ),
+        Posicao.INFERIOR,
+    )
+    qr = _QrCodeEspiado("https://exemplo.sp.gov.br/verificar", largura_mm=25.0)
+    rodape = RodapeComQr(texto, qr, respiro_mm=8.0)
+
+    # A faixa reservada é a do símbolo — maior que as duas linhas de texto empilhadas — e não
+    # a soma das três marcas, que comeria a página.
+    assert rodape.altura_mm == max(texto.altura_mm, qr.altura_mm)
+    assert rodape.altura_mm < texto.altura_mm + qr.altura_mm
+
+    tamanho = A4.orientar(Orientacao.RETRATO)
+    faixa = Faixa(
+        esquerda_mm=25.0,
+        topo_mm=270.0,
+        largura_mm=tamanho.largura_mm - 50.0,
+        altura_mm=rodape.altura_mm,
+    )
+    buffer = BytesIO()
+    canvas = Canvas(buffer)
+    folha = Folha(canvas, tamanho, pagina=1, total=1)
+    rodape(faixa, folha)
+    canvas.showPage()
+    canvas.save()
+
+    # O QR recebe a faixa INTEIRA — é ele quem se encosta na borda direita dela.
+    assert qr.faixas_recebidas == [faixa]
+
+    texto_pagina = PdfReader(BytesIO(buffer.getvalue())).pages[0].extract_text()
+    assert ENDERECO_PADRAO[0] in texto_pagina
+    assert "Página 1 de 1" in texto_pagina

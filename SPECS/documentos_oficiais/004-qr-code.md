@@ -1,13 +1,14 @@
 ---
 spec: documentos_oficiais/004
-versao: v2
+versao: v3
 atualizado_em: 2026-09-07
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [artefato]
 changelog:
   - v1: versão inicial
   - v2: o símbolo é escrito uma vez e referenciado, e ganha o escritor de rodapé ao lado do de corpo
+  - v3: o QR do corpo da amostra dobra de largura (30 mm → 60 mm), para mais destaque na página
 ---
 
 # SPEC documentos_oficiais/004 — QR Code: conteúdo que vira símbolo vetorial no papel
@@ -31,7 +32,9 @@ declarado.
       diferentes da mesma página e em toda página do documento.
 - [ ] O QR entra no corpo como **bloco**, centralizado como um parágrafo, declarando o conteúdo e a
       largura em milímetros — nenhum documento desenha símbolo por conta própria.
-- [ ] O QR entra no rodapé como **marca**, alinhado à direita da faixa do endereço, em toda página.
+- [ ] O QR entra no rodapé como **marca**, na MESMA faixa do endereço e da paginação — os dois
+      empilhados à esquerda, o símbolo à direita —, em toda página; o documento que **não** declara
+      verificação mantém o pé, e a margem inferior, que já tem.
 - [ ] O documento de amostra traz o QR no corpo e no rodapé, e `uv run pytest -m artefato` grava o PDF
       e imprime o caminho para a leitura com o celular.
 - [ ] A skill `documento-oficial` descreve o bloco e a marca de QR: o que carregam, o que os recusa e
@@ -134,7 +137,8 @@ class MarcacaoConfig(BaseModel):
 ## 5 · Peças de referência a compor
 - `@services/utils/pdf/tabela/escritor.py` → `TabelaPdf`: a forma de um escritor do motor — callable,
   DTO de entrada, flowable de saída.
-- `@services/domain/documento_oficial/marcas.py` → `RodapeEndereco`: as linhas de endereço no pé.
+- `@services/domain/documento_oficial/marcas.py` → `RodapeEndereco`, `NumeracaoPaginas`: o texto que
+  hoje ocupa o pé, e que passa a ser a coluna esquerda dele.
 - `@services/domain/documento_oficial/marcas.py` → `CabecalhoTimbrado`: duas marcas lado a lado na
   mesma faixa, em vez de empilhadas.
 - `@services/domain/documento_oficial/models/tema.py` → `Tema`: os estilos já resolvidos do documento.
@@ -288,6 +292,32 @@ class VetorReferenciado(Flowable):
 desenhar_forma = DesenharForma()
 ```
 
+**`services/utils/pdf/marcacao.py`** — a peça que faltava para compor um pé de duas colunas: marcas
+que hoje reservam faixas separadas passam a caber numa faixa só. Empilhar é do motor; QUEM se empilha
+é do papel timbrado.
+```python
+class MarcasEmpilhadas(Marca):
+    """Marcas uma sob a outra dentro de UMA faixa. Declaradas soltas na `Marcacao`, cada uma
+    reserva a sua e some a altura de todas; agrupadas, elas viram uma coluna que pode ficar ao lado
+    de outra coisa."""
+
+    def __init__(self, marcas: tuple[Marca, ...], posicao: Posicao) -> None:
+        self._marcas = marcas
+        # A posição é do GRUPO, não de classe: quem agrupa é que sabe se a coluna é do alto ou do pé,
+        # e as marcas agrupadas deixam de responder por si na `Marcacao`.
+        self.posicao = posicao
+        self.altura_mm = sum(marca.altura_mm for marca in marcas)
+
+    def __call__(self, faixa: Faixa, folha: Folha) -> None:
+        topo = faixa.topo_mm
+        for marca in self._marcas:
+            marca(self._faixa_da(faixa, topo, marca), folha)
+            topo += marca.altura_mm
+
+    def _faixa_da(self, faixa: Faixa, topo_mm: float, marca: Marca) -> Faixa:
+        return faixa.model_copy(update={"topo_mm": topo_mm, "altura_mm": marca.altura_mm})
+```
+
 **`services/utils/pdf/folha.py`** — o método inteiro, alterado: a `Folha` deixa de conhecer a mecânica
 do form e passa a só converter milímetro em ponto.
 ```python
@@ -384,6 +414,7 @@ qr_code_pdf = QrCodePdf()
 e com o carregador de vetor.
 ```python
 from .forma import DesenharForma, VetorNomeado, VetorReferenciado, desenhar_forma
+from .marcacao import MarcasEmpilhadas
 from .qr_code import MODULO_MINIMO_MM, QrCodePdf, QrCodePdfInput, qr_code_pdf
 ```
 
@@ -489,19 +520,27 @@ class QrCodeRodape(Marca):
 
 
 class RodapeComQr(Marca):
-    """Endereço à esquerda, QR à direita, na MESMA faixa — o espelho do `CabecalhoTimbrado`.
-    Empilhadas, as duas marcas somariam a altura de cada uma e o pé comeria a página."""
+    """O texto do pé à esquerda, o QR à direita, na MESMA faixa — o espelho do `CabecalhoTimbrado`.
+    Soltas, endereço, paginação e símbolo somariam as três alturas e o pé comeria a página."""
 
     posicao = Posicao.INFERIOR
 
-    def __init__(self, endereco: RodapeEndereco, qr_code: QrCodeRodape) -> None:
-        self._endereco = endereco
+    def __init__(self, texto: Marca, qr_code: QrCodeRodape, respiro_mm: float) -> None:
+        self._texto = texto
         self._qr_code = qr_code
-        self.altura_mm = max(endereco.altura_mm, qr_code.altura_mm)
+        # O que sobra para o texto depois do símbolo e do respiro entre os dois.
+        self._largura_do_qr_mm = qr_code.largura_mm + respiro_mm
+        self.altura_mm = max(texto.altura_mm, qr_code.altura_mm)
 
     def __call__(self, faixa: Faixa, folha: Folha) -> None:
-        self._endereco(faixa, folha)
+        self._texto(self._faixa_do_texto(faixa), folha)
+        # A faixa INTEIRA para o QR: é ele quem se encosta na direita dela.
         self._qr_code(faixa, folha)
+
+    def _faixa_do_texto(self, faixa: Faixa) -> Faixa:
+        return faixa.model_copy(
+            update={"largura_mm": faixa.largura_mm - self._largura_do_qr_mm}
+        )
 ```
 
 **`services/domain/documento_oficial/marcacoes_concretas/fazenda_dimap.py`** — o papel timbrado passa a
@@ -517,21 +556,30 @@ def marcacao_fazenda_dimap(
             marcas=(
                 CabecalhoTimbrado(...),
                 MarcaDagua(config.logo_vertical, config.largura_marca_dagua_mm),
-                _rodape(config, tema, qr_verificacao),
-                NumeracaoPaginas(tema.estilo_rodape_marca, tema.entrelinha_marca_mm),
+                *_rodape(config, tema, qr_verificacao),
             ),
             ...
         )
     )
 
 
-def _rodape(config: MarcacaoConfig, tema: Tema, qr_verificacao: str | None) -> Marca:
+def _rodape(config: MarcacaoConfig, tema: Tema, qr_verificacao: str | None) -> tuple[Marca, ...]:
     # `None` é o documento SEM verificação, e não um QR vazio: a maioria dos atos não tem código a
-    # conferir, e um símbolo em branco no pé seria pior que símbolo nenhum.
-    endereco = RodapeEndereco(config.endereco, tema.estilo_rodape_marca, tema.entrelinha_marca_mm)
+    # conferir, e um símbolo em branco no pé seria pior que símbolo nenhum. Sem ele o pé é o de
+    # sempre — duas marcas soltas, cada uma na sua faixa.
+    texto = (
+        RodapeEndereco(config.endereco, tema.estilo_rodape_marca, tema.entrelinha_marca_mm),
+        NumeracaoPaginas(tema.estilo_rodape_marca, tema.entrelinha_marca_mm),
+    )
     if qr_verificacao is None:
-        return endereco
-    return RodapeComQr(endereco, QrCodeRodape(qr_verificacao, config.largura_qr_rodape_mm))
+        return texto
+    return (
+        RodapeComQr(
+            MarcasEmpilhadas(texto, Posicao.INFERIOR),
+            QrCodeRodape(qr_verificacao, config.largura_qr_rodape_mm),
+            config.respiro_mm,
+        ),
+    )
 ```
 
 **`services/domain/documento_oficial/amostra.py`** — o endereço que a conferência com o celular tem
@@ -546,7 +594,7 @@ def url_de_conferencia(ambiente: str) -> str:
     def _blocos(self, pedido: DocumentoAmostraInput) -> tuple[Bloco, ...]:
         return (
             # ... os que já existem
-            QrCode(conteudo=url_de_conferencia(pedido.ambiente), largura_mm=30.0),
+            QrCode(conteudo=url_de_conferencia(pedido.ambiente), largura_mm=60.0),
         )
 ```
 
@@ -601,9 +649,10 @@ físico de impressão e leitura, não escolha visual do documento. O custo é qu
 tolerem menos exigem mexer no código, e nada avisa quem imprime em condição pior que a prevista.
 
 O QR do rodapé reserva a própria altura na faixa, e uma URL de verificação com correção QUARTIL sai em
-45 módulos — 25 mm no mínimo legível. Reservar é o que impede o corpo de passar por cima dele, como a
-marca d'água faz. O custo é cerca de 14 mm a mais de margem inferior em todo documento que traga o
-símbolo no pé, e um símbolo que só é "pequeno" perto da página.
+45 módulos — 25 mm no mínimo legível, contra os 14 mm que endereço e paginação ocupam ao lado dele.
+Reservar é o que impede o corpo de passar por cima do símbolo, como a marca d'água faz. O custo é
+cerca de 11 mm a mais de margem inferior em todo documento que traga o símbolo no pé, e um símbolo que
+só é "pequeno" perto da página.
 
 `marcacao_fazenda_dimap` ganha um parâmetro opcional e o papel timbrado passa a saber que existe QR de
 verificação. Papel timbrado é a composição das marcas do documento, e o pé com símbolo é uma delas. O
@@ -628,7 +677,8 @@ custo é que emitir um documento com verificação exige a orquestração passar
   mesma página declaram dois forms, e o mesmo conteúdo em larguras diferentes também.
 - `test_bloco_de_qr_vira_o_simbolo_do_conteudo` — o bloco chega pelo registro de escritores e sai o
   flowable do símbolo na largura declarada, centralizado no corpo.
-- `test_qr_do_rodape_pinta_a_direita_da_faixa` — a marca desenha encostada na borda direita da faixa
-  recebida, e a faixa do pé passa a ter a altura do símbolo, não a das linhas de endereço.
+- `test_rodape_empilha_texto_a_esquerda_e_encosta_o_qr_na_direita` — endereço e paginação saem um sob
+  o outro à esquerda e o símbolo encostado na borda direita, tudo na MESMA faixa, cuja altura é a do
+  símbolo — e não a soma das três marcas.
 - `test_amostra_com_qr_no_corpo_e_no_rodape` — grava a amostra com os dois símbolos e imprime o
   caminho, para a leitura com o celular. *(marker `artefato`)*
