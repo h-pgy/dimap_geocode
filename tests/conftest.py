@@ -6,6 +6,7 @@ import pytest
 from services.domain.contribuinte_match import ContribuinteCatalog
 from services.domain.logradouros_match import LogradouroCatalog
 from services.utils.io import config as io_config
+from tests.abrir_artefato import abrir_artefato
 
 
 @pytest.fixture(autouse=True)
@@ -40,8 +41,9 @@ def publicar_artefato(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> Callable[[str, bytes], Path]:
-    """Grava o artefato onde ele sobreviva à sessão (fora do repositório) e imprime onde
-    está — o produto de um teste `artefato` é o arquivo, não uma asserção."""
+    """Grava o artefato onde ele sobreviva à sessão, imprime onde ele está e tenta abri-lo no
+    visualizador padrão do SO — o produto de um teste `artefato` é o arquivo, não uma
+    asserção; a abertura é conveniência best-effort e nunca falha o teste."""
 
     def publicar(nome: str, conteudo: bytes) -> Path:
         destino = tmp_path / nome
@@ -51,6 +53,7 @@ def publicar_artefato(
         estavel = tmp_path.parent.parent / "pytest-current" / tmp_path.name / nome
         with capsys.disabled():
             print(f"\n  {nome} → {estavel}")
+        abrir_artefato(estavel)
         return destino
 
     return publicar

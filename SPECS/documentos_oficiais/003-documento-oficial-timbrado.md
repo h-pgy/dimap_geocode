@@ -1,6 +1,6 @@
 ---
 spec: documentos_oficiais/003
-versao: v5
+versao: v6
 atualizado_em: 2026-09-07
 testes_tdd: true
 implementado: true
@@ -16,6 +16,9 @@ changelog:
     `artefato` + `--all` + `publicar_artefato`, a skill `documento-oficial` e os 10 testes do §8; o
     `RenderizarDocumentoOficial` ganhou um parâmetro `escritores` opcional (fora do snippet) para o
     teste de bloco sem escritor injetar um registro incompleto; `sec_fazenda_vertical.svg` esmaecido
+  - v6: `publicar_artefato` também abre o artefato no visualizador padrão do SO ao gravar —
+    conveniência de conferência local, não parte do produto do teste; a lógica de abertura mora
+    em `tests/abrir_artefato.py`, submódulo à parte, não no corpo do `conftest.py`
 ---
 
 # SPEC documentos_oficiais/003 — Documento oficial como blocos e o papel timbrado da Fazenda
@@ -926,13 +929,34 @@ markers = [
 ]
 ```
 
+**`tests/abrir_artefato.py`** — submódulo à parte, e não corpo do `conftest.py`: é a única peça que
+sabe abrir um arquivo no visualizador padrão do SO, e o `conftest.py` só a importa. Um comando por SO,
+guardado como string literal no módulo; se o executável não existir ou o comando estourar o timeout,
+vira **warning**, nunca falha do teste.
+```python
+COMANDO_ABRIR_ARTEFATO_POR_SO: dict[str, str] = {
+    "Linux": "xdg-open {caminho}",
+    "Darwin": "open {caminho}",
+    "Windows": 'cmd /c start "" {caminho}',
+}
+# Alguns visualizadores só devolvem o controle do processo quando fecham; o timeout é o que
+# impede a suíte de travar esperando alguém fechar o artefato na tela.
+TIMEOUT_ABRIR_ARTEFATO_S = 2.0
+
+
+def abrir_artefato(caminho: Path) -> None:
+    """Tenta abrir o artefato no visualizador padrão do SO — best-effort, nunca condição do
+    teste."""
+```
+
 **`tests/conftest.py`** — a fixture e a flag são **infraestrutura de suíte**, não desta SPEC: nascem
 aqui porque este é o primeiro serviço que gera arquivo para olho humano, e servem o snapshot do mapa e
 a exportação que vierem depois. O contrato completo está na skill `escrever-testes` (§3.6 e §4.2).
 ```python
 @pytest.fixture
 def publicar_artefato(tmp_path, capsys) -> Callable[[str, bytes], Path]:
-    """Grava o artefato onde ele sobreviva à sessão e imprime onde ele está."""
+    """Grava o artefato onde ele sobreviva à sessão, imprime onde ele está e chama
+    `abrir_artefato`."""
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
