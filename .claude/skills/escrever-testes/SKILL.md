@@ -1,6 +1,6 @@
 ---
 name: escrever-testes
-description: "Padrões, convenções de estilo e infraestrutura da suíte de testes automatizados (pytest/TDD) do DIMAP GeoCoder. Use SEMPRE que for escrever testes unitários ou integrados em tests/, criar builders/fixtures ou configurar markers (integration, banco). Complementar à skill test-django-views."
+description: "Padrões, convenções de estilo e infraestrutura da suíte de testes automatizados (pytest/TDD) do DIMAP GeoCoder. Use SEMPRE que for escrever testes unitários ou integrados em tests/, criar builders/fixtures ou configurar markers (integration, banco, artefato). Complementar à skill test-django-views."
 ---
 
 # Padrões da suíte de testes — `pytest` e TDD
@@ -71,6 +71,8 @@ O `addopts` no `pyproject.toml` exclui markers pesados da execução padrão par
 | **Unitários** | `uv run pytest` | Domínio puro, validações, fakes em memória | Nenhum (sem I/O real, sem banco) |
 | **Integração** | `uv run pytest -m integration` | Leitura de dados reais (`data/*.parquet`, WFS) | Parquets presentes em `data/` |
 | **Banco** | `uv run pytest -m banco` | Persistência com PostGIS / ORM Django | Banco PostGIS de pé (`docker compose`) |
+| **Artefato** | `uv run pytest -m artefato` | Geração de arquivo para conferência humana (PDF, PNG, CSV) | Nenhum |
+| **Tudo** | `uv run pytest --all` | Todas as camadas acima de uma vez | Os pré-requisitos de cada uma |
 
 ### 3.1 Testes unitários rápidos (sem marker)
 - Testes de lógica pura, validações Pydantic, roteadores e matchers com dados sintéticos **não recebem marker**.
@@ -104,6 +106,29 @@ def test_persistencia_cargo() -> None:
     assert cargo.pk is not None
 ```
 
+### 3.5 Marker `artefato` — o teste cujo produto é um arquivo
+- Alguns serviços produzem **arquivo para olho humano**: o PDF de um documento oficial, o PNG de um snapshot do mapa, um CSV de exportação. Nenhuma asserção prova que o desenho saiu certo — quem aprova é quem abre.
+- Esses testes recebem `@pytest.mark.artefato`, gravam pela fixture `publicar_artefato` (§4.2) e **imprimem o caminho**. A asserção que resta é mínima (o arquivo existe e não está vazio); o julgamento é humano.
+- Ficam fora da suíte padrão porque **teste que depende de humano não pode reprovar build de ninguém**.
+- A SPEC que introduz um deles declara `markers_obrigatorios: [artefato]` no front-matter: a conferência visual passa a fazer parte do gate de `implementado: true`.
+
+### 3.6 Rodar a suíte inteira: a flag `--all`
+- **Marker não resolve isto:** `-m all` só pegaria testes decorados com `@pytest.mark.all`, e obrigaria a marcar todos, um a um. O que se quer é desligar o filtro.
+- A flag `--all`, declarada em `tests/conftest.py`, zera o `-m` herdado do `addopts`:
+
+```python
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption("--all", action="store_true", help="Roda a suíte inteira, markers inclusive.")
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    # O `-m` do addopts é o que exclui as camadas pesadas; --all simplesmente o esvazia.
+    if config.getoption("--all"):
+        config.option.markexpr = ""
+```
+
+- `-m <marker>` explícito continua sendo o caminho para rodar **uma** camada isolada.
+
 ### 3.4 Extensibilidade de markers
 - A lista de markers (`integration`, `banco`) não é fechada. Novos markers podem ser introduzidos durante o desenvolvimento se houver uma nova categoria de teste com requisitos específicos de ambiente ou custo de execução.
 - **Regra obrigatória:** qualquer novo marker **deve ser registrado em `pyproject.toml` e explicitamente excluído de `addopts`** (`addopts = "-m 'not integration and not banco and not novo_marker'"`), assegurando que a execução padrão continue pura e rápida.
@@ -112,11 +137,12 @@ def test_persistencia_cargo() -> None:
 
 ## 4. Infraestrutura, `tests/conftest.py` global e isolamento de persistência
 
-O arquivo `tests/conftest.py` na raiz é reservado **exclusivamente para fixtures de infraestrutura com `autouse=True`** aplicáveis a toda a suíte.
+O arquivo `tests/conftest.py` na raiz é reservado a **fixtures de infraestrutura da suíte** — isolamento de I/O, reset de singletons, publicação de artefato — e aos hooks de linha de comando (§3.6). A maioria é `autouse=True`; a exceção é a fixture **pedida por nome**, quando só alguns testes precisam dela (`publicar_artefato`). O que **nunca** entra aqui é domínio: builder, dado de negócio ou fixture de model (§4.3).
 
 ### 4.1 Isolamento estrito de disco e banco (sem efeitos colaterais)
 Nenhum teste pode gerar efeitos colaterais persistentes no ambiente local ou no repositório:
 - **Disco (I/O estritamente temporário):** É terminantemente proibido salvar arquivos na árvore permanente do projeto (`data/`, `static/`, etc.). Qualquer escrita necessária (parquets sintéticos, seeds simuladas) deve usar **`tmp_path` do pytest** para ser destruída automaticamente no teardown pós-teste.
+- **Exceção do marker `artefato`:** o arquivo gerado por um teste de artefato **sobrevive à sessão de propósito** — apagá-lo no teardown impediria a conferência que é o produto do teste. Ele continua dentro de `tmp_path` (jamais na árvore do projeto), e o acúmulo é contido por `tmp_path_retention_count = 1` no `pyproject.toml`: cada execução apaga a **sessão anterior inteira**, preservando todos os artefatos da execução atual. A retenção conta *sessões*, não arquivos — PDF, PNG e CSV de testes diferentes convivem, porque cada teste ganha o seu próprio subdiretório.
 - **Integração read-only:** Testes `@pytest.mark.integration` leem os parquets reais de `data/` **apenas como leitura (read-only)** — nunca gravam nem alteram nada no diretório de dados oficial.
 - **Banco de testes isolado:** Testes de banco devem rodar no banco de testes do Django via `@pytest.mark.django_db`, com rollback/teardown garantido entre execuções.
 
@@ -126,6 +152,29 @@ Nenhum teste pode gerar efeitos colaterais persistentes no ambiente local ou no 
    - **Bypass automático:** se o teste contiver o marker `integration` (`request.node.get_closest_marker("integration")`), o diretório original `data/` é preservado para leitura.
 2. **`_resetar_catalogos_singleton` (`autouse=True`):**
    - Executa `LogradouroCatalog.resetar_instancia()` e `ContribuinteCatalog.resetar_instancia()` antes e depois de cada teste para evitar contaminação do cache TTL entre execuções.
+3. **`publicar_artefato` (opt-in, pedida por nome):**
+   - Grava `conteudo` como `nome` dentro do `tmp_path` do teste, imprime o **caminho estável** e devolve o `Path`.
+   - Serve a qualquer serviço que gere arquivo — um subdiretório por teste, então artefatos de testes distintos não se sobrescrevem.
+   - `capsys.disabled()` é obrigatório: o pytest engole o stdout de teste que passa, e aqui o caminho é o produto.
+
+```python
+@pytest.fixture
+def publicar_artefato(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> Callable[[str, bytes], Path]:
+    def publicar(nome: str, conteudo: bytes) -> Path:
+        destino = tmp_path / nome
+        destino.write_bytes(conteudo)
+        # `pytest-current` é o symlink que o pytest mantém para a última sessão: um caminho fixo,
+        # que dá para deixar aberto no leitor de PDF/imagem e só recarregar a cada execução.
+        estavel = tmp_path.parent.parent / "pytest-current" / tmp_path.name / nome
+        with capsys.disabled():
+            print(f"\n  {nome} → {estavel}")
+        return destino
+
+    return publicar
+```
 
 ### 4.3 Proibição no `conftest.py` global
 - **Nunca coloque builders, dados de domínio ou fixtures de modelos de negócio em `tests/conftest.py`**.
@@ -263,7 +312,9 @@ Consulte estes arquivos como modelo canônico ao escrever novos testes:
 - ❌ **Não agrupar testes em classes por padrão** (`class TestUsuario:`). Use funções soltas separadas por `# ---`.
 - ❌ **Não criar arquivos genéricos como `test_actions.py` ou `test_spec_005.py`**. Cada arquivo em `tests/` espelha um arquivo correspondente em `services/` ou `apps/`.
 - ❌ **Não nomear builders com termos genéricos** (`_make()`, `_impl()`, `_setup()`). Use sempre o nome da entidade (`_acao()`, `_perfil()`).
-- ❌ **Não poluir `tests/conftest.py` com builders ou regras de domínio**. Fixtures globais são apenas para isolamento de I/O e reset de singletons.
+- ❌ **Não poluir `tests/conftest.py` com builders ou regras de domínio**. Fixtures globais são apenas para isolamento de I/O, reset de singletons e publicação de artefato.
+- ❌ **Não apagar num `finally` o arquivo de um teste `@artefato`**. O produto desse teste é o arquivo; quem contém o acúmulo é o `tmp_path_retention_count`, não o teardown.
+- ❌ **Não pôr asserção de aparência num teste `@artefato`** (contagem de pixels, diff de bytes contra um esperado). Se o que se quer fixar é comportamento verificável, ele vira teste normal, sem marker.
 - ❌ **Não esquecer `@pytest.mark.django_db` em testes com `@banco`**. Sem o `django_db`, o pytest bloqueará chamadas ao ORM.
 - ❌ **Não rodar testes contra o banco de desenvolvimento/real nem deixar registros sem teardown**. Use sempre `@pytest.mark.django_db` para operar no banco de testes efêmero.
 - ❌ **Não salvar arquivos fora de `tmp_path`**. É estritamente vedado gravar dados na árvore permanente do projeto (`data/`, `static/`); parquets em `data/` são acessados por `@integration` apenas em modo read-only.
