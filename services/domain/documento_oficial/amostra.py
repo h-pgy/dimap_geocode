@@ -20,6 +20,15 @@ PARAGRAFO_LONGO = (
     "numeração de páginas presentes nas duas. "
 ) * 6
 
+# Linhas o bastante para a tabela não caber no que sobra da página: a amostra existe para provar a
+# quebra com cabeçalho repetido, e uma tabela de duas linhas nunca chega a quebrar.
+LINHAS_TABELA_AMOSTRA = 24
+
+TEXTO_CELULA_LONGO = (
+    "Texto longo o bastante para quebrar dentro da própria célula, em vez de estourar a coluna ou "
+    "sair cortado na borda da tabela."
+)
+
 
 class MontarDocumentoAmostra:
     """Callable: o pedido vira o que o documento vai dizer. Todos os tipos de bloco textual, de
@@ -69,13 +78,22 @@ class MontarDocumentoAmostra:
                     ColunaFluida(alinhamento=Alinhamento.DIREITA),
                 ),
                 cabecalho=("Campo", "Valor"),
-                linhas=(
-                    ("Ambiente", pedido.ambiente),
-                    ("Momento", f"{pedido.momento:%d/%m/%Y %H:%M:%S}"),
-                ),
+                linhas=self._linhas_tabela(pedido),
             ),
             Paragrafo(texto=PARAGRAFO_LONGO),
         )
+
+    def _linhas_tabela(self, pedido: DocumentoAmostraInput) -> tuple[tuple[str, ...], ...]:
+        identificacao = (
+            ("Ambiente", pedido.ambiente),
+            ("Momento", f"{pedido.momento:%d/%m/%Y %H:%M:%S}"),
+            ("Célula longa", TEXTO_CELULA_LONGO),
+        )
+        enchimento = tuple(
+            (f"Linha de amostra {numero}", f"Valor {numero}")
+            for numero in range(1, LINHAS_TABELA_AMOSTRA + 1)
+        )
+        return identificacao + enchimento
 
 
 montar_documento_amostra = MontarDocumentoAmostra()

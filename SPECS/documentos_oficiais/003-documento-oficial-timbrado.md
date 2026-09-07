@@ -1,6 +1,6 @@
 ---
 spec: documentos_oficiais/003
-versao: v6
+versao: v7
 atualizado_em: 2026-09-07
 testes_tdd: true
 implementado: true
@@ -19,6 +19,9 @@ changelog:
   - v6: `publicar_artefato` também abre o artefato no visualizador padrão do SO ao gravar —
     conveniência de conferência local, não parte do produto do teste; a lógica de abertura mora
     em `tests/abrir_artefato.py`, submódulo à parte, não no corpo do `conftest.py`
+  - v7: o cabeçalho vira UMA marca com o timbre à esquerda e a unidade à direita, o papel declara
+    `margem_vertical_mm` para o rodapé não sair na aresta da folha, e a marca d'água é reesmaecida
+    a 0,85 — a 0,93 ela não se via no papel
 ---
 
 # SPEC documentos_oficiais/003 — Documento oficial como blocos e o papel timbrado da Fazenda
@@ -39,14 +42,19 @@ administrativo emitir documento de verdade.
       marca escreve cor ou medida.
 - [ ] A tabela é declarada em **colunas e linhas de texto**, e a coluna só vira medida na página.
 - [ ] O papel timbrado da Secretaria da Fazenda traz, em **toda página**, timbre, cabeçalho da unidade,
-      marca d'água, numeração e rodapé de endereço — o corpo é lido por cima da marca d'água, sem perda
-      de contraste.
+      marca d'água, numeração e rodapé de endereço — o corpo é lido por cima da marca d'água, **que se
+      vê no papel**, sem perda de contraste.
+- [ ] No cabeçalho, o timbre fica **à esquerda e a unidade à sua direita**, na mesma faixa: empilhados,
+      os dois somariam altura e o cabeçalho comeria a página.
+- [ ] **Nada do papel timbrado encosta na aresta da folha** — o rodapé de endereço e a numeração caem
+      dentro da margem, ou a impressora os corta.
 - [ ] A marcação nasce com **unidade, endereço e logotipos padrão**, e cada um é substituível na
       construção — sem edição de código e sem que o domínio leia configuração.
-- [ ] `uv run python manage.py esmaecer_svg <caminho> --forca 0.93` clareia um SVG no lugar, **uma vez,
+- [ ] `uv run python manage.py esmaecer_svg <caminho> --forca 0.85` clareia um SVG no lugar, **uma vez,
       à mão**: o arquivo claro é comitado, e a emissão do documento carrega o SVG como está.
 - [ ] `uv run python manage.py gerar_documento_amostra <caminho>` grava um PDF de amostra com todos os
-      tipos de bloco e mais de uma página.
+      tipos de bloco e mais de uma página, e a **tabela dela atravessa a quebra** — é onde se confere o
+      cabeçalho repetido na continuação e a célula longa quebrando dentro da própria célula.
 - [ ] Teste que produz arquivo para conferência humana roda atrás do marker **`artefato`**, grava fora
       do repositório e **imprime o caminho**; `uv run pytest --all` roda a suíte inteira.
 - [ ] Existe a skill **`documento-oficial`**, e ela basta para escrever um documento novo sem ler o
@@ -186,6 +194,8 @@ class MarcacaoConfig(BaseModel):
     largura_timbre_mm: float = 58.0
     largura_marca_dagua_mm: float = 105.0
     margem_lateral_mm: float = 25.0
+    # A borda que nem as marcas ocupam: sem ela o rodapé sai na aresta da folha e não imprime.
+    margem_vertical_mm: float = 15.0
     respiro_mm: float = 8.0
 ```
 
@@ -335,8 +345,8 @@ from .tema import PaletaDocumento, Tema, TemaConfig, TipografiaDocumento
 - `@static/src/img/documento_oficial/sec_fazenda_horizontal.svg` → o logotipo do cabeçalho, vetorial,
   237,84 × 75,58 pt.
 - `@static/src/img/documento_oficial/sec_fazenda_vertical.svg` → o logotipo da marca d'água, vetorial,
-  168,16 × 144,41 pt. Está saturado no repositório: o `esmaecer_svg` roda **uma vez sobre ele**, e o
-  arquivo claro é o que se comita.
+  168,16 × 144,41 pt. Nasce saturado: o `esmaecer_svg` roda **uma vez sobre ele**, com `--forca 0.85`,
+  e o arquivo claro é o que se comita. Reclarear pede o original de volta — ver Caveats.
 - Skills: `ontologia`, `escrever-testes`, `management-commands`.
 
 ## 6 · Snippets
@@ -580,9 +590,11 @@ class TimbreHorizontal(Marca):
         # O Drawing é carregado UMA vez e reusado em toda página: o SVG tem centenas de traços, e
         # reabri-lo por página seria o custo desta marca multiplicado pelo tamanho do documento.
         self._desenho = carregar_vetor(caminho_svg, largura_mm)
-        # Altura MEDIDA do que a marca pinta, não constante escrita à mão: mudar a largura do
-        # timbre não pode deixar a moldura do corpo desatualizada (Caveats da SPEC 001).
+        # Medidas MEDIDAS do que a marca pinta, não constantes escritas à mão: mudar a largura do
+        # timbre não pode deixar a moldura do corpo desatualizada (Caveats da SPEC 001), nem o
+        # cabeçalho escrevendo a unidade por cima do logotipo.
         self.altura_mm = self._desenho.height / mm
+        self.largura_mm = self._desenho.width / mm
 
     def __call__(self, faixa: Faixa, folha: Folha) -> None:
         folha.vetor(faixa.esquerda_mm, faixa.topo_mm, self._desenho, nome="timbre")
@@ -619,6 +631,42 @@ class CabecalhoUnidade(LinhasDeTexto):
 
 class RodapeEndereco(LinhasDeTexto):
     posicao = Posicao.INFERIOR
+
+
+class CabecalhoTimbrado(Marca):
+    """Timbre à esquerda, unidade à direita, na MESMA faixa. Empilhadas na tupla da marcação, as
+    duas somariam altura e o cabeçalho comeria a página; lado a lado, a faixa é a do mais alto.
+
+    Marca composta, e não uma marca que desenha as duas coisas: o timbre e a unidade continuam
+    existindo sozinhos, e outro papel timbrado pode arranjá-los de outro jeito.
+    """
+
+    posicao = Posicao.SUPERIOR
+
+    def __init__(
+        self,
+        timbre: TimbreHorizontal,
+        unidade: CabecalhoUnidade,
+        respiro_mm: float,
+    ) -> None:
+        self._timbre = timbre
+        self._unidade = unidade
+        self._recuo_unidade_mm = timbre.largura_mm + respiro_mm
+        self.altura_mm = max(timbre.altura_mm, unidade.altura_mm)
+
+    def __call__(self, faixa: Faixa, folha: Folha) -> None:
+        self._timbre(faixa, folha)
+        self._unidade(self._faixa_da_unidade(faixa), folha)
+
+    def _faixa_da_unidade(self, faixa: Faixa) -> Faixa:
+        # A faixa recebida, encurtada pela esquerda: a unidade herda dela a margem direita, e nunca
+        # calcula posição na página — mesma regra das marcas simples.
+        return faixa.model_copy(
+            update={
+                "esquerda_mm": faixa.esquerda_mm + self._recuo_unidade_mm,
+                "largura_mm": faixa.largura_mm - self._recuo_unidade_mm,
+            }
+        )
 
 
 class MarcaDagua(Marca):
@@ -674,11 +722,14 @@ def marcacao_fazenda_dimap(config: MarcacaoConfig, tema: Tema) -> MarcacaoDocume
     return MarcacaoDocumento(
         principal=Marcacao(
             marcas=(
-                TimbreHorizontal(config.logo_horizontal, config.largura_timbre_mm),
-                CabecalhoUnidade(
-                    config.unidade,
-                    tema.estilo_cabecalho_marca,
-                    tema.entrelinha_marca_mm,
+                CabecalhoTimbrado(
+                    TimbreHorizontal(config.logo_horizontal, config.largura_timbre_mm),
+                    CabecalhoUnidade(
+                        config.unidade,
+                        tema.estilo_cabecalho_marca,
+                        tema.entrelinha_marca_mm,
+                    ),
+                    config.respiro_mm,
                 ),
                 MarcaDagua(config.logo_vertical, config.largura_marca_dagua_mm),
                 RodapeEndereco(
@@ -689,6 +740,7 @@ def marcacao_fazenda_dimap(config: MarcacaoConfig, tema: Tema) -> MarcacaoDocume
                 NumeracaoPaginas(tema.estilo_rodape_marca, tema.entrelinha_marca_mm),
             ),
             margem_lateral_mm=config.margem_lateral_mm,
+            margem_vertical_mm=config.margem_vertical_mm,
             respiro_mm=config.respiro_mm,
         )
     )
@@ -862,7 +914,8 @@ sistema ganha um módulo assim ao lado deste.
 class MontarDocumentoAmostra:
     """Callable: o pedido vira o que o documento vai dizer. Todos os tipos de bloco aparecem, os
     três níveis de subtítulo também, e o texto é longo o bastante para virar a página — é o que
-    prova a marcação repetida."""
+    prova a marcação repetida. A tabela leva linhas de enchimento e uma célula de texto longo pelo
+    mesmo motivo: tabela curta não quebra, e o cabeçalho repetido fica sem prova."""
 
     def __call__(self, pedido: DocumentoAmostraInput) -> ConteudoDocumento: ...
 
@@ -1034,6 +1087,12 @@ bytes e não toca em disco. Arquivo apagado num `finally` não pode ser aberto p
 produto deste teste é justamente o arquivo. O custo é lixo em disco — contido por
 `tmp_path_retention_count = 1`, que apaga a sessão anterior a cada execução, fora do repositório.
 
+O `esmaecer_svg` clareia **no lugar** e é destrutivo: clarear duas vezes ou acertar a força depois
+exige o SVG saturado de volta, e o único lugar onde ele existe é o histórico do git (`git show
+<commit>:<caminho>`). É o preço de não versionar dois arquivos por logotipo, um saturado e um claro,
+com nada garantindo que continuem sendo o mesmo desenho. O custo é que a força é escolhida sem ensaio
+barato — quem a mudar restaura o original antes.
+
 Os SVGs versionados são conversão dos EPS oficiais do manual de identidade visual da PMSP, feita uma
 vez fora do projeto (`gs` → PDF, `pdftocairo -svg`, corte na caixa do traço e precisão reduzida a duas
 casas). O EPS é formato proprietário e não entra no repositório. O custo é que atualizar o logotipo não
@@ -1058,10 +1117,14 @@ casas). O EPS é formato proprietário e não entra no repositório. O custo é 
 - `test_config_da_marcacao_tem_padrao_e_aceita_substituicao` — sem valores de ambiente, a unidade e o
   endereço saem os padrão; definidos no ambiente, são os do ambiente que aparecem no cabeçalho e no
   rodapé, e a faixa do cabeçalho cresce com o número de linhas.
+- `test_cabecalho_poe_a_unidade_ao_lado_do_timbre` — a faixa do cabeçalho é a do mais alto dos dois, e
+  não a soma; a unidade recebe a faixa recuada da largura do timbre mais o respiro, começando no mesmo
+  topo e terminando na mesma borda direita.
 - `test_papel_da_fazenda_traz_as_cinco_marcas_em_toda_pagina` — num documento de três páginas, timbre,
   cabeçalho, marca d'água, numeração e rodapé aparecem nas três, e a marca d'água precede o corpo no
   content stream de cada uma.
 - `test_comando_grava_a_amostra_no_caminho_pedido` — o comando grava um PDF não vazio no caminho
   passado e não escreve em mais lugar nenhum.
 - `test_amostra_para_conferencia` — grava a amostra num diretório temporário e imprime o caminho, para
-  a conferência visual do timbre, da marca d'água, da tabela e da numeração. *(marker `artefato`)*
+  a conferência visual do timbre lado a lado com a unidade, da marca d'água, da tabela atravessando a
+  quebra com o cabeçalho repetido, do rodapé dentro da margem e da numeração. *(marker `artefato`)*

@@ -1,7 +1,7 @@
 ---
 spec: documentos_oficiais/001
-versao: v3
-atualizado_em: 2026-09-06
+versao: v4
+atualizado_em: 2026-09-07
 testes_tdd: true
 implementado: true
 changelog:
@@ -9,6 +9,8 @@ changelog:
   - v2: esmaecer sai do caminho de geração e vira utilitário que clareia o SVG no lugar
   - v3: implementado — services/utils/pdf/ (folha, marcação, marcação de documento, numeração,
     esmaecer, vetor, documento) e os 11 testes do §8, seguindo os snippets do §6 à risca
+  - v4: a `Marcacao` ganha `margem_vertical_mm` — a borda do papel que nem as marcas ocupam, sem a
+    qual o rodapé saía na aresta da folha e não imprimia
 ---
 
 # SPEC documentos_oficiais/001 — Motor de PDF: folha em milímetros, marcação composta e bytes
@@ -24,6 +26,8 @@ coordenada de PDF nem veja o reportlab.
       trocar a marcação troca tudo que se repete sem mudança alguma no corpo.
 - [ ] Cada marca declara a **posição e a altura que reserva**, e a área útil do corpo é o que sobra
       depois de todas: nada do corpo invade a faixa de uma marca, e a marca de fundo não reserva área.
+- [ ] **Nem as marcas encostam na aresta do papel**: a marcação declara a margem que ninguém ocupa —
+      nem elas, nem o corpo —, e é dentro dela que a primeira marca superior e a última inferior caem.
 - [ ] A **marca de fundo é pintada sob o corpo**: o texto é lido por cima dela, sem perda de contraste.
 - [ ] Esmaecer é **preparação do ativo, e não etapa de geração**: um utilitário clareia o SVG **no
       lugar** — uniforme apesar dos traços sobrepostos —, e o motor só carrega o SVG comitado.
@@ -314,12 +318,17 @@ class Marcacao:
         self,
         marcas: tuple[Marca, ...],
         margem_lateral_mm: float,
+        margem_vertical_mm: float,
         respiro_mm: float,
         orientacao: Orientacao = Orientacao.RETRATO,
     ) -> None:
         self._marcas = marcas
         self.orientacao = orientacao
         self._margem_lateral_mm = margem_lateral_mm
+        # A borda que nem as marcas ocupam: impressora nenhuma imprime até o corte do papel, e sem
+        # esta reserva o rodapé sai na aresta da folha. Sem default: a marcação que a esquece é a
+        # que não imprime, e o valor certo é do papel timbrado, não do motor.
+        self._margem_vertical_mm = margem_vertical_mm
         # A distância entre a última marca e a primeira linha do corpo: sem ela o texto encosta.
         self._respiro_mm = respiro_mm
 
@@ -330,8 +339,12 @@ class Marcacao:
         return Margens(
             esquerda_mm=self._margem_lateral_mm,
             direita_mm=self._margem_lateral_mm,
-            superior_mm=self._reservado(Posicao.SUPERIOR) + self._respiro_mm,
-            inferior_mm=self._reservado(Posicao.INFERIOR) + self._respiro_mm,
+            superior_mm=self._margem_vertical_mm
+            + self._reservado(Posicao.SUPERIOR)
+            + self._respiro_mm,
+            inferior_mm=self._margem_vertical_mm
+            + self._reservado(Posicao.INFERIOR)
+            + self._respiro_mm,
         )
 
     def pintar_fundo(self, folha: Folha) -> None:
@@ -351,10 +364,11 @@ class Marcacao:
             marca(faixa, folha)
 
     def _faixas(self, tamanho: TamanhoPagina) -> Iterator[tuple[Marca, Faixa]]:
-        # As de cima descem do topo na ordem declarada; as de baixo sobem do pé. A marca recebe a
-        # faixa pronta e nunca calcula posição absoluta — é o que a mantém trocável e reordenável.
-        topo = 0.0
-        pe = tamanho.altura_mm
+        # As de cima descem do topo na ordem declarada; as de baixo sobem do pé — e o topo e o pé
+        # já são os da margem, não os do papel. A marca recebe a faixa pronta e nunca calcula
+        # posição absoluta: é o que a mantém trocável e reordenável.
+        topo = self._margem_vertical_mm
+        pe = tamanho.altura_mm - self._margem_vertical_mm
         largura = tamanho.largura_mm - 2 * self._margem_lateral_mm
         for marca in self._marcas:
             if marca.posicao is Posicao.SUPERIOR:
@@ -618,11 +632,13 @@ que nada recuse — o teste de faixa pega o caso conhecido, não todos.
 ## 8 · Testes (TDD)
 - `test_documento_sai_como_bytes_sem_tocar_o_disco` — o retorno começa com `%PDF` e nenhum arquivo é
   criado no diretório de trabalho durante a geração.
-- `test_marcacao_deriva_margens_da_soma_das_marcas` — a margem superior é a soma das alturas das marcas
-  de cima mais o respiro; acrescentar uma marca de borda aumenta a margem, e a de fundo não altera
+- `test_marcacao_deriva_margens_da_soma_das_marcas` — a margem superior é a margem vertical mais a
+  soma das alturas das marcas de cima mais o respiro; a inferior traz a margem vertical mesmo sem
+  marca inferior alguma; acrescentar uma marca de borda aumenta a margem, e a de fundo não altera
   margem nenhuma.
 - `test_cada_marca_recebe_a_faixa_dela_sem_sobrepor` — marcas na mesma posição recebem faixas
-  empilhadas na ordem declarada, e nenhuma faixa invade a outra.
+  empilhadas na ordem declarada, nenhuma faixa invade a outra, e nem a primeira de cima nem a última
+  de baixo encostam na aresta do papel.
 - `test_marca_de_fundo_fica_atras_do_corpo` — no content stream da página, o desenho da marca de fundo
   precede o texto do corpo.
 - `test_esmaecer_clareia_no_lugar_e_recusa_cor_que_nao_entende` — o SVG passa a ter toda cor acima do

@@ -67,8 +67,18 @@ def _svg(tmp_path: Path) -> Path:
     return caminho
 
 
-def _marcacao(*marcas: Marca, margem_lateral_mm: float = 20.0, respiro_mm: float = 5.0) -> Marcacao:
-    return Marcacao(marcas=marcas, margem_lateral_mm=margem_lateral_mm, respiro_mm=respiro_mm)
+def _marcacao(
+    *marcas: Marca,
+    margem_lateral_mm: float = 20.0,
+    margem_vertical_mm: float = 10.0,
+    respiro_mm: float = 5.0,
+) -> Marcacao:
+    return Marcacao(
+        marcas=marcas,
+        margem_lateral_mm=margem_lateral_mm,
+        margem_vertical_mm=margem_vertical_mm,
+        respiro_mm=respiro_mm,
+    )
 
 
 def _paragrafo(texto: str) -> Paragraph:

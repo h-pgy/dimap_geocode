@@ -25,12 +25,16 @@ class Marcacao:
         self,
         marcas: tuple[Marca, ...],
         margem_lateral_mm: float,
+        margem_vertical_mm: float,
         respiro_mm: float,
         orientacao: Orientacao = Orientacao.RETRATO,
     ) -> None:
         self._marcas = marcas
         self.orientacao = orientacao
         self._margem_lateral_mm = margem_lateral_mm
+        # A borda que nem as marcas ocupam: impressora nenhuma imprime até o corte do papel, e sem
+        # esta reserva o rodapé sai na aresta da folha.
+        self._margem_vertical_mm = margem_vertical_mm
         # A distância entre a última marca e a primeira linha do corpo: sem ela o texto encosta.
         self._respiro_mm = respiro_mm
 
@@ -41,8 +45,12 @@ class Marcacao:
         return Margens(
             esquerda_mm=self._margem_lateral_mm,
             direita_mm=self._margem_lateral_mm,
-            superior_mm=self._reservado(Posicao.SUPERIOR) + self._respiro_mm,
-            inferior_mm=self._reservado(Posicao.INFERIOR) + self._respiro_mm,
+            superior_mm=self._margem_vertical_mm
+            + self._reservado(Posicao.SUPERIOR)
+            + self._respiro_mm,
+            inferior_mm=self._margem_vertical_mm
+            + self._reservado(Posicao.INFERIOR)
+            + self._respiro_mm,
         )
 
     def pintar_fundo(self, folha: Folha) -> None:
@@ -64,8 +72,8 @@ class Marcacao:
     def _faixas(self, tamanho: TamanhoPagina) -> Iterator[tuple[Marca, Faixa]]:
         # As de cima descem do topo na ordem declarada; as de baixo sobem do pé. A marca recebe a
         # faixa pronta e nunca calcula posição absoluta — é o que a mantém trocável e reordenável.
-        topo = 0.0
-        pe = tamanho.altura_mm
+        topo = self._margem_vertical_mm
+        pe = tamanho.altura_mm - self._margem_vertical_mm
         largura = tamanho.largura_mm - 2 * self._margem_lateral_mm
         for marca in self._marcas:
             if marca.posicao is Posicao.SUPERIOR:

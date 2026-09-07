@@ -40,22 +40,26 @@ def test_marcacao_deriva_margens_da_soma_das_marcas() -> None:
     sem_borda_inferior = Marcacao(
         marcas=(superior_a, superior_b, fundo),
         margem_lateral_mm=15.0,
+        margem_vertical_mm=12.0,
         respiro_mm=3.0,
     )
     com_borda_inferior = Marcacao(
         marcas=(superior_a, superior_b, fundo, _marca(Posicao.INFERIOR, altura_mm=7.0)),
         margem_lateral_mm=15.0,
+        margem_vertical_mm=12.0,
         respiro_mm=3.0,
     )
 
     margens = sem_borda_inferior.margens(tamanho)
 
-    assert margens.superior_mm == 10.0 + 5.0 + 3.0
-    assert margens.inferior_mm == 3.0
+    # A margem vertical entra nas duas bordas mesmo onde não há marca alguma: é a borda que a
+    # impressora não alcança, e nem as marcas a ocupam.
+    assert margens.superior_mm == 12.0 + 10.0 + 5.0 + 3.0
+    assert margens.inferior_mm == 12.0 + 3.0
     assert margens.esquerda_mm == 15.0
     assert margens.direita_mm == 15.0
     # Acrescentar uma marca de borda aumenta a margem correspondente...
-    assert com_borda_inferior.margens(tamanho).inferior_mm == 7.0 + 3.0
+    assert com_borda_inferior.margens(tamanho).inferior_mm == 12.0 + 7.0 + 3.0
     # ...e a marca de fundo, presente nas duas, nunca altera margem nenhuma.
     assert com_borda_inferior.margens(tamanho).superior_mm == margens.superior_mm
 
@@ -69,7 +73,12 @@ def test_cada_marca_recebe_a_faixa_dela_sem_sobrepor() -> None:
     topo_1 = _marca(Posicao.SUPERIOR, altura_mm=10.0)
     topo_2 = _marca(Posicao.SUPERIOR, altura_mm=20.0)
     pe = _marca(Posicao.INFERIOR, altura_mm=5.0)
-    marcacao = Marcacao(marcas=(topo_1, topo_2, pe), margem_lateral_mm=10.0, respiro_mm=0.0)
+    marcacao = Marcacao(
+        marcas=(topo_1, topo_2, pe),
+        margem_lateral_mm=10.0,
+        margem_vertical_mm=12.0,
+        respiro_mm=0.0,
+    )
     tamanho = A4.orientar(Orientacao.RETRATO)
 
     marcacao.pintar_bordas(_folha(tamanho))
@@ -78,11 +87,12 @@ def test_cada_marca_recebe_a_faixa_dela_sem_sobrepor() -> None:
     faixa_2 = topo_2.faixas_recebidas[0]
     faixa_pe = pe.faixas_recebidas[0]
 
-    assert faixa_1.topo_mm == 0.0
+    # Nem a primeira marca superior nem a inferior encostam na aresta do papel.
+    assert faixa_1.topo_mm == 12.0
     assert faixa_1.altura_mm == 10.0
     # A segunda marca superior começa exatamente onde a primeira termina: sem gap, sem overlap.
     assert faixa_2.topo_mm == faixa_1.topo_mm + faixa_1.altura_mm
-    assert faixa_pe.topo_mm == tamanho.altura_mm - 5.0
+    assert faixa_pe.topo_mm == tamanho.altura_mm - 12.0 - 5.0
     assert faixa_pe.altura_mm == 5.0
     # Nenhuma faixa de borda invade a área lateral reservada.
     assert faixa_1.esquerda_mm == 10.0

@@ -14,9 +14,10 @@ class TimbreHorizontal(Marca):
         # O Drawing é carregado UMA vez e reusado em toda página: o SVG tem centenas de traços, e
         # reabri-lo por página seria o custo desta marca multiplicado pelo tamanho do documento.
         self._desenho = carregar_vetor(caminho_svg, largura_mm)
-        # Altura MEDIDA do que a marca pinta, não constante escrita à mão: mudar a largura do
-        # timbre não pode deixar a moldura do corpo desatualizada (Caveats da SPEC 001).
+        # Medidas do que a marca pinta, não constantes escritas à mão: mudar a largura do timbre
+        # não pode deixar a moldura do corpo desatualizada (Caveats da SPEC 001).
         self.altura_mm = self._desenho.height / mm
+        self.largura_mm = self._desenho.width / mm
 
     def __call__(self, faixa: Faixa, folha: Folha) -> None:
         folha.vetor(faixa.esquerda_mm, faixa.topo_mm, self._desenho, nome="timbre")
@@ -53,6 +54,36 @@ class CabecalhoUnidade(LinhasDeTexto):
 
 class RodapeEndereco(LinhasDeTexto):
     posicao = Posicao.INFERIOR
+
+
+class CabecalhoTimbrado(Marca):
+    """Timbre à esquerda, unidade à direita, na MESMA faixa. Empilhadas, as duas marcas somariam a
+    altura de cada uma e o cabeçalho comeria a página; lado a lado, a faixa é a do mais alto."""
+
+    posicao = Posicao.SUPERIOR
+
+    def __init__(
+        self,
+        timbre: TimbreHorizontal,
+        unidade: CabecalhoUnidade,
+        respiro_mm: float,
+    ) -> None:
+        self._timbre = timbre
+        self._unidade = unidade
+        self._recuo_unidade_mm = timbre.largura_mm + respiro_mm
+        self.altura_mm = max(timbre.altura_mm, unidade.altura_mm)
+
+    def __call__(self, faixa: Faixa, folha: Folha) -> None:
+        self._timbre(faixa, folha)
+        self._unidade(self._faixa_da_unidade(faixa), folha)
+
+    def _faixa_da_unidade(self, faixa: Faixa) -> Faixa:
+        return faixa.model_copy(
+            update={
+                "esquerda_mm": faixa.esquerda_mm + self._recuo_unidade_mm,
+                "largura_mm": faixa.largura_mm - self._recuo_unidade_mm,
+            }
+        )
 
 
 class MarcaDagua(Marca):

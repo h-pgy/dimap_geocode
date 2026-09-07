@@ -1,6 +1,13 @@
 from services.utils.pdf import Marcacao, MarcacaoDocumento
 
-from ..marcas import CabecalhoUnidade, MarcaDagua, NumeracaoPaginas, RodapeEndereco, TimbreHorizontal
+from ..marcas import (
+    CabecalhoTimbrado,
+    CabecalhoUnidade,
+    MarcaDagua,
+    NumeracaoPaginas,
+    RodapeEndereco,
+    TimbreHorizontal,
+)
 from ..models import MarcacaoConfig, Tema
 
 
@@ -12,11 +19,14 @@ def marcacao_fazenda_dimap(config: MarcacaoConfig, tema: Tema) -> MarcacaoDocume
     return MarcacaoDocumento(
         principal=Marcacao(
             marcas=(
-                TimbreHorizontal(config.logo_horizontal, config.largura_timbre_mm),
-                CabecalhoUnidade(
-                    config.unidade,
-                    tema.estilo_cabecalho_marca,
-                    tema.entrelinha_marca_mm,
+                CabecalhoTimbrado(
+                    TimbreHorizontal(config.logo_horizontal, config.largura_timbre_mm),
+                    CabecalhoUnidade(
+                        config.unidade,
+                        tema.estilo_cabecalho_marca,
+                        tema.entrelinha_marca_mm,
+                    ),
+                    config.respiro_mm,
                 ),
                 MarcaDagua(config.logo_vertical, config.largura_marca_dagua_mm),
                 RodapeEndereco(
@@ -27,6 +37,7 @@ def marcacao_fazenda_dimap(config: MarcacaoConfig, tema: Tema) -> MarcacaoDocume
                 NumeracaoPaginas(tema.estilo_rodape_marca, tema.entrelinha_marca_mm),
             ),
             margem_lateral_mm=config.margem_lateral_mm,
+            margem_vertical_mm=config.margem_vertical_mm,
             respiro_mm=config.respiro_mm,
         )
     )

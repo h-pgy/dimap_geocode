@@ -81,6 +81,12 @@ módulo, porque o tema vem do ambiente (§5). Montar tema e marcação é barato
 compõe as marcas de `marcas.py` na ordem em que se empilham — nunca edite o módulo existente para
 outro papel.
 
+As marcas de `marcas.py`: `TimbreHorizontal`, `CabecalhoUnidade`, `RodapeEndereco`, `MarcaDagua`,
+`NumeracaoPaginas` e a composta `CabecalhoTimbrado` (timbre à esquerda, unidade à direita, na mesma
+faixa). Marcas na mesma `Posicao` **somam altura**: duas no topo empilham, e é por isso que o
+cabeçalho da SF é uma composta, não duas soltas. Toda `Marcacao` declara `margem_vertical_mm` — a
+borda que nem as marcas ocupam; sem ela o rodapé sai na aresta da folha e a impressora o corta.
+
 `MarcacaoDocumento` (motor da SPEC 001) aceita:
 
 - `principal` — obrigatória, vale onde nenhuma outra reivindica a página;
@@ -112,11 +118,14 @@ processa. Antes de usar um SVG novo como marca d'água:
 1. **Pergunte ao usuário** onde está o SVG de origem e se ele **já foi esmaecido**.
 2. Se não foi, rode **uma única vez**, à mão:
    ```bash
-   uv run python manage.py esmaecer_svg <caminho/do/arquivo.svg> --forca 0.93
+   uv run python manage.py esmaecer_svg <caminho/do/arquivo.svg> --forca 0.85
    ```
    Isso reescreve o arquivo **no lugar**, clareando cada cor contra o branco do papel (nunca por
    opacidade — alpha composto mancha traço sobreposto). Confira o resultado antes de seguir
    (§7) e **comite o SVG claro** — é o que o repositório guarda.
+   Força acima de 0,90 some no papel: 0,85 é a que o `sec_fazenda_vertical.svg` usa. Como o
+   comando é destrutivo, **acertar a força depois exige o SVG saturado de volta** —
+   `git show <commit>:<caminho> > <caminho>` antes de reesmaecer, nunca clarear o já claro.
 3. `esmaecer_svg` nunca é chamado por código de emissão (comando, view, domínio). Se você se pegar
    chamando `esmaecer_svg`/`EsmaecerSvgInput` fora de `apps/core/management/commands/esmaecer_svg.py`,
    pare — a preparação do ativo é separada do caminho de geração de propósito (SPEC 001).

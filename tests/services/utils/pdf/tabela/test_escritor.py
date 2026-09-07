@@ -29,7 +29,14 @@ def _estilo_tabela() -> EstiloTabela:
 
 
 def _documento_com(corpo: tuple[Flowable, ...]) -> bytes:
-    marcacao = MarcacaoDocumento(principal=Marcacao(marcas=(), margem_lateral_mm=20.0, respiro_mm=5.0))
+    marcacao = MarcacaoDocumento(
+        principal=Marcacao(
+            marcas=(),
+            margem_lateral_mm=20.0,
+            margem_vertical_mm=10.0,
+            respiro_mm=5.0,
+        )
+    )
     return gerar_pdf(DocumentoPdfInput(titulo="Tabela de teste", corpo=corpo, marcacao=marcacao))
 
 

@@ -4,6 +4,7 @@ from .escritores import montar_escritores
 from .estilos import MontarTema, montar_tema
 from .marcacoes_concretas import marcacao_fazenda_dimap
 from .marcas import (
+    CabecalhoTimbrado,
     CabecalhoUnidade,
     MarcaDagua,
     NumeracaoPaginas,
@@ -40,6 +41,7 @@ __all__ = [
     "Bloco",
     "BlocoDocumento",
     "BlocoTextual",
+    "CabecalhoTimbrado",
     "CabecalhoUnidade",
     "ConteudoDocumento",
     "DocumentoAmostraInput",

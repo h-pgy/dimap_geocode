@@ -6,7 +6,13 @@ from services.utils.pdf.models import Orientacao
 
 
 def _marcacao(orientacao: Orientacao = Orientacao.RETRATO) -> Marcacao:
-    return Marcacao(marcas=(), margem_lateral_mm=10.0, respiro_mm=0.0, orientacao=orientacao)
+    return Marcacao(
+        marcas=(),
+        margem_lateral_mm=10.0,
+        margem_vertical_mm=0.0,
+        respiro_mm=0.0,
+        orientacao=orientacao,
+    )
 
 
 # ---------------------------------------------------------------------------

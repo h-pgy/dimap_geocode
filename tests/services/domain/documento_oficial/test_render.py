@@ -14,7 +14,12 @@ from services.utils.pdf import Marcacao, MarcacaoDocumento
 
 def _marcacao_vazia() -> MarcacaoDocumento:
     return MarcacaoDocumento(
-        principal=Marcacao(marcas=(), margem_lateral_mm=20.0, respiro_mm=5.0)
+        principal=Marcacao(
+            marcas=(),
+            margem_lateral_mm=20.0,
+            margem_vertical_mm=10.0,
+            respiro_mm=5.0,
+        )
     )
 
 

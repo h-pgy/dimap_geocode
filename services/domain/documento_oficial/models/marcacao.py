@@ -20,4 +20,5 @@ class MarcacaoConfig(BaseModel):
     largura_timbre_mm: float = 58.0
     largura_marca_dagua_mm: float = 105.0
     margem_lateral_mm: float = 25.0
+    margem_vertical_mm: float = 15.0
     respiro_mm: float = 8.0
