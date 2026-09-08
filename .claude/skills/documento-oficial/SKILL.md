@@ -1,6 +1,6 @@
 ---
 name: documento-oficial
-description: Como escrever um documento oficial do DIMAP GeoCoder — o vocabulário de blocos, a composição da marcação/papel timbrado e a conferência da amostra em services/domain/documento_oficial/. Use SEMPRE que for criar um documento oficial novo (certidão, ofício, ...), acrescentar um tipo de bloco, um papel timbrado novo ou mexer no tema do documento.
+description: Como escrever um documento oficial do DIMAP GeoCoder — o callable que define cada tipo de documento (conteúdo + papel timbrado + tema), o vocabulário de blocos, a composição da marcação e a conferência da amostra em services/domain/documento_oficial/. Use SEMPRE que for criar um documento oficial novo (certidão, ofício, ...), emitir PDF a partir de uma ação, acrescentar um tipo de bloco, um papel timbrado novo ou mexer no tema do documento.
 ---
 
 # Documento oficial — blocos, papel timbrado e tema
@@ -54,26 +54,79 @@ fundo do cabeçalho) é **sempre do tema** (`Tema.estilo_tabela`); o documento n
 construção do bloco — só na montagem do flowable (`TabelaInput` da SPEC 002), então o erro aparece
 ao chamar o escritor, não ao montar o `ConteudoDocumento`.
 
-## 3 · Escrever um documento novo
+## 3 · Escrever um documento novo: um callable por tipo de documento
 
-Crie um módulo ao lado de `amostra.py` (ex.: `certidao_lancamento.py`), com um `Montar<Documento>`
-callable que recebe o DTO de input do caso de uso e devolve `ConteudoDocumento`. Nenhum outro
-código do sistema monta blocos "na mão" fora desse módulo.
+**Um tipo de documento é um callable só, e ele é o dono de tudo que naquele tipo é constante.**
+Certidão de Lançamento sempre sai no papel da Fazenda, sempre tem título, sempre tem a tabela do
+imóvel, sempre fecha com o mesmo parágrafo de fé pública. Quem emite não escolhe nada disso — só
+preenche o DTO.
 
-Na orquestração (view ou management command), monte tema e marcação e chame o renderizador:
+São **duas peças**, ambas callables (§7.1), compostas uma pela outra:
+
+| Peça | Recebe | Devolve | Responde |
+|---|---|---|---|
+| `Montar<Documento>` | o DTO do caso de uso | `ConteudoDocumento` | **o que** o documento diz |
+| `<Documento>` | o DTO do caso de uso | `DocumentoRenderizado` | o tipo: conteúdo **+ papel timbrado + tema** |
 
 ```python
-tema = montar_tema(build_tema_config(settings))
-marcacao = marcacao_fazenda_dimap(build_marcacao_config(settings), tema)
-renderizado = RenderizarDocumentoOficial(tema)(
-    RenderizarDocumentoInput(conteudo=montar_meu_documento(pedido), marcacao=marcacao)
+class CertidaoLancamento:
+    """Callable: o tipo de documento amarra o que ele diz, o papel em que sai e o tema com que se
+    escreve. Quem emite só preenche o DTO — nunca escolhe papel timbrado nem remonta marcação."""
+
+    def __init__(
+        self,
+        tema: Tema,
+        config: MarcacaoConfig,
+    ) -> None:
+        self._montar = MontarCertidaoLancamento()
+        # Constantes do TIPO, montadas uma vez: o papel da certidão não muda de emissão para
+        # emissão, e remontá-los por chamada só multiplica a chance de saírem diferentes.
+        self._marcacao = marcacao_fazenda_dimap(config, tema)
+        self._renderizar = RenderizarDocumentoOficial(tema)
+
+    def __call__(self, pedido: CertidaoLancamentoInput) -> DocumentoRenderizado:
+        return self._renderizar(
+            RenderizarDocumentoInput(
+                conteudo=self._montar(pedido),
+                marcacao=self._marcacao,
+            )
+        )
+```
+
+Na orquestração (view ou management command), constrói-se o tipo — **único ponto que toca
+`settings`** (§3.3 do CLAUDE.md) — e chama-se:
+
+```python
+certidao = CertidaoLancamento(
+    montar_tema(build_tema_config(settings)),
+    build_marcacao_config(settings),
 )
+renderizado = certidao(pedido)
 # renderizado.pdf: bytes: persistir/responder é de quem chamou — o domínio nunca grava em disco.
 ```
 
+*Por quê a segunda peça:* sem ela, cada ação remonta à mão a mesma sequência de cinco passos (tema
+→ config → marcação → conteúdo → render). Uma delas vai escolher o papel errado, ou emitir sem o QR
+de verificação, e nada acusa — o defeito aparece num PDF que alguém já assinou. Com o tipo, errar
+exige editar o tipo, onde há teste.
+
+**Onde cada peça mora.** As duas ficam no **submódulo de domínio da ação** (`services/domain/<ação>/`),
+não em `documento_oficial/`: uma certidão de lançamento fala de IPTU, e módulo não cruza domínios
+(§7.1). `documento_oficial/` é o **vocabulário** — blocos, marcas, papéis timbrados, tema, motor — e
+nunca vira catálogo de certidões. A única exceção é `amostra.py`, que não é ato administrativo: ela
+existe para conferir o próprio papel (§7), e por isso mora junto com ele.
+
+**Não existe registro de tipos por string, nem fábrica de fábricas.** Cada ação é um app próprio
+(§3.5 do CLAUDE.md) que sabe, em tempo de escrita, qual documento emite — importa a classe e pronto.
+Indireção por chave só se pagaria se o chamador não soubesse o tipo, e não é o caso.
+
 `RenderizarDocumentoOficial` é criado com o `Tema` — não existe singleton nem tema-constante-de-
-módulo, porque o tema vem do ambiente (§5). Montar tema e marcação é barato; ainda assim monte
-**uma vez por emissão**, não uma vez por bloco.
+módulo, porque o tema vem do ambiente (§5).
+
+> Quando o papel selado existir (SPECs [006](../../../SPECS/documentos_oficiais/006-selo-de-integridade.md)
+> e [007](../../../SPECS/documentos_oficiais/007-envelope-do-ato-e-selo-no-papel.md)), o selo entra
+> pelo `__call__`, nunca pelo construtor: "sempre assinada" é política do tipo, mas autor, código e
+> instante são de **cada emissão**.
 
 ## 4 · Escolher (ou criar) o papel timbrado
 
@@ -180,6 +233,12 @@ diferentes do mesmo conteúdo) nunca colidam no mesmo form.
 
 ## 9 · O que NÃO fazer
 
+- ❌ Uma ação montar tema, config, marcação e render na mão para emitir — isso é o corpo do tipo
+  de documento (§3), e repeti-lo é como se emite no papel errado sem ninguém notar.
+- ❌ Guardar o montador ou o tipo de uma certidão dentro de `documento_oficial/` — ele é o
+  vocabulário, não o catálogo; o documento mora no domínio da ação que o emite (§3).
+- ❌ Criar registro de tipos de documento por string, fábrica de fábricas ou `Documento` genérico
+  configurável — cada ação sabe qual documento emite e importa a classe (§3).
 - ❌ Desenhar fora de um escritor — nenhum código monta `Paragraph`/`Table`/`Drawing` fora de
   `escritores.py` (ou do escritor de um bloco novo).
 - ❌ Escrever cor hex, corpo em pt ou entrelinha fora de `Tema`/`TemaConfig` — se o valor não vem de

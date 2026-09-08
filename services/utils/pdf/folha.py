@@ -2,7 +2,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen.canvas import Canvas
 
 from services.utils.pdf.forma import VetorNomeado, desenhar_forma
-from services.utils.pdf.models import EstiloTexto, TamanhoPagina
+from services.utils.pdf.models import EstiloTexto, EstiloTraco, TamanhoPagina
 
 
 class Folha:
@@ -29,6 +29,27 @@ class Folha:
             x_mm * mm,
             # A altura entra na conta: a origem do reportlab é o canto INFERIOR.
             self._y(y_mm) - vetor.desenho.height,
+        )
+
+    def retangulo(
+        self,
+        x_mm: float,
+        y_mm: float,
+        largura_mm: float,
+        altura_mm: float,
+        estilo: EstiloTraco,
+    ) -> None:
+        self._canvas.setStrokeColor(estilo.cor)
+        self._canvas.setLineWidth(estilo.espessura_mm * mm)
+        # `y_mm` é o TOPO, como em `texto` e `vetor`; o reportlab recebe o canto inferior, e a altura
+        # entra na conta uma vez só, aqui.
+        self._canvas.rect(
+            x_mm * mm,
+            self._y(y_mm) - altura_mm * mm,
+            largura_mm * mm,
+            altura_mm * mm,
+            stroke=1,
+            fill=0,
         )
 
     def _y(self, y_mm: float) -> float:

@@ -10,6 +10,10 @@ class Marca(ABC):
 
     posicao: Posicao
     altura_mm: float
+    # `None` é "a faixa inteira", o que toda marca recebia antes de existir grupo horizontal — o
+    # default preserva o comportamento de quem já declara a própria largura como atributo de
+    # instância (Caveats da SPEC documentos_oficiais/005).
+    largura_mm: float | None = None
 
     @abstractmethod
     def __call__(self, faixa: Faixa, folha: Folha) -> None: ...
@@ -117,3 +121,58 @@ class MarcasEmpilhadas(Marca):
 
     def _faixa_da(self, faixa: Faixa, topo_mm: float, marca: Marca) -> Faixa:
         return faixa.model_copy(update={"topo_mm": topo_mm, "altura_mm": marca.altura_mm})
+
+
+class MarcasLadoALado(Marca):
+    """Marcas ombro a ombro dentro de UMA faixa, na ordem declarada, encostadas no topo dela. O
+    espelho horizontal de `MarcasEmpilhadas`: soltas na `Marcacao`, cada uma reservaria a sua faixa
+    e o pé comeria a página."""
+
+    def __init__(self, marcas: tuple[Marca, ...], posicao: Posicao, respiro_mm: float) -> None:
+        if not marcas:
+            raise ValueError("Grupo lado a lado precisa de ao menos uma marca.")
+        # Duas marcas elásticas não têm repartição definida: quem sobra é UMA, e a recusa acontece
+        # na construção do papel timbrado, não na página impressa.
+        elasticas = sum(1 for marca in marcas if marca.largura_mm is None)
+        if elasticas > 1:
+            raise ValueError(
+                f"{elasticas} marcas sem largura declarada no mesmo grupo: no máximo uma recebe a sobra."
+            )
+        self._marcas = marcas
+        self._respiro_mm = respiro_mm
+        self.posicao = posicao
+        # A MAIS ALTA, não a soma: é isso que faz o grupo custar uma faixa em vez de N.
+        self.altura_mm = max(marca.altura_mm for marca in marcas)
+
+    def __call__(self, faixa: Faixa, folha: Folha) -> None:
+        esquerda = faixa.esquerda_mm
+        for marca, largura in self._repartir(faixa):
+            marca(self._faixa_da(faixa, esquerda, largura, marca), folha)
+            esquerda += largura + self._respiro_mm
+
+    def _repartir(self, faixa: Faixa) -> tuple[tuple[Marca, float], ...]:
+        respiros = self._respiro_mm * (len(self._marcas) - 1)
+        declarada = sum(marca.largura_mm or 0.0 for marca in self._marcas)
+        sobra = faixa.largura_mm - declarada - respiros
+        # Recusar aqui, e não deixar passar: largura negativa sairia como marcas sobrepostas, que é
+        # um defeito que só aparece no papel e depois de impresso.
+        if sobra < 0:
+            raise ValueError(
+                f"As marcas do grupo pedem {declarada + respiros:.1f} mm numa faixa de "
+                f"{faixa.largura_mm:.1f} mm: faltam {-sobra:.1f} mm."
+            )
+        return tuple(
+            (marca, sobra if marca.largura_mm is None else marca.largura_mm)
+            for marca in self._marcas
+        )
+
+    def _faixa_da(self, faixa: Faixa, esquerda_mm: float, largura_mm: float, marca: Marca) -> Faixa:
+        # A altura é a da MARCA, não a do grupo: o que é mais baixo que o vizinho encosta no topo da
+        # faixa, e não flutua no meio dela.
+        return faixa.model_copy(
+            update={
+                "esquerda_mm": esquerda_mm,
+                "largura_mm": largura_mm,
+                "altura_mm": marca.altura_mm,
+            }
+        )

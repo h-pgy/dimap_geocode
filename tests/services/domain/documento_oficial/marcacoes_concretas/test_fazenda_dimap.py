@@ -14,6 +14,7 @@ from services.domain.documento_oficial import (
     montar_tema,
 )
 from services.utils.pdf import DocumentoPdfInput, gerar_pdf
+from services.utils.pdf.models import A4, Orientacao
 
 SVG_RETANGULO = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10" viewBox="0 0 20 10">
 <rect x="0" y="0" width="20" height="10" fill="#336633" />
@@ -71,3 +72,36 @@ def test_papel_da_fazenda_traz_as_cinco_marcas_em_toda_pagina(tmp_path: Path) ->
         assert indice_marca_dagua != -1
         assert indice_corpo != -1
         assert indice_marca_dagua < indice_corpo
+
+
+# ---------------------------------------------------------------------------
+# O papel timbrado atual sai inalterado pela SPEC documentos_oficiais/005
+# ---------------------------------------------------------------------------
+
+
+def test_papel_timbrado_atual_permanece_identico(tmp_path: Path) -> None:
+    tema = montar_tema(TemaConfig())
+    config = MarcacaoConfig(
+        logo_horizontal=_svg(tmp_path, "h.svg"),
+        logo_vertical=_svg(tmp_path, "v.svg"),
+    )
+    tamanho = A4.orientar(Orientacao.RETRATO)
+
+    sem_qr = marcacao_fazenda_dimap(config, tema).para(1, 1)
+    com_qr = marcacao_fazenda_dimap(config, tema, qr_verificacao="https://exemplo/verificar").para(
+        1, 1
+    )
+
+    # Valores tirados do papel timbrado ANTES de `largura_mm` existir no ABC `Marca` — a
+    # generalização do compositor lado a lado não pode mexer no que já está em produção.
+    margens_sem_qr = sem_qr.margens(tamanho)
+    assert margens_sem_qr.esquerda_mm == 25.0
+    assert margens_sem_qr.direita_mm == 25.0
+    assert margens_sem_qr.superior_mm == 52.0
+    assert margens_sem_qr.inferior_mm == 31.4
+    assert len(list(sem_qr._faixas(tamanho))) == 3
+
+    margens_com_qr = com_qr.margens(tamanho)
+    assert margens_com_qr.superior_mm == 52.0
+    assert margens_com_qr.inferior_mm == 48.0
+    assert len(list(com_qr._faixas(tamanho))) == 2

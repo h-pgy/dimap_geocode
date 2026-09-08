@@ -2,7 +2,7 @@ from .documento import DocumentoPdf, DocumentoPdfInput, gerar_pdf
 from .documento_marcado import MarcacaoDocumento
 from .folha import Folha
 from .forma import DesenharForma, VetorNomeado, VetorReferenciado, desenhar_forma
-from .marcacao import Marca, Marcacao, MarcasEmpilhadas
+from .marcacao import Marca, Marcacao, MarcasEmpilhadas, MarcasLadoALado
 from .models import (
     A3,
     A4,
@@ -12,6 +12,7 @@ from .models import (
     ColunaFluida,
     ComandoTabela,
     EstiloTexto,
+    EstiloTraco,
     Faixa,
     FormatoPagina,
     Grade,
@@ -50,6 +51,7 @@ __all__ = [
     "DocumentoPdfInput",
     "EstiloTabela",
     "EstiloTexto",
+    "EstiloTraco",
     "Faixa",
     "Folha",
     "FormatoPagina",
@@ -62,6 +64,7 @@ __all__ = [
     "MarcacaoDocumento",
     "Margens",
     "MarcasEmpilhadas",
+    "MarcasLadoALado",
     "Orientacao",
     "Posicao",
     "QrCodePdf",

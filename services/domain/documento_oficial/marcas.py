@@ -29,7 +29,9 @@ class TimbreHorizontal(Marca):
         # Medidas do que a marca pinta, não constantes escritas à mão: mudar a largura do timbre
         # não pode deixar a moldura do corpo desatualizada (Caveats da SPEC 001).
         self.altura_mm = self._vetor.desenho.height / mm
-        self.largura_mm = self._vetor.desenho.width / mm
+        # Anotado: esta marca SEMPRE declara a largura, ao contrário do `float | None` do ABC
+        # (SPEC documentos_oficiais/005) — sem isso o `+ respiro_mm` em `CabecalhoTimbrado` não tipa.
+        self.largura_mm: float = self._vetor.desenho.width / mm
 
     def __call__(self, faixa: Faixa, folha: Folha) -> None:
         folha.vetor(faixa.esquerda_mm, faixa.topo_mm, self._vetor)
@@ -157,7 +159,9 @@ class QrCodeRodape(Marca):
         # Medida do que a marca pinta, como no timbre: o símbolo escolhe a versão do QR conforme o
         # conteúdo, e uma altura escrita à mão desalinharia com a matriz que saiu.
         self.altura_mm = self._vetor.desenho.height / mm
-        self.largura_mm = self._vetor.desenho.width / mm
+        # Anotado: esta marca SEMPRE declara a largura, ao contrário do `float | None` do ABC
+        # (SPEC documentos_oficiais/005) — sem isso o `+ respiro_mm` em `RodapeComQr` não tipa.
+        self.largura_mm: float = self._vetor.desenho.width / mm
 
     def __call__(self, faixa: Faixa, folha: Folha) -> None:
         # O canto direito da faixa, e não a esquerda: o endereço ocupa a esquerda do mesmo pé.

@@ -2,8 +2,8 @@
 spec: documentos_oficiais/005
 versao: v1
 atualizado_em: 2026-09-07
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [artefato]
 changelog:
   - v1: versão inicial
