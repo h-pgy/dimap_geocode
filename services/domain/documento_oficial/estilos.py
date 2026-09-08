@@ -3,7 +3,14 @@ from reportlab.lib.colors import Color
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.styles import ParagraphStyle
 
-from services.utils.pdf import EstiloTabela, EstiloTexto, FundoDoCabecalho, GradeDeLinhas, Respiro
+from services.utils.pdf import (
+    EstiloTabela,
+    EstiloTexto,
+    EstiloTraco,
+    FundoDoCabecalho,
+    GradeDeLinhas,
+    Respiro,
+)
 
 from .models import Tema, TemaConfig
 
@@ -31,6 +38,15 @@ class MontarTema:
                 cor=colors.HexColor(config.paleta.tinta_secundaria),
             ),
             entrelinha_marca_mm=config.tipografia.entrelinha_marca_mm,
+            estilo_traco_selo=EstiloTraco(
+                cor=colors.HexColor(config.paleta.selo.traco),
+                espessura_mm=config.tipografia.espessura_traco_selo_mm,
+            ),
+            estilo_selo_compacto=EstiloTexto(
+                fonte=config.tipografia.fonte,
+                corpo_pt=config.tipografia.corpo_selo_compacto_pt,
+                cor=colors.HexColor(config.paleta.selo.apoio),
+            ),
         )
 
     def _estilos(self, config: TemaConfig, tinta: Color) -> dict[str, ParagraphStyle]:
@@ -72,6 +88,24 @@ class MontarTema:
             "celula": self._estilo("celula", config, tinta, tipo.corpo_celula_pt, tipo.fonte),
             "cabecalho_tabela": self._estilo(
                 "cabecalho_tabela", config, tinta, tipo.corpo_celula_pt, tipo.fonte_negrito
+            ),
+            # As duas linhas do quadro de fecho que carregam identidade: nome com destaque, o
+            # resto (cargo, substituição, data) em apoio — cores de `PaletaSelo`, não da tinta.
+            "selo_assinante": self._estilo(
+                "selo_assinante",
+                config,
+                colors.HexColor(config.paleta.selo.assinante),
+                tipo.corpo_selo_assinante_pt,
+                tipo.fonte_negrito,
+                alignment=TA_CENTER,
+            ),
+            "selo_apoio": self._estilo(
+                "selo_apoio",
+                config,
+                colors.HexColor(config.paleta.selo.apoio),
+                tipo.corpo_selo_apoio_pt,
+                tipo.fonte,
+                alignment=TA_CENTER,
             ),
         }
         # Um estilo por nível, nomeado pelo número: é a chave que o escritor de subtítulo monta a

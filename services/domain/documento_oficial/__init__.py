@@ -2,7 +2,8 @@ from .amostra import MontarDocumentoAmostra, montar_documento_amostra, url_de_co
 from .config import DocumentoSettingsLike, build_marcacao_config, build_tema_config
 from .escritores import montar_escritores
 from .estilos import MontarTema, montar_tema
-from .marcacoes_concretas import marcacao_fazenda_dimap
+from .fecho import AcrescentarSeloDeFecho, acrescentar_selo_de_fecho
+from .marcacoes_concretas import marcacao_fazenda_dimap, marcacao_fazenda_dimap_selado
 from .marcas import (
     CabecalhoTimbrado,
     CabecalhoUnidade,
@@ -11,6 +12,7 @@ from .marcas import (
     QrCodeRodape,
     RodapeComQr,
     RodapeEndereco,
+    SeloCompacto,
     TimbreHorizontal,
 )
 from .models import (
@@ -26,9 +28,14 @@ from .models import (
     Lista,
     MarcacaoConfig,
     PaletaDocumento,
+    PaletaSelo,
     Paragrafo,
     QrCode,
+    QuadroSeloConfig,
     RenderizarDocumentoInput,
+    SeloConfig,
+    SeloDeFecho,
+    SeloDeFechoInput,
     Subtitulo,
     Tabela,
     Tema,
@@ -41,6 +48,7 @@ from .render import RenderizarDocumentoOficial
 __all__ = [
     "ENDERECO_PADRAO",
     "UNIDADE_PADRAO",
+    "AcrescentarSeloDeFecho",
     "Bloco",
     "BlocoDocumento",
     "BlocoTextual",
@@ -58,13 +66,19 @@ __all__ = [
     "MontarTema",
     "NumeracaoPaginas",
     "PaletaDocumento",
+    "PaletaSelo",
     "Paragrafo",
     "QrCode",
     "QrCodeRodape",
+    "QuadroSeloConfig",
     "RenderizarDocumentoInput",
     "RenderizarDocumentoOficial",
     "RodapeComQr",
     "RodapeEndereco",
+    "SeloCompacto",
+    "SeloConfig",
+    "SeloDeFecho",
+    "SeloDeFechoInput",
     "Subtitulo",
     "Tabela",
     "Tema",
@@ -72,9 +86,11 @@ __all__ = [
     "TimbreHorizontal",
     "TipografiaDocumento",
     "Titulo",
+    "acrescentar_selo_de_fecho",
     "build_marcacao_config",
     "build_tema_config",
     "marcacao_fazenda_dimap",
+    "marcacao_fazenda_dimap_selado",
     "montar_documento_amostra",
     "montar_escritores",
     "montar_tema",

@@ -2,9 +2,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from services.domain.documento_selado import SeloImpresso
 from services.utils.pdf import MarcacaoDocumento
 
 from .conteudo import ConteudoDocumento
+from .selo import QuadroSeloConfig
 
 
 class DocumentoAmostraInput(BaseModel):
@@ -25,6 +27,17 @@ class RenderizarDocumentoInput(BaseModel):
 
     conteudo: ConteudoDocumento
     marcacao: MarcacaoDocumento
+
+
+class SeloDeFechoInput(BaseModel):
+    """O que falta para o conteúdo ganhar o quadro de fecho: o ato já escrito, o selo já redigido e
+    a medida do quadro."""
+
+    model_config = ConfigDict(frozen=True)
+
+    conteudo: ConteudoDocumento
+    selo: SeloImpresso
+    quadro: QuadroSeloConfig
 
 
 class DocumentoRenderizado(BaseModel):

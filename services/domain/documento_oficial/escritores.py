@@ -6,18 +6,32 @@ from typing import Any
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Flowable, ListFlowable, ListItem, Paragraph
 
+from services.domain.documento_selado import SeloImpresso
 from services.utils.pdf import (
     QrCodePdfInput,
+    QuadroInput,
     TabelaInput,
     VetorNomeado,
     VetorReferenciado,
     carregar_vetor,
     qr_code_pdf,
+    quadro_pdf,
     tabela_pdf,
 )
 from services.utils.qr_code import QrCodeInput, gerar_qr_code
 
-from .models import BlocoTextual, Imagem, Lista, Paragrafo, QrCode, Subtitulo, Tabela, Tema, Titulo
+from .models import (
+    BlocoTextual,
+    Imagem,
+    Lista,
+    Paragrafo,
+    QrCode,
+    SeloDeFecho,
+    Subtitulo,
+    Tabela,
+    Tema,
+    Titulo,
+)
 
 
 def _texto(bruto: str) -> str:
@@ -136,6 +150,51 @@ class EscritorQrCode:
         )
 
 
+class EscritorSeloDeFecho:
+    """O quadro que encerra o documento: o símbolo centrado e, sob ele, o endereço, quem assinou, o
+    cargo e a data. Uma linha por peça, cada uma no estilo que o tema já resolveu."""
+
+    def __init__(self, tema: Tema) -> None:
+        self._tema = tema
+        # O mesmo escritor do bloco de QR: o símbolo do fecho não é um desenho diferente.
+        self._qr = EscritorQrCode()
+
+    def __call__(self, bloco: SeloDeFecho) -> Flowable:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: SeloDeFecho) -> Flowable:
+        return quadro_pdf(
+            QuadroInput(
+                conteudo=(self._simbolo(bloco), *self._linhas(bloco.selo)),
+                largura_mm=bloco.quadro.largura_mm,
+                traco=self._tema.estilo_traco_selo,
+                respiro_mm=bloco.quadro.respiro_interno_mm,
+            )
+        )
+
+    def _simbolo(self, bloco: SeloDeFecho) -> Flowable:
+        return self._qr(
+            QrCode(conteudo=bloco.selo.url_conferencia, largura_mm=bloco.quadro.largura_qr_mm)
+        )
+
+    def _linhas(self, selo: SeloImpresso) -> tuple[Flowable, ...]:
+        return (
+            self._apoio(selo.link_impresso),
+            Paragraph(_texto(selo.assinante), self._tema.estilos["selo_assinante"]),
+            self._apoio(selo.cargo),
+            *self._substituicao(selo),
+            self._apoio(selo.data_por_extenso),
+        )
+
+    def _substituicao(self, selo: SeloImpresso) -> tuple[Flowable, ...]:
+        if selo.substituindo is None:
+            return ()
+        return (self._apoio(f"em substituição a {selo.substituindo}"),)
+
+    def _apoio(self, texto: str) -> Flowable:
+        return Paragraph(_texto(texto), self._tema.estilos["selo_apoio"])
+
+
 def montar_escritores(tema: Tema) -> dict[str, Callable[[Any], Flowable]]:
     # O registro é a única lista de tipos do módulo: bloco novo entra aqui e em lugar nenhum mais.
     return {
@@ -146,4 +205,5 @@ def montar_escritores(tema: Tema) -> dict[str, Callable[[Any], Flowable]]:
         "tabela": EscritorTabela(tema),
         "imagem": EscritorImagem(tema),
         "qr_code": EscritorQrCode(),
+        "selo_de_fecho": EscritorSeloDeFecho(tema),
     }

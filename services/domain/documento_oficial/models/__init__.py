@@ -6,14 +6,21 @@ from .blocos import (
     Lista,
     Paragrafo,
     QrCode,
+    SeloDeFecho,
     Subtitulo,
     Tabela,
     Titulo,
 )
 from .conteudo import ENDERECO_PADRAO, UNIDADE_PADRAO, ConteudoDocumento
 from .marcacao import MarcacaoConfig
-from .operacoes import DocumentoAmostraInput, DocumentoRenderizado, RenderizarDocumentoInput
-from .tema import PaletaDocumento, Tema, TemaConfig, TipografiaDocumento
+from .operacoes import (
+    DocumentoAmostraInput,
+    DocumentoRenderizado,
+    RenderizarDocumentoInput,
+    SeloDeFechoInput,
+)
+from .selo import QuadroSeloConfig, SeloConfig
+from .tema import PaletaDocumento, PaletaSelo, Tema, TemaConfig, TipografiaDocumento
 
 __all__ = [
     "ENDERECO_PADRAO",
@@ -28,9 +35,14 @@ __all__ = [
     "Lista",
     "MarcacaoConfig",
     "PaletaDocumento",
+    "PaletaSelo",
     "Paragrafo",
     "QrCode",
+    "QuadroSeloConfig",
     "RenderizarDocumentoInput",
+    "SeloConfig",
+    "SeloDeFecho",
+    "SeloDeFechoInput",
     "Subtitulo",
     "Tabela",
     "Tema",

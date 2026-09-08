@@ -11,6 +11,8 @@ from services.domain.documento_oficial import (
     Lista,
     Paragrafo,
     QrCode,
+    QuadroSeloConfig,
+    SeloDeFecho,
     Subtitulo,
     Tabela,
     TemaConfig,
@@ -18,6 +20,7 @@ from services.domain.documento_oficial import (
     montar_escritores,
     montar_tema,
 )
+from services.domain.documento_selado import SeloImpresso
 from services.utils.pdf import (
     ColunaFixa,
     ColunaFluida,
@@ -27,6 +30,20 @@ from services.utils.pdf import (
     VetorReferenciado,
     gerar_pdf,
 )
+
+QUADRO_SELO = QuadroSeloConfig(largura_mm=90.0, largura_qr_mm=35.0, respiro_interno_mm=6.0)
+
+
+def _selo_impresso(**overrides: object) -> SeloImpresso:
+    defaults: dict[str, object] = {
+        "chamada": "Assinado eletronicamente",
+        "url_conferencia": "https://geocode.dimap.sp.gov.br/d/ABCDEFGHJKMN",
+        "link_impresso": "geocode.dimap.sp.gov.br/d/ABCDEFGHJKMN",
+        "assinante": "Fulano de Tal",
+        "cargo": "Chefe da Divisão do Mapa de Valores",
+        "data_por_extenso": "8 de setembro de 2026, às 14h32min",
+    }
+    return SeloImpresso(**(defaults | overrides))
 
 ESTILO_NORMAL = getSampleStyleSheet()["Normal"]
 
@@ -172,3 +189,26 @@ def test_bloco_de_qr_vira_o_simbolo_do_conteudo() -> None:
     assert isinstance(flowable, VetorReferenciado)
     assert flowable.hAlign == "CENTER"
     assert flowable.width == pytest.approx(30.0 * mm)
+
+
+# ---------------------------------------------------------------------------
+# Quadro de fecho: a linha de substituição só aparece quando o ato foi substituído
+# ---------------------------------------------------------------------------
+
+
+def test_ato_em_substituicao_aparece_no_fecho() -> None:
+    tema = montar_tema(TemaConfig())
+    escritores = montar_escritores(tema)
+
+    sem_substituicao = escritores["selo_de_fecho"](
+        SeloDeFecho(selo=_selo_impresso(), quadro=QUADRO_SELO)
+    )
+    com_substituicao = escritores["selo_de_fecho"](
+        SeloDeFecho(selo=_selo_impresso(substituindo="Ciclana de Tal"), quadro=QUADRO_SELO)
+    )
+
+    texto_sem = _texto_pdf(sem_substituicao)
+    texto_com = _texto_pdf(com_substituicao)
+
+    assert "em substituição a Ciclana de Tal" in texto_com
+    assert "em substituição" not in texto_sem

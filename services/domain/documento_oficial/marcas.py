@@ -2,6 +2,7 @@ from pathlib import Path
 
 from reportlab.lib.units import mm
 
+from services.domain.documento_selado import SeloImpresso
 from services.utils.pdf import (
     EstiloTexto,
     Faixa,
@@ -14,6 +15,8 @@ from services.utils.pdf import (
     qr_code_pdf,
 )
 from services.utils.qr_code import QrCodeInput, gerar_qr_code
+
+from .models import QuadroSeloConfig, Tema
 
 
 class TimbreHorizontal(Marca):
@@ -135,9 +138,13 @@ class NumeracaoPaginas(Marca):
         self.altura_mm = entrelinha_mm
 
     def __call__(self, faixa: Faixa, folha: Folha) -> None:
+        # Flush ao PÉ da própria faixa, como `LinhasDeTexto` — não ao topo dela. Solta na
+        # `Marcacao`, a faixa desta marca já nasce encostada na margem e a diferença não aparece;
+        # agrupada em `MarcasEmpilhadas` ao lado do endereço, o topo desta faixa é o pé da faixa
+        # vizinha, e desenhar no topo sobrepõe as duas linhas na mesma altura.
         folha.texto(
             faixa.esquerda_mm,
-            faixa.topo_mm,
+            faixa.topo_mm + self.altura_mm,
             f"Página {folha.pagina} de {folha.total}",
             self._estilo,
         )
@@ -198,4 +205,60 @@ class RodapeComQr(Marca):
     def _faixa_do_texto(self, faixa: Faixa) -> Faixa:
         return faixa.model_copy(
             update={"largura_mm": faixa.largura_mm - self._largura_do_qr_mm}
+        )
+
+
+class SeloCompacto(Marca):
+    """O quadro do pé: moldura, QR à esquerda e duas linhas à direita, tudo dentro da própria faixa.
+    Recebe o selo JÁ redigido: o papel timbrado não conhece ato administrativo, e não é ele quem
+    escreve nada."""
+
+    posicao = Posicao.INFERIOR
+
+    def __init__(self, selo: SeloImpresso, config: QuadroSeloConfig, tema: Tema) -> None:
+        self._config = config
+        self._qr = QrCodeRodape(selo.url_conferencia, config.largura_qr_mm)
+        self._texto = LinhasDeTexto(
+            (selo.chamada, selo.link_impresso),
+            tema.estilo_selo_compacto,
+            tema.entrelinha_marca_mm,
+        )
+        self._traco = tema.estilo_traco_selo
+        self.largura_mm = config.largura_mm
+        # O maior dos dois, mais a folga da moldura em cima e embaixo.
+        self.altura_mm = (
+            max(self._texto.altura_mm, self._qr.altura_mm) + 2 * config.respiro_interno_mm
+        )
+
+    def __call__(self, faixa: Faixa, folha: Folha) -> None:
+        folha.retangulo(
+            faixa.esquerda_mm,
+            faixa.topo_mm,
+            faixa.largura_mm,
+            self.altura_mm,
+            self._traco,
+        )
+        interna = self._faixa_interna(faixa)
+        # A coluna do símbolo tem a largura DELE: `QrCodeRodape` se encosta na direita da faixa que
+        # recebe, e é assim que ele cai na esquerda do quadro sem tocar na marca já entregue.
+        self._qr(interna.model_copy(update={"largura_mm": self._qr.largura_mm}), folha)
+        self._texto(self._coluna_do_texto(interna), folha)
+
+    def _coluna_do_texto(self, interna: Faixa) -> Faixa:
+        recuo = self._qr.largura_mm + self._config.respiro_interno_mm
+        return interna.model_copy(
+            update={
+                "esquerda_mm": interna.esquerda_mm + recuo,
+                "largura_mm": interna.largura_mm - recuo,
+            }
+        )
+
+    def _faixa_interna(self, faixa: Faixa) -> Faixa:
+        respiro = self._config.respiro_interno_mm
+        return faixa.model_copy(
+            update={
+                "esquerda_mm": faixa.esquerda_mm + respiro,
+                "topo_mm": faixa.topo_mm + respiro,
+                "largura_mm": faixa.largura_mm - 2 * respiro,
+            }
         )

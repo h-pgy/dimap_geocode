@@ -23,6 +23,7 @@ from .models import (
 )
 from .numeracao import CanvasMarcado
 from .qr_code import MODULO_MINIMO_MM, QrCodePdf, QrCodePdfInput, qr_code_pdf
+from .quadro import QuadroInput, QuadroPdf, quadro_pdf
 from .tabela import (
     EstiloTabela,
     FundoDoCabecalho,
@@ -69,6 +70,8 @@ __all__ = [
     "Posicao",
     "QrCodePdf",
     "QrCodePdfInput",
+    "QuadroInput",
+    "QuadroPdf",
     "RegraTabela",
     "Respiro",
     "TabelaInput",
@@ -81,5 +84,6 @@ __all__ = [
     "desenhar_forma",
     "gerar_pdf",
     "qr_code_pdf",
+    "quadro_pdf",
     "tabela_pdf",
 ]

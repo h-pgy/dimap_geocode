@@ -1,9 +1,20 @@
 from pydantic import BaseModel, ConfigDict, Field
 from reportlab.lib.styles import ParagraphStyle
 
-from services.utils.pdf import EstiloTabela, EstiloTexto
+from services.utils.pdf import EstiloTabela, EstiloTexto, EstiloTraco
 
 COR_HEX = r"^#[0-9A-Fa-f]{6}$"
+
+
+class PaletaSelo(BaseModel):
+    """As cores do quadro, tiradas do design system do sistema — ciano do traço, tinta de título do
+    assinante, cinza de apoio para o resto."""
+
+    model_config = ConfigDict(frozen=True)
+
+    traco: str = Field(default="#0096C7", pattern=COR_HEX)
+    assinante: str = Field(default="#0D1B2A", pattern=COR_HEX)
+    apoio: str = Field(default="#415A77", pattern=COR_HEX)
 
 
 class PaletaDocumento(BaseModel):
@@ -17,6 +28,8 @@ class PaletaDocumento(BaseModel):
     tinta_secundaria: str = Field(default="#555555", pattern=COR_HEX)
     traco_tabela: str = Field(default="#999999", pattern=COR_HEX)
     fundo_cabecalho_tabela: str = Field(default="#E8E8E8", pattern=COR_HEX)
+    # As três cores só fazem sentido juntas, e nenhuma delas vem do ambiente.
+    selo: PaletaSelo = PaletaSelo()
 
 
 class TipografiaDocumento(BaseModel):
@@ -41,6 +54,13 @@ class TipografiaDocumento(BaseModel):
     entrelinha_marca_mm: float = 4.2
     respiro_celula_mm: tuple[float, float] = (2.0, 1.4)
     espessura_traco_tabela_pt: float = 0.4
+    # Em milímetros, como as demais medidas de marca — o traço da tabela é em pontos porque quem o
+    # consome é o motor de tabela.
+    espessura_traco_selo_mm: float = 0.3
+    # Menor que o rodapé: é o corpo em que o endereço curto ainda cabe ao lado do símbolo.
+    corpo_selo_compacto_pt: float = 7.0
+    corpo_selo_assinante_pt: float = 12.0
+    corpo_selo_apoio_pt: float = 8.5
 
 
 class TemaConfig(BaseModel):
@@ -64,3 +84,7 @@ class Tema(BaseModel):
     estilo_cabecalho_marca: EstiloTexto
     estilo_rodape_marca: EstiloTexto
     entrelinha_marca_mm: float
+    # Os estilos do quadro de fecho entram em `estilos`, porque quem os consome é um flowable; os
+    # do compacto vão soltos, como o do rodapé, porque quem os consome é uma marca.
+    estilo_traco_selo: EstiloTraco
+    estilo_selo_compacto: EstiloTexto

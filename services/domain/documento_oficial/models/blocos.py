@@ -3,7 +3,10 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from services.domain.documento_selado import SeloImpresso
 from services.utils.pdf import Coluna
+
+from .selo import QuadroSeloConfig
 
 
 class BlocoDocumento(BaseModel):
@@ -74,7 +77,17 @@ class QrCode(BlocoDocumento):
     largura_mm: float
 
 
+class SeloDeFecho(BlocoDocumento):
+    """O quadro que encerra o documento. Guarda o selo redigido e a medida do quadro, nunca o
+    desenho: o símbolo é derivado do endereço, como no bloco `QrCode`."""
+
+    tipo: Literal["selo_de_fecho"] = "selo_de_fecho"
+    selo: SeloImpresso
+    # Sem default, como a largura da `Imagem`: quanto o quadro ocupa é decisão de quem emite.
+    quadro: QuadroSeloConfig
+
+
 Bloco = Annotated[
-    Titulo | Subtitulo | Paragrafo | Lista | Tabela | Imagem | QrCode,
+    Titulo | Subtitulo | Paragrafo | Lista | Tabela | Imagem | QrCode | SeloDeFecho,
     Field(discriminator="tipo"),
 ]

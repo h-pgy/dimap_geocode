@@ -105,3 +105,28 @@ def test_papel_timbrado_atual_permanece_identico(tmp_path: Path) -> None:
     assert margens_com_qr.superior_mm == 52.0
     assert margens_com_qr.inferior_mm == 48.0
     assert len(list(com_qr._faixas(tamanho))) == 2
+
+
+# ---------------------------------------------------------------------------
+# O papel timbrado sem selo sai inalterado pela SPEC documentos_oficiais/007
+# ---------------------------------------------------------------------------
+
+
+def test_papel_timbrado_sem_selo_permanece_identico(tmp_path: Path) -> None:
+    # O selo acrescenta campos de tema (PaletaSelo, estilo_traco_selo, ...) com default: esta
+    # checagem prova que os defaults novos não vazam para o papel que não pediu selo.
+    tema = montar_tema(TemaConfig())
+    config = MarcacaoConfig(
+        logo_horizontal=_svg(tmp_path, "h.svg"),
+        logo_vertical=_svg(tmp_path, "v.svg"),
+    )
+    tamanho = A4.orientar(Orientacao.RETRATO)
+
+    marcacao = marcacao_fazenda_dimap(config, tema).para(1, 1)
+
+    margens = marcacao.margens(tamanho)
+    assert margens.esquerda_mm == 25.0
+    assert margens.direita_mm == 25.0
+    assert margens.superior_mm == 52.0
+    assert margens.inferior_mm == 31.4
+    assert len(list(marcacao._faixas(tamanho))) == 3
