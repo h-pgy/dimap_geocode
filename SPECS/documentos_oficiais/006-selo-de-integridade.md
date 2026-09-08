@@ -1,12 +1,16 @@
 ---
 spec: documentos_oficiais/006
-versao: v1
-atualizado_em: 2026-09-07
-testes_tdd: false
-implementado: false
+versao: v5
+atualizado_em: 2026-09-08
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [artefato]
 changelog:
   - v1: versão inicial
+  - v2: snippets fecham as pontas soltas — `CHAVE_TAG` importado no `models.py` e os singletons `embutir_envelope`, `selar_documento` e `conferir_selo` declarados.
+  - v3: o utilitário passa a ter duas portas — `selagem.py` e `conferencia.py` — sobre os módulos comuns `envelope.py` e `tag.py`, no lugar do `selo.py` único.
+  - v4: o placeholder deixa de ser 64 zeros e passa a ser um sentinela hexadecimal fixo, que não colide com o conteúdo do documento.
+  - v5: a conferência recebe arquivo de terceiro e passa a devolver estado — nunca exceção — diante de PDF ilegível, envelope corrompido ou tag fora de forma.
 ---
 
 # SPEC documentos_oficiais/006 — Selo de integridade do PDF
@@ -26,6 +30,9 @@ byte, e que se confere **só com o arquivo**, sem consultar banco nem rede.
 - [ ] O envelope volta da conferência com os mesmos valores que entraram, acentuação incluída.
 - [ ] A conferência devolve **apenas os campos declarados públicos**; o envelope inteiro só sai para
       quem o pede explicitamente.
+- [ ] Arquivo que não abre como PDF, ou cujo envelope está corrompido, é acusado como **sem
+      selo** — a conferência não levanta com arquivo nenhum.
+- [ ] Envelope cuja `tag` não é um hexdigest de 64 dígitos é acusado como **selo violado**.
 - [ ] Selar um documento que **já traz selo** é recusado.
 - [ ] Dados que trazem a chave `tag` são recusados na construção do pedido.
 
@@ -36,6 +43,9 @@ ação, ato ou certidão; quem dá sentido aos dados é a SPEC [documentos_ofici
 
 **`services/utils/assinatura/models.py`**
 ```python
+from .constants import CHAVE_TAG
+
+
 class EstadoSelo(StrEnum):
     """Os três estados que o ARQUIVO sozinho consegue distinguir. Saber se o documento existe, ou se
     ainda vale, exige o acervo — e é da SPEC 008."""
@@ -119,6 +129,21 @@ class ResultadoConferencia(BaseModel):
 Os comentários abaixo são didáticos, para a leitura da SPEC — **não são portados**; no código vale o
 §7.2 do CLAUDE.md.
 
+O módulo tem **duas portas**, e elas não se conhecem: `selagem` põe a tag no arquivo, `conferencia`
+tira a tag do arquivo e refaz a conta. O que as duas precisam desce para os módulos comuns — a
+costura com o PDF em `envelope.py`, a aritmética da tag em `tag.py` —, e assim nenhuma das duas
+importa a irmã.
+
+```
+services/utils/assinatura/
+├── constants.py     # o vocabulário do mecanismo
+├── models.py        # os DTOs (§3)
+├── envelope.py      # comum: a costura com o pypdf — embutir e ler o `/Info`
+├── tag.py           # comum: a conta da tag e a troca dela pelo placeholder nos bytes
+├── selagem.py       # a porta de emissão
+└── conferencia.py   # a porta de verificação
+```
+
 **`services/utils/assinatura/constants.py`**
 ```python
 # O envelope inteiro cabe numa chave do dicionário `/Info` do PDF.
@@ -127,15 +152,29 @@ CHAVE_TAG = "tag"
 ALGORITMO = "HMAC-SHA256"
 # A tag é o hexdigest do SHA-256: 64 caracteres, sempre.
 TAMANHO_TAG = 64
-# Sessenta e quatro zeros. O que o arquivo carrega ENQUANTO a tag está sendo calculada — e o que
-# volta ao lugar dela para a conferência refazer a conta.
-PLACEHOLDER = "0" * TAMANHO_TAG
+# O que o arquivo carrega ENQUANTO a tag está sendo calculada, e o que volta ao lugar dela para a
+# conferência refazer a conta. Sorteado uma vez, e não `"0" * 64`: a marca é localizada por busca
+# de bytes, e uma sequência de 64 caracteres iguais é justamente o que um documento pode imprimir
+# por acaso — o que faria a emissão recusar documento honesto. Hexadecimal porque o `pypdf` grava
+# dígito e letra `a-f` em claro, e escapa pontuação em octal.
+PLACEHOLDER = "43d4cfd0b213cd911038ad8af66fdcb4a2bebee13fae37fa269e4b56dac7ca5f"
 ```
 
 **`services/utils/assinatura/envelope.py`** — a costura com o PDF, e o único ponto do projeto que
-conhece `pypdf`. Guardar em `/Info`, e não em stream próprio, é o que faz o envelope sobreviver a
-leitura por qualquer biblioteca.
+conhece `pypdf`. É também onde toda malformação de arquivo morre, para que nenhuma das duas portas
+precise saber o que o `pypdf` levanta. Guardar em `/Info`, e não em stream próprio, é o que faz o envelope sobreviver a
+leitura por qualquer biblioteca. Fica comum às duas portas porque uma escreve exatamente o que a
+outra lê: separar embutir de ler deixaria as duas metades do mesmo formato em módulos distintos.
 ```python
+import json
+from io import BytesIO
+from typing import Any
+
+from pypdf import PdfReader, PdfWriter
+
+from .constants import CHAVE_METADADO
+
+
 class EmbutirEnvelope:
     """Callable: bytes + envelope → bytes com o envelope no `/Info`."""
 
@@ -158,15 +197,87 @@ class EmbutirEnvelope:
 
 
 def ler_envelope(pdf: bytes) -> dict[str, Any] | None:
-    metadados = PdfReader(BytesIO(pdf)).metadata
+    # Quem lê pode estar lendo arquivo de terceiro: PDF que não abre, `/Info` ausente, JSON
+    # quebrado e JSON que não é objeto são todos "não há envelope aqui" — nunca erro do sistema.
+    try:
+        metadados = PdfReader(BytesIO(pdf)).metadata
+    except Exception:
+        return None
     if metadados is None or CHAVE_METADADO not in metadados:
         return None
-    return json.loads(metadados[CHAVE_METADADO])
+    try:
+        envelope = json.loads(metadados[CHAVE_METADADO])
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(envelope, dict):
+        return None
+    return envelope
+
+
+embutir_envelope = EmbutirEnvelope()
 ```
 
-**`services/utils/assinatura/selo.py`** — o mecanismo. A tag mora **dentro** do arquivo que ela
-assina; o placeholder é o que desfaz essa circularidade.
+**`services/utils/assinatura/tag.py`** — a aritmética do selo, sem PDF e sem domínio: a conta da tag
+e a cirurgia de bytes que põe e tira o placeholder. Selar e conferir fazem a mesma troca em sentidos
+opostos, e é essa simetria que mora aqui.
 ```python
+import hashlib
+import hmac
+
+from pydantic import SecretStr
+
+from .constants import TAMANHO_TAG
+
+
+def calcular_tag(pdf: bytes, segredo: SecretStr) -> str:
+    # HMAC, e não `sha256(segredo + bytes)`: SHA-256 é Merkle–Damgård e o hash com prefixo secreto
+    # admite extensão de mensagem sem conhecer o segredo.
+    return hmac.new(
+        segredo.get_secret_value().encode(),
+        pdf,
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def localizar(pdf: bytes, agulha: str) -> int | None:
+    """Onde estão, no arquivo, os 64 caracteres da marca — e `None` se não estiverem lá exatamente
+    uma vez. Procurar os bytes, em vez de gravar o deslocamento: gravá-lo mudaria o arquivo e, com
+    ele, o próprio deslocamento."""
+    bytes_agulha = agulha.encode()
+    if pdf.count(bytes_agulha) != 1:
+        return None
+    return pdf.find(bytes_agulha)
+
+
+def localizar_unica(pdf: bytes, agulha: str) -> int:
+    """A mesma busca para quem não pode seguir sem ela. A emissão trabalha sobre arquivo NOSSO,
+    recém-gerado: zero ou duas ocorrências ali é defeito de emissão, e vira erro AQUI — não um selo
+    que só deixa de conferir meses depois, na mão de quem recebeu o documento. A conferência, que
+    trabalha sobre arquivo alheio, usa `localizar` e trata o `None` como estado."""
+    posicao = localizar(pdf, agulha)
+    if posicao is None:
+        ocorrencias = pdf.count(agulha.encode())
+        raise ValueError(
+            f"Esperava 1 ocorrência da marca do selo no arquivo, encontrei {ocorrencias}."
+        )
+    return posicao
+
+
+def trocar(pdf: bytes, posicao: int, conteudo: str) -> bytes:
+    return pdf[:posicao] + conteudo.encode() + pdf[posicao + TAMANHO_TAG :]
+```
+
+**`services/utils/assinatura/selagem.py`** — a porta de emissão. A tag mora **dentro** do arquivo que
+ela assina; o placeholder é o que desfaz essa circularidade.
+```python
+from typing import Any
+
+from .constants import ALGORITMO, CHAVE_TAG, PLACEHOLDER
+from .envelope import embutir_envelope, ler_envelope
+from .models import DocumentoSelado, SelarInput
+from .tag import calcular_tag, localizar_unica, trocar
+
+
 class SelarDocumento:
     """Callable: um PDF entra, o mesmo PDF selado sai. A tag cobre o arquivo INTEIRO — texto,
     fontes, imagens e o próprio envelope —, e não o texto extraído: mapa e brasão também precisam
@@ -207,9 +318,29 @@ class SelarDocumento:
             raise ValueError("Este PDF já traz selo: sele o documento recém-gerado, não o selado.")
 
 
+selar_documento = SelarDocumento()
+```
+
+**`services/utils/assinatura/conferencia.py`** — a porta de verificação. Lê o envelope, desfaz o
+passo 3 da selagem e refaz a conta. Cada `return VIOLADO` abaixo é um `raise` que a selagem daria e
+que aqui não cabe: a entrada é arquivo de terceiro, e a resposta é sempre um dos três estados.
+```python
+import hmac
+from typing import Any
+
+from .constants import CHAVE_TAG, PLACEHOLDER, TAMANHO_TAG
+from .envelope import ler_envelope
+from .models import ConferirInput, EstadoSelo, ResultadoConferencia
+from .tag import calcular_tag, localizar, trocar
+
+DIGITOS_HEX = frozenset("0123456789abcdef")
+
+
 class ConferirSelo:
     """Callable: bytes → o que o arquivo sozinho consegue afirmar. Não consulta banco, rede nem
-    relógio: é isso que faz o selo valer com o acervo fora do ar."""
+    relógio: é isso que faz o selo valer com o acervo fora do ar. E não levanta com arquivo
+    nenhum: o que chega aqui veio de fora, e arquivo ruim é um ESTADO do selo, não um erro do
+    sistema."""
 
     def __call__(self, pedido: ConferirInput) -> ResultadoConferencia:
         return self.pipeline(pedido)
@@ -226,50 +357,59 @@ class ConferirSelo:
 
     def _estado(self, pedido: ConferirInput, envelope: dict[str, Any]) -> EstadoSelo:
         tag = envelope[CHAVE_TAG]
-        base = trocar(pedido.pdf, localizar_unica(pedido.pdf, tag), PLACEHOLDER)
+        # Envelope escrito à mão põe o que quiser em `tag`; a troca de bytes abaixo só faz sentido
+        # sobre 64 dígitos hexadecimais, e o que não tem essa forma nunca saiu da selagem.
+        if not self._eh_tag(tag):
+            return EstadoSelo.VIOLADO
+        posicao = localizar(pedido.pdf, tag)
+        # Zero ou mais de uma ocorrência: o arquivo não é o que a selagem produziu.
+        if posicao is None:
+            return EstadoSelo.VIOLADO
+        base = trocar(pedido.pdf, posicao, PLACEHOLDER)
         # `compare_digest`, e não `==`: comparação que sai no primeiro byte diferente mede o quanto
         # a tag tentada acertou.
         if not hmac.compare_digest(calcular_tag(base, pedido.segredo), tag):
             return EstadoSelo.VIOLADO
         return EstadoSelo.INTEGRO
 
+    def _eh_tag(self, valor: Any) -> bool:
+        if not isinstance(valor, str) or len(valor) != TAMANHO_TAG:
+            return False
+        return DIGITOS_HEX.issuperset(valor)
+
     def _publicos(self, envelope: dict[str, Any]) -> dict[str, Any]:
         declarados = envelope.get("campos_publicos", [])
-        return {chave: envelope[chave] for chave in declarados if chave in envelope}
+        # `campos_publicos` também vem do arquivo: o que não for lista de nomes não declara nada.
+        if not isinstance(declarados, list):
+            return {}
+        return {
+            chave: envelope[chave]
+            for chave in declarados
+            if isinstance(chave, str) and chave in envelope
+        }
 
 
-def calcular_tag(pdf: bytes, segredo: SecretStr) -> str:
-    # HMAC, e não `sha256(segredo + bytes)`: SHA-256 é Merkle–Damgård e o hash com prefixo secreto
-    # admite extensão de mensagem sem conhecer o segredo.
-    return hmac.new(
-        segredo.get_secret_value().encode(),
-        pdf,
-        hashlib.sha256,
-    ).hexdigest()
-
-
-def localizar_unica(pdf: bytes, agulha: str) -> int:
-    """Onde estão, no arquivo, os 64 caracteres da tag. Procurar os bytes, em vez de gravar o
-    deslocamento: gravá-lo mudaria o arquivo e, com ele, o próprio deslocamento."""
-    bytes_agulha = agulha.encode()
-    ocorrencias = pdf.count(bytes_agulha)
-    # Uma ocorrência é o contrato do mecanismo. Zero ou duas viram erro AQUI, na emissão, e não um
-    # selo que só deixa de conferir meses depois, na mão de quem recebeu o documento.
-    if ocorrencias != 1:
-        raise ValueError(
-            f"Esperava 1 ocorrência da marca do selo no arquivo, encontrei {ocorrencias}."
-        )
-    return pdf.find(bytes_agulha)
-
-
-def trocar(pdf: bytes, posicao: int, conteudo: str) -> bytes:
-    return pdf[:posicao] + conteudo.encode() + pdf[posicao + TAMANHO_TAG :]
+conferir_selo = ConferirSelo()
 ```
 
-**`services/utils/assinatura/__init__.py`** — só reexporta (CLAUDE.md §7.2).
+**`services/utils/assinatura/__init__.py`** — só reexporta (CLAUDE.md §7.2). As duas portas saem
+daqui; `envelope` e `tag` ficam de dentro, porque são o mecanismo e não a superfície.
 ```python
+from .conferencia import ConferirSelo, conferir_selo
 from .models import ConferirInput, DocumentoSelado, EstadoSelo, ResultadoConferencia, SelarInput
-from .selo import ConferirSelo, SelarDocumento, conferir_selo, selar_documento
+from .selagem import SelarDocumento, selar_documento
+
+__all__ = [
+    "ConferirInput",
+    "ConferirSelo",
+    "DocumentoSelado",
+    "EstadoSelo",
+    "ResultadoConferencia",
+    "SelarDocumento",
+    "SelarInput",
+    "conferir_selo",
+    "selar_documento",
+]
 ```
 
 **`pyproject.toml`** — `pypdf` deixa de ser dependência de teste. O reportlab não expõe chave
@@ -286,6 +426,8 @@ O selo é HMAC com chave simétrica, não assinatura assimétrica. Quem confere 
 par de chaves só se pagaria se um terceiro precisasse conferir sem nós. O custo é que o vazamento do
 segredo permite forjar todo o acervo retroativamente, e `id_chave` no envelope é o único preparo para
 trocar o segredo sem invalidar o que já saiu.
+
+O sentinela é constante do código, e não sorteado a cada emissão: a conferência precisa dele para repor a marca e reconstruir o arquivo assinado, então ele tem de ser conhecido dos dois lados. Sorteá-lo por documento exigiria gravá-lo no próprio envelope, e não compraria nada — ele fica legível no arquivo de qualquer modo.
 
 A região assinada se localiza **procurando a tag nos bytes** do arquivo. Gravar o deslocamento
 mudaria o arquivo e o deslocamento junto, e a alternativa seria reservar espaço fixo no `/Info` a cada
@@ -305,6 +447,12 @@ nada no código impede o chamador de pôr — a regra vive na SPEC.
 `pypdf` sobe de dependência de teste para dependência de runtime. O custo é uma biblioteca a mais no
 processo web, para uma capacidade que o reportlab, já na árvore, não oferece.
 
+Arquivo ilegível cai em `SEM_SELO`, junto com o PDF honesto que nunca foi selado. Um quarto estado diria à SPEC 008 a diferença entre "este arquivo não abre" e "este documento não saiu daqui", que é conselho diferente para quem consulta. O custo assumido é essa perda de resolução, e a troca é manter o enum com os três estados que o §3 declara — e não crescer o vocabulário do selo por causa de upload torto.
+
+As duas portas tratam a mesma ambiguidade de formas opostas, e é deliberado: a emissão levanta porque trabalha sobre arquivo nosso, onde marca ausente ou repetida é defeito nosso; a conferência devolve `VIOLADO` porque trabalha sobre arquivo alheio, onde isso é o resultado. A regra da ocorrência única mora uma vez só, em `localizar`, e as duas políticas ficam por cima dela.
+
+Selagem e conferência são portas independentes, não módulos independentes: as duas descem em `envelope.py` e `tag.py`. Seriam de fato estanques se cada uma repetisse a serialização do `/Info` e a troca do placeholder — e aí o selo conferiria só enquanto as duas cópias não divergissem. O custo do compartilhamento é que mexer no mecanismo mexe nas duas portas de uma vez.
+
 O segredo entra pelo DTO a cada chamada, em vez de ser lido de settings pelo módulo. É o que mantém
 `services/utils/` sem Django e o singleton sem estado. O custo é que toda orquestração que sela ou
 confere precisa carregar o segredo até aqui.
@@ -323,6 +471,10 @@ confere precisa carregar o segredo até aqui.
   conferência.
 - `test_conferencia_devolve_so_os_campos_publicos` — chave fora de `campos_publicos` não aparece em
   `publicos`, e continua presente no envelope.
+- `test_arquivo_ilegivel_devolve_sem_selo` — bytes que não são PDF, e PDF cujo envelope não é JSON
+  válido, devolvem `SEM_SELO` em vez de levantar.
+- `test_tag_fora_de_forma_devolve_violado` — envelope cuja `tag` não é um hexdigest de 64 dígitos
+  devolve `VIOLADO`, sem tentar a troca de bytes.
 - `test_selar_documento_ja_selado_eh_recusado` — selar duas vezes levanta na segunda.
 - `test_dados_com_chave_reservada_sao_recusados` — `dados` contendo `tag` levanta na construção do
   `SelarInput`.
