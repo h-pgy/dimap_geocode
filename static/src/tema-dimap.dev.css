@@ -295,61 +295,100 @@ html[data-theme="dimap"] {
     @apply bg-white/15;
   }
 
-  /* Moldura da imagem de perfil: a unidade é luz atrás do disco, não anel. O hex vem em
-     --cor-unidade porque classe montada no template (ring-[cor]) some do build de produção.
-     Anel sólido saía de `outline`, aresta dura desenhada fora de uma caixa que não a reserva: em
-     w-28 pousava inteiro sobre o poço vizinho. Luz que esmaece atravessa o vizinho sem quebrá-lo.
-     --halo-escala é o alcance dela, que segue o diâmetro (padrão de w-9 a w-16; disco maior abre
-     no include). --halo-aro é o contato, e não escala: contato tem espessura de contato em
-     qualquer disco. Ele vem na opacidade da imagem, e os fades partem dele. */
+  /* .avatar-glass — Esfera de vidro fosco (Frosted Glass) translúcida com refração e brilho com fade (SPEC design/015) */
   .avatar-glass {
     --halo-escala: 1;
-    --halo-aro: 3px;
-    @apply relative rounded-full overflow-hidden bg-white/40;
+    position: relative;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--cor-unidade, #0077b6) 28%, rgba(255, 255, 255, 0.12));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.8),
-      0 8px 28px rgba(7, 58, 84, 0.28),
-      0 0 0 var(--halo-aro) color-mix(in srgb, var(--cor-unidade) 88%, transparent),
-      0 0 calc(11px * var(--halo-escala)) calc(var(--halo-aro) + 3px * var(--halo-escala))
-        color-mix(in srgb, var(--cor-unidade) 55%, transparent),
-      0 0 calc(24px * var(--halo-escala)) calc(var(--halo-aro) + 6px * var(--halo-escala))
-        color-mix(in srgb, var(--cor-unidade) 26%, transparent);
-  }
-  /* O domo do disco: a óptica simulada do mapa (§6) aplicada ao avatar — curvatura por luz, sem
-     deformar a malha. Só o aro curva; o miolo até 78% do raio é onde está o rosto, e mancha larga
-     ali não faz volume, faz véu. Porcentagem, não px: o disco vai de w-9 a w-28. */
-  .avatar-glass::after {
-    content: "";
-    @apply absolute inset-0 rounded-full pointer-events-none;
-    background:
-      radial-gradient(
-        circle at 50% 50%,
-        transparent 78%,
-        rgba(7, 58, 84, 0.1) 90%,
-        rgba(7, 58, 84, 0.26) 100%
-      ),
-      radial-gradient(
-        ellipse 72% 24% at 50% 3%,
-        rgba(255, 255, 255, 0.55),
-        transparent 72%
-      ),
-      radial-gradient(
-        ellipse 60% 20% at 50% 98%,
-        rgba(202, 240, 248, 0.34),
-        transparent 72%
-      );
+      0 0 calc(4px * var(--halo-escala, 1)) calc(0.8px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 88%, white 12%),
+      0 0 calc(10px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 60%, transparent),
+      0 0 calc(24px * var(--halo-escala, 1)) calc(4px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 30%, transparent),
+      0 calc(6px * var(--halo-escala, 1)) calc(18px * var(--halo-escala, 1)) rgba(7, 58, 84, 0.14),
+      inset 0 0 calc(5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 65%, white 35%),
+      inset 0 calc(1px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) rgba(255, 255, 255, 0.5),
+      inset 0 0 calc(14px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 42%, transparent);
+    backdrop-filter: blur(14px) saturate(200%);
+    -webkit-backdrop-filter: blur(14px) saturate(200%);
+    backdrop-filter: url(#frosted) blur(14px) saturate(200%);
+    -webkit-backdrop-filter: url(#frosted) blur(14px) saturate(200%);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    isolation: isolate;
+    cursor: pointer;
+    outline: 0;
+    transition: all 0.25s ease;
   }
 
-  /* O SVG do avatar é markup do domínio (services/domain/avatar) e não carrega classe alguma:
-     quem o dimensiona é a moldura. */
-  .avatar-glass > svg { @apply w-full h-full; }
-  /* A imagem cede um pouco ao gelo por baixo: disco opaco no meio de uma cena de vidro é o único
-     corpo sólido da tela. A opacidade fica no FILHO, nunca no .avatar-glass — no pai ela levaria
-     junto o halo da unidade e o domo, que são luz e não podem esmaecer com a foto.
-     SVG de letras precisa de mais transparência para integrar melhor com o vidro e evitar
-     aparência pixelada — opacidade de cor sólida sobre fundo translúcido fica áspera. */
-  .avatar-glass > img { @apply opacity-[0.88]; }
-  .avatar-glass > svg { @apply opacity-[0.65]; }
+  .avatar-glass:hover {
+    background: color-mix(in srgb, var(--cor-unidade, #0077b6) 35%, rgba(255, 255, 255, 0.16));
+    box-shadow:
+      0 0 calc(6px * var(--halo-escala, 1)) calc(1.5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 95%, white 5%),
+      0 0 calc(16px * var(--halo-escala, 1)) calc(3px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 75%, transparent),
+      0 0 calc(32px * var(--halo-escala, 1)) calc(6px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 40%, transparent),
+      0 calc(10px * var(--halo-escala, 1)) calc(24px * var(--halo-escala, 1)) rgba(7, 58, 84, 0.18),
+      inset 0 0 calc(7px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 75%, white 25%),
+      inset 0 calc(1px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) rgba(255, 255, 255, 0.65),
+      inset 0 0 calc(18px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 55%, transparent);
+  }
+
+  /* Filtro da cor da unidade sobre a foto com proteção de lente */
+  .avatar-glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--cor-unidade, #0077b6) 15%, transparent);
+    box-shadow: inset 0 0 calc(5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 45%, rgba(255, 255, 255, 0.35));
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+    z-index: 2;
+  }
+
+  .avatar-glass:hover::after {
+    background: color-mix(in srgb, var(--cor-unidade, #0077b6) 8%, transparent);
+    box-shadow: inset 0 0 calc(7px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 60%, rgba(255, 255, 255, 0.45));
+  }
+
+  /* Filhos no plano intermediário: foto ou SVG de iniciais */
+  .avatar-glass > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .avatar-glass > svg {
+    width: 100%;
+    height: 100%;
+    transition: transform 0.25s ease;
+  }
+
+  .avatar-glass > svg circle {
+    fill-opacity: 0.32;
+    transition: fill-opacity 0.25s ease;
+  }
+
+  .avatar-glass:hover > svg circle {
+    fill-opacity: 0.44;
+  }
+
+  .avatar-glass > svg text {
+    filter: drop-shadow(0 1px 2px rgba(7, 58, 84, 0.45));
+  }
+
+  .avatar-glass > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.95;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+
+  .avatar-glass:hover > img {
+    opacity: 1;
+    transform: scale(1.03);
+  }
 
   /* ==================== ÁTOMOS ==================== */
   .btn-onsen {

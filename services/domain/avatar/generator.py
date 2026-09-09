@@ -6,7 +6,7 @@ from .models import AvatarIniciaisInput, AvatarIniciaisOutput
 GABARITO_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"'
     ' role="img" aria-label="{iniciais}">'
-    '<circle cx="50" cy="50" r="50" fill="{cor_fundo}"/>'
+    '<circle cx="50" cy="50" r="48" fill="{cor_fundo}"/>'
     '<text x="50" y="50" dy="0.35em" text-anchor="middle"'
     ' font-family="Roboto, ui-sans-serif, system-ui, sans-serif"'
     ' font-size="42" font-weight="700" fill="{cor_tinta}">{iniciais}</text>'

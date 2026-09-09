@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/015 — Avatar esfera de vidro com líquido refletindo (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill mock). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .glass-referencia — Implementação fiel do snippet de referência enviado pelo usuário */
+      .glass-referencia {
+        width: 14rem;
+        height: 14rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        border: 2px solid transparent;
+        box-shadow:
+          0 0 0 2px rgba(255, 255, 255, 0.6),
+          0 16px 32px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(14px) saturate(180%);
+        -webkit-backdrop-filter: blur(14px) saturate(180%);
+        backdrop-filter: url(#frosted) blur(14px) saturate(180%);
+        -webkit-backdrop-filter: url(#frosted) blur(14px) saturate(180%);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        outline: 0;
+        position: relative;
+        transition: all 0.3s ease;
+      }
+      .glass-referencia:hover {
+        background: rgba(255, 255, 255, 0.14);
+        box-shadow:
+          0 0 0 2.5px rgba(255, 255, 255, 0.85),
+          0 20px 40px rgba(0, 0, 0, 0.18);
+      }
+      .glass-referencia::before,
+      .glass-referencia::after {
+        content: "";
+        position: absolute;
+        width: 38%;
+        height: 8px;
+        background: #fff;
+        border-radius: 10px;
+        pointer-events: none;
+      }
+      .glass-referencia::after {
+        transform: rotate(90deg);
+      }
+
+      /* .avatar-glass — Esfera de vidro fosco (Frosted Glass) translúcida com refração e brilho com fade */
+      .avatar-glass {
+        --halo-escala: 1;
+        position: relative;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--cor-unidade, #0077b6) 28%, rgba(255, 255, 255, 0.12));
+        box-shadow:
+          /* Brilho perimétrico suave com fade imediato (sem corte de aro chapado) */
+          0 0 calc(4px * var(--halo-escala, 1)) calc(0.8px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 88%, white 12%),
+          /* Halo de luz irradiante com esmaecimento progressivo na cor da unidade */
+          0 0 calc(10px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 60%, transparent),
+          0 0 calc(24px * var(--halo-escala, 1)) calc(4px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 30%, transparent),
+          /* Apoio suave contra o fundo */
+          0 calc(6px * var(--halo-escala, 1)) calc(18px * var(--halo-escala, 1)) rgba(7, 58, 84, 0.14),
+          /* Fade luminoso interno a partir da borda da lente */
+          inset 0 0 calc(5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 65%, white 35%),
+          inset 0 calc(1px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) rgba(255, 255, 255, 0.5),
+          /* Absorção interna mais profunda e saturada da cor da unidade */
+          inset 0 0 calc(14px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 42%, transparent);
+        backdrop-filter: blur(14px) saturate(200%);
+        -webkit-backdrop-filter: blur(14px) saturate(200%);
+        backdrop-filter: url(#frosted) blur(14px) saturate(200%);
+        -webkit-backdrop-filter: url(#frosted) blur(14px) saturate(200%);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        isolation: isolate;
+        cursor: pointer;
+        outline: 0;
+        transition: all 0.25s ease;
+      }
+
+      .avatar-glass:hover {
+        background: color-mix(in srgb, var(--cor-unidade, #0077b6) 35%, rgba(255, 255, 255, 0.16));
+        box-shadow:
+          0 0 calc(6px * var(--halo-escala, 1)) calc(1.5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 95%, white 5%),
+          0 0 calc(16px * var(--halo-escala, 1)) calc(3px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 75%, transparent),
+          0 0 calc(32px * var(--halo-escala, 1)) calc(6px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 40%, transparent),
+          0 calc(10px * var(--halo-escala, 1)) calc(24px * var(--halo-escala, 1)) rgba(7, 58, 84, 0.18),
+          inset 0 0 calc(7px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 75%, white 25%),
+          inset 0 calc(1px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) rgba(255, 255, 255, 0.65),
+          inset 0 0 calc(18px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 55%, transparent);
+      }
+
+      /* Filtro suave da cor da unidade sobre a foto com fade na borda e proteção de lente */
+      .avatar-glass::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        pointer-events: none;
+        background: color-mix(in srgb, var(--cor-unidade, #0077b6) 15%, transparent);
+        box-shadow: inset 0 0 calc(5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 45%, rgba(255, 255, 255, 0.35));
+        transition: background 0.25s ease, box-shadow 0.25s ease;
+        z-index: 2;
+      }
+
+      .avatar-glass:hover::after {
+        background: color-mix(in srgb, var(--cor-unidade, #0077b6) 8%, transparent);
+        box-shadow: inset 0 0 calc(7px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 60%, rgba(255, 255, 255, 0.45));
+      }
+
+      /* Filhos no plano intermediário (SVG de iniciais ou foto) */
+      .avatar-glass > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .avatar-glass > svg {
+        width: 100%;
+        height: 100%;
+        transition: transform 0.25s ease;
+      }
+
+      .avatar-glass > svg circle {
+        fill-opacity: 0.32;
+        transition: fill-opacity 0.25s ease;
+      }
+
+      .avatar-glass:hover > svg circle {
+        fill-opacity: 0.44;
+      }
+
+      .avatar-glass > svg text {
+        filter: drop-shadow(0 1px 2px rgba(7, 58, 84, 0.45));
+      }
+
+      .avatar-glass > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.95;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+
+      .avatar-glass:hover > img {
+        opacity: 1;
+        transform: scale(1.03);
+      }
+
+      /* Comparativo 1: Original com anel rígido serrilhado */
+      .avatar-glass-antigo {
+        --halo-escala: 1;
+        --halo-aro: 3px;
+        position: relative;
+        border-radius: 50%;
+        overflow: hidden;
+        background-color: rgba(255, 255, 255, 0.4);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.8),
+          0 8px 28px rgba(7, 58, 84, 0.28),
+          0 0 0 var(--halo-aro) color-mix(in srgb, var(--cor-unidade) 88%, transparent),
+          0 0 calc(11px * var(--halo-escala)) calc(var(--halo-aro) + 3px * var(--halo-escala))
+            color-mix(in srgb, var(--cor-unidade) 55%, transparent),
+          0 0 calc(24px * var(--halo-escala)) calc(var(--halo-aro) + 6px * var(--halo-escala))
+            color-mix(in srgb, var(--cor-unidade) 26%, transparent);
+      }
+      .avatar-glass-antigo::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 50% 50%, transparent 78%, rgba(7, 58, 84, 0.1) 90%, rgba(7, 58, 84, 0.26) 100%),
+          radial-gradient(ellipse 72% 24% at 50% 3%, rgba(255, 255, 255, 0.55), transparent 72%),
+          radial-gradient(ellipse 60% 20% at 50% 98%, rgba(202, 240, 248, 0.34), transparent 72%);
+      }
+
+      /* Comparativo 2: Web 2.0 descartado com reflexo branco radial forçado */
+      .avatar-glass-web20 {
+        --halo-escala: 1;
+        position: relative;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        background-color: color-mix(in srgb, var(--cor-unidade) 25%, #073a54 45%);
+        box-shadow:
+          inset 0 0 calc(6px * var(--halo-escala)) calc(1px * var(--halo-escala)) rgba(255, 255, 255, 0.4),
+          inset 0 calc(-8px * var(--halo-escala)) calc(16px * var(--halo-escala))
+            color-mix(in srgb, var(--cor-unidade) 90%, #03045e 40%),
+          0 4px 12px rgba(7, 58, 84, 0.22);
+      }
+      .avatar-glass-web20::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse 48% 28% at 34% 18%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.35) 40%, transparent 80%),
+          radial-gradient(circle at 25% 32%, rgba(255, 255, 255, 0.8) 0%, transparent 35%),
+          radial-gradient(ellipse 60% 20% at 50% 95%, rgba(255, 255, 255, 0.45) 0%, color-mix(in srgb, var(--cor-unidade) 40%, transparent) 50%, transparent 85%);
+        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7);
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content font-sans antialiased p-6 lg:p-12">
+  <!-- Filtros SVG não-visíveis (skill componentes-frontend / design/015) -->
+  <svg width="0" height="0" class="absolute pointer-events-none" aria-hidden="true" style="position: absolute; width: 0; height: 0; overflow: hidden;">
+    <defs>
+      <!-- Filtro de vidro fosco para refração em backdrop-filter: url(#frosted) -->
+      <filter id="frosted" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <feGaussianBlur stdDeviation="12" result="blur" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- O fundo é montado no topo do <body> pelo módulo do <head>; o conteúdo fica acima dele. -->
+  <div class="relative z-10 max-w-6xl mx-auto space-y-12">
+
+    <!-- Cabeçalho do mock -->
+    <header class="glass-panel p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <p class="text-overline">Design System · Onsen de Inverno</p>
+        <h1 class="text-2xl lg:text-3xl font-bold tracking-tight text-madeira-700">SPEC design/015 — Avatar esfera de vidro fosco (Frosted Glass)</h1>
+        <p class="text-sm text-base-content/70 mt-1">
+          Óptica de lente esférica translúcida inspirada no vidro fosco com refração orgânica (<span class="text-code">url(#frosted)</span>): base translúcida a 8%, aro perimétrico de 2px a 60% de branco e profundidade suave — sem nenhum brilho branco chapado forçado de estilo Web 2.0.
+        </p>
+      </div>
+      <div class="badge badge-info badge-soft self-start md:self-center font-mono">
+        design/015 (mock v4 — Frosted Glass)
+      </div>
+    </header>
+
+    <!-- 1 · TOKENS — Espécime de Referência e Laboratório comparativo -->
+    <section id="tokens" class="space-y-6">
+      <div>
+        <p class="text-overline">1 · Tokens & Óptica</p>
+        <h2 class="text-xl font-bold text-madeira-700">Espécime de referência (CSS puro) × Laboratório evolutivo</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          O efeito de vidro brilhando não depende de manchas brancas radiais pintadas no centro: ele nasce da transparência sutil a 8%, do aro perimétrico de luz (<span class="text-code">0 0 0 2px rgba(255,255,255,.6)</span>) e da refração do fundo por vidro fosco (<span class="text-code">backdrop-filter: url(#frosted)</span>).
+        </p>
+      </div>
+
+      <!-- Destaque: O Espécime Puro de Referência fornecido pelo usuário -->
+      <div class="glass-panel p-6 rounded-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-rocha-950 flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-agua-500"></span>
+            Espécime de Referência: O vidro fosco puro flutuando sobre o fundo
+          </h3>
+          <span class="badge badge-neutral badge-soft badge-sm font-mono text-xs">CSS de Referência</span>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6 items-center">
+          <!-- O espécime interativo ao vivo -->
+          <div class="card-well p-8 rounded-2xl flex flex-col items-center justify-center min-h-[280px]">
+            <div class="glass-referencia shadow-2xl" title="Vidro fosco puro de referência (passe o mouse)"></div>
+            <p class="text-xs text-base-content/60 mt-4 text-center">
+              Passe o cursor sobre a lente para ver a sutil reação óptica da borda.
+            </p>
+          </div>
+
+          <!-- Explicação das propriedades ópticas -->
+          <div class="space-y-3 text-xs leading-relaxed text-base-content/80">
+            <div class="p-3 rounded-xl bg-white/40 border border-white/60 space-y-1">
+              <span class="font-bold text-rocha-950 font-mono">background: rgba(255, 255, 255, 0.08)</span>
+              <p class="text-base-content/70">
+                Apenas 8% de tinta branca translúcida. O fundo e o mapa continuam 92% visíveis através da lente, sem efeito plástico opaco.
+              </p>
+            </div>
+            <div class="p-3 rounded-xl bg-white/40 border border-white/60 space-y-1">
+              <span class="font-bold text-rocha-950 font-mono">box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6)</span>
+              <p class="text-base-content/70">
+                Aro perimétrico razor-sharp a 60% de branco, desenhado fora da borda transparente. Dá a leitura instantânea de aresta de vidro iluminada.
+              </p>
+            </div>
+            <div class="p-3 rounded-xl bg-white/40 border border-white/60 space-y-1">
+              <span class="font-bold text-rocha-950 font-mono">backdrop-filter: url(#frosted) blur(14px)</span>
+              <p class="text-base-content/70">
+                O desfoque fosco amacia a imagem que passa por trás, criando a percepção física de profundidade e materialidade vítrea.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Placa de vidro envolvendo os três poços comparativos -->
+      <div class="glass-panel p-6 rounded-2xl space-y-4">
+        <h3 class="text-sm font-bold text-rocha-950">Comparativo das 3 abordagens de avatar</h3>
+        <div class="grid md:grid-cols-3 gap-6">
+          <!-- 1. Original -->
+          <div class="card-well p-6 rounded-2xl flex flex-col items-center text-center gap-4">
+            <span class="badge badge-warning badge-soft badge-sm">1. Original (Anel Rígido)</span>
+            <div class="flex items-center justify-center py-6">
+              <div class="avatar-glass-antigo w-24 h-24" style="--cor-unidade: #0077b6">
+                <svg viewBox="0 0 100 100" class="w-full h-full opacity-[0.65]" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                </svg>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">
+              Anel duro de contorno sem desfoque (<span class="text-code">0 0 0 3px</span>) com serrilhamento visível em telas de alta densidade.
+            </p>
+          </div>
+
+          <!-- 2. Web 2.0 Descartado -->
+          <div class="card-well p-6 rounded-2xl flex flex-col items-center text-center gap-4 opacity-75">
+            <span class="badge badge-error badge-soft badge-sm">2. Web 2.0 (Brilho Chapado)</span>
+            <div class="flex items-center justify-center py-6">
+              <div class="avatar-glass-web20 w-24 h-24" style="--cor-unidade: #0077b6">
+                <svg viewBox="0 0 100 100" class="w-full h-full opacity-[0.95]" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="48" fill="#0077b6" fill-opacity="0.15"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                </svg>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">
+              Descartado: reflexos radiais brancos artificiais a 90% (<span class="text-code">rgba(255,255,255,.9)</span>) que parecem botão Mac Aqua de 2005.
+            </p>
+          </div>
+
+          <!-- 3. Novo Vidro Fosco Límpido -->
+          <div class="card-well p-6 rounded-2xl flex flex-col items-center text-center gap-4 border border-agua-400/50">
+            <span class="badge badge-success badge-soft badge-sm">3. Vidro Fosco Límpido (Aprovado)</span>
+            <div class="flex items-center justify-center py-6">
+              <div class="avatar-glass w-24 h-24" style="--cor-unidade: #0077b6">
+                <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="HP">
+                  <circle cx="50" cy="50" r="48" fill="#0077b6" fill-opacity="0.32"/>
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                </svg>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">
+              Aprovado: refração fosca saturada, aro de 2px e halo de luz irradiando a cor da unidade (<span class="text-code">--cor-unidade</span>) sem nenhuma mancha branca forçada.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 · ÁTOMOS — Escalas e Cores da Paleta de Unidades -->
+    <section id="atomos" class="space-y-6">
+      <div>
+        <p class="text-overline">2 · Átomos</p>
+        <h2 class="text-xl font-bold text-madeira-700">A lente de vidro fosco em todos os tamanhos e nas 8 cores de unidade</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          A refração e o aro perimétrico de luz escalam proporcionalmente à dimensão do avatar (<span class="text-code">--halo-escala</span>), tingindo-se organicamente da cor oficial da unidade sem nenhuma mancha branca artificial.
+        </p>
+      </div>
+
+      <!-- Placa de vidro envolvendo a escala de tamanhos e a paleta -->
+      <div class="glass-panel p-6 rounded-2xl space-y-8">
+        <!-- 2.1 Escala de tamanhos -->
+        <div class="space-y-3">
+          <h3 class="text-sm font-bold text-rocha-950">2.1 · Variação dimensional de uso real</h3>
+          <div class="card-well p-6 rounded-2xl">
+            <div class="flex flex-wrap items-end gap-8">
+              <!-- w-9 h-9 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-9 h-9" style="--cor-unidade: #0077b6; --halo-escala: 0.55">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="HP">
+                    <circle cx="50" cy="50" r="48" fill="#0077b6" fill-opacity="0.15"/>
+                    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                  </svg>
+                </div>
+                <span class="text-code text-[11px]">w-9 · 36px</span>
+              </div>
+
+              <!-- w-11 h-11 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-11 h-11" style="--cor-unidade: #0077b6; --halo-escala: 0.7">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="HP">
+                    <circle cx="50" cy="50" r="48" fill="#0077b6" fill-opacity="0.15"/>
+                    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                  </svg>
+                </div>
+                <span class="text-code text-[11px]">w-11 · 44px</span>
+              </div>
+
+              <!-- w-16 h-16 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-16 h-16" style="--cor-unidade: #0077b6; --halo-escala: 1">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="HP">
+                    <circle cx="50" cy="50" r="48" fill="#0077b6" fill-opacity="0.15"/>
+                    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                  </svg>
+                </div>
+                <span class="text-code text-[11px]">w-16 · 64px</span>
+              </div>
+
+              <!-- w-28 h-28 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-28 h-28" style="--cor-unidade: #0077b6; --halo-escala: 1.7">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="HP">
+                    <circle cx="50" cy="50" r="48" fill="#0077b6" fill-opacity="0.15"/>
+                    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+                  </svg>
+                </div>
+                <span class="text-code text-[11px]">w-28 · 112px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2.2 As 8 cores da paleta oficial de unidades -->
+        <div class="space-y-3">
+          <h3 class="text-sm font-bold text-rocha-950">2.2 · As 8 cores de unidades do catálogo oficial (apps/unidades/paleta.py)</h3>
+          <div class="card-well p-6 rounded-2xl">
+            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-6 text-center">
+              <!-- AGUA_700 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-14 h-14" style="--cor-unidade: #0077B6">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="D1"><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="38" font-weight="700" fill="#f2f8fb">D1</text></svg>
+                </div>
+                <span class="text-xs font-bold text-rocha-900">agua-700</span>
+                <span class="text-code text-[10px]">#0077B6</span>
+              </div>
+
+              <!-- AGUA_800 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-14 h-14" style="--cor-unidade: #023E8A">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="D2"><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="38" font-weight="700" fill="#f2f8fb">D2</text></svg>
+                </div>
+                <span class="text-xs font-bold text-rocha-900">agua-800</span>
+                <span class="text-code text-[10px]">#023E8A</span>
+              </div>
+
+              <!-- ROCHA_700 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-14 h-14" style="--cor-unidade: #415A77">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="CT"><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="38" font-weight="700" fill="#f2f8fb">CT</text></svg>
+                </div>
+                <span class="text-xs font-bold text-rocha-900">rocha-700</span>
+                <span class="text-code text-[10px]">#415A77</span>
+              </div>
+
+              <!-- ROCHA_900 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-14 h-14" style="--cor-unidade: #1B263B">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="AD"><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="38" font-weight="700" fill="#f2f8fb">AD</text></svg>
+                </div>
+                <span class="text-xs font-bold text-rocha-900">rocha-900</span>
+                <span class="text-code text-[10px]">#1B263B</span>
+              </div>
+
+              <!-- MADEIRA_600 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-14 h-14" style="--cor-unidade: #7F5539">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="PL"><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="38" font-weight="700" fill="#f2f8fb">PL</text></svg>
+                </div>
+                <span class="text-xs font-bold text-rocha-900">madeira-600</span>
+                <span class="text-code text-[10px]">#7F5539</span>
+              </div>
+
+              <!-- MADEIRA_700 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-14 h-14" style="--cor-unidade: #5E412F">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="GC"><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="38" font-weight="700" fill="#f2f8fb">GC</text></svg>
+                </div>
+                <span class="text-xs font-bold text-rocha-900">madeira-700</span>
+                <span class="text-code text-[10px]">#5E412F</span>
+              </div>
+
+              <!-- SAKURA_600 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-14 h-14" style="--cor-unidade: #BC3A67">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="GP"><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="38" font-weight="700" fill="#f2f8fb">GP</text></svg>
+                </div>
+                <span class="text-xs font-bold text-rocha-900">sakura-600</span>
+                <span class="text-code text-[10px]">#BC3A67</span>
+              </div>
+
+              <!-- SAKURA_700 -->
+              <div class="flex flex-col items-center gap-2">
+                <div class="avatar-glass w-14 h-14" style="--cor-unidade: #97294F">
+                  <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="CD"><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="38" font-weight="700" fill="#f2f8fb">CD</text></svg>
+                </div>
+                <span class="text-xs font-bold text-rocha-900">sakura-700</span>
+                <span class="text-code text-[10px]">#97294F</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · MOLÉCULAS — Iniciais, Foto Real e Avatar Editável -->
+    <section id="moleculas" class="space-y-6">
+      <div>
+        <p class="text-overline">3 · Moléculas</p>
+        <h2 class="text-xl font-bold text-madeira-700">Composição do avatar: iniciais, fotografia e controles de edição</h2>
+      </div>
+
+      <!-- Placa de vidro envolvendo os sub-cards de moléculas -->
+      <div class="glass-panel p-6 rounded-2xl">
+        <div class="grid md:grid-cols-3 gap-6">
+          <!-- Iniciais SVG -->
+          <!-- avatar com iniciais -->
+          <div class="card-well p-6 rounded-2xl flex flex-col items-center gap-4 text-center">
+            <span class="badge badge-neutral badge-soft badge-sm">Avatar de Iniciais (SVG)</span>
+            <div class="avatar-glass w-20 h-20" style="--cor-unidade: #0077b6; --halo-escala: 1.2">
+              <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="AL">
+                <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">AL</text>
+              </svg>
+            </div>
+            <div>
+              <p class="font-bold text-sm">André Luis</p>
+              <p class="text-xs text-base-content/60">Letras nítidas sobre vidro fosco saturado</p>
+            </div>
+          </div>
+          <!-- /avatar com iniciais -->
+
+          <!-- Foto Real -->
+          <!-- avatar com foto -->
+          <div class="card-well p-6 rounded-2xl flex flex-col items-center gap-4 text-center">
+            <span class="badge badge-neutral badge-soft badge-sm">Fotografia Real</span>
+            <div class="avatar-glass w-20 h-20" style="--cor-unidade: #bc3a67; --halo-escala: 1.2">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" alt="Foto de Marina Salles" />
+            </div>
+            <div>
+              <p class="font-bold text-sm">Marina Salles</p>
+              <p class="text-xs text-base-content/60">Aro/halo na cor sakura e filtro vítreo sutil sobre a foto</p>
+            </div>
+          </div>
+          <!-- /avatar com foto -->
+
+          <!-- Avatar Editável -->
+          <!-- avatar editável com botão -->
+          <div class="card-well p-6 rounded-2xl flex flex-col items-center gap-4 text-center">
+            <span class="badge badge-neutral badge-soft badge-sm">Avatar Editável (.avatar-editavel)</span>
+            <div class="avatar-editavel relative inline-block">
+              <div class="avatar-glass w-20 h-20" style="--cor-unidade: #7f5539; --halo-escala: 1.2">
+                <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="CR">
+                  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">CR</text>
+                </svg>
+              </div>
+              <!-- Botão lápis/foto na quina -->
+              <button class="btn btn-circle btn-xs btn-glass absolute -bottom-1 -right-1 z-10 shadow-md" title="Alterar foto">
+                <svg class="w-3 h-3 text-agua-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+              </button>
+            </div>
+            <div>
+              <p class="font-bold text-sm">Carlos Ramos</p>
+              <p class="text-xs text-base-content/60">Com botão de ação na órbita</p>
+            </div>
+          </div>
+          <!-- /avatar editável com botão -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · ORGANISMOS — Casos Reais: Perfil e Linha de Substituição -->
+    <section id="organismos" class="space-y-6">
+      <div>
+        <p class="text-overline">4 · Organismos</p>
+        <h2 class="text-xl font-bold text-madeira-700">Aplicações nos organismos do sistema</h2>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Cartão de perfil do servidor -->
+        <!-- organismo: identidade do perfil -->
+        <div class="glass-panel p-6 rounded-2xl flex items-center gap-6">
+          <div class="avatar-glass w-24 h-24 shrink-0" style="--cor-unidade: #0077b6; --halo-escala: 1.6">
+            <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="HP">
+              <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <p class="text-overline text-rocha-700">Analista de Planejamento</p>
+            <h3 class="text-xl font-bold text-madeira-700 truncate">Henrique Pougy</h3>
+            <p class="text-code text-xs text-agua-700 mt-0.5">RF 812.345-6</p>
+            <div class="flex items-center gap-2 mt-3">
+              <span class="badge badge-success badge-sm badge-soft">Em exercício</span>
+              <span class="badge badge-info badge-sm badge-soft">DIMAP-1</span>
+            </div>
+          </div>
+        </div>
+        <!-- /organismo: identidade do perfil -->
+
+        <!-- Linha de substituição de direção -->
+        <!-- organismo: linha de substituição -->
+        <div class="glass-panel p-6 rounded-2xl flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 min-w-0">
+            <div class="avatar-glass w-12 h-12 shrink-0" style="--cor-unidade: #7f5539; --halo-escala: 0.8">
+              <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="TL">
+                <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="40" font-weight="700" fill="#f2f8fb">TL</text>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs text-rocha-600 font-medium">Substituto Designado</p>
+              <h4 class="text-sm font-bold text-rocha-950 truncate">Thiago Lacerda</h4>
+              <p class="text-xs text-base-content/60">Em vigência até 15/10/2026</p>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-glass text-xs">Ver ato</button>
+        </div>
+        <!-- /organismo: linha de substituição -->
+      </div>
+    </section>
+
+    <!-- 5 · TELA MONTADA — A barra de topo no contexto oficial -->
+    <section id="tela" class="space-y-6">
+      <div>
+        <p class="text-overline">5 · Tela Montada</p>
+        <h2 class="text-xl font-bold text-madeira-700">Contexto Real: O widget de usuário na barra de navegação (base.html)</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          A lente do avatar em repouso sobre a placa de gelo fosco e a ortofoto administrativa, com refração limpa de vidro e aro perimétrico luminoso na cor da unidade.
+        </p>
+      </div>
+
+      <!-- página: base.html -->
+      <div class="glass-panel p-6 rounded-2xl relative min-h-[140px] flex items-center justify-end">
+        <div class="text-xs text-base-content/50 absolute left-6 top-6 max-w-sm">
+          Simulação da ponta direita da barra superior de navegação sobre o fundo administrativo.
+        </div>
+
+        <!-- partial: user_admin/partials/_imagem_perfil.html -->
+        <a id="widget-area-usuario"
+           href="#perfil"
+           class="glass-panel rounded-full! p-1.5 flex items-center gap-3 cursor-pointer transition-glass hover:bg-white/60">
+          <div class="w-9 h-9 lg:w-11 lg:h-11 shrink-0">
+            <div class="avatar-glass w-full h-full" style="--cor-unidade: #0077b6; --halo-escala: 0.7">
+              <svg viewBox="0 0 100 100" class="w-full h-full" role="img" aria-label="HP">
+                <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
+              </svg>
+            </div>
+          </div>
+          <div class="hidden sm:block pr-4">
+            <p class="text-sm font-bold m-0 leading-tight">Henrique Pougy</p>
+            <p class="text-[10px] uppercase tracking-wide font-medium m-0 leading-tight mt-0.5 text-madeira-600">DIMAP-1</p>
+          </div>
+        </a>
+        <!-- /partial -->
+        <!-- fica na página: placa e dados textuais do widget de usuário -->
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

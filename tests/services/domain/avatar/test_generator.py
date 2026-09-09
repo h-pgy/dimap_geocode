@@ -73,10 +73,41 @@ def test_avatar_e_um_circulo_pintado_com_as_cores_recebidas() -> None:
 
     circulo = raiz.find("svg:circle", _SVG_NS)
     assert circulo is not None
-    assert float(circulo.get("r", "0")) == largura / 2
+    assert float(circulo.get("r", "0")) == 48
     assert circulo.get("fill") == "#ea580c"
 
     texto = raiz.find("svg:text", _SVG_NS)
     assert texto is not None
     assert texto.get("fill") == "#f8fafc"
     assert texto.text == resultado.iniciais
+
+
+def test_avatar_svg_preserva_iniciais_e_aria_label() -> None:
+    resultado = _gerar("João", "Silva")
+
+    raiz = ElementTree.fromstring(resultado.svg)
+    assert raiz.get("role") == "img"
+    assert raiz.get("aria-label") == resultado.iniciais
+    texto = raiz.find("svg:text", _SVG_NS)
+    assert texto is not None
+    assert texto.text == resultado.iniciais
+
+
+def test_avatar_svg_circulo_nao_ultrapassa_area_visivel() -> None:
+    resultado = _gerar("João", "Silva")
+
+    raiz = ElementTree.fromstring(resultado.svg)
+    largura, altura = (float(v) for v in raiz.get("viewBox", "").split()[2:])
+    circulo = raiz.find("svg:circle", _SVG_NS)
+    assert circulo is not None
+    r = float(circulo.get("r", "0"))
+    cx = float(circulo.get("cx", "0"))
+    cy = float(circulo.get("cy", "0"))
+
+    # Margem anti-serrilhado: círculo interno não alcança a borda do viewBox
+    assert r < largura / 2
+    assert cx - r > 0
+    assert cx + r < largura
+    assert cy - r > 0
+    assert cy + r < altura
+

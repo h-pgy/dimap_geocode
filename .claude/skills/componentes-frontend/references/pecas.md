@@ -70,16 +70,13 @@ rebaixada. **Afundado = a coluna tem filtro**, não "alguém clicou": o CSS lê 
 campo de uma coluna abre o de todas). Coluna que não responde **não tem peça**: o rótulo é gravado
 direto na bandeja — a ausência da peça é a mensagem, sem cinza de desabilitado.
 
-**Imagem de perfil** (`.avatar-glass`): o disco com a foto ou o avatar de iniciais, recortado no
-círculo. A unidade **não é um anel** — é **luz atrás do disco**: um aro de contato (`--halo-aro`,
-3px, na mesma transparência da imagem) e, a partir dele, dois fades que se dissolvem. Anel sólido
-com `outline`/`offset` é aresta desenhada fora da caixa que a caixa não reserva: pousava sobre o
-vizinho. O hex chega em `--cor-unidade` e o alcance da luz em `--halo-escala` — o padrão serve de
-`w-9` a `w-16`; disco maior abre o alcance **no include**, não no token (`w-28` usa `2`, o chip do
-topo `0.5`). O volume vem do domo (`::after`): a mesma **óptica simulada** do mapa (§6) — só o aro
-curva, o miolo até 78% do raio é a imagem crua, e nada se distorce geometricamente. A imagem cede
-um pouco ao gelo (`opacity` no **filho**, nunca no `.avatar-glass`: no pai levaria junto o halo e o
-domo, que são luz).
+**Imagem de perfil** (`.avatar-glass`, SPEC design/015): esfera de vidro fosco (Frosted Glass)
+translúcida com refração orgânica (`backdrop-filter: url(#frosted)`) e aro perimétrico luminoso
+na cor da unidade (`--cor-unidade`), sem manchas brancas radiais chapadas. O alcance da luz escala
+proporcionalmente por `--halo-escala` — o padrão serve de `w-9` a `w-16`; disco maior abre o alcance
+no include (`w-28` usa `2`, o chip do topo `0.5`). O filtro vítreo suave (`::after`) protege a foto
+e integra a imagem à cor da unidade sem perder nitidez. O SVG de iniciais usa círculo com margem
+anti-serrilhado e opacidade que permite ao vidro transparecer o fundo.
 
 **Linha de pessoa, tarja de vínculo e calha da cobertura** (`.linha-pessoa`, `.tarja-vinculo`
 (`-pendente`/`-critica`), `.calha-cobertura*`, SPEC user_admin/015): a tarja é **placa clara

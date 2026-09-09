@@ -371,18 +371,18 @@
             <div class="card-well h-32 flex items-center justify-center gap-8">
               <div class="avatar-glass w-11 h-11" style="--cor-unidade: #0077b6; --halo-escala: 0.5">
                 <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
                 </svg>
               </div>
               <div class="avatar-glass w-16 h-16" style="--cor-unidade: #0077b6">
                 <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
                 </svg>
               </div>
             </div>
-            <p class="text-xs text-base-content/60">O aro de contato não escala; o que cresce com o disco é o alcance da luz. À esquerda, o chip do topo (<span class="text-code">0.5</span>); à direita, o padrão.</p>
+            <p class="text-xs text-base-content/60">Esfera de vidro fosco translúcida com refração suave e aro perimétrico luminoso na cor da unidade. À esquerda, o chip do topo (<span class="text-code">0.5</span>); à direita, o padrão.</p>
           </div>
           <div class="flex flex-col gap-2">
             <p class="text-overline">.admin-shell</p>
@@ -1071,7 +1071,7 @@
             <div class="avatar-editavel">
               <div class="avatar-glass w-28 h-28" style="--cor-unidade: #0077b6; --halo-escala: 2">
                 <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
                 </svg>
               </div>
@@ -1079,7 +1079,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
               </button>
             </div>
-            <p class="text-xs text-base-content/60 max-w-sm">O <span class="text-code">.btn-foto</span> é irmão do <span class="text-code">.btn-criar-inline</span> — o mesmo círculo de gelo em tinta ciana —, pousado na quina do retrato. Quem posiciona é o <span class="text-code">.avatar-editavel</span>, e só isso: o retrato continua sendo o <span class="text-code">.avatar-glass</span> intocado, com o halo da unidade e o domo. No modal de edição o botão é o próprio <span class="text-code">.campo-onsen-lapis</span>, e vira ✕ quando o campo já está aberto.</p>
+            <p class="text-xs text-base-content/60 max-w-sm">O <span class="text-code">.btn-foto</span> é irmão do <span class="text-code">.btn-criar-inline</span> — o mesmo círculo de gelo em tinta ciana —, pousado na quina do retrato. Quem posiciona é o <span class="text-code">.avatar-editavel</span>, e só isso: o retrato continua sendo o <span class="text-code">.avatar-glass</span> intocado, com o halo da unidade e a lente de vidro fosco. No modal de edição o botão é o próprio <span class="text-code">.campo-onsen-lapis</span>, e vira ✕ quando o campo já está aberto.</p>
           </div>
         </div>
 
@@ -1415,7 +1415,7 @@
             <label class="upload-well cursor-pointer">
               <span class="avatar-glass w-16 h-16 shrink-0" style="--cor-unidade: #7f5539">
                 <svg viewBox="0 0 100 100" role="img" aria-label="MS">
-                  <circle cx="50" cy="50" r="50" fill="#7f5539"/>
+                  <circle cx="50" cy="50" r="48" fill="#7f5539"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">MS</text>
                 </svg>
               </span>
@@ -1579,12 +1579,12 @@
       <!-- Imagem de perfil em versão grande -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Imagem de perfil grande (à esquerda do nome)</p>
-        <p class="text-sm text-base-content/70">Foto ou avatar de iniciais — o que <span class="text-code">resolver_imagem_perfil</span> devolver; a molécula é a mesma nos dois ramos. A unidade não é um anel, é <strong>luz atrás do disco</strong>: aro de contato de <span class="text-code">--halo-aro</span> na mesma transparência da imagem, e a partir dele dois fades que se dissolvem. O hex chega em <span class="text-code">--cor-unidade</span> (resolvido na borda do app, nunca classe montada no template) e o alcance da luz em <span class="text-code">--halo-escala</span> — o padrão serve de <span class="text-code">w-9</span> a <span class="text-code">w-16</span>, e disco maior abre o alcance no include. O volume vem do domo (<span class="text-code">::after</span>): só o aro curva, o miolo até 78% do raio é a foto crua.</p>
+        <p class="text-sm text-base-content/70">Foto ou avatar de iniciais — o que <span class="text-code">resolver_imagem_perfil</span> devolver; a molécula é a mesma nos dois ramos. Esfera de vidro fosco (Frosted Glass) translúcida com refração orgânica e halo luminoso que irradia a cor da unidade (<span class="text-code">--cor-unidade</span>). O alcance do halo é proporcional à escala (<span class="text-code">--halo-escala</span>). O filtro vítreo suave (<span class="text-code">::after</span>) protege a foto e a integra aos tons do sistema.</p>
         <div class="grid lg:grid-cols-2 gap-6">
           <div class="card-well p-5 flex items-center gap-5">
             <div class="avatar-glass w-28 h-28 shrink-0" style="--cor-unidade: #0077b6">
               <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                 <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
               </svg>
             </div>
@@ -1904,7 +1904,7 @@
           <div class="tarja-vinculo">
             <div class="linha-pessoa">
               <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
-                <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#0077B6"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">MC</text></svg>
+                <svg viewBox="0 0 100 100" role="img" aria-label="MC"><circle cx="50" cy="50" r="48" fill="#0077B6"/><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">MC</text></svg>
               </div>
               <div class="min-w-0">
                 <p class="linha-pessoa-nome">Marina Castro</p>
@@ -3006,7 +3006,7 @@
           <div class="flex items-center gap-5">
             <div class="avatar-glass w-28 h-28 shrink-0" style="--cor-unidade: #0077b6">
               <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                 <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
               </svg>
             </div>
@@ -3077,7 +3077,7 @@
             <label class="upload-well cursor-pointer">
               <span class="avatar-glass w-16 h-16 shrink-0" style="--cor-unidade: #0077b6">
                 <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
                 </svg>
               </span>
