@@ -8,7 +8,7 @@ from services.utils.sorteio import sortear_diferente
 
 WMS_URL: str = settings.WMS_URL
 WMS_VERSION: str = settings.WMS_VERSION
-WMS_BASES: list[dict[str, str]] = settings.WMS_BASES
+WMS_BASES: list[dict[str, str | int]] = settings.WMS_BASES
 MAP_CENTRO_DEFAULT: list[float] = settings.MAP_CENTRO_DEFAULT
 MAP_ZOOM_DEFAULT: int = settings.MAP_ZOOM_DEFAULT
 MAP_TILES_PUBLICOS_URL: str = settings.MAP_TILES_PUBLICOS_URL

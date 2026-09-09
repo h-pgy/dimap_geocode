@@ -1,4 +1,4 @@
-import { criarMapa } from "./criar_mapa.js";
+import { criarMapa, adicionarZoom } from "./criar_mapa.js";
 import { adicionarBaseWms } from "./camada_base.js";
 import { adicionarResultado } from "./camada_resultado.js";
 
@@ -16,6 +16,7 @@ function montarMapaBase() {
   if (!wms || !cfg || mapa) return;
   mapa = criarMapa("map", cfg.centro, cfg.zoom);
   adicionarBaseWms(mapa, wms);
+  adicionarZoom(mapa);
 }
 
 // htmx:afterSwap dispara a cada swap (garantido) — nele buscamos o payload por id no DOM. O

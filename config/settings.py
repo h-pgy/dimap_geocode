@@ -172,6 +172,7 @@ class _Settings(BaseSettings):
     wms_layer_mapa_base: str = Field(
         default="geoportal:MapaBase_Politico", alias="WMS_LAYER_MAPA_BASE"
     )
+    wms_zoom_nativo_ortofoto: int = Field(default=20, alias="WMS_ZOOM_NATIVO_ORTOFOTO")
     # Sobrescreve o catálogo de config/pontos_fundo.json inteiro (SPEC design/010) — quem quiser
     # outro recorte de pontos não edita o repositório, só o .env.
     map_fundo_pontos: str | None = Field(default=None, alias="MAP_FUNDO_PONTOS")
@@ -320,9 +321,19 @@ WMS_VERSION = _env.wms_version
 WMS_REQUEST_TIMEOUT_SECONDS = _env.wms_request_timeout_seconds
 WMS_LAYER_ORTOFOTO = _env.wms_layer_ortofoto
 WMS_LAYER_MAPA_BASE = _env.wms_layer_mapa_base
+# Último zoom em que a ortofoto tem detalhe real; acima dele o GeoServer devolve só o próprio
+# upscale. O Leaflet passa a ampliar no cliente o tile nativo (maxNativeZoom), sem pedir tile novo.
+# É propriedade da imagem, não do mapa: base vetorial não tem teto, o servidor a desenha em
+# qualquer escala.
+WMS_ZOOM_NATIVO_ORTOFOTO = _env.wms_zoom_nativo_ortofoto
 # Lista ordenada de bases; a 1ª é a visível por padrão.
-WMS_BASES: list[dict[str, str]] = [
-    {"nome": "Ortofoto", "layers": WMS_LAYER_ORTOFOTO, "url": WMS_RASTER_URL},
+WMS_BASES: list[dict[str, str | int]] = [
+    {
+        "nome": "Ortofoto",
+        "layers": WMS_LAYER_ORTOFOTO,
+        "url": WMS_RASTER_URL,
+        "zoom_nativo": WMS_ZOOM_NATIVO_ORTOFOTO,
+    },
     {"nome": "Mapa base", "layers": WMS_LAYER_MAPA_BASE},
 ]
 
