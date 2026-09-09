@@ -1,12 +1,13 @@
 ---
 spec: documentos_oficiais/009
-versao: v1
-atualizado_em: 2026-09-08
-testes_tdd: false
+versao: v2
+atualizado_em: 2026-09-09
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco, artefato]
 changelog:
   - v1: versão inicial
+  - v2: unificação do domínio em `services/domain/certidao_atos_administrativos` (removendo acoplamento indevido com `listagem_gestao`) e instanciação semântica do callable em `emitir_certidao_atos`
 ---
 
 # SPEC documentos_oficiais/009 — Certidão de atos praticados
@@ -47,9 +48,11 @@ O recorte da certidão **não é o do Registro de Ações**. Lá o universo são
 alcança; aqui é uma pessoa só, e ela pode ter praticado atos em unidades por onde passou — delimitar
 por unidade faria a certidão omitir o que a pessoa fez antes de ser transferida.
 
-**`services/domain/listagem_gestao/models/execucoes.py`** — o recorte próprio, ao lado do
-`BuscaExecucoes` da SPEC [painel/002](../painel/002-registro-de-acoes.md), que segue intocado.
+**`services/domain/certidao_atos_administrativos/models.py`** — o recorte próprio e o que a certidão diz. O `BuscaExecucoes` da SPEC [painel/002](../painel/002-registro-de-acoes.md) segue intocado em `services/domain/listagem_gestao`.
 ```python
+JANELA_MAXIMA_DIAS = 365
+
+
 class BuscaAtosProprios(BaseModel):
     """O recorte da certidão. Mesma propriedade de segurança do `BuscaExecucoes`: o primeiro campo é
     o delimitador do universo, sem default — esquecê-lo é erro de tipo, nunca certidão alheia."""
@@ -70,10 +73,8 @@ class BuscaAtosProprios(BaseModel):
         if (self.fim - self.inicio).days > JANELA_MAXIMA_DIAS:
             raise ValueError(f"O período da certidão não pode passar de {JANELA_MAXIMA_DIAS} dias.")
         return self
-```
 
-**`services/domain/certidao_atos/models.py`** — o que a certidão diz.
-```python
+
 class RecorteDeclarado(BaseModel):
     """Os critérios, já redigidos para sair impressos. A certidão que não declara o que recortou faz
     o leitor confundir "não praticou" com "não foi pedido"."""
@@ -173,7 +174,7 @@ def _recortadas_proprias(busca: BuscaAtosProprios) -> QuerySet[ExecucaoAcao]:
     return consulta.order_by("momento")
 ```
 
-**`services/domain/certidao_atos/certidao.py`** — o que a certidão diz e o tipo que a emite, as duas
+**`services/domain/certidao_atos_administrativos/certidao.py`** — o que a certidão diz e o tipo que a emite, as duas
 peças da skill `documento-oficial`.
 ```python
 class MontarCertidaoInput(BaseModel):
@@ -289,7 +290,8 @@ def emitir_certidao_atos(
     # Parâmetros soltos, e não um DTO: quem fala com o domínio são os DTOs abaixo; esta função é
     # orquestração de app, e envelopá-la só acrescentaria um tipo que ninguém mais lê.
     envelope = _envelope(autor, recorte)
-    renderizado = _tipo_certidao()(
+    gerar_certidao = _tipo_certidao()
+    renderizado = gerar_certidao(
         CertidaoAtosInput(
             envelope=envelope,
             recorte=recorte,
@@ -310,6 +312,13 @@ def emitir_certidao_atos(
     )
     # `execucao=None`: quem grava a execução é o decorator, depois que a view retorna (Caveats).
     return guardar_documento(selado, envelope, execucao=None)
+
+
+def _tipo_certidao() -> CertidaoAtos:
+    tema = montar_tema(build_tema_config(settings))
+    config = build_marcacao_config(settings)
+    selo_config = SeloConfig()
+    return CertidaoAtos(tema=tema, config=config, selo_config=selo_config)
 
 
 def _envelope(perfil: Perfil, recorte: RecorteDeclarado) -> EnvelopeAto:
@@ -440,7 +449,7 @@ precisa estar no acervo antes disso — inverter a ordem exigiria a view chamar 
 exatamente o que a maquinaria da SPEC autorizacao/004 impede. O custo é uma coluna do acervo que esta
 ação não preenche, e uma junção que se faz por texto em vez de chave.
 
-`services/domain/certidao_atos` passa a conhecer `services/domain/listagem_gestao`, para consumir
+`services/domain/certidao_atos_administrativos` passa a conhecer `services/domain/listagem_gestao`, para consumir
 `LinhaExecucao`. Materializar a linha de novo, com outro nome, duplicaria a extração que
 `historico._linha` já faz e deixaria as duas livres para divergir. O custo é que mudar `LinhaExecucao`
 passa a mexer no que sai impresso num documento assinado.

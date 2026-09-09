@@ -1159,3 +1159,238 @@ def test_escrita_so_por_post(client: Client) -> None:
     resp_revogar = client.get(reverse("competencias:revogar_delegacao"))
     assert resp_revogar.status_code == 405
 
+
+# ---------------------------------------------------------------------------
+# SPEC documentos_oficiais/009 — Certidão de atos: Comportamento
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_emissao_fica_registrada_com_o_codigo_como_alvo(client: Client) -> None:
+    from apps.competencias.acoes_declaradas import ACAO_EMITIR_CERTIDAO_ATOS
+    from apps.documentos.models import DocumentoEmitido
+
+    unidade = _unidade("VIEW-REG-UNID")
+    cargo = _cargo_base(nome="Auditor Registro Certidao", sigla="ARCT")
+    servidor = _perfil(unidade, "910600", "Servidor Emissao", cargo_base=cargo)
+    acao_certidao = _acao(ACAO_EMITIR_CERTIDAO_ATOS.acao.slug)
+    _conceder(_atribuir(unidade, acao_certidao), cargo)
+
+    client.force_login(servidor)
+    hoje = timezone.localdate()
+    resposta = client.post(
+        reverse("competencias:emitir_certidao_atos"),
+        {"inicio": hoje.isoformat(), "fim": hoje.isoformat()},
+    )
+    assert resposta.status_code == 200
+
+    doc = DocumentoEmitido.objects.filter(envelope__autor__nome__icontains="Servidor Emissao").first()
+    assert doc is not None
+
+    execucao = ExecucaoAcao.objects.filter(
+        perfil=servidor,
+        acao=acao_certidao,
+        operacao="emitir",
+        autorizado=True,
+    ).first()
+    assert execucao is not None
+    assert execucao.alvo_tipo == "documento"
+    assert execucao.alvo_identificador == doc.codigo
+
+
+@banco
+@pytest.mark.django_db
+def test_periodo_invertido_ou_longo_demais_eh_recusado(client: Client) -> None:
+    from apps.competencias.acoes_declaradas import ACAO_EMITIR_CERTIDAO_ATOS
+    from apps.documentos.models import DocumentoEmitido
+
+    unidade = _unidade("VIEW-REC-UNID")
+    cargo = _cargo_base(nome="Auditor Recusa Certidao", sigla="ARC2")
+    servidor = _perfil(unidade, "910601", "Servidor Recusa", cargo_base=cargo)
+    acao_certidao = _acao(ACAO_EMITIR_CERTIDAO_ATOS.acao.slug)
+    _conceder(_atribuir(unidade, acao_certidao), cargo)
+
+    client.force_login(servidor)
+    total_docs_antes = DocumentoEmitido.objects.count()
+
+    # Período invertido: fim anterior ao início
+    resp_invertido = client.post(
+        reverse("competencias:emitir_certidao_atos"),
+        {"inicio": "2026-09-10", "fim": "2026-09-01"},
+    )
+    assert resp_invertido.status_code == 422
+    assert "A data final do período não pode ser anterior à inicial." in resp_invertido.content.decode()
+
+    # Período maior que 365 dias
+    resp_longo = client.post(
+        reverse("competencias:emitir_certidao_atos"),
+        {"inicio": "2024-01-01", "fim": "2026-01-01"},
+    )
+    assert resp_longo.status_code == 422
+    assert "365 dias" in resp_longo.content.decode()
+
+    # Nenhum documento gravado no acervo
+    assert DocumentoEmitido.objects.count() == total_docs_antes
+
+
+# ---------------------------------------------------------------------------
+# SPEC documentos_oficiais/009 — Certidão de atos: Segurança da ação
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_anonimo_vai_ao_login_e_nao_deixa_linha(client: Client) -> None:
+    resp_modal = client.get(reverse("competencias:modal_certidao_atos"))
+    assert resp_modal.status_code == 302
+    assert "/login" in resp_modal["Location"]
+
+    resp_emitir = client.post(reverse("competencias:emitir_certidao_atos"), {})
+    assert resp_emitir.status_code == 302
+    assert "/login" in resp_emitir["Location"]
+
+    assert ExecucaoAcao.objects.count() == 0
+
+
+@banco
+@pytest.mark.django_db
+def test_sem_competencia_recebe_403_e_a_negativa_fica_registrada(client: Client) -> None:
+    from apps.competencias.acoes_declaradas import ACAO_EMITIR_CERTIDAO_ATOS
+
+    unidade = _unidade("VIEW-SEM-COMP")
+    servidor = _perfil(unidade, "910602", "Servidor Sem Comp")
+    _acao(ACAO_EMITIR_CERTIDAO_ATOS.acao.slug)
+
+    client.force_login(servidor)
+
+    resp_modal = client.get(reverse("competencias:modal_certidao_atos"))
+    assert resp_modal.status_code == 403
+
+    resp_emitir = client.post(reverse("competencias:emitir_certidao_atos"), {})
+    assert resp_emitir.status_code == 403
+
+    negativas = ExecucaoAcao.objects.filter(
+        perfil=servidor,
+        acao__slug=ACAO_EMITIR_CERTIDAO_ATOS.acao.slug,
+        autorizado=False,
+    )
+    assert negativas.count() == 2
+
+
+@banco
+@pytest.mark.django_db
+def test_concessao_em_outra_unidade_nao_libera(client: Client) -> None:
+    from apps.competencias.acoes_declaradas import ACAO_EMITIR_CERTIDAO_ATOS
+
+    unidade_a = _unidade("VIEW-OUTRA-A")
+    unidade_b = _unidade("VIEW-OUTRA-B")
+    cargo = _cargo_base(nome="Auditor Concessao Outra", sigla="ACO1")
+    servidor = _perfil(unidade_a, "910603", "Servidor Unidade A", cargo_base=cargo)
+
+    acao = _acao(ACAO_EMITIR_CERTIDAO_ATOS.acao.slug)
+    # Concessão dada na unidade B, não na unidade A em que o servidor está lotado
+    _conceder(_atribuir(unidade_b, acao), cargo)
+
+    client.force_login(servidor)
+    resposta = client.get(reverse("competencias:modal_certidao_atos"))
+    assert resposta.status_code == 403
+
+
+@banco
+@pytest.mark.django_db
+def test_impedido_recebe_403_e_exonerado_recebe_302(client: Client) -> None:
+    from apps.competencias.acoes_declaradas import ACAO_EMITIR_CERTIDAO_ATOS
+
+    unidade = _unidade("VIEW-EXERC-UNID")
+    cargo = _cargo_base(nome="Auditor Impedido", sigla="AIMP")
+    impedido = _perfil(unidade, "910604", "Servidor Impedido", cargo_base=cargo)
+    exonerado = _perfil(
+        unidade,
+        "910605",
+        "Servidor Exonerado",
+        cargo_base=cargo,
+        is_active=False,
+        exonerado_em=timezone.localdate(),
+    )
+
+    acao = _acao(ACAO_EMITIR_CERTIDAO_ATOS.acao.slug)
+    _conceder(_atribuir(unidade, acao), cargo)
+
+    tipo_imp, _ = TipoImpedimento.objects.get_or_create(nome="Licença Médica Certidão")
+    registrar_impedimento(
+        impedido,
+        NovoImpedimento(
+            tipo=tipo_imp.pk,
+            data_inicio=timezone.localdate() - timedelta(days=1),
+            data_fim=None,
+        ),
+    )
+
+    client.force_login(impedido)
+    resp_imp = client.get(reverse("competencias:modal_certidao_atos"))
+    assert resp_imp.status_code == 403
+
+    client.force_login(exonerado)
+    resp_exon = client.get(reverse("competencias:modal_certidao_atos"))
+    assert resp_exon.status_code == 302
+    assert "/login" in resp_exon["Location"]
+
+
+@banco
+@pytest.mark.django_db
+def test_abrir_o_modal_autorizado_nao_vira_linha(client: Client) -> None:
+    from apps.competencias.acoes_declaradas import ACAO_EMITIR_CERTIDAO_ATOS
+
+    unidade = _unidade("VIEW-MODAL-UNID")
+    cargo = _cargo_base(nome="Auditor Modal", sigla="AMOD")
+    servidor = _perfil(unidade, "910606", "Servidor Modal", cargo_base=cargo)
+    acao = _acao(ACAO_EMITIR_CERTIDAO_ATOS.acao.slug)
+    _conceder(_atribuir(unidade, acao), cargo)
+
+    client.force_login(servidor)
+    resposta = client.get(reverse("competencias:modal_certidao_atos"))
+    assert resposta.status_code == 200
+
+    # Leitura autorizada não grava linha
+    assert ExecucaoAcao.objects.count() == 0
+
+
+@banco
+@pytest.mark.django_db
+def test_perfil_forjado_no_post_nao_muda_de_quem_eh_a_certidao(client: Client) -> None:
+    from apps.competencias.acoes_declaradas import ACAO_EMITIR_CERTIDAO_ATOS
+    from apps.documentos.models import DocumentoEmitido
+
+    unidade = _unidade("VIEW-FORJ-UNID")
+    cargo = _cargo_base(nome="Auditor Forjado", sigla="AFOR")
+    autor = _perfil(unidade, "910607", "Autor Legitimo", cargo_base=cargo)
+    vitima = _perfil(unidade, "910608", "Vitima Forjada", cargo_base=cargo)
+    acao = _acao(ACAO_EMITIR_CERTIDAO_ATOS.acao.slug)
+    _conceder(_atribuir(unidade, acao), cargo)
+
+    client.force_login(autor)
+    hoje = timezone.localdate()
+    # Tenta forjar perfil_id e perfil da vítima no POST
+    resposta = client.post(
+        reverse("competencias:emitir_certidao_atos"),
+        {
+            "inicio": hoje.isoformat(),
+            "fim": hoje.isoformat(),
+            "perfil_id": str(vitima.pk),
+            "perfil": str(vitima.pk),
+        },
+    )
+    assert resposta.status_code == 200
+
+    # A certidão emitida no acervo é do autor da sessão, não da vítima forjada
+    doc = DocumentoEmitido.objects.filter(envelope__autor__nome__icontains="Autor Legitimo").first()
+    assert doc is not None
+    assert doc.envelope["autor"]["nome"] == f"{autor.nome} {autor.sobrenome}"
+    assert doc.envelope["alvo"]["identificador"] == autor.rf
+
+    # E a execução gravada pertence ao autor
+    execucao = ExecucaoAcao.objects.get(alvo_identificador=doc.codigo, autorizado=True)
+    assert execucao.perfil_id == autor.pk
+
+
