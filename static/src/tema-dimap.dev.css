@@ -1987,7 +1987,11 @@ html[data-theme="dimap"] {
 @media (prefers-reduced-motion: reduce) {
   .fundo-ortofoto__deriva,
   .fundo-ortofoto__imagem { animation: none; }
+}
 
+/* A gaveta e o que veio depois dela pertencem ao design system: reabre a camada fechada acima
+   pelos @keyframes e pelo @media, que são de topo. */
+@layer components {
   /* ==================== GAVETA LATERAL (SPEC design/013) ======================================== */
 
   /* TOKEN · a terceira densidade como primitivo, e não mais escrita só dentro do .modal-box-glass:
