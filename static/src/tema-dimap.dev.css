@@ -2238,7 +2238,7 @@ html[data-theme="dimap"] {
   /* ==================== ÁTOMO · ATALHO DO MAPA (SPEC documentos_oficiais/008) ==================== */
   /* Pílula de vidro no canto inferior direito do mapa, no lugar que os botões de zoom do Leaflet
      ocupavam. Só posição e folga: a pele é o .btn-glass empilhado no markup. */
-  .atalho-mapa { @apply absolute bottom-6 right-4 lg:right-6 z-20 gap-2; }
+  .atalho-mapa { @apply absolute bottom-6 right-4 lg:right-6 z-20 gap-2 text-madeira-700; }
 
   /* ==================== MOLÉCULA · CARD DE OPÇÃO (SPEC documentos_oficiais/010) =================== */
   /* Cartão de escolha de caminho: poço rebaixado que acende na interação como o .upload-well,
@@ -2255,5 +2255,123 @@ html[data-theme="dimap"] {
   }
   .card-opcao:active {
     @apply scale-[0.98];
+  }
+
+  /* ==================== MOLÉCULAS · CONTROLES DE MAPA (SPEC design/016) ==================== */
+  /* Pílula no canto inferior esquerdo do mapa, simétrica ao atalho de documentos à direita. */
+  .pilula-mapa {
+    @apply absolute bottom-6 left-4 lg:left-6 z-20 flex items-center gap-1.5 p-1 rounded-full backdrop-blur-[10px] bg-white/40 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_8px_rgba(7,58,84,0.38)] transition-all duration-300;
+  }
+
+  /* Botão disparador do seletor de camadas */
+  .pilula-mapa__btn-camadas {
+    @apply w-9 h-9 rounded-full flex items-center justify-center text-madeira-700 transition-all duration-200 hover:bg-white/60 hover:shadow-[0_0_12px_rgba(72,202,228,0.35)] active:scale-95 cursor-pointer;
+  }
+  .pilula-mapa__btn-camadas[aria-expanded="true"] {
+    @apply bg-white/70 shadow-[0_0_14px_rgba(72,202,228,0.5)] text-agua-800;
+  }
+
+  /* Poço rebaixado contendo o par de botões de zoom */
+  .pilula-mapa__zoom {
+    @apply flex items-center gap-0.5 px-1 py-0.5 rounded-full;
+  }
+  .pilula-mapa__btn-zoom {
+    @apply w-7 h-7 rounded-full flex items-center justify-center font-bold text-madeira-700 transition-all duration-200 hover:bg-white/70 active:scale-90 cursor-pointer disabled:opacity-30 disabled:pointer-events-none;
+  }
+  .pilula-mapa__btn-zoom svg {
+    @apply transition-all duration-200 origin-center;
+  }
+  /* Feedback tátil na rolagem do mouse: sem círculo em volta, swell e brilho exclusivamente no próprio glifo */
+  .pilula-mapa__btn-zoom--swell svg {
+    @apply scale-[1.38] text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.95)) drop-shadow(0 0 10px rgba(0, 150, 199, 0.6));
+  }
+
+  /* Torrezinha vertical de camadas que ascende a partir da esquerda da pílula */
+  .torre-camadas {
+    @apply absolute bottom-full left-0 mb-2.5 flex flex-col gap-1 p-1 rounded-2xl backdrop-blur-[18px] bg-gradient-to-br from-white/65 via-white/50 to-white/40 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_24px_rgba(7,58,84,0.3),0_0_20px_rgba(72,202,228,0.2)] transition-all duration-300 ease-out origin-bottom-left;
+  }
+  .torre-camadas--fechada {
+    @apply opacity-0 translate-y-3 scale-95 pointer-events-none;
+  }
+  .torre-camadas--aberta {
+    @apply opacity-100 translate-y-0 scale-100 pointer-events-auto;
+  }
+
+  /* Item de camada da torrezinha: em repouso mostra só o glifo; em hover/foco vira poço com rótulo */
+  .torre-camadas__item {
+    @apply flex items-center gap-2 p-1.5 rounded-xl text-madeira-700 transition-all duration-200 cursor-pointer border border-transparent whitespace-nowrap;
+  }
+  .torre-camadas__glifo {
+    @apply w-7 h-7 flex items-center justify-center shrink-0 rounded-lg text-agua-700 transition-colors;
+  }
+  .torre-camadas__rotulo {
+    @apply text-xs pr-1.5 opacity-0 max-w-0 overflow-hidden transition-all duration-300 ease-out whitespace-nowrap;
+  }
+
+  /* Ao passar o cursor na torre (torre 'gorda'), todos os rótulos aparecem juntos */
+  .torre-camadas:hover .torre-camadas__rotulo,
+  .torre-camadas:focus-within .torre-camadas__rotulo {
+    @apply opacity-100 max-w-xs;
+  }
+
+  /* Rótulo de camada: padrão em tom Rocha secundário */
+  .torre-camadas__rotulo {
+    @apply text-rocha-700 font-medium;
+    filter: none;
+  }
+
+  /* Estado ativo em repouso (quando nenhum item da torre está sob o cursor):
+     a camada ativa exibe anel seletor ciano, iluminação e rótulo Madeira */
+  .torre-camadas__item--ativo {
+    @apply ring-1 ring-agua-500/70 bg-white/20;
+  }
+  .torre-camadas__item--ativo .torre-camadas__glifo {
+    @apply text-agua-700;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .torre-camadas__item--ativo .torre-camadas__rotulo {
+    @apply text-madeira-700 font-bold;
+    filter: none;
+  }
+
+  /* Hover/Foco sobre qualquer item da torre (cima->baixo ou baixo->cima):
+     Escavação em poço rebaixado (.card-well) + seletor ciano luminoso + rótulo Madeira */
+  .torre-camadas__item:hover,
+  .torre-camadas__item:focus-visible {
+    @apply rounded-xl bg-white/35 border-white/50 ring-1 ring-agua-500/70;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+  }
+  .torre-camadas__item:hover .torre-camadas__glifo,
+  .torre-camadas__item:focus-visible .torre-camadas__glifo {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .torre-camadas__item:hover .torre-camadas__rotulo,
+  .torre-camadas__item:focus-visible .torre-camadas__rotulo {
+    @apply text-madeira-700 font-bold;
+    filter: none;
+  }
+
+  /* Quando a torre tem algum item sob o cursor:
+     O item ativo que NÃO estiver sob o cursor cede temporariamente o seletor ciano
+     e volta ao tom Rocha secundário, permitindo que o seletor migre com total
+     simetria em qualquer direção (cima->baixo ou baixo->cima) */
+  .torre-camadas:has(.torre-camadas__item:hover) .torre-camadas__item--ativo:not(:hover),
+  .torre-camadas:has(.torre-camadas__item:focus-visible) .torre-camadas__item--ativo:not(:focus-visible),
+  .torre-camadas.has-item-hover .torre-camadas__item--ativo:not(:hover) {
+    @apply ring-0 bg-transparent;
+    box-shadow: none !important;
+  }
+  .torre-camadas:has(.torre-camadas__item:hover) .torre-camadas__item--ativo:not(:hover) .torre-camadas__glifo,
+  .torre-camadas:has(.torre-camadas__item:focus-visible) .torre-camadas__item--ativo:not(:focus-visible) .torre-camadas__glifo,
+  .torre-camadas.has-item-hover .torre-camadas__item--ativo:not(:hover) .torre-camadas__glifo {
+    filter: none;
+  }
+  .torre-camadas:has(.torre-camadas__item:hover) .torre-camadas__item--ativo:not(:hover) .torre-camadas__rotulo,
+  .torre-camadas:has(.torre-camadas__item:focus-visible) .torre-camadas__item--ativo:not(:focus-visible) .torre-camadas__rotulo,
+  .torre-camadas.has-item-hover .torre-camadas__item--ativo:not(:hover) .torre-camadas__rotulo {
+    @apply text-rocha-700 font-medium;
+    filter: none;
   }
 }

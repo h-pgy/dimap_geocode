@@ -24,6 +24,7 @@
 
   {% include "partials/_filtros_gravacao.html" %}
   {% include "mapping/_mapa_admin.html" %}
+  {% include "mapping/_glifos_mapa.html" %}
 
 
   <!-- Glifos de exemplo (SPEC autorizacao/006). Na aplicação cada um é um arquivo em
@@ -2805,11 +2806,45 @@
         <div>
           <span class="text-overline">.atalho-mapa <span class="font-normal text-base-content/50">— repouso e sob o ponteiro</span></span>
           <div class="card-well p-6 mt-3 relative h-24 overflow-hidden">
-            <a href="#" class="btn btn-glass atalho-mapa moldura-fixa">
+            <a href="#" class="btn btn-glass atalho-mapa moldura-fixa text-madeira-700">
               <svg class="w-5 h-5 text-agua-700" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
               Validar documento
             </a>
           </div>
+        </div>
+
+        <div>
+          <span class="text-overline">.pilula-mapa (SPEC design/016) <span class="font-normal text-base-content/50">— controles de mapa Onsen (zoom e camadas)</span></span>
+          <div class="card-well p-6 mt-3 flex flex-wrap items-center justify-around gap-6">
+            <div class="flex flex-col items-center gap-2">
+              <span class="text-[10px] text-rocha-700 uppercase tracking-wider font-bold">Pílula com poço de zoom</span>
+              <div class="pilula-mapa static!">
+                <button type="button" class="pilula-mapa__btn-camadas" title="Camadas">
+                  <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-camadas"/></svg>
+                </button>
+                <div class="pilula-mapa__zoom card-well" role="group" aria-label="Controle de aproximação">
+                  <button type="button" class="pilula-mapa__btn-zoom" title="Afastar mapa"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg></button>
+                  <button type="button" class="pilula-mapa__btn-zoom" title="Aproximar mapa"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="text-[10px] text-rocha-700 uppercase tracking-wider font-bold">Torre de camadas (.torre-camadas)</span>
+              <div class="torre-camadas static! opacity-100! translate-y-0! scale-100! pointer-events-auto!">
+                <button type="button" class="torre-camadas__item torre-camadas__item--ativo">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-satelite"/></svg></span>
+                  <span class="torre-camadas__rotulo opacity-100! max-w-xs!">Ortofoto</span>
+                </button>
+                <button type="button" class="torre-camadas__item">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-mapa-base"/></svg></span>
+                  <span class="torre-camadas__rotulo opacity-100! max-w-xs!">Mapa base</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Pílula tátil de vidro fosco simétrica ao atalho de documentos (<span class="text-code">.pilula-mapa</span>) contendo poço de zoom rebaixado (<span class="text-code">.card-well</span>) com swell de rolagem e torrezinha retrátil de camadas (<span class="text-code">.torre-camadas</span>) com expansão horizontal no hover.</p>
+        </div>
+
         <div>
           <span class="text-overline">.card-opcao (SPEC documentos_oficiais/010) <span class="font-normal text-base-content/50">— escolha de caminho</span></span>
           <div class="grid sm:grid-cols-2 gap-6 mt-3">

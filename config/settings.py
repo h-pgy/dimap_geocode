@@ -333,15 +333,20 @@ WMS_LAYER_MAPA_BASE = _env.wms_layer_mapa_base
 # É propriedade da imagem, não do mapa: base vetorial não tem teto, o servidor a desenha em
 # qualquer escala.
 WMS_ZOOM_NATIVO_ORTOFOTO = _env.wms_zoom_nativo_ortofoto
-# Lista ordenada de bases; a 1ª é a visível por padrão.
+# Lista ordenada de bases com o glifo de apresentação para a torrezinha (SPEC design/016); a 1ª é a visível por padrão.
 WMS_BASES: list[dict[str, str | int]] = [
     {
         "nome": "Ortofoto",
+        "glifo": "glifo-satelite",
         "layers": WMS_LAYER_ORTOFOTO,
         "url": WMS_RASTER_URL,
         "zoom_nativo": WMS_ZOOM_NATIVO_ORTOFOTO,
     },
-    {"nome": "Mapa base", "layers": WMS_LAYER_MAPA_BASE},
+    {
+        "nome": "Mapa base",
+        "glifo": "glifo-mapa-base",
+        "layers": WMS_LAYER_MAPA_BASE,
+    },
 ]
 
 # Mapa — CRS de saída, centro/zoom default e cores por tipo de geometria.

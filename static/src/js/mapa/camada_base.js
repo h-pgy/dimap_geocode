@@ -1,6 +1,7 @@
 // Toda a config (url, versão, bases nomeadas) vem do servidor via json_script.
 // Tile layers cliente direto ao WMS do GeoSampa — não passam pelo integrador server-side.
 // A 1ª base da lista é a visível por padrão.
+// Retorna o dicionário de camadas base sem invocar o L.control.layers legado (SPEC design/016).
 export function adicionarBaseWms(map, wms) {
   const baseMaps = {};
   wms.bases.forEach((b, i) => {
@@ -23,6 +24,6 @@ export function adicionarBaseWms(map, wms) {
     baseMaps[b.nome] = layer;
     if (i === 0) layer.addTo(map);
   });
-  L.control.layers(baseMaps, null, { position: "bottomleft" }).addTo(map);
+  // L.control.layers legado removido: substituído pela torrezinha Onsen (SPEC design/016)
   return baseMaps;
 }
