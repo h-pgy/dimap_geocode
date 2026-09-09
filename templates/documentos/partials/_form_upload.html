@@ -1,0 +1,18 @@
+{# templates/documentos/partials/_form_upload.html — formulário de upload com fluxo progressivo (SPEC documentos_oficiais/010) #}
+<div id="form-upload">
+  <form class="flex flex-col gap-5"
+        hx-post="{% url 'documentos:conferir_arquivo' %}"
+        hx-encoding="multipart/form-data"
+        hx-target="#area-upload">
+    <label class="upload-well cursor-pointer">
+      <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-upload"/></svg>
+      </span>
+      <span class="text-sm font-medium">Arraste o PDF ou clique para escolher</span>
+      <input type="file" name="arquivo" accept="application/pdf" class="file-input file-input-glass file-input-sm max-w-xs" aria-label="Documento a conferir" data-arquivo-input />
+      <span class="form-field-hint">PDF de até {{ tamanho_maximo_mb }} MB. O arquivo é conferido e descartado — nada é guardado.</span>
+    </label>
+    {# O botão não aparece antes de escolher arquivo (JS de estado de interface) #}
+    <button type="submit" class="btn btn-onsen w-full hidden" data-btn-conferir>Conferir documento</button>
+  </form>
+</div>

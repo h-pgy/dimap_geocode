@@ -32,7 +32,7 @@
 
         {# Sem os bytes do arquivo não há o que recalcular: esta tela afirma que o documento está #}
         {# no acervo, nunca que a via em mãos confere (SPEC, §2). #}
-        <a href="{% url 'documentos:pagina' %}" class="btn btn-glass w-full gap-2">
+        <a href="{% url 'documentos:pagina' %}?via=documento" class="btn btn-glass w-full gap-2">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lupa"/></svg>
           Tenho o arquivo — conferir os bytes
         </a>

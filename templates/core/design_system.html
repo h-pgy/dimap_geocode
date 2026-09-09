@@ -89,8 +89,16 @@
         <path d="M12 8.4v3.9"/><path d="M12 15.3v.1"/>
       </g>
       <g id="glifo-sem-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="M4.4 20.6 19.6 3.4"/>
+      </g>
+      <g id="glifo-documento">
         <path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/>
-        <path d="M14 3.5v5h5"/><path d="M4.4 20.6 19.6 3.4"/>
+        <path d="M14 3.5v5h5"/>
+      </g>
+      <g id="glifo-teclado">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>
       </g>
     </defs>
   </svg>
@@ -747,8 +755,9 @@
         </div>
 
         <div>
-          <p class="text-overline mb-3">Campo OTP (SPEC autenticacao/001) — <span class="text-code">.otp-onsen</span></p>
+          <p class="text-overline mb-3">Campo OTP (SPEC autenticacao/001, documentos_oficiais/010) — <span class="text-code">.otp-onsen</span></p>
           <div class="card-well p-5 flex flex-col gap-4 items-center">
+            <span class="text-overline text-xs text-base-content/60">8 caixas (autenticação)</span>
             <div class="otp-onsen">
               <input type="text" maxlength="1" class="otp-caixa" value="8" />
               <input type="text" maxlength="1" class="otp-caixa" value="4" />
@@ -769,8 +778,23 @@
               <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
               <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
             </div>
+            <span class="text-overline text-xs text-base-content/60 mt-2">12 caixas (código de documento — <span class="text-code">.otp-onsen-12</span>)</span>
+            <div class="otp-onsen otp-onsen-12">
+              <input type="text" maxlength="1" class="otp-caixa" value="7" />
+              <input type="text" maxlength="1" class="otp-caixa" value="K" />
+              <input type="text" maxlength="1" class="otp-caixa" value="4" />
+              <input type="text" maxlength="1" class="otp-caixa" value="M" />
+              <input type="text" maxlength="1" class="otp-caixa" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa" value="P" />
+              <input type="text" maxlength="1" class="otp-caixa" value="2" />
+              <input type="text" maxlength="1" class="otp-caixa" value="X" />
+              <input type="text" maxlength="1" class="otp-caixa" value="Q" />
+              <input type="text" maxlength="1" class="otp-caixa" value="3" />
+              <input type="text" maxlength="1" class="otp-caixa" value="T" />
+              <input type="text" maxlength="1" class="otp-caixa" value="B" />
+            </div>
           </div>
-          <p class="form-field-hint mt-2">8 caixas monoespaçadas para a senha de uso único do primeiro acesso; a segunda fileira é o estado recusado, com <span class="text-code">.campo-realce-erro</span> por caixa.</p>
+          <p class="form-field-hint mt-2">Caixas monoespaçadas com auto-avanço e colagem: 8 dígitos para primeiro acesso, ou 12 caracteres (<span class="text-code">.otp-onsen-12</span>) para conferência de documentos com quebra simétrica em duas fileiras de 6.</p>
         </div>
 
         <div>
@@ -2786,7 +2810,29 @@
               Validar documento
             </a>
           </div>
-          <p class="text-xs text-base-content/60 mt-2">Só posição e folga — a pele é o <span class="text-code">.btn-glass</span> composto no HTML. Na home ocupa o canto inferior direito do mapa, onde antes ficavam os botões de zoom do Leaflet.</p>
+        <div>
+          <span class="text-overline">.card-opcao (SPEC documentos_oficiais/010) <span class="font-normal text-base-content/50">— escolha de caminho</span></span>
+          <div class="grid sm:grid-cols-2 gap-6 mt-3">
+            <div class="card-well card-opcao">
+              <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-documento"/></svg>
+              </span>
+              <p class="text-lg font-bold text-madeira-700">Tenho o documento em mãos</p>
+              <p class="text-xs text-base-content/60 max-w-[30ch]">
+                Suba o arquivo PDF que você recebeu para conferir se é autêntico.
+              </p>
+            </div>
+            <div class="card-well card-opcao">
+              <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-teclado"/></svg>
+              </span>
+              <p class="text-lg font-bold text-madeira-700">Tenho o código em mãos</p>
+              <p class="text-xs text-base-content/60 max-w-[30ch]">
+                Digite os 12 caracteres impressos ao pé da folha para verificar.
+              </p>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Poço rebaixado que acende na interação como o <span class="text-code">.upload-well</span>, mas sem aresta tracejada — a ação é navegar, não soltar arquivo. Material composto no HTML (<span class="text-code">.card-well.card-opcao</span>).</p>
         </div>
       </div>
     </section>

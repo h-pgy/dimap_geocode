@@ -35,8 +35,8 @@ def _pdf() -> bytes:
     return buffer.getvalue()
 
 
-def _autor(**overrides: object) -> AutorDoAto:
-    defaults: dict[str, object] = {
+def _autor(**overrides: Any) -> AutorDoAto:
+    defaults: dict[str, Any] = {
         "nome": "Fulano de Tal",
         "unidade": "DIMAP-1",
         "cargo_base": "Agente Fazendário",
@@ -45,8 +45,8 @@ def _autor(**overrides: object) -> AutorDoAto:
     return AutorDoAto(**(defaults | overrides))
 
 
-def _ato(**overrides: object) -> EnvelopeAto:
-    defaults: dict[str, object] = {
+def _ato(**overrides: Any) -> EnvelopeAto:
+    defaults: dict[str, Any] = {
         "codigo": gerar_codigo(),
         "acao": "certidoes.lancamento",
         "operacao": "emissao",

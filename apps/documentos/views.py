@@ -1,8 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
-from django.views.decorators.http import require_POST
+from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
+from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.mapping.context import contexto_fundo_admin
 from services.domain.documento_selado import (
@@ -14,18 +13,49 @@ from services.domain.documento_selado import (
 )
 from services.domain.documento_selado.constants import TAMANHO_MAXIMO_MB
 from services.utils.assinatura import ConferirInput, conferir_selo
+from services.utils.erros_formulario import ErroBruto
 
 from .acervo import buscar_registro
+from .formularios import traduzir_recusa_codigo
 from .models import DocumentoEmitido
 
 SEGREDO = settings.ASSINATURA_SEGREDO
 
 
 def pagina_conferencia(request: HttpRequest) -> HttpResponse:
-    """Rota ABERTA: a porta de quem tem o arquivo e não tem — ou não consegue ler — o código
-    impresso. É para cá que o atalho da home aponta."""
-    contexto = {"tamanho_maximo_mb": TAMANHO_MAXIMO_MB, **contexto_fundo_admin()}
-    return render(request, "documentos/conferencia.html", contexto)
+    """Rota ABERTA: a porta de validação de documentos (SPEC documentos_oficiais/010).
+    - Sem parâmetro `via`: página de escolha entre upload e código.
+    - `via=codigo`: formulário de digitação de código com 12 caixas OTP e validação.
+    - `via in ("arquivo", "documento", "upload")`: tela de upload com fluxo progressivo.
+    - `via=form_upload`: partial do formulário de upload limpo.
+    """
+    via = request.GET.get("via") or request.POST.get("via")
+    if via == "codigo":
+        if request.method == "POST":
+            codigo = request.POST.get("codigo", "").strip().upper()
+            registro = buscar_registro(codigo) if len(codigo) == 12 else None
+            if registro is None:
+                recusa = traduzir_recusa_codigo(
+                    (ErroBruto(controle="codigo", tipo="invalido", mensagem="Código errado"),)
+                )
+                contexto = {
+                    "recusa": recusa,
+                    "valores": {"codigo": codigo},
+                    **contexto_fundo_admin(),
+                }
+                return render(request, "documentos/conferencia_codigo.html", contexto, status=422)
+            return redirect("documentos:conferir", codigo=codigo)
+        return render(request, "documentos/conferencia_codigo.html", contexto_fundo_admin())
+    if via in ("arquivo", "documento", "upload"):
+        contexto = {"tamanho_maximo_mb": TAMANHO_MAXIMO_MB, **contexto_fundo_admin()}
+        return render(request, "documentos/conferencia.html", contexto)
+    if via == "form_upload":
+        return render(
+            request,
+            "documentos/partials/_form_upload.html",
+            {"tamanho_maximo_mb": TAMANHO_MAXIMO_MB},
+        )
+    return render(request, "documentos/escolha_conferencia.html", contexto_fundo_admin())
 
 
 def conferir_por_codigo(request: HttpRequest, codigo: str) -> HttpResponse:
@@ -41,10 +71,20 @@ def conferir_por_codigo(request: HttpRequest, codigo: str) -> HttpResponse:
     return render(request, "documentos/conferencia_por_codigo.html", contexto)
 
 
-@require_POST
 def conferir_arquivo(request: HttpRequest) -> HttpResponse:
-    """Rota ABERTA: conferir um arquivo que o próprio remetente já tem em mãos não revela nada que
-    ele não possua."""
+    """Rota ABERTA: conferir um arquivo que o próprio remetente já tem em mãos.
+    - GET: devolve o partial do formulário de upload limpo (_form_upload.html).
+    - POST: analisa o arquivo enviado e devolve o resultado da conferência (_resultado.html).
+    """
+    if request.method == "GET":
+        return render(
+            request,
+            "documentos/partials/_form_upload.html",
+            {"tamanho_maximo_mb": TAMANHO_MAXIMO_MB},
+        )
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["GET", "POST"])
+
     enviado = request.FILES.get("arquivo")
     # `size` vem do cabeçalho do multipart: o arquivo grande — e o formulário vazio — são
     # recusados aqui, antes de os bytes irem para a memória. O `ValidationError` vira 422 no

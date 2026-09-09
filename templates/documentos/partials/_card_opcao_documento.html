@@ -1,0 +1,10 @@
+{# templates/documentos/partials/_card_opcao_documento.html — opção 1: upload do arquivo (SPEC documentos_oficiais/010) #}
+<a href="{% url 'documentos:pagina' %}?via=documento" class="card-well card-opcao no-underline">
+  <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-documento"/></svg>
+  </span>
+  <p class="text-lg font-bold text-madeira-700">Tenho o documento em mãos</p>
+  <p class="text-xs text-base-content/60 max-w-[30ch]">
+    Suba o arquivo PDF que você recebeu para conferir se é autêntico.
+  </p>
+</a>

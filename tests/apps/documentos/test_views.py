@@ -46,8 +46,8 @@ def _virar_byte(pdf: bytes, posicao: int) -> bytes:
     return pdf[:posicao] + bytes([pdf[posicao] ^ 0x01]) + pdf[posicao + 1 :]
 
 
-def _autor(**overrides: object) -> AutorDoAto:
-    defaults: dict[str, object] = {
+def _autor(**overrides: Any) -> AutorDoAto:
+    defaults: dict[str, Any] = {
         "nome": "Marina Salgado de Almeida",
         "unidade": "DIMAP-1",
         "cargo_base": "Analista de Ordenamento Territorial",
@@ -56,8 +56,8 @@ def _autor(**overrides: object) -> AutorDoAto:
     return AutorDoAto(**(defaults | overrides))
 
 
-def _ato(**overrides: object) -> EnvelopeAto:
-    defaults: dict[str, object] = {
+def _ato(**overrides: Any) -> EnvelopeAto:
+    defaults: dict[str, Any] = {
         "codigo": gerar_codigo(),
         "acao": "certidoes.lancamento",
         "operacao": "emissao",
@@ -264,4 +264,132 @@ def test_filtro_por_extenso_converte_utc_para_fuso_local() -> None:
 
     assert "11h37min" in formatado
     assert "9 de setembro de 2026" in formatado
+
+
+# ---------------------------------------------------------------------------
+# SPEC documentos_oficiais/010 — UX da validação de documento
+# ---------------------------------------------------------------------------
+
+
+def test_pagina_escolha_conferencia_mostra_dois_caminhos(client: Client) -> None:
+    resposta = client.get(reverse("documentos:pagina"))
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert "Validar documento" in html
+    assert "Tenho o documento em mãos" in html
+    assert "Tenho o código em mãos" in html
+    assert f'{reverse("documentos:pagina")}?via=documento' in html
+    assert f'{reverse("documentos:pagina")}?via=codigo' in html
+
+
+def test_pagina_conferencia_por_codigo_mostra_12_caixas_otp_sem_aviso_de_letras(
+    client: Client,
+) -> None:
+    resposta = client.get(reverse("documentos:pagina"), {"via": "codigo"})
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert "Digitar código" in html
+    assert html.count('class="otp-caixa') == 12
+    assert "Voltar" in html
+    assert f'href="{reverse("documentos:pagina")}"' in html
+    assert "não usa as letras" not in html
+    assert "I, L, O e U" not in html
+
+
+@banco
+@pytest.mark.django_db
+def test_conferencia_codigo_inexistente_devolve_mesmo_formulario_com_status_422_e_realce_erro(
+    client: Client,
+) -> None:
+    resposta = client.post(
+        reverse("documentos:pagina"),
+        {"via": "codigo", "codigo": "ERRADO123456"},
+    )
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 422
+    assert "Código errado" in html
+    assert "campo-realce-erro" in html
+    assert "Digitar código" in html
+
+
+@banco
+@pytest.mark.django_db
+def test_conferencia_codigo_com_letras_omitidas_submete_e_devolve_erro(
+    client: Client,
+) -> None:
+    resposta = client.post(
+        reverse("documentos:pagina"),
+        {"via": "codigo", "codigo": "7K4M9I2XQUOB"},
+    )
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 422
+    assert "Código errado" in html
+    assert "campo-realce-erro" in html
+
+
+@banco
+@pytest.mark.django_db
+def test_conferencia_codigo_existente_redireciona_para_tela_do_documento(
+    client: Client,
+) -> None:
+    ato, _selado = _emitir()
+
+    resposta = client.post(
+        reverse("documentos:pagina"),
+        {"via": "codigo", "codigo": ato.codigo},
+    )
+
+    assert resposta.status_code == 302
+    assert resposta["Location"] == reverse("documentos:conferir", kwargs={"codigo": ato.codigo})
+
+
+def test_pagina_upload_mostra_formulario_com_botao_oculto_e_link_voltar(
+    client: Client,
+) -> None:
+    resposta = client.get(reverse("documentos:pagina"), {"via": "documento"})
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert "Conferir documento" in html
+    assert "data-btn-conferir" in html
+    assert "hidden" in html
+    assert "Voltar" in html
+    assert f'href="{reverse("documentos:pagina")}"' in html
+
+
+def test_carregar_novo_documento_devolve_formulario_limpo(client: Client) -> None:
+    resposta = client.get(reverse("documentos:conferir_arquivo"))
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert "data-arquivo-input" in html
+    assert "data-btn-conferir" in html
+    assert "hidden" in html
+
+    resposta_via = client.get(reverse("documentos:pagina"), {"via": "form_upload"})
+    assert resposta_via.status_code == 200
+    assert "data-arquivo-input" in resposta_via.content.decode()
+
+
+@banco
+@pytest.mark.django_db
+def test_resultado_conferencia_arquivo_inclui_botao_carregar_novo_documento(
+    client: Client,
+) -> None:
+    ato, selado = _emitir()
+
+    resposta = client.post(
+        reverse("documentos:conferir_arquivo"),
+        {"arquivo": SimpleUploadedFile("doc.pdf", selado.pdf, content_type="application/pdf")},
+    )
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert "Carregar novo documento" in html
+    assert 'hx-target="#area-upload"' in html
+
 

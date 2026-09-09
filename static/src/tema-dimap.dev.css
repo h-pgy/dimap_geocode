@@ -452,10 +452,14 @@ html[data-theme="dimap"] {
   .calendario-celula:disabled { @apply opacity-25 cursor-not-allowed; }
   .calendario-celula:disabled:hover { @apply scale-100 bg-transparent text-base-content; }
 
-  /* ÁTOMO · OTP (SPEC autenticacao/001). O campo de código de uso único: 8 caixas monoespaçadas
-     com fundo de vidro e destaque em foco. */
+  /* ÁTOMO · OTP (SPEC autenticacao/001, documentos_oficiais/010). O campo de código de uso único:
+     8 caixas para autenticação ou 12 caixas (.otp-onsen-12) para validação de documento,
+     monoespaçadas com fundo de vidro e destaque em foco. */
   .otp-onsen {
     @apply flex items-center justify-center gap-2;
+  }
+  .otp-onsen.otp-onsen-12 {
+    @apply flex-wrap max-w-[18rem] sm:max-w-[20rem] mx-auto;
   }
   .otp-onsen .otp-caixa {
     @apply w-10 h-13 sm:w-11 sm:h-14 text-center text-xl font-bold font-mono rounded-lg border border-base-300 bg-base-100/90 text-agua-700 focus:border-agua-500 focus:outline-none focus:ring-2 focus:ring-agua-400/30 transition-all;
@@ -2196,4 +2200,21 @@ html[data-theme="dimap"] {
   /* Pílula de vidro no canto inferior direito do mapa, no lugar que os botões de zoom do Leaflet
      ocupavam. Só posição e folga: a pele é o .btn-glass empilhado no markup. */
   .atalho-mapa { @apply absolute bottom-6 right-4 lg:right-6 z-20 gap-2; }
+
+  /* ==================== MOLÉCULA · CARD DE OPÇÃO (SPEC documentos_oficiais/010) =================== */
+  /* Cartão de escolha de caminho: poço rebaixado que acende na interação como o .upload-well,
+     mas sem aresta tracejada — a ação é navegar, não soltar arquivo. Material composto no HTML
+     com .card-well (.card-well.card-opcao). */
+  .card-opcao {
+    @apply flex flex-col items-center text-center gap-3 p-6 sm:p-8 rounded-2xl cursor-pointer transition-all duration-300;
+    box-shadow: var(--sombra-poco);
+  }
+  .card-opcao:hover,
+  .card-opcao:focus-visible {
+    @apply bg-white/45;
+    box-shadow: var(--sombra-poco), 0 0 22px rgba(72, 202, 228, 0.35);
+  }
+  .card-opcao:active {
+    @apply scale-[0.98];
+  }
 }
