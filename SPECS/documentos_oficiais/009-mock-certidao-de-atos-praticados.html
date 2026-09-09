@@ -51,12 +51,16 @@
       }
       .checkbox-onsen:hover { @apply bg-white/45; }
       .checkbox-onsen:checked { @apply bg-agua-600/90 border-agua-500/60; }
+      /* O traço do check é tinta de rocha gravada — nunca branco cheio, como o resto do sistema
+         (o mesmo #etched-onsen que esculpe o polegar do .toggle-onsen). */
       .checkbox-onsen:checked::after {
         content: "";
-        @apply absolute w-2.5 h-1.5 border-b-2 border-l-2 border-white;
+        @apply absolute w-2.5 h-1.5 border-b-2 border-l-2;
+        border-color: rgba(13, 27, 42, 0.75);
         top: 45%;
         left: 50%;
         transform: translate(-50%, -50%) rotate(-45deg);
+        filter: url(#etched-onsen);
       }
       .checkbox-onsen:focus-visible {
         @apply outline-none border-agua-500;
@@ -68,7 +72,7 @@
 
 <body class="min-h-screen">
   <!-- Os defs da gravação vêm do partial da própria aplicação (no produto, pelo base.html) — exigidos
-       pelo .icone-acao-acende do card do painel na seção 5·C. -->
+       pelo .icone-acao-acende do card do painel na seção 5·B. -->
   <script type="module">
     const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
     fetch("/templates/partials/_filtros_gravacao.html")
@@ -223,11 +227,15 @@
         <p class="text-xs text-base-content/70">O modal inteiro, nos três momentos do mesmo fluxo: formulário, recusa e emissão. É sempre a MESMA caixa — só <span class="text-code">#certidao-atos-corpo</span> troca.</p>
       </div>
 
+      <!-- O .modal-box do daisyUI nasce opacity:0/scale:.95 — só o ganha de volta dentro de um .modal
+           "aberto" de verdade (ver a tela montada, §5·A). Aqui as três caixas ficam lado a lado fora
+           desse contexto só para comparar os estados, e por isso o style força o que o .modal aberto
+           daria de graça. -->
       <div class="grid lg:grid-cols-3 gap-6 items-start">
         <!-- estado: formulário -->
         <div class="flex flex-col gap-2">
           <span class="text-overline">formulário</span>
-          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5" style="opacity:1; scale:1;">
             <div class="flex items-center gap-3">
               <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
@@ -240,9 +248,9 @@
             <label class="form-field">
               <span class="text-overline">Período</span>
               <span class="campo-periodo">
-                <input type="date" class="input input-glass input-sm" value="2026-08-09">
+                <input type="date" data-campo-data class="input input-glass input-sm" value="2026-08-09">
                 <span class="campo-periodo-traco">até</span>
-                <input type="date" class="input input-glass input-sm" value="2026-09-08">
+                <input type="date" data-campo-data class="input input-glass input-sm" value="2026-09-08">
               </span>
             </label>
             <div class="flex flex-col gap-2">
@@ -269,7 +277,7 @@
         <!-- estado: período recusado -->
         <div class="flex flex-col gap-2">
           <span class="text-overline">período recusado</span>
-          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5" style="opacity:1; scale:1;">
             <div class="flex items-center gap-3">
               <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
@@ -282,9 +290,9 @@
             <label class="form-field">
               <span class="text-overline">Período</span>
               <span class="campo-periodo">
-                <input type="date" class="input input-glass input-sm campo-realce-erro" value="2026-09-08">
+                <input type="date" data-campo-data class="input input-glass input-sm campo-realce-erro" value="2026-09-08">
                 <span class="campo-periodo-traco">até</span>
-                <input type="date" class="input input-glass input-sm campo-realce-erro" value="2026-08-09">
+                <input type="date" data-campo-data class="input input-glass input-sm campo-realce-erro" value="2026-08-09">
               </span>
             </label>
             <div role="alert" class="alert alert-error alert-soft alert-vertical text-sm">
@@ -312,7 +320,7 @@
         <!-- estado: emitida -->
         <div class="flex flex-col gap-2">
           <span class="text-overline">emitida</span>
-          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5" style="opacity:1; scale:1;">
             <div class="flex items-center gap-3">
               <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
@@ -346,10 +354,10 @@
     <section id="tela" class="flex flex-col gap-10">
       <div>
         <h2 class="text-lg font-bold text-madeira-700">5 · Tela montada</h2>
-        <p class="text-xs text-base-content/70">O botão nasce ao lado do título; o modal chega no mesmo <span class="text-code">#poco-modal</span> que toda ação já usa; o card do painel entra no grupo "Registro de Ações" existente.</p>
+        <p class="text-xs text-base-content/70">O botão nasce ao lado do título; o modal chega no mesmo <span class="text-code">#poco-modal</span> que toda ação já usa; o card do painel entra no grupo "Registro de Ações" existente. <strong>Clique no botão abaixo</strong> — o modal é o real, aberto pelo mesmo <span class="text-code">.modal-toggle</span> de todo modal do sistema.</p>
       </div>
 
-      <!-- ============ A · o botão na tela do Registro de Ações ============ -->
+      <!-- ============ A · o botão na tela do Registro de Ações, e o modal que ele abre ============ -->
       <div class="flex flex-col gap-3">
         <span class="text-overline text-agua-700">A · Registro de Ações — quem pode emitir, e quem não pode</span>
 
@@ -361,8 +369,9 @@
               <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Registro de Ações</h1>
               <p class="text-sm text-base-content/70 mt-1">600 atos praticados na DIMAP-1 e nas unidades abaixo dela.</p>
             </div>
-            <!-- fica na página: hx-get para #poco-modal, visível só sob {% if perms.competencias.emitir_certidao_atos %} -->
-            <span class="btn btn-onsen">Gerar documento com minhas ações</span>
+            <!-- fica na página: hx-get para #poco-modal, visível só sob {% if perms.competencias.emitir_certidao_atos %}.
+                 Aqui o gatilho é o próprio .modal-toggle desta seção, só para o modal abrir sem servidor por trás. -->
+            <label for="modal-certidao-atos" class="btn btn-onsen">Gerar documento com minhas ações</label>
           </div>
           <div class="card-well p-4 text-center text-xs text-base-content/60">busca e tabela do registro seguem abaixo, sem mudança (SPEC painel/002)</div>
         </div>
@@ -377,73 +386,68 @@
           </div>
           <p class="text-xs text-base-content/50 italic">sem o botão — ausência é a mensagem, como em toda ação sem competência</p>
         </div>
-      </div>
 
-      <!-- ============ B · o modal sobre a tela ============ -->
-      <div class="flex flex-col gap-3">
-        <span class="text-overline text-agua-700">B · o modal, aberto sobre a tela do Registro de Ações</span>
-
-        <!-- partial: competencias/partials/_modal_certidao_atos.html — hx-get do botão em A, alvo #poco-modal -->
-        <div class="quadro-modal relative rounded-3xl overflow-hidden border border-white/40 shadow-[0_20px_50px_rgba(7,58,84,0.28)]" style="height: 26rem;">
-          <div class="absolute inset-0 backdrop-blur-[3px] bg-rocha-950/10"></div>
-          <div class="absolute inset-0 flex items-center justify-center p-6">
-            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 max-w-md w-full">
-              <div class="flex items-center gap-3">
-                <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
-                </span>
-                <div>
-                  <p class="text-overline">Registro de Ações</p>
-                  <p class="text-[16px] font-bold text-rocha-950 leading-tight">Gerar documento com minhas ações</p>
-                </div>
+        <!-- partial: competencias/partials/_modal_certidao_atos.html — hx-get do botão acima, alvo #poco-modal.
+             Fica FORA de qualquer outro formulário e do card, como todo modal do sistema (_modal_conceder.html). -->
+        <input type="checkbox" id="modal-certidao-atos" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+            <div class="flex items-center gap-3">
+              <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <div>
+                <p class="text-overline">Registro de Ações</p>
+                <p class="text-[16px] font-bold text-rocha-950 leading-tight">Gerar documento com minhas ações</p>
               </div>
+            </div>
 
-              <!-- fica dentro do partial: #certidao-atos-corpo, o único alvo do hx-post do form -->
-              <form class="flex flex-col gap-5">
-                <label class="form-field">
-                  <span class="text-overline">Período</span>
-                  <span class="campo-periodo">
-                    <input type="date" name="inicio" class="input input-glass input-sm" value="2026-08-09">
-                    <span class="campo-periodo-traco">até</span>
-                    <input type="date" name="fim" class="input input-glass input-sm" value="2026-09-08">
-                  </span>
-                </label>
-                <div class="flex flex-col gap-2">
-                  <span class="text-overline">Tipos de ação</span>
-                  <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
-                    <div class="table-onsen-wrap max-h-[9rem]" data-rolador>
-                      <div class="flex flex-col gap-0.5 p-2">
-                        <label class="flex items-center gap-2.5 cursor-pointer py-1">
-                          <input type="checkbox" name="acoes" value="competencias.conceder" class="checkbox-onsen">
-                          <span class="text-sm text-base-content/85">Conceder competência</span>
-                        </label>
-                        <label class="flex items-center gap-2.5 cursor-pointer py-1">
-                          <input type="checkbox" name="acoes" value="competencias.definir_atribuicao" class="checkbox-onsen">
-                          <span class="text-sm text-base-content/85">Definir atribuições da unidade</span>
-                        </label>
-                        <label class="flex items-center gap-2.5 cursor-pointer py-1">
-                          <input type="checkbox" name="acoes" value="user_admin.criar_servidor" class="checkbox-onsen">
-                          <span class="text-sm text-base-content/85">Cadastrar servidor</span>
-                        </label>
-                      </div>
+            <!-- fica dentro do partial: #certidao-atos-corpo, o único alvo do hx-post do form -->
+            <form class="flex flex-col gap-5">
+              <label class="form-field">
+                <span class="text-overline">Período</span>
+                <span class="campo-periodo">
+                  <input type="date" data-campo-data name="inicio" class="input input-glass input-sm" value="2026-08-09">
+                  <span class="campo-periodo-traco">até</span>
+                  <input type="date" data-campo-data name="fim" class="input input-glass input-sm" value="2026-09-08">
+                </span>
+              </label>
+              <div class="flex flex-col gap-2">
+                <span class="text-overline">Tipos de ação</span>
+                <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+                  <div class="table-onsen-wrap max-h-[9rem]" data-rolador>
+                    <div class="flex flex-col gap-0.5 p-2">
+                      <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                        <input type="checkbox" name="acoes" value="competencias.conceder" class="checkbox-onsen">
+                        <span class="text-sm text-base-content/85">Conceder competência</span>
+                      </label>
+                      <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                        <input type="checkbox" name="acoes" value="competencias.definir_atribuicao" class="checkbox-onsen">
+                        <span class="text-sm text-base-content/85">Definir atribuições da unidade</span>
+                      </label>
+                      <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                        <input type="checkbox" name="acoes" value="user_admin.criar_servidor" class="checkbox-onsen">
+                        <span class="text-sm text-base-content/85">Cadastrar servidor</span>
+                      </label>
                     </div>
                   </div>
-                  <span class="form-field-hint">Nenhum marcado traz todos os tipos.</span>
                 </div>
-                <div class="modal-action">
-                  <span class="btn btn-glass btn-sm">Cancelar</span>
-                  <span class="btn btn-onsen btn-sm">Emitir certidão</span>
-                </div>
-              </form>
-            </div>
+                <span class="form-field-hint">Nenhum marcado traz todos os tipos.</span>
+              </div>
+              <div class="modal-action">
+                <label for="modal-certidao-atos" class="btn btn-glass btn-sm">Cancelar</label>
+                <span class="btn btn-onsen btn-sm">Emitir certidão</span>
+              </div>
+            </form>
           </div>
+          <!-- Fechar clicando fora: a cena EMBAÇA, nunca escurece (§5 do DS). -->
+          <label class="modal-backdrop" for="modal-certidao-atos">Fechar</label>
         </div>
-        <p class="text-xs text-base-content/60 max-w-2xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">A cena embaça atrás da caixa (§5 do DS), nunca escurece — o recorte acima simula esse embaçamento sobre o fundo administrativo desta própria página.</p>
       </div>
 
-      <!-- ============ C · o card no painel ============ -->
+      <!-- ============ B · o card no painel ============ -->
       <div class="flex flex-col gap-3">
-        <span class="text-overline text-agua-700">C · o card novo, no grupo "Registro de Ações" do painel</span>
+        <span class="text-overline text-agua-700">B · o card novo, no grupo "Registro de Ações" do painel</span>
 
         <!-- página: painel/painel.html — grupo já existente (SPEC painel/002), um item a mais -->
         <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4 max-w-2xl">
@@ -474,5 +478,10 @@
       </div>
     </section>
   </div>
+
+  <!-- Aprimora todo input[type="date"][data-campo-data] da página: dd/mm/aaaa + calendário próprio
+       (SPEC design/012) em vez do date picker nativo do navegador — o mesmo módulo que
+       registro_acoes_list.html já carrega para o .campo-periodo do cabeçalho. -->
+  <script type="module" src="/static/src/js/ui/campo_data.js"></script>
 </body>
 </html>
