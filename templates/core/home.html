@@ -6,6 +6,8 @@
 {% block content %}
 <div class="relative h-screen w-screen overflow-hidden">
   {% include "mapping/_mapa_fullscreen.html" %}
+  {% include "documentos/partials/_glifos_documento.html" %}
+  {% include "documentos/partials/_atalho_validar.html" %}
 
   {# UI flutuante sobre o mapa (skill componentes-frontend §6/mock_ui): sem pointer-events no #}
   {# layer, cada painel reabre a interação em pointer-events-auto. #}

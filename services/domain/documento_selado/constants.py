@@ -15,6 +15,10 @@ ROTA_CONFERENCIA = "d"
 # "eletronicamente", e não "digitalmente": assinatura digital tem sentido técnico próprio no Brasil
 # (certificado ICP-Brasil), e o selo daqui não é isso.
 CHAMADA_SELO = "Assinado eletronicamente"
+# Medido sobre o documento de amostra (SPEC 008, Caveats): folga para uma certidão com anexos,
+# sem abrir espaço para upload que trave o worker antes do teto do proxy.
+TAMANHO_MAXIMO_MB = 10
+TAMANHO_MAXIMO_BYTES = TAMANHO_MAXIMO_MB * 1024 * 1024
 MESES = (
     "janeiro",
     "fevereiro",

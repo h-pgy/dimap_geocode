@@ -12,7 +12,7 @@ from datetime import time
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -273,6 +273,13 @@ class _Settings(BaseSettings):
         default=None, alias="DOCUMENTO_ENTRELINHA_MARCA_MM"
     )
 
+    # Selo de integridade (services.utils.assinatura, SPEC documentos_oficiais/006). Default
+    # inseguro de desenvolvimento, no mesmo padrão de DJANGO_SECRET_KEY.
+    assinatura_segredo: str = Field(
+        default="dev-insecure-assinatura-secret-troque-me", alias="ASSINATURA_SEGREDO"
+    )
+    assinatura_id_chave: str = Field(default="k1", alias="ASSINATURA_ID_CHAVE")
+
     @field_validator("documento_unidade", "documento_endereco", mode="before")
     @classmethod
     def _parse_linhas_institucionais(cls, v: Any) -> tuple[str, ...] | None:
@@ -423,6 +430,11 @@ DOCUMENTO_CORPO_RODAPE_MARCA_PT = _env.documento_corpo_rodape_marca_pt
 DOCUMENTO_FATOR_ENTRELINHA = _env.documento_fator_entrelinha
 DOCUMENTO_ENTRELINHA_MARCA_MM = _env.documento_entrelinha_marca_mm
 
+# Selo de integridade (services.utils.assinatura). SecretStr para o segredo não vazar em log nem
+# traceback — o mesmo tipo que SelarInput/ConferirInput exigem.
+ASSINATURA_SEGREDO = SecretStr(_env.assinatura_segredo)
+ASSINATURA_ID_CHAVE = _env.assinatura_id_chave
+
 
 # Application definition
 
@@ -452,6 +464,7 @@ INSTALLED_APPS = [
     "apps.logradouro_geocoder",
     "apps.lote_geocoder",
     "apps.amostrador_ofertas",
+    "apps.documentos",
 ]
 
 MIDDLEWARE = [

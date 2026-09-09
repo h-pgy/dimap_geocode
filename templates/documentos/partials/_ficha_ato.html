@@ -1,0 +1,41 @@
+{% load documentos %}
+{# templates/documentos/partials/_ficha_ato.html — o que a tela afirma sobre o ato (SPEC          #}
+{# documentos_oficiais/008): reusado pela tela do código e pelo resultado do upload que confere.  #}
+{# `ficha.publicos` é dict solto — nomeado pela ação que emitiu, nunca pelo domínio da certidão.   #}
+<div class="card-well p-5 flex flex-col gap-4">
+  <p class="text-overline">A assinatura</p>
+  <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+    <div class="min-w-0 sm:col-span-2">
+      <p class="text-overline">Assinado por</p>
+      <p class="valor-leitura font-medium text-base-content/90">{{ ficha.autor.nome }}</p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Cargo</p>
+      <p class="valor-leitura text-base-content/90">{{ ficha.autor.cargo_comissao|default:ficha.autor.cargo_base }}</p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Unidade</p>
+      <p class="valor-leitura text-base-content/90">{{ ficha.autor.unidade }}</p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Assinado em</p>
+      <p class="valor-leitura text-base-content/90">{{ ficha.assinado_em|por_extenso }}</p>
+    </div>
+    <div class="min-w-0">
+      <p class="text-overline">Código do documento</p>
+      <p class="valor-leitura text-code">{{ ficha.codigo }}</p>
+    </div>
+  </div>
+
+  {% if ficha.publicos %}
+    <p class="text-overline">O documento</p>
+    <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+      {% for chave, valor in ficha.publicos.items %}
+        <div class="min-w-0">
+          <p class="text-overline">{{ chave }}</p>
+          <p class="valor-leitura text-base-content/90">{{ valor }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>

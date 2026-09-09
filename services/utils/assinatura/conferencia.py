@@ -4,6 +4,7 @@ from typing import Any
 from .constants import CHAVE_TAG, PLACEHOLDER, TAMANHO_TAG
 from .envelope import ler_envelope
 from .models import ConferirInput, EstadoSelo, ResultadoConferencia
+from .publicos import extrair_publicos
 from .tag import calcular_tag, localizar, trocar
 
 DIGITOS_HEX = frozenset("0123456789abcdef")
@@ -50,15 +51,7 @@ class ConferirSelo:
         return DIGITOS_HEX.issuperset(valor)
 
     def _publicos(self, envelope: dict[str, Any]) -> dict[str, Any]:
-        declarados = envelope.get("campos_publicos", [])
-        # `campos_publicos` também vem do arquivo: o que não for lista de nomes não declara nada.
-        if not isinstance(declarados, list):
-            return {}
-        return {
-            chave: envelope[chave]
-            for chave in declarados
-            if isinstance(chave, str) and chave in envelope
-        }
+        return extrair_publicos(envelope)
 
 
 conferir_selo = ConferirSelo()

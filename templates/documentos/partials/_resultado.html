@@ -1,0 +1,54 @@
+{# templates/documentos/partials/_resultado.html — alvo do POST do formulário de upload (SPEC     #}
+{# documentos_oficiais/008): um dos quatro estados de `EstadoDocumento`.                          #}
+{% if resultado.estado == "confere" %}
+  <div class="glass-panel p-5 flex flex-col gap-4">
+    <div class="card-well veredito veredito-confere">
+      <span class="icon-bubble veredito-glifo">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+      </span>
+      <span class="text-overline veredito-estado">Documento autêntico</span>
+      <p class="veredito-titulo">O arquivo confere com o que a DIMAP emitiu.</p>
+      <p class="veredito-nota">Nem um byte foi alterado desde a emissão, e o código está no acervo.</p>
+    </div>
+    {% include "documentos/partials/_ficha_ato.html" with ficha=resultado.ficha %}
+  </div>
+
+{% elif resultado.estado == "nao_confere" %}
+  <div class="glass-panel p-5 flex flex-col gap-4">
+    <div class="card-well veredito veredito-nao-confere">
+      <span class="icon-bubble veredito-glifo">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-violado"/></svg>
+      </span>
+      <span class="text-overline veredito-estado">O arquivo foi alterado</span>
+      <p class="veredito-titulo">O selo não fecha com o conteúdo deste arquivo.</p>
+      <p class="veredito-nota">Não use esta via. O original guardado no acervo é o documento que vale.</p>
+    </div>
+    {% if resultado.tem_original %}
+      {% include "documentos/partials/_oferta_original.html" with codigo=resultado.codigo %}
+    {% endif %}
+  </div>
+
+{% elif resultado.estado == "desconhecido" %}
+  <div class="glass-panel p-5">
+    <div class="card-well veredito veredito-desconhecido">
+      <span class="icon-bubble veredito-glifo">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-alerta"/></svg>
+      </span>
+      <span class="text-overline veredito-estado">Código desconhecido</span>
+      <p class="veredito-titulo">O selo fecha, mas este documento não está no acervo.</p>
+      <p class="veredito-nota">A DIMAP nunca emitiu o código que está neste arquivo. Avise a Divisão antes de dar fé ao documento.</p>
+    </div>
+  </div>
+
+{% else %}
+  <div class="glass-panel p-5">
+    <div class="card-well veredito veredito-sem-selo">
+      <span class="icon-bubble veredito-glifo">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-sem-selo"/></svg>
+      </span>
+      <span class="text-overline veredito-estado">Sem selo</span>
+      <p class="veredito-titulo">Este arquivo não traz selo da DIMAP.</p>
+      <p class="veredito-nota">Ou o documento não saiu desta plataforma, ou o selo se perdeu ao reimprimir, digitalizar ou converter o arquivo.</p>
+    </div>
+  </div>
+{% endif %}

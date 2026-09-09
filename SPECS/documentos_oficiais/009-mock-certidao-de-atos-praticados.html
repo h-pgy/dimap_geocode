@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC documentos_oficiais/009 — Certidão de atos praticados (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`).
+       Sem Leaflet: a ortofoto é pré-gerada (SPEC design/010), não mapa vivo. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== 2 · ÁTOMOS ==================== */
+
+      /* .checkbox-onsen — o checkbox do sistema, ainda sem peça equivalente no styleguide. Como
+         .toggle-onsen, ignora a caixa nativa do daisyUI e desenha tudo sobre o <input> puro: poço
+         fino em repouso, ciano cheio quando marcado. */
+      .checkbox-onsen {
+        @apply relative w-5 h-5 shrink-0 appearance-none cursor-pointer rounded-md
+               bg-white/30 border border-white/45 transition-all duration-300;
+        box-shadow: var(--sombra-poco-fina);
+      }
+      .checkbox-onsen:hover { @apply bg-white/45; }
+      .checkbox-onsen:checked { @apply bg-agua-600/90 border-agua-500/60; }
+      .checkbox-onsen:checked::after {
+        content: "";
+        @apply absolute w-2.5 h-1.5 border-b-2 border-l-2 border-white;
+        top: 45%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+      }
+      .checkbox-onsen:focus-visible {
+        @apply outline-none border-agua-500;
+        box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Os defs da gravação vêm do partial da própria aplicação (no produto, pelo base.html) — exigidos
+       pelo .icone-acao-acende do card do painel na seção 5·C. -->
+  <script type="module">
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((svg) => document.body.insertAdjacentHTML("afterbegin", svg.replace(TAG_DE_TEMPLATE, "").trim()));
+  </script>
+
+  <!-- partial: documentos/partials/_glifos_documento.html + o glifo novo do painel, no mesmo sprite -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m8.7 12 2.4 2.4 4.2-4.6"/>
+      </g>
+      <g id="glifo-baixar">
+        <path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+      </g>
+      <!-- JÁ EXISTE: static/src/acoes/painel/lista_registro_acoes/icones/grande.svg (SPEC painel/002) -->
+      <g id="g-lista-registro-acoes">
+        <path d="M3.8 6.2h12.4"/>
+        <path d="M3.8 10.6h9.6"/>
+        <path d="M3.8 15h5.2"/>
+        <circle cx="16.4" cy="16.4" r="4.9"/>
+        <path d="M14.1 15.4h4.6"/>
+        <path d="M14.5 17.6h3.8"/>
+      </g>
+      <!-- NOVO nesta SPEC: static/src/acoes/competencias/emitir_certidao_atos/icones/{grande,pequeno}.svg -->
+      <g id="g-emitir-certidao-atos">
+        <path d="M3.8 6.2h9.4"/>
+        <path d="M3.8 10.6h7.2"/>
+        <path d="M3.8 15h4.4"/>
+        <path d="M15.6 9.9 19.8 11.6v3.1c0 2.6-1.7 4.7-4.2 5.5-2.5-.8-4.2-2.9-4.2-5.5v-3.1z"/>
+        <path d="m13.8 14.7 1.3 1.3 2.3-2.5"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 p-8 max-w-6xl mx-auto flex flex-col gap-16">
+    <header class="border-b border-base-200 pb-4">
+      <p class="text-overline text-agua-700">Mock de validação</p>
+      <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC documentos_oficiais/009 — Certidão de atos praticados</h1>
+      <p class="text-sm text-base-content/70 mt-1 max-w-3xl">
+        O botão ao lado do título do Registro de Ações, o modal de período + tipos e a confirmação
+        com o código — o mesmo modal permanece aberto do formulário à confirmação, como
+        <span class="text-code">_face_titularidade.html</span> já faz noutra ação.
+      </p>
+    </header>
+
+    <!-- ==================================================================== -->
+    <!-- 2 · ÁTOMOS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">2 · Átomos</h2>
+        <p class="text-xs text-base-content/70">O checkbox do sistema — não havia peça equivalente para "tipos de ação" até esta SPEC.</p>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">.checkbox-onsen</span>
+        <div class="card-well p-4 flex flex-wrap items-center gap-8">
+          <label class="flex items-center gap-2.5 cursor-pointer">
+            <input type="checkbox" class="checkbox-onsen">
+            <span class="text-sm text-base-content/85">repouso</span>
+          </label>
+          <label class="flex items-center gap-2.5 cursor-pointer">
+            <input type="checkbox" class="checkbox-onsen" checked>
+            <span class="text-sm text-base-content/85">marcado</span>
+          </label>
+          <label class="flex items-center gap-2.5">
+            <!-- foco simulado: só para o registro visual, o navegador não aplica :focus-visible aqui -->
+            <input type="checkbox" class="checkbox-onsen" style="outline:none; box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0,150,199,0.2), 0 0 20px rgba(72,202,228,0.35); border-color: rgb(0 150 199 / 0.6);">
+            <span class="text-sm text-base-content/85">foco</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 3 · MOLÉCULAS                                                         -->
+    <!-- ==================================================================== -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">3 · Moléculas</h2>
+        <p class="text-xs text-base-content/70">A lista de tipos de ação: o poço com barra gravada de <span class="text-code">_modal_catalogo.html</span>, agora com uma linha por tipo em vez de um cartão por ação.</p>
+      </div>
+
+      <div class="glass-panel p-6 grid lg:grid-cols-2 gap-6">
+        <!-- estado: nenhum tipo marcado — "todos os tipos" -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <span class="text-overline">nenhum marcado · todos os tipos entram</span>
+          <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+            <div class="table-onsen-wrap max-h-[11rem]" data-rolador>
+              <div class="flex flex-col gap-0.5 p-2">
+                <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                  <input type="checkbox" class="checkbox-onsen">
+                  <span class="text-sm text-base-content/85">Conceder competência</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                  <input type="checkbox" class="checkbox-onsen">
+                  <span class="text-sm text-base-content/85">Definir atribuições da unidade</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                  <input type="checkbox" class="checkbox-onsen">
+                  <span class="text-sm text-base-content/85">Cadastrar servidor</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                  <input type="checkbox" class="checkbox-onsen">
+                  <span class="text-sm text-base-content/85">Designar substituto</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <span class="form-field-hint">Sem marcação, a certidão traz os atos de qualquer tipo praticado no período.</span>
+        </div>
+
+        <!-- estado: dois tipos marcados -->
+        <div class="card-well p-4 flex flex-col gap-3">
+          <span class="text-overline">dois marcados · só eles entram</span>
+          <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+            <div class="table-onsen-wrap max-h-[11rem]" data-rolador>
+              <div class="flex flex-col gap-0.5 p-2">
+                <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                  <input type="checkbox" class="checkbox-onsen" checked>
+                  <span class="text-sm text-base-content/85">Conceder competência</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                  <input type="checkbox" class="checkbox-onsen">
+                  <span class="text-sm text-base-content/85">Definir atribuições da unidade</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                  <input type="checkbox" class="checkbox-onsen">
+                  <span class="text-sm text-base-content/85">Cadastrar servidor</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                  <input type="checkbox" class="checkbox-onsen" checked>
+                  <span class="text-sm text-base-content/85">Designar substituto</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <span class="form-field-hint">A certidão declara os dois nomes escolhidos, não os slugs.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 4 · ORGANISMOS                                                        -->
+    <!-- ==================================================================== -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">4 · Organismos</h2>
+        <p class="text-xs text-base-content/70">O modal inteiro, nos três momentos do mesmo fluxo: formulário, recusa e emissão. É sempre a MESMA caixa — só <span class="text-code">#certidao-atos-corpo</span> troca.</p>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-6 items-start">
+        <!-- estado: formulário -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">formulário</span>
+          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+            <div class="flex items-center gap-3">
+              <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <div>
+                <p class="text-overline">Registro de Ações</p>
+                <p class="text-[16px] font-bold text-rocha-950 leading-tight">Gerar documento com minhas ações</p>
+              </div>
+            </div>
+            <label class="form-field">
+              <span class="text-overline">Período</span>
+              <span class="campo-periodo">
+                <input type="date" class="input input-glass input-sm" value="2026-08-09">
+                <span class="campo-periodo-traco">até</span>
+                <input type="date" class="input input-glass input-sm" value="2026-09-08">
+              </span>
+            </label>
+            <div class="flex flex-col gap-2">
+              <span class="text-overline">Tipos de ação</span>
+              <div class="card-well p-2 max-h-28 overflow-y-auto flex flex-col gap-0.5">
+                <label class="flex items-center gap-2.5 cursor-pointer py-1 px-1">
+                  <input type="checkbox" class="checkbox-onsen">
+                  <span class="text-sm text-base-content/85">Conceder competência</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer py-1 px-1">
+                  <input type="checkbox" class="checkbox-onsen">
+                  <span class="text-sm text-base-content/85">Cadastrar servidor</span>
+                </label>
+              </div>
+              <span class="form-field-hint">Nenhum marcado traz todos os tipos.</span>
+            </div>
+            <div class="flex items-center justify-end gap-2">
+              <span class="btn btn-glass btn-sm">Cancelar</span>
+              <span class="btn btn-onsen btn-sm">Emitir certidão</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- estado: período recusado -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">período recusado</span>
+          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+            <div class="flex items-center gap-3">
+              <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <div>
+                <p class="text-overline">Registro de Ações</p>
+                <p class="text-[16px] font-bold text-rocha-950 leading-tight">Gerar documento com minhas ações</p>
+              </div>
+            </div>
+            <label class="form-field">
+              <span class="text-overline">Período</span>
+              <span class="campo-periodo">
+                <input type="date" class="input input-glass input-sm campo-realce-erro" value="2026-09-08">
+                <span class="campo-periodo-traco">até</span>
+                <input type="date" class="input input-glass input-sm campo-realce-erro" value="2026-08-09">
+              </span>
+            </label>
+            <div role="alert" class="alert alert-error alert-soft alert-vertical text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+              <span>A data final do período não pode ser anterior à inicial.</span>
+            </div>
+            <div class="flex flex-col gap-2 opacity-60">
+              <span class="text-overline">Tipos de ação</span>
+              <div class="card-well p-2 max-h-20 overflow-y-auto flex flex-col gap-0.5">
+                <label class="flex items-center gap-2.5 py-1 px-1">
+                  <input type="checkbox" class="checkbox-onsen" disabled>
+                  <span class="text-sm text-base-content/85">Conceder competência</span>
+                </label>
+              </div>
+            </div>
+            <div class="flex items-center justify-end gap-2">
+              <span class="btn btn-glass btn-sm">Cancelar</span>
+              <span class="btn btn-onsen btn-sm">Emitir certidão</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- estado: emitida -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">emitida</span>
+          <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+            <div class="flex items-center gap-3">
+              <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <div>
+                <p class="text-overline">Registro de Ações</p>
+                <p class="text-[16px] font-bold text-rocha-950 leading-tight">Gerar documento com minhas ações</p>
+              </div>
+            </div>
+            <div class="card-well flex flex-col items-center text-center gap-2 p-6">
+              <span class="icon-bubble w-12 h-12 bg-success/15 border-success/30 text-success">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <span class="text-overline text-success">Certidão emitida</span>
+              <p class="text-[15px] font-bold text-rocha-950 leading-tight">O documento já está no acervo.</p>
+              <p class="text-code text-sm">8P4H6M3XQKTB</p>
+            </div>
+            <a href="#" class="btn btn-onsen gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-baixar"/></svg>
+              Baixar certidão
+            </a>
+            <span class="btn btn-glass btn-sm">Fechar</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 5 · TELA MONTADA                                                      -->
+    <!-- ==================================================================== -->
+    <section id="tela" class="flex flex-col gap-10">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">5 · Tela montada</h2>
+        <p class="text-xs text-base-content/70">O botão nasce ao lado do título; o modal chega no mesmo <span class="text-code">#poco-modal</span> que toda ação já usa; o card do painel entra no grupo "Registro de Ações" existente.</p>
+      </div>
+
+      <!-- ============ A · o botão na tela do Registro de Ações ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline text-agua-700">A · Registro de Ações — quem pode emitir, e quem não pode</span>
+
+        <!-- página: competencias/registro_acoes_list.html -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+          <!-- fica na página: cabeçalho + botão, arranjo só -->
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Registro de Ações</h1>
+              <p class="text-sm text-base-content/70 mt-1">600 atos praticados na DIMAP-1 e nas unidades abaixo dela.</p>
+            </div>
+            <!-- fica na página: hx-get para #poco-modal, visível só sob {% if perms.competencias.emitir_certidao_atos %} -->
+            <span class="btn btn-onsen">Gerar documento com minhas ações</span>
+          </div>
+          <div class="card-well p-4 text-center text-xs text-base-content/60">busca e tabela do registro seguem abaixo, sem mudança (SPEC painel/002)</div>
+        </div>
+
+        <!-- estado: sem a competência — o botão simplesmente não está -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Registro de Ações</h1>
+              <p class="text-sm text-base-content/70 mt-1">40 atos praticados na DITESTINHO.</p>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/50 italic">sem o botão — ausência é a mensagem, como em toda ação sem competência</p>
+        </div>
+      </div>
+
+      <!-- ============ B · o modal sobre a tela ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline text-agua-700">B · o modal, aberto sobre a tela do Registro de Ações</span>
+
+        <!-- partial: competencias/partials/_modal_certidao_atos.html — hx-get do botão em A, alvo #poco-modal -->
+        <div class="quadro-modal relative rounded-3xl overflow-hidden border border-white/40 shadow-[0_20px_50px_rgba(7,58,84,0.28)]" style="height: 26rem;">
+          <div class="absolute inset-0 backdrop-blur-[3px] bg-rocha-950/10"></div>
+          <div class="absolute inset-0 flex items-center justify-center p-6">
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 max-w-md w-full">
+              <div class="flex items-center gap-3">
+                <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+                </span>
+                <div>
+                  <p class="text-overline">Registro de Ações</p>
+                  <p class="text-[16px] font-bold text-rocha-950 leading-tight">Gerar documento com minhas ações</p>
+                </div>
+              </div>
+
+              <!-- fica dentro do partial: #certidao-atos-corpo, o único alvo do hx-post do form -->
+              <form class="flex flex-col gap-5">
+                <label class="form-field">
+                  <span class="text-overline">Período</span>
+                  <span class="campo-periodo">
+                    <input type="date" name="inicio" class="input input-glass input-sm" value="2026-08-09">
+                    <span class="campo-periodo-traco">até</span>
+                    <input type="date" name="fim" class="input input-glass input-sm" value="2026-09-08">
+                  </span>
+                </label>
+                <div class="flex flex-col gap-2">
+                  <span class="text-overline">Tipos de ação</span>
+                  <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+                    <div class="table-onsen-wrap max-h-[9rem]" data-rolador>
+                      <div class="flex flex-col gap-0.5 p-2">
+                        <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                          <input type="checkbox" name="acoes" value="competencias.conceder" class="checkbox-onsen">
+                          <span class="text-sm text-base-content/85">Conceder competência</span>
+                        </label>
+                        <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                          <input type="checkbox" name="acoes" value="competencias.definir_atribuicao" class="checkbox-onsen">
+                          <span class="text-sm text-base-content/85">Definir atribuições da unidade</span>
+                        </label>
+                        <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                          <input type="checkbox" name="acoes" value="user_admin.criar_servidor" class="checkbox-onsen">
+                          <span class="text-sm text-base-content/85">Cadastrar servidor</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <span class="form-field-hint">Nenhum marcado traz todos os tipos.</span>
+                </div>
+                <div class="modal-action">
+                  <span class="btn btn-glass btn-sm">Cancelar</span>
+                  <span class="btn btn-onsen btn-sm">Emitir certidão</span>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60 max-w-2xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">A cena embaça atrás da caixa (§5 do DS), nunca escurece — o recorte acima simula esse embaçamento sobre o fundo administrativo desta própria página.</p>
+      </div>
+
+      <!-- ============ C · o card no painel ============ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline text-agua-700">C · o card novo, no grupo "Registro de Ações" do painel</span>
+
+        <!-- página: painel/painel.html — grupo já existente (SPEC painel/002), um item a mais -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4 max-w-2xl">
+          <p class="text-overline">Registro de Ações</p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <!-- fica igual: painel/partials/_card_item.html, item livre já existente -->
+            <div class="glass-bg glass-edge glass-shadow card-acao">
+              <span class="icone-acao icone-acao-grande icone-acao-acende">
+                <svg viewBox="0 0 24 24"><use href="#g-lista-registro-acoes"/></svg>
+              </span>
+              <div>
+                <p class="card-acao-nome">Registro de Ações</p>
+                <p class="card-acao-descricao">Os atos praticados no seu alcance: quem, com qual cargo, sobre o quê e se podia.</p>
+              </div>
+            </div>
+            <!-- NOVO nesta SPEC: painel/partials/_card_item_modal.html — mesmo partial, entrada de acoes_declaradas.py -->
+            <div class="glass-bg glass-edge glass-shadow card-acao">
+              <span class="icone-acao icone-acao-grande icone-acao-acende">
+                <svg viewBox="0 0 24 24"><use href="#g-emitir-certidao-atos"/></svg>
+              </span>
+              <div>
+                <p class="card-acao-nome">Emitir certidão de atos</p>
+                <p class="card-acao-descricao">Emite o PDF selado com os atos que você praticou no período.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

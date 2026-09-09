@@ -2142,4 +2142,28 @@ html[data-theme="dimap"] {
   :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) .glass-panel:where(:not(.modal-box-glass)) { @apply bg-none; }
   :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) :is(.card-well, .upload-well) { @apply bg-transparent; }
   :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) .upload-well:where(:hover, :focus-within) { @apply bg-white/15; }
+
+  /* ==================== MOLÉCULA · VEREDITO DA CONFERÊNCIA (SPEC documentos_oficiais/008) ======= */
+  /* A resposta da conferência de documento: uma placa, quatro estados. Entre eles muda a tinta do
+     glifo e do rótulo; o layout, não — material composto no HTML (.card-well). */
+  .veredito        { @apply flex flex-col items-center text-center gap-3 p-6 sm:p-8; }
+  .veredito-glifo  { @apply w-16 h-16; }
+  .veredito-titulo { @apply text-[22px] font-bold text-madeira-700 leading-tight; }
+  .veredito-nota   { @apply text-[15px] text-base-content/75 leading-relaxed max-w-[46ch]; }
+
+  /* .veredito-estado empilha-se no .text-overline e só troca a tinta — os pares abaixo vencem o
+     átomo por especificidade, e não por ordem. */
+  .veredito-confere      .veredito-glifo  { @apply bg-success/15 border-success/30 text-success; }
+  .veredito-confere      .veredito-estado { @apply text-success; }
+  .veredito-nao-confere  .veredito-glifo  { @apply bg-error/15 border-error/30 text-error; }
+  .veredito-nao-confere  .veredito-estado { @apply text-error; }
+  .veredito-desconhecido .veredito-glifo  { @apply bg-warning/15 border-warning/30 text-warning; }
+  .veredito-desconhecido .veredito-estado { @apply text-warning; }
+  .veredito-sem-selo     .veredito-glifo  { @apply bg-rocha-400/20 border-rocha-500/30 text-rocha-600; }
+  .veredito-sem-selo     .veredito-estado { @apply text-rocha-600; }
+
+  /* ==================== ÁTOMO · ATALHO DO MAPA (SPEC documentos_oficiais/008) ==================== */
+  /* Pílula de vidro no canto inferior direito do mapa, no lugar que os botões de zoom do Leaflet
+     ocupavam. Só posição e folga: a pele é o .btn-glass empilhado no markup. */
+  .atalho-mapa { @apply absolute bottom-6 right-4 lg:right-6 z-20 gap-2; }
 }

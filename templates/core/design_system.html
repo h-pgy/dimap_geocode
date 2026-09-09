@@ -74,6 +74,24 @@
         <rect x="15.5" y="16.6" width="6" height="4.4" rx="1.2"/>
         <path d="M12 7.4v4.2"/><path d="M5.5 16.6v-5h13v5"/>
       </g>
+      <!-- Conferência de documento (SPEC documentos_oficiais/008), também em
+           templates/documentos/partials/_glifos_documento.html. -->
+      <g id="glifo-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m8.7 12 2.4 2.4 4.2-4.6"/>
+      </g>
+      <g id="glifo-selo-violado">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m9.6 9.6 4.8 4.8"/><path d="m14.4 9.6-4.8 4.8"/>
+      </g>
+      <g id="glifo-selo-alerta">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="M12 8.4v3.9"/><path d="M12 15.3v.1"/>
+      </g>
+      <g id="glifo-sem-selo">
+        <path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/>
+        <path d="M14 3.5v5h5"/><path d="M4.4 20.6 19.6 3.4"/>
+      </g>
     </defs>
   </svg>
 
@@ -2686,6 +2704,73 @@
             </div>
             <p class="text-xs text-base-content/60">O estado de falta é <strong>frase escrita</strong>: placa em branco se lê como "ainda não carregou".</p>
           </div>
+        </div>
+      </div>
+
+      <!-- Conferência de documento (SPEC documentos_oficiais/008) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <div>
+          <p class="text-overline">Veredito da conferência</p>
+          <p class="text-sm text-base-content/70 mt-1">SPEC <span class="text-code">documentos_oficiais/008</span>. Uma placa, quatro estados — só a tinta do glifo e do rótulo troca.</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.veredito-confere</span>
+            <div class="card-well veredito veredito-confere">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Documento autêntico</span>
+              <p class="veredito-titulo">O arquivo confere com o que a DIMAP emitiu.</p>
+              <p class="veredito-nota">Nem um byte foi alterado desde a emissão, e o código está no acervo.</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.veredito-nao-confere</span>
+            <div class="card-well veredito veredito-nao-confere">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-violado"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">O arquivo foi alterado</span>
+              <p class="veredito-titulo">O selo não fecha com o conteúdo deste arquivo.</p>
+              <p class="veredito-nota">Não use esta via. O original guardado no acervo é o documento que vale.</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.veredito-desconhecido</span>
+            <div class="card-well veredito veredito-desconhecido">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-alerta"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Código desconhecido</span>
+              <p class="veredito-titulo">O selo fecha, mas este documento não está no acervo.</p>
+              <p class="veredito-nota">A DIMAP nunca emitiu o código que está neste arquivo. Avise a Divisão antes de dar fé ao documento.</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.veredito-sem-selo</span>
+            <div class="card-well veredito veredito-sem-selo">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-sem-selo"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Sem selo</span>
+              <p class="veredito-titulo">Este arquivo não traz selo da DIMAP.</p>
+              <p class="veredito-nota">Ou o documento não saiu desta plataforma, ou o selo se perdeu ao reimprimir, digitalizar ou converter o arquivo.</p>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">Material composto no HTML (<span class="text-code">.card-well</span>); <span class="text-code">.veredito</span> só arruma o layout, e o par <span class="text-code">.veredito-&lt;estado&gt;</span> tinge o <span class="text-code">.icon-bubble</span> e o <span class="text-code">.text-overline</span> por especificidade, não por ordem.</p>
+
+        <div>
+          <span class="text-overline">.atalho-mapa <span class="font-normal text-base-content/50">— repouso e sob o ponteiro</span></span>
+          <div class="card-well p-6 mt-3 relative h-24 overflow-hidden">
+            <a href="#" class="btn btn-glass atalho-mapa moldura-fixa">
+              <svg class="w-5 h-5 text-agua-700" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              Validar documento
+            </a>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Só posição e folga — a pele é o <span class="text-code">.btn-glass</span> composto no HTML. Na home ocupa o canto inferior direito do mapa, onde antes ficavam os botões de zoom do Leaflet.</p>
         </div>
       </div>
     </section>

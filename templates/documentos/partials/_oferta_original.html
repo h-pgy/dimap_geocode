@@ -1,0 +1,22 @@
+{# templates/documentos/partials/_oferta_original.html — o segundo caminho, mesmo partial nas    #}
+{# duas telas que o incluem (SPEC documentos_oficiais/008): a tela do upload sempre o mostra, com #}
+{# o aviso de login para o anônimo; a tela do código só o inclui já dentro de                     #}
+{# {% if request.user.is_authenticated %}, e por isso nunca cai no aviso aqui.                    #}
+<div class="card-well p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+  <div class="min-w-0 flex-1">
+    <p class="text-overline">Original no acervo</p>
+    <p class="valor-leitura text-base-content/90">
+      O código <span class="text-code">{{ codigo }}</span> existe, e a DIMAP guarda a via emitida.
+    </p>
+  </div>
+  <a href="{% url 'documentos:segunda_via' codigo=codigo %}" class="btn btn-onsen gap-2 shrink-0">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-baixar"/></svg>
+    Baixar o original
+  </a>
+</div>
+{% if not request.user.is_authenticated %}
+<p class="flex items-center justify-center gap-1.5 text-xs text-base-content/60">
+  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+  Baixar o original é para servidor da DIMAP: pede login.
+</p>
+{% endif %}

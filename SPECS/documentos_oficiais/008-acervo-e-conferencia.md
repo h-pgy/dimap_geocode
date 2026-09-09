@@ -1,9 +1,9 @@
 ---
 spec: documentos_oficiais/008
-versao: v5
+versao: v6
 atualizado_em: 2026-09-08
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -11,6 +11,7 @@ changelog:
   - v3: o código alegado é lido do `ResultadoConferencia` inteiro, e não do dicionário do envelope solto
   - v4: o §5 explicita que quem recalcula o HMAC é o `ConferirSelo` da SPEC 006, e que esta SPEC só o consome
   - v5: a tela do código separa "está no acervo" de "o arquivo confere", e oferece os dois caminhos — conferir os bytes, aberto, e o original guardado, só a quem está logado
+  - v6: testes da §8 escritos (`tests/apps/documentos/`, `tests/services/domain/documento_selado/test_conferencia.py`) e implementação completa — `testes_tdd: true`, `implementado: true`
 ---
 
 # SPEC documentos_oficiais/008 — Acervo e conferência do documento emitido

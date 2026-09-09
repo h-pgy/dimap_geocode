@@ -21,6 +21,7 @@ urlpatterns: list[URLResolver | URLPattern] = [
     path("lote/", include("apps.lote_matcher.urls")),
     path("lote/", include("apps.lote_geocoder.urls")),
     path("endereco/", include("apps.address_geocoder.urls")),
+    path("", include("apps.documentos.urls")),
 ]
 
 # A foto do perfil (SPEC user_admin/006) é servida pelo runserver só em dev; em produção o arquivo
