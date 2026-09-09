@@ -38,3 +38,15 @@ ACAO_CONCEDER = instanciar_acao(
     # nas de baixo. A conferência é da proteção (SPEC 004), não desta view.
     alcance=UnidadesSubordinadas(),
 )
+
+ACAO_EMITIR_CERTIDAO_ATOS = instanciar_acao(
+    slug="competencias.emitir_certidao_atos",
+    nome="Emitir certidão de atos praticados",
+    nome_curto="Certidão de atos",
+    tooltip="Emite o PDF selado com os atos que você praticou no período.",
+    url_name="competencias:modal_certidao_atos",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    estrutural=False,
+    alcance=None,
+)
+

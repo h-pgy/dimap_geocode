@@ -13,7 +13,11 @@ from apps.cargos.acoes_declaradas import (
     ACAO_REATIVAR_CARGO,
     ACAO_REATIVAR_CARGO_BASE,
 )
-from apps.competencias.acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
+from apps.competencias.acoes_declaradas import (
+    ACAO_CONCEDER,
+    ACAO_DEFINIR_ATRIBUICAO,
+    ACAO_EMITIR_CERTIDAO_ATOS,
+)
 from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE,
     ACAO_CRIAR_UNIDADE_RAIZ,
@@ -181,6 +185,7 @@ ABA_ADMINISTRACAO = Aba(
                     tooltip="Os atos praticados no seu alcance: quem, com qual cargo, sobre o quê e se podia.",
                     url_name="competencias:listar_registro_acoes",
                 ),
+                ItemAcao(acao=ACAO_EMITIR_CERTIDAO_ATOS, partial=PARTIAL_CARTAO_MODAL),
             ),
         ),
         # Sai de ABA_ATRIBUICOES, onde o grupo se chamava "Administração do Sistema" — o nome agora

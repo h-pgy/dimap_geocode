@@ -3,7 +3,7 @@ spec: documentos_oficiais/009
 versao: v2
 atualizado_em: 2026-09-09
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco, artefato]
 changelog:
   - v1: versão inicial
@@ -18,22 +18,22 @@ praticou, no contexto de precisar comprovar seu trabalho a terceiros, para obter
 qualquer um pode conferir sem login.
 
 ## 2 · Condições de pronto
-- [ ] O botão "Gerar documento com minhas ações" aparece na tela do Registro de Ações **só para quem
+- [x] O botão "Gerar documento com minhas ações" aparece na tela do Registro de Ações **só para quem
       pode executar a ação**, e abre um modal com período e tipos de ação.
-- [ ] A certidão sai **selada**: quadro compacto no pé de toda página, quadro de fecho ao final, e o
+- [x] A certidão sai **selada**: quadro compacto no pé de toda página, quadro de fecho ao final, e o
       código do selo confere na tela de validação.
-- [ ] A certidão lista **só os atos autorizados do próprio requerente** — ato de outro servidor não
+- [x] A certidão lista **só os atos autorizados do próprio requerente** — ato de outro servidor não
       entra, nem que o requerente dirija a unidade dele.
-- [ ] Cada ato é descrito pelo **cargo e pela unidade do dia em que foi praticado**; mudar a lotação
+- [x] Cada ato é descrito pelo **cargo e pela unidade do dia em que foi praticado**; mudar a lotação
       depois não muda a certidão já emitida.
-- [ ] Sem tipo de ação escolhido, a certidão traz todos os tipos; com tipos escolhidos, só eles — e
+- [x] Sem tipo de ação escolhido, a certidão traz todos os tipos; com tipos escolhidos, só eles — e
       a certidão **declara** o período e os tipos que a recortaram.
-- [ ] Período sem ato algum emite **certidão negativa**, que afirma expressamente que nada foi
+- [x] Período sem ato algum emite **certidão negativa**, que afirma expressamente que nada foi
       praticado.
-- [ ] A certidão emitida entra no acervo **inteira**, e a segunda via devolve os mesmos bytes.
-- [ ] A emissão fica **registrada** no Registro de Ações, com o código da certidão como alvo.
-- [ ] Período invertido, ou mais longo que o teto, é recusado com mensagem em português.
-- [ ] O design do botão, do modal e do resultado foi aprovado no mock, e as peças portadas para o
+- [x] A certidão emitida entra no acervo **inteira**, e a segunda via devolve os mesmos bytes.
+- [x] A emissão fica **registrada** no Registro de Ações, com o código da certidão como alvo.
+- [x] Período invertido, ou mais longo que o teto, é recusado com mensagem em português.
+- [x] O design do botão, do modal e do resultado foi aprovado no mock, e as peças portadas para o
       tema e o styleguide antes de qualquer template da aplicação usá-las.
 
 ## 3 · Domínio

@@ -9,10 +9,16 @@
   <div class="admin-shell">
     <div class="max-w-6xl mx-auto px-4 py-24 flex flex-col gap-4">
       {% include "partials/_botao_voltar_painel.html" %}
-      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
-        <div>
-          <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Registro de Ações</h1>
-          <p class="text-sm text-base-content/70 mt-1">{{ subtitulo }}</p>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Registro de Ações</h1>
+            <p class="text-sm text-base-content/70 mt-1">{{ subtitulo }}</p>
+          </div>
+          {% if perms.competencias.emitir_certidao_atos %}
+            <button class="btn btn-onsen" hx-get="{% url 'competencias:modal_certidao_atos' %}" hx-target="#poco-modal">
+              Gerar documento com minhas ações
+            </button>
+          {% endif %}
         </div>
 
         {% include "competencias/partials/_busca_execucoes.html" %}
@@ -20,6 +26,8 @@
       </div>
     </div>
   </div>
+
+  <div id="poco-modal" class="poco-modal"></div>
 {% endblock %}
 
 {% block scripts %}

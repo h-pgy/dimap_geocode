@@ -12,7 +12,11 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
 
-from apps.competencias.acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
+from apps.competencias.acoes_declaradas import (
+    ACAO_CONCEDER,
+    ACAO_DEFINIR_ATRIBUICAO,
+    ACAO_EMITIR_CERTIDAO_ATOS,
+)
 from apps.competencias.atribuicao import atribuir as atribuir_acao
 from apps.competencias.atribuicao import remover as remover_acao
 from apps.competencias.comandos import ComandoAtribuicao, ComandoConcessao, ComandoRevogacao
@@ -26,6 +30,7 @@ from apps.competencias.context import (
     contexto_corpo_execucoes,
     contexto_da_tela,
     contexto_da_tela_conceder,
+    contexto_modal_certidao,
     contexto_modal_conceder,
     contexto_modal_delegar,
     contexto_painel,
@@ -35,11 +40,13 @@ from apps.competencias.context import (
     contexto_registro_acoes,
 )
 from apps.competencias.delegacao import delegar_competencia, encerrar_delegacao
+from apps.competencias.emissao_certidao import emitir_certidao_atos, recorte_declarado
 from apps.competencias.formularios import ler_nova_delegacao
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, Delegacao
 from apps.competencias.protecao import acao_protegida, registrar_ato
 from apps.unidades.models import Unidade
 from apps.user_admin.models import Perfil
+from services.domain.certidao_atos_administrativos import BuscaAtosProprios
 from services.utils.erros_formulario import RecusaDeFormulario
 
 TEMPLATE_TELA = "competencias/definir_atribuicao.html"
@@ -54,6 +61,8 @@ TEMPLATE_MODAL_DELEGAR = "competencias/partials/_modal_delegar.html"
 TEMPLATE_POCO_CONCESSOES = "competencias/partials/_poco_concessoes.html"
 TEMPLATE_REGISTRO_ACOES_LIST = "competencias/registro_acoes_list.html"
 TEMPLATE_CORPO_EXECUCOES = "competencias/partials/_resposta_corpo_execucoes.html"
+TEMPLATE_MODAL_CERTIDAO = "competencias/partials/_modal_certidao_atos.html"
+TEMPLATE_CERTIDAO_EMITIDA = "competencias/partials/_certidao_emitida.html"
 
 
 @login_required
@@ -69,6 +78,38 @@ def corpo_execucoes(request: HttpRequest) -> HttpResponse:
     mudar um critério não apagar os filtros, e vice-versa —, e recalcula o alcance a cada chamada:
     ele nunca viaja pelo cliente."""
     return render(request, TEMPLATE_CORPO_EXECUCOES, contexto_corpo_execucoes(_perfil(request), request.GET.dict()))
+
+
+@acao_protegida(ACAO_EMITIR_CERTIDAO_ATOS)
+def modal_certidao_atos(request: HttpRequest) -> HttpResponse:
+    """Leitura: abrir o modal não pratica ato nenhum, e o decorator não grava linha por isso. Quem
+    não pode executar a ação já foi recusado aqui — e ESSA negativa fica registrada."""
+    return render(request, TEMPLATE_MODAL_CERTIDAO, contexto_modal_certidao(_perfil(request)))
+
+
+@acao_protegida(ACAO_EMITIR_CERTIDAO_ATOS)
+@require_POST
+def emitir_certidao_atos_view(request: HttpRequest) -> HttpResponse:
+    perfil = _perfil(request)
+    busca = BuscaAtosProprios.model_validate({
+        "perfil_id": perfil.pk,
+        "inicio": request.POST.get("inicio"),
+        "fim": request.POST.get("fim"),
+        "acoes": request.POST.getlist("acoes"),
+    })
+    documento = emitir_certidao_atos(
+        autor=perfil,
+        busca=busca,
+        recorte=recorte_declarado(busca),
+        base_url=request.build_absolute_uri("/"),
+    )
+    registrar_ato(
+        request,
+        operacao="emitir",
+        alvo_tipo="documento",
+        alvo_identificador=documento.codigo,
+    )
+    return render(request, TEMPLATE_CERTIDAO_EMITIDA, {"codigo": documento.codigo})
 
 
 @acao_protegida(ACAO_DEFINIR_ATRIBUICAO)

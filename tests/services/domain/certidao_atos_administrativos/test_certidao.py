@@ -208,8 +208,8 @@ def test_amostra_da_certidao_para_conferencia(
 
     tema = montar_tema(TemaConfig())
     config = MarcacaoConfig(
-        logo_horizontal=Path("static/src/img/sec_fazenda_horizontal.svg"),
-        logo_vertical=Path("static/src/img/sec_fazenda_vertical.svg"),
+        logo_horizontal=Path("static/src/img/documento_oficial/sec_fazenda_horizontal.svg"),
+        logo_vertical=Path("static/src/img/documento_oficial/sec_fazenda_vertical.svg"),
     )
     selo_config = SeloConfig()
     tipo = CertidaoAtos(tema=tema, config=config, selo_config=selo_config)

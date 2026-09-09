@@ -631,6 +631,36 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
   }
 
+  /* .checkbox-onsen — o checkbox do sistema (SPEC documentos_oficiais/009): como .toggle-onsen,
+     ignora a caixa nativa do daisyUI e desenha tudo sobre o <input> puro: poço fino em repouso,
+     ciano cheio quando marcado. */
+  .checkbox-onsen {
+    @apply relative w-5 h-5 shrink-0 appearance-none cursor-pointer rounded-md
+           bg-white/30 border border-white/45 transition-all duration-300;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  .checkbox-onsen:hover {
+    @apply bg-white/45;
+  }
+  .checkbox-onsen:checked {
+    @apply bg-agua-600/90 border-agua-500/60;
+  }
+  /* O traço do check é tinta de rocha gravada — nunca branco cheio, como o resto do sistema
+     (o mesmo #etched-onsen que esculpe o polegar do .toggle-onsen). */
+  .checkbox-onsen:checked::after {
+    content: "";
+    @apply absolute w-2.5 h-1.5 border-b-2 border-l-2;
+    border-color: rgba(13, 27, 42, 0.75);
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    filter: url(#etched-onsen);
+  }
+  .checkbox-onsen:focus-visible {
+    @apply outline-none border-agua-500;
+    box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+
   /* Fio gravado e fio entintado (SPEC user_admin/015): a gravação aplicada a um traço em vez de a
      um glifo. São só MATERIAL — não posicionam nem dimensionam nada; quem decide onde o fio corre
      e por quanto é a peça que o usa. */

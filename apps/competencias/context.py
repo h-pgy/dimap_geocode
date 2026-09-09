@@ -4,6 +4,7 @@ já exerce — a segunda troca só o que está no poço e como cada atribuição
 nenhuma regra de negócio."""
 
 from collections.abc import Mapping, Sequence
+from datetime import timedelta
 from typing import Any
 
 from django.db.models import Count, Q
@@ -25,6 +26,7 @@ from apps.competencias.consulta import (
 from apps.competencias.delegacao import candidatos_a_delegado
 from apps.competencias.historico import linhas_de_execucoes
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, Delegacao
+from apps.competencias.registro import REGISTRO
 from apps.core.tabela import colunas_da_tabela, consulta_da_listagem, marca_descendente
 from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.context import contexto_organograma
@@ -449,3 +451,21 @@ def _paginas_visiveis(numero: int, total: int) -> tuple[int | None, ...]:
         visiveis.append(pagina_numero)
         anterior = pagina_numero
     return tuple(visiveis)
+
+
+def contexto_modal_certidao(perfil: Perfil) -> dict[str, Any]:
+    hoje = timezone.localdate()
+    inicio = hoje - timedelta(days=30)
+    acoes = sorted(
+        (
+            {"slug": acao.acao.slug, "nome": acao.acao.nome}
+            for acao in REGISTRO.acoes
+        ),
+        key=lambda a: a["nome"],
+    )
+    return {
+        "inicio": inicio.isoformat(),
+        "fim": hoje.isoformat(),
+        "acoes": acoes,
+    }
+

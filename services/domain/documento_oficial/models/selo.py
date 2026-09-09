@@ -25,7 +25,7 @@ class SeloConfig(BaseModel):
 
     compacto: QuadroSeloConfig = QuadroSeloConfig(
         largura_mm=68.0,
-        largura_qr_mm=20.0,
+        largura_qr_mm=21.0,
         respiro_interno_mm=2.0,
     )
     fecho: QuadroSeloConfig = QuadroSeloConfig(

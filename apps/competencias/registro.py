@@ -24,7 +24,11 @@ from apps.user_admin.acoes_declaradas import (
     ACAO_TORNAR_ADMINISTRADOR,
 )
 
-from .acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
+from .acoes_declaradas import (
+    ACAO_CONCEDER,
+    ACAO_DEFINIR_ATRIBUICAO,
+    ACAO_EMITIR_CERTIDAO_ATOS,
+)
 from .schemas import RegistroAcoes
 
 
@@ -35,6 +39,7 @@ def _construir_registro() -> RegistroAcoes:
         acoes=(
             ACAO_DEFINIR_ATRIBUICAO,
             ACAO_CONCEDER,
+            ACAO_EMITIR_CERTIDAO_ATOS,
             ACAO_CRIAR_SERVIDOR,
             ACAO_EDITAR_SERVIDOR,
             ACAO_TORNAR_ADMINISTRADOR,

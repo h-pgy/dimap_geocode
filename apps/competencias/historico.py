@@ -7,6 +7,7 @@ from django.utils.timezone import localtime
 
 from apps.competencias.models import ExecucaoAcao
 from apps.unidades.paleta import hex_da_cor
+from services.domain.certidao_atos_administrativos import BuscaAtosProprios
 from services.domain.listagem_gestao import (
     SEM_AUTOR,
     SEM_CARGO_COMISSAO,
@@ -19,6 +20,23 @@ FORMATO_MOMENTO = "%d/%m/%Y %H:%M"
 
 def linhas_de_execucoes(busca: BuscaExecucoes) -> list[LinhaExecucao]:
     return [_linha(execucao) for execucao in _recortadas(busca)]
+
+
+def atos_proprios(busca: BuscaAtosProprios) -> list[LinhaExecucao]:
+    return [_linha(execucao) for execucao in _recortadas_proprias(busca)]
+
+
+def _recortadas_proprias(busca: BuscaAtosProprios) -> QuerySet[ExecucaoAcao]:
+    consulta = (
+        ExecucaoAcao.objects.select_related(
+            "acao", "perfil", "unidade", "cargo_base", "cargo_comissao", "substituindo"
+        )
+        .filter(perfil_id=busca.perfil_id, autorizado=True)
+        .filter(momento__date__gte=busca.inicio, momento__date__lte=busca.fim)
+    )
+    if busca.acoes:
+        consulta = consulta.filter(acao__slug__in=busca.acoes)
+    return consulta.order_by("momento")
 
 
 def _recortadas(busca: BuscaExecucoes) -> QuerySet[ExecucaoAcao]:
