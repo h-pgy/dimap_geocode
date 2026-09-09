@@ -78,7 +78,7 @@ def _envelope(perfil: Perfil, recorte: RecorteDeclarado) -> EnvelopeAto:
             substituindo=_cargo_substituido(perfil),
         ),
         alvo=AlvoDoAto(tipo="servidor", identificador=perfil.rf),
-        emitido_em=timezone.now(),
+        emitido_em=timezone.localtime(),
         campos_publicos=("periodo", "tipos"),
         extras={
             "periodo": f"{recorte.inicio:%d/%m/%Y} a {recorte.fim:%d/%m/%Y}",

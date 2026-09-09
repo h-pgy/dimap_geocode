@@ -63,7 +63,7 @@ def _ato(**overrides: object) -> EnvelopeAto:
         "operacao": "emissao",
         "autor": _autor(),
         "alvo": AlvoDoAto(tipo="lote", identificador="123.456.7890-1"),
-        "emitido_em": timezone.now(),
+        "emitido_em": timezone.localtime(),
         "campos_publicos": ("contribuinte",),
         "extras": {"contribuinte": "013.045.0021-8", "sigilo_interno": "não mostrar"},
     }
@@ -245,3 +245,23 @@ def test_upload_vazio_ou_acima_do_limite_eh_recusado(client: Client) -> None:
     resposta = client.post(reverse("documentos:conferir_arquivo"), {"arquivo": grande})
     assert resposta.status_code == 422
     assert f"{TAMANHO_MAXIMO_MB} MB" in resposta.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# Filtro por_extenso converte UTC para o fuso local do ambiente
+# ---------------------------------------------------------------------------
+
+
+def test_filtro_por_extenso_converte_utc_para_fuso_local() -> None:
+    from datetime import datetime
+    from datetime import timezone as py_timezone
+
+    from apps.documentos.templatetags.documentos import por_extenso as filtro_por_extenso
+
+    # 14:37 UTC equivale a 11:37 no fuso America/Sao_Paulo (-03:00)
+    momento_utc = datetime(2026, 9, 9, 14, 37, 0, tzinfo=py_timezone.utc)
+    formatado = filtro_por_extenso(momento_utc)
+
+    assert "11h37min" in formatado
+    assert "9 de setembro de 2026" in formatado
+

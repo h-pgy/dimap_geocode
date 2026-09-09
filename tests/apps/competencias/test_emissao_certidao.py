@@ -2,6 +2,7 @@
 orquestração da emissão de certidão de atos — rastro, envelope, render, selagem e guarda no acervo.
 """
 
+from datetime import datetime
 from itertools import count
 
 from django.conf import settings
@@ -150,3 +151,39 @@ def test_certidao_emitida_entra_no_acervo_inteira(client: Client) -> None:
 
     assert resposta.status_code == 200
     assert resposta.content == bytes_emitidos
+
+
+@banco
+@pytest.mark.django_db
+def test_certidao_emitida_grava_horario_no_fuso_local() -> None:
+    from apps.competencias.emissao_certidao import emitir_certidao_atos, recorte_declarado
+    from services.domain.certidao_atos_administrativos.models import BuscaAtosProprios
+
+    unidade = _unidade("EMIS-FUSO")
+    servidor = _perfil(unidade, "870030")
+    hoje = timezone.localdate()
+
+    busca = BuscaAtosProprios(perfil_id=servidor.pk, inicio=hoje, fim=hoje)
+    recorte = recorte_declarado(busca)
+
+    documento = emitir_certidao_atos(
+        autor=servidor,
+        busca=busca,
+        recorte=recorte,
+        base_url="https://geocoder.dimap.pmsp/",
+    )
+
+    linha = DocumentoEmitido.objects.get(codigo=documento.codigo)
+    conferencia = conferir_selo(
+        ConferirInput(pdf=bytes(linha.arquivo), segredo=settings.ASSINATURA_SEGREDO)
+    )
+    assert conferencia.envelope is not None
+
+    emitido_em_str = conferencia.envelope["emitido_em"]
+    emitido_em = datetime.fromisoformat(emitido_em_str)
+    assert emitido_em.tzinfo is not None
+
+    fuso_esperado = timezone.get_current_timezone()
+    offset_esperado = fuso_esperado.utcoffset(timezone.now())
+    assert emitido_em.utcoffset() == offset_esperado
+    assert "-03:00" in emitido_em_str

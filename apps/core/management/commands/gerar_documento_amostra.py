@@ -29,7 +29,7 @@ class Command(BaseCommand):
     def handle(self, *args: object, **options: object) -> None:
         ambiente = settings.ALLOWED_HOSTS[0]
         conteudo = montar_documento_amostra(
-            DocumentoAmostraInput(ambiente=ambiente, momento=timezone.now())
+            DocumentoAmostraInput(ambiente=ambiente, momento=timezone.localtime())
         )
         # A orquestração é o único ponto que toca `settings`, e é ela que escolhe o papel
         # timbrado; o domínio recebe tema e config prontos.

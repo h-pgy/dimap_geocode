@@ -335,7 +335,7 @@ def _envelope(perfil: Perfil, recorte: RecorteDeclarado) -> EnvelopeAto:
         ),
         # O alvo da certidão é a própria pessoa: é sobre os atos DELA que o documento fala.
         alvo=AlvoDoAto(tipo="servidor", identificador=perfil.rf),
-        emitido_em=timezone.now(),
+        emitido_em=timezone.localtime(),
         # O que a conferência mostra sem login: o período e os tipos, nunca a lista de atos — o que
         # a pessoa fez não é público só porque o código dela vazou.
         campos_publicos=("periodo", "tipos"),
