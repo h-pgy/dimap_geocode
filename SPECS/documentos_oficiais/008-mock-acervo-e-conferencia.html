@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC documentos_oficiais/008 — Acervo e conferência (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <!-- Leaflet só para o recorte da home (§5), onde o mapa é o produto. -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== 3 · MOLÉCULAS ==================== */
+
+      /* .veredito — a resposta da conferência. Uma placa, quatro estados: entre eles muda a tinta
+         do glifo e do rótulo; o layout, não. Material composto no HTML (.card-well). */
+      .veredito        { @apply flex flex-col items-center text-center gap-3 p-6 sm:p-8; }
+      .veredito-glifo  { @apply w-16 h-16; }
+      .veredito-titulo { @apply text-[22px] font-bold text-madeira-700 leading-tight; }
+      .veredito-nota   { @apply text-[15px] text-base-content/75 leading-relaxed max-w-[46ch]; }
+
+      /* .veredito-estado empilha-se no .text-overline e só troca a tinta — os pares abaixo vencem
+         o átomo por especificidade, e não por ordem. */
+      .veredito-confere      .veredito-glifo  { @apply bg-success/15 border-success/30 text-success; }
+      .veredito-confere      .veredito-estado { @apply text-success; }
+      .veredito-nao-confere  .veredito-glifo  { @apply bg-error/15 border-error/30 text-error; }
+      .veredito-nao-confere  .veredito-estado { @apply text-error; }
+      .veredito-desconhecido .veredito-glifo  { @apply bg-warning/15 border-warning/30 text-warning; }
+      .veredito-desconhecido .veredito-estado { @apply text-warning; }
+      .veredito-sem-selo     .veredito-glifo  { @apply bg-rocha-400/20 border-rocha-500/30 text-rocha-600; }
+      .veredito-sem-selo     .veredito-estado { @apply text-rocha-600; }
+
+      /* .atalho-mapa — pílula de vidro no canto do mapa. Só posição e folga: a pele é o .btn-glass
+         empilhado no markup. */
+      .atalho-mapa { @apply absolute bottom-6 right-4 lg:right-6 z-20 gap-2; }
+
+      /* ==================== andaime do mock ==================== */
+      /* moldura que faz as vezes da casca da home no recorte do §5 */
+      .quadro-tela { @apply relative h-[30rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)]; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Os defs da gravação vêm do partial da própria aplicação (no produto, pelo base.html). -->
+  <script type="module">
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((svg) => document.body.insertAdjacentHTML("afterbegin", svg.replace(TAG_DE_TEMPLATE, "").trim()));
+  </script>
+
+  <!-- partial: documentos/partials/_glifos_documento.html — sprite da página, como em user_admin -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m8.7 12 2.4 2.4 4.2-4.6"/>
+      </g>
+      <g id="glifo-selo-violado">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m9.6 9.6 4.8 4.8"/><path d="m14.4 9.6-4.8 4.8"/>
+      </g>
+      <g id="glifo-selo-alerta">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="M12 8.4v3.9"/><path d="M12 15.3v.1"/>
+      </g>
+      <g id="glifo-sem-selo">
+        <path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/>
+        <path d="M14 3.5v5h5"/><path d="M4.4 20.6 19.6 3.4"/>
+      </g>
+      <g id="glifo-upload">
+        <path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+      </g>
+      <g id="glifo-baixar">
+        <path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+      </g>
+      <g id="glifo-cadeado">
+        <path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5"/>
+        <rect x="5" y="10.5" width="14" height="9.5" rx="2"/>
+      </g>
+      <g id="glifo-lupa">
+        <circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- O fundo é montado no topo do <body> pelo módulo do <head>; o conteúdo fica acima dele. -->
+  <div class="relative z-10">
+    <main class="max-w-5xl mx-auto px-4 py-12 flex flex-col gap-10">
+
+      <header class="glass-panel p-6 sm:p-8 flex flex-col gap-2">
+        <h1 class="text-[30px] font-black tracking-tight text-madeira-700 leading-tight">
+          SPEC documentos_oficiais/008 — mock de validação
+        </h1>
+        <p class="text-[15px] text-base-content/75 max-w-[70ch]">
+          Acervo e conferência do documento emitido: a tela de validação, a página do código impresso
+          no selo e o atalho na home.
+        </p>
+      </header>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .veredito — os quatro estados -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.veredito — as quatro respostas (§3 da SPEC)</span>
+          <div class="grid lg:grid-cols-2 gap-4">
+
+            <!-- estado: confere -->
+            <div class="card-well veredito veredito-confere">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Documento autêntico</span>
+              <p class="veredito-titulo">O arquivo confere com o que a DIMAP emitiu.</p>
+              <p class="veredito-nota">Nem um byte foi alterado desde a emissão, e o código está no acervo.</p>
+            </div>
+
+            <!-- estado: não confere -->
+            <div class="card-well veredito veredito-nao-confere">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-violado"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">O arquivo foi alterado</span>
+              <p class="veredito-titulo">O selo não fecha com o conteúdo deste arquivo.</p>
+              <p class="veredito-nota">Não use esta via. O original guardado no acervo é o documento que vale.</p>
+            </div>
+
+            <!-- estado: selo íntegro de código desconhecido — alerta, nunca "válido" -->
+            <div class="card-well veredito veredito-desconhecido">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-alerta"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Código desconhecido</span>
+              <p class="veredito-titulo">O selo fecha, mas este documento não está no acervo.</p>
+              <p class="veredito-nota">A DIMAP nunca emitiu o código que está neste arquivo. Avise a Divisão antes de dar fé ao documento.</p>
+            </div>
+
+            <!-- estado: sem selo -->
+            <div class="card-well veredito veredito-sem-selo">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-sem-selo"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Sem selo</span>
+              <p class="veredito-titulo">Este arquivo não traz selo da DIMAP.</p>
+              <p class="veredito-nota">Ou o documento não saiu desta plataforma, ou o selo se perdeu ao reimprimir, digitalizar ou converter o arquivo.</p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- .atalho-mapa — a pílula da home, sobre o recorte de mapa do §5 -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.atalho-mapa — repouso e sob o ponteiro</span>
+          <div class="card-well p-4 flex flex-wrap items-center gap-4">
+            <a href="#tela-home" class="btn btn-glass gap-2">
+              <svg class="w-5 h-5 text-agua-700" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              Validar documento
+            </a>
+            <p class="text-xs text-base-content/70 max-w-xs">
+              O gelo acende sob o ponteiro (ao vivo). No mapa ela mora em <span class="text-code">.atalho-mapa</span>, que só a posiciona.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">4 · Organismos</h2>
+
+        <!-- o formulário: o .upload-well que já existe, com o conteúdo desta tela -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">formulário de conferência — composição de .upload-well</span>
+          <div class="grid lg:grid-cols-2 gap-6">
+
+            <!-- estado: vazio -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Sem arquivo escolhido</p>
+              <label class="upload-well cursor-pointer">
+                <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-upload"/></svg>
+                </span>
+                <span class="text-sm font-medium">Arraste o PDF ou clique para escolher</span>
+                <input type="file" accept="application/pdf" class="file-input file-input-glass file-input-sm max-w-xs" aria-label="Documento a conferir" />
+                <span class="form-field-hint">PDF de até 10 MB. O arquivo é conferido e descartado — nada é guardado.</span>
+              </label>
+            </div>
+
+            <!-- estado: recusado (arquivo grande) — o partial de erro que já existe -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Recusado antes de ler os bytes</p>
+              <label class="upload-well cursor-pointer">
+                <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-upload"/></svg>
+                </span>
+                <span class="text-sm font-medium">Arraste o PDF ou clique para escolher</span>
+                <input type="file" accept="application/pdf" class="file-input file-input-glass file-input-sm max-w-xs" aria-label="Documento a conferir" />
+                <span class="form-field-hint">PDF de até 10 MB. O arquivo é conferido e descartado — nada é guardado.</span>
+              </label>
+              <!-- partial: partials/erro_validacao.html — o que o middleware devolve em 422 -->
+              <div role="alert" class="alert alert-error alert-soft alert-vertical sm:alert-horizontal">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 class="font-bold">Dados inválidos</h3>
+                  <ul class="text-sm mt-1 list-disc list-inside">
+                    <li>O arquivo passa de 10 MB.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- a ficha do ato: pares .text-overline/.valor-leitura, como o resumo do servidor -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">ficha do ato — os dois estados da assinatura</span>
+          <div class="grid lg:grid-cols-2 gap-6">
+
+            <!-- estado: assinatura própria -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Assinado no próprio cargo</p>
+              <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                <div class="min-w-0 sm:col-span-2">
+                  <p class="text-overline">Assinado por</p>
+                  <p class="valor-leitura font-medium text-base-content/90">Marina Salgado de Almeida</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Cargo</p>
+                  <p class="valor-leitura text-base-content/90">Diretora de Divisão Técnica</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Unidade</p>
+                  <p class="valor-leitura text-base-content/90">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação Imobiliária</span></p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Assinado em</p>
+                  <p class="valor-leitura text-base-content/90">8 de setembro de 2026, às 14h32min</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Código do documento</p>
+                  <p class="valor-leitura text-code">7K4M9P2XQ3TB</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- estado: ato praticado em substituição -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Assinado em substituição</p>
+              <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                <div class="min-w-0 sm:col-span-2">
+                  <p class="text-overline">Assinado por</p>
+                  <p class="valor-leitura font-medium text-base-content/90">Marina Salgado de Almeida</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Cargo</p>
+                  <p class="valor-leitura text-base-content/90">Diretora de Divisão Técnica</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Em substituição a</p>
+                  <p class="valor-leitura text-base-content/90">Diretor do Departamento</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Unidade</p>
+                  <p class="valor-leitura text-base-content/90">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação Imobiliária</span></p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Assinado em</p>
+                  <p class="valor-leitura text-base-content/90">8 de setembro de 2026, às 14h32min</p>
+                </div>
+                <div class="min-w-0 sm:col-span-2">
+                  <p class="text-overline">Código do documento</p>
+                  <p class="valor-leitura text-code">7K4M9P2XQ3TB</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- ============ A · a tela de validação, sem login ============ -->
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          A · Validar documento — a tela roda sobre o fundo desta página, que é o mesmo da área
+          administrativa.
+        </p>
+
+        <!-- estado: vazio -->
+        <!-- página: documentos/conferencia.html -->
+        <div class="max-w-2xl mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+            <!-- fica na página: a identidade da tela, que nenhum swap troca -->
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Validar documento</h2>
+              <p class="text-xs text-base-content/60 mt-0.5 max-w-[44ch]">
+                Confira se o arquivo que você recebeu foi mesmo emitido pela DIMAP, e por quem.
+              </p>
+            </div>
+
+            <!-- fica na página: o formulário segue de pé depois do swap, para conferir outro arquivo -->
+            <form class="flex flex-col gap-5"
+                  hx-post="/d/conferir"
+                  hx-encoding="multipart/form-data"
+                  hx-target="#resultado-conferencia">
+              <label class="upload-well cursor-pointer">
+                <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-upload"/></svg>
+                </span>
+                <span class="text-sm font-medium">Arraste o PDF ou clique para escolher</span>
+                <input type="file" name="arquivo" accept="application/pdf" class="file-input file-input-glass file-input-sm max-w-xs" aria-label="Documento a conferir" />
+                <span class="form-field-hint">PDF de até 10 MB. O arquivo é conferido e descartado — nada é guardado.</span>
+              </label>
+              <button type="submit" class="btn btn-onsen w-full">Conferir documento</button>
+            </form>
+
+            <!-- partial: documentos/partials/_resultado.html — alvo do POST do formulário -->
+            <div id="resultado-conferencia">
+              <div class="card-well p-4 text-center text-xs text-base-content/60 rounded-lg">
+                Escolha o arquivo acima para ver o resultado da conferência.
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- fica na página: o outro caminho, para quem tem o papel e não tem o arquivo -->
+            <p class="text-xs text-center text-base-content/60">
+              Recebeu o documento em papel? Digite no navegador o endereço impresso no selo, ao pé da folha.
+            </p>
+          </div>
+        </div>
+
+        <!-- os quatro resultados, no lugar em que chegam: o mesmo #resultado-conferencia acima -->
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          Abaixo, só o que o swap troca — o resto da tela A é idêntico nos quatro casos.
+        </p>
+
+        <div class="max-w-2xl mx-auto w-full flex flex-col gap-5">
+
+          <!-- estado: confere -->
+          <div class="glass-panel p-5 flex flex-col gap-4">
+            <div class="card-well veredito veredito-confere">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Documento autêntico</span>
+              <p class="veredito-titulo">O arquivo confere com o que a DIMAP emitiu.</p>
+              <p class="veredito-nota">Nem um byte foi alterado desde a emissão, e o código está no acervo.</p>
+            </div>
+
+            <!-- partial: documentos/partials/_ficha_ato.html — reusado pela tela B -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">A assinatura</p>
+              <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                <div class="min-w-0 sm:col-span-2">
+                  <p class="text-overline">Assinado por</p>
+                  <p class="valor-leitura font-medium text-base-content/90">Marina Salgado de Almeida</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Cargo</p>
+                  <p class="valor-leitura text-base-content/90">Diretora de Divisão Técnica</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Unidade</p>
+                  <p class="valor-leitura text-base-content/90">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação Imobiliária</span></p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Assinado em</p>
+                  <p class="valor-leitura text-base-content/90">8 de setembro de 2026, às 14h32min</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Código do documento</p>
+                  <p class="valor-leitura text-code">7K4M9P2XQ3TB</p>
+                </div>
+              </div>
+
+              <p class="text-overline">O documento</p>
+              <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                <div class="min-w-0 sm:col-span-2">
+                  <p class="text-overline">Documento</p>
+                  <p class="valor-leitura font-medium text-base-content/90">Certidão de Lançamento de IPTU</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Nº de contribuinte</p>
+                  <p class="valor-leitura text-code">013.045.0021-8</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Exercício</p>
+                  <p class="valor-leitura text-base-content/90">2026</p>
+                </div>
+                <div class="min-w-0 sm:col-span-2">
+                  <p class="text-overline">Imóvel</p>
+                  <p class="valor-leitura text-base-content/90">Rua Vergueiro, 1234 — Vila Mariana</p>
+                </div>
+              </div>
+            </div>
+            <!-- /partial -->
+          </div>
+
+          <!-- estado: não confere, com o original guardado a oferecer -->
+          <div class="glass-panel p-5 flex flex-col gap-4">
+            <div class="card-well veredito veredito-nao-confere">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-violado"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">O arquivo foi alterado</span>
+              <p class="veredito-titulo">O selo não fecha com o conteúdo deste arquivo.</p>
+              <p class="veredito-nota">Não use esta via. O original guardado no acervo é o documento que vale.</p>
+            </div>
+
+            <!-- partial: documentos/partials/_oferta_original.html — só quando o código está no acervo -->
+            <div class="card-well p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div class="min-w-0 flex-1">
+                <p class="text-overline">Original no acervo</p>
+                <p class="valor-leitura text-base-content/90">
+                  O código <span class="text-code">7K4M9P2XQ3TB</span> existe, e a DIMAP guarda a via emitida.
+                </p>
+              </div>
+              <a href="/d/7K4M9P2XQ3TB/original" class="btn btn-onsen gap-2 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-baixar"/></svg>
+                Baixar o original
+              </a>
+            </div>
+            <!-- só para o anônimo: aqui o arquivo dele NÃO confere, e saber que existe original é o
+                 que ele precisa levar. Quem já está logado não vê este aviso. -->
+            <p class="flex items-center justify-center gap-1.5 text-xs text-base-content/60">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+              Baixar o original é para servidor da DIMAP: pede login.
+            </p>
+            <!-- /partial -->
+          </div>
+
+          <!-- estado: selo íntegro de código desconhecido -->
+          <div class="glass-panel p-5">
+            <div class="card-well veredito veredito-desconhecido">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-alerta"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Código desconhecido</span>
+              <p class="veredito-titulo">O selo fecha, mas este documento não está no acervo.</p>
+              <p class="veredito-nota">A DIMAP nunca emitiu o código que está neste arquivo. Avise a Divisão antes de dar fé ao documento.</p>
+            </div>
+          </div>
+
+          <!-- estado: sem selo -->
+          <div class="glass-panel p-5">
+            <div class="card-well veredito veredito-sem-selo">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-sem-selo"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Sem selo</span>
+              <p class="veredito-titulo">Este arquivo não traz selo da DIMAP.</p>
+              <p class="veredito-nota">Ou o documento não saiu desta plataforma, ou o selo se perdeu ao reimprimir, digitalizar ou converter o arquivo.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ B · a página do código impresso no selo ============ -->
+        <p class="text-sm text-base-content/75 max-w-3xl mt-4 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          B · <span class="text-code">dimapgeocoder.prefeitura.sp.gov.br/d/7K4M9P2XQ3TB</span> — o endereço
+          que o QR do selo abre. Sem formulário: aqui o documento já é o do código.
+        </p>
+
+        <!-- estado: localizado -->
+        <!-- página: documentos/conferencia_por_codigo.html -->
+        <div class="max-w-2xl mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Documento da DIMAP</h2>
+              <p class="text-xs text-base-content/60 mt-0.5">Código <span class="text-code">7K4M9P2XQ3TB</span></p>
+            </div>
+
+            <div class="card-well veredito veredito-confere">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Documento emitido pela DIMAP</span>
+              <p class="veredito-titulo">Este código está no acervo.</p>
+              <p class="veredito-nota">Compare o que está abaixo com a via que você tem em mãos.</p>
+            </div>
+
+            <!-- partial: documentos/partials/_ficha_ato.html — o MESMO da tela A -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">A assinatura</p>
+              <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                <div class="min-w-0 sm:col-span-2">
+                  <p class="text-overline">Assinado por</p>
+                  <p class="valor-leitura font-medium text-base-content/90">Marina Salgado de Almeida</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Cargo</p>
+                  <p class="valor-leitura text-base-content/90">Diretora de Divisão Técnica</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Unidade</p>
+                  <p class="valor-leitura text-base-content/90">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação Imobiliária</span></p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Assinado em</p>
+                  <p class="valor-leitura text-base-content/90">8 de setembro de 2026, às 14h32min</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Código do documento</p>
+                  <p class="valor-leitura text-code">7K4M9P2XQ3TB</p>
+                </div>
+              </div>
+
+              <p class="text-overline">O documento</p>
+              <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                <div class="min-w-0 sm:col-span-2">
+                  <p class="text-overline">Documento</p>
+                  <p class="valor-leitura font-medium text-base-content/90">Certidão de Lançamento de IPTU</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Nº de contribuinte</p>
+                  <p class="valor-leitura text-code">013.045.0021-8</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline">Exercício</p>
+                  <p class="valor-leitura text-base-content/90">2026</p>
+                </div>
+                <div class="min-w-0 sm:col-span-2">
+                  <p class="text-overline">Imóvel</p>
+                  <p class="valor-leitura text-base-content/90">Rua Vergueiro, 1234 — Vila Mariana</p>
+                </div>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- fica na página: quem tem o arquivo confere os bytes, que o código sozinho não alcança -->
+            <a href="/d/" class="btn btn-glass w-full gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lupa"/></svg>
+              Tenho o arquivo — conferir os bytes
+            </a>
+
+            <!-- partial: documentos/partials/_oferta_original.html — o MESMO da tela do upload.
+                 Aqui dentro de {% if request.user.is_authenticated %}: o destinatário externo não vê
+                 botão que não pode percorrer. Sem o aviso de login, que só existe para o anônimo. -->
+            <div class="card-well p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div class="min-w-0 flex-1">
+                <p class="text-overline">Original no acervo</p>
+                <p class="valor-leitura text-base-content/90">
+                  A DIMAP guarda a via emitida deste código.
+                </p>
+              </div>
+              <a href="/d/7K4M9P2XQ3TB/original" class="btn btn-onsen gap-2 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-baixar"/></svg>
+                Baixar o original
+              </a>
+            </div>
+            <!-- /partial -->
+          </div>
+        </div>
+
+        <!-- estado: código não localizado (404) -->
+        <div class="max-w-2xl mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+            <!-- partial: documentos/partials/_nao_localizado.html -->
+            <div class="card-well veredito veredito-sem-selo">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lupa"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Documento não localizado</span>
+              <p class="veredito-titulo">Nenhum documento da DIMAP tem este código.</p>
+              <p class="veredito-nota">Confira os 12 caracteres impressos ao pé da folha — o código não usa as letras I, L, O e U.</p>
+            </div>
+            <!-- /partial -->
+            <a href="/d/" class="btn btn-glass w-full gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lupa"/></svg>
+              Tenho o arquivo — conferir os bytes
+            </a>
+          </div>
+        </div>
+
+        <!-- ============ C · o atalho na home ============ -->
+        <p id="tela-home" class="text-sm text-base-content/75 max-w-3xl mt-4 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          C · A home, no recorte do canto inferior direito: os botões de zoom saíram e a pílula ocupa
+          o lugar deles. O mapa abaixo é Leaflet vivo — arraste e dê zoom pela roda.
+        </p>
+
+        <!-- página: core/home.html -->
+        <div class="quadro-tela">
+          <div id="fundo-home" class="absolute inset-0"></div>
+
+          <!-- fica na página: a UI flutuante da busca, que já existe -->
+          <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">
+            <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+              <div class="relative w-full flex items-center">
+                <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="search" placeholder="Rua, endereço, codlog ou nº de contribuinte…" class="input input-glass pl-11" />
+              </div>
+              <div class="search-hints flex justify-between px-2 pt-1 items-center">
+                <span class="text-overline">
+                  Pressione <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">Ctrl</kbd> + <kbd class="kbd kbd-xs bg-rocha-950/8 border-rocha-950/20 text-base-content">K</kbd>
+                </span>
+                <div class="flex flex-wrap gap-2">
+                  <span class="badge badge-linha badge-sm whitespace-nowrap h-auto py-0.5">Logradouros</span>
+                  <span class="badge badge-ponto badge-sm whitespace-nowrap h-auto py-0.5">Endereços</span>
+                  <span class="badge badge-poligono badge-sm whitespace-nowrap h-auto py-0.5">Lotes</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- partial: documentos/partials/_atalho_validar.html — incluído pela home -->
+          <a href="/d/" class="btn btn-glass atalho-mapa moldura-fixa">
+            <svg class="w-5 h-5 text-agua-700" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+            Validar documento
+          </a>
+          <!-- /partial -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    // No produto tudo isto desce do servidor por json_script (settings do app mapping); o mock não
+    // tem Django por trás do Live Server, e é o único motivo de a config estar escrita aqui.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5614, -46.6559];
+
+    // O fundo vem do partial da própria home, com as tags de template removidas — o mock não
+    // recria a lente. `zoomControl: false` é o que esta SPEC deixa como estado final do mapa.
+    fetch("/templates/mapping/_mapa_fullscreen.html")
+      .then((r) => r.text())
+      .then((html) => {
+        document.getElementById("fundo-home").innerHTML = html.replace(TAG_DE_TEMPLATE, "").trim();
+        const mapa = L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15);
+        L.tileLayer.wms(WMS.url, {
+          layers: WMS.layers,
+          version: WMS.version,
+          format: "image/png",
+          transparent: false,
+          attribution: "GeoSampa — PMSP",
+        }).addTo(mapa);
+      });
+  </script>
+</body>
+</html>
