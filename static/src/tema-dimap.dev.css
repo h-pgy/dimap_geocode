@@ -309,10 +309,11 @@ html[data-theme="dimap"] {
       inset 0 0 calc(5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 65%, white 35%),
       inset 0 calc(1px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) rgba(255, 255, 255, 0.5),
       inset 0 0 calc(14px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 42%, transparent);
+    /* Nunca url() aqui: referência a filtro SVG em backdrop-filter obriga o navegador a capturar o
+       Backdrop Root do documento, e toda outra superfície de vidro da página — a bandeja da tabela
+       em primeiro lugar — passa a resolver contra um backdrop chapado. */
     backdrop-filter: blur(14px) saturate(200%);
     -webkit-backdrop-filter: blur(14px) saturate(200%);
-    backdrop-filter: url(#frosted) blur(14px) saturate(200%);
-    -webkit-backdrop-filter: url(#frosted) blur(14px) saturate(200%);
     display: grid;
     place-items: center;
     overflow: hidden;
@@ -934,13 +935,13 @@ html[data-theme="dimap"] {
      Duas formas do mesmo material: caixa inteira fora da tabela, segmentos dentro dela — não
      existe elemento que envolva um <tr>, e como todo segmento repete o mesmo gradiente vertical na
      mesma altura, as emendas somem.
-     A densidade fica acima do gelo espesso (94%→86%) porque a bandeja é a única coisa entre o
-     cabeçalho grudento e as linhas que correm por trás: desde que o poço aninhado deixou de pintar
-     (SPEC design/009), o blur de 56px sozinho não apaga o texto que emerge. Abaixo do modal
-     (97%→88%), que é o teto: acima dele a peça deixa de ler como gelo. */
+     A densidade é BAIXA (74%→64%) porque ela é a segunda de três demãos: a placa da página por
+     baixo e a peça do §3 por cima. Somadas, 88% de bandeja levavam o cabeçalho a 97% de opacidade
+     contra 65% das linhas — o degrau que fazia a peça ler como papel. Quem sela o que corre por
+     trás é o blur, e é ele que sobe para 72px em troca do branco que saiu. */
   .th-onsen-bandeja,
   .table-onsen thead th::before {
-    @apply backdrop-blur-[56px] bg-gradient-to-b from-white/94 to-agua-100/86 border-y border-white/55;
+    @apply backdrop-blur-[72px] bg-gradient-to-b from-white/74 to-agua-100/64 border-y border-white/55;
     @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9)];
     background-color: transparent;
   }
@@ -1095,19 +1096,24 @@ html[data-theme="dimap"] {
      cabeçalho cresce como uma peça só. Declarar altura aqui é o que travaria esse crescimento. */
   .th-onsen {
     @apply relative flex items-start gap-1.5 px-3 py-2 rounded-xl text-left whitespace-nowrap transition-all duration-300;
-    /* Em repouso a peça pode ser translúcida: quem esconde as linhas que rolam por baixo é a
-       BANDEJA, não ela. */
-    @apply backdrop-blur-[20px] bg-gradient-to-br from-white/68 via-white/56 to-white/46 border border-white/70;
-    /* Espalhamento negativo nas sombras de fora: recolhe o alcance lateral para dentro da folga da
+    /* A tinta é a MESMA do estado afundado, mais clara — branco sobre a bandeja branca só podia
+       ler como mais branco, e era esse o estouro. Os dois estados passam a diferir pelo que de
+       fato os distingue: a intensidade da água e a DIREÇÃO da luz (lábio em cima aqui, sombra
+       interna lá). */
+    @apply backdrop-blur-[20px] bg-agua-100/26 border border-white/55;
+    /* Com o preenchimento frio, a aresta é o único branco que sobrou — e é ela que delimita a
+       peça: a tinta de água quase não contrasta com a bandeja, então quem desenha o contorno é a
+       luz presa no fio, não o fundo.
+       Espalhamento negativo nas sombras de fora: recolhe o alcance lateral para dentro da folga da
        célula, senão a sombra vaza para a coluna vizinha e morre cortada na emenda. */
-    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_-8px_rgba(7,58,84,0.32),0_0_14px_-6px_rgba(72,202,228,0.3)];
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_8px_18px_-8px_rgba(7,58,84,0.32),0_0_14px_-6px_rgba(72,202,228,0.3)];
   }
   /* AFUNDADO = a coluna TEM FILTRO — não "alguém clicou". Estado é valor, não memória: o :has lê o
      campo e o CSS desenha, sem estado de UI em JavaScript. O gelo segue opaco (só a direção da luz
      inverte), senão as linhas apareceriam através do cabeçalho grudento. */
   .th-onsen:focus-within,
   .th-onsen:has(.th-onsen-input:not(:placeholder-shown)) {
-    @apply bg-none bg-agua-100/45 border-white/45 translate-y-px;
+    @apply bg-agua-100/45 border-white/45 translate-y-px;
     @apply shadow-[inset_0_3px_8px_rgba(7,58,84,0.28)];
   }
   /* O rótulo NÃO some quando a coluna afunda: o placeholder desaparece ao digitar e a coluna

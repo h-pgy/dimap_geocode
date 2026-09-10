@@ -62,16 +62,21 @@ barra gravada (`.scroll-etched` + `[data-barra]`/`[data-polegar]`) como na tabel
 `.lata-concessao`) empilha essas ações na mesma posição em todas as linhas.
 
 **Bandeja e célula de cabeçalho** (`.th-onsen-bandeja`, `.th-onsen`, `.th-onsen-campo`,
-`.th-onsen-input`, `.th-onsen-gravado`): o cabeçalho é **uma superfície** — o gelo mais denso do
-sistema depois do modal, `94%→86%` sobre 56px de blur, porque é a única coisa entre ele e as linhas
-que correm por trás — e cada coluna é uma peça assentada sobre ela — clicar a faz **afundar** e virar campo, porque campo aqui é sempre coisa
-rebaixada. **Afundado = a coluna tem filtro**, não "alguém clicou": o CSS lê o valor com
+`.th-onsen-input`, `.th-onsen-gravado`): o cabeçalho é **uma superfície** — `74%→64%` sobre
+72px de blur, densidade própria — e cada coluna é uma peça assentada sobre ela. **A leitura é a soma
+de três demãos** (placa da página + bandeja + peça): subir a tinta de qualquer uma estoura o
+conjunto, e quem sela o que corre por trás do cabeçalho grudento é o blur. A peça em repouso é
+`agua-100/26` — **água pálida, nunca branco**: branco sobre a bandeja branca só pode ler como mais
+branco. Clicar a faz **afundar** e virar campo, porque campo aqui é sempre coisa rebaixada; repouso
+e afundado são a mesma água em duas intensidades (26% e 45%), e o que os distingue é a direção da
+luz — lábio na quina de cima, sombra interna dentro. **Afundado = a coluna tem filtro**, não "alguém clicou": o CSS lê o valor com
 `:has(input:not(:placeholder-shown))`, sem estado de UI em JavaScript. A régua **abre inteira** (o
 campo de uma coluna abre o de todas). Coluna que não responde **não tem peça**: o rótulo é gravado
 direto na bandeja — a ausência da peça é a mensagem, sem cinza de desabilitado.
 
 **Imagem de perfil** (`.avatar-glass`, SPEC design/015): esfera de vidro fosco (Frosted Glass)
-translúcida com refração orgânica (`backdrop-filter: url(#frosted)`) e aro perimétrico luminoso
+translúcida com refração (`backdrop-filter: blur(14px) saturate(200%)` — **nunca `url()`**, que
+obriga a captura do Backdrop Root do documento e chapa todo o resto do vidro da página) e aro perimétrico luminoso
 na cor da unidade (`--cor-unidade`), sem manchas brancas radiais chapadas. O alcance da luz escala
 proporcionalmente por `--halo-escala` — o padrão serve de `w-9` a `w-16`; disco maior abre o alcance
 no include (`w-28` usa `2`, o chip do topo `0.5`). O filtro vítreo suave (`::after`) protege a foto

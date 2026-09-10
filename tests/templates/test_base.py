@@ -60,8 +60,3 @@ def test_styleguide_usa_o_css_compilado_da_aplicacao() -> None:
 
     assert not presentes, f"CDN de CSS ainda referenciado no styleguide: {presentes}"
     assert "output.css" in casca
-
-
-def test_filtros_gravacao_inclui_filtro_frosted() -> None:
-    filtros = (REPO_ROOT / "templates" / "partials" / "_filtros_gravacao.html").read_text(encoding="utf-8")
-    assert '<filter id="frosted"' in filtros

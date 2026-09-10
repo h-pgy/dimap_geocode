@@ -1,7 +1,7 @@
 ---
 spec: design/015
-versao: v4
-atualizado_em: 2026-09-09
+versao: v5
+atualizado_em: 2026-09-10
 testes_tdd: true
 implementado: true
 markers_obrigatorios: []
@@ -10,6 +10,7 @@ changelog:
   - v2: substituição do halo neon externo por luminescência volumétrica interna orgânica
   - v3: óptica de orbe com líquido termal interno e reflexos radiais (descartada por aspecto Web 2.0 artificial)
   - v4: óptica de vidro fosco límpido (Frosted Glass) translúcido com aro perimétrico de 2px a 60% de branco, backdrop-filter com url(#frosted), base a 8% e eliminação de todo brilho branco chapado artificial
+  - v5: "[bugfix] a refração perde a referência a filtro SVG: url() em backdrop-filter fazia o navegador capturar o Backdrop Root do documento, e as demais superfícies de vidro da página perdiam o backdrop"
 ---
 
 # SPEC design/015 — Avatar esfera de vidro fosco (.avatar-glass)
@@ -20,7 +21,7 @@ Servidor da DIMAP visualiza os avatares de perfil na interface no contexto de na
 ## 2 · Condições de pronto
 - [x] O avatar é modelado como uma **lente esférica de vidro fosco translúcido**: base a 8% de tinta branca translúcida combinada à cor da unidade (`--cor-unidade`), sem manchas brancas radiais chapadas.
 - [x] O aro perimétrico razor-sharp a 60% de branco (`box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6)`) sobre uma borda transparente de 1.5px define a borda luminosa da lente sem serrilhamento.
-- [x] A refração do fundo é executada por `backdrop-filter: url(#frosted) blur(14px) saturate(180%)`, com filtro SVG `<filter id="frosted">` disponibilizado no documento.
+- [x] A refração do fundo é executada por `backdrop-filter: blur(14px) saturate(200%)`, sem referência a filtro SVG.
 - [x] Iniciais e fotos integram-se no plano intermediário (`z-1`): letras em tinta clara flutuam com sombra suave sobre o vidro e fotos recebem a moldura vítrea circular perimétrica.
 - [x] O componente escala proporcionalmente de `w-9 h-9` a `w-28 h-28`, preservando a espessura do aro e o alcance do reflexo por meio de `--halo-escala`.
 - [x] Design aprovado no mock e peças portadas para `static/src/tema-dimap.dev.css` e para o styleguide (`/design_system`) antes de qualquer template da aplicação usar as classes.
@@ -30,7 +31,7 @@ Iteração de design system, materiais e óptica de componentes: nenhum model de
 
 | Peça / Parâmetro | Definição anterior | Pergunta desta SPEC |
 |---|---|---|
-| `.avatar-glass` | Manchas radiais brancas chapadas Web 2.0 (`rgba(255,255,255,0.9)`) | "Como expressar o vidro brilhando sem recorrer a manchas de brilho falso?"; a translucidez sutil a 8% com refração fosca (`backdrop-filter: url(#frosted)`) e o aro perimétrico de 2px a 60% de branco entregam a óptica autêntica de vidro fosco iluminado, sem manchas radiais artificiais. |
+| `.avatar-glass` | Manchas radiais brancas chapadas Web 2.0 (`rgba(255,255,255,0.9)`) | "Como expressar o vidro brilhando sem recorrer a manchas de brilho falso?"; a translucidez sutil a 8% com refração fosca (`backdrop-filter: blur(14px) saturate(200%)`) e o aro perimétrico de 2px a 60% de branco entregam a óptica autêntica de vidro fosco iluminado, sem manchas radiais artificiais. |
 | `.avatar-glass::before` | Gradiente sloshing com rotação contínua | "O movimento é necessário para a leitura de vidro?"; não — o movimento continuo adicionava ruído visual e pontos brancos forçados. A refração fosca estática com sutil reação no hover é mais limpa e elegante. |
 | `.avatar-glass::after` | Três gradientes especulares brancos | "O domo especular artificial funciona?"; não — parecia botão Mac Aqua de 2005. O brilho da peça vem do aro de luz perimétrico e da refração do mapa por trás. |
 | SVG de iniciais | Círculo opaco com `{cor_fundo}` | "O círculo opaco do SVG combina com o vidro?"; com `fill-opacity: 0.18`, as letras flutuam com contraste e o vidro fosco reflete o fundo através do círculo. |
@@ -44,7 +45,6 @@ Iteração de design system, materiais e óptica de componentes: nenhum model de
 
 ## 5 · Peças de referência a compor
 - `@static/src/tema-dimap.dev.css` → `.avatar-glass`: material e variáveis da moldura de perfil a calibrar.
-- `@templates/partials/_filtros_gravacao.html` → inclusão do filtro SVG `<filter id="frosted">`.
 - `@templates/user_admin/partials/_imagem_perfil.html` → partial unificado de renderização de avatar (foto × SVG).
 - `@services/domain/avatar/generator.py` → `AvatarIniciaisSvg`: gabarito do SVG de iniciais.
 - `@apps/unidades/paleta.py` → `HEX_POR_COR`: resolução dos 8 tons de unidades do projeto.
@@ -73,10 +73,9 @@ Iteração de design system, materiais e óptica de componentes: nenhum model de
       inset 0 calc(1px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) rgba(255, 255, 255, 0.5),
       /* Absorção interna mais profunda e saturada da cor da unidade */
       inset 0 0 calc(14px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 42%, transparent);
+    /* Sem url(): referência SVG aqui obriga a captura do Backdrop Root do documento. */
     backdrop-filter: blur(14px) saturate(200%);
     -webkit-backdrop-filter: blur(14px) saturate(200%);
-    backdrop-filter: url(#frosted) blur(14px) saturate(200%);
-    -webkit-backdrop-filter: url(#frosted) blur(14px) saturate(200%);
     display: grid;
     place-items: center;
     overflow: hidden;
@@ -155,20 +154,12 @@ Iteração de design system, materiais e óptica de componentes: nenhum model de
   }
 ```
 
-**`templates/partials/_filtros_gravacao.html`**
-```xml
-    <!-- Filtro de vidro fosco para refração em backdrop-filter: url(#frosted) -->
-    <filter id="frosted" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="12" result="blur" />
-    </filter>
-```
-
 ## 7 · Caveats
 **O halo luminoso e o aro perimétrico irradiam a cor oficial da unidade.** O aro perimétrico de 2px a 88% da cor da unidade (com 12% de branco para brilho) combinado aos dois halos suaves em box-shadow garantem o reconhecimento imediato da unidade tanto em avatares de iniciais quanto em fotos reais.
 
 **Fotos reais recebem filtro vítreo suave na cor da unidade via `::after`.** A camada intermediária aplica `color-mix(in srgb, var(--cor-unidade) 15%, transparent)` sobre a imagem, integrando a foto à tonalidade da unidade sem perder nitidez ou saturação natural do retrato.
 
-**Compatibilidade com navegadores sem suporte a filtro SVG em `backdrop-filter`.** A declaração cascateia `blur(14px) saturate(180%)` antes e junto de `url(#frosted)`, garantindo que clientes como Firefox ou WebKit apliquem o desfoque equivalente caso ignorem a URL de filtro SVG.
+**A refração é uma gaussiana simples, não um filtro SVG.** Referência `url()` em `backdrop-filter` obriga o navegador a capturar o Backdrop Root do documento inteiro, e toda outra superfície de vidro da página passa a resolver contra um backdrop chapado — a bandeja da tabela foi a primeira a cair. O custo é a refração perder a possibilidade de textura orgânica e ficar restrita ao que `blur()` e `saturate()` expressam.
 
 ## 8 · Testes (TDD)
 - `test_avatar_svg_preserva_iniciais_e_aria_label` — garante que o gabarito SVG preserva as letras extraídas e a acessibilidade.

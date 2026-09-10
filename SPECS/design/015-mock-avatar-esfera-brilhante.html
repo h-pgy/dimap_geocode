@@ -50,8 +50,8 @@
           0 16px 32px rgba(0, 0, 0, 0.12);
         backdrop-filter: blur(14px) saturate(180%);
         -webkit-backdrop-filter: blur(14px) saturate(180%);
-        backdrop-filter: url(#frosted) blur(14px) saturate(180%);
-        -webkit-backdrop-filter: url(#frosted) blur(14px) saturate(180%);
+        backdrop-filter: blur(14px) saturate(180%);
+        -webkit-backdrop-filter: blur(14px) saturate(180%);
         display: grid;
         place-items: center;
         cursor: pointer;
@@ -100,8 +100,8 @@
           inset 0 0 calc(14px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 42%, transparent);
         backdrop-filter: blur(14px) saturate(200%);
         -webkit-backdrop-filter: blur(14px) saturate(200%);
-        backdrop-filter: url(#frosted) blur(14px) saturate(200%);
-        -webkit-backdrop-filter: url(#frosted) blur(14px) saturate(200%);
+        backdrop-filter: blur(14px) saturate(200%);
+        -webkit-backdrop-filter: blur(14px) saturate(200%);
         display: grid;
         place-items: center;
         overflow: hidden;
@@ -242,10 +242,6 @@
   <!-- Filtros SVG não-visíveis (skill componentes-frontend / design/015) -->
   <svg width="0" height="0" class="absolute pointer-events-none" aria-hidden="true" style="position: absolute; width: 0; height: 0; overflow: hidden;">
     <defs>
-      <!-- Filtro de vidro fosco para refração em backdrop-filter: url(#frosted) -->
-      <filter id="frosted" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-        <feGaussianBlur stdDeviation="12" result="blur" />
-      </filter>
     </defs>
   </svg>
 
@@ -258,7 +254,7 @@
         <p class="text-overline">Design System · Onsen de Inverno</p>
         <h1 class="text-2xl lg:text-3xl font-bold tracking-tight text-madeira-700">SPEC design/015 — Avatar esfera de vidro fosco (Frosted Glass)</h1>
         <p class="text-sm text-base-content/70 mt-1">
-          Óptica de lente esférica translúcida inspirada no vidro fosco com refração orgânica (<span class="text-code">url(#frosted)</span>): base translúcida a 8%, aro perimétrico de 2px a 60% de branco e profundidade suave — sem nenhum brilho branco chapado forçado de estilo Web 2.0.
+          Óptica de lente esférica translúcida inspirada no vidro fosco com refração (<span class="text-code">blur(14px) saturate(200%)</span>): base translúcida a 8%, aro perimétrico de 2px a 60% de branco e profundidade suave — sem nenhum brilho branco chapado forçado de estilo Web 2.0.
         </p>
       </div>
       <div class="badge badge-info badge-soft self-start md:self-center font-mono">
@@ -272,7 +268,7 @@
         <p class="text-overline">1 · Tokens & Óptica</p>
         <h2 class="text-xl font-bold text-madeira-700">Espécime de referência (CSS puro) × Laboratório evolutivo</h2>
         <p class="text-sm text-base-content/70 mt-1">
-          O efeito de vidro brilhando não depende de manchas brancas radiais pintadas no centro: ele nasce da transparência sutil a 8%, do aro perimétrico de luz (<span class="text-code">0 0 0 2px rgba(255,255,255,.6)</span>) e da refração do fundo por vidro fosco (<span class="text-code">backdrop-filter: url(#frosted)</span>).
+          O efeito de vidro brilhando não depende de manchas brancas radiais pintadas no centro: ele nasce da transparência sutil a 8%, do aro perimétrico de luz (<span class="text-code">0 0 0 2px rgba(255,255,255,.6)</span>) e da refração do fundo por vidro fosco (<span class="text-code">backdrop-filter: blur(14px) saturate(200%)</span>) — <strong>nunca</strong> por <span class="text-code">url()</span>, que obriga a captura do Backdrop Root do documento e chapa todo o resto do vidro da página.
         </p>
       </div>
 
@@ -310,7 +306,7 @@
               </p>
             </div>
             <div class="p-3 rounded-xl bg-white/40 border border-white/60 space-y-1">
-              <span class="font-bold text-rocha-950 font-mono">backdrop-filter: url(#frosted) blur(14px)</span>
+              <span class="font-bold text-rocha-950 font-mono">backdrop-filter: blur(14px) saturate(200%)</span>
               <p class="text-base-content/70">
                 O desfoque fosco amacia a imagem que passa por trás, criando a percepção física de profundidade e materialidade vítrea.
               </p>
