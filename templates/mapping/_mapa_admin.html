@@ -3,7 +3,11 @@
 {# lente por cima é a única coisa fixa. brightness/contrast são do material da ortofoto, não da #}
 {# lente: vivem em .fundo-ortofoto__deriva (static/src/tema-dimap.dev.css). #}
 {% include "mapping/_glifos_fundo.html" %}
+{# Ordem de DOM é ordem de pintura (SPEC design/017): o piso, a ortofoto que o cobre quando #}
+{# existe, a água sobre os dois — e só então as quatro camadas da lente. #}
+<div class="fundo-rocha"><div class="fundo-rocha__grao"></div></div>
 {% include "mapping/_fundo_ortofoto.html" %}
+<canvas class="fundo-agua" aria-hidden="true"></canvas>
 <div class="fixed inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#ade8f4]/90"></div>
 <div class="fixed inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,119,182,0.5)_0%,rgba(0,119,182,0.15)_100%)]"></div>
 <div class="fixed inset-0 z-[1] pointer-events-none backdrop-blur-[30px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
@@ -14,3 +18,7 @@
 <script src="{% static 'js/ui/controle_fundo.js' %}"></script>
 {# Módulo, e não script clássico: só precisa existir antes do primeiro rodízio, um minuto depois. #}
 <script type="module" src="{% static 'js/ui/fundo_ortofoto.js' %}"></script>
+{# Dono único do fio entintado de qualquer .range-onsen da página. #}
+<script type="module" src="{% static 'js/ui/trilho_onsen.js' %}"></script>
+<script type="module" src="{% static 'js/ui/fundo_agua.js' %}"></script>
+<script type="module" src="{% static 'js/ui/controle_agua.js' %}"></script>

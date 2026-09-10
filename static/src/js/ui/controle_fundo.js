@@ -31,6 +31,8 @@ function lerLigado() {
   }
 }
 
+// O fio entintado do trilho é do trilho_onsen.js: aqui só o valor muda, e a varredura de boot
+// daquele módulo pinta a barra logo em seguida.
 function aplicarNivel(nivel) {
   document.documentElement.style.setProperty("--deriva-periodo", PERIODOS[nivel]);
   document.querySelectorAll("[data-nivel]").forEach((barra) => (barra.value = String(nivel)));
@@ -42,6 +44,8 @@ function aplicarNivel(nivel) {
 function aplicarLigado(ligado) {
   document.documentElement.classList.toggle("fundo-desligado", !ligado);
   document.querySelectorAll("[data-fundo-ligado]").forEach((chave) => (chave.checked = ligado));
+  // Recolhido não é o mesmo que ausente: `overflow: hidden` não tira do Tab (SPEC design/017).
+  document.querySelectorAll("[data-trocar], [data-nivel]").forEach((alvo) => (alvo.disabled = !ligado));
   lembrar(CHAVE_LIGADO, ligado ? "1" : "0");
 }
 
@@ -51,13 +55,6 @@ aplicarLigado(lerLigado());
 document.addEventListener("input", (evento) => {
   const barra = evento.target.closest("[data-nivel]");
   if (barra) aplicarNivel(Number(barra.value));
-});
-
-document.addEventListener("click", (evento) => {
-  const passo = evento.target.closest("[data-velocidade]");
-  if (!passo) return;
-  const atual = Number(document.querySelector("[data-nivel]")?.value ?? NIVEL_PADRAO);
-  aplicarNivel(Math.min(4, Math.max(0, atual + Number(passo.dataset.velocidade))));
 });
 
 document.addEventListener("change", (evento) => {

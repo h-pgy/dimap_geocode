@@ -1,20 +1,60 @@
-{# Molécula: o controle flutuante do fundo de ortofoto — liga/desliga e velocidade da deriva.    #}
+{# Molécula: o controle flutuante do fundo — liga/desliga, troca, velocidade da deriva e a       #}
+{# engrenagem de onde ascende a torre de Ajustes da Animação (SPECs design/010 e design/017).     #}
 {# Fica fora da .admin-shell, como o fundo que ele controla. Preferências são do cliente          #}
-{# (Caveats da SPEC design/010): controle_fundo.js lê/grava localStorage, nunca o servidor.        #}
-<div class="fundo-controle glass-panel self-end ml-auto mt-4 xl:fixed xl:bottom-6 xl:right-6 xl:z-20 transition-glass">
-  <div class="fundo-controle__cabecalho">
-    <span class="text-overline">Fundo</span>
-    <input type="checkbox" class="toggle-onsen" data-fundo-ligado checked aria-label="Mostrar o fundo">
-  </div>
-  <div class="fundo-controle__corpo flex flex-col gap-1.5">
-    <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center" data-trocar type="button">
-      <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
-      Trocar
+{# (Caveats): controle_fundo.js e controle_agua.js leem/gravam localStorage, nunca o servidor.    #}
+<div class="fundo-controle glass-panel relative self-end ml-auto mt-4 xl:fixed xl:bottom-6 xl:right-6 xl:z-20 transition-glass">
+
+  <div class="torre-ajustes torre-ajustes--fechada" id="torre-ajustes">
+    <p class="torre-ajustes__titulo">Ajustes da Animação</p>
+
+    <div class="torre-ajustes__chave">
+      <span class="text-overline">Animação</span>
+      <input type="checkbox" class="toggle-onsen" data-agua-ligada checked aria-label="Ligar a animação da água">
+    </div>
+
+    {# Uma linha por parâmetro, montadas pelo controle_agua.js a partir da tabela de ajustáveis. #}
+    <div class="torre-ajustes__barras" data-barras></div>
+
+    <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center" type="button" data-padrao>
+      <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-padrao"/></svg></span>
+      Padrão
     </button>
-    <div class="fundo-controle__velocidade">
-      <button class="btn-etched etched btn-etched-mini" data-velocidade="-1" aria-label="Mais devagar" type="button">&minus;</button>
-      <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" data-nivel aria-label="Velocidade da deriva">
-      <button class="btn-etched etched btn-etched-mini" data-velocidade="1" aria-label="Mais rápido" type="button">+</button>
+  </div>
+
+  <div class="fundo-controle__cabecalho">
+    <span class="text-overline fundo-controle__titulo">Fundo</span>
+
+    <div class="fundo-controle__acoes">
+      <span class="tooltip tooltip-left fundo-controle__dica" data-tip="Mostrar o fundo">
+        <input type="checkbox" class="toggle-onsen" data-fundo-ligado checked aria-label="Mostrar o fundo">
+      </span>
+
+      <span class="tooltip tooltip-left fundo-controle__dica" data-tip="Trocar foto">
+        <span class="fundo-controle__recolhe-x">
+          <span class="fundo-controle__recolhido-x">
+            <button class="btn btn-sm btn-circle btn-glass fundo-controle__acao" type="button" data-trocar
+                    aria-label="Trocar a imagem de fundo">
+              <span class="icone-acao w-4 h-4 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+            </button>
+          </span>
+        </span>
+      </span>
+
+      <span class="tooltip tooltip-left fundo-controle__dica ml-1.5" data-tip="Configurações">
+        <button class="btn btn-sm btn-circle btn-glass fundo-controle__acao" type="button" data-ajustes
+                aria-expanded="false" aria-controls="torre-ajustes" aria-label="Ajustes da animação">
+          <span class="icone-acao w-4 h-4 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-ajustes"/></svg></span>
+        </button>
+      </span>
     </div>
   </div>
+
+  <span class="tooltip tooltip-top fundo-controle__trilho" data-tip="Velocidade da deriva">
+    <span class="fundo-controle__recolhe-y">
+      <span class="fundo-controle__recolhido-y">
+        <input type="range" class="range-onsen" min="0" max="4" step="1" value="2"
+               data-nivel aria-label="Velocidade da deriva">
+      </span>
+    </span>
+  </span>
 </div>

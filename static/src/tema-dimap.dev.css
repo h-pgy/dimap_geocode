@@ -67,6 +67,8 @@ html[data-theme="dimap"] {
   /* Troca de fundo sem vão (SPEC design/011): duração do crossfade entre a camada que sai e a
      que entra — ver .fundo-ortofoto__camada. */
   --fundo-troca-duracao: 700ms;
+  /* Água sobre o fundo administrativo (SPEC design/017): o grão do piso de rocha. */
+  --fundo-rocha-grao: 0.055;
   /* Gaveta lateral (SPEC design/013). A largura é token porque a paleta se ancora na borda direita
      da casca: fechada, é ela que põe o meio disco exatamente sobre a borda da tela. O recuo é o
      quanto da segunda gaveta fica enfiado sob a primeira, e é também o que ela reserva à esquerda. */
@@ -1681,15 +1683,52 @@ html[data-theme="dimap"] {
 
   /* ==================== FUNDO DE ORTOFOTO (SPEC design/010) ==================== */
 
+  /* .fundo-rocha — átomo (SPEC design/017): o piso que existe exatamente quando a ortofoto não
+     existe. Sem ele, o que a tinta mix-blend-multiply da lente encontra atrás é o branco da
+     página, que ela só consegue tingir. */
+  .fundo-rocha {
+    @apply fixed inset-0 z-0 pointer-events-none hidden overflow-hidden;
+    background-image:
+      radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.35) 0%, transparent 62%),
+      linear-gradient(163deg,
+        var(--color-rocha-100) 0%,
+        var(--color-rocha-300) 46%,
+        var(--color-rocha-500) 100%);
+  }
+  html.fundo-desligado .fundo-rocha { @apply block; }
+
+  /* .fundo-rocha__grao — átomo. Tile de turbulência como IMAGEM, nunca como `filter`: filtro de
+     tela cheia repinta a cada quadro. */
+  .fundo-rocha__grao {
+    @apply absolute inset-0;
+    opacity: var(--fundo-rocha-grao);
+    background-size: 180px 180px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+  }
+
+  /* .fundo-agua — átomo (SPEC design/017): a superfície de luz sobre o piso, qualquer que ele
+     seja. Cinza neutro e opaco — quem a torna invisível em repouso é o soft-light, cujo neutro é
+     0.5, não a opacidade. */
+  .fundo-agua {
+    @apply fixed inset-0 z-0 pointer-events-none w-full h-full;
+    mix-blend-mode: soft-light;
+  }
+
   /* .fundo-ortofoto — organismo: a casca que permanece, empilhando camadas absolutas
      (SPEC design/011 — troca de fundo sem vão). */
   .fundo-ortofoto {
     @apply fixed inset-0 z-0 pointer-events-none overflow-hidden;
+    transition: opacity var(--fundo-troca-duracao) ease-out;
   }
   /* Desligado no <html>, não no elemento: o HTMX empilha camadas dentro de #fundo-ortofoto a
      cada rodízio, e uma classe presa numa camada se perderia no descarte seguinte
-     (controle_fundo.js). */
-  html.fundo-desligado .fundo-ortofoto { @apply hidden; }
+     (controle_fundo.js). Opacidade, e não `display`: sobre o piso de rocha o corte apareceria
+     como salto, e `display` não transita (SPEC design/017). */
+  html.fundo-desligado .fundo-ortofoto { @apply opacity-0; }
+  /* Pausada, não zerada: `animation: none` devolveria a deriva ao ponto de partida, e o salto
+     apareceria no fade de volta. */
+  html.fundo-desligado .fundo-ortofoto__deriva,
+  html.fundo-desligado .fundo-ortofoto__imagem { animation-play-state: paused; }
 
   /* .fundo-ortofoto__camada — átomo: uma ortofoto e a deriva dela. Entra transparente; a classe
      que a revela é posta pelo JS depois do decode(), nunca por timer (SPEC design/011). */
@@ -1731,22 +1770,44 @@ html[data-theme="dimap"] {
     animation-direction: alternate;
   }
 
-  /* .range-onsen — átomo: o trilho é o poço em pílula do .toggle-onsen e o polegar é o disco
-     entintado da mesma família — mesmo vocabulário, escala de trilho contínuo. */
+  /* .range-onsen — átomo: bandeja funda com o fio do .etched-line correndo no fundo, entintado
+     até o polegar. A bandeja nunca se preenche — o que muda de estado é o fio, como na
+     .calha-cobertura. O --preenchimento é escrito pelo controle_fundo.js: a posição do polegar
+     não existe como seletor. */
   .range-onsen {
-    @apply w-full h-1.5 appearance-none cursor-pointer rounded-full bg-white/30 border border-white/45;
+    @apply w-full h-4 appearance-none cursor-pointer rounded-full bg-white/30 border border-white/45;
     box-shadow: var(--sombra-poco-fina);
+    background-image:
+      linear-gradient(to right, rgba(0, 119, 182, 0.85), rgba(0, 119, 182, 0.85)),
+      linear-gradient(to right, rgba(13, 27, 42, 0.14), rgba(13, 27, 42, 0.14));
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: var(--preenchimento, 0%) 0.375rem, 100% 0.375rem;
   }
   .range-onsen::-webkit-slider-thumb {
-    @apply w-4 h-4 rounded-full;
+    @apply w-4 h-4 rounded-full transition-transform duration-200;
     -webkit-appearance: none;
     background-color: rgba(0, 119, 182, 0.85);
     filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
   }
   .range-onsen::-moz-range-thumb {
-    @apply w-4 h-4 rounded-full border-0;
+    @apply w-4 h-4 rounded-full border-0 transition-transform duration-200;
     background-color: rgba(0, 119, 182, 0.85);
     filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+  .range-onsen:hover::-webkit-slider-thumb,
+  .range-onsen:active::-webkit-slider-thumb {
+    @apply scale-125;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.95));
+  }
+  .range-onsen:hover::-moz-range-thumb,
+  .range-onsen:active::-moz-range-thumb {
+    @apply scale-125;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.95));
+  }
+  .range-onsen:focus-visible {
+    @apply outline-none border-agua-500;
+    box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
   }
 
   /* .btn-etched-mini — variante do .btn-etched (SPEC design/010) para o controle flutuante do
@@ -1756,19 +1817,93 @@ html[data-theme="dimap"] {
     @apply text-[11px] px-1.5 py-0.5 gap-1.5 tracking-[0.1em];
   }
 
-  /* .fundo-controle — molécula: .toggle-onsen, .btn-etched e .range-onsen compostos no controle
-     flutuante de liga/desliga e velocidade da deriva. */
+  /* .fundo-controle — molécula: .toggle-onsen, .range-onsen e os discos de vidro compostos no
+     controle flutuante do fundo — liga/desliga, troca, velocidade da deriva e a engrenagem de
+     onde ascende a .torre-ajustes. `w-fit` porque a caixa aperta quando o Trocar e o trilho
+     recolhem.
+     Sem `position` aqui: `components` vence `utilities` nesta folha, e a regra atropelaria o
+     `relative`/`xl:fixed` do markup — que é também a âncora da torre. */
   .fundo-controle {
-    @apply flex flex-col gap-1.5 px-3 py-2 w-44;
+    @apply flex flex-col px-3 py-2 w-fit;
   }
-  .fundo-controle__cabecalho {
-    @apply flex items-center justify-between gap-4;
+  .fundo-controle__cabecalho { @apply flex items-center gap-1; }
+  .fundo-controle__acoes { @apply flex items-center; }
+  /* Composto sobre o .text-overline: só a medida muda. */
+  .fundo-controle__titulo { @apply text-[13px] tracking-[0.18em] leading-none -mr-[0.18em]; }
+  /* O `.tooltip` do daisyUI é inline-block, e o espaço do descendente desalinha o que ele
+     embrulha da linha de centro da fileira. */
+  .fundo-controle__dica { @apply inline-flex items-center; }
+
+  /* Recolhimento sem JS e sem medida fixa: a transição de `fr` fecha o vão sozinha, e o `w-fit`
+     do widget acompanha quadro a quadro. O espaçamento mora DENTRO do que recolhe — gap no
+     contêiner sobreviveria ao recolhimento e deixaria um vão morto. */
+  .fundo-controle__recolhe-x {
+    @apply grid transition-all duration-300 ease-out;
+    grid-template-columns: 1fr;
   }
-  .fundo-controle__velocidade {
-    @apply flex items-center gap-1.5;
+  .fundo-controle__recolhe-y {
+    @apply grid transition-all duration-300 ease-out;
+    grid-template-rows: 1fr;
   }
-  /* Fundo desligado: não há imagem a trocar nem velocidade a ajustar. */
-  .fundo-controle:has(.toggle-onsen:not(:checked)) .fundo-controle__corpo {
+  /* O `overflow: hidden` do recolhimento mora ABAIXO do `.tooltip`: no mesmo elemento, ele
+     recortaria o balão, que é desenhado fora da caixa. */
+  .fundo-controle__recolhido-x { @apply overflow-hidden pl-1.5; min-width: 0; }
+  .fundo-controle__recolhido-y { @apply block overflow-hidden pt-2 px-4; min-height: 0; }
+  /* Fundo desligado: não há imagem a trocar nem deriva a acelerar. Sobram o toggle — que desfaz
+     o gesto — e a engrenagem, porque a água roda com o fundo ligado ou desligado. */
+  .fundo-controle:has([data-fundo-ligado]:not(:checked)) .fundo-controle__recolhe-x {
+    grid-template-columns: 0fr;
+  }
+  .fundo-controle:has([data-fundo-ligado]:not(:checked)) .fundo-controle__recolhe-y {
+    grid-template-rows: 0fr;
+  }
+
+  /* .fundo-controle__acao — vidro mais fino que o .btn-glass: o disco mora DENTRO de uma placa de
+     gelo, e ali o branco a 40% do átomo soma com o do painel e estoura (SPEC design/009). */
+  .fundo-controle__acao {
+    @apply w-7 h-7 min-h-0 shrink-0 rounded-full bg-white/8 border-white/30;
+    @apply hover:bg-white/25 hover:border-white/50;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  .fundo-controle__acao:hover {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 10px rgba(72, 202, 228, 0.35);
+  }
+  /* Torre aberta: o disco afunda e vira poço. O gesto está preso, não pairando. */
+  .fundo-controle__acao[aria-expanded="true"] {
+    @apply bg-white/10 border-white/30;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  /* O `.tooltip` do daisyUI é inline-block, e o trilho precisa da largura toda. `w-0` +
+     `min-w-full` tira a fileira da disputa pela largura do `w-fit`: o range tem largura
+     intrínseca própria, e sem isso é ele — não o cabeçalho — quem dimensiona o widget. */
+  .fundo-controle__trilho { @apply block w-0 min-w-full; }
+  /* Recolhido não é o mesmo que ausente: `overflow: hidden` não tira do Tab. O `disabled` é o que
+     impede o foco de cair num controle que ninguém vê. */
+  .fundo-controle :is(.btn, .range-onsen):disabled {
+    @apply opacity-30 pointer-events-none;
+  }
+
+  /* .torre-ajustes — molécula (SPEC design/017): a torre que ascende da engrenagem, com a
+     coreografia da .torre-camadas e a geometria de painel. */
+  .torre-ajustes {
+    @apply absolute bottom-full right-0 mb-2.5 w-60 max-h-[70vh] overflow-y-auto overscroll-contain;
+    @apply flex flex-col gap-2.5 p-3 rounded-2xl origin-bottom-right;
+    @apply backdrop-blur-[24px] bg-gradient-to-br from-white/88 via-white/78 to-white/70 border border-white/70;
+    @apply transition-all duration-300 ease-out;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 8px 24px rgba(7, 58, 84, 0.3),
+      0 0 20px rgba(72, 202, 228, 0.2);
+  }
+  .torre-ajustes--fechada { @apply opacity-0 translate-y-3 scale-95 pointer-events-none; }
+  .torre-ajustes--aberta { @apply opacity-100 translate-y-0 scale-100 pointer-events-auto; }
+  .torre-ajustes__titulo { @apply text-sm font-bold text-madeira-700 m-0 leading-tight; }
+  .torre-ajustes__chave { @apply flex items-center justify-between gap-3; }
+  .torre-ajustes__barras { @apply flex flex-col gap-2.5; }
+  .torre-ajustes__linha { @apply flex flex-col gap-1; }
+  .torre-ajustes__linha-topo { @apply flex items-baseline justify-between gap-2; }
+  /* Animação desligada: não há o que calibrar. Mesmo gesto do Trocar sem ortofoto. */
+  .torre-ajustes:has([data-agua-ligada]:not(:checked)) .torre-ajustes__barras {
     @apply opacity-35 pointer-events-none;
   }
 

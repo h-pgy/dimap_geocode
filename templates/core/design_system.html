@@ -1024,6 +1024,24 @@
           <p class="text-xs text-base-content/60">O checkbox do sistema (SPEC documentos_oficiais/009). Como o <span class="text-code">.toggle-onsen</span>, ignora a caixa nativa do daisyUI e desenha tudo sobre o <span class="text-code">&lt;input&gt;</span> puro: poço fino em repouso, ciano cheio quando marcado. O traço do check é tinta de rocha gravada com filtro <span class="text-code">#etched-onsen</span>.</p>
         </div>
 
+        <!-- Água sobre o fundo administrativo (SPEC design/017) -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.fundo-rocha · .fundo-rocha__grao</p>
+            <div class="relative overflow-hidden rounded-2xl h-56 card-well">
+              <div class="fundo-rocha absolute! block!"><div class="fundo-rocha__grao"></div></div>
+            </div>
+            <p class="text-xs text-base-content/60">O piso que existe exatamente quando a ortofoto não existe: gradiente da escala <span class="text-code">rocha</span> com o grão por cima. Sem ele, o que a tinta <span class="text-code">mix-blend-multiply</span> da lente encontra atrás é o branco da página — e ela só consegue tingir, não escurecer. Quem o acende é a mesma classe <span class="text-code">fundo-desligado</span> no <span class="text-code">&lt;html&gt;</span> que apaga a ortofoto; aqui a cópia é inerte.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.fundo-agua</p>
+            <div class="relative overflow-hidden rounded-2xl h-56 card-well flex items-center justify-center p-6">
+              <p class="text-sm text-base-content/70 text-center">Em escala real é o fundo desta página — a onda que corre sobre a ortofoto e sobre o piso de rocha.</p>
+            </div>
+            <p class="text-xs text-base-content/60">Um <span class="text-code">&lt;canvas&gt;</span> de tela cheia em <span class="text-code">mix-blend-mode: soft-light</span>, cinza neutro e opaco: quem o torna invisível não é a opacidade, é o neutro do <span class="text-code">soft-light</span>, que é 0.5. Água em repouso tem relevo zero, jacobiano unitário e escreve exatamente 0.5 — a camada desaparece sozinha. É esse invariante que faz a mesma peça servir sobre os dois pisos sem conhecer nenhum deles. Sem WebGL2 ou sob <span class="text-code">prefers-reduced-motion</span>, o canvas sai do documento.</p>
+          </div>
+        </div>
+
         <!-- Fundo de ortofoto (SPEC design/010) -->
         <div class="flex flex-col gap-2">
           <p class="text-overline">.fundo-ortofoto__deriva · .fundo-ortofoto__imagem</p>
@@ -1050,11 +1068,11 @@
 
         <div class="grid lg:grid-cols-2 gap-6">
           <div class="flex flex-col gap-2">
-            <p class="text-overline">.range-onsen</p>
+            <p class="text-overline">.range-onsen <span class="font-normal text-base-content/60">— vivo: arraste</span></p>
             <div class="card-well p-4 flex items-center min-h-[6.5rem]">
               <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
             </div>
-            <p class="text-xs text-base-content/60">O trilho é o poço em pílula do <span class="text-code">.toggle-onsen</span>; o polegar é o mesmo disco entintado, em escala de trilho contínuo — mesmo vocabulário, outra geometria.</p>
+            <p class="text-xs text-base-content/60">Bandeja funda com o fio do <span class="text-code">.etched-line</span> correndo no fundo, entintado até o polegar — o vocabulário da <span class="text-code">.calha-cobertura</span>: a bandeja nunca se preenche, o que muda de estado é o fio. O polegar é o disco entintado do <span class="text-code">.toggle-onsen</span>, e incha e acende sob o ponteiro. Quem escreve o <span class="text-code">--preenchimento</span> é o <span class="text-code">controle_fundo.js</span>: a posição do polegar não existe como seletor.</p>
           </div>
           <div class="flex flex-col gap-2">
             <p class="text-overline">.btn-etched-mini</p>
@@ -2200,46 +2218,76 @@
         </div>
       </div>
 
-      <!-- Controle do fundo (SPEC design/010) -->
+      <!-- Controle do fundo (SPECs design/010 e design/017) -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Controle do fundo (<span class="text-code">.fundo-controle</span>)</p>
-        <p class="text-sm text-base-content/70 -mt-1"><span class="text-code">.toggle-onsen</span> + <span class="text-code">.btn-etched-mini</span> + <span class="text-code">.range-onsen</span>. Desligado, o <span class="text-code">:has()</span> apaga o corpo — não há velocidade a ajustar sem imagem a trocar. O posicionamento é governado pelo CSS (<span class="text-code">xl:fixed xl:bottom-6 xl:right-6</span> em tela cheia; em tela estreita entra no fluxo criando uma nova linha abaixo à direita e recolhe sob modal). As duas cópias abaixo são inertes.</p>
-        <div class="card-well p-5 grid gap-5 sm:grid-cols-2 justify-items-center">
-          <!-- ligado, no meio da escala -->
-          <div class="fundo-controle glass-panel">
+        <p class="text-sm text-base-content/70 -mt-1"><span class="text-code">.toggle-onsen</span> + <span class="text-code">.fundo-controle__acao</span> + <span class="text-code">.range-onsen</span>, numa fileira só: rótulo, chave do fundo, Trocar e a engrenagem dos ajustes da animação; o trilho da deriva embaixo. Com o fundo desligado, o <span class="text-code">:has()</span> recolhe o Trocar e o trilho por transição de <span class="text-code">fr</span> — a caixa aperta sozinha, sem medida fixa — e o <span class="text-code">disabled</span> os tira do Tab; a engrenagem fica, porque a água roda nos dois estados. O posicionamento é governado pelo CSS (<span class="text-code">xl:fixed xl:bottom-6 xl:right-6</span> em tela cheia; em tela estreita entra no fluxo criando uma nova linha abaixo à direita). <strong>A peça viva é a do canto inferior direito desta página</strong> — a cópia abaixo é inerte, sem os <span class="text-code">data-*</span> que o JS escuta, e por isso não recolhe.</p>
+        <div class="card-well p-5 flex justify-center">
+          <div class="fundo-controle glass-panel relative">
             <div class="fundo-controle__cabecalho">
-              <span class="text-overline">Fundo</span>
-              <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar o fundo" />
-            </div>
-            <div class="fundo-controle__corpo flex flex-col gap-1.5">
-              <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">
-                <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
-                Trocar
-              </button>
-              <div class="fundo-controle__velocidade">
-                <button class="btn-etched etched btn-etched-mini" aria-label="Mais devagar">&minus;</button>
-                <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
-                <button class="btn-etched etched btn-etched-mini" aria-label="Mais rápido">+</button>
+              <span class="text-overline fundo-controle__titulo">Fundo</span>
+              <div class="fundo-controle__acoes">
+                <span class="fundo-controle__dica">
+                  <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar o fundo" />
+                </span>
+                <span class="fundo-controle__dica">
+                  <span class="fundo-controle__recolhe-x">
+                    <span class="fundo-controle__recolhido-x">
+                      <button class="btn btn-sm btn-circle btn-glass fundo-controle__acao" type="button" aria-label="Trocar a imagem de fundo">
+                        <span class="icone-acao w-4 h-4 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+                      </button>
+                    </span>
+                  </span>
+                </span>
+                <span class="fundo-controle__dica ml-1.5">
+                  <button class="btn btn-sm btn-circle btn-glass fundo-controle__acao" type="button" aria-expanded="false" aria-label="Ajustes da animação">
+                    <span class="icone-acao w-4 h-4 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-ajustes"/></svg></span>
+                  </button>
+                </span>
               </div>
             </div>
+            <span class="fundo-controle__trilho">
+              <span class="fundo-controle__recolhe-y">
+                <span class="fundo-controle__recolhido-y">
+                  <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
+                </span>
+              </span>
+            </span>
           </div>
-          <!-- desligado -->
-          <div class="fundo-controle glass-panel">
-            <div class="fundo-controle__cabecalho">
-              <span class="text-overline">Fundo</span>
-              <input type="checkbox" class="toggle-onsen" aria-label="Mostrar o fundo" />
+        </div>
+      </div>
+
+      <!-- Torre de ajustes da animação (SPEC design/017) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Torre de ajustes (<span class="text-code">.torre-ajustes</span>)</p>
+        <p class="text-sm text-base-content/70 -mt-1">A coreografia da <span class="text-code">.torre-camadas</span> com geometria de painel: ascende da engrenagem do <span class="text-code">.fundo-controle</span>, ancorada no canto de onde sai. As linhas são montadas pelo <span class="text-code">controle_agua.js</span> a partir da tabela de ajustáveis — a tabela é o único lugar em que os parâmetros da água são enumerados. Com a animação desligada, o <span class="text-code">:has()</span> apaga as barras: não há o que calibrar. A cópia abaixo está forçada em <span class="text-code">static</span> e aberta.</p>
+        <div class="card-well p-5 flex justify-center">
+          <div class="torre-ajustes static! opacity-100! translate-y-0! scale-100! pointer-events-auto!">
+            <p class="torre-ajustes__titulo">Ajustes da Animação</p>
+            <div class="torre-ajustes__chave">
+              <span class="text-overline">Animação</span>
+              <input type="checkbox" class="toggle-onsen" checked aria-label="Ligar a animação da água" />
             </div>
-            <div class="fundo-controle__corpo flex flex-col gap-1.5">
-              <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">
-                <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
-                Trocar
-              </button>
-              <div class="fundo-controle__velocidade">
-                <button class="btn-etched etched btn-etched-mini" aria-label="Mais devagar">&minus;</button>
-                <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
-                <button class="btn-etched etched btn-etched-mini" aria-label="Mais rápido">+</button>
+            <div class="torre-ajustes__barras">
+              <div class="torre-ajustes__linha">
+                <div class="torre-ajustes__linha-topo">
+                  <span class="text-overline">Intensidade</span>
+                  <span class="text-code text-[12px]">0.2</span>
+                </div>
+                <input type="range" class="range-onsen" min="0" max="0.6" step="0.005" value="0.2" aria-label="Intensidade" />
+              </div>
+              <div class="torre-ajustes__linha">
+                <div class="torre-ajustes__linha-topo">
+                  <span class="text-overline">Cáustica</span>
+                  <span class="text-code text-[12px]">5.5</span>
+                </div>
+                <input type="range" class="range-onsen" min="0" max="14" step="0.1" value="5.5" aria-label="Cáustica" />
               </div>
             </div>
+            <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center" type="button">
+              <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-padrao"/></svg></span>
+              Padrão
+            </button>
           </div>
         </div>
 

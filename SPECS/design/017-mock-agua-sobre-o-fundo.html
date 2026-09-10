@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/017 — Água sobre o fundo administrativo (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec">
+    :root {
+      --fundo-rocha-grao: 0.055;
+    }
+
+    @layer components {
+      /* .fundo-rocha — átomo */
+      .fundo-rocha {
+        @apply fixed inset-0 z-0 pointer-events-none hidden overflow-hidden;
+        background-image:
+          radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.35) 0%, transparent 62%),
+          linear-gradient(163deg,
+            var(--color-rocha-100) 0%,
+            var(--color-rocha-300) 46%,
+            var(--color-rocha-500) 100%);
+      }
+      html.fundo-desligado .fundo-rocha { @apply block; }
+
+      /* .fundo-rocha__grao — átomo */
+      .fundo-rocha__grao {
+        @apply absolute inset-0;
+        opacity: var(--fundo-rocha-grao);
+        background-size: 180px 180px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+      }
+
+      /* .fundo-ortofoto — ALTERADO nesta SPEC: desligar deixa de ser corte e vira fade. `display`
+         não transita, então o desligado passa a ser opacidade — e as camadas de baixo continuam
+         despachando `transitionend`, que é o que o descarte da design/011 espera. */
+      .fundo-ortofoto { transition: opacity var(--fundo-troca-duracao) ease-out; }
+      html.fundo-desligado .fundo-ortofoto { @apply block opacity-0; }
+      /* Pausada, não zerada: `animation: none` devolveria a deriva ao ponto de partida, e o salto
+         apareceria no fade de volta. */
+      html.fundo-desligado .fundo-ortofoto__deriva,
+      html.fundo-desligado .fundo-ortofoto__imagem { animation-play-state: paused; }
+
+      /* .fundo-agua — átomo */
+      .fundo-agua {
+        @apply fixed inset-0 z-0 pointer-events-none w-full h-full;
+        mix-blend-mode: soft-light;
+      }
+
+      /* .range-onsen — ALTERADO nesta SPEC: o trilho vira bandeja funda com o fio correndo no
+         fundo, entintado até o polegar (o vocabulário da .calha-cobertura), e o polegar incha e
+         acende sob o ponteiro. */
+      .range-onsen {
+        @apply w-full h-4 appearance-none cursor-pointer rounded-full bg-white/30 border border-white/45;
+        box-shadow: var(--sombra-poco-fina);
+        background-image:
+          linear-gradient(to right, rgba(0, 119, 182, 0.85), rgba(0, 119, 182, 0.85)),
+          linear-gradient(to right, rgba(13, 27, 42, 0.14), rgba(13, 27, 42, 0.14));
+        background-repeat: no-repeat;
+        background-position: left center;
+        background-size: var(--preenchimento, 0%) 0.375rem, 100% 0.375rem;
+      }
+      .range-onsen::-webkit-slider-thumb {
+        @apply w-4 h-4 rounded-full transition-transform duration-200;
+        -webkit-appearance: none;
+        background-color: rgba(0, 119, 182, 0.85);
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+      }
+      .range-onsen::-moz-range-thumb {
+        @apply w-4 h-4 rounded-full border-0 transition-transform duration-200;
+        background-color: rgba(0, 119, 182, 0.85);
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+      }
+      .range-onsen:hover::-webkit-slider-thumb,
+      .range-onsen:active::-webkit-slider-thumb {
+        @apply scale-125;
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.95));
+      }
+      .range-onsen:hover::-moz-range-thumb,
+      .range-onsen:active::-moz-range-thumb {
+        @apply scale-125;
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.95));
+      }
+      .range-onsen:focus-visible {
+        @apply outline-none border-agua-500;
+        box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+      }
+
+      /* .fundo-controle — ALTERADO nesta SPEC: rótulo, toggle, Trocar e engrenagem numa linha; o
+         trilho da velocidade embaixo. O par +/- saiu: um range de cinco paradas já responde a
+         seta, arraste e clique no trilho. `w-fit` porque a caixa aperta quando o Trocar e o
+         trilho recolhem.
+         Sem `position` aqui: `components` vence `utilities` nesta folha, e a regra atropelaria o
+         `fixed` do markup — que é também a âncora da torre. */
+      .fundo-controle {
+        @apply flex flex-col px-3 py-2 w-fit;
+      }
+      .fundo-controle__cabecalho { @apply flex items-center gap-1; }
+      .fundo-controle__acoes { @apply flex items-center; }
+      /* Composto sobre o .text-overline: só a medida muda. */
+      .fundo-controle__titulo { @apply text-[13px] tracking-[0.18em] leading-none -mr-[0.18em]; }
+      /* O `.tooltip` do daisyUI é inline-block, e o espaço do descendente desalinha o que ele
+         embrulha da linha de centro da fileira. */
+      .fundo-controle__dica { @apply inline-flex items-center; }
+
+      /* Recolhimento sem JS e sem medida fixa: a transição de `fr` fecha o vão sozinha, e o
+         `w-fit` do widget acompanha quadro a quadro. O espaçamento mora DENTRO do que recolhe —
+         gap no contêiner sobreviveria ao recolhimento e deixaria um vão morto. */
+      .fundo-controle__recolhe-x {
+        @apply grid transition-all duration-300 ease-out;
+        grid-template-columns: 1fr;
+      }
+      .fundo-controle__recolhe-y {
+        @apply grid transition-all duration-300 ease-out;
+        grid-template-rows: 1fr;
+      }
+      /* O `overflow: hidden` do recolhimento mora ABAIXO do `.tooltip`: no mesmo elemento, ele
+         recortaria o balão, que é desenhado fora da caixa. */
+      .fundo-controle__recolhido-x { @apply overflow-hidden pl-1.5; min-width: 0; }
+      .fundo-controle__recolhido-y { @apply block overflow-hidden pt-2 px-4; min-height: 0; }
+      /* Fundo desligado: não há imagem a trocar nem deriva a acelerar. Sobram o toggle — que
+         desfaz o gesto — e a engrenagem, porque a água roda com o fundo ligado ou desligado. */
+      .fundo-controle:has([data-fundo-ligado]:not(:checked)) .fundo-controle__recolhe-x {
+        grid-template-columns: 0fr;
+      }
+      .fundo-controle:has([data-fundo-ligado]:not(:checked)) .fundo-controle__recolhe-y {
+        grid-template-rows: 0fr;
+      }
+
+      /* .fundo-controle__acao — vidro mais fino que o .btn-glass: o disco mora DENTRO de uma placa
+         de gelo, e ali o branco a 40% do átomo soma com o do painel e estoura (SPEC design/009). */
+      .fundo-controle__acao {
+        @apply w-7 h-7 min-h-0 shrink-0 rounded-full bg-white/8 border-white/30;
+        @apply hover:bg-white/25 hover:border-white/50;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      }
+      .fundo-controle__acao:hover {
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 10px rgba(72, 202, 228, 0.35);
+      }
+      /* Torre aberta: o disco afunda e vira poço. O gesto está preso, não pairando. */
+      .fundo-controle__acao[aria-expanded="true"] {
+        @apply bg-white/10 border-white/30;
+        box-shadow: var(--sombra-poco-fina);
+      }
+      /* O `.tooltip` do daisyUI é inline-block, e o trilho precisa da largura toda. `w-0` +
+         `min-w-full` tira a fileira da disputa pela largura do `w-fit`: o range tem largura
+         intrínseca própria, e sem isso é ele — não o cabeçalho — quem dimensiona o widget. */
+      .fundo-controle__trilho { @apply block w-0 min-w-full; }
+      /* Recolhido não é o mesmo que ausente: `overflow: hidden` não tira do Tab. O `disabled` é o
+         que impede o foco de cair num controle que ninguém vê. */
+      .fundo-controle :is(.btn, .range-onsen):disabled {
+        @apply opacity-30 pointer-events-none;
+      }
+
+      /* .torre-ajustes — molécula: a torre que ascende da engrenagem, com a mesma coreografia da
+         .torre-camadas e a geometria de painel. */
+      .torre-ajustes {
+        @apply absolute bottom-full right-0 mb-2.5 w-60 max-h-[70vh] overflow-y-auto overscroll-contain;
+        @apply flex flex-col gap-2.5 p-3 rounded-2xl origin-bottom-right;
+        @apply backdrop-blur-[24px] bg-gradient-to-br from-white/88 via-white/78 to-white/70 border border-white/70;
+        @apply transition-all duration-300 ease-out;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.8),
+          0 8px 24px rgba(7, 58, 84, 0.3),
+          0 0 20px rgba(72, 202, 228, 0.2);
+      }
+      .torre-ajustes--fechada { @apply opacity-0 translate-y-3 scale-95 pointer-events-none; }
+      .torre-ajustes--aberta { @apply opacity-100 translate-y-0 scale-100 pointer-events-auto; }
+      .torre-ajustes__titulo { @apply text-sm font-bold text-madeira-700 m-0 leading-tight; }
+      .torre-ajustes__chave { @apply flex items-center justify-between gap-3; }
+      .torre-ajustes__barras { @apply flex flex-col gap-2.5; }
+      .torre-ajustes__linha { @apply flex flex-col gap-1; }
+      .torre-ajustes__linha-topo { @apply flex items-baseline justify-between gap-2; }
+      /* Animação desligada: não há o que calibrar. Mesmo gesto do Trocar sem ortofoto. */
+      .torre-ajustes:has([data-agua-ligada]:not(:checked)) .torre-ajustes__barras {
+        @apply opacity-35 pointer-events-none;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Glifos do controle de fundo. Vão para mapping/_glifos_fundo.html, ao lado do #glifo-trocar. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-ajustes">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </g>
+      <g id="glifo-padrao">
+        <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+        <path d="M3 3v5h5"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- TELA MONTADA -->
+  <!-- partial: mapping/_controle_fundo.html — substitui o partial atual por inteiro -->
+  <template id="molde-controle">
+    <div class="fundo-controle glass-panel fixed bottom-6 right-6 z-20 transition-glass">
+
+      <div class="torre-ajustes torre-ajustes--fechada" id="torre-ajustes">
+        <p class="torre-ajustes__titulo">Ajustes da Animação</p>
+
+        <div class="torre-ajustes__chave">
+          <span class="text-overline">Animação</span>
+          <input type="checkbox" class="toggle-onsen" data-agua-ligada checked aria-label="Ligar a animação da água">
+        </div>
+
+        <div class="torre-ajustes__barras" data-barras></div>
+
+        <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center" type="button" data-padrao>
+          <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-padrao"/></svg></span>
+          Padrão
+        </button>
+      </div>
+
+      <div class="fundo-controle__cabecalho">
+        <span class="text-overline fundo-controle__titulo">Fundo</span>
+
+        <div class="fundo-controle__acoes">
+          <span class="tooltip tooltip-left fundo-controle__dica" data-tip="Mostrar o fundo">
+            <input type="checkbox" class="toggle-onsen" data-fundo-ligado checked aria-label="Mostrar o fundo">
+          </span>
+
+          <span class="tooltip tooltip-left fundo-controle__dica" data-tip="Trocar foto">
+            <span class="fundo-controle__recolhe-x">
+              <span class="fundo-controle__recolhido-x">
+                <button class="btn btn-sm btn-circle btn-glass fundo-controle__acao" type="button" data-trocar
+                        aria-label="Trocar a imagem de fundo">
+                  <span class="icone-acao w-4 h-4 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+                </button>
+              </span>
+            </span>
+          </span>
+
+          <span class="tooltip tooltip-left fundo-controle__dica ml-1.5" data-tip="Configurações">
+            <button class="btn btn-sm btn-circle btn-glass fundo-controle__acao" type="button" data-ajustes
+                    aria-expanded="false" aria-controls="torre-ajustes" aria-label="Ajustes da animação">
+              <span class="icone-acao w-4 h-4 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-ajustes"/></svg></span>
+            </button>
+          </span>
+        </div>
+      </div>
+
+      <span class="tooltip tooltip-top fundo-controle__trilho" data-tip="Velocidade da deriva">
+        <span class="fundo-controle__recolhe-y">
+          <span class="fundo-controle__recolhido-y">
+            <input type="range" class="range-onsen" min="0" max="4" step="1" value="2"
+                   data-nivel aria-label="Velocidade da deriva">
+          </span>
+        </span>
+      </span>
+    </div>
+  </template>
+  <!-- /partial -->
+
+  <!-- fica na página: chip de referência, só para julgar a tinta escura sobre o fundo novo -->
+  <div class="fixed top-6 left-6 z-20 glass-panel rounded-full! px-5 py-2.5 transition-glass">
+    <span class="text-lg font-black tracking-tight text-madeira-700">SPEC design/017</span>
+  </div>
+
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+
+    const MAX_GOTAS = 8;
+    const RESOLUCAO_SIM = 256;
+    const PASSO = 1 / 30;
+    const MAX_SUBPASSOS = 3;
+    const TAU = Math.PI * 2;
+    const ESCALA_RENDER = 0.6;
+    const DESLOCAMENTO_MAXIMO = 600;
+    const PASSOS_DE_AQUECIMENTO = 150;
+
+    const CHAVE_LIGADA = "fundo-agua-ligada";
+    const CHAVE_AJUSTES = "fundo-agua-ajustes";
+
+    // Preset: água lenta, mas se mexendo — a deriva é devagar e o relevo, visível.
+    const PADRAO = Object.freeze({
+      propagacao: 0.245,
+      amortecimento: 0.998,
+      caustica: 7.0,
+      piso: 0.30,
+      teto: 2.4,
+      contraste: 1.0,
+      ganho: 0.30,
+      escalaNormal: 10.5,
+      brilho: 0.13,
+      dureza: 90,
+      grao: 0.012,
+      velocidadeDeriva: 0.75,
+      baseDeriva: 0.012,
+      ganhoDeriva: 0.9,
+      tetoDeriva: 0.06,
+      raioDeriva: 0.045,
+      fontes: 4,
+      forcaGota: 0.015,
+      periodoGota: 2.4,
+    });
+
+    const AJUSTAVEIS = [
+      { k: "ganho", rotulo: "Intensidade", min: 0, max: 0.6, passo: 0.005 },
+      { k: "caustica", rotulo: "Cáustica", min: 0, max: 14, passo: 0.1 },
+      { k: "piso", rotulo: "Achatamento do pico", min: 0.05, max: 0.8, passo: 0.005 },
+      { k: "contraste", rotulo: "Contraste", min: 0.5, max: 2, passo: 0.01 },
+      { k: "brilho", rotulo: "Glint", min: 0, max: 0.4, passo: 0.005 },
+      { k: "escalaNormal", rotulo: "Relevo", min: 0, max: 14, passo: 0.1 },
+      { k: "velocidadeDeriva", rotulo: "Velocidade da deriva", min: 0.15, max: 3, passo: 0.05 },
+      { k: "forcaGota", rotulo: "Gotas ambientes", min: 0, max: 0.045, passo: 0.001 },
+      { k: "amortecimento", rotulo: "Amortecimento", min: 0.985, max: 1, passo: 0.0005 },
+      { k: "grao", rotulo: "Grão da água", min: 0, max: 0.06, passo: 0.002 },
+    ];
+
+    const P = { ...PADRAO };
+
+    const VERT = `#version 300 es
+out vec2 vUv;
+void main() {
+  vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+  vUv = p;
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+    const FRAG_ATUALIZA = `#version 300 es
+precision highp float;
+uniform sampler2D uEstado;
+uniform vec2 uTexel;
+uniform float uAspecto;
+uniform float uPropagacao;
+uniform float uAmortecimento;
+uniform int uQuantasGotas;
+uniform vec4 uGotas[${MAX_GOTAS}];
+in vec2 vUv;
+out vec4 saida;
+void main() {
+  vec2 uv = vUv;
+  float atual = texture(uEstado, uv).r;
+  float anterior = texture(uEstado, uv).g;
+  float e = texture(uEstado, uv - vec2(uTexel.x, 0.0)).r;
+  float d = texture(uEstado, uv + vec2(uTexel.x, 0.0)).r;
+  float c = texture(uEstado, uv + vec2(0.0, uTexel.y)).r;
+  float b = texture(uEstado, uv - vec2(0.0, uTexel.y)).r;
+
+  float nova = (2.0 * atual - anterior) + (e + d + c + b - 4.0 * atual) * uPropagacao;
+  nova *= uAmortecimento;
+
+  for (int i = 0; i < ${MAX_GOTAS}; i++) {
+    if (i >= uQuantasGotas) break;
+    vec2 delta = uv - uGotas[i].xy;
+    delta.x *= uAspecto;
+    nova += uGotas[i].z * exp(-dot(delta, delta) / (uGotas[i].w * uGotas[i].w));
+  }
+
+  vec2 margem = min(uv, 1.0 - uv);
+  nova *= mix(0.9, 1.0, smoothstep(0.0, 0.045, min(margem.x, margem.y)));
+
+  saida = vec4(clamp(nova, -1.6, 1.6), atual, 0.0, 1.0);
+}`;
+
+    const FRAG_PINTA = `#version 300 es
+precision highp float;
+uniform sampler2D uEstado;
+uniform vec2 uTexel;
+uniform vec2 uResolucao;
+uniform float uTempo;
+uniform float uAspecto;
+uniform float uCaustica;
+uniform float uPiso;
+uniform float uTeto;
+uniform float uContraste;
+uniform float uGanho;
+uniform float uEscalaNormal;
+uniform float uBrilho;
+uniform float uDureza;
+uniform float uGrao;
+in vec2 vUv;
+out vec4 cor;
+
+float ruido(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+void main() {
+  vec2 uv = vUv, t = uTexel;
+  float h   = texture(uEstado, uv).r;
+  float he  = texture(uEstado, uv - vec2(t.x, 0.0)).r;
+  float hd  = texture(uEstado, uv + vec2(t.x, 0.0)).r;
+  float hc  = texture(uEstado, uv + vec2(0.0, t.y)).r;
+  float hb  = texture(uEstado, uv - vec2(0.0, t.y)).r;
+  float hdc = texture(uEstado, uv + t).r;
+  float heb = texture(uEstado, uv - t).r;
+  float hdb = texture(uEstado, uv + vec2(t.x, -t.y)).r;
+  float hec = texture(uEstado, uv + vec2(-t.x, t.y)).r;
+
+  float hx = (hd - he) * 0.5;
+  float hy = (hc - hb) * 0.5;
+  float hxx = hd - 2.0 * h + he;
+  float hyy = hc - 2.0 * h + hb;
+  float hxy = (hdc - hdb - hec + heb) * 0.25;
+
+  float jxx = 1.0 - uCaustica * hxx;
+  float jyy = 1.0 - uCaustica * hyy;
+  float jxy = -uCaustica * hxy;
+  float det = jxx * jyy - jxy * jxy;
+  float ca = pow(clamp(1.0 / max(abs(det), uPiso), 0.0, uTeto), uContraste);
+
+  vec3 normal = normalize(vec3(-hx * uEscalaNormal, -hy * uEscalaNormal, 1.0));
+  vec3 meio = normalize(vec3(0.30, 0.45, 0.82) + vec3(0.0, 0.0, 1.0));
+  float glint = pow(max(dot(normal, meio), 0.0), uDureza) * uBrilho;
+
+  float luz = 0.5 + (ca - 1.0) * uGanho + glint;
+  luz = mix(luz, 0.5, smoothstep(0.55, 1.05, length((uv - 0.5) * vec2(uAspecto, 1.0))));
+  luz += (ruido(uv * uResolucao + fract(uTempo)) - 0.5) * uGrao;
+
+  cor = vec4(vec3(luz), 1.0);
+}`;
+
+    function compilar(gl, tipo, fonte) {
+      const s = gl.createShader(tipo);
+      gl.shaderSource(s, fonte);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    }
+
+    function programa(gl, vs, fs) {
+      const p = gl.createProgram();
+      gl.attachShader(p, compilar(gl, gl.VERTEX_SHADER, vs));
+      gl.attachShader(p, compilar(gl, gl.FRAGMENT_SHADER, fs));
+      gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+      return p;
+    }
+
+    function criarAlvo(gl) {
+      const textura = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, textura);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, RESOLUCAO_SIM, RESOLUCAO_SIM, 0, gl.RGBA, gl.HALF_FLOAT, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      const fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textura, 0);
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      return { textura, fbo };
+    }
+
+    const limitar = (v) => Math.min(Math.max(v, 0.06), 0.94);
+
+    function derivaEm(tempo) {
+      const s = P.velocidadeDeriva;
+      const x = 0.5 + 0.30 * Math.sin(tempo * 0.037 * TAU * s) + 0.12 * Math.sin(tempo * 0.011 * TAU * s + 1.7);
+      const y = 0.5 + 0.28 * Math.cos(tempo * 0.043 * TAU * s) + 0.13 * Math.cos(tempo * 0.017 * TAU * s + 4.1);
+      return [limitar(x), limitar(y)];
+    }
+
+    function criarAgua(tela) {
+      const gl = tela.getContext("webgl2", { alpha: false, antialias: false, depth: false });
+      if (!gl) return null;
+      if (!gl.getExtension("EXT_color_buffer_float") && !gl.getExtension("EXT_color_buffer_half_float")) return null;
+      gl.getExtension("OES_texture_half_float_linear");
+
+      const progAtualiza = programa(gl, VERT, FRAG_ATUALIZA);
+      const progPinta = programa(gl, VERT, FRAG_PINTA);
+      const vao = gl.createVertexArray();
+      const alvos = [criarAlvo(gl), criarAlvo(gl)];
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, alvos[0].fbo);
+      const completo = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      if (!completo) return null;
+
+      const gotas = new Float32Array(MAX_GOTAS * 4);
+      const fontes = [];
+      const t0 = performance.now();
+      let defasagem = Math.random() * DESLOCAMENTO_MAXIMO;
+      const agora = () => (performance.now() - t0) / 1000 + defasagem;
+
+      let leitura = 0;
+      let aspecto = 1;
+      let fila = [];
+      let derivaX = 0.5;
+      let derivaY = 0.5;
+      let derivaIniciada = false;
+
+      for (let i = 0; i < 10; i++) {
+        fontes.push({
+          px: 0.2 + 0.6 * Math.random(), py: 0.2 + 0.6 * Math.random(),
+          ax: 0.1 + 0.1 * Math.random(), ay: 0.1 + 0.1 * Math.random(),
+          sx: 0.05 + 0.08 * Math.random(), sy: 0.05 + 0.08 * Math.random(),
+          fx: Math.random() * TAU, fy: Math.random() * TAU,
+          proxima: Math.random() * 1.2,
+        });
+      }
+
+      function redimensionar() {
+        const dpr = Math.min(devicePixelRatio || 1, 2) * ESCALA_RENDER;
+        const largura = tela.clientWidth || 1;
+        const altura = tela.clientHeight || 1;
+        aspecto = largura / altura;
+        tela.width = Math.max(1, Math.round(largura * dpr));
+        tela.height = Math.max(1, Math.round(altura * dpr));
+      }
+      new ResizeObserver(redimensionar).observe(tela);
+      redimensionar();
+
+      function enfileirar(x, y, forca, raio) {
+        if (fila.length < MAX_GOTAS) fila.push([x, y, forca, raio]);
+      }
+
+      function coletarDeriva(tempo) {
+        const [x, y] = derivaEm(tempo);
+        if (!derivaIniciada) { derivaX = x; derivaY = y; derivaIniciada = true; }
+        const distancia = Math.hypot(x - derivaX, y - derivaY);
+        const forca = Math.min(P.baseDeriva + distancia * P.ganhoDeriva, P.tetoDeriva);
+        if (forca > 1e-4) enfileirar(x, y, forca, P.raioDeriva);
+        derivaX = x;
+        derivaY = y;
+      }
+
+      function coletarAmbiente(tempo, passo) {
+        for (let i = 0; i < Math.min(P.fontes, fontes.length); i++) {
+          const f = fontes[i];
+          f.proxima -= passo;
+          if (f.proxima > 0) continue;
+          f.proxima = P.periodoGota * (0.7 + Math.random() * 0.6);
+          const x = limitar(f.px + f.ax * Math.sin(tempo * f.sx * TAU + f.fx));
+          const y = limitar(f.py + f.ay * Math.cos(tempo * f.sy * TAU + f.fy));
+          enfileirar(x, y, P.forcaGota, 0.03 + Math.random() * 0.02);
+        }
+      }
+
+      function simular() {
+        const tempo = agora();
+        coletarDeriva(tempo);
+        coletarAmbiente(tempo, PASSO);
+
+        const quantas = Math.min(fila.length, MAX_GOTAS);
+        gotas.fill(0);
+        for (let i = 0; i < quantas; i++) gotas.set(fila[i], i * 4);
+        fila = [];
+
+        const origem = alvos[leitura];
+        const destino = alvos[leitura ^ 1];
+        gl.useProgram(progAtualiza);
+        gl.bindVertexArray(vao);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, destino.fbo);
+        gl.viewport(0, 0, RESOLUCAO_SIM, RESOLUCAO_SIM);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, origem.textura);
+        gl.uniform1i(gl.getUniformLocation(progAtualiza, "uEstado"), 0);
+        gl.uniform2f(gl.getUniformLocation(progAtualiza, "uTexel"), 1 / RESOLUCAO_SIM, 1 / RESOLUCAO_SIM);
+        gl.uniform1f(gl.getUniformLocation(progAtualiza, "uAspecto"), aspecto);
+        gl.uniform1f(gl.getUniformLocation(progAtualiza, "uPropagacao"), P.propagacao);
+        gl.uniform1f(gl.getUniformLocation(progAtualiza, "uAmortecimento"), P.amortecimento);
+        gl.uniform1i(gl.getUniformLocation(progAtualiza, "uQuantasGotas"), quantas);
+        gl.uniform4fv(gl.getUniformLocation(progAtualiza, "uGotas"), gotas);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        leitura ^= 1;
+      }
+
+      function pintar() {
+        gl.useProgram(progPinta);
+        gl.bindVertexArray(vao);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, tela.width, tela.height);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, alvos[leitura].textura);
+        gl.uniform1i(gl.getUniformLocation(progPinta, "uEstado"), 0);
+        gl.uniform2f(gl.getUniformLocation(progPinta, "uTexel"), 1 / RESOLUCAO_SIM, 1 / RESOLUCAO_SIM);
+        gl.uniform2f(gl.getUniformLocation(progPinta, "uResolucao"), tela.width, tela.height);
+        gl.uniform1f(gl.getUniformLocation(progPinta, "uTempo"), agora());
+        gl.uniform1f(gl.getUniformLocation(progPinta, "uAspecto"), aspecto);
+        for (const nome of ["caustica", "piso", "teto", "contraste", "ganho", "escalaNormal", "brilho", "dureza", "grao"]) {
+          const uniforme = "u" + nome[0].toUpperCase() + nome.slice(1);
+          gl.uniform1f(gl.getUniformLocation(progPinta, uniforme), P[nome]);
+        }
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+
+      for (let i = 0; i < PASSOS_DE_AQUECIMENTO; i++) {
+        defasagem += PASSO;
+        simular();
+      }
+      pintar();
+
+      return { simular, pintar };
+    }
+
+    let agua = null;
+    let telaAgua = null;
+    let ligada = true;
+    let acumulado = 0;
+    let ultimo = performance.now();
+    let pedido = null;
+
+    function quadro(tempo) {
+      const decorrido = Math.min((tempo - ultimo) / 1000, 0.25);
+      ultimo = tempo;
+      acumulado += decorrido;
+      let feitos = 0;
+      while (acumulado >= PASSO && feitos < MAX_SUBPASSOS) {
+        agua.simular();
+        acumulado -= PASSO;
+        feitos += 1;
+      }
+      agua.pintar();
+      pedido = requestAnimationFrame(quadro);
+    }
+
+    function rodar() {
+      if (!agua || !ligada || document.hidden || pedido !== null) return;
+      ultimo = performance.now();
+      acumulado = 0;
+      pedido = requestAnimationFrame(quadro);
+    }
+
+    function parar() {
+      cancelAnimationFrame(pedido);
+      pedido = null;
+    }
+
+    document.addEventListener("visibilitychange", () => (document.hidden ? parar() : rodar()));
+
+    // ---- preferências do cliente (mesmo regime do controle_fundo.js) --------
+
+    function lembrar(chave, valor) {
+      try {
+        localStorage.setItem(chave, valor);
+      } catch {
+        /* modo privativo: a preferência não persiste, e a água segue no padrão */
+      }
+    }
+
+    function lerAjustes() {
+      try {
+        return { ...PADRAO, ...JSON.parse(localStorage.getItem(CHAVE_AJUSTES) ?? "{}") };
+      } catch {
+        return { ...PADRAO };
+      }
+    }
+
+    function lerLigada() {
+      try {
+        return localStorage.getItem(CHAVE_LIGADA) !== "0";
+      } catch {
+        return true;
+      }
+    }
+
+    // ---- estado visual dos controles ---------------------------------------
+
+    // O fio entintado da bandeja: quanto do trilho já foi percorrido. Nenhuma regra decide nada
+    // aqui — é a posição do polegar traduzida em CSS.
+    function pintarTrilho(barra) {
+      const min = Number(barra.min || 0);
+      const max = Number(barra.max || 100);
+      const fracao = max === min ? 0 : (Number(barra.value) - min) / (max - min);
+      barra.style.setProperty("--preenchimento", `${(fracao * 100).toFixed(2)}%`);
+    }
+
+    function aplicarLigada(valor) {
+      ligada = valor;
+      document.querySelectorAll("[data-agua-ligada]").forEach((chave) => (chave.checked = valor));
+      if (telaAgua) telaAgua.hidden = !valor;
+      lembrar(CHAVE_LIGADA, valor ? "1" : "0");
+      if (valor) rodar();
+      else parar();
+    }
+
+    function montarBarras() {
+      const caixa = document.querySelector("[data-barras]");
+      for (const ajuste of AJUSTAVEIS) {
+        const linha = document.createElement("div");
+        linha.className = "torre-ajustes__linha";
+        linha.innerHTML = `
+          <div class="torre-ajustes__linha-topo">
+            <span class="text-overline">${ajuste.rotulo}</span>
+            <span class="text-code text-[12px]" data-eco></span>
+          </div>
+          <input type="range" class="range-onsen" min="${ajuste.min}" max="${ajuste.max}"
+                 step="${ajuste.passo}" data-ajuste="${ajuste.k}" aria-label="${ajuste.rotulo}">`;
+        caixa.appendChild(linha);
+      }
+      refletirAjustes();
+    }
+
+    function refletirAjustes() {
+      for (const barra of document.querySelectorAll("[data-ajuste]")) {
+        barra.value = String(P[barra.dataset.ajuste]);
+        pintarTrilho(barra);
+        barra.closest(".torre-ajustes__linha").querySelector("[data-eco]").textContent = barra.value;
+      }
+    }
+
+    document.addEventListener("input", (evento) => {
+      const barra = evento.target.closest(".range-onsen");
+      if (!barra) return;
+      pintarTrilho(barra);
+      const chave = barra.dataset.ajuste;
+      if (!chave) return;
+      P[chave] = Number(barra.value);
+      barra.closest(".torre-ajustes__linha").querySelector("[data-eco]").textContent = barra.value;
+      lembrar(CHAVE_AJUSTES, JSON.stringify(P));
+    });
+
+    document.addEventListener("change", (evento) => {
+      const daAgua = evento.target.closest("[data-agua-ligada]");
+      if (daAgua) aplicarLigada(daAgua.checked);
+      const doFundo = evento.target.closest("[data-fundo-ligado]");
+      if (doFundo) aplicarDisponibilidade(doFundo.checked);
+    });
+
+    // ANDAIME: no produto o Trocar é `hx-trigger="click from:[data-trocar]"` na casca da ortofoto
+    // (design/010 + 011). O mock não carrega HTMX, então a troca é feita aqui só para o botão
+    // responder — o crossfade real é o do fundo_ortofoto.js.
+    const CHAVES_ORTOFOTO = [
+      "anhangabau", "ibirapuera", "butanta", "itaquera",
+      "anhembi", "cantareira", "jaragua", "interlagos",
+    ];
+
+    async function trocarOrtofoto() {
+      const imagem = document.querySelector(".fundo-ortofoto__imagem");
+      if (!imagem) return;
+      const atual = imagem.getAttribute("src");
+      const candidatas = CHAVES_ORTOFOTO.filter((chave) => !atual.includes(`/${chave}.png`));
+      const escolhida = candidatas[Math.floor(Math.random() * candidatas.length)];
+      const proxima = new Image();
+      proxima.src = `/static/src/img/ortofotos_fundo/${escolhida}.png`;
+      await proxima.decode().catch(() => {});
+      imagem.src = proxima.src;
+    }
+
+    function aplicarTorre(aberta) {
+      const torre = document.querySelector(".torre-ajustes");
+      const gatilho = document.querySelector("[data-ajustes]");
+      if (!torre || !gatilho) return;
+      torre.classList.toggle("torre-ajustes--fechada", !aberta);
+      torre.classList.toggle("torre-ajustes--aberta", aberta);
+      gatilho.classList.toggle("etched-inked", aberta);
+      gatilho.setAttribute("aria-expanded", String(aberta));
+    }
+
+    const torreAberta = () =>
+      document.querySelector(".torre-ajustes")?.classList.contains("torre-ajustes--aberta") ?? false;
+
+    document.addEventListener("click", (evento) => {
+      if (evento.target.closest("[data-trocar]")) {
+        trocarOrtofoto();
+        return;
+      }
+      if (evento.target.closest("[data-ajustes]")) {
+        aplicarTorre(!torreAberta());
+        return;
+      }
+      if (evento.target.closest("[data-padrao]")) {
+        Object.assign(P, PADRAO);
+        refletirAjustes();
+        lembrar(CHAVE_AJUSTES, JSON.stringify(P));
+        return;
+      }
+      // A torre é um popover: sair dela é o gesto de fechá-la.
+      if (!evento.target.closest(".torre-ajustes")) aplicarTorre(false);
+    });
+
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape") aplicarTorre(false);
+    });
+
+    // Sem ortofoto não há imagem a trocar nem deriva a acelerar: a afordância sai pelo `disabled`,
+    // e não por opacidade — o controle some do foco por teclado junto.
+    function aplicarDisponibilidade(ligado) {
+      for (const alvo of document.querySelectorAll("[data-trocar], [data-nivel]")) {
+        alvo.disabled = !ligado;
+      }
+    }
+
+    function sincronizarControleFundo() {
+      const ligado = !document.documentElement.classList.contains("fundo-desligado");
+      document.querySelector("[data-fundo-ligado]").checked = ligado;
+      aplicarDisponibilidade(ligado);
+      const nivel = getComputedStyle(document.documentElement).getPropertyValue("--deriva-periodo").trim();
+      const barra = document.querySelector("[data-nivel]");
+      const parada = ["300s", "220s", "150s", "90s", "50s"].indexOf(nivel);
+      if (parada >= 0) barra.value = String(parada);
+    }
+
+    // ---- boot --------------------------------------------------------------
+
+    await fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((svg) => document.body.insertAdjacentHTML("afterbegin", svg.replace(/\{#[\s\S]*?#\}/g, "")));
+
+    await montarFundoAdmin();
+
+    // O partial do controle vem do produto e é substituído pelo desta SPEC — é ele que se aprova.
+    document.querySelector(".fundo-controle").replaceWith(
+      document.getElementById("molde-controle").content.cloneNode(true),
+    );
+
+    // O partial trocado nasce nos valores do template, e o controle_fundo.js já tinha aplicado a
+    // preferência guardada no partial anterior — sem isto o widget abre mentindo sobre o estado.
+    sincronizarControleFundo();
+
+    // As duas camadas novas entram na pilha JÁ montada, nas posições que terão no partial: o piso
+    // antes da ortofoto, a água entre ela e a lente.
+    const casca = document.querySelector(".fundo-ortofoto");
+    casca.insertAdjacentHTML("beforebegin", '<div class="fundo-rocha"><div class="fundo-rocha__grao"></div></div>');
+    casca.insertAdjacentHTML("afterend", '<canvas class="fundo-agua" aria-hidden="true"></canvas>');
+
+    telaAgua = document.querySelector(".fundo-agua");
+    Object.assign(P, lerAjustes());
+    agua = criarAgua(telaAgua);
+
+    if (!agua) {
+      telaAgua.remove();
+      telaAgua = null;
+      document.querySelector(".torre-ajustes").remove();
+      document.querySelector("[data-ajustes]").remove();
+    } else {
+      montarBarras();
+      aplicarLigada(lerLigada());
+    }
+
+    document.querySelectorAll(".range-onsen").forEach(pintarTrilho);
+  </script>
+</body>
+</html>
