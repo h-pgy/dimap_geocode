@@ -1,0 +1,35 @@
+{# Bancada de desenho (SPEC design/018): substitui a toolbar nativa do Leaflet-Geoman. Estática — #}
+{# nenhum contexto de view, nenhum HTMX; o submenu é a linha que desenho/bancada.js monta a partir #}
+{# do catálogo. Nasce guardada (fechada), encaixada no rodapé e com o encaixe (snap) desligado. #}
+<div id="bancada-conjunto" class="bancada-conjunto bancada-conjunto--fechada" data-dock="bottom">
+  <div class="bancada-pilha">
+    <div id="bancada-barra" class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+      <button type="button" id="bancada-alca" class="bancada-alca" aria-expanded="false" title="Abrir, fechar e arrastar a bancada">
+        <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+        <span class="bancada-alca__fio etched-line"></span>
+      </button>
+      <div id="torre-snap" class="torre-snap torre-snap--fechada glass-panel-thick" role="group" aria-label="Encaixe">
+        <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-ima"/></svg>
+        <span class="torre-snap__texto">
+          <span class="torre-snap__rotulo">Encaixe</span>
+          <span class="torre-snap__dica">ALT suspende</span>
+        </span>
+        <input type="checkbox" id="snap-toggle" class="toggle-onsen">
+      </div>
+      <div id="bancada-submenu" class="bancada-submenu card-well bancada-submenu--fechado" role="menu" aria-label="Ferramentas de edição"></div>
+      <div class="bancada-desenho__ferramentas">
+        <button type="button" class="bancada-desenho__categoria" data-categoria="ponto" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+        <button type="button" class="bancada-desenho__categoria" data-categoria="linha" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+        <button type="button" class="bancada-desenho__categoria" data-categoria="poligono" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+      </div>
+      <div class="bancada-desenho__poco card-well">
+        <button type="button" id="btn-editar" data-categoria="modificar" class="bancada-desenho__controle" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+        <button type="button" id="btn-apagar" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+        <button type="button" id="btn-concluir" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+        <button type="button" id="btn-cancelar" class="bancada-desenho__controle" disabled title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+        <span class="bancada-desenho__divisa"></span>
+        <button type="button" id="btn-snap" aria-expanded="false" aria-controls="torre-snap" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -25,6 +25,7 @@
   {% include "partials/_filtros_gravacao.html" %}
   {% include "mapping/_mapa_admin.html" %}
   {% include "mapping/_glifos_mapa.html" %}
+  {% include "mapping/_glifos_desenho.html" %}
 
 
   <!-- Glifos de exemplo (SPEC autorizacao/006). Na aplicação cada um é um arquivo em
@@ -2891,6 +2892,42 @@
             </div>
           </div>
           <p class="text-xs text-base-content/60 mt-2">Pílula tátil de vidro fosco simétrica ao atalho de documentos (<span class="text-code">.pilula-mapa</span>) contendo poço de zoom rebaixado (<span class="text-code">.card-well</span>) com swell de rolagem e torrezinha retrátil de camadas (<span class="text-code">.torre-camadas</span>) com expansão horizontal no hover.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">.bancada-conjunto (SPEC design/018) <span class="font-normal text-base-content/50">— bancada de desenho: corpo, alça, poço e o submenu que abre dentro dele</span></span>
+          <div class="card-well p-6 mt-3 flex items-center justify-center">
+            <div class="bancada-conjunto static! translate-x-0! translate-y-0!" data-dock="bottom">
+              <div class="bancada-pilha">
+                <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                  <button type="button" class="bancada-alca" aria-expanded="true" title="Abrir, fechar e arrastar a bancada">
+                    <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                    <span class="bancada-alca__fio etched-line"></span>
+                  </button>
+                  <div class="bancada-desenho__ferramentas">
+                    <button type="button" class="bancada-desenho__categoria" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                    <button type="button" class="bancada-desenho__categoria" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                    <button type="button" class="bancada-desenho__categoria" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                  </div>
+                  <div class="bancada-submenu card-well" role="menu" aria-label="Ferramentas de edição">
+                    <button type="button" class="bancada-submenu__tool bancada-submenu__tool--ativa" title="Vértices"><svg viewBox="0 0 24 24"><use href="#glifo-vertices"/></svg></button>
+                    <button type="button" class="bancada-submenu__tool" title="Mover"><svg viewBox="0 0 24 24"><use href="#glifo-mover"/></svg></button>
+                    <button type="button" class="bancada-submenu__tool" title="Girar"><svg viewBox="0 0 24 24"><use href="#glifo-girar"/></svg></button>
+                    <button type="button" class="bancada-submenu__tool" title="Recortar"><svg viewBox="0 0 24 24"><use href="#glifo-recortar"/></svg></button>
+                  </div>
+                  <div class="bancada-desenho__poco card-well">
+                    <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ativo" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                    <button type="button" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                    <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                    <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                    <span class="bancada-desenho__divisa"></span>
+                    <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Corpo inteiriço (<span class="text-code">.glass-panel-thick</span>) com alça (<span class="text-code">.bancada-alca</span>), categorias de geometria (<span class="text-code">.bancada-desenho__categoria</span>), o submenu que a categoria/o lápis abrem dentro do próprio corpo (<span class="text-code">.bancada-submenu__tool</span>) e o poço de controles (<span class="text-code">.bancada-desenho__controle</span>) — editar, apagar, concluir, suspender e encaixe. Substitui a toolbar nativa do Leaflet-Geoman.</p>
         </div>
 
         <div>

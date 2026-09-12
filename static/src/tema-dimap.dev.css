@@ -2515,4 +2515,395 @@ html[data-theme="dimap"] {
     @apply text-rocha-700 font-medium;
     filter: none;
   }
+
+  /* ==================== BANCADA DE DESENHO (SPEC design/018) ==================== */
+
+  /* .bancada-alca — a paleta que abre, fecha e CARREGA a bancada: clique alterna, arrasto move.
+     Vive ENFIADA sob a barra (z abaixo dela), sobrando só a lingueta — é o que a faz ler como
+     puxador e não como mais uma fileira de glifos. Material composto no markup. */
+  .bancada-alca {
+    @apply shrink-0 grid place-items-center cursor-grab touch-none rounded-lg;
+    transition: background-color 300ms, opacity 200ms linear;
+  }
+  .bancada-alca:hover {
+    @apply bg-white/50;
+  }
+  .bancada-alca:active,
+  .bancada-alca--pega {
+    @apply cursor-grabbing;
+  }
+  /* Duas faces na MESMA célula da grade: o estojo diz o que a bancada guarda enquanto ela
+     está guardada; aberta, o que importa é poder pegá-la, e aí o que se vê é o fio. */
+  .bancada-alca__estojo,
+  .bancada-alca__fio {
+    grid-area: 1 / 1;
+    @apply transition-all duration-300;
+  }
+  .bancada-alca__estojo {
+    @apply w-5 h-5 origin-center;
+  }
+  .bancada-alca__fio {
+    @apply w-8 h-1.5;
+  }
+  .bancada-conjunto--fechada .bancada-alca__fio {
+    @apply opacity-0;
+  }
+  .bancada-conjunto:not(.bancada-conjunto--fechada) .bancada-alca__estojo {
+    @apply opacity-0;
+  }
+  /* O fio é o mesmo par repouso/entintado da .gaveta-alca: estica e enche de água sob o cursor. */
+  .bancada-alca:hover .bancada-alca__fio,
+  .bancada-alca:focus-visible .bancada-alca__fio,
+  .bancada-alca--pega .bancada-alca__fio {
+    @apply w-11;
+    background-color: rgba(0, 119, 182, 0.5);
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+  }
+  /* Swell: a afordância de pegada, emprestada do zoom da .pilula-mapa — o glifo incha e enche
+     de água em vez de ganhar crachá de botão. */
+  .bancada-alca:hover .bancada-alca__estojo,
+  .bancada-alca:focus-visible .bancada-alca__estojo,
+  .bancada-alca--pega .bancada-alca__estojo {
+    @apply scale-[1.35];
+    filter: url(#etched-onsen) drop-shadow(0 0 8px rgba(72, 202, 228, 0.9));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .bancada-alca:focus-visible {
+    @apply outline-none;
+  }
+
+  /* .bancada-desenho__categoria — a geometria. Ciano em repouso, como o .torre-camadas__glifo. */
+  .bancada-desenho__categoria {
+    @apply w-9 h-9 rounded-xl grid place-items-center cursor-pointer
+           border border-transparent transition-all duration-200;
+  }
+  .bancada-desenho__categoria svg {
+    @apply w-5 h-5 text-agua-700 transition-all duration-200;
+  }
+  .bancada-desenho__categoria:hover svg {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .bancada-desenho__categoria:hover {
+    @apply bg-white/60;
+    box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
+  }
+  .bancada-desenho__categoria:active {
+    @apply scale-95;
+  }
+  /* Submenu aberto ou ferramenta presa: nos dois casos o gelo AFUNDA — quem está no comando é
+     quem tem o poço. */
+  .bancada-desenho__categoria[aria-expanded="true"],
+  .bancada-desenho__categoria--ativa {
+    @apply bg-white/35 border-white/50 ring-1 ring-agua-500/70;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+  }
+  .bancada-desenho__categoria[aria-expanded="true"] svg,
+  .bancada-desenho__categoria--ativa svg {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+
+  /* .bancada-desenho__controle — editar, apagar, concluir, suspender e encaixe.
+     Não são ferramentas: governam o desenho. Tinta MADEIRA no poço, como o par (+/−) do zoom. */
+  .bancada-desenho__controle {
+    @apply w-8 h-8 rounded-lg grid place-items-center cursor-pointer
+           text-madeira-700 border border-transparent transition-all duration-200;
+  }
+  .bancada-desenho__controle svg {
+    @apply w-4 h-4 transition-all duration-200;
+  }
+  /* Hover incha e broca ciano — a mesma afordância de .bancada-desenho__categoria e
+     .bancada-submenu__tool, só que partindo da madeira. Só troca cor e filtro (a mesma
+     propriedade dos estados abaixo): num controle já ligado/ativo/armado, o hover ganha o
+     inchaço mas a cor do estado permanece por cima — nunca fica mudo. */
+  .bancada-desenho__controle:hover:not(:disabled) {
+    @apply bg-white/60;
+    box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
+  }
+  .bancada-desenho__controle:hover:not(:disabled) svg {
+    @apply scale-110 text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .bancada-desenho__controle:active:not(:disabled) {
+    @apply scale-95;
+  }
+  /* Indisponível fica em repouso e para de responder. Nada de apagar: com opacity o glifo some
+     e o lugar dele lê como buraco no corpo — a linha inteira passa a ter falhas. */
+  .bancada-desenho__controle:disabled {
+    @apply pointer-events-none;
+  }
+  /* Encaixe ligado: a tinta vira água. Estado permanente, não modo — nunca afunda. */
+  .bancada-desenho__controle--ligado {
+    @apply text-agua-700;
+  }
+  .bancada-desenho__controle--ligado svg {
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+  /* O disparador do submenu AFUNDA e vira água enquanto a linha dele está aberta: o poço diz
+     quem está no comando, e o ciano diz que ele está em uso — os dois sinais da linha de baixo. */
+  .bancada-desenho__controle--ativo,
+  .bancada-desenho__controle[aria-expanded="true"] {
+    @apply text-agua-700;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  .bancada-desenho__controle--ativo svg,
+  .bancada-desenho__controle[aria-expanded="true"] svg {
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  /* Apagar armado: o único lugar da bancada com cor semântica — modo destrutivo ligado é estado
+     do sistema, não escolha de ferramenta. */
+  .bancada-desenho__controle--armado-apagar {
+    @apply text-error;
+  }
+  .bancada-desenho__controle--armado-apagar svg {
+    filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.45));
+  }
+  /* Concluir e suspender seguem a mesma regra dos vizinhos: madeira parados, água armados. */
+  .bancada-desenho__controle--armado {
+    @apply text-agua-700;
+  }
+  .bancada-desenho__controle--armado svg {
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+
+  /* .bancada-submenu__tool — o glifo da linha que se abre. */
+  .bancada-submenu__tool {
+    @apply w-9 h-9 rounded-xl grid place-items-center cursor-pointer
+           border border-transparent transition-all duration-200;
+  }
+  .bancada-submenu__tool svg {
+    @apply w-5 h-5 text-agua-700 transition-all duration-200;
+  }
+  .bancada-submenu__tool:hover:not(:disabled) {
+    @apply bg-white/50 border-white/60;
+  }
+  .bancada-submenu__tool:hover:not(:disabled) svg {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .bancada-submenu__tool--ativa {
+    @apply bg-white/35 border-white/50 ring-1 ring-agua-500/70;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+  }
+  .bancada-submenu__tool--ativa svg {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  /* Indisponível não apaga: some do olho e vira buraco no corpo — é a linha de baixo que ensinou
+     a regra (ver .bancada-desenho__controle). */
+  .bancada-submenu__tool:disabled {
+    @apply pointer-events-none;
+  }
+
+  /* .bancada-desenho — o corpo inteiriço. O material é o .glass-panel-thick, composto no markup:
+     a segunda densidade é a de vidro SOBRE INTERFACE — sobre a ortofoto o fino deixava passar
+     demais. */
+  .bancada-desenho {
+    @apply relative z-10 flex gap-1 p-1.5 text-base-content;
+  }
+  .bancada-desenho__ferramentas {
+    @apply flex items-center justify-center gap-1;
+  }
+  /* Os poços são .card-well, empilhados no markup. Dentro do vidro espesso eles ficam só com o
+     degrau, pela regra de vidro sobre vidro (SPEC design/009) — a pintura é uma por pilha. */
+  .bancada-desenho__poco,
+  .bancada-submenu {
+    @apply flex items-center justify-center gap-0.5 p-1 rounded-xl;
+  }
+  .bancada-desenho__divisa {
+    @apply shrink-0;
+  }
+
+  /* .bancada-submenu — a linha que se abre DENTRO do corpo, sempre imediatamente acima da linha
+     de quem a abriu. Fechada, não existe no fluxo: é o corpo que encolhe, não um painel que some. */
+  .bancada-submenu--fechado {
+    @apply hidden;
+  }
+  /* Enquanto o corpo cresce ou encolhe, a medida vem em px da orquestração — nem largura nem
+     altura interpolam a partir de `auto`. */
+  .bancada-desenho--crescendo {
+    @apply overflow-hidden;
+    transition: width 320ms cubic-bezier(0.4, 0, 0.2, 1), height 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* .bancada-conjunto — o corpo que anda pela tela. `data-dock` diz o EIXO e de que lado ficam
+     a alça e o submenu; `--solta` apenas neutraliza a âncora. Separar as duas coisas é o que
+     permite arrastar uma bancada em pé sem que ela se deite no meio do caminho. */
+  .bancada-conjunto {
+    @apply absolute z-20 flex transition-transform duration-500 ease-in-out;
+  }
+  .bancada-pilha {
+    @apply relative flex;
+  }
+  .bancada-conjunto--solta {
+    @apply translate-x-0 translate-y-0;
+  }
+  /* Arrastando, a transição sai: ela existe para o encaixe e para o abrir/fechar, não para
+     perseguir o ponteiro. */
+  .bancada-conjunto--arrastando {
+    @apply transition-none;
+  }
+
+  /* --- Transmutação: ao trocar de eixo, a bancada esvazia, vira placa lisa, se estica no eixo
+         novo e só então recebe os glifos de volta. --- */
+  .bancada-conjunto--transmutando .bancada-desenho__ferramentas,
+  .bancada-conjunto--transmutando .bancada-desenho__poco,
+  .bancada-conjunto--transmutando .bancada-alca {
+    @apply opacity-0;
+  }
+  .bancada-conjunto--transmutando .bancada-desenho__ferramentas,
+  .bancada-conjunto--transmutando .bancada-desenho__poco {
+    transition: opacity 160ms linear;
+  }
+  .bancada-conjunto--transmutando .bancada-desenho {
+    @apply overflow-hidden;
+    transition: width 420ms cubic-bezier(0.4, 0, 0.2, 1), height 420ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* --- Encaixe no rodapé: a bancada deitada. É também o estado de quem não está encaixado em
+         lateral nenhuma: solta no meio da tela, ela se deita. --- */
+  .bancada-conjunto[data-dock="bottom"] {
+    @apply bottom-0 left-1/2 -translate-x-1/2 pb-6;
+  }
+  .bancada-conjunto[data-dock="bottom"] .bancada-desenho {
+    @apply flex-col;
+  }
+  .bancada-conjunto[data-dock="bottom"] .bancada-alca {
+    @apply w-full h-7;
+  }
+  .bancada-conjunto[data-dock="bottom"].bancada-conjunto--fechada:not(.bancada-conjunto--solta) {
+    @apply translate-y-[calc(100%-2.15rem)];
+  }
+
+  /* --- Encaixe à esquerda: o poço encosta na borda, as geometrias ficam por dentro --- */
+  .bancada-conjunto[data-dock="left"] {
+    @apply left-0 top-1/2 -translate-y-1/2 pl-6;
+  }
+  .bancada-conjunto[data-dock="left"] .bancada-desenho {
+    @apply flex-row-reverse;
+  }
+  .bancada-conjunto[data-dock="left"].bancada-conjunto--fechada:not(.bancada-conjunto--solta) {
+    @apply -translate-x-[calc(100%-2.15rem)];
+  }
+
+  /* --- Encaixe à direita: o espelho --- */
+  .bancada-conjunto[data-dock="right"] {
+    @apply right-0 top-1/2 -translate-y-1/2 pr-6;
+  }
+  .bancada-conjunto[data-dock="right"] .bancada-desenho {
+    @apply flex-row;
+  }
+  .bancada-conjunto[data-dock="right"].bancada-conjunto--fechada:not(.bancada-conjunto--solta) {
+    @apply translate-x-[calc(100%-2.15rem)];
+  }
+
+  /* --- O que a rotação vira em pé, nos dois encaixes laterais --- */
+  .bancada-conjunto[data-dock="left"] .bancada-alca,
+  .bancada-conjunto[data-dock="right"] .bancada-alca {
+    @apply h-full w-7;
+  }
+  .bancada-conjunto[data-dock="left"] .bancada-desenho__ferramentas,
+  .bancada-conjunto[data-dock="right"] .bancada-desenho__ferramentas,
+  .bancada-conjunto[data-dock="left"] .bancada-desenho__poco,
+  .bancada-conjunto[data-dock="right"] .bancada-desenho__poco,
+  .bancada-conjunto[data-dock="left"] .bancada-submenu,
+  .bancada-conjunto[data-dock="right"] .bancada-submenu {
+    @apply flex-col;
+  }
+  /* O fio da alça corre no eixo da faixa. */
+  .bancada-conjunto[data-dock="left"] .bancada-alca__fio,
+  .bancada-conjunto[data-dock="right"] .bancada-alca__fio {
+    @apply w-1.5 h-8;
+  }
+  .bancada-conjunto[data-dock="left"] .bancada-alca:hover .bancada-alca__fio,
+  .bancada-conjunto[data-dock="right"] .bancada-alca:hover .bancada-alca__fio,
+  .bancada-conjunto[data-dock="left"] .bancada-alca--pega .bancada-alca__fio,
+  .bancada-conjunto[data-dock="right"] .bancada-alca--pega .bancada-alca__fio {
+    @apply w-1.5 h-11;
+  }
+
+  /* A divisa acompanha o eixo: fio em pé deitado, fio deitado em pé. */
+  .bancada-conjunto[data-dock="bottom"] .bancada-desenho__divisa {
+    @apply w-px h-5 mx-1;
+    background-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(7, 58, 84, 0.16) 30%,
+      rgba(7, 58, 84, 0.16) 70%,
+      transparent 100%
+    );
+  }
+  .bancada-conjunto[data-dock="left"] .bancada-desenho__divisa,
+  .bancada-conjunto[data-dock="right"] .bancada-desenho__divisa {
+    @apply h-px w-5 my-1;
+    background-image: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(7, 58, 84, 0.16) 30%,
+      rgba(7, 58, 84, 0.16) 70%,
+      transparent 100%
+    );
+  }
+
+  /* Solta e fechada, some tudo menos a faixa: vira um estojo pousado onde o usuário largou.
+     Declarado depois das faixas, porque é regra de componente contra regra de componente. */
+  .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-desenho__ferramentas,
+  .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-desenho__poco,
+  .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-submenu {
+    @apply hidden;
+  }
+
+  /* .torre-snap — a torrezinha do encaixe, irmã da .torre-camadas. */
+  .torre-snap {
+    @apply absolute bottom-full left-0 mb-2.5 flex items-center gap-3 px-3 py-2.5
+           transition-all duration-300 ease-out origin-bottom-left;
+  }
+  .torre-snap--fechada {
+    @apply opacity-0 translate-y-3 scale-95 pointer-events-none;
+  }
+  .torre-snap__texto {
+    @apply flex flex-col gap-0.5 whitespace-nowrap;
+  }
+  .torre-snap__rotulo {
+    @apply text-xs font-bold text-madeira-700 leading-none;
+  }
+  .torre-snap__dica {
+    @apply text-[10px] text-rocha-700 leading-none;
+  }
+
+  /* Recolhe sob modal como a .moldura-fixa, mas sem a classe dela: o transform de recolhimento
+     brigaria com o deslize de fechar e com o encaixe. */
+  :root:has(.modal-toggle:checked) .bancada-conjunto {
+    @apply opacity-0 pointer-events-none;
+  }
+}
+
+/* ==================== CURSOR DO MAPA (SPEC design/018) ==================== */
+/* FORA de @layer components, de propósito: o CSS do Leaflet e do Geoman entra por <link>, sem
+   layer nenhum, e regra sem layer vence regra em layer independentemente de especificidade.
+   Dentro do layer estas regras eram silenciosamente ignoradas — o cursor de apagar nunca
+   chegava a aparecer. Desvio assumido: é o único jeito de o design system mandar no cursor sem
+   recorrer a !important.
+
+   O cursor diz que ferramenta está na mão. Não existe cursor "lápis" nem "X": desenhar usa
+   `crosshair` (a mira de precisão, e o que o plugin já aplica sozinho); modificar usa a mão
+   aberta; apagar é o único com desenho próprio — `not-allowed` sozinho lê como "proibido", não
+   como "este clique destrói", daí o X em tinta de erro com halo branco, com `not-allowed` de
+   reserva onde o cursor custom não carregar. */
+.mapa-cursor--desenhar,
+.mapa-cursor--desenhar .leaflet-interactive {
+  cursor: crosshair;
+}
+.mapa-cursor--modificar,
+.mapa-cursor--modificar .leaflet-interactive {
+  cursor: grab;
+}
+.mapa-cursor--modificar:active,
+.mapa-cursor--modificar .leaflet-interactive:active {
+  cursor: grabbing;
+}
+.mapa-cursor--apagar,
+.mapa-cursor--apagar .leaflet-interactive {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 7 17 17M17 7 7 17' fill='none' stroke='white' stroke-width='5.5' stroke-linecap='round'/%3E%3Cpath d='M7 7 17 17M17 7 7 17' fill='none' stroke='%23dc2626' stroke-width='2.8' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, not-allowed;
 }

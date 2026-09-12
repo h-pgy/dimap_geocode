@@ -1,12 +1,14 @@
 ---
 spec: design/018
-versao: v1
+versao: v3
 atualizado_em: 2026-09-12
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: []
 changelog:
   - v1: versão inicial
+  - v2: controles do poço ganham a mesma afordância de hover (swell + brilho ciano) das categorias e do submenu
+  - v3: encaixe (snap) nasce desligado, não ligado
 ---
 
 # SPEC design/018 — Bancada de desenho no mapa
@@ -16,24 +18,30 @@ O servidor da DIMAP desenha pontos, linhas e polígonos sobre a home no contexto
 ferramentas do Onsen para obter geometria própria sobre o território.
 
 ## 2 · Condições de pronto
-- [ ] A toolbar nativa do Leaflet-Geoman **não aparece** em lugar nenhum: as ferramentas do plugin
+- [x] A toolbar nativa do Leaflet-Geoman **não aparece** em lugar nenhum: as ferramentas do plugin
       são acionadas exclusivamente pela bancada.
-- [ ] Guardada, a bancada mostra **só a alça**; um clique nela abre o corpo, e outro o guarda de
+- [x] Guardada, a bancada mostra **só a alça**; um clique nela abre o corpo, e outro o guarda de
       volta, largando a ferramenta que estiver na mão.
-- [ ] **Ponto** e **linha** armam o desenho direto; **polígono** abre uma linha nova dentro do
+- [x] **Ponto** e **linha** armam o desenho direto; **polígono** abre uma linha nova dentro do
       próprio corpo com polígono, retângulo e círculo, e o corpo cresce e encolhe junto.
-- [ ] O traço nasce na **cor do seu tipo** — ponto em água, linha em accent, polígono em sakura.
-- [ ] **Concluir** só se oferece quando a forma em desenho já tem vértices bastantes; **suspender**,
+- [x] O traço nasce na **cor do seu tipo** — ponto em água, linha em accent, polígono em sakura.
+- [x] **Concluir** só se oferece quando a forma em desenho já tem vértices bastantes; **suspender**,
       só com ferramenta na mão; **editar** e **apagar**, só com geometria no mapa; **recortar**, só
       com área desenhada.
-- [ ] O **cursor do mapa** diz o que está na mão: mira para desenhar, mão para modificar e um X em
+- [x] O **cursor do mapa** diz o que está na mão: mira para desenhar, mão para modificar e um X em
       tinta de erro para apagar.
-- [ ] **Arrastar pela alça** leva a bancada para onde o ponteiro soltar — perto de uma lateral ela
+- [x] O hover avisa que o glifo responde ao clique **em toda a bancada**, não só nas categorias de
+      criação: os controles do poço (editar, apagar, concluir, suspender, encaixe) incham e brilham
+      em ciano ao passar o mouse, a mesma afordância de `.bancada-desenho__categoria` e
+      `.bancada-submenu__tool` — os estados armados/ligados continuam sinalizando por cor própria,
+      mas o hover é aditivo e não pode ficar mudo neles.
+- [x] **Arrastar pela alça** leva a bancada para onde o ponteiro soltar — perto de uma lateral ela
       encaixa **em pé**; perto do rodapé se deita e se guarda; no meio da tela fica deitada onde foi
       largada. O gesto **não arrasta o mapa** nem dá zoom.
-- [ ] O **encaixe** (snap) nasce ligado, e a torrezinha da bancada o desliga e religa.
-- [ ] Com um **modal aberto**, a bancada se recolhe junto com o resto da moldura fixa.
-- [ ] O design foi aprovado no mock, e as peças estão em `static/src/tema-dimap.dev.css` e no
+- [x] O **encaixe** (snap) nasce **desligado** — repouso em madeira, não em água —, e a torrezinha
+      da bancada o liga e desliga.
+- [x] Com um **modal aberto**, a bancada se recolhe junto com o resto da moldura fixa.
+- [x] O design foi aprovado no mock, e as peças estão em `static/src/tema-dimap.dev.css` e no
       styleguide **antes** de qualquer template da aplicação usar as classes.
 
 ## 3 · Domínio
@@ -237,9 +245,9 @@ smoke test manual.
 - `test_bancada_traz_as_categorias_de_geometria` — o partial traz um `[data-categoria]` para ponto,
   linha e polígono, e o lápis do poço declara `data-categoria="modificar"`.
 - `test_poco_da_bancada_nasce_desarmado` — apagar, concluir e suspender nascem `disabled`, e o
-  encaixe nasce com `.bancada-desenho__controle--ligado`.
-- `test_torre_do_encaixe_nasce_fechada_e_ligada` — `#torre-snap` nasce com `torre-snap--fechada`, o
-  botão que a abre aponta para ela por `aria-controls`, e o `.toggle-onsen` vem marcado.
+  encaixe nasce **sem** `.bancada-desenho__controle--ligado`.
+- `test_torre_do_encaixe_nasce_fechada_e_desligada` — `#torre-snap` nasce com `torre-snap--fechada`,
+  o botão que a abre aponta para ela por `aria-controls`, e o `.toggle-onsen` vem **desmarcado**.
 - `test_glifos_do_desenho_definem_os_simbolos_da_bancada` — `_glifos_desenho.html` define todos os
   `id` de glifo citados pelo partial e pelo catálogo, sem redefinir os do `_glifos_mapa.html`.
 - `test_catalogo_cobre_as_categorias_do_partial` — toda categoria do partial tem entrada em

@@ -141,6 +141,20 @@
       .bancada-desenho__controle svg {
         @apply w-4 h-4 transition-all duration-200;
       }
+      /* Hover incha e broca ciano — a mesma afordância de .bancada-desenho__categoria e
+         .bancada-submenu__tool, só que partindo da madeira. Só troca cor e filtro (a mesma
+         propriedade dos estados abaixo): num controle já ligado/ativo/armado, o hover ganha o
+         inchaço mas a cor do estado permanece por cima — nunca fica mudo. */
+      .bancada-desenho__controle:hover:not(:disabled),
+      .bancada-desenho__controle.is-hover-demo {
+        @apply bg-white/60;
+        box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
+      }
+      .bancada-desenho__controle:hover:not(:disabled) svg,
+      .bancada-desenho__controle.is-hover-demo svg {
+        @apply scale-110 text-agua-600;
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+      }
       .bancada-desenho__controle:active:not(:disabled) {
         @apply scale-95;
       }
@@ -757,7 +771,7 @@
                       <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
                       <button type="button" class="bancada-desenho__controle" disabled title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
                       <span class="bancada-desenho__divisa"></span>
-                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
                     </div>
                   </div>
                 </div>
@@ -785,7 +799,7 @@
                       <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
                       <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
                       <span class="bancada-desenho__divisa"></span>
-                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
                     </div>
                   </div>
                 </div>
@@ -819,7 +833,7 @@
                       <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
                       <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
                       <span class="bancada-desenho__divisa"></span>
-                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
                     </div>
                   </div>
                 </div>
@@ -847,7 +861,7 @@
                       <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
                       <button type="button" class="bancada-desenho__controle" disabled title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
                       <span class="bancada-desenho__divisa"></span>
-                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
                     </div>
                   </div>
                 </div>
@@ -875,7 +889,7 @@
                       <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
                       <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
                       <span class="bancada-desenho__divisa"></span>
-                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
                     </div>
                   </div>
                 </div>
@@ -909,7 +923,7 @@
                       <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
                       <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
                       <span class="bancada-desenho__divisa"></span>
-                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
                     </div>
                   </div>
                 </div>
@@ -937,7 +951,7 @@
                       <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
                       <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
                       <span class="bancada-desenho__divisa"></span>
-                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
                     </div>
                   </div>
                 </div>
@@ -971,7 +985,7 @@
                       <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
                       <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
                       <span class="bancada-desenho__divisa"></span>
-                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
                     </div>
                   </div>
                 </div>
@@ -1052,7 +1066,7 @@
                   <span class="torre-snap__rotulo">Encaixe</span>
                   <span class="torre-snap__dica">ALT suspende</span>
                 </span>
-                <input type="checkbox" id="snap-toggle" class="toggle-onsen" checked>
+                <input type="checkbox" id="snap-toggle" class="toggle-onsen">
               </div>
               <div id="bancada-submenu" class="bancada-submenu card-well bancada-submenu--fechado" role="menu" aria-label="Ferramentas de edição"></div>
               <div class="bancada-desenho__ferramentas">
@@ -1066,7 +1080,7 @@
                 <button type="button" id="btn-concluir" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
                 <button type="button" id="btn-cancelar" class="bancada-desenho__controle" disabled title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
                 <span class="bancada-desenho__divisa"></span>
-                <button type="button" id="btn-snap" aria-expanded="false" aria-controls="torre-snap" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                <button type="button" id="btn-snap" aria-expanded="false" aria-controls="torre-snap" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
               </div>
             </div>
           </div>
@@ -1137,7 +1151,7 @@
       };
     }
 
-    mapa.pm.setGlobalOptions({ snappable: true, snapDistance: 20 });
+    mapa.pm.setGlobalOptions({ snappable: false, snapDistance: 20 });
 
     // ── Catálogo ─────────────────────────────────────────────────────────────────────────────────
     const GEOMETRIAS = {

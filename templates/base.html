@@ -13,6 +13,9 @@
 
     {# Leaflet (mapa) — CSS no head #}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css" />
+    {# Leaflet-Geoman (SPEC design/018): a bancada de desenho chama a API do plugin — a toolbar #}
+    {# nativa dele nunca é ligada (addControls não é chamado em lugar nenhum). #}
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20/dist/leaflet-geoman.css" />
 
     {# Design system compilado pelo serviço `tailwind` do compose (SPEC infraestrutura/004). #}
     {# A fonte segue sendo static/src/tema-dimap.dev.css, agora via static/src/input.css. #}
@@ -97,6 +100,8 @@
 
     {# Leaflet JS antes do fim do body #}
     <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+    {# Leaflet-Geoman: depois do Leaflet, que ele estende (SPEC design/018). #}
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20/dist/leaflet-geoman.min.js"></script>
     {# JS centralizado do mapa — registra htmx.onLoad uma única vez (§11 caso 1) #}
     <script type="module" src="{% static 'js/mapa/init.js' %}"></script>
     {% block scripts %}{% endblock %}

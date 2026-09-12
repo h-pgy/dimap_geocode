@@ -2,6 +2,7 @@ import { criarMapa } from "./criar_mapa.js";
 import { adicionarBaseWms } from "./camada_base.js";
 import { adicionarResultado } from "./camada_resultado.js";
 import { inicializarControlesMapa } from "./controles_mapa.js";
+import { inicializarBancadaDesenho } from "./desenho/bancada.js";
 
 let mapa = null;
 let camadaResultado = null;
@@ -18,6 +19,7 @@ function montarMapaBase() {
   mapa = criarMapa("map", cfg.centro, cfg.zoom);
   const baseMaps = adicionarBaseWms(mapa, wms);
   inicializarControlesMapa(mapa, baseMaps);
+  inicializarBancadaDesenho(mapa);
 }
 
 // htmx:afterSwap dispara a cada swap (garantido) — nele buscamos o payload por id no DOM. O
