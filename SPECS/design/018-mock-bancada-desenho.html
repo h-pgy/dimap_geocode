@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/018 — Bancada de desenho (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Mock de HOME: aqui o mapa é o produto, então carrega Leaflet — e o Geoman, cuja toolbar
+       nativa fica desligada (addControls nunca é chamado). -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20.1/dist/leaflet-geoman.css" />
+  <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20.1/dist/leaflet-geoman.min.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+    <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== 2 · ÁTOMOS ==================== */
+
+      /* .bancada-alca — a paleta que abre, fecha e CARREGA a bancada: clique alterna, arrasto move.
+         Vive ENFIADA sob a barra (z abaixo dela), sobrando só a lingueta — é o que a faz ler como
+         puxador e não como mais uma fileira de glifos. Material composto no markup. */
+      .bancada-alca {
+        @apply shrink-0 grid place-items-center cursor-grab touch-none rounded-lg;
+        transition: background-color 300ms, opacity 200ms linear;
+      }
+      .bancada-alca:hover,
+      .bancada-alca.is-hover-demo {
+        @apply bg-white/50;
+      }
+      .bancada-alca:active,
+      .bancada-alca--pega {
+        @apply cursor-grabbing;
+      }
+      /* Duas faces na MESMA célula da grade: o estojo diz o que a bancada guarda enquanto ela
+         está guardada; aberta, o que importa é poder pegá-la, e aí o que se vê é o fio. */
+      .bancada-alca__estojo,
+      .bancada-alca__fio {
+        grid-area: 1 / 1;
+        @apply transition-all duration-300;
+      }
+      .bancada-alca__estojo {
+        @apply w-5 h-5 origin-center;
+      }
+      .bancada-alca__fio {
+        @apply w-8 h-1.5;
+      }
+      .bancada-conjunto--fechada .bancada-alca__fio {
+        @apply opacity-0;
+      }
+      .bancada-conjunto:not(.bancada-conjunto--fechada) .bancada-alca__estojo {
+        @apply opacity-0;
+      }
+      /* O fio é o mesmo par repouso/entintado da .gaveta-alca: estica e enche de água sob o cursor. */
+      .bancada-alca:hover .bancada-alca__fio,
+      .bancada-alca:focus-visible .bancada-alca__fio,
+      .bancada-alca.is-hover-demo .bancada-alca__fio,
+      .bancada-alca--pega .bancada-alca__fio {
+        @apply w-11;
+        background-color: rgba(0, 119, 182, 0.5);
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+      }
+      /* Swell: a afordância de pegada, emprestada do zoom da .pilula-mapa — o glifo incha e enche
+         de água em vez de ganhar crachá de botão. */
+      .bancada-alca:hover .bancada-alca__estojo,
+      .bancada-alca:focus-visible .bancada-alca__estojo,
+      .bancada-alca.is-hover-demo .bancada-alca__estojo,
+      .bancada-alca--pega .bancada-alca__estojo {
+        @apply scale-[1.35];
+        filter: url(#etched-onsen) drop-shadow(0 0 8px rgba(72, 202, 228, 0.9));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      .bancada-alca:focus-visible {
+        @apply outline-none;
+      }
+
+      /* .bancada-desenho__categoria — a geometria. Ciano em repouso, como o .torre-camadas__glifo. */
+      .bancada-desenho__categoria {
+        @apply w-9 h-9 rounded-xl grid place-items-center cursor-pointer
+               border border-transparent transition-all duration-200;
+      }
+      .bancada-desenho__categoria svg {
+        @apply w-5 h-5 text-agua-700 transition-all duration-200;
+      }
+      .bancada-desenho__categoria:hover svg,
+      .bancada-desenho__categoria.is-hover-demo svg {
+        @apply text-agua-600;
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+      }
+      .bancada-desenho__categoria:hover,
+      .bancada-desenho__categoria.is-hover-demo {
+        @apply bg-white/60;
+        box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
+      }
+      .bancada-desenho__categoria:active {
+        @apply scale-95;
+      }
+      /* Submenu aberto ou ferramenta presa: nos dois casos o gelo AFUNDA — quem está no comando é
+         quem tem o poço. */
+      .bancada-desenho__categoria[aria-expanded="true"],
+      .bancada-desenho__categoria--ativa {
+        @apply bg-white/35 border-white/50 ring-1 ring-agua-500/70;
+        box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+      }
+      .bancada-desenho__categoria[aria-expanded="true"] svg,
+      .bancada-desenho__categoria--ativa svg {
+        @apply text-agua-600;
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+      }
+
+      /* .bancada-desenho__controle — editar, apagar, concluir, suspender e encaixe.
+         Não são ferramentas: governam o desenho. Tinta MADEIRA no poço, como o par (+/−) do zoom. */
+      .bancada-desenho__controle {
+        @apply w-8 h-8 rounded-lg grid place-items-center cursor-pointer
+               text-madeira-700 border border-transparent transition-all duration-200;
+      }
+      .bancada-desenho__controle svg {
+        @apply w-4 h-4 transition-all duration-200;
+      }
+      .bancada-desenho__controle:active:not(:disabled) {
+        @apply scale-95;
+      }
+      /* Indisponível fica em repouso e para de responder. Nada de apagar: com opacity o glifo some
+         e o lugar dele lê como buraco no corpo — a linha inteira passa a ter falhas. */
+      .bancada-desenho__controle:disabled {
+        @apply pointer-events-none;
+      }
+      /* Encaixe ligado: a tinta vira água. Estado permanente, não modo — nunca afunda. */
+      .bancada-desenho__controle--ligado {
+        @apply text-agua-700;
+      }
+      .bancada-desenho__controle--ligado svg {
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+      }
+      /* O lápis guardando a ferramenta ativa ACENDE com anel: ele já está no poço, e poço dentro de
+         poço perde o degrau. */
+      /* O disparador do submenu AFUNDA e vira água enquanto a linha dele está aberta: o poço diz
+         quem está no comando, e o ciano diz que ele está em uso — os dois sinais da linha de baixo. */
+      .bancada-desenho__controle--ativo,
+      .bancada-desenho__controle[aria-expanded="true"] {
+        @apply text-agua-700;
+        box-shadow: var(--sombra-poco-fina);
+      }
+      .bancada-desenho__controle--ativo svg,
+      .bancada-desenho__controle[aria-expanded="true"] svg {
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+      }
+      .bancada-desenho__controle--ativo svg {
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+      }
+      /* Apagar armado: o único lugar da bancada com cor semântica — modo destrutivo ligado é estado
+         do sistema, não escolha de ferramenta. */
+      .bancada-desenho__controle--armado-apagar {
+        @apply text-error;
+      }
+      .bancada-desenho__controle--armado-apagar svg {
+        filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.45));
+      }
+      /* Concluir e suspender seguem a mesma regra dos vizinhos: madeira parados, água armados. A
+         gravação saiu daqui — sulco vazio é ausência de glifo, e a linha ficava furada. */
+      .bancada-desenho__controle--armado {
+        @apply text-agua-700;
+      }
+      .bancada-desenho__controle--armado svg {
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+      }
+
+      /* .bancada-submenu__tool — o glifo da linha que se abre. */
+      .bancada-submenu__tool {
+        @apply w-9 h-9 rounded-xl grid place-items-center cursor-pointer
+               border border-transparent transition-all duration-200;
+      }
+      .bancada-submenu__tool svg {
+        @apply w-5 h-5 text-agua-700 transition-all duration-200;
+      }
+      .bancada-submenu__tool:hover:not(:disabled),
+      .bancada-submenu__tool.is-hover-demo {
+        @apply bg-white/50 border-white/60;
+      }
+      .bancada-submenu__tool:hover:not(:disabled) svg,
+      .bancada-submenu__tool.is-hover-demo svg {
+        @apply text-agua-600;
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+      }
+      .bancada-submenu__tool--ativa {
+        @apply bg-white/35 border-white/50 ring-1 ring-agua-500/70;
+        box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+      }
+      .bancada-submenu__tool--ativa svg {
+        @apply text-agua-600;
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+      }
+      /* Indisponível não apaga: some do olho e vira buraco no corpo. Fica em repouso e para de
+         responder — é a linha de baixo que ensinou a regra (ver .bancada-desenho__controle). */
+      .bancada-submenu__tool:disabled {
+        @apply pointer-events-none;
+      }
+
+      /* ==================== 3 · MOLÉCULAS ==================== */
+
+      /* .bancada-desenho — o corpo inteiriço. O material é o .glass-panel-thick, composto no markup:
+         a segunda densidade do §5 é a de vidro SOBRE INTERFACE, e é dela que a bancada precisa —
+         sobre a ortofoto o fino deixava passar demais. */
+      .bancada-desenho {
+        @apply relative z-10 flex gap-1 p-1.5 text-base-content;
+      }
+      .bancada-desenho__ferramentas {
+        @apply flex items-center justify-center gap-1;
+      }
+      /* Os poços são .card-well, empilhados no markup. Dentro do vidro espesso eles ficam só com o
+         degrau, pela regra de vidro sobre vidro (SPEC design/009) — a pintura é uma por pilha. */
+      .bancada-desenho__poco,
+      .bancada-submenu {
+        @apply flex items-center justify-center gap-0.5 p-1 rounded-xl;
+      }
+      .bancada-desenho__divisa {
+        @apply shrink-0;
+      }
+
+      /* .bancada-submenu — a linha que se abre DENTRO do corpo, sempre imediatamente acima da linha
+         de quem a abriu. Fechada, não existe no fluxo: é o corpo que encolhe, não um painel que some. */
+      .bancada-submenu--fechado {
+        @apply hidden;
+      }
+      /* Enquanto o corpo cresce ou encolhe, a medida vem em px da orquestração — nem largura nem
+         altura interpolam a partir de `auto`. */
+      .bancada-desenho--crescendo {
+        @apply overflow-hidden;
+        transition: width 320ms cubic-bezier(0.4, 0, 0.2, 1), height 320ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* ==================== 4 · ORGANISMO ==================== */
+
+      /* .bancada-conjunto — o corpo que anda pela tela. `data-dock` diz o EIXO e de que lado ficam
+         a alça e o submenu; `--solta` apenas neutraliza a âncora. Separar as duas coisas é o que
+         permite arrastar uma bancada em pé sem que ela se deite no meio do caminho. */
+      .bancada-conjunto {
+        @apply absolute z-20 flex transition-transform duration-500 ease-in-out;
+      }
+      .bancada-pilha {
+        @apply relative flex;
+      }
+      .bancada-conjunto--solta {
+        @apply translate-x-0 translate-y-0;
+      }
+      /* Arrastando, a transição sai: ela existe para o encaixe e para o abrir/fechar, não para
+         perseguir o ponteiro. */
+      .bancada-conjunto--arrastando {
+        @apply transition-none;
+      }
+
+      /* --- Transmutação: ao trocar de eixo, a bancada esvazia, vira placa lisa, se estica no eixo
+             novo e só então recebe os glifos de volta. --- */
+      .bancada-conjunto--transmutando .bancada-desenho__ferramentas,
+      .bancada-conjunto--transmutando .bancada-desenho__poco,
+      .bancada-conjunto--transmutando .bancada-alca {
+        @apply opacity-0;
+      }
+      .bancada-conjunto--transmutando .bancada-desenho__ferramentas,
+      .bancada-conjunto--transmutando .bancada-desenho__poco {
+        transition: opacity 160ms linear;
+      }
+      .bancada-conjunto--transmutando .bancada-desenho {
+        @apply overflow-hidden;
+        transition: width 420ms cubic-bezier(0.4, 0, 0.2, 1), height 420ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* --- Encaixe no rodapé: a bancada deitada. É também o estado de quem não está encaixado em
+             lateral nenhuma: solta no meio da tela, ela se deita. --- */
+      .bancada-conjunto[data-dock="bottom"] {
+        @apply bottom-0 left-1/2 -translate-x-1/2 pb-6;
+      }
+      .bancada-conjunto[data-dock="bottom"] .bancada-desenho {
+        @apply flex-col;
+      }
+      .bancada-conjunto[data-dock="bottom"] .bancada-alca {
+        @apply w-full h-7;
+      }
+      .bancada-conjunto[data-dock="bottom"].bancada-conjunto--fechada:not(.bancada-conjunto--solta) {
+        @apply translate-y-[calc(100%-2.15rem)];
+      }
+
+      /* --- Encaixe à esquerda: o poço encosta na borda, as geometrias ficam por dentro --- */
+      .bancada-conjunto[data-dock="left"] {
+        @apply left-0 top-1/2 -translate-y-1/2 pl-6;
+      }
+      .bancada-conjunto[data-dock="left"] .bancada-desenho {
+        @apply flex-row-reverse;
+      }
+      .bancada-conjunto[data-dock="left"].bancada-conjunto--fechada:not(.bancada-conjunto--solta) {
+        @apply -translate-x-[calc(100%-2.15rem)];
+      }
+
+      /* --- Encaixe à direita: o espelho --- */
+      .bancada-conjunto[data-dock="right"] {
+        @apply right-0 top-1/2 -translate-y-1/2 pr-6;
+      }
+      .bancada-conjunto[data-dock="right"] .bancada-desenho {
+        @apply flex-row;
+      }
+      .bancada-conjunto[data-dock="right"].bancada-conjunto--fechada:not(.bancada-conjunto--solta) {
+        @apply translate-x-[calc(100%-2.15rem)];
+      }
+
+      /* --- O que a rotação vira em pé, nos dois encaixes laterais --- */
+      .bancada-conjunto[data-dock="left"] .bancada-alca,
+      .bancada-conjunto[data-dock="right"] .bancada-alca {
+        @apply h-full w-7;
+      }
+      .bancada-conjunto[data-dock="left"] .bancada-desenho__ferramentas,
+      .bancada-conjunto[data-dock="right"] .bancada-desenho__ferramentas,
+      .bancada-conjunto[data-dock="left"] .bancada-desenho__poco,
+      .bancada-conjunto[data-dock="right"] .bancada-desenho__poco,
+      .bancada-conjunto[data-dock="left"] .bancada-submenu,
+      .bancada-conjunto[data-dock="right"] .bancada-submenu {
+        @apply flex-col;
+      }
+      /* O fio da alça corre no eixo da faixa. */
+      .bancada-conjunto[data-dock="left"] .bancada-alca__fio,
+      .bancada-conjunto[data-dock="right"] .bancada-alca__fio {
+        @apply w-1.5 h-8;
+      }
+      .bancada-conjunto[data-dock="left"] .bancada-alca:hover .bancada-alca__fio,
+      .bancada-conjunto[data-dock="right"] .bancada-alca:hover .bancada-alca__fio,
+      .bancada-conjunto[data-dock="left"] .bancada-alca--pega .bancada-alca__fio,
+      .bancada-conjunto[data-dock="right"] .bancada-alca--pega .bancada-alca__fio {
+        @apply w-1.5 h-11;
+      }
+
+      /* A divisa acompanha o eixo: fio em pé deitado, fio deitado em pé. */
+      .bancada-conjunto[data-dock="bottom"] .bancada-desenho__divisa {
+        @apply w-px h-5 mx-1;
+        background-image: linear-gradient(
+          to bottom,
+          transparent 0%,
+          rgba(7, 58, 84, 0.16) 30%,
+          rgba(7, 58, 84, 0.16) 70%,
+          transparent 100%
+        );
+      }
+      .bancada-conjunto[data-dock="left"] .bancada-desenho__divisa,
+      .bancada-conjunto[data-dock="right"] .bancada-desenho__divisa {
+        @apply h-px w-5 my-1;
+        background-image: linear-gradient(
+          to right,
+          transparent 0%,
+          rgba(7, 58, 84, 0.16) 30%,
+          rgba(7, 58, 84, 0.16) 70%,
+          transparent 100%
+        );
+      }
+
+      /* Solta e fechada, some tudo menos a faixa: vira um estojo pousado onde o usuário largou.
+         Declarado depois das faixas, porque é regra de componente contra regra de componente. */
+      .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-desenho__ferramentas,
+      .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-desenho__poco,
+      .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-submenu {
+        @apply hidden;
+      }
+
+      /* .torre-snap — a torrezinha do encaixe, irmã da .torre-camadas. */
+      .torre-snap {
+        @apply absolute bottom-full left-0 mb-2.5 flex items-center gap-3 px-3 py-2.5
+               transition-all duration-300 ease-out origin-bottom-left;
+      }
+      .torre-snap--fechada {
+        @apply opacity-0 translate-y-3 scale-95 pointer-events-none;
+      }
+      .torre-snap__texto {
+        @apply flex flex-col gap-0.5 whitespace-nowrap;
+      }
+      .torre-snap__rotulo {
+        @apply text-xs font-bold text-madeira-700 leading-none;
+      }
+      .torre-snap__dica {
+        @apply text-[10px] text-rocha-700 leading-none;
+      }
+
+      /* Recolhe sob modal como a .moldura-fixa, mas sem a classe dela: o transform de recolhimento
+         brigaria com o deslize de fechar e com o encaixe. */
+      :root:has(.modal-toggle:checked) .bancada-conjunto {
+        @apply opacity-0 pointer-events-none;
+      }
+    }
+
+    /* ==================== CURSOR DO MAPA ==================== */
+    /* FORA de @layer components, de propósito: o CSS do Leaflet e do Geoman entra por <link>, sem
+       layer nenhum, e regra sem layer vence regra em layer independentemente de especificidade.
+       Dentro do layer estas regras eram silenciosamente ignoradas — o cursor de apagar nunca
+       chegava a aparecer. Desvio assumido: é o único jeito de o design system mandar no cursor
+       sem recorrer a !important.
+
+       O cursor diz que ferramenta está na mão. Mesmo idioma do próprio Geoman
+       (.geoman-draw-cursor): classe no contêiner, mais a regra para as geometrias já desenhadas,
+       que trazem cursor próprio.
+
+       Não existe cursor "lápis" nem "X" no CSS. Desenhar usa `crosshair`, a mira de precisão de
+       todo editor — e o que o plugin já aplica sozinho. Modificar usa a mão aberta. Apagar é o
+       único que precisa de desenho próprio: `not-allowed` é ⊘ e lê como "proibido", não como
+       "este clique destrói"; o X vai em tinta de erro com halo branco para sobreviver a ortofoto
+       clara e escura, com `not-allowed` de reserva onde o cursor custom não carregar. */
+    .mapa-cursor--desenhar,
+    .mapa-cursor--desenhar .leaflet-interactive {
+      cursor: crosshair;
+    }
+    .mapa-cursor--modificar,
+    .mapa-cursor--modificar .leaflet-interactive {
+      cursor: grab;
+    }
+    .mapa-cursor--modificar:active,
+    .mapa-cursor--modificar .leaflet-interactive:active {
+      cursor: grabbing;
+    }
+    .mapa-cursor--apagar,
+    .mapa-cursor--apagar .leaflet-interactive {
+      cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 7 17 17M17 7 7 17' fill='none' stroke='white' stroke-width='5.5' stroke-linecap='round'/%3E%3Cpath d='M7 7 17 17M17 7 7 17' fill='none' stroke='%23dc2626' stroke-width='2.8' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, not-allowed;
+    }
+  </script>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-base-100 via-base-200 to-base-300 text-base-content selection:bg-agua-500/30">
+
+  <!-- Filtros da gravação no gelo — templates/partials/_filtros_gravacao.html, incluído no base.html.
+       Sem estes defs o .etched existe e não desenha nada. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Glifos da bancada (SPEC design/018) — previstos para templates/mapping/_glifos_desenho.html -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-caixa-ferramentas">
+        <path d="M3 9.5h18V19a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19V9.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M8.5 9.5V6.2A1.7 1.7 0 0 1 10.2 4.5h3.6A1.7 1.7 0 0 1 15.5 6.2v3.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M3 13.8h6.5M14.5 13.8H21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M10 12.2h4v3.2h-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-ponto">
+        <path d="M12 21.5s7-6.6 7-11.5a7 7 0 1 0-14 0c0 4.9 7 11.5 7 11.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+        <circle cx="12" cy="9.8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/>
+      </g>
+      <g id="glifo-linha">
+        <path d="M4.5 18 10 8.5l4.6 5.2L19.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="4.5" cy="18" r="1.9" fill="currentColor"/>
+        <circle cx="10" cy="8.5" r="1.9" fill="currentColor"/>
+        <circle cx="14.6" cy="13.7" r="1.9" fill="currentColor"/>
+        <circle cx="19.5" cy="5.5" r="1.9" fill="currentColor"/>
+      </g>
+      <g id="glifo-poligono">
+        <path d="M12 3.5 20.2 9.6 17 19.4H7L3.8 9.6z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+        <circle cx="12" cy="3.5" r="1.9" fill="currentColor"/>
+        <circle cx="20.2" cy="9.6" r="1.9" fill="currentColor"/>
+        <circle cx="3.8" cy="9.6" r="1.9" fill="currentColor"/>
+        <circle cx="17" cy="19.4" r="1.9" fill="currentColor"/>
+        <circle cx="7" cy="19.4" r="1.9" fill="currentColor"/>
+      </g>
+      <g id="glifo-retangulo">
+        <path d="M4.5 6.5h15v11h-15z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+        <circle cx="4.5" cy="6.5" r="1.9" fill="currentColor"/>
+        <circle cx="19.5" cy="6.5" r="1.9" fill="currentColor"/>
+        <circle cx="4.5" cy="17.5" r="1.9" fill="currentColor"/>
+        <circle cx="19.5" cy="17.5" r="1.9" fill="currentColor"/>
+      </g>
+      <g id="glifo-circulo">
+        <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.9"/>
+        <path d="M12 12h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.4 2.2" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="1.9" fill="currentColor"/>
+        <circle cx="20" cy="12" r="1.9" fill="currentColor"/>
+      </g>
+      <g id="glifo-modificar">
+        <path d="M14.4 5.6 18.4 9.6M4 20l1-4.4L16.1 4.5a2.1 2.1 0 0 1 3 3L8 18.6 4 20z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-vertices">
+        <path d="M6.5 17.5V6.5h11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4.6 4.6h3.8v3.8H4.6zM4.6 15.6h3.8v3.8H4.6zM15.6 4.6h3.8v3.8h-3.8z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-mover">
+        <path d="M12 3.5v17M3.5 12h17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        <path d="M9.2 6.3 12 3.5l2.8 2.8M9.2 17.7 12 20.5l2.8-2.8M6.3 9.2 3.5 12l2.8 2.8M17.7 9.2 20.5 12l-2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-girar">
+        <path d="M12 4.5a7.5 7.5 0 1 0 7.5 7.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        <path d="m11.6 1.8 3 2.7-3 2.7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-recortar">
+        <circle cx="6.2" cy="6.2" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/>
+        <circle cx="6.2" cy="17.8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/>
+        <path d="M8.4 7.6 20 18M8.4 16.4 20 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+      </g>
+      <g id="glifo-apagar">
+        <path d="M4 7h16M9.5 4.2h5M6.4 7l.9 12.4h9.4L17.6 7M10 10.8v5.6M14 10.8v5.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-ima">
+        <path d="M6 3.5h4v8.7a2 2 0 0 0 4 0V3.5h4v8.7a6 6 0 0 1-12 0V3.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+        <path d="M6 8.4h4M14 8.4h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+      </g>
+      <g id="glifo-x">
+        <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      </g>
+      <g id="glifo-check">
+        <path d="m5 12.8 4.8 4.7L19 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-selo">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-camadas">
+        <path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-menos">
+        <path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </g>
+      <g id="glifo-mais">
+        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-7xl mx-auto px-4 py-8 flex flex-col gap-12">
+
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rocha-900/10 pb-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="badge badge-sm font-mono bg-agua-500/20 text-agua-800 border-agua-600/30">SPEC design/018</span>
+          <span class="text-xs uppercase tracking-widest text-rocha-700 font-bold">Onsen de Inverno</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-bold font-serif text-madeira-700 mt-1">
+          Bancada de Desenho (corpo inteiriço, móvel, que encaixa nas bordas)
+        </h1>
+        <p class="text-sm text-rocha-700 mt-1 max-w-2xl">
+          Substituição da toolbar nativa do Leaflet-Geoman por uma bancada do design system: três
+          faixas num corpo só — alça, geometrias e o poço que governa o desenho —, arrastável pela
+          alça, que encaixa nas bordas virando coluna, e cujo submenu abre como mais uma linha dentro dela.
+        </p>
+      </div>
+
+      <nav class="flex flex-wrap gap-2 text-xs">
+        <a href="#atomos" class="btn btn-xs btn-ghost border border-white/60 bg-white/40">2 · Átomos</a>
+        <a href="#moleculas" class="btn btn-xs btn-ghost border border-white/60 bg-white/40">3 · Moléculas</a>
+        <a href="#organismos" class="btn btn-xs btn-ghost border border-white/60 bg-white/40">4 · Organismos</a>
+        <a href="#tela" class="btn btn-xs btn-onsen shadow-sm">5 · Tela Montada</a>
+      </nav>
+    </header>
+
+    <!-- 2 · ÁTOMOS -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <div class="flex items-center justify-between border-b border-rocha-900/10 pb-2">
+        <h2 class="text-lg font-bold text-madeira-700">2 · Átomos</h2>
+        <span class="text-xs text-rocha-700">Cada peça nos seus estados</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- .bancada-alca -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3">
+          <span class="text-overline">.bancada-alca</span>
+          <div class="flex items-center justify-center gap-10 bg-white/30 p-5 rounded-xl card-well">
+            <div class="flex flex-col items-center gap-2">
+              <!-- repouso -->
+              <div class="bancada-conjunto bancada-conjunto--fechada" data-dock="bottom" style="position: relative; inset: auto; transform: none; padding: 0">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" style="width: 9rem">
+                    <div class="bancada-alca">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <span class="text-[10px] text-rocha-700">guardada — o estojo</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <!-- swell: pode pegar -->
+              <div class="bancada-conjunto" data-dock="bottom" style="position: relative; inset: auto; transform: none; padding: 0">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" style="width: 9rem">
+                    <div class="bancada-alca is-hover-demo">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <span class="text-[10px] text-rocha-700">aberta — o fio, sob o cursor</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- .bancada-desenho__categoria -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3">
+          <span class="text-overline">.bancada-desenho__categoria</span>
+          <div class="flex flex-wrap items-center justify-center gap-5 bg-white/30 p-4 rounded-xl card-well">
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__categoria"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+              <span class="text-[10px] text-rocha-700">repouso</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__categoria is-hover-demo"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+              <span class="text-[10px] text-rocha-700">hover</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__categoria bancada-desenho__categoria--ativa"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+              <span class="text-[10px] text-rocha-700">ativa (afunda)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- .bancada-desenho__controle -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3 md:col-span-2">
+          <span class="text-overline">.bancada-desenho__controle</span>
+          <div class="flex flex-wrap items-center justify-center gap-5 bg-white/30 p-4 rounded-xl card-well">
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__controle"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+              <span class="text-[10px] text-rocha-700">repouso (madeira)</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__controle is-hover-demo"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+              <span class="text-[10px] text-rocha-700">hover (acende)</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+              <span class="text-[10px] text-rocha-700">ligado (água)</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ativo"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+              <span class="text-[10px] text-rocha-700">lápis com a ativa</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado-apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+              <span class="text-[10px] text-rocha-700">armado destrutivo</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__controle" disabled><svg class="etched" viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+              <span class="text-[10px] text-rocha-700">sem alvo (sulco)</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado"><svg class="etched" viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+              <span class="text-[10px] text-rocha-700">concluir armado</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado"><svg class="etched" viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+              <span class="text-[10px] text-rocha-700">suspender armado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- .bancada-submenu__tool -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3 md:col-span-2">
+          <span class="text-overline">.bancada-submenu__tool</span>
+          <div class="flex flex-wrap items-center justify-center gap-5 bg-white/30 p-4 rounded-xl card-well">
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-submenu__tool"><svg viewBox="0 0 24 24"><use href="#glifo-recortar"/></svg></button>
+              <span class="text-[10px] text-rocha-700">repouso</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-submenu__tool is-hover-demo"><svg viewBox="0 0 24 24"><use href="#glifo-recortar"/></svg></button>
+              <span class="text-[10px] text-rocha-700">hover</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-submenu__tool bancada-submenu__tool--ativa"><svg viewBox="0 0 24 24"><use href="#glifo-recortar"/></svg></button>
+              <span class="text-[10px] text-rocha-700">ativa (.well)</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <button type="button" class="bancada-submenu__tool" disabled><svg viewBox="0 0 24 24"><use href="#glifo-recortar"/></svg></button>
+              <span class="text-[10px] text-rocha-700">sem alvo</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 4 · ORGANISMOS -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <div class="flex items-center justify-between border-b border-rocha-900/10 pb-2">
+        <h2 class="text-lg font-bold text-madeira-700">4 · Organismos</h2>
+        <span class="text-xs text-rocha-700">.bancada-conjunto em cada encaixe</span>
+      </div>
+
+      <div class="glass-panel p-6 rounded-3xl grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="flex flex-col items-center gap-2">
+            <div class="relative w-full h-64 rounded-2xl bg-gradient-to-tr from-agua-100 via-white/40 to-base-200 border border-white/60 overflow-hidden">
+              <div class="bancada-conjunto bancada-conjunto--fechada" data-dock="bottom">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                    <button type="button" class="bancada-alca" aria-expanded="false" title="Abrir, fechar e arrastar a bancada">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </button>
+                    <div class="bancada-desenho__ferramentas">
+                      <button type="button" class="bancada-desenho__categoria" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                    </div>
+                    <div class="bancada-desenho__poco card-well">
+                      <button type="button" class="bancada-desenho__controle" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      <span class="bancada-desenho__divisa"></span>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="text-[10px] text-rocha-700">rodapé, fechada — só a alça sobra</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <div class="relative w-full h-64 rounded-2xl bg-gradient-to-tr from-agua-100 via-white/40 to-base-200 border border-white/60 overflow-hidden">
+              <div class="bancada-conjunto" data-dock="bottom">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                    <button type="button" class="bancada-alca" aria-expanded="true" title="Abrir, fechar e arrastar a bancada">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </button>
+                    <div class="bancada-desenho__ferramentas">
+                      <button type="button" class="bancada-desenho__categoria" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria bancada-desenho__categoria--ativa" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                    </div>
+                    <div class="bancada-desenho__poco card-well">
+                      <button type="button" class="bancada-desenho__controle" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      <span class="bancada-desenho__divisa"></span>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="text-[10px] text-rocha-700">rodapé, aberta</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <div class="relative w-full h-64 rounded-2xl bg-gradient-to-tr from-agua-100 via-white/40 to-base-200 border border-white/60 overflow-hidden">
+              <div class="bancada-conjunto" data-dock="bottom">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                    <button type="button" class="bancada-alca" aria-expanded="true" title="Abrir, fechar e arrastar a bancada">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </button>
+                    <div class="bancada-desenho__ferramentas">
+                      <button type="button" class="bancada-desenho__categoria" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                    </div>
+                    <div class="bancada-submenu card-well" role="menu" aria-label="Ferramentas de edição">
+                      <button type="button" class="bancada-submenu__tool bancada-submenu__tool--ativa" title="Vértices"><svg viewBox="0 0 24 24"><use href="#glifo-vertices"/></svg></button>
+                      <button type="button" class="bancada-submenu__tool" title="Mover"><svg viewBox="0 0 24 24"><use href="#glifo-mover"/></svg></button>
+                      <button type="button" class="bancada-submenu__tool" title="Girar"><svg viewBox="0 0 24 24"><use href="#glifo-girar"/></svg></button>
+                      <button type="button" class="bancada-submenu__tool" title="Recortar"><svg viewBox="0 0 24 24"><use href="#glifo-recortar"/></svg></button>
+                    </div>
+                    <div class="bancada-desenho__poco card-well">
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ativo" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      <span class="bancada-desenho__divisa"></span>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="text-[10px] text-rocha-700">rodapé, submenu do lápis</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <div class="relative w-full h-64 rounded-2xl bg-gradient-to-tr from-agua-100 via-white/40 to-base-200 border border-white/60 overflow-hidden">
+              <div class="bancada-conjunto bancada-conjunto--fechada bancada-conjunto--solta" data-dock="bottom" style="left: 42%; top: 34%; right: auto; bottom: auto">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                    <button type="button" class="bancada-alca" aria-expanded="false" title="Abrir, fechar e arrastar a bancada">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </button>
+                    <div class="bancada-desenho__ferramentas">
+                      <button type="button" class="bancada-desenho__categoria" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                    </div>
+                    <div class="bancada-desenho__poco card-well">
+                      <button type="button" class="bancada-desenho__controle" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      <span class="bancada-desenho__divisa"></span>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="text-[10px] text-rocha-700">solta e fechada — o estojo pousado</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <div class="relative w-full h-64 rounded-2xl bg-gradient-to-tr from-agua-100 via-white/40 to-base-200 border border-white/60 overflow-hidden">
+              <div class="bancada-conjunto" data-dock="left">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                    <button type="button" class="bancada-alca" aria-expanded="true" title="Abrir, fechar e arrastar a bancada">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </button>
+                    <div class="bancada-desenho__ferramentas">
+                      <button type="button" class="bancada-desenho__categoria" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria bancada-desenho__categoria--ativa" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                    </div>
+                    <div class="bancada-desenho__poco card-well">
+                      <button type="button" class="bancada-desenho__controle" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      <span class="bancada-desenho__divisa"></span>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="text-[10px] text-rocha-700">encaixada à esquerda — vira coluna</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <div class="relative w-full h-64 rounded-2xl bg-gradient-to-tr from-agua-100 via-white/40 to-base-200 border border-white/60 overflow-hidden">
+              <div class="bancada-conjunto" data-dock="left">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                    <button type="button" class="bancada-alca" aria-expanded="true" title="Abrir, fechar e arrastar a bancada">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </button>
+                    <div class="bancada-desenho__ferramentas">
+                      <button type="button" class="bancada-desenho__categoria" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                    </div>
+                    <div class="bancada-submenu card-well" role="menu" aria-label="Ferramentas de edição">
+                      <button type="button" class="bancada-submenu__tool" title="Vértices"><svg viewBox="0 0 24 24"><use href="#glifo-vertices"/></svg></button>
+                      <button type="button" class="bancada-submenu__tool bancada-submenu__tool--ativa" title="Mover"><svg viewBox="0 0 24 24"><use href="#glifo-mover"/></svg></button>
+                      <button type="button" class="bancada-submenu__tool" title="Girar"><svg viewBox="0 0 24 24"><use href="#glifo-girar"/></svg></button>
+                      <button type="button" class="bancada-submenu__tool" title="Recortar"><svg viewBox="0 0 24 24"><use href="#glifo-recortar"/></svg></button>
+                    </div>
+                    <div class="bancada-desenho__poco card-well">
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ativo" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      <span class="bancada-desenho__divisa"></span>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="text-[10px] text-rocha-700">à esquerda, submenu do lápis</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <div class="relative w-full h-64 rounded-2xl bg-gradient-to-tr from-agua-100 via-white/40 to-base-200 border border-white/60 overflow-hidden">
+              <div class="bancada-conjunto" data-dock="right">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                    <button type="button" class="bancada-alca" aria-expanded="true" title="Abrir, fechar e arrastar a bancada">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </button>
+                    <div class="bancada-desenho__ferramentas">
+                      <button type="button" class="bancada-desenho__categoria bancada-desenho__categoria--ativa" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                    </div>
+                    <div class="bancada-desenho__poco card-well">
+                      <button type="button" class="bancada-desenho__controle" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado-apagar" title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      <span class="bancada-desenho__divisa"></span>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="text-[10px] text-rocha-700">encaixada à direita</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <div class="relative w-full h-64 rounded-2xl bg-gradient-to-tr from-agua-100 via-white/40 to-base-200 border border-white/60 overflow-hidden">
+              <div class="bancada-conjunto" data-dock="right">
+                <div class="bancada-pilha">
+                  <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                    <button type="button" class="bancada-alca" aria-expanded="true" title="Abrir, fechar e arrastar a bancada">
+                      <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                      <span class="bancada-alca__fio etched-line"></span>
+                    </button>
+                    <div class="bancada-desenho__ferramentas">
+                      <button type="button" class="bancada-desenho__categoria" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                      <button type="button" class="bancada-desenho__categoria" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                    </div>
+                    <div class="bancada-submenu card-well" role="menu" aria-label="Ferramentas de edição">
+                      <button type="button" class="bancada-submenu__tool" title="Vértices"><svg viewBox="0 0 24 24"><use href="#glifo-vertices"/></svg></button>
+                      <button type="button" class="bancada-submenu__tool" title="Mover"><svg viewBox="0 0 24 24"><use href="#glifo-mover"/></svg></button>
+                      <button type="button" class="bancada-submenu__tool bancada-submenu__tool--ativa" title="Girar"><svg viewBox="0 0 24 24"><use href="#glifo-girar"/></svg></button>
+                      <button type="button" class="bancada-submenu__tool" title="Recortar"><svg viewBox="0 0 24 24"><use href="#glifo-recortar"/></svg></button>
+                    </div>
+                    <div class="bancada-desenho__poco card-well">
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ativo" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      <span class="bancada-desenho__divisa"></span>
+                      <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="text-[10px] text-rocha-700">à direita, submenu do lápis</span>
+          </div>
+      </div>
+    </section>
+
+    <!-- 5 · TELA MONTADA -->
+    <section id="tela" class="flex flex-col gap-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-rocha-900/10 pb-2 gap-2">
+        <div>
+          <h2 class="text-lg font-bold text-madeira-700">5 · Tela Montada — Home com Geoman vivo</h2>
+          <span class="text-xs text-rocha-700">Toolbar nativa desligada; as ferramentas são chamadas pela API do plugin</span>
+        </div>
+        <label class="btn btn-xs btn-glass cursor-pointer">
+          <input type="checkbox" id="toggle-modal-teste" class="modal-toggle hidden" />
+          <span>Simular abertura de modal</span>
+        </label>
+      </div>
+
+      <p class="text-xs text-rocha-700 -mt-2 max-w-3xl">
+        Clique na alça para abrir a bancada; <strong>arraste pela alça</strong> para levá-la para
+        outro canto. Solta perto da borda esquerda ou direita, ela encaixa e vira coluna; perto do
+        rodapé, volta a deitar — e solta no meio da tela ela também se deita. O lápis e o polígono abrem
+        o submenu como uma linha nova dentro do próprio corpo, sempre logo acima de quem a abriu.
+      </p>
+
+      <!-- página: templates/core/home.html -->
+      <div id="tela-mapa" class="relative w-full h-[78vh] rounded-3xl overflow-hidden border border-white/60 shadow-2xl">
+        <!-- fica na página: canvas do mapa e lente Onsen -->
+        <div id="map" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+        <div class="absolute inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+        <div class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+        <div class="absolute inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+        <div class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+        <!-- fica na página: chrome da home já existente -->
+        <div class="moldura-fixa absolute top-6 left-4 lg:left-6 z-20 glass-panel rounded-full! w-11 h-11 flex items-center justify-center font-bold text-madeira-700 text-lg">D</div>
+        <div class="absolute top-6 left-1/2 -translate-x-1/2 z-10 w-11/12 max-w-xl pointer-events-auto moldura-fixa">
+          <div class="glass-panel rounded-2xl p-2 flex items-center gap-3 shadow-lg">
+            <svg class="w-5 h-5 text-rocha-700/70 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text" placeholder="Rua Direita, São Paulo..." class="input input-glass h-9 rounded-xl grow text-sm" />
+          </div>
+        </div>
+        <div class="moldura-fixa absolute top-6 right-4 lg:right-6 z-20 glass-panel rounded-full! p-1 flex items-center">
+          <div class="w-9 h-9 rounded-full bg-rocha-800 text-rocha-100 flex items-center justify-center font-mono text-xs font-bold">MS</div>
+        </div>
+        <div class="btn btn-glass atalho-mapa moldura-fixa z-20 flex items-center gap-2 cursor-pointer text-madeira-700">
+          <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+          <span class="text-xs font-medium text-madeira-700">Validar documento</span>
+        </div>
+        <div class="pilula-mapa moldura-fixa z-20">
+          <button type="button" class="pilula-mapa__btn-camadas" title="Camadas">
+            <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-camadas"/></svg>
+          </button>
+          <div class="pilula-mapa__zoom card-well">
+            <button type="button" id="btn-mapa-zoom-out" class="pilula-mapa__btn-zoom" aria-label="Afastar"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg></button>
+            <button type="button" id="btn-mapa-zoom-in" class="pilula-mapa__btn-zoom" aria-label="Aproximar"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></button>
+          </div>
+        </div>
+
+        <!-- partial: templates/mapping/_bancada_desenho.html -->
+        <div id="bancada-conjunto" class="bancada-conjunto bancada-conjunto--fechada" data-dock="bottom">
+          <div class="bancada-pilha">
+            <div id="bancada-barra" class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+              <button type="button" id="bancada-alca" class="bancada-alca" aria-expanded="false" title="Abrir, fechar e arrastar a bancada">
+                <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                <span class="bancada-alca__fio etched-line"></span>
+              </button>
+              <div id="torre-snap" class="torre-snap torre-snap--fechada glass-panel-thick" role="group" aria-label="Encaixe">
+                <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-ima"/></svg>
+                <span class="torre-snap__texto">
+                  <span class="torre-snap__rotulo">Encaixe</span>
+                  <span class="torre-snap__dica">ALT suspende</span>
+                </span>
+                <input type="checkbox" id="snap-toggle" class="toggle-onsen" checked>
+              </div>
+              <div id="bancada-submenu" class="bancada-submenu card-well bancada-submenu--fechado" role="menu" aria-label="Ferramentas de edição"></div>
+              <div class="bancada-desenho__ferramentas">
+                <button type="button" class="bancada-desenho__categoria" data-categoria="ponto" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                <button type="button" class="bancada-desenho__categoria" data-categoria="linha" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                <button type="button" class="bancada-desenho__categoria" data-categoria="poligono" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+              </div>
+              <div class="bancada-desenho__poco card-well">
+                <button type="button" id="btn-editar" data-categoria="modificar" class="bancada-desenho__controle" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                <button type="button" id="btn-apagar" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                <button type="button" id="btn-concluir" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                <button type="button" id="btn-cancelar" class="bancada-desenho__controle" disabled title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                <span class="bancada-desenho__divisa"></span>
+                <button type="button" id="btn-snap" aria-expanded="false" aria-controls="torre-snap" class="bancada-desenho__controle bancada-desenho__controle--ligado" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- fica na página: prova do recolhimento sob modal -->
+        <div id="modal-simulacao" class="absolute inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[16px] opacity-0 pointer-events-none transition-all duration-300">
+          <div class="glass-panel max-w-md w-full p-6 rounded-3xl flex flex-col gap-4 shadow-2xl border border-white/80">
+            <h4 class="text-base font-bold text-madeira-700">Modal aberto</h4>
+            <p class="text-xs text-rocha-700">A bancada se recolhe junto com o resto da moldura fixa.</p>
+            <button type="button" id="btn-fechar-modal" class="btn btn-sm btn-onsen self-end">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+    // ── Mapa e plugin ────────────────────────────────────────────────────────────────────────────
+    const CENTRO_SP = [-23.5505, -46.6333];
+    const MIN_ZOOM = 13;
+    const MAX_ZOOM = 19;
+
+    const mapa = L.map("map", {
+      minZoom: MIN_ZOOM,
+      maxZoom: MAX_ZOOM,
+      zoomControl: false,
+      attributionControl: false,
+    }).setView(CENTRO_SP, 15);
+
+    L.tileLayer.wms("https://raster.geosampa.prefeitura.sp.gov.br/geoserver/wms", {
+      layers: "geoportal:ORTO_RGB_2020",
+      version: "1.3.0",
+      format: "image/png",
+      transparent: false,
+      maxZoom: MAX_ZOOM,
+      maxNativeZoom: 18,
+    }).addTo(mapa);
+
+    document.getElementById("btn-mapa-zoom-in").addEventListener("click", () => mapa.zoomIn());
+    document.getElementById("btn-mapa-zoom-out").addEventListener("click", () => mapa.zoomOut());
+
+    // Cores de geometria do design system (§3.3): o traço nasce na cor do seu tipo.
+    const COR_PONTO = "#00B4D8";
+    const COR_LINHA = "#0F766E";
+    const COR_POLIGONO = "#D84F7F";
+
+    function pinturaDe(forma) {
+      if (forma === "Marker" || forma === "CircleMarker") return COR_PONTO;
+      if (forma === "Line") return COR_LINHA;
+      return COR_POLIGONO;
+    }
+
+    function opcoesDesenho(forma) {
+      const cor = pinturaDe(forma);
+      return {
+        pathOptions: { color: cor, fillColor: cor, fillOpacity: 0.35, weight: 3 },
+        templineStyle: { color: cor, weight: 2 },
+        hintlineStyle: { color: cor, dashArray: "6,6", weight: 2 },
+        markerStyle: {
+          icon: L.divIcon({
+            className: "",
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+            html: '<span style="display:block;width:14px;height:14px;border-radius:9999px;background:' + COR_PONTO + ';border:2px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(72,202,228,.9)"></span>',
+          }),
+        },
+      };
+    }
+
+    mapa.pm.setGlobalOptions({ snappable: true, snapDistance: 20 });
+
+    // ── Catálogo ─────────────────────────────────────────────────────────────────────────────────
+    const GEOMETRIAS = {
+      ponto: [{ id: "Marker", rotulo: "Marcador", glifo: "#glifo-ponto" }],
+      linha: [{ id: "Line", rotulo: "Linha", glifo: "#glifo-linha" }],
+      poligono: [
+        { id: "Polygon", rotulo: "Polígono", glifo: "#glifo-poligono" },
+        { id: "Rectangle", rotulo: "Retângulo", glifo: "#glifo-retangulo" },
+        { id: "Circle", rotulo: "Círculo", glifo: "#glifo-circulo" },
+      ],
+      // Apagar não está aqui: destruir não é uma forma de modificar, e mora no poço.
+      modificar: [
+        { id: "edit", rotulo: "Vértices", glifo: "#glifo-vertices" },
+        { id: "drag", rotulo: "Mover", glifo: "#glifo-mover" },
+        { id: "rotate", rotulo: "Girar", glifo: "#glifo-girar" },
+        { id: "cut", rotulo: "Recortar", glifo: "#glifo-recortar" },
+      ],
+    };
+
+    const MODOS_GLOBAIS = {
+      edit: ["enableGlobalEditMode", "disableGlobalEditMode", "globalEditModeEnabled"],
+      drag: ["enableGlobalDragMode", "disableGlobalDragMode", "globalDragModeEnabled"],
+      rotate: ["enableGlobalRotateMode", "disableGlobalRotateMode", "globalRotateModeEnabled"],
+      cut: ["enableGlobalCutMode", "disableGlobalCutMode", "globalCutModeEnabled"],
+      remove: ["enableGlobalRemovalMode", "disableGlobalRemovalMode", "globalRemovalModeEnabled"],
+    };
+
+    // Qual cursor cada ferramenta pede. Recortar desenha o corte, então é mira, não mão.
+    const CURSOR_DA_FERRAMENTA = {
+      Marker: "desenhar",
+      Line: "desenhar",
+      Polygon: "desenhar",
+      Rectangle: "desenhar",
+      Circle: "desenhar",
+      cut: "desenhar",
+      edit: "modificar",
+      drag: "modificar",
+      rotate: "modificar",
+      remove: "apagar",
+    };
+    const CURSORES = ["desenhar", "modificar", "apagar"];
+
+    function categoriaDaFerramenta(id) {
+      return Object.keys(GEOMETRIAS).find((nome) => GEOMETRIAS[nome].some((f) => f.id === id));
+    }
+
+    // ── Elementos ────────────────────────────────────────────────────────────────────────────────
+    const telaMapa = document.getElementById("tela-mapa");
+    const lonaDoMapa = mapa.getContainer();
+    const conjunto = document.getElementById("bancada-conjunto");
+    const alca = document.getElementById("bancada-alca");
+    const barra = document.getElementById("bancada-barra");
+    const submenu = document.getElementById("bancada-submenu");
+    const btnCancelar = document.getElementById("btn-cancelar");
+    const btnConcluir = document.getElementById("btn-concluir");
+    const btnApagar = document.getElementById("btn-apagar");
+    const btnEditar = document.getElementById("btn-editar");
+    const btnSnap = document.getElementById("btn-snap");
+    const torreSnap = document.getElementById("torre-snap");
+    const snapToggle = document.getElementById("snap-toggle");
+    const linhaFerramentas = conjunto.querySelector(".bancada-desenho__ferramentas");
+    const poco = conjunto.querySelector(".bancada-desenho__poco");
+    const categorias = Array.from(conjunto.querySelectorAll("[data-categoria]"));
+
+    // Sem isto, arrastar a bancada arrasta o mapa e a roda sobre ela dá zoom.
+    L.DomEvent.disableClickPropagation(conjunto);
+    L.DomEvent.disableScrollPropagation(conjunto);
+
+    let categoriaAberta = null;
+    let formaEmDesenho = null;
+
+    // ── Estado do plugin, lido do plugin ─────────────────────────────────────────────────────────
+    function ferramentaAtiva() {
+      if (mapa.pm.globalDrawModeEnabled()) return formaEmDesenho;
+      const modo = Object.keys(MODOS_GLOBAIS).find((id) => mapa.pm[MODOS_GLOBAIS[id][2]]());
+      return modo || null;
+    }
+
+    function haGeometria() {
+      return mapa.pm.getGeomanLayers().length > 0;
+    }
+
+    // L.Rectangle herda de L.Polygon; L.Polyline não — a checagem separa área de linha sozinha.
+    function haPoligono() {
+      return mapa.pm.getGeomanLayers().some((camada) => camada instanceof L.Polygon);
+    }
+
+    // Só forma de múltiplos vértices tem o que concluir: marcador, retângulo e círculo terminam no
+    // próprio clique que os cria.
+    const VERTICES_MINIMOS = {
+      Line: 2,
+      Polygon: 3,
+    };
+
+    function podeConcluir() {
+      const minimo = VERTICES_MINIMOS[formaEmDesenho];
+      if (!minimo || !mapa.pm.globalDrawModeEnabled()) return false;
+      const desenho = mapa.pm.Draw[formaEmDesenho];
+      if (!desenho || !desenho._layer) return false;
+      const vertices = desenho._layer.getLatLngs();
+      const traco = Array.isArray(vertices[0]) ? vertices[0] : vertices;
+      return traco.length >= minimo;
+    }
+
+    function desligarTudo() {
+      mapa.pm.disableDraw();
+      Object.values(MODOS_GLOBAIS).forEach(([, desligar]) => mapa.pm[desligar]());
+    }
+
+    function acionar(id) {
+      const jaAtiva = ferramentaAtiva() === id;
+      desligarTudo();
+      if (jaAtiva) return;
+      if (MODOS_GLOBAIS[id]) {
+        mapa.pm[MODOS_GLOBAIS[id][0]]();
+      } else {
+        mapa.pm.enableDraw(id, opcoesDesenho(id));
+      }
+    }
+
+    // ── Render ───────────────────────────────────────────────────────────────────────────────────
+    function montarTrilha(categoria) {
+      const ativa = ferramentaAtiva();
+      submenu.innerHTML = "";
+
+      GEOMETRIAS[categoria].forEach((ferramenta) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.className = "bancada-submenu__tool";
+        botao.title = ferramenta.rotulo;
+        botao.setAttribute("aria-label", ferramenta.rotulo);
+        botao.setAttribute("role", "menuitemradio");
+        // Recortar só opera sobre área: com ponto e linha no mapa, a ferramenta não tem alvo.
+        botao.disabled = ferramenta.id === "cut" && !haPoligono();
+        const eAtiva = ferramenta.id === ativa;
+        botao.classList.toggle("bancada-submenu__tool--ativa", eAtiva);
+        botao.setAttribute("aria-checked", String(eAtiva));
+        botao.innerHTML = '<svg viewBox="0 0 24 24"><use href="' + ferramenta.glifo + '"/></svg>';
+        botao.addEventListener("click", () => acionar(ferramenta.id));
+        submenu.appendChild(botao);
+      });
+    }
+
+    function renderizar() {
+      const ativa = ferramentaAtiva();
+      const dona = ativa ? categoriaDaFerramenta(ativa) : null;
+
+      categorias.forEach((botao) => {
+        const nome = botao.dataset.categoria;
+        // O lápis mora no poço e usa a marca do controle; as geometrias, a da categoria.
+        const marcaAtiva = botao.classList.contains("bancada-desenho__controle")
+          ? "bancada-desenho__controle--ativo"
+          : "bancada-desenho__categoria--ativa";
+        botao.classList.toggle(marcaAtiva, nome === dona);
+        botao.setAttribute("aria-expanded", String(nome === categoriaAberta));
+      });
+
+      // Sem nada desenhado não há o que editar: o estado de falta é o lápis apagado, não uma
+      // bandeja aberta com um aviso dentro.
+      btnEditar.disabled = !haGeometria();
+
+      btnCancelar.disabled = !ativa;
+      btnCancelar.classList.toggle("bancada-desenho__controle--armado", Boolean(ativa));
+
+      const concluivel = podeConcluir();
+      btnConcluir.disabled = !concluivel;
+      btnConcluir.classList.toggle("bancada-desenho__controle--armado", concluivel);
+
+      btnApagar.disabled = !haGeometria();
+      btnApagar.classList.toggle("bancada-desenho__controle--armado-apagar", ativa === "remove");
+
+      const cursor = ativa ? CURSOR_DA_FERRAMENTA[ativa] : null;
+      CURSORES.forEach((nome) => lonaDoMapa.classList.toggle("mapa-cursor--" + nome, nome === cursor));
+
+      if (categoriaAberta) montarTrilha(categoriaAberta);
+    }
+
+    // ── Submenu: a linha que nasce DENTRO do corpo ───────────────────────────────────────────────
+    // Largura e altura não interpolam a partir de `auto`: mede-se antes, aplica-se a mutação, mede-se
+    // depois, e só então se anima entre as duas medidas.
+    const DURACAO_CRESCER = 320;
+
+    function animarCorpo(mutacao) {
+      const antes = barra.getBoundingClientRect();
+      mutacao();
+      const depois = barra.getBoundingClientRect();
+      if (Math.abs(antes.width - depois.width) < 1 && Math.abs(antes.height - depois.height) < 1) return;
+
+      barra.classList.add("bancada-desenho--crescendo");
+      barra.style.width = antes.width + "px";
+      barra.style.height = antes.height + "px";
+      barra.getBoundingClientRect();
+      barra.style.width = depois.width + "px";
+      barra.style.height = depois.height + "px";
+
+      window.setTimeout(() => {
+        barra.style.width = "";
+        barra.style.height = "";
+        barra.classList.remove("bancada-desenho--crescendo");
+      }, DURACAO_CRESCER);
+    }
+
+    // O submenu abre sempre imediatamente acima da linha de quem o abriu — daí ele mudar de lugar
+    // no DOM em vez de existir duas vezes.
+    function abrirBandeja(categoria) {
+      animarCorpo(() => {
+        categoriaAberta = categoria;
+        montarTrilha(categoria);
+        const vizinha = categoria === "modificar" ? poco : linhaFerramentas;
+        barra.insertBefore(submenu, vizinha);
+        submenu.classList.remove("bancada-submenu--fechado");
+      });
+    }
+
+    function fecharBandeja() {
+      if (!categoriaAberta) return;
+      animarCorpo(() => {
+        categoriaAberta = null;
+        submenu.classList.add("bancada-submenu--fechado");
+      });
+    }
+
+    categorias.forEach((botao) => {
+      botao.addEventListener("click", () => {
+        const nome = botao.dataset.categoria;
+        fecharTorreSnap();
+
+        if (GEOMETRIAS[nome].length === 1) {
+          fecharBandeja();
+          acionar(GEOMETRIAS[nome][0].id);
+          renderizar();
+          return;
+        }
+        if (categoriaAberta === nome) fecharBandeja();
+        else abrirBandeja(nome);
+        renderizar();
+      });
+    });
+
+    btnCancelar.addEventListener("click", () => {
+      desligarTudo();
+      renderizar();
+    });
+
+    // O mesmo caminho do Enter do plugin (finishOnEnter), pelo botão.
+    btnConcluir.addEventListener("click", () => {
+      if (!podeConcluir()) return;
+      mapa.pm.Draw[formaEmDesenho]._finishShape();
+      renderizar();
+    });
+
+    btnApagar.addEventListener("click", () => {
+      fecharTorreSnap();
+      acionar("remove");
+      renderizar();
+    });
+
+    // ── Torrezinha do encaixe ────────────────────────────────────────────────────────────────────
+    function fecharTorreSnap() {
+      torreSnap.classList.add("torre-snap--fechada");
+      btnSnap.setAttribute("aria-expanded", "false");
+    }
+
+    btnSnap.addEventListener("click", () => {
+      const aberta = torreSnap.classList.toggle("torre-snap--fechada");
+      btnSnap.setAttribute("aria-expanded", String(!aberta));
+    });
+
+    snapToggle.addEventListener("change", () => {
+      mapa.pm.setGlobalOptions({ snappable: snapToggle.checked });
+      btnSnap.classList.toggle("bancada-desenho__controle--ligado", snapToggle.checked);
+    });
+
+    // ── A bancada anda pela tela ─────────────────────────────────────────────────────────────────
+    // Abaixo deste deslocamento o gesto ainda é clique: sem isso, todo toque na alça viraria arrasto
+    // de um pixel e a bancada nunca abriria.
+    const LIMIAR_ARRASTO = 4;
+    // Faixa de captura das bordas. Generosa de propósito: encaixar é o resultado desejado, e errar
+    // por pouco deixaria a bancada boiando colada na borda, que é o pior dos dois mundos.
+    const MARGEM_ENCAIXE = 110;
+
+    let arrasto = null;
+
+    function limitar(valor, minimo, maximo) {
+      return Math.max(minimo, Math.min(maximo, valor));
+    }
+
+    function alternarBancada() {
+      const fechada = conjunto.classList.toggle("bancada-conjunto--fechada");
+      alca.setAttribute("aria-expanded", String(!fechada));
+      if (fechada) {
+        desligarTudo();
+        fecharBandeja();
+        fecharTorreSnap();
+        renderizar();
+      }
+    }
+
+    // Passa para posicionamento livre SEM pular: o lugar de agora vira left/top explícitos.
+    function soltarNoPonto() {
+      const caixa = conjunto.getBoundingClientRect();
+      const limite = telaMapa.getBoundingClientRect();
+      conjunto.classList.add("bancada-conjunto--solta");
+      conjunto.style.left = caixa.left - limite.left + "px";
+      conjunto.style.top = caixa.top - limite.top + "px";
+      // Inline porque a âncora do dock tem especificidade maior que a da classe: sem zerar as duas
+      // bordas opostas, o conjunto fica esticado entre `top` e `bottom` e a barra cresce.
+      conjunto.style.right = "auto";
+      conjunto.style.bottom = "auto";
+    }
+
+    function posicionarLivre(x, y) {
+      const limite = telaMapa.getBoundingClientRect();
+      const caixa = conjunto.getBoundingClientRect();
+      conjunto.style.left = limitar(x - limite.left, 0, limite.width - caixa.width) + "px";
+      conjunto.style.top = limitar(y - limite.top, 0, limite.height - caixa.height) + "px";
+    }
+
+    // Encaixe à esquerda e à direita partilham o eixo: ir de um ao outro não transmuta nada.
+    const EIXO = {
+      bottom: "deitada",
+      left: "empe",
+      right: "empe",
+    };
+
+    // A transmutação: esvaziar, esticar, repovoar. Os tempos somam o que o olho lê como UM gesto.
+    const DURACAO_ESVAZIAR = 170;
+    const DURACAO_ESTICAR = 430;
+
+    function guardarBancada() {
+      conjunto.classList.add("bancada-conjunto--fechada");
+      alca.setAttribute("aria-expanded", "false");
+      desligarTudo();
+      fecharBandeja();
+      fecharTorreSnap();
+    }
+
+    function reancorar(dock) {
+      conjunto.dataset.dock = dock;
+      conjunto.classList.remove("bancada-conjunto--solta");
+      conjunto.style.left = "";
+      conjunto.style.top = "";
+      conjunto.style.right = "";
+      conjunto.style.bottom = "";
+    }
+
+    function transmutarPara(dock, manterSolta) {
+      const antes = barra.getBoundingClientRect();
+      conjunto.classList.add("bancada-conjunto--transmutando");
+      fecharBandeja();
+      fecharTorreSnap();
+
+      window.setTimeout(() => {
+        if (manterSolta) conjunto.dataset.dock = dock;
+        else reancorar(dock);
+
+        // Largura e altura não interpolam a partir de `auto`: mede-se o destino já com o layout
+        // novo, volta-se para a medida antiga em px e só então se troca o alvo.
+        const depois = barra.getBoundingClientRect();
+        barra.style.width = antes.width + "px";
+        barra.style.height = antes.height + "px";
+        barra.getBoundingClientRect();
+        barra.style.width = depois.width + "px";
+        barra.style.height = depois.height + "px";
+
+        window.setTimeout(() => {
+          barra.style.width = "";
+          barra.style.height = "";
+          conjunto.classList.remove("bancada-conjunto--transmutando");
+          // Encostar no rodapé é guardar a bancada, como empurrar a gaveta de volta. Solta no meio
+          // da tela ela só se deita — não há gaveta para onde empurrar.
+          if (dock === "bottom" && !manterSolta) guardarBancada();
+          renderizar();
+        }, DURACAO_ESTICAR);
+      }, DURACAO_ESVAZIAR);
+    }
+
+    // Quem decide o encaixe é o PONTEIRO, não o centro da bancada: presa dentro do mapa, uma caixa
+    // de 203px nunca leva o próprio centro até 110px da borda, e o encaixe da direita não disparava
+    // nunca. O ponteiro é onde o usuário disse que quer, e não depende do tamanho da peça.
+    function encaixarNaBorda(ponteiroX, ponteiroY) {
+      const limite = telaMapa.getBoundingClientRect();
+      const x = ponteiroX - limite.left;
+      const y = ponteiroY - limite.top;
+
+      let dock = null;
+      if (x < MARGEM_ENCAIXE) dock = "left";
+      else if (limite.width - x < MARGEM_ENCAIXE) dock = "right";
+      else if (limite.height - y < MARGEM_ENCAIXE) dock = "bottom";
+      // Fora de qualquer borda a bancada fica onde foi largada, mas deitada: em pé ela só existe
+      // encaixada na lateral, que é o que justifica a coluna.
+      if (!dock) {
+        if (EIXO[conjunto.dataset.dock] === "empe") transmutarPara("bottom", true);
+        return;
+      }
+
+      // Encaixar no mesmo eixo é só reancorar: transmutar exige a placa mudar de eixo.
+      if (EIXO[dock] === EIXO[conjunto.dataset.dock]) {
+        reancorar(dock);
+        if (dock === "bottom") guardarBancada();
+        return;
+      }
+      transmutarPara(dock);
+    }
+
+    alca.addEventListener("pointerdown", (evento) => {
+      const caixa = conjunto.getBoundingClientRect();
+      arrasto = {
+        id: evento.pointerId,
+        partiuX: evento.clientX,
+        partiuY: evento.clientY,
+        pegaX: evento.clientX - caixa.left,
+        pegaY: evento.clientY - caixa.top,
+        moveu: false,
+      };
+      alca.setPointerCapture(evento.pointerId);
+    });
+
+    alca.addEventListener("pointermove", (evento) => {
+      if (!arrasto || evento.pointerId !== arrasto.id) return;
+      const andou = Math.hypot(evento.clientX - arrasto.partiuX, evento.clientY - arrasto.partiuY);
+      if (!arrasto.moveu && andou < LIMIAR_ARRASTO) return;
+      if (!arrasto.moveu) {
+        arrasto.moveu = true;
+        conjunto.classList.remove("bancada-conjunto--fechada");
+        alca.setAttribute("aria-expanded", "true");
+        soltarNoPonto();
+        conjunto.classList.add("bancada-conjunto--arrastando");
+        alca.classList.add("bancada-alca--pega");
+      }
+      posicionarLivre(evento.clientX - arrasto.pegaX, evento.clientY - arrasto.pegaY);
+    });
+
+    function largarAlca(evento) {
+      if (!arrasto || evento.pointerId !== arrasto.id) return;
+      if (alca.hasPointerCapture(evento.pointerId)) alca.releasePointerCapture(evento.pointerId);
+      conjunto.classList.remove("bancada-conjunto--arrastando");
+      alca.classList.remove("bancada-alca--pega");
+      if (arrasto.moveu) encaixarNaBorda(evento.clientX, evento.clientY);
+      else alternarBancada();
+      arrasto = null;
+    }
+    alca.addEventListener("pointerup", largarAlca);
+    alca.addEventListener("pointercancel", largarAlca);
+
+    // ── Sincronia com o plugin ───────────────────────────────────────────────────────────────────
+    mapa.on("pm:globaldrawmodetoggled", (evento) => {
+      formaEmDesenho = evento.enabled ? evento.shape : null;
+      renderizar();
+    });
+    [
+      "pm:globaleditmodetoggled",
+      "pm:globaldragmodetoggled",
+      "pm:globalrotatemodetoggled",
+      "pm:globalcutmodetoggled",
+      "pm:globalremovalmodetoggled",
+    ].forEach((evento) => mapa.on(evento, renderizar));
+
+    // O Ok arma conforme os vértices caem. O pm:vertexadded do plugin dispara na WORKING LAYER, e
+    // não no mapa — escutá-lo no mapa deixava o botão morto durante o desenho inteiro.
+    mapa.on("pm:drawstart", (evento) => {
+      evento.workingLayer.on("pm:vertexadded", renderizar);
+      renderizar();
+    });
+    mapa.on("pm:drawend", renderizar);
+
+    // Círculo não existe em GeoJSON: vira polígono antes de qualquer coisa depender dele.
+    mapa.on("pm:create", (evento) => {
+      if (evento.shape === "Circle") L.PM.Utils.circleToPolygon(evento.layer, 60);
+      renderizar();
+    });
+    mapa.on("pm:remove", renderizar);
+
+    // O Esc do Geoman (exitModeOnEscape) já larga a ferramenta; aqui ele só fecha o que é UI.
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key !== "Escape") return;
+      fecharTorreSnap();
+      renderizar();
+    });
+
+    document.addEventListener("click", (evento) => {
+      if (!barra.contains(evento.target)) fecharTorreSnap();
+    });
+
+    renderizar();
+
+    // ── Modal de prova ───────────────────────────────────────────────────────────────────────────
+    const toggleModal = document.getElementById("toggle-modal-teste");
+    const modal = document.getElementById("modal-simulacao");
+    toggleModal.addEventListener("change", () => {
+      const abrir = toggleModal.checked;
+      modal.classList.toggle("opacity-100", abrir);
+      modal.classList.toggle("pointer-events-auto", abrir);
+      modal.classList.toggle("opacity-0", !abrir);
+      modal.classList.toggle("pointer-events-none", !abrir);
+      document.querySelectorAll("#tela-mapa .moldura-fixa").forEach((el) => {
+        el.classList.toggle("opacity-0", abrir);
+        el.classList.toggle("-translate-y-5", abrir);
+        el.classList.toggle("scale-95", abrir);
+        el.classList.toggle("pointer-events-none", abrir);
+      });
+    });
+    document.getElementById("btn-fechar-modal").addEventListener("click", () => {
+      toggleModal.checked = false;
+      toggleModal.dispatchEvent(new Event("change"));
+    });
+  </script>
+</body>
+</html>
