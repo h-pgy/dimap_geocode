@@ -2523,10 +2523,7 @@ html[data-theme="dimap"] {
      puxador e não como mais uma fileira de glifos. Material composto no markup. */
   .bancada-alca {
     @apply shrink-0 grid place-items-center cursor-grab touch-none rounded-lg;
-    transition: background-color 300ms, opacity 200ms linear;
-  }
-  .bancada-alca:hover {
-    @apply bg-white/50;
+    transition: opacity 200ms linear;
   }
   .bancada-alca:active,
   .bancada-alca--pega {
@@ -2617,21 +2614,22 @@ html[data-theme="dimap"] {
      .bancada-submenu__tool, só que partindo da madeira. Só troca cor e filtro (a mesma
      propriedade dos estados abaixo): num controle já ligado/ativo/armado, o hover ganha o
      inchaço mas a cor do estado permanece por cima — nunca fica mudo. */
-  .bancada-desenho__controle:hover:not(:disabled) {
+  .bancada-desenho__controle:hover:not([aria-disabled="true"]) {
     @apply bg-white/60;
     box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
   }
-  .bancada-desenho__controle:hover:not(:disabled) svg {
+  .bancada-desenho__controle:hover:not([aria-disabled="true"]) svg {
     @apply scale-110 text-agua-600;
     filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
   }
-  .bancada-desenho__controle:active:not(:disabled) {
+  .bancada-desenho__controle:active:not([aria-disabled="true"]) {
     @apply scale-95;
   }
-  /* Indisponível fica em repouso e para de responder. Nada de apagar: com opacity o glifo some
-     e o lugar dele lê como buraco no corpo — a linha inteira passa a ter falhas. */
-  .bancada-desenho__controle:disabled {
-    @apply pointer-events-none;
+  /* Indisponível fica em repouso e para de responder — mas SEM disabled nativo, que bloqueia até
+     o hover e cala o title do botão. `aria-disabled` só troca o cursor; quem barra o clique é o
+     JS. Nada de opacity: o glifo não pode sumir e o lugar virar buraco no corpo. */
+  .bancada-desenho__controle[aria-disabled="true"] {
+    @apply cursor-default;
   }
   /* Encaixe ligado: a tinta vira água. Estado permanente, não modo — nunca afunda. */
   .bancada-desenho__controle--ligado {
@@ -2675,10 +2673,10 @@ html[data-theme="dimap"] {
   .bancada-submenu__tool svg {
     @apply w-5 h-5 text-agua-700 transition-all duration-200;
   }
-  .bancada-submenu__tool:hover:not(:disabled) {
+  .bancada-submenu__tool:hover:not([aria-disabled="true"]) {
     @apply bg-white/50 border-white/60;
   }
-  .bancada-submenu__tool:hover:not(:disabled) svg {
+  .bancada-submenu__tool:hover:not([aria-disabled="true"]) svg {
     @apply text-agua-600;
     filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
   }
@@ -2691,9 +2689,9 @@ html[data-theme="dimap"] {
     filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
   }
   /* Indisponível não apaga: some do olho e vira buraco no corpo — é a linha de baixo que ensinou
-     a regra (ver .bancada-desenho__controle). */
-  .bancada-submenu__tool:disabled {
-    @apply pointer-events-none;
+     a regra (ver .bancada-desenho__controle), inclusive o `aria-disabled` no lugar do nativo. */
+  .bancada-submenu__tool[aria-disabled="true"] {
+    @apply cursor-default;
   }
 
   /* .bancada-desenho — o corpo inteiriço. O material é o .glass-panel-thick, composto no markup:
@@ -2852,6 +2850,15 @@ html[data-theme="dimap"] {
   .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-desenho__poco,
   .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-submenu {
     @apply hidden;
+  }
+
+  /* Recolhida, a bancada troca de material: o vidro fino (.glass-panel) das outras pílulas da
+     home — moldura-fixa, pilula-mapa —, não o espesso do markup. Ativa, o corpo lê melhor grosso
+     sobre a ortofoto; guardada, ela é só mais um chip da casca, e o padrão é o chip fino. Repinta
+     só as propriedades do material: a classe no HTML continua sendo .glass-panel-thick. */
+  .bancada-conjunto--fechada .bancada-desenho {
+    @apply backdrop-blur-[18px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border-white/60;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 32px rgba(7, 58, 84, 0.25), 0 0 24px rgba(72, 202, 228, 0.25);
   }
 
   /* .torre-snap — a torrezinha do encaixe, irmã da .torre-camadas. */

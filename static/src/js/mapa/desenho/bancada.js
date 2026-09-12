@@ -18,6 +18,13 @@ import { inicializarArrasto } from "./arrasto.js";
 // depois, e só então se anima entre as duas medidas.
 const DURACAO_CRESCER = 320;
 
+// `aria-disabled`, nunca o `disabled` nativo: o atributo do HTML bloqueia até o hover e cala o
+// title do botão — o tooltip precisa continuar dizendo o que o glifo é mesmo sem afordância. Quem
+// barra o clique é o guard em cada handler, não o browser.
+function indisponivel(botao) {
+  return botao.getAttribute("aria-disabled") === "true";
+}
+
 export function inicializarBancadaDesenho(mapa) {
   const conjunto = document.getElementById("bancada-conjunto");
   if (!conjunto || !mapa) return;
@@ -57,12 +64,13 @@ export function inicializarBancadaDesenho(mapa) {
       botao.setAttribute("aria-label", ferramenta.rotulo);
       botao.setAttribute("role", "menuitemradio");
       // Recortar só opera sobre área: com ponto e linha no mapa, a ferramenta não tem alvo.
-      botao.disabled = ferramenta.id === "cut" && !haPoligono(mapa);
+      botao.setAttribute("aria-disabled", String(ferramenta.id === "cut" && !haPoligono(mapa)));
       const eAtiva = ferramenta.id === ativa;
       botao.classList.toggle("bancada-submenu__tool--ativa", eAtiva);
       botao.setAttribute("aria-checked", String(eAtiva));
       botao.innerHTML = '<svg viewBox="0 0 24 24"><use href="' + ferramenta.glifo + '"/></svg>';
       botao.addEventListener("click", () => {
+        if (indisponivel(botao)) return;
         acionar(mapa, ferramenta.id, formaEmDesenho);
         renderizar();
       });
@@ -86,16 +94,16 @@ export function inicializarBancadaDesenho(mapa) {
 
     // Sem nada desenhado não há o que editar: o estado de falta é o lápis apagado, não uma
     // bandeja aberta com um aviso dentro.
-    btnEditar.disabled = !haGeometria(mapa);
+    btnEditar.setAttribute("aria-disabled", String(!haGeometria(mapa)));
 
-    btnCancelar.disabled = !ativa;
+    btnCancelar.setAttribute("aria-disabled", String(!ativa));
     btnCancelar.classList.toggle("bancada-desenho__controle--armado", Boolean(ativa));
 
     const concluivel = podeConcluir(mapa, formaEmDesenho);
-    btnConcluir.disabled = !concluivel;
+    btnConcluir.setAttribute("aria-disabled", String(!concluivel));
     btnConcluir.classList.toggle("bancada-desenho__controle--armado", concluivel);
 
-    btnApagar.disabled = !haGeometria(mapa);
+    btnApagar.setAttribute("aria-disabled", String(!haGeometria(mapa)));
     btnApagar.classList.toggle("bancada-desenho__controle--armado-apagar", ativa === "remove");
 
     const cursor = ativa ? CURSOR_DA_FERRAMENTA[ativa] : null;
@@ -164,6 +172,7 @@ export function inicializarBancadaDesenho(mapa) {
   // ── Categorias de geometria ────────────────────────────────────────────────────────────────
   categorias.forEach((botao) => {
     botao.addEventListener("click", () => {
+      if (indisponivel(botao)) return;
       const nome = botao.dataset.categoria;
       fecharTorreSnap();
 
@@ -180,6 +189,7 @@ export function inicializarBancadaDesenho(mapa) {
   });
 
   btnCancelar.addEventListener("click", () => {
+    if (indisponivel(btnCancelar)) return;
     desligarTudo(mapa);
     renderizar();
   });
@@ -193,6 +203,7 @@ export function inicializarBancadaDesenho(mapa) {
   });
 
   btnApagar.addEventListener("click", () => {
+    if (indisponivel(btnApagar)) return;
     fecharTorreSnap();
     acionar(mapa, "remove", formaEmDesenho);
     renderizar();

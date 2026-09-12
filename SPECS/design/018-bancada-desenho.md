@@ -1,6 +1,6 @@
 ---
 spec: design/018
-versao: v3
+versao: v6
 atualizado_em: 2026-09-12
 testes_tdd: true
 implementado: true
@@ -9,6 +9,9 @@ changelog:
   - v1: versão inicial
   - v2: controles do poço ganham a mesma afordância de hover (swell + brilho ciano) das categorias e do submenu
   - v3: encaixe (snap) nasce desligado, não ligado
+  - v4: controles indisponíveis usam aria-disabled em vez de disabled nativo, para o tooltip continuar aparecendo no hover
+  - v5: recolhida, a bancada troca para o material fino (.glass-panel) das demais pílulas da home; ativa, mantém o .glass-panel-thick
+  - v6: hover da alça (caixa de ferramentas/handle) perde o brilho branco de fundo — a afordância fica só no glifo (swell + brilho ciano)
 ---
 
 # SPEC design/018 — Bancada de desenho no mapa
@@ -22,6 +25,9 @@ ferramentas do Onsen para obter geometria própria sobre o território.
       são acionadas exclusivamente pela bancada.
 - [x] Guardada, a bancada mostra **só a alça**; um clique nela abre o corpo, e outro o guarda de
       volta, largando a ferramenta que estiver na mão.
+- [x] Guardada, o corpo troca o material espesso (`.glass-panel-thick`) pelo **fino**
+      (`.glass-panel`) — o mesmo das demais pílulas da home (`.moldura-fixa`, `.pilula-mapa`).
+      Aberta, ela volta ao espesso, que lê melhor sobre a ortofoto.
 - [x] **Ponto** e **linha** armam o desenho direto; **polígono** abre uma linha nova dentro do
       próprio corpo com polígono, retângulo e círculo, e o corpo cresce e encolhe junto.
 - [x] O traço nasce na **cor do seu tipo** — ponto em água, linha em accent, polígono em sakura.
@@ -34,7 +40,10 @@ ferramentas do Onsen para obter geometria própria sobre o território.
       criação: os controles do poço (editar, apagar, concluir, suspender, encaixe) incham e brilham
       em ciano ao passar o mouse, a mesma afordância de `.bancada-desenho__categoria` e
       `.bancada-submenu__tool` — os estados armados/ligados continuam sinalizando por cor própria,
-      mas o hover é aditivo e não pode ficar mudo neles.
+      mas o hover é aditivo e não pode ficar mudo neles. **Indisponível não é mudo, é só sem
+      afordância:** editar/apagar/concluir/suspender e as ferramentas do submenu sem alvo seguem
+      mostrando o `title` no hover — usam `aria-disabled`, não `disabled` nativo, que bloqueia até
+      o hover e calaria o tooltip.
 - [x] **Arrastar pela alça** leva a bancada para onde o ponteiro soltar — perto de uma lateral ela
       encaixa **em pé**; perto do rodapé se deita e se guarda; no meio da tela fica deitada onde foi
       largada. O gesto **não arrasta o mapa** nem dá zoom.
@@ -74,7 +83,8 @@ bancada com os demais controles.
 - Persistência do desenho, da posição e do encaixe da bancada entre recargas — sem dono ainda.
 
 ## 5 · Peças de referência a compor
-- `@static/src/tema-dimap.dev.css` → `.glass-panel-thick`, `.card-well`: materiais do corpo e dos poços.
+- `@static/src/tema-dimap.dev.css` → `.glass-panel-thick`, `.card-well`: materiais do corpo e dos
+  poços. `.glass-panel`: o que o corpo repinta para quando recolhido.
 - `@static/src/tema-dimap.dev.css` → `.etched`, `.etched-line`: gravação do estojo e do fio da alça.
 - `@static/src/tema-dimap.dev.css` → `.gaveta-alca`: o par repouso/entintado que o fio da alça repete.
 - `@static/src/tema-dimap.dev.css` → `.torre-camadas`: coreografia da torrezinha que a `.torre-snap` espelha.
@@ -244,8 +254,9 @@ smoke test manual.
   (`bancada-conjunto--fechada`, `data-dock="bottom"`) e carrega `desenho/bancada.js` como módulo.
 - `test_bancada_traz_as_categorias_de_geometria` — o partial traz um `[data-categoria]` para ponto,
   linha e polígono, e o lápis do poço declara `data-categoria="modificar"`.
-- `test_poco_da_bancada_nasce_desarmado` — apagar, concluir e suspender nascem `disabled`, e o
-  encaixe nasce **sem** `.bancada-desenho__controle--ligado`.
+- `test_poco_da_bancada_nasce_desarmado` — apagar, concluir e suspender nascem `aria-disabled`
+  (não `disabled` nativo — o tooltip precisa continuar aparecendo no hover), e o encaixe nasce
+  **sem** `.bancada-desenho__controle--ligado`.
 - `test_torre_do_encaixe_nasce_fechada_e_desligada` — `#torre-snap` nasce com `torre-snap--fechada`,
   o botão que a abre aponta para ela por `aria-controls`, e o `.toggle-onsen` vem **desmarcado**.
 - `test_glifos_do_desenho_definem_os_simbolos_da_bancada` — `_glifos_desenho.html` define todos os

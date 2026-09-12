@@ -75,7 +75,8 @@ def test_poco_da_bancada_nasce_desarmado() -> None:
     for id_botao in ("btn-apagar", "btn-concluir", "btn-cancelar"):
         botao = soup.find(id=id_botao)
         assert botao is not None
-        assert botao.has_attr("disabled")
+        # aria-disabled, não disabled nativo: o tooltip precisa continuar aparecendo no hover.
+        assert botao.get("aria-disabled") == "true"
 
     btn_snap = soup.find(id="btn-snap")
     assert btn_snap is not None

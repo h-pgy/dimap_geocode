@@ -1,6 +1,8 @@
 {# Bancada de desenho (SPEC design/018): substitui a toolbar nativa do Leaflet-Geoman. Estática — #}
 {# nenhum contexto de view, nenhum HTMX; o submenu é a linha que desenho/bancada.js monta a partir #}
 {# do catálogo. Nasce guardada (fechada), encaixada no rodapé e com o encaixe (snap) desligado. #}
+{# Controles sem alvo nascem `aria-disabled`, não `disabled`: o atributo nativo bloqueia até o #}
+{# hover e cala o title do botão — o tooltip precisa continuar aparecendo mesmo sem afordância. #}
 <div id="bancada-conjunto" class="bancada-conjunto bancada-conjunto--fechada" data-dock="bottom">
   <div class="bancada-pilha">
     <div id="bancada-barra" class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
@@ -24,9 +26,9 @@
       </div>
       <div class="bancada-desenho__poco card-well">
         <button type="button" id="btn-editar" data-categoria="modificar" class="bancada-desenho__controle" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
-        <button type="button" id="btn-apagar" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
-        <button type="button" id="btn-concluir" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
-        <button type="button" id="btn-cancelar" class="bancada-desenho__controle" disabled title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+        <button type="button" id="btn-apagar" class="bancada-desenho__controle" aria-disabled="true" title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+        <button type="button" id="btn-concluir" class="bancada-desenho__controle" aria-disabled="true" title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+        <button type="button" id="btn-cancelar" class="bancada-desenho__controle" aria-disabled="true" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
         <span class="bancada-desenho__divisa"></span>
         <button type="button" id="btn-snap" aria-expanded="false" aria-controls="torre-snap" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
       </div>
