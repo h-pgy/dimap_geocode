@@ -3,7 +3,7 @@ spec: design/013
 versao: v1
 atualizado_em: 2026-09-05
 testes_tdd: false
-implementado: false
+implementado: true
 changelog:
   - v1: versão inicial
 ---
