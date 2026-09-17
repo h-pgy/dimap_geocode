@@ -3,7 +3,7 @@ Testes do LoteAttributes (SPEC 010): campos de endereço da base oficial no pop-
 None -> '' para nome_logradouro/numero_porta e o computed_field `endereco`.
 """
 
-from services.domain.lote_geocod.models import LoteAttributes
+from services.domain.lote_geocod.models import SITUACAO_ATIVA, LoteAttributes
 
 
 def _base(**extra: object) -> LoteAttributes:
@@ -68,3 +68,44 @@ class TestEndereco:
         # os valores vêm crus da base oficial — nada de chave normalizada aqui
         a = _base(nome_logradouro="AV PAULISTA", numero_porta="SEM NÚMERO")
         assert a.endereco == "AV PAULISTA, SEM NÚMERO"
+
+
+# ---------------------------------------------------------------------------
+# computed_field endereco_completo (SPEC localizacao_lote/001)
+# ---------------------------------------------------------------------------
+
+
+def test_endereco_completo_junta_complemento_so_quando_existe() -> None:
+    com_complemento = _base(
+        nome_logradouro="AV PAULISTA", numero_porta="100", complemento="APTO 12"
+    )
+    assert com_complemento.endereco_completo == "AV PAULISTA, 100 — APTO 12"
+
+    sem_complemento = _base(nome_logradouro="AV PAULISTA", numero_porta="100")
+    assert sem_complemento.endereco_completo == "AV PAULISTA, 100"
+
+
+# ---------------------------------------------------------------------------
+# computed_field sql (SPEC localizacao_lote/001)
+# ---------------------------------------------------------------------------
+
+
+def test_sql_so_existe_com_digito() -> None:
+    assert _base().sql is None
+    assert _base(digito="5").sql == "001.002.0003-5"
+
+
+# ---------------------------------------------------------------------------
+# computed_field possui_lancamento (SPEC localizacao_lote/001)
+# ---------------------------------------------------------------------------
+
+
+def test_possui_lancamento_exige_sql_e_situacao_ativa() -> None:
+    ativo_sem_digito = _base(situacao=SITUACAO_ATIVA)
+    assert ativo_sem_digito.possui_lancamento is False
+
+    com_digito_sem_situacao_ativa = _base(digito="5", situacao=None)
+    assert com_digito_sem_situacao_ativa.possui_lancamento is False
+
+    com_digito_e_ativo = _base(digito="5", situacao=SITUACAO_ATIVA)
+    assert com_digito_e_ativo.possui_lancamento is True
