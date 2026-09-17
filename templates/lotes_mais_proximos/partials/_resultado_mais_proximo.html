@@ -1,0 +1,5 @@
+{% include "mapping/_mapa.html" %}
+{# A gaveta inteira chega por OOB, igual ao resultado direto do lote — só que com o card de distância. #}
+<div id="gaveta-entidade" hx-swap-oob="innerHTML">
+  {% include "lote_geocoder/partials/_gaveta_lote.html" with lote=lote distancia_m=distancia_m origem_busca=origem_busca %}
+</div>

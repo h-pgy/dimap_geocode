@@ -1,13 +1,19 @@
 ---
 spec: localizacao_lote/002
-versao: v2
+versao: v6
 atualizado_em: 2026-09-17
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
   - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
+  - v3: `NenhumLoteProximoError` e a mensagem de ausência de lote no raio ganham snippet próprio
+  - v4: a gaveta do lote exibe a distância até o ponto de origem, em card condicional
+  - v5: texto final da mensagem de ausência de lote, e o raio declarado como variável de ambiente
+  - v6: "[admin] implementado — testes TDD escritos e verdes; `WFS_LOTE_CIDADAO_CAMPO_GEOMETRIA`
+    nova (default `ge_poligono`); `reprojetar` corrigido para srid via atributo (§7 Caveats);
+    supersede o teste de gaveta da SPEC 001 no resultado de endereço"
 ---
 
 # SPEC localizacao_lote/002 — Lote mais próximo do endereço interpolado
@@ -24,12 +30,15 @@ chegar ao lote sem procurá-lo no mapa.
 - [ ] A gaveta do endereço traz o botão **"Buscar lote mais próximo"**, que funciona **sem login**.
 - [ ] Acionar o botão faz **uma** consulta ao WFS e desenha o lote encontrado **junto do ponto**, e a
       gaveta passa a ser a gaveta do lote da SPEC [localizacao_lote/001](001-dados-do-lote-na-gaveta.md).
+- [ ] A gaveta do lote, **e só quando ele veio desta busca**, abre com a **distância em metros** até o
+      ponto que originou a consulta e o **endereço de origem**. Lote resolvido por SQL, contribuinte
+      ou endereço cadastrado segue com a gaveta de hoje, sem o card.
 - [ ] O lote devolvido é, entre os lotes **do mesmo codlog** a até o raio configurado do ponto, o de
       **menor distância** — lote mais perto de outro logradouro nunca é escolhido.
 - [ ] Sem lote do mesmo codlog dentro do raio, a resposta diz isso em português, com o raio usado, e
       o ponto continua no mapa.
-- [ ] O design da gaveta do endereço foi aprovado no mock e as peças novas portadas para o tema e o
-      styleguide antes de qualquer template da aplicação usá-las.
+- [ ] O design da gaveta do endereço **e do card de distância** foi aprovado no mock e as peças novas
+      portadas para o tema e o styleguide antes de qualquer template da aplicação usá-las.
 
 ## 3 · Domínio
 O ponto interpolado é o do [AddressGeocoder](../geocodificacao/003-address-geocod-ponto.md); a
@@ -37,6 +46,10 @@ pergunta que esta SPEC faz a ele é "de qual segmento e faixa você saiu?". O lo
 [LoteAttributes](001-dados-do-lote-na-gaveta.md#3--domínio). A proximidade é consulta **espacial**
 sobre a camada de lotes: nasce aqui o submódulo `lotes_mais_proximos`, que responde "que lotes
 estão perto de / dentro de uma geometria".
+
+A distância é a **menor distância entre o ponto e a borda do lote**, medida pelo GEOS no CRS métrico
+da camada — é ela que ordena os candidatos e é ela que a gaveta exibe. Lote que contém o ponto dista
+zero.
 
 **`services/domain/address_geocod/models.py`** — `EnderecoAttributes` inteiro.
 
@@ -71,8 +84,12 @@ class LoteProximo(BaseModel):
     """Um lote e a distância dele ao ponto, apurada no CRS da camada."""
 
     lote: LoteFeature
+    # Menor distância do ponto à borda do lote; zero quando o ponto cai dentro dele.
     distancia_m: float = Field(ge=0)
 ```
+
+**Mock:** [002-mock-lote-mais-proximo-do-endereco.html](002-mock-lote-mais-proximo-do-endereco.html)
+— leia a skill `mock`.
 
 ## 4 · Fora de escopo
 - Proximidade que respeita o **lado** da rua (paridade) — sem dono ainda.
@@ -84,9 +101,14 @@ class LoteProximo(BaseModel):
 - `@services/domain/lote_geocod/geocoder.py` → `_feature_para_lote`: a conversão da feature, promovida a função do módulo.
 - `@services/integrations/wfs` → `WfsFeatureRequest`, `CqlFilter`, `CqlPredicate`, `build_fetcher`.
 - `@apps/address_geocoder/views.py` → `geocodificar_endereco`: ponto único da sugestão e do Enter.
-- `@templates/lote_geocoder/partials/_gaveta_lote.html` → a gaveta do lote (SPEC 001).
+- `@templates/lote_geocoder/partials/_gaveta_lote.html` → a gaveta do lote (SPEC 001); ganha o card
+  condicional de distância, com aval do usuário (§3.4).
 - `@apps/mapping/context.py` → `contexto_mapa`, `contexto_aviso`.
 - Skills: `wfs-fetcher`, `mock`, `componentes-frontend`, `test-django-views`.
+- `WFS_LOTE_CIDADAO_CAMPO_GEOMETRIA` (nova, default `ge_poligono` — confirmado via
+  `DescribeFeatureType` da camada real) e `LOTE_MAIS_PROXIMO_RAIO_M` (default `50.0`): lidas só por
+  `apps/lotes_mais_proximos/contexto.py:camada_lotes()`, no mesmo padrão de `WFS_LAYER_LOTE_CIDADAO`.
+  `crs_camada` reusa `MAP_INTERPOLATION_CRS` (31983) — nenhum CRS métrico novo.
 
 ## 6 · Snippets
 
@@ -122,6 +144,13 @@ def reprojetar[G: (PointGeometry, PolygonGeometry)](geometria: G, origem: int, d
     geos = GEOSGeometry(json.dumps(geometria.model_dump()), srid=origem)
     geos.transform(destino)
     return type(geometria).model_validate_json(geos.geojson)
+```
+
+**`services/domain/lotes_mais_proximos/exceptions.py`**
+
+```python
+class NenhumLoteProximoError(Exception):
+    """Nenhum lote do codlog informado dentro do raio consultado."""
 ```
 
 **`services/domain/lotes_mais_proximos/mais_proximo.py`**
@@ -176,10 +205,26 @@ class LoteMaisProximo:
         ...
 ```
 
+**`config/settings.py`** — o raio é operacional: calibra-se no ambiente, não no código.
+
+```python
+    lote_mais_proximo_raio_m: float = Field(default=50.0, alias="LOTE_MAIS_PROXIMO_RAIO_M")
+```
+
+```python
+LOTE_MAIS_PROXIMO_RAIO_M = _env.lote_mais_proximo_raio_m
+```
+
 **`apps/lotes_mais_proximos/views.py`** — rota aberta; o ponto e o codlog viajam no formulário da gaveta.
 
 ```python
 LOTE_MAIS_PROXIMO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_RAIO_M
+
+# O raio sai da mesma constante que alimentou a consulta; a exceção não precisa carregá-lo de volta.
+MSG_SEM_LOTE_PROXIMO = (
+    "Nenhum lote situado neste logradouro foi encontrado "
+    "a {raio_m:.0f} metros do ponto de busca."
+)
 
 
 class ConsultaLoteMaisProximo(BaseModel):
@@ -188,6 +233,8 @@ class ConsultaLoteMaisProximo(BaseModel):
     lon: float
     lat: float
     codlog: str
+    # Rótulo do endereço de origem, só para a gaveta ler — como `score`, é apresentação.
+    origem: str = ""
 
 
 @require_POST
@@ -201,9 +248,34 @@ def mais_proximo(request: HttpRequest) -> HttpResponse:
     )
     try:
         proximo = LoteMaisProximo(build_fetcher(settings))(entrada)
-    except NenhumLoteProximoError as erro:
-        return render(request, "mapping/_aviso.html", contexto_aviso(mensagem_sem_lote(erro)))
-    return render(request, TEMPLATE_RESULTADO_MAIS_PROXIMO, contexto_mais_proximo(entrada.ponto, proximo))
+    except NenhumLoteProximoError:
+        return render(
+            request,
+            "mapping/_aviso.html",
+            contexto_aviso(MSG_SEM_LOTE_PROXIMO.format(raio_m=LOTE_MAIS_PROXIMO_RAIO_M)),
+        )
+    return render(
+        request,
+        TEMPLATE_RESULTADO_MAIS_PROXIMO,
+        contexto_mais_proximo(entrada.ponto, proximo, consulta.origem),
+    )
+```
+
+**`templates/lote_geocoder/partials/_gaveta_lote.html`** — primeiro filho de
+`.gaveta-lateral-conteudo`. Sem `distancia_m` no contexto, a gaveta renderiza como hoje.
+
+```html
+{% if distancia_m is not None %}
+  <div class="card-well p-4">
+    <p class="text-overline mb-1">Distância do endereço</p>
+    <p class="text-xl font-bold tabular-nums">
+      {{ distancia_m|floatformat:0 }} <span class="text-sm font-normal text-base-content/60">m</span>
+    </p>
+    {% if origem_busca %}
+      <p class="text-sm text-base-content/70 mt-0.5">{{ origem_busca }}</p>
+    {% endif %}
+  </div>
+{% endif %}
 ```
 
 **`templates/address_geocoder/partials/_gaveta_endereco.html`** — o botão carrega o que a consulta precisa.
@@ -213,6 +285,7 @@ def mais_proximo(request: HttpRequest) -> HttpResponse:
   <input type="hidden" name="lon" value="{{ ponto.coordinates.0 }}">
   <input type="hidden" name="lat" value="{{ ponto.coordinates.1 }}">
   <input type="hidden" name="codlog" value="{{ endereco.codlog }}">
+  <input type="hidden" name="origem" value="{{ endereco.nome_logradouro }}, {{ endereco.numero }}">
   <button type="submit" class="btn btn-onsen btn-sm">Buscar lote mais próximo</button>
 </form>
 ```
@@ -234,9 +307,28 @@ O grau de certeza exibido chega na requisição da sugestão (`score`), como a l
 mostra. Ele é apresentação, e nenhuma regra o lê. O custo é que o valor na gaveta não é
 revalidado contra o matcher.
 
-O raio (`LOTE_MAIS_PROXIMO_RAIO_M`, 50 m por padrão) é um corte fixo. O ponto interpolado cai no eixo
+O raio (`LOTE_MAIS_PROXIMO_RAIO_M` no `.env`, 50 m por padrão) é um corte fixo. O ponto interpolado cai no eixo
 da via, e o lote certo pode estar mais longe que isso em quadras grandes. O custo é responder "sem
 lote" em casos em que o lote existe, até alguém calibrar o raio no ambiente.
+
+O card de distância é a única alteração numa peça já implementada (a gaveta da SPEC 001), aprovada
+pelo usuário em 17/09/2026. Ele é condicional: as demais rotas que renderizam a gaveta não passam
+`distancia_m` e seguem idênticas. O custo é que a gaveta do lote passa a exibir um dado que não é
+atributo do lote, e sim da consulta que chegou até ele.
+
+Esta SPEC **substitui** o comportamento da SPEC 001 no resultado de endereço: onde antes o partial
+tirava a gaveta de cena (`_sem_gaveta_oob.html`), agora ele abre a gaveta do endereço. O teste
+`test_resultado_de_endereco_tira_a_gaveta` (tests/apps/address_geocoder/test_views.py) foi
+substituído por `test_endereco_interpolado_abre_gaveta_com_faixa_e_botao`, refletindo a nova regra.
+
+O snippet de `reprojetar` em `services/domain/geometry/reprojecao.py` foi implementado passando
+`srid` como **atributo**, não no construtor do `GEOSGeometry` (`geos.srid = origem` após
+desserializar, antes do `transform`) — igual ao padrão já usado em
+`address_geocod/orientacao.py`. Passar `srid=origem` direto no construtor, como o snippet original
+mostrava, levanta `GEOSException` sempre que `origem != 4326` (o `GEOSGeometry` lê GeoJSON como
+SRID 4326 por padrão e rejeita um `srid` explícito divergente) — e é exatamente o caso de
+`_para_saida` (31983 → 4326). Pinado por `test_reprojetar_de_crs_metrico_para_4326_nao_levanta` em
+`tests/services/domain/geometry/test_reprojecao.py`.
 
 `lotes_mais_proximos` passa a conhecer `lote_geocod`, porque converte a feature pela mesma função.
 Duas conversões divergiriam no primeiro atributo novo. O custo é um submódulo depender do outro.
@@ -252,7 +344,11 @@ Duas conversões divergiriam no primeiro atributo novo. O custo é um submódulo
 - `test_endereco_interpolado_abre_gaveta_com_faixa_e_botao` — o partial do ponto traz a gaveta com
   a faixa de numeração, o grau de certeza e o formulário para `lotes_mais_proximos:mais_proximo`.
 - `test_mais_proximo_anonimo_devolve_ponto_lote_e_gaveta_do_lote` — POST sem login devolve payload
-  com as duas features e o OOB da gaveta do lote.
-- `test_mais_proximo_sem_lote_responde_aviso_com_raio` — a mensagem cita o raio.
+  com as duas features e o OOB da gaveta do lote, e a gaveta traz a distância em metros e o
+  endereço de origem.
+- `test_gaveta_do_lote_sem_distancia_nao_mostra_o_card` — a rota da SPEC 001 (lote por SQL) segue
+  renderizando a gaveta sem o card, para que o condicional não vaze nas outras buscas.
+- `test_mais_proximo_sem_lote_responde_aviso_com_raio` — o aviso renderizado traz
+  `MSG_SEM_LOTE_PROXIMO` com o raio do ambiente por extenso ("a 50 metros do ponto de busca").
 - `test_lote_mais_proximo_no_geosampa` — ponto real de endereço conhecido devolve lote do mesmo
   codlog *(marker `integration`)*.

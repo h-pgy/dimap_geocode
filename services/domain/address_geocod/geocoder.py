@@ -38,7 +38,7 @@ class AddressGeocoder:
         ponto = self._interpolar(
             linha, escolhido, entrada.numero, paridade, entrada.output_crs
         )
-        return self._montar_feature(ponto, escolhido, entrada)
+        return self._montar_feature(ponto, escolhido, entrada, paridade)
 
     def _definir_paridade(self, numero: int) -> Paridade:
         return Paridade.PAR if numero % 2 == 0 else Paridade.IMPAR
@@ -77,7 +77,11 @@ class AddressGeocoder:
         return contem[0]   # mais de um: usa o primeiro (§critérios)
 
     def _montar_feature(
-        self, ponto: Point, escolhido: SegmentoLogradouroFeature, entrada: AddressGeocodInput
+        self,
+        ponto: Point,
+        escolhido: SegmentoLogradouroFeature,
+        entrada: AddressGeocodInput,
+        paridade: Paridade,
     ) -> EnderecoFeature:
         a = escolhido.attributes
         return EnderecoFeature(
@@ -88,6 +92,8 @@ class AddressGeocoder:
                 tipo_logradouro=a.tipo_logradouro,
                 numero=entrada.numero,
                 id_segmento=a.id_segmento,
+                numeracao_inicial=limite_inicial(a, paridade),
+                numeracao_final=limite_final(a, paridade),
                 titulo=a.titulo,
             ),
             crs=entrada.output_crs,

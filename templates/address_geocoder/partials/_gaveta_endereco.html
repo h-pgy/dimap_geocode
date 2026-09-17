@@ -1,0 +1,71 @@
+{% load l10n %}
+<div class="gaveta-lateral">
+  <input type="checkbox" id="gaveta-endereco-toggle" class="gaveta-lateral-toggle" checked>
+
+  <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+    <header class="gaveta-lateral-cabecalho">
+      <p class="text-overline text-madeira-600">Entidade localizada</p>
+      <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Endereço</h2>
+      <p class="text-sm font-medium mt-2">{{ endereco.nome_completo }}, {{ endereco.numero }}</p>
+      {% if score is not None %}
+        <span class="badge badge-info badge-soft badge-sm font-bold mt-3" title="Grau de certeza">≈ {{ score|floatformat:0 }}%</span>
+      {% endif %}
+    </header>
+
+    <div class="gaveta-lateral-corpo" data-scroll-etched>
+      <div class="gaveta-lateral-rolador" data-rolador>
+        <div class="gaveta-lateral-conteudo">
+          <div class="card-well p-4 flex flex-col gap-3">
+            <div class="flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Logradouro</p>
+                <p class="font-bold leading-tight">{{ endereco.nome_logradouro }}</p>
+              </div>
+            </div>
+            <div class="h-px w-full bg-rocha-950/10"></div>
+            <div class="flex items-baseline justify-between gap-4">
+              <p class="text-overline">Codlog</p>
+              <p class="text-code text-sm">{{ endereco.codlog }}</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Número</p>
+              <p class="text-xl font-bold tabular-nums">{{ endereco.numero }}</p>
+            </div>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Faixa do segmento</p>
+              <p class="text-xl font-bold tabular-nums">{{ endereco.numeracao_inicial }} – {{ endereco.numeracao_final }}</p>
+            </div>
+          </div>
+
+          <form
+            class="flex flex-col gap-2 pt-1"
+            hx-post="{% url 'lotes_mais_proximos:mais_proximo' %}"
+            hx-target="#resultado-busca"
+            hx-swap="innerHTML"
+          >
+            <input type="hidden" name="lon" value="{{ ponto.coordinates.0|unlocalize }}">
+            <input type="hidden" name="lat" value="{{ ponto.coordinates.1|unlocalize }}">
+            <input type="hidden" name="codlog" value="{{ endereco.codlog }}">
+            <input type="hidden" name="origem" value="{{ endereco.nome_completo }}, {{ endereco.numero }}">
+            <button type="submit" class="btn btn-onsen w-full">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/></svg>
+              Buscar lote mais próximo
+            </button>
+            <p class="text-xs text-base-content/60 text-center">Procura no mesmo logradouro, a até {{ raio_m|floatformat:0 }} m do ponto.</p>
+          </form>
+        </div>
+      </div>
+      <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+    </div>
+  </div>
+
+  <label for="gaveta-endereco-toggle" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+    <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+  </label>
+</div>

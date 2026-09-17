@@ -2,6 +2,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+# WKT gerado pelo GEOS no domínio: o padrão é só uma cerca contra texto que não é geometria.
+PADRAO_WKT = r"^(POINT|POLYGON|MULTIPOLYGON)\s*\([-0-9.,\s()]+\)$"
+
 
 class WfsConnectionConfig(BaseModel):
     domain: str
@@ -32,8 +35,17 @@ class CqlPredicate(BaseModel):
         return f"{self.field} {self.op} {_escape_cql_literal(self.value)}"
 
 
+class CqlDWithin(BaseModel):
+    field: str
+    wkt: str = Field(pattern=PADRAO_WKT)
+    distancia_m: float = Field(gt=0)
+
+    def to_cql(self) -> str:
+        return f"DWITHIN({self.field}, {self.wkt}, {self.distancia_m}, meters)"
+
+
 class CqlFilter(BaseModel):
-    predicates: list[CqlPredicate] = Field(default_factory=list)
+    predicates: list[CqlPredicate | CqlDWithin] = Field(default_factory=list)
     logic: Literal["AND", "OR"] = "AND"
     # escape-hatch: bypassa o escape — usar com cautela
     raw_cql: str | None = None

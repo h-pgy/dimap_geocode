@@ -29,6 +29,7 @@ MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 WFS_LAYER_LOGRADOUROS: str = settings.WFS_LAYER_LOGRADOUROS
 MAP_COR_PONTO: str = settings.MAP_COR_PONTO
+LOTE_MAIS_PROXIMO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_RAIO_M
 
 MSG_SEM_SEGMENTO = "Não foi possível localizar o logradouro para geocodificar este endereço."
 MSG_SEM_NUMERACAO = "O número informado está fora da faixa de numeração cadastrada para este logradouro."
@@ -77,9 +78,13 @@ def _properties(f: EnderecoFeature) -> GeoJsonProperties:
     )
 
 
-def geocodificar_endereco(request: HttpRequest, codlog: str, numero: object) -> HttpResponse:
-    """Geocodifica endereço (codlog 6 dígitos + número) → ponto. Reutilizável pela view e pela
-    busca comitada. `numero` chega como str (POST) ou int (candidato) — o Pydantic coage."""
+def geocodificar_endereco(
+    request: HttpRequest, codlog: str, numero: object, score: float | None = None
+) -> HttpResponse:
+    """Geocodifica endereço (codlog 6 dígitos + número) → ponto e abre a gaveta do endereço
+    (SPEC localizacao_lote/002). Reutilizável pela view e pela busca comitada. `numero` chega como
+    str (POST) ou int (candidato) — o Pydantic coage. `score` é só apresentação (grau de certeza
+    do fuzzy match, quando houver) — nenhuma regra do domínio o lê."""
     entrada = AddressGeocodInput.model_validate({
         "codlog": codlog,
         "numero": numero,                            # Pydantic coage "123" → 123 (Field(gt=0))
@@ -95,13 +100,19 @@ def geocodificar_endereco(request: HttpRequest, codlog: str, numero: object) -> 
     except NumeracaoNaoEncontradaError:
         return render(request, "mapping/_aviso.html", contexto_aviso(MSG_SEM_NUMERACAO))
     geojson = to_geojson_feature_collection([feature], _properties)
-    return render(
-        request, "address_geocoder/partials/_resultado_endereco.html", contexto_mapa(geojson, MAP_COR_PONTO)
-    )
+    contexto = contexto_mapa(geojson, MAP_COR_PONTO) | {
+        "endereco": feature.attributes,
+        "ponto": feature.geometry,
+        "score": score,
+        "raio_m": LOTE_MAIS_PROXIMO_RAIO_M,
+    }
+    return render(request, "address_geocoder/partials/_resultado_endereco.html", contexto)
 
 
 @require_POST
 def selecionar(request: HttpRequest) -> HttpResponse:
+    score_raw = request.POST.get("score")
+    score = float(score_raw) if score_raw else None
     return geocodificar_endereco(
-        request, request.POST.get("codlog", ""), request.POST.get("numero", "")
+        request, request.POST.get("codlog", ""), request.POST.get("numero", ""), score=score
     )

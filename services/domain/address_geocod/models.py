@@ -18,6 +18,9 @@ class EnderecoAttributes(BaseModel):
     tipo_logradouro: str
     numero: int
     id_segmento: str            # segmento que originou a interpolação
+    # faixa do lado (par/ímpar) do segmento escolhido, no dia da geocodificação
+    numeracao_inicial: int
+    numeracao_final: int
     titulo: str | None = None
 
     @property

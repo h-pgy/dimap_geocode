@@ -149,11 +149,20 @@ class _Settings(BaseSettings):
     wfs_version: str = Field(default="1.0.0", alias="WFS_VERSION")
     wfs_layer_logradouros: str = Field(default="segmento_logradouro", alias="WFS_LAYER_LOGRADOUROS")
     wfs_layer_lote_cidadao: str = Field(default="lote_cidadao", alias="WFS_LAYER_LOTE_CIDADAO")
+    # Nome do campo de geometria na camada de lotes, usado pelo predicado espacial DWITHIN
+    # (services.domain.lotes_mais_proximos) — só a orquestração o lê, o domínio o recebe pronto.
+    wfs_lote_cidadao_campo_geometria: str = Field(
+        default="ge_poligono", alias="WFS_LOTE_CIDADAO_CAMPO_GEOMETRIA"
+    )
     wfs_verbose: bool = Field(default=True, alias="WFS_VERBOSE")
     wfs_request_timeout_seconds: float = Field(default=30.0, alias="WFS_REQUEST_TIMEOUT_SECONDS")
     wfs_max_retries: int = Field(default=3, alias="WFS_MAX_RETRIES")
     wfs_retry_wait_min_seconds: float = Field(default=1.0, alias="WFS_RETRY_WAIT_MIN_SECONDS")
     wfs_retry_wait_max_seconds: float = Field(default=5.0, alias="WFS_RETRY_WAIT_MAX_SECONDS")
+
+    # Raio de busca do lote mais próximo do endereço interpolado (SPEC localizacao_lote/002) — corte
+    # operacional, calibra-se no ambiente conforme o tamanho típico das quadras.
+    lote_mais_proximo_raio_m: float = Field(default=50.0, alias="LOTE_MAIS_PROXIMO_RAIO_M")
 
     wms_url: str = Field(
         default="https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
@@ -309,6 +318,7 @@ WFS_SERVICE = _env.wfs_service
 WFS_VERSION = _env.wfs_version
 WFS_LAYER_LOGRADOUROS = _env.wfs_layer_logradouros
 WFS_LAYER_LOTE_CIDADAO = _env.wfs_layer_lote_cidadao
+WFS_LOTE_CIDADAO_CAMPO_GEOMETRIA = _env.wfs_lote_cidadao_campo_geometria
 # Liga o log da requisição WFS (URL + params) em todos os geocoders — diagnóstico
 # do GeoSampa. O WfsFetcher imprime cada GET quando verbose; build_fetcher lê daqui.
 WFS_VERBOSE = _env.wfs_verbose
@@ -316,6 +326,8 @@ WFS_REQUEST_TIMEOUT_SECONDS = _env.wfs_request_timeout_seconds
 WFS_MAX_RETRIES = _env.wfs_max_retries
 WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds
 WFS_RETRY_WAIT_MAX_SECONDS = _env.wfs_retry_wait_max_seconds
+
+LOTE_MAIS_PROXIMO_RAIO_M = _env.lote_mais_proximo_raio_m
 
 # WMS (GeoSampa → Leaflet tile layer). Config lida aqui e injetada no contexto do
 # app mapping; o JS nunca hardcoda URL, versão ou nomes de camadas (§11).
@@ -468,6 +480,7 @@ INSTALLED_APPS = [
     "apps.mapping",
     "apps.logradouro_geocoder",
     "apps.lote_geocoder",
+    "apps.lotes_mais_proximos",
     "apps.amostrador_ofertas",
     "apps.documentos",
 ]

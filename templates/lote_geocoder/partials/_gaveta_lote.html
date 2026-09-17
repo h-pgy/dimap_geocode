@@ -20,6 +20,21 @@
     <div class="gaveta-lateral-corpo" data-scroll-etched>
       <div class="gaveta-lateral-rolador" data-rolador>
         <div class="gaveta-lateral-conteudo">
+          {% if distancia_m is not None %}
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V6a2 2 0 012-2h12a2 2 0 012 2v2M4 8h16M4 8v10a2 2 0 002 2h12a2 2 0 002-2V8M8 8v3m4-3v4m4-4v3"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Distância do endereço</p>
+                <p class="text-xl font-bold tabular-nums leading-tight">{{ distancia_m|floatformat:0 }} <span class="text-sm font-normal text-base-content/60">m</span></p>
+                {% if origem_busca %}
+                  <p class="text-sm text-base-content/70 truncate">{{ origem_busca }}</p>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+
           <div class="card-well p-4 flex flex-col gap-3">
             <div class="flex gap-4 items-center">
               <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">

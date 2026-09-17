@@ -1,5 +1,6 @@
-"""Testes de apps/address_geocoder/views.py (SPEC localizacao_lote/001): resultado de endereço é
-ponto, não lote — tira a gaveta lateral de cena via OOB (§2 da SPEC)."""
+"""Testes de apps/address_geocoder/views.py: resultado de endereço interpolado abre a gaveta do
+endereço (SPEC localizacao_lote/002) — supersede o comportamento da SPEC localizacao_lote/001, que
+tirava a gaveta de cena (§2 da SPEC 002: "abre a gaveta lateral do endereço")."""
 
 import pytest
 from django.test import Client
@@ -23,6 +24,8 @@ def _feature_endereco() -> EnderecoFeature:
             tipo_logradouro="AV",
             numero=100,
             id_segmento="SEG1",
+            numeracao_inicial=52,
+            numeracao_final=298,
         ),
         crs=4326,
     )
@@ -41,11 +44,11 @@ def _instalar_geocoder_fake(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Resultado de endereço tira a gaveta
+# Resultado de endereço abre a gaveta, com faixa de numeração e botão de busca
 # ---------------------------------------------------------------------------
 
 
-def test_resultado_de_endereco_tira_a_gaveta(
+def test_endereco_interpolado_abre_gaveta_com_faixa_e_botao(
     client: Client,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -57,6 +60,26 @@ def test_resultado_de_endereco_tira_a_gaveta(
     conteudo = resposta.content.decode()
 
     assert resposta.status_code == 200
-    assert 'id="gaveta-entidade" hx-swap-oob="innerHTML"></div>' in conteudo
-    assert "gaveta-lateral" not in conteudo
-    assert "paleta-gaveta" not in conteudo
+    assert 'id="gaveta-entidade" hx-swap-oob="innerHTML">' in conteudo
+    assert "gaveta-lateral" in conteudo
+    assert "paleta-gaveta" in conteudo
+    assert "123456" in conteudo
+    assert "52" in conteudo and "298" in conteudo  # faixa de numeração do segmento
+    assert reverse("lotes_mais_proximos:mais_proximo") in conteudo
+    assert "badge-info" not in conteudo  # sem score (endereço por codlog): sem grau de certeza
+
+
+def test_endereco_por_nome_aproximado_mostra_grau_de_certeza(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_geocoder_fake(monkeypatch)
+
+    resposta = client.post(
+        reverse("address_geocoder:selecionar"),
+        {"codlog": "123456", "numero": "100", "score": "87.3"},
+    )
+    conteudo = resposta.content.decode()
+
+    assert "badge-info" in conteudo
+    assert "87%" in conteudo

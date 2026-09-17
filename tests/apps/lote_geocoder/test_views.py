@@ -141,3 +141,21 @@ def test_lote_sem_geometria_nao_abre_gaveta(
     assert resposta.status_code == 200
     assert "alert-warning" in conteudo
     assert 'id="gaveta-entidade"' not in conteudo
+
+
+# ---------------------------------------------------------------------------
+# Rota da SPEC 001 (lote por SQL) segue sem o card de distância (SPEC localizacao_lote/002)
+# ---------------------------------------------------------------------------
+
+
+def test_gaveta_do_lote_sem_distancia_nao_mostra_o_card(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_fetcher_fake(monkeypatch, [_page([_feat(_PROPS_LOTE_COM_SQL)])])
+
+    resposta = client.post(reverse("lote_geocoder:geocodificar"), _POST_LOTE)
+    conteudo = resposta.content.decode()
+
+    assert "gaveta-lateral" in conteudo
+    assert "Distância do endereço" not in conteudo

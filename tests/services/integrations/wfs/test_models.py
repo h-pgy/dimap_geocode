@@ -2,11 +2,32 @@ import pytest
 from pydantic import ValidationError
 
 from services.integrations.wfs.models import (
+    CqlDWithin,
     CqlFilter,
     CqlPredicate,
     WfsFeatureCollection,
     WfsRetryPolicy,
 )
+
+
+# ---------------------------------------------------------------------------
+# CqlDWithin — predicado espacial (SPEC localizacao_lote/002)
+# ---------------------------------------------------------------------------
+
+
+def test_dwithin_monta_cql() -> None:
+    filtro = CqlFilter(
+        predicates=[
+            CqlDWithin(field="geom", wkt="POINT(10 20)", distancia_m=50),
+            CqlPredicate(field="cd_logradouro", op="=", value="123456"),
+        ]
+    )
+    assert filtro.to_cql() == "DWITHIN(geom, POINT(10 20), 50.0, meters) AND cd_logradouro = '123456'"
+
+
+def test_dwithin_recusa_texto_que_nao_e_wkt() -> None:
+    with pytest.raises(ValidationError):
+        CqlDWithin(field="geom", wkt="'; DROP TABLE lote; --", distancia_m=50)
 
 
 def test_cql_escapes_single_quote() -> None:

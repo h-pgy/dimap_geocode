@@ -7,7 +7,7 @@
   {% for item in resultado.itens %}
     <li class="suggestion-item items-baseline gap-4"
         hx-post="{% url 'address_geocoder:selecionar' %}"
-        hx-vals='{"codlog": "{{ item.logradouro.codlog }}{{ item.logradouro.dv }}", "numero": "{{ numero }}"}'
+        hx-vals='{"codlog": "{{ item.logradouro.codlog }}{{ item.logradouro.dv }}", "numero": "{{ numero }}"{% if item.score is not None %}, "score": "{{ item.score }}"{% endif %}}'
         hx-target="#resultado-busca"
         hx-swap="innerHTML">
       <span class="text-code text-sm w-16 shrink-0">{{ item.logradouro.codlog }}</span>

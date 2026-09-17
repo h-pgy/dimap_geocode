@@ -1,2 +1,5 @@
 {% include "mapping/_mapa.html" %}
-{% include "mapping/_sem_gaveta_oob.html" %}
+{# A gaveta inteira chega por OOB — casca, toggle marcado e paleta: existir é estado do servidor. #}
+<div id="gaveta-entidade" hx-swap-oob="innerHTML">
+  {% include "address_geocoder/partials/_gaveta_endereco.html" with endereco=endereco ponto=ponto score=score raio_m=raio_m %}
+</div>
