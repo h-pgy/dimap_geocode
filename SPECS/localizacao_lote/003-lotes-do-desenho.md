@@ -1,12 +1,13 @@
 ---
 spec: localizacao_lote/003
-versao: v1
-atualizado_em: 2026-09-15
+versao: v2
+atualizado_em: 2026-09-17
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
+  - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
 ---
 
 # SPEC localizacao_lote/003 — Lotes que cruzam um desenho
@@ -39,10 +40,10 @@ terreno.
 ## 3 · Domínio
 O desenho é a geometria que a [bancada](../design/018-bancada-desenho.md) produz; a pergunta que esta
 SPEC faz a ela é só "qual polígono foi concluído?". A consulta espacial é do submódulo
-`lote_espacial`, com a [CamadaLotes](002-lote-mais-proximo-do-endereco.md#3--domínio) e a
+`lotes_mais_proximos`, com a [CamadaLotes](002-lote-mais-proximo-do-endereco.md#3--domínio) e a
 reprojeção da SPEC 002.
 
-**`services/domain/lote_espacial/models.py`**
+**`services/domain/lotes_mais_proximos/models.py`**
 
 ```python
 class Desenho(BaseModel):
@@ -117,7 +118,7 @@ class CqlFilter(BaseModel):
     raw_cql: str | None = None
 ```
 
-**`services/domain/lote_espacial/do_desenho.py`**
+**`services/domain/lotes_mais_proximos/do_desenho.py`**
 
 ```python
 class LotesDoDesenhoInput(BaseModel):
@@ -190,7 +191,7 @@ class BuscarLotesDoDesenho:
         )
 ```
 
-**`apps/lote_espacial/views.py`** — três rotas abertas.
+**`apps/lotes_mais_proximos/views.py`** — três rotas abertas.
 
 ```python
 def _desenho(dados: QueryDict) -> Desenho:
@@ -265,13 +266,13 @@ camadaResultado = adicionarResultado(mapa, data.geometria, data.cor, data.enquad
 mapa.pm.getGeomanLayers().forEach((camada) => camada.bringToFront());
 ```
 
-**`templates/lote_espacial/partials/_resultado_desenho.html`** — mapa + três placas fora de banda.
+**`templates/lotes_mais_proximos/partials/_resultado_desenho.html`** — mapa + três placas fora de banda.
 
 ```html
 {% include "mapping/_mapa.html" %}
-<div id="gaveta-entidade" hx-swap-oob="innerHTML">{% include "lote_espacial/partials/_gaveta_desenho.html" %}</div>
-<div id="gaveta-inferior-conteudo" hx-swap-oob="innerHTML">{% include "lote_espacial/partials/_tabela_lotes.html" %}</div>
-{# Linha da tabela: hx-get em lote_espacial:detalhe_do_lote?id=… com alvo em #gaveta-detalhe. #}
+<div id="gaveta-entidade" hx-swap-oob="innerHTML">{% include "lotes_mais_proximos/partials/_gaveta_desenho.html" %}</div>
+<div id="gaveta-inferior-conteudo" hx-swap-oob="innerHTML">{% include "lotes_mais_proximos/partials/_tabela_lotes.html" %}</div>
+{# Linha da tabela: hx-get em lotes_mais_proximos:detalhe_do_lote?id=… com alvo em #gaveta-detalhe. #}
 ```
 
 ## 7 · Caveats
@@ -304,7 +305,7 @@ a requisição não nasce de atributo HTMX no markup.
 - `test_lotes_do_desenho_traz_area_e_lotes` — duas features viram dois `LoteFeature` e a área em m².
 - `test_lote_por_identificador_filtra_cd_identificador` — o request usa `cd_identificador = id`.
 - `test_ofertar_desenho_anonimo_abre_gaveta_com_area_e_botao` — POST sem login devolve a gaveta com a
-  área e o formulário para `lote_espacial:lotes_do_desenho` carregando o desenho.
+  área e o formulário para `lotes_mais_proximos:lotes_do_desenho` carregando o desenho.
 - `test_lotes_do_desenho_devolve_mapa_resumo_e_tabela` — payload do mapa, OOB da gaveta lateral com a
   quantidade e OOB da gaveta inferior com uma linha por lote.
 - `test_detalhe_do_lote_abre_gaveta_de_detalhe` — GET devolve o conteúdo da gaveta do lote com o SQL.

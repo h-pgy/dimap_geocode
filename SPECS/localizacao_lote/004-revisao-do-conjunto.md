@@ -1,12 +1,13 @@
 ---
 spec: localizacao_lote/004
-versao: v1
-atualizado_em: 2026-09-15
+versao: v2
+atualizado_em: 2026-09-17
 testes_tdd: false
 implementado: false
 markers_obrigatorios: []
 changelog:
   - v1: versão inicial
+  - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
 ---
 
 # SPEC localizacao_lote/004 — Revisão do conjunto de lotes do desenho
@@ -35,7 +36,7 @@ Os lotes do conjunto **não são guardados**: são a consulta ao desenho menos o
 é essa derivação que a SPEC [certidao_lancamento/002](../certidao_lancamento/002-certidao-do-conjunto.md)
 refaz no servidor na hora de emitir.
 
-**`services/domain/lote_espacial/models.py`** — `ConjuntoDeLotes` novo e `LotesDoDesenho` inteiro.
+**`services/domain/lotes_mais_proximos/models.py`** — `ConjuntoDeLotes` novo e `LotesDoDesenho` inteiro.
 
 ```python
 class ConjuntoDeLotes(BaseModel):
@@ -74,8 +75,8 @@ class GeoJsonProperties(BaseModel):
 - Destacar a linha da tabela ao clicar no polígono do mapa (o caminho inverso) — sem dono ainda.
 
 ## 5 · Peças de referência a compor
-- `@services/domain/lote_espacial/do_desenho.py` → `BuscarLotesDoDesenho` (SPEC 003).
-- `@templates/lote_espacial/partials/_resultado_desenho.html` → o organismo de mapa + gavetas (SPEC 003).
+- `@services/domain/lotes_mais_proximos/do_desenho.py` → `BuscarLotesDoDesenho` (SPEC 003).
+- `@templates/lotes_mais_proximos/partials/_resultado_desenho.html` → o organismo de mapa + gavetas (SPEC 003).
 - `@static/src/js/mapa/camada_resultado.js` → `adicionarResultado`: a camada que recebe o destaque.
 - `@apps/mapping/context.py` → `contexto_mapa`.
 - `@static/src/tema-dimap.dev.css` → `.table-onsen`, `.gaveta-inferior`, `.btn-glass`.
@@ -85,7 +86,7 @@ class GeoJsonProperties(BaseModel):
 
 > Comentários didáticos: **não são portados** para o código (§7.2 do CLAUDE.md).
 
-**`services/domain/lote_espacial/conjunto.py`** — a derivação que a emissão da certidão repete.
+**`services/domain/lotes_mais_proximos/conjunto.py`** — a derivação que a emissão da certidão repete.
 
 ```python
 class RevisaoConjuntoInput(BaseModel):
@@ -120,8 +121,8 @@ class RevisarConjunto:
         )
 ```
 
-**`services/domain/lote_espacial/do_desenho.py`** — a busca da SPEC 003 passa a devolver o conjunto
-sem removidos.
+**`services/domain/lotes_mais_proximos/do_desenho.py`** — a busca da SPEC 003 passa a devolver o
+conjunto sem removidos.
 
 ```python
         return LotesDoDesenho(
@@ -147,7 +148,7 @@ export function adicionarResultado(map, geometria, corPadrao, enquadrar = true) 
 }
 ```
 
-**`apps/lote_espacial/views.py`**
+**`apps/lotes_mais_proximos/views.py`**
 
 ```python
 @require_POST
@@ -168,17 +169,17 @@ def remover_do_conjunto(request: HttpRequest) -> HttpResponse:
     return render(request, TEMPLATE_RESULTADO_DESENHO, contexto_lotes_do_desenho(resultado, enquadrar=False))
 ```
 
-**`templates/lote_espacial/partials/_tabela_lotes.html`** — o conjunto viaja no formulário.
+**`templates/lotes_mais_proximos/partials/_tabela_lotes.html`** — o conjunto viaja no formulário.
 
 ```html
-<form id="conjunto-lotes" hx-post="{% url 'lote_espacial:remover_do_conjunto' %}" hx-target="#resultado-busca">
+<form id="conjunto-lotes" hx-post="{% url 'lotes_mais_proximos:remover_do_conjunto' %}" hx-target="#resultado-busca">
   <input type="hidden" name="desenho" value="{{ desenho_json }}">
   {% for id in conjunto.removidos %}<input type="hidden" name="removidos" value="{{ id }}">{% endfor %}
   <table class="table-onsen">
     {% for lote in lotes %}
       <tr>
         <td><input type="radio" name="lote_destacado" value="{{ lote.attributes.id_poligono }}"
-                   hx-get="{% url 'lote_espacial:detalhe_do_lote' %}?id={{ lote.attributes.id_poligono }}"
+                   hx-get="{% url 'lotes_mais_proximos:detalhe_do_lote' %}?id={{ lote.attributes.id_poligono }}"
                    hx-target="#gaveta-detalhe" hx-trigger="change"></td>
         <td class="text-code">{{ lote.attributes.sql|default:"sem contribuinte" }}</td>
         <td>{{ lote.attributes.endereco }}</td>

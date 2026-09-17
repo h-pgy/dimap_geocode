@@ -1,12 +1,13 @@
 ---
 spec: localizacao_lote/002
-versao: v1
-atualizado_em: 2026-09-15
+versao: v2
+atualizado_em: 2026-09-17
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
+  - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
 ---
 
 # SPEC localizacao_lote/002 — Lote mais próximo do endereço interpolado
@@ -34,8 +35,8 @@ chegar ao lote sem procurá-lo no mapa.
 O ponto interpolado é o do [AddressGeocoder](../geocodificacao/003-address-geocod-ponto.md); a
 pergunta que esta SPEC faz a ele é "de qual segmento e faixa você saiu?". O lote é o
 [LoteAttributes](001-dados-do-lote-na-gaveta.md#3--domínio). A proximidade é consulta **espacial**
-sobre a camada de lotes: nasce aqui o submódulo `lote_espacial`, que responde "que lotes estão
-perto de / dentro de uma geometria".
+sobre a camada de lotes: nasce aqui o submódulo `lotes_mais_proximos`, que responde "que lotes
+estão perto de / dentro de uma geometria".
 
 **`services/domain/address_geocod/models.py`** — `EnderecoAttributes` inteiro.
 
@@ -52,7 +53,7 @@ class EnderecoAttributes(BaseModel):
     titulo: str | None = None
 ```
 
-**`services/domain/lote_espacial/models.py`**
+**`services/domain/lotes_mais_proximos/models.py`**
 
 ```python
 class CamadaLotes(BaseModel):
@@ -123,7 +124,7 @@ def reprojetar[G: (PointGeometry, PolygonGeometry)](geometria: G, origem: int, d
     return type(geometria).model_validate_json(geos.geojson)
 ```
 
-**`services/domain/lote_espacial/mais_proximo.py`**
+**`services/domain/lotes_mais_proximos/mais_proximo.py`**
 
 ```python
 class LoteMaisProximoInput(BaseModel):
@@ -175,7 +176,7 @@ class LoteMaisProximo:
         ...
 ```
 
-**`apps/lote_espacial/views.py`** — rota aberta; o ponto e o codlog viajam no formulário da gaveta.
+**`apps/lotes_mais_proximos/views.py`** — rota aberta; o ponto e o codlog viajam no formulário da gaveta.
 
 ```python
 LOTE_MAIS_PROXIMO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_RAIO_M
@@ -196,7 +197,7 @@ def mais_proximo(request: HttpRequest) -> HttpResponse:
         ponto=PointGeometry(type="Point", coordinates=[consulta.lon, consulta.lat]),
         codlog=consulta.codlog,
         raio_m=LOTE_MAIS_PROXIMO_RAIO_M,
-        camada=camada_lotes(),   # apps/lote_espacial/contexto.py: único ponto que lê settings
+        camada=camada_lotes(),   # apps/lotes_mais_proximos/contexto.py: único ponto que lê settings
     )
     try:
         proximo = LoteMaisProximo(build_fetcher(settings))(entrada)
@@ -208,7 +209,7 @@ def mais_proximo(request: HttpRequest) -> HttpResponse:
 **`templates/address_geocoder/partials/_gaveta_endereco.html`** — o botão carrega o que a consulta precisa.
 
 ```html
-<form hx-post="{% url 'lote_espacial:mais_proximo' %}" hx-target="#resultado-busca" hx-swap="innerHTML">
+<form hx-post="{% url 'lotes_mais_proximos:mais_proximo' %}" hx-target="#resultado-busca" hx-swap="innerHTML">
   <input type="hidden" name="lon" value="{{ ponto.coordinates.0 }}">
   <input type="hidden" name="lat" value="{{ ponto.coordinates.1 }}">
   <input type="hidden" name="codlog" value="{{ endereco.codlog }}">
@@ -237,8 +238,8 @@ O raio (`LOTE_MAIS_PROXIMO_RAIO_M`, 50 m por padrão) é um corte fixo. O ponto 
 da via, e o lote certo pode estar mais longe que isso em quadras grandes. O custo é responder "sem
 lote" em casos em que o lote existe, até alguém calibrar o raio no ambiente.
 
-`lote_espacial` passa a conhecer `lote_geocod`, porque converte a feature pela mesma função. Duas
-conversões divergiriam no primeiro atributo novo. O custo é um submódulo depender do outro.
+`lotes_mais_proximos` passa a conhecer `lote_geocod`, porque converte a feature pela mesma função.
+Duas conversões divergiriam no primeiro atributo novo. O custo é um submódulo depender do outro.
 
 ## 8 · Testes (TDD)
 - `test_dwithin_monta_cql` — `CqlDWithin` gera `DWITHIN(campo, POINT(x y), r, meters)` dentro do `AND`.
@@ -249,7 +250,7 @@ conversões divergiriam no primeiro atributo novo. O custo é um submódulo depe
 - `test_sem_lote_no_raio_levanta_erro_proprio` — página vazia levanta `NenhumLoteProximoError`.
 - `test_lote_devolvido_no_crs_do_mapa` — o polígono escolhido sai em 4326.
 - `test_endereco_interpolado_abre_gaveta_com_faixa_e_botao` — o partial do ponto traz a gaveta com
-  a faixa de numeração, o grau de certeza e o formulário para `lote_espacial:mais_proximo`.
+  a faixa de numeração, o grau de certeza e o formulário para `lotes_mais_proximos:mais_proximo`.
 - `test_mais_proximo_anonimo_devolve_ponto_lote_e_gaveta_do_lote` — POST sem login devolve payload
   com as duas features e o OOB da gaveta do lote.
 - `test_mais_proximo_sem_lote_responde_aviso_com_raio` — a mensagem cita o raio.

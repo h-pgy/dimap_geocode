@@ -1,12 +1,13 @@
 ---
 spec: certidao_lancamento/002
-versao: v1
-atualizado_em: 2026-09-15
+versao: v2
+atualizado_em: 2026-09-17
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco, artefato]
 changelog:
   - v1: versão inicial
+  - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
 ---
 
 # SPEC certidao_lancamento/002 — Certidão de Existência de Lançamento de um conjunto de lotes
@@ -121,13 +122,13 @@ class ConsultaAcoesEntidade(BaseModel):
 - Limite de quantidade de lotes numa certidão além da área máxima do desenho — sem dono ainda.
 
 ## 5 · Peças de referência a compor
-- `@services/domain/lote_espacial/conjunto.py` → `RevisarConjunto` (SPEC localizacao_lote/004).
+- `@services/domain/lotes_mais_proximos/conjunto.py` → `RevisarConjunto` (SPEC localizacao_lote/004).
 - `@services/domain/certidao_lancamento/certidao.py` → `MontarCertidaoLancamento`, `CertidaoLancamento` (SPEC 001).
 - `@apps/certidao_lancamento/emissao.py` → `emitir_certidao_lancamento` (SPEC 001).
 - `@apps/acoes_entidade` → contrato, `acoes_liberadas` e a rota do poço (SPEC 001).
 - `@services/domain/planta_localizacao` → `CamadaPlanta`, `EstiloGeometria` (SPEC documentos_oficiais/011).
 - `@services/domain/geometry/reprojecao.py` → `reprojetar` (SPEC localizacao_lote/002).
-- `@templates/lote_espacial/partials/_tabela_lotes.html` → o formulário `#conjunto-lotes` com desenho e removidos.
+- `@templates/lotes_mais_proximos/partials/_tabela_lotes.html` → o formulário `#conjunto-lotes` com desenho e removidos.
 - Skills: `acao-administrativa`, `documento-oficial`, `erros-de-formulario`, `mock`, `escrever-testes`.
 
 ## 6 · Snippets
@@ -268,7 +269,7 @@ def emitir_conjunto(request: HttpRequest) -> HttpResponse:
 ```
 
 ```html
-{# templates/lote_espacial/partials/_gaveta_desenho.html — o resumo do desenho pede o poço ao router #}
+{# templates/lotes_mais_proximos/partials/_gaveta_desenho.html — o resumo do desenho pede o poço ao router #}
 <div hx-get="{% url 'acoes_entidade:acoes' %}?tipo=conjunto_lotes" hx-trigger="load" hx-swap="outerHTML"></div>
 ```
 

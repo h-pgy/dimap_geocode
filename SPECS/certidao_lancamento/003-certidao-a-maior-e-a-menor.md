@@ -1,12 +1,13 @@
 ---
 spec: certidao_lancamento/003
-versao: v1
-atualizado_em: 2026-09-15
+versao: v2
+atualizado_em: 2026-09-17
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [artefato]
 changelog:
   - v1: versão inicial
+  - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
 ---
 
 # SPEC certidao_lancamento/003 — Certidão "a maior" e "a menor"
@@ -41,7 +42,7 @@ A participação de um lote é a medida da intersecção entre ele e o [Desenho]
 apurada no CRS métrico da camada. A modalidade **não é escolha de ninguém**: é derivada das
 participações dos lotes que restaram depois da revisão da SPEC [localizacao_lote/004](../localizacao_lote/004-revisao-do-conjunto.md).
 
-**`services/domain/lote_espacial/models.py`** — `LoteNoDesenho` novo e `LotesDoDesenho` inteiro.
+**`services/domain/lotes_mais_proximos/models.py`** — `LoteNoDesenho` novo e `LotesDoDesenho` inteiro.
 
 ```python
 class ModalidadeConjunto(StrEnum):
@@ -119,20 +120,20 @@ skill `mock`.
 - Escolher a modalidade à mão contra a apurada — sem dono ainda.
 
 ## 5 · Peças de referência a compor
-- `@services/domain/lote_espacial/do_desenho.py` → `BuscarLotesDoDesenho`, `ConferirDesenho` (SPEC localizacao_lote/003).
-- `@services/domain/lote_espacial/conjunto.py` → `RevisarConjunto` (SPEC localizacao_lote/004).
+- `@services/domain/lotes_mais_proximos/do_desenho.py` → `BuscarLotesDoDesenho`, `ConferirDesenho` (SPEC localizacao_lote/003).
+- `@services/domain/lotes_mais_proximos/conjunto.py` → `RevisarConjunto` (SPEC localizacao_lote/004).
 - `@services/domain/geometry/reprojecao.py` → `reprojetar` (SPEC localizacao_lote/002).
 - `@services/domain/certidao_lancamento/certidao.py` → `MontarCertidaoLancamento` (SPECs 001 e 002).
 - `@apps/certidao_lancamento/emissao.py` → `emitir_certidao_do_conjunto` (SPEC 002).
-- `@templates/lote_espacial/partials/_tabela_lotes.html` e `_gaveta_desenho.html` (SPECs localizacao_lote/003 e 004).
+- `@templates/lotes_mais_proximos/partials/_tabela_lotes.html` e `_gaveta_desenho.html` (SPECs localizacao_lote/003 e 004).
 - Skills: `ontologia`, `documento-oficial`, `mock`, `escrever-testes`.
 
 ## 6 · Snippets
 
 > Comentários didáticos: **não são portados** para o código (§7.2 do CLAUDE.md).
 
-**`services/domain/lote_espacial/do_desenho.py`** — a consulta passa a vir no CRS métrico; mede e só
-então reprojeta.
+**`services/domain/lotes_mais_proximos/do_desenho.py`** — a consulta passa a vir no CRS métrico;
+mede e só então reprojeta.
 
 ```python
     def _consultar(self, projetado: PolygonGeometry, camada: CamadaLotes) -> tuple[LoteNoDesenho, ...]:
@@ -208,13 +209,13 @@ ABERTURA_POR_MODALIDADE = {
         )
 ```
 
-**`apps/lote_espacial/contexto.py`** — o limiar entra pela orquestração, como a área máxima.
+**`apps/lotes_mais_proximos/contexto.py`** — o limiar entra pela orquestração, como a área máxima.
 
 ```python
 LOTE_LIMIAR_TOTALMENTE_CONTIDO: float = settings.LOTE_LIMIAR_TOTALMENTE_CONTIDO   # 99.0 por padrão
 ```
 
-**`templates/lote_espacial/partials/_tabela_lotes.html`** — a coluna nova.
+**`templates/lotes_mais_proximos/partials/_tabela_lotes.html`** — a coluna nova.
 
 ```html
 <td class="tabular-nums text-right">{{ item.percentual_contido|floatformat:2 }}%</td>
