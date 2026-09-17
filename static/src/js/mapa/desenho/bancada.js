@@ -210,7 +210,18 @@ export function inicializarBancadaDesenho(mapa) {
   });
 
   // ── A bancada anda pela tela ───────────────────────────────────────────────────────────────
-  inicializarArrasto(
+  // Consulta a cada vez: o OOB de #gaveta-entidade cria e destrói a gaveta inteira.
+  function gavetaDaEntidade() {
+    return document.querySelector("#gaveta-entidade > .gaveta-lateral");
+  }
+
+  function recuoDaGaveta() {
+    const gaveta = gavetaDaEntidade();
+    if (!gaveta || !gaveta.querySelector(":scope > .gaveta-lateral-toggle:checked")) return 0;
+    return gaveta.offsetWidth;
+  }
+
+  const arrasto = inicializarArrasto(
     { conjunto, alca, barra, telaMapa },
     {
       fecharSubmenus: () => {
@@ -222,8 +233,20 @@ export function inicializarBancadaDesenho(mapa) {
         renderizar();
       },
       renderizar,
+      esquerdaTomada: () => gavetaDaEntidade() !== null,
+      recuoEsquerdo: recuoDaGaveta,
     },
   );
+
+  // Clique na paleta dispara `change`; a gaveta criada pelo servidor (OOB) não dispara, então o
+  // assentamento do swap também confere.
+  function acompanharGaveta() {
+    if (gavetaDaEntidade()) arrasto.desocuparEsquerda();
+  }
+  document.addEventListener("change", (evento) => {
+    if (evento.target.matches(".gaveta-lateral-toggle")) acompanharGaveta();
+  });
+  document.body.addEventListener("htmx:afterSettle", acompanharGaveta);
 
   // ── Sincronia com o plugin ─────────────────────────────────────────────────────────────────
   mapa.on("pm:globaldrawmodetoggled", (evento) => {

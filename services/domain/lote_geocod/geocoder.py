@@ -21,6 +21,13 @@ _OPCIONAIS: dict[str, str] = {
     "cd_logradouro": "codlog",
     "nm_logradouro_completo": "nome_logradouro",
     "cd_numero_porta": "numero_porta",
+    "cd_digito_sql": "digito",
+    "tx_complemento_endereco": "complemento",
+    "tx_situ_lote": "situacao",
+    "dc_tipo_uso_imovel": "uso",
+    "qt_area_terreno": "area_terreno_m2",
+    "qt_area_construida": "area_construida_m2",
+    "cd_cib": "cib",
 }
 
 

@@ -3,7 +3,7 @@ spec: localizacao_lote/001
 versao: v5
 atualizado_em: 2026-09-17
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: []
 changelog:
   - v1: versão inicial

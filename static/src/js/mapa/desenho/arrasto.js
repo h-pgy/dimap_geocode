@@ -23,7 +23,7 @@ function limitar(valor, minimo, maximo) {
 // a bancada abre, fecha ou muda de encaixe — a bancada nunca chama desligarTudo/renderizar direto.
 export function inicializarArrasto(refs, ganchos) {
   const { conjunto, alca, barra, telaMapa } = refs;
-  const { fecharSubmenus, recolherFerramentas, renderizar } = ganchos;
+  const { fecharSubmenus, recolherFerramentas, renderizar, esquerdaTomada, recuoEsquerdo } = ganchos;
 
   // Sem isto, arrastar a bancada arrasta o mapa e a roda sobre ela dá zoom.
   L.DomEvent.disableClickPropagation(conjunto);
@@ -63,7 +63,7 @@ export function inicializarArrasto(refs, ganchos) {
   function posicionarLivre(x, y) {
     const limite = telaMapa.getBoundingClientRect();
     const caixa = conjunto.getBoundingClientRect();
-    conjunto.style.left = limitar(x - limite.left, 0, limite.width - caixa.width) + "px";
+    conjunto.style.left = limitar(x - limite.left, recuoEsquerdo(), limite.width - caixa.width) + "px";
     conjunto.style.top = limitar(y - limite.top, 0, limite.height - caixa.height) + "px";
   }
 
@@ -116,7 +116,7 @@ export function inicializarArrasto(refs, ganchos) {
     const y = ponteiroY - limite.top;
 
     let dock = null;
-    if (x < MARGEM_ENCAIXE) dock = "left";
+    if (x < MARGEM_ENCAIXE && !esquerdaTomada()) dock = "left";
     else if (limite.width - x < MARGEM_ENCAIXE) dock = "right";
     else if (limite.height - y < MARGEM_ENCAIXE) dock = "bottom";
     // Fora de qualquer borda a bancada fica onde foi largada, mas deitada: em pé ela só existe
@@ -175,4 +175,19 @@ export function inicializarArrasto(refs, ganchos) {
   }
   alca.addEventListener("pointerup", largarAlca);
   alca.addEventListener("pointercancel", largarAlca);
+
+  // Chamado quando a gaveta aparece ou abre. Encaixada à esquerda, a bancada vai para a direita
+  // (mesmo eixo, só reancorar); solta atrás da parede, é empurrada até ela.
+  function desocuparEsquerda() {
+    if (conjunto.dataset.dock === "left") {
+      reancorar("right");
+      renderizar();
+      return;
+    }
+    const recuo = recuoEsquerdo();
+    const solta = conjunto.classList.contains("bancada-conjunto--solta");
+    if (solta && parseFloat(conjunto.style.left) < recuo) conjunto.style.left = recuo + "px";
+  }
+
+  return { desocuparEsquerda };
 }

@@ -42,7 +42,11 @@ def geocodificar_codlog(request: HttpRequest, codlog: str) -> HttpResponse:
             contexto_aviso("Este logradouro não possui geometria cadastrada para exibir no mapa."),
         )
     geojson = to_geojson_feature_collection(features, _properties)
-    return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_LINHA))
+    return render(
+        request,
+        "logradouro_geocoder/partials/_resultado_logradouro.html",
+        contexto_mapa(geojson, MAP_COR_LINHA),
+    )
 
 
 @require_POST

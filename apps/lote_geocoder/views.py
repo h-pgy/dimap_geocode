@@ -57,7 +57,12 @@ def geocodificar_lote(
             contexto_aviso("Este lote não possui geometria cadastrada para exibir no mapa."),
         )
     geojson = to_geojson_feature_collection(features, _properties)
-    return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_POLIGONO))
+    # A gaveta fala de UM lote: o primeiro polígono é o lote pedido (ver Caveats da SPEC).
+    return render(
+        request,
+        "lote_geocoder/partials/_resultado_lote.html",
+        contexto_mapa(geojson, MAP_COR_POLIGONO) | {"lote": features[0].attributes},
+    )
 
 
 @require_POST

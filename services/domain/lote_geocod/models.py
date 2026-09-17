@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 
 from services.domain.geometry import GeoFeature, PolygonGeometry
 
+SITUACAO_ATIVA = "ATIVO"
+
 
 class LoteGeocodInput(BaseModel):
     setor: str = Field(pattern=r"^\d{3}$")
@@ -25,11 +27,18 @@ class LoteAttributes(BaseModel):
     quadra: str
     lote: str
     tipo_lote: str
+    digito: str | None = None          # cd_digito_sql; None = lote sem contribuinte
     codlog: str | None = None          # cd_logradouro (opcional, como os demais de origem)
     nome_logradouro: str = ""          # nm_logradouro_completo (str; '' quando ausente/None)
     numero_porta: str = ""             # cd_numero_porta ORIGINAL (str; '' quando ausente/None)
+    complemento: str | None = None     # tx_complemento_endereco; None = não informado
     tipo_quadra: str | None = None
     condominio: str | None = None
+    situacao: str | None = None        # tx_situ_lote
+    uso: str | None = None             # dc_tipo_uso_imovel
+    area_terreno_m2: float | None = None      # qt_area_terreno
+    area_construida_m2: float | None = None   # qt_area_construida
+    cib: str | None = None             # cd_cib
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -48,6 +57,27 @@ class LoteAttributes(BaseModel):
         """Endereço por extenso da base oficial: nome do logradouro + número de porta."""
         partes = [p for p in (self.nome_logradouro, self.numero_porta) if p]
         return ", ".join(partes)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def endereco_completo(self) -> str:
+        """O endereço inteiro, como a gaveta o lê: `endereco` + complemento em coluna própria."""
+        partes = [p for p in (self.endereco, self.complemento) if p]
+        return " — ".join(partes)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def sql(self) -> str | None:
+        """O número de contribuinte só existe com dígito."""
+        if self.digito is None:
+            return None
+        return f"{self.setor}.{self.quadra}.{self.lote}-{self.digito}"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def possui_lancamento(self) -> bool:
+        """Possui lançamento é o lote ATIVO no cadastro, com contribuinte."""
+        return self.sql is not None and self.situacao == SITUACAO_ATIVA
 
 
 LoteFeature = GeoFeature[PolygonGeometry, LoteAttributes]

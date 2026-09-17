@@ -95,7 +95,9 @@ def geocodificar_endereco(request: HttpRequest, codlog: str, numero: object) -> 
     except NumeracaoNaoEncontradaError:
         return render(request, "mapping/_aviso.html", contexto_aviso(MSG_SEM_NUMERACAO))
     geojson = to_geojson_feature_collection([feature], _properties)
-    return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_PONTO))
+    return render(
+        request, "address_geocoder/partials/_resultado_endereco.html", contexto_mapa(geojson, MAP_COR_PONTO)
+    )
 
 
 @require_POST

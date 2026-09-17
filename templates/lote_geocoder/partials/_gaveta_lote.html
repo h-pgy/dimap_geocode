@@ -1,0 +1,104 @@
+<div class="gaveta-lateral">
+  <input type="checkbox" id="gaveta-lote-toggle" class="gaveta-lateral-toggle" checked>
+
+  <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+    <header class="gaveta-lateral-cabecalho">
+      <p class="text-overline text-madeira-600">Entidade localizada</p>
+      <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
+      {% if lote.sql %}
+        <p class="text-code text-sm font-medium mt-2">SQL {{ lote.sql }}</p>
+      {% else %}
+        <p class="text-sm font-medium mt-2">Sem contribuinte</p>
+      {% endif %}
+      {% if lote.possui_lancamento %}
+        <span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>
+      {% else %}
+        <span class="badge badge-neutral badge-soft badge-sm font-bold mt-3">Sem lançamento ativo</span>
+      {% endif %}
+    </header>
+
+    <div class="gaveta-lateral-corpo" data-scroll-etched>
+      <div class="gaveta-lateral-rolador" data-rolador>
+        <div class="gaveta-lateral-conteudo">
+          <div class="card-well p-4 flex flex-col gap-3">
+            <div class="flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Endereço cadastrado</p>
+                {% if lote.endereco_completo %}
+                  <p class="font-bold leading-tight">{{ lote.endereco_completo }}</p>
+                {% else %}
+                  <p class="valor-ausente">não informado</p>
+                {% endif %}
+              </div>
+            </div>
+            <div class="h-px w-full bg-rocha-950/10"></div>
+            <div class="flex items-baseline justify-between gap-4">
+              <p class="text-overline">Codlog</p>
+              {% if lote.codlog %}
+                <p class="text-code text-sm">{{ lote.codlog }}</p>
+              {% else %}
+                <p class="text-sm valor-ausente">não informado</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Terreno</p>
+              {% if lote.area_terreno_m2 is not None %}
+                <p class="text-xl font-bold tabular-nums">{{ lote.area_terreno_m2|floatformat:0 }} <span class="text-sm font-normal text-base-content/60">m²</span></p>
+              {% else %}
+                <p class="valor-ausente">não informado</p>
+              {% endif %}
+            </div>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Construída</p>
+              {% if lote.area_construida_m2 is not None %}
+                <p class="text-xl font-bold tabular-nums">{{ lote.area_construida_m2|floatformat:0 }} <span class="text-sm font-normal text-base-content/60">m²</span></p>
+              {% else %}
+                <p class="valor-ausente">não informado</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <p class="text-overline pt-1">Cadastro</p>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="card-well p-3">
+              <p class="text-overline mb-1">Setor</p>
+              <p class="text-code text-lg font-bold">{{ lote.setor }}</p>
+            </div>
+            <div class="card-well p-3">
+              <p class="text-overline mb-1">Quadra</p>
+              <p class="text-code text-lg font-bold">{{ lote.quadra }}</p>
+            </div>
+            <div class="card-well p-3">
+              <p class="text-overline mb-1">Lote</p>
+              <p class="text-code text-lg font-bold">{{ lote.lote }}</p>
+            </div>
+          </div>
+
+          <dl class="card-well ficha-atributos">
+            <dt class="text-overline">Tipo de quadra</dt>
+            {% if lote.tipo_quadra %}<dd class="text-code">{{ lote.tipo_quadra }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
+            <dt class="text-overline">Tipo de lote</dt>
+            <dd class="text-code">{{ lote.tipo_lote }}</dd>
+            <dt class="text-overline">Condomínio</dt>
+            {% if lote.condominio %}<dd class="text-code">{{ lote.condominio }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
+            <dt class="text-overline">Uso</dt>
+            {% if lote.uso %}<dd>{{ lote.uso }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
+            <dt class="text-overline">CIB</dt>
+            {% if lote.cib %}<dd class="text-code">{{ lote.cib }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
+          </dl>
+        </div>
+      </div>
+      <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+    </div>
+  </div>
+
+  <label for="gaveta-lote-toggle" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+    <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+  </label>
+</div>
