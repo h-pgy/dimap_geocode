@@ -10,7 +10,8 @@
 
     <div class="gaveta-lateral-corpo" data-scroll-etched>
       <div class="gaveta-lateral-rolador" data-rolador>
-        <div class="gaveta-lateral-conteudo">
+        {# Um formulário só: os radios de todos os poços formam um grupo, e a ação submete o marcado. #}
+        <form class="gaveta-lateral-conteudo">
           {% for poco in gaveta.pocos %}
             {% include "mapping/_poco_desenhos.html" with poco=poco %}
           {% endfor %}
@@ -38,7 +39,7 @@
               </div>
             </div>
           </dialog>
-        </div>
+        </form>
       </div>
       <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
     </div>

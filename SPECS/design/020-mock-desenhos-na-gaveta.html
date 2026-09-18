@@ -119,7 +119,22 @@
       .poco-desenhos--ponto    { --tinta-desenho: var(--color-agua-500); }
       .poco-desenhos--linha    { --tinta-desenho: var(--color-accent); }
       .poco-desenhos--poligono { --tinta-desenho: var(--color-sakura-500); }
-      .poco-desenhos__acoes { @apply empty:hidden; }
+      /* As ações entram e saem pela grade 0fr → 1fr, como o .painel-onsen: altura sem valor fixo.
+         Recolhidas, a margem negativa devolve o gap do poço, e o invisible as tira do Tab. */
+      .poco-desenhos__acoes {
+        @apply grid -mt-2 opacity-0 invisible transition-all duration-300 ease-in-out empty:hidden;
+        grid-template-rows: 0fr;
+      }
+      .poco-desenhos:has(.linha-desenho__marca:checked) .poco-desenhos__acoes {
+        @apply mt-0 opacity-100 visible;
+        grid-template-rows: 1fr;
+      }
+      /* O recorte não tem padding (senão a trilha não chega a zero), e o clip-margin deixa a sombra
+         da placa vazar. */
+      .poco-desenhos__acoes-recorte {
+        @apply min-h-0 overflow-clip;
+        overflow-clip-margin: 1.5rem;
+      }
 
       /* VARIANTE · .item-menu-swell — o .item-menu que incha sob o ponteiro, como o
          .btn-etched-swell. O .item-menu segue intocado: incha só quem pede a classe. */
@@ -231,7 +246,7 @@
 
         <!-- .poco-desenhos -->
         <div class="flex flex-col gap-3">
-          <p class="text-overline">.poco-desenhos — com ações, sem nenhuma e com um desenho só</p>
+          <p class="text-overline">.poco-desenhos — selecionado no poço, selecionado em outro poço (ações somem) e perfil sem ação</p>
           <div class="grid md:grid-cols-3 gap-4 items-start" data-pocos-demo></div>
         </div>
       </section>
@@ -241,12 +256,21 @@
         <h2 class="section-title">4 · Organismos</h2>
         <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
           A gaveta dos desenhos, na casca da SPEC design/013: um poço por tipo, na ordem ponto, linha,
-          polígono, cada um com a placa de ações do seu tipo.
+          polígono. Um desenho selecionado na gaveta inteira, e só o poço dele mostra as ações.
         </p>
 
-        <div class="flex flex-col gap-2">
-          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">três tipos no mapa · um selecionado em cada poço</span>
-          <div class="quadro-tela" data-gaveta-desenhos="cheia" data-toggle="org-cheia" data-aberta></div>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- estado: polígono selecionado — só o poço de polígonos tem ações -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">polígono 2 selecionado · só o poço dele oferece ações</span>
+            <div class="quadro-tela" data-gaveta-desenhos="cheia" data-toggle="org-cheia" data-aberta></div>
+          </div>
+
+          <!-- estado de falta: nada selecionado — nenhum poço tem ações -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">nada selecionado · nenhuma ação</span>
+            <div class="quadro-tela" data-gaveta-desenhos="sem-selecao" data-toggle="org-sem-selecao" data-aberta></div>
+          </div>
         </div>
       </section>
 
@@ -256,7 +280,7 @@
 
         <!-- estado: com desenhos no mapa — selecionar a linha repinta o traço -->
         <div class="flex flex-col gap-2">
-          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">cinco traços no mapa · troque a marca e veja a tinta mudar</span>
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">cinco traços no mapa · nada marcado: marque uma linha e veja a tinta e as ações do poço dela</span>
 
           <!-- página: core/home.html -->
           <div class="quadro-tela tela-home">
@@ -298,7 +322,7 @@
 
           <!-- estado: um polígono só -->
           <div class="flex flex-col gap-2">
-            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">um polígono · poço único, já marcado</span>
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">recém-desenhado · poço único, ainda sem seleção</span>
             <div class="quadro-tela tela-home">
               <div data-gaveta-desenhos="um" data-toggle="tela-um" data-aberta></div>
               <div data-bancada="direita"></div>
@@ -448,14 +472,16 @@
         '<span class="badge ' + BADGE_TIPO[tipo] + ' badge-sm">' + TITULO_POCO[tipo] + "</span>" +
         '<span class="placa-lista__contagem">' + itens.length + "</span>";
       return (
-        '<form class="card-well poco-desenhos poco-desenhos--' + tipo + '">' +
+        '<div class="card-well poco-desenhos poco-desenhos--' + tipo + '">' +
         placaLista(
           cabecalho,
           itens.map((item) => linhaDesenho(item, item.id === idMarcado)).join(""),
           "placa-lista--desenhos",
         ) +
-        '<div class="poco-desenhos__acoes">' + acoesPoco(acoes || []) + "</div>" +
-        "</form>"
+        '<div class="poco-desenhos__acoes">' +
+        (acoes && acoes.length ? '<div class="poco-desenhos__acoes-recorte">' + acoesPoco(acoes) + "</div>" : "") +
+        "</div>" +
+        "</div>"
       );
     }
 
@@ -474,7 +500,8 @@
         // esta SPEC põe em julgamento — seria capturada pela gaveta. Ver o relato ao usuário.
         '<div class="gaveta-lateral-corpo">' +
         '<div class="gaveta-lateral-rolador">' +
-        '<div class="gaveta-lateral-conteudo">' + pocos + "</div>" +
+        // Um formulário só na gaveta: os radios de todos os poços formam um grupo.
+        '<form class="gaveta-lateral-conteudo">' + pocos + "</form>" +
         "</div>" +
         "</div>" +
         "</div>" +
@@ -500,12 +527,15 @@
       ],
     };
 
+    const gavetaCheia = (idMarcado) =>
+      pocoDesenhos("ponto", DESENHOS.pontos, idMarcado, ACOES_POR_TIPO.ponto) +
+      pocoDesenhos("linha", DESENHOS.linhas, idMarcado, ACOES_POR_TIPO.linha) +
+      pocoDesenhos("poligono", DESENHOS.poligonos, idMarcado, ACOES_POR_TIPO.poligono);
+
     const ESTADOS = {
-      um: () => pocoDesenhos("poligono", [DESENHOS.poligonos[0]], "4", ACOES_POR_TIPO.poligono),
-      cheia: () =>
-        pocoDesenhos("ponto", DESENHOS.pontos, "2", ACOES_POR_TIPO.ponto) +
-        pocoDesenhos("linha", DESENHOS.linhas, "3", ACOES_POR_TIPO.linha) +
-        pocoDesenhos("poligono", DESENHOS.poligonos, "5", ACOES_POR_TIPO.poligono),
+      um: () => pocoDesenhos("poligono", [DESENHOS.poligonos[0]], null, ACOES_POR_TIPO.poligono),
+      cheia: () => gavetaCheia("5"),
+      "sem-selecao": () => gavetaCheia(null),
       "sem-acao": () =>
         pocoDesenhos("linha", DESENHOS.linhas, "3", []) +
         pocoDesenhos("poligono", DESENHOS.poligonos, "5", []),
@@ -522,10 +552,12 @@
       '<div class="card-well p-3">' + acoesPoco(ACOES_POR_TIPO.ponto) + "</div>",
       '<div class="card-well p-3">' + acoesPoco(ACOES_POR_TIPO.linha) + "</div>",
     ].join("");
-    document.querySelector("[data-pocos-demo]").innerHTML =
-      pocoDesenhos("poligono", DESENHOS.poligonos, "5", ACOES_POR_TIPO.poligono) +
-      pocoDesenhos("poligono", DESENHOS.poligonos, "4", []) +
-      pocoDesenhos("ponto", [DESENHOS.pontos[0]], "1", ACOES_POR_TIPO.ponto);
+    // Cada estado no seu formulário: radios sem formulário formariam um grupo só na página.
+    document.querySelector("[data-pocos-demo]").innerHTML = [
+      pocoDesenhos("poligono", DESENHOS.poligonos, "5", ACOES_POR_TIPO.poligono),
+      pocoDesenhos("ponto", [DESENHOS.pontos[0]], "5", ACOES_POR_TIPO.ponto),
+      pocoDesenhos("poligono", DESENHOS.poligonos, "4", []),
+    ].map((poco) => "<form>" + poco + "</form>").join("");
 
     // ── Fundo, glifos e bancada: os partials da própria aplicação ───────────────────────────────
     async function partial(caminho) {
@@ -629,7 +661,7 @@
     const pocos = ORDEM_TIPOS.map((tipo) => {
       const itens = EXEMPLOS.filter((desenho) => desenho.tipo === tipo);
       if (!itens.length) return "";
-      return pocoDesenhos(tipo, itens, itens[itens.length - 1].id, ACOES_POR_TIPO[tipo]);
+      return pocoDesenhos(tipo, itens, null, ACOES_POR_TIPO[tipo]);
     }).join("");
     alvoGaveta.appendChild(gavetaDesenhos(pocos, "gaveta-desenhos-viva", true));
     montarBarrasGravadas();

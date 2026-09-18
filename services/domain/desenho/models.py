@@ -132,20 +132,22 @@ class DesenhoMedido(BaseModel):
 
 
 class PocoDesenhos(BaseModel):
-    """Um poço da gaveta: os desenhos de um tipo e qual deles está marcado."""
+    """Um poço da gaveta: os desenhos de um tipo."""
 
     tipo: TipoDesenho
     desenhos: tuple[DesenhoMedido, ...] = Field(min_length=1)
-    id_selecionado: str
-
-    @model_validator(mode="after")
-    def _selecionado_esta_no_poco(self) -> Self:
-        if self.id_selecionado not in {m.desenho.id_bancada for m in self.desenhos}:
-            raise ValueError("O desenho selecionado não está no poço.")
-        return self
 
 
 class GavetaDesenhos(BaseModel):
-    """O que a gaveta mostra: um poço por tipo com desenho, na ordem da bancada."""
+    """O que a gaveta mostra: um poço por tipo com desenho, na ordem da bancada, e o desenho marcado —
+    se houver."""
 
     pocos: tuple[PocoDesenhos, ...] = ()
+    id_selecionado: str | None = None
+
+    @model_validator(mode="after")
+    def _selecionado_esta_na_gaveta(self) -> Self:
+        ids = {m.desenho.id_bancada for poco in self.pocos for m in poco.desenhos}
+        if self.id_selecionado is not None and self.id_selecionado not in ids:
+            raise ValueError("O desenho selecionado não está na gaveta.")
+        return self

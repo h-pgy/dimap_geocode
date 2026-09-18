@@ -2953,38 +2953,54 @@
 
         <div>
           <span class="text-overline">.poco-desenhos + .linha-desenho (SPEC design/020) <span class="font-normal text-base-content/50">— o poço da gaveta, um por tipo desenhado</span></span>
-          <div class="grid md:grid-cols-3 gap-4 mt-3">
-            <form class="poco-desenhos poco-desenhos--ponto card-well">
+          <form class="grid md:grid-cols-3 gap-4 mt-3 items-start">
+            <div class="poco-desenhos poco-desenhos--ponto card-well">
               <label class="linha-desenho">
-                <input type="radio" name="design-system-ponto" class="linha-desenho__marca" checked>
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca">
                 <span class="linha-desenho__rotulo">Ponto 1</span>
                 <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′40,320″ S · 46°39′23,760″ O">-23.561, -46.657</span>
                 <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
               </label>
               <label class="linha-desenho">
-                <input type="radio" name="design-system-ponto" class="linha-desenho__marca">
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca">
                 <span class="linha-desenho__rotulo">Ponto 2</span>
                 <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′44,280″ S · 46°39′19,080″ O">-23.562, -46.655</span>
                 <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
               </label>
-            </form>
-            <form class="poco-desenhos poco-desenhos--linha card-well">
+              <div class="poco-desenhos__acoes">
+                <div class="poco-desenhos__acoes-recorte">
+                  <button type="button" class="card-well item-menu item-menu-swell">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+                    <span class="item-menu-rotulo">Lote sob o ponto</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="poco-desenhos poco-desenhos--linha card-well">
               <label class="linha-desenho">
-                <input type="radio" name="design-system-linha" class="linha-desenho__marca" checked>
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca">
                 <span class="linha-desenho__rotulo">Linha 1</span>
                 <span class="linha-desenho__medida">318 m</span>
                 <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
               </label>
-            </form>
-            <form class="poco-desenhos poco-desenhos--poligono card-well">
+              <div class="poco-desenhos__acoes">
+                <div class="poco-desenhos__acoes-recorte">
+                  <button type="button" class="card-well item-menu item-menu-swell">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+                    <span class="item-menu-rotulo">Lotes que a linha cruza</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="poco-desenhos poco-desenhos--poligono card-well">
               <label class="linha-desenho">
-                <input type="radio" name="design-system-poligono" class="linha-desenho__marca">
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca">
                 <span class="linha-desenho__rotulo">Polígono 1</span>
                 <span class="linha-desenho__medida">1.240 m²</span>
                 <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
               </label>
               <label class="linha-desenho">
-                <input type="radio" name="design-system-poligono" class="linha-desenho__marca" checked>
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca" checked>
                 <span class="linha-desenho__rotulo">Polígono 2</span>
                 <span class="linha-desenho__medida">18.702 m²</span>
                 <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar" commandfor="design-system-apagar-desenho" command="show-modal"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
@@ -3001,9 +3017,17 @@
                   </div>
                 </div>
               </dialog>
-            </form>
-          </div>
-          <p class="text-xs text-base-content/60 mt-2">Um poço por tipo desenhado, na tinta daquela geometria (<span class="text-code">--tinta-desenho</span>). A linha marcada lê o próprio radio (<span class="text-code">:has(.linha-desenho__marca:checked)</span>) — nenhum estado de seleção em JavaScript. O ponto mostra a posição em graus decimais com sinal, e o tooltip a traz em graus, minutos e segundos; linha mede comprimento, polígono mede área. O X de apagar (<span class="text-code">.linha-desenho__apagar</span>) está em toda linha, mas só a marcada o mostra — nas outras ele guarda a coluna; gravado em repouso, incha e enche de água sob o ponteiro, e abre a pergunta de confirmação num <span class="text-code">&lt;dialog&gt;</span> com <span class="text-code">.modal-glass</span> (experimente no Polígono 2).</p>
+              <div class="poco-desenhos__acoes">
+                <div class="poco-desenhos__acoes-recorte">
+                  <button type="button" class="card-well item-menu item-menu-swell">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+                    <span class="item-menu-rotulo">Lotes sob o polígono</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+          <p class="text-xs text-base-content/60 mt-2">Um poço por tipo desenhado, na tinta daquela geometria (<span class="text-code">--tinta-desenho</span>). A linha marcada lê o próprio radio (<span class="text-code">:has(.linha-desenho__marca:checked)</span>) — nenhum estado de seleção em JavaScript. O ponto mostra a posição em graus decimais com sinal, e o tooltip a traz em graus, minutos e segundos; linha mede comprimento, polígono mede área. O X de apagar (<span class="text-code">.linha-desenho__apagar</span>) está em toda linha, mas só a marcada o mostra — nas outras ele guarda a coluna; gravado em repouso, incha e enche de água sob o ponteiro, e abre a pergunta de confirmação num <span class="text-code">&lt;dialog&gt;</span> com <span class="text-code">.modal-glass</span> (experimente no Polígono 2). Os poços dividem um formulário só, então há um desenho marcado na gaveta inteira; as ações de um poço (<span class="text-code">.poco-desenhos__acoes</span> &gt; <span class="text-code">.poco-desenhos__acoes-recorte</span>) só se abrem, em <span class="text-code">ease-in-out</span>, quando o marcado é dele — marque um ponto e veja as do polígono recolherem.</p>
         </div>
 
         <div>

@@ -1,9 +1,10 @@
-<form class="poco-desenhos poco-desenhos--{{ poco.tipo }} card-well">
+{# <div>, não <form>: radios de formulários diferentes não formam um grupo só. #}
+<div class="poco-desenhos poco-desenhos--{{ poco.tipo }} card-well">
   {% for medido in poco.desenhos %}
     <label class="linha-desenho">
       <input type="radio" name="id_bancada" class="linha-desenho__marca"
              value="{{ medido.desenho.id_bancada }}"
-             {% if medido.desenho.id_bancada == poco.id_selecionado %}checked{% endif %}>
+             {% if medido.desenho.id_bancada == gaveta.id_selecionado %}checked{% endif %}>
       <span class="linha-desenho__rotulo">{{ poco.tipo|capfirst }} {{ forloop.counter }}</span>
       {% if medido.medida %}
         <span class="linha-desenho__medida">{{ medido.medida.valor|floatformat:0 }} {{ medido.medida.unidade }}</span>
@@ -39,4 +40,4 @@
     </dialog>
   {% endfor %}
   <div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}"></div>
-</form>
+</div>

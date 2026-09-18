@@ -1,6 +1,6 @@
 ---
 spec: design/020
-versao: v7
+versao: v8
 atualizado_em: 2026-09-18
 testes_tdd: true
 implementado: true
@@ -12,6 +12,7 @@ changelog:
   - v5: a linha selecionada ganha um X que apaga o desenho depois de confirmação
   - v6: a gaveta ganha o botão "Limpar desenhos", que apaga todos os desenhos do mapa de uma vez
   - v7: limpar desenhos passa a pedir confirmação, com a contagem por tipo do que será apagado
+  - v8: a gaveta passa a ter uma seleção só, e as ações de um poço aparecem só quando o selecionado é dele
 ---
 
 # SPEC design/020 — Os desenhos da bancada na gaveta
@@ -26,11 +27,14 @@ para dizer sobre qual geometria as ações vão operar.
 - [ ] A linha de cada desenho mostra a medida dele: **área** no polígono, **comprimento** na linha; a
       do ponto mostra a **posição** em graus decimais com sinal — latitude, longitude —, e o hover sobre
       ela a mesma posição em **graus, minutos e segundos**, com hemisfério.
-- [ ] O **último desenhado** de um tipo nasce selecionado no poço dele, e desenhar de outro tipo
-      **não muda** a seleção dos demais poços.
-- [ ] O desenho selecionado de cada poço aparece no mapa **realçado** — traço mais grosso ou ponto
-      maior, por cima dos demais — e os demais mantêm o **traço normal** de quando foram desenhados;
-      trocar a seleção troca o realce na mesma hora.
+- [ ] A gaveta tem **no máximo um desenho selecionado**, entre todos os poços: marcar um desmarca o
+      que estava marcado em qualquer poço. Desenho novo **nasce sem seleção** e não muda a que existe;
+      apagado o selecionado, a gaveta fica **sem seleção**.
+- [ ] As ações de um poço **só aparecem** quando o desenho selecionado é daquele poço — um ponto para
+      as ações de ponto, um polígono para as de polígono; sem seleção, nenhum poço mostra ação.
+- [ ] O desenho selecionado aparece no mapa **realçado** — traço mais grosso ou ponto maior, por cima
+      dos demais — e os demais mantêm o **traço normal** de quando foram desenhados; trocar a seleção
+      troca o realce na mesma hora.
 - [ ] Clicar num desenho no mapa, sem ferramenta da bancada na mão, **marca a linha dele** no poço
       do seu tipo — com o mesmo destaque da marca pela gaveta — e abre a gaveta se estava recolhida.
 - [ ] Apagar um desenho — pela borracha da bancada ou pela gaveta — tira o traço do mapa e a linha do
@@ -163,24 +167,26 @@ class DesenhoMedido(BaseModel):
     posicao: Posicao | None = None   # ALTERADO nesta SPEC: campo novo — só no ponto
 
 
-class PocoDesenhos(BaseModel):
-    """Um poço da gaveta: os desenhos de um tipo e qual deles está marcado."""
+class PocoDesenhos(BaseModel):   # ALTERADO nesta SPEC: a seleção sai do poço
+    """Um poço da gaveta: os desenhos de um tipo."""
 
     tipo: TipoDesenho
     desenhos: tuple[DesenhoMedido, ...] = Field(min_length=1)
-    id_selecionado: str
-
-    @model_validator(mode="after")
-    def _selecionado_esta_no_poco(self) -> Self:
-        if self.id_selecionado not in {m.desenho.id_bancada for m in self.desenhos}:
-            raise ValueError("O desenho selecionado não está no poço.")
-        return self
 
 
-class GavetaDesenhos(BaseModel):
-    """O que a gaveta mostra: um poço por tipo com desenho, na ordem da bancada."""
+class GavetaDesenhos(BaseModel):   # ALTERADO nesta SPEC: a seleção, única, passa a ser da gaveta
+    """O que a gaveta mostra: um poço por tipo com desenho, na ordem da bancada, e o desenho marcado —
+    se houver."""
 
     pocos: tuple[PocoDesenhos, ...] = ()
+    id_selecionado: str | None = None
+
+    @model_validator(mode="after")
+    def _selecionado_esta_na_gaveta(self) -> Self:
+        ids = {m.desenho.id_bancada for poco in self.pocos for m in poco.desenhos}
+        if self.id_selecionado is not None and self.id_selecionado not in ids:
+            raise ValueError("O desenho selecionado não está na gaveta.")
+        return self
 ```
 
 **Mock:** [020-mock-desenhos-na-gaveta.html](020-mock-desenhos-na-gaveta.html) — leia a skill `mock`.
@@ -231,17 +237,17 @@ def reprojetar[G: (PointGeometry, LineGeometry, PolygonGeometry)](  # ALTERADO: 
 ```
 
 **`services/domain/desenho/gaveta.py`** — as duas regras da iteração: o que cada traço mede e qual
-deles nasce marcado.
+deles segue marcado.
 
 ```python
 class GavetaDesenhosInput(BaseModel):
     desenhos: tuple[Desenho, ...]
-    ids_selecionados: tuple[str, ...] = ()   # o que cada poço já tinha marcado antes deste redesenho
+    id_selecionado: str | None = None   # ALTERADO: o que a gaveta tinha marcado antes deste redesenho
     crs_mapa: int
     crs_metrico: int
     crs_geografico: int   # ALTERADO: onde a posição do ponto é lida
 
-    @field_validator("desenhos", "ids_selecionados", mode="before")
+    @field_validator("desenhos", mode="before")
     @classmethod
     def _do_json(cls, valor: object) -> object:
         # O formulário manda texto: JSON malformado vira ValidationError e cai no middleware.
@@ -262,11 +268,11 @@ class MontarGavetaDesenhos:
         medidos = tuple(self._medir(desenho, entrada) for desenho in entrada.desenhos)
         # A ordem dos poços é a do enum — ponto, linha, polígono —, e tipo sem desenho não vira poço.
         pocos = tuple(
-            self._poco(tipo, do_tipo, entrada.ids_selecionados)
+            PocoDesenhos(tipo=tipo, desenhos=do_tipo)
             for tipo in TipoDesenho
             if (do_tipo := tuple(m for m in medidos if m.desenho.tipo is tipo))
         )
-        return GavetaDesenhos(pocos=pocos)
+        return GavetaDesenhos(pocos=pocos, id_selecionado=self._selecionado(entrada))   # ALTERADO
 
     def _medir(self, desenho: Desenho, entrada: GavetaDesenhosInput) -> DesenhoMedido:
         grandeza = GRANDEZA_POR_TIPO.get(desenho.tipo)
@@ -287,19 +293,11 @@ class MontarGavetaDesenhos:
             longitude=Coordenada(eixo=Eixo.LONGITUDE, graus_decimais=longitude),
         )
 
-    def _poco(
-        self,
-        tipo: TipoDesenho,
-        do_tipo: tuple[DesenhoMedido, ...],
-        escolhidos: tuple[str, ...],
-    ) -> PocoDesenhos:
-        # A escolha do usuário vale enquanto o desenho existir; caindo ele, o último desenhado
-        # daquele tipo assume — e é por isso que desenhar um ponto não desmarca o polígono.
-        escolhido = next(
-            (m.desenho.id_bancada for m in do_tipo if m.desenho.id_bancada in escolhidos),
-            do_tipo[-1].desenho.id_bancada,
-        )
-        return PocoDesenhos(tipo=tipo, desenhos=do_tipo, id_selecionado=escolhido)
+    def _selecionado(self, entrada: GavetaDesenhosInput) -> str | None:
+        # ALTERADO. A seleção é só a escolha do usuário: desenho novo não a toma, e apagado o
+        # escolhido ninguém assume — a gaveta fica sem seleção, e nenhum poço oferece ação.
+        existentes = {desenho.id_bancada for desenho in entrada.desenhos}
+        return entrada.id_selecionado if entrada.id_selecionado in existentes else None
 ```
 
 **`services/domain/desenho/models.py`** — o sinal escolhe o hemisfério, e a conversão para
@@ -351,7 +349,7 @@ class Coordenada(BaseModel):
 def desenhos_da_bancada(request: HttpRequest) -> HttpResponse:
     entrada = GavetaDesenhosInput(
         desenhos=request.POST.get("desenhos", "[]"),
-        ids_selecionados=request.POST.get("selecionados", "[]"),
+        id_selecionado=request.POST.get("selecionado") or None,   # ALTERADO: vazio é "nenhum"
         crs_mapa=MAP_OUTPUT_CRS,
         crs_metrico=MAP_INTERPOLATION_CRS,
         crs_geografico=MAP_GEOGRAPHIC_CRS,   # ALTERADO: setting nova, SIRGAS 2000 geográfico (4674)
@@ -360,17 +358,18 @@ def desenhos_da_bancada(request: HttpRequest) -> HttpResponse:
     return render(request, TEMPLATE_GAVETA_DESENHOS, {"gaveta": gaveta})
 ```
 
-**`templates/mapping/_poco_desenhos.html`** — cada poço é um formulário: o radio carrega o
-`id_bancada` do traço, e o rodapé é onde a SPEC da ação pendura o botão dela. Cada linha leva o X e a
-pergunta de confirmação dela.
+**`templates/mapping/_poco_desenhos.html`** — o poço está dentro do formulário da gaveta: o radio
+carrega o `id_bancada` do traço, e o rodapé é onde a SPEC da ação pendura o botão dela. Cada linha leva
+o X e a pergunta de confirmação dela.
 
 ```html
-<form class="poco-desenhos card-well">
+{# ALTERADO: <div>, não <form> — radios de formulários diferentes não formam um grupo só. #}
+<div class="poco-desenhos card-well">
   {% for medido in poco.desenhos %}
     <label class="linha-desenho">
       <input type="radio" name="id_bancada" class="linha-desenho__marca"
              value="{{ medido.desenho.id_bancada }}"
-             {% if medido.desenho.id_bancada == poco.id_selecionado %}checked{% endif %}>
+             {% if medido.desenho.id_bancada == gaveta.id_selecionado %}checked{% endif %}>
       <span class="linha-desenho__rotulo">{{ poco.tipo|capfirst }} {{ forloop.counter }}</span>
       {% if medido.medida %}
         <span class="linha-desenho__medida">{{ medido.medida.valor|floatformat:0 }} {{ medido.medida.unidade }}</span>
@@ -409,9 +408,10 @@ pergunta de confirmação dela.
       </div>
     </dialog>
   {% endfor %}
-  {# Vazio nesta iteração: é a âncora que a ação do tipo preenche por OOB (localizacao_lote/003). #}
+  {# Vazio nesta iteração: é a âncora que a ação do tipo preenche (localizacao_lote/003). #}
+  {# O CSS a recolhe enquanto o radio marcado não for deste poço; a ação põe o .poco-desenhos__acoes-recorte dentro. #}
   <div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}"></div>
-</form>
+</div>
 ```
 
 **`static/src/js/mapa/desenho/sincronia.js`** — cola de Leaflet → HTMX. A coleção é **lida do
@@ -421,8 +421,8 @@ plugin** a cada envio; nada de lista paralela no navegador.
 // Registrada DEPOIS da bancada: o handler de pm:create dela já converteu o círculo em polígono
 // quando este roda.
 export function inicializarSincronia(mapa, container) {
-  const marcados = () =>
-    Array.from(document.querySelectorAll(".linha-desenho__marca:checked")).map((radio) => radio.value);
+  // ALTERADO: um radio marcado no máximo; string vazia é "nenhum".
+  const marcado = () => document.querySelector(".linha-desenho__marca:checked")?.value ?? "";
 
   const enviar = () => {
     const desenhos = mapa.pm.getGeomanLayers().map((camada) => ({
@@ -434,7 +434,7 @@ export function inicializarSincronia(mapa, container) {
       swap: "innerHTML",
       values: {
         desenhos: JSON.stringify(desenhos),
-        selecionados: JSON.stringify(marcados()),
+        selecionado: marcado(),
       },
     });
   };
@@ -550,11 +550,13 @@ function abrirGaveta(gaveta) {
 }
 ```
 
-**`templates/mapping/_gaveta_desenhos.html`** — o botão fecha o conteúdo da gaveta, depois do último
-poço. Peça pronta do tema: nada de CSS novo.
+**`templates/mapping/_gaveta_desenhos.html`** — o conteúdo da gaveta é um formulário só, que faz de
+todos os radios um grupo: marcar um desmarca o de qualquer poço. O botão de limpar fecha o conteúdo,
+depois do último poço. Peça pronta do tema: nada de CSS novo.
 
 ```html
-<div class="gaveta-lateral-conteudo">
+{# ALTERADO: <form>, não <div>. A ação submete o único id_bancada marcado. #}
+<form class="gaveta-lateral-conteudo">
   {% for poco in gaveta.pocos %}
     {% include "mapping/_poco_desenhos.html" with poco=poco %}
   {% endfor %}
@@ -580,7 +582,7 @@ poço. Peça pronta do tema: nada de CSS novo.
       </div>
     </div>
   </dialog>
-</div>
+</form>
 ```
 
 **`static/src/js/mapa/desenho/apagar.js`** — utilitário de Leaflet: a confirmação tira a camada do
@@ -634,7 +636,27 @@ document.body.addEventListener("htmx:afterSettle", () => destacarSelecionados(ma
 estado de seleção em JavaScript. E a variante `.item-menu-swell`, empilhada sobre o `.item-menu` da
 linha de ação, que incha sob o ponteiro sem alterar o `.item-menu`. O átomo `.linha-desenho` ganha o
 elemento `__apagar`: o X gravado em cinza de rocha, `invisible` fora da linha marcada, que sob o
-ponteiro incha e acende em água — a receita do `.btn-etched-swell`.
+ponteiro incha e acende em água — a receita do `.btn-etched-swell`. A molécula `.poco-desenhos`
+recolhe o `__acoes` enquanto não tiver radio marcado — de novo pelo `:has`, sem JavaScript —, com a
+grade `0fr → 1fr` do `.painel-onsen` animando a altura em `ease-in-out`. O elemento novo
+`__acoes-recorte` é o filho da grade que a ação preenche (localizacao_lote/003):
+
+```css
+/* ALTERADO nesta SPEC: recolhido, a margem negativa devolve o gap do poço e o invisible tira do Tab. */
+.poco-desenhos__acoes {
+  @apply grid -mt-1.5 opacity-0 invisible transition-all duration-300 ease-in-out empty:hidden;
+  grid-template-rows: 0fr;
+}
+.poco-desenhos:has(.linha-desenho__marca:checked) .poco-desenhos__acoes {
+  @apply mt-0 opacity-100 visible;
+  grid-template-rows: 1fr;
+}
+/* NOVO. Sem padding, senão a trilha não chega a zero; o clip-margin deixa a sombra da placa vazar. */
+.poco-desenhos__acoes-recorte {
+  @apply min-h-0 overflow-clip;
+  overflow-clip-margin: 1.5rem;
+}
+```
 
 ## 7 · Caveats
 A coleção inteira sobe a cada mudança, e o servidor não guarda nada entre um envio e o outro. A home
@@ -646,7 +668,7 @@ identificador que existe enquanto o desenho não é submetido a lugar nenhum. Cu
 sobrevive a uma recarga da página, e o id não serve de referência para nada fora da sessão do
 navegador.
 
-O formulário do poço não é autossuficiente: ele submete só o `id_bancada` marcado, e a geometria é
+O formulário da gaveta não é autossuficiente: ele submete só o `id_bancada` marcado, e a geometria é
 enxertada por um callback `htmx:configRequest`. O traço vive no navegador, e lê-lo no envio entrega à
 ação o desenho como ele está no mapa, não como estava quando a lista foi montada. Custo: sem
 JavaScript, o botão de uma ação manda um id que o servidor não sabe resolver.
@@ -671,6 +693,15 @@ O átomo `.linha-desenho`, já implementado, é alterado: toda linha reserva a c
 foi pedida pelo usuário, e o X invisível é o que mantém as medidas alinhadas entre linha marcada e não
 marcada. Custo: toda tela que compõe `.linha-desenho` passa a ter essa coluna.
 
+A molécula `.poco-desenhos`, já implementada, é alterada: as ações dela ficam escondidas por CSS
+enquanto o poço não tiver o desenho selecionado. A alteração foi pedida pelo usuário, e a seleção
+muda no navegador sem ida ao servidor, então só o `:has` do radio acompanha a troca. Custo: o botão da
+ação continua no DOM de todo poço — esconder é UX, e quem recusa a execução continua sendo a rota.
+
+Os poços dividem um formulário só, o da gaveta, e o poço deixa de ser formulário. É o que faz dos
+radios um grupo único sem JavaScript. Custo: a ação de um poço submete o formulário da gaveta inteira
+— hoje só o `id_bancada` marcado, mas qualquer campo novo em outro poço passa a ir junto.
+
 A deleção pela gaveta dispara `pm:remove` à mão, sem passar pelo modo de remoção do Geoman — no
 limpar, um evento só e sem camada. Assim a bancada e a sincronia reagem a um evento só, sem um segundo
 caminho de reenvio. Custo: `apagar.js` depende do nome e do formato de um evento do plugin, e uma
@@ -683,8 +714,8 @@ só fecha pelo Cancelar ou pelo `Esc` —, e a marcação da pergunta se repete 
 
 Os testes do §8 não cobrem JavaScript: o projeto não tem infraestrutura de teste de JS nem de render,
 como já registrado em design/017 e design/018. Custo: o destaque no mapa, a marca pelo clique no
-desenho, a deleção pela gaveta e o refazer das medidas ao fechar o modo de modificação só têm prova
-no smoke test manual.
+desenho, a deleção pela gaveta, o esconder das ações sem seleção e o refazer das medidas ao fechar o
+modo de modificação só têm prova no smoke test manual.
 
 ## 8 · Testes (TDD)
 - `test_poco_por_tipo_na_ordem_da_bancada` — dois polígonos e um ponto viram dois poços, o do ponto
@@ -693,15 +724,16 @@ no smoke test manual.
   comprimento em m no CRS métrico; o ponto vem sem medida e com a posição em graus-minutos-segundos e
   hemisfério, inclusive na borda em que os segundos arredondados chegariam a 60
   (`-23.9999999999` → `24°00′00,000″ S`).
-- `test_ultimo_desenhado_do_tipo_nasce_selecionado` — sem escolha anterior, o marcado de cada poço é
-  o último desenho daquele tipo na coleção.
-- `test_escolha_do_usuario_sobrevive_a_desenho_de_outro_tipo` — com o polígono do meio escolhido, a
-  chegada de um ponto novo mantém o polígono marcado.
-- `test_escolha_apagada_devolve_a_selecao_ao_ultimo` — id escolhido que não está mais na coleção faz
-  o último do tipo assumir.
+- `test_sem_escolha_a_gaveta_nasce_sem_selecao` — sem escolha anterior, a gaveta vem sem desenho
+  selecionado, mesmo com desenhos de mais de um tipo.
+- `test_escolha_sobrevive_a_desenho_novo` — com o polígono do meio escolhido, a chegada de um ponto
+  novo mantém o polígono como o selecionado da gaveta.
+- `test_escolha_apagada_deixa_a_gaveta_sem_selecao` — id escolhido que não está mais na coleção deixa
+  a gaveta sem seleção, sem outro desenho assumir.
 - `test_desenhos_da_bancada_abrem_a_gaveta_sem_login` — POST anônimo devolve a gaveta com um poço por
-  tipo e um radio por desenho, o do selecionado marcado, e o botão de limpar depois do último poço, cuja pergunta traz a contagem
-  de cada tipo na badge dele (`1 ponto`, `1 polígono`).
+  tipo e um radio por desenho, todos num formulário só e só o do escolhido marcado, e o botão de
+  limpar depois do último poço, cuja pergunta traz a contagem de cada tipo na badge dele (`1 ponto`,
+  `1 polígono`).
 - `test_linha_carrega_o_id_da_camada` — cada radio traz o `id_bancada` do seu desenho no `value`, que
   é o que a ação submete, e toda linha tem um X que abre a pergunta cujo botão de confirmar leva o
   mesmo `id_bancada`.

@@ -2947,13 +2947,27 @@ html[data-theme="dimap"] {
 
   /* ==================== MOLÉCULA · .poco-desenhos (SPEC design/020) ==================== */
   /* O poço de um tipo: a lista de .linha-desenho na tinta daquela geometria, sobre o .card-well
-     composto no HTML. .poco-desenhos__acoes é a âncora vazia que a ação do tipo preenche por
-     OOB — sem ação nenhuma inscrita ainda, ela some (`empty:hidden`). */
+     composto no HTML. .poco-desenhos__acoes é a âncora que a ação do tipo preenche — sem ação
+     inscrita, ela some (`empty:hidden`); sem o desenho selecionado no poço, ela recolhe. */
   .poco-desenhos { @apply flex flex-col gap-1.5 p-2.5; }
   .poco-desenhos--ponto    { --tinta-desenho: var(--color-agua-500); }
   .poco-desenhos--linha    { --tinta-desenho: var(--color-accent); }
   .poco-desenhos--poligono { --tinta-desenho: var(--color-sakura-500); }
-  .poco-desenhos__acoes { @apply empty:hidden; }
+  /* A grade 0fr → 1fr do .painel-onsen anima a altura. Recolhida, a margem negativa devolve o gap
+     do poço, e o invisible tira os botões do Tab. */
+  .poco-desenhos__acoes {
+    @apply grid -mt-1.5 opacity-0 invisible transition-all duration-300 ease-in-out empty:hidden;
+    grid-template-rows: 0fr;
+  }
+  .poco-desenhos:has(.linha-desenho__marca:checked) .poco-desenhos__acoes {
+    @apply mt-0 opacity-100 visible;
+    grid-template-rows: 1fr;
+  }
+  /* Sem padding, senão a trilha não chega a zero; o clip-margin deixa a sombra da placa vazar. */
+  .poco-desenhos__acoes-recorte {
+    @apply min-h-0 overflow-clip;
+    overflow-clip-margin: 1.5rem;
+  }
 }
 
 /* ==================== CURSOR DO MAPA (SPEC design/018) ==================== */

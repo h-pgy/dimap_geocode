@@ -29,11 +29,11 @@ def fundo_ortofoto(request: HttpRequest) -> HttpResponse:
 def desenhos_da_bancada(request: HttpRequest) -> HttpResponse:
     """Rota aberta (design/020 §3.5): monta a gaveta a partir dos traços que estão no mapa —
     sem ato administrativo, sem login exigido."""
-    # Os dois campos chegam como texto: o `_do_json` de GavetaDesenhosInput os decodifica antes
-    # de validar, então o tipo estático do parâmetro não bate com o valor aceito em runtime.
+    # `desenhos` chega como texto: o `_do_json` de GavetaDesenhosInput o decodifica antes de
+    # validar, então o tipo estático do parâmetro não bate com o valor aceito em runtime.
     entrada = GavetaDesenhosInput(
         desenhos=request.POST.get("desenhos", "[]"),  # type: ignore[arg-type]
-        ids_selecionados=request.POST.get("selecionados", "[]"),  # type: ignore[arg-type]
+        id_selecionado=request.POST.get("selecionado") or None,
         crs_mapa=MAP_OUTPUT_CRS,
         crs_metrico=MAP_INTERPOLATION_CRS,
         crs_geografico=MAP_GEOGRAPHIC_CRS,

@@ -2,8 +2,7 @@
 // lista paralela no navegador. Registrada DEPOIS da bancada: o handler de pm:create dela já
 // converteu o círculo em polígono quando este roda.
 export function inicializarSincronia(mapa, container) {
-  const marcados = () =>
-    Array.from(document.querySelectorAll(".linha-desenho__marca:checked")).map((radio) => radio.value);
+  const marcado = () => document.querySelector(".linha-desenho__marca:checked")?.value ?? "";
 
   const enviar = () => {
     const desenhos = mapa.pm.getGeomanLayers().map((camada) => ({
@@ -15,7 +14,7 @@ export function inicializarSincronia(mapa, container) {
       swap: "innerHTML",
       values: {
         desenhos: JSON.stringify(desenhos),
-        selecionados: JSON.stringify(marcados()),
+        selecionado: marcado(),
       },
     });
   };

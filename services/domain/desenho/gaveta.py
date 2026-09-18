@@ -20,12 +20,12 @@ from .models import (
 
 class GavetaDesenhosInput(BaseModel):
     desenhos: tuple[Desenho, ...]
-    ids_selecionados: tuple[str, ...] = ()
+    id_selecionado: str | None = None
     crs_mapa: int
     crs_metrico: int
     crs_geografico: int
 
-    @field_validator("desenhos", "ids_selecionados", mode="before")
+    @field_validator("desenhos", mode="before")
     @classmethod
     def _do_json(cls, valor: object) -> object:
         # O formulário manda texto: JSON malformado vira ValidationError e cai no middleware.
@@ -46,11 +46,11 @@ class MontarGavetaDesenhos:
         medidos = tuple(self._medir(desenho, entrada) for desenho in entrada.desenhos)
         # A ordem dos poços é a do enum — ponto, linha, polígono —, e tipo sem desenho não vira poço.
         pocos = tuple(
-            self._poco(tipo, do_tipo, entrada.ids_selecionados)
+            PocoDesenhos(tipo=tipo, desenhos=do_tipo)
             for tipo in TipoDesenho
             if (do_tipo := tuple(m for m in medidos if m.desenho.tipo is tipo))
         )
-        return GavetaDesenhos(pocos=pocos)
+        return GavetaDesenhos(pocos=pocos, id_selecionado=self._selecionado(entrada))
 
     def _medir(self, desenho: Desenho, entrada: GavetaDesenhosInput) -> DesenhoMedido:
         grandeza = GRANDEZA_POR_TIPO.get(desenho.tipo)
@@ -73,16 +73,7 @@ class MontarGavetaDesenhos:
             longitude=Coordenada(eixo=Eixo.LONGITUDE, graus_decimais=longitude),
         )
 
-    def _poco(
-        self,
-        tipo: TipoDesenho,
-        do_tipo: tuple[DesenhoMedido, ...],
-        escolhidos: tuple[str, ...],
-    ) -> PocoDesenhos:
-        # A escolha do usuário vale enquanto o desenho existir; caindo ele, o último desenhado
-        # daquele tipo assume — e é por isso que desenhar um ponto não desmarca o polígono.
-        escolhido = next(
-            (m.desenho.id_bancada for m in do_tipo if m.desenho.id_bancada in escolhidos),
-            do_tipo[-1].desenho.id_bancada,
-        )
-        return PocoDesenhos(tipo=tipo, desenhos=do_tipo, id_selecionado=escolhido)
+    def _selecionado(self, entrada: GavetaDesenhosInput) -> str | None:
+        # Apagado o escolhido, ninguém assume: sem seleção, nenhum poço oferece ação.
+        existentes = {desenho.id_bancada for desenho in entrada.desenhos}
+        return entrada.id_selecionado if entrada.id_selecionado in existentes else None

@@ -63,11 +63,11 @@ def _poligono(
 
 def _gaveta_desenhos_input(
     desenhos: tuple[Desenho, ...],
-    ids_selecionados: tuple[str, ...] = (),
+    id_selecionado: str | None = None,
 ) -> GavetaDesenhosInput:
     return GavetaDesenhosInput(
         desenhos=desenhos,
-        ids_selecionados=ids_selecionados,
+        id_selecionado=id_selecionado,
         crs_mapa=CRS_MAPA,
         crs_metrico=CRS_METRICO,
         crs_geografico=CRS_GEOGRAFICO,
@@ -122,28 +122,26 @@ def test_cada_tipo_mostra_a_sua_grandeza() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Seleção: nasce no último desenhado, sobrevive a outro tipo, cai no último ao sumir
+# Seleção única na gaveta: só a escolha do usuário, que desenho novo não toma
 # ---------------------------------------------------------------------------
 
 
-def test_ultimo_desenhado_do_tipo_nasce_selecionado() -> None:
-    entrada = _gaveta_desenhos_input((_poligono("1"), _poligono("2"), _poligono("3")))
+def test_sem_escolha_a_gaveta_nasce_sem_selecao() -> None:
+    entrada = _gaveta_desenhos_input((_ponto("1"), _poligono("2"), _poligono("3")))
     gaveta = MontarGavetaDesenhos()(entrada)
-    assert gaveta.pocos[0].id_selecionado == "3"
+    assert gaveta.id_selecionado is None
 
 
-def test_escolha_do_usuario_sobrevive_a_desenho_de_outro_tipo() -> None:
+def test_escolha_sobrevive_a_desenho_novo() -> None:
     entrada = _gaveta_desenhos_input(
         (_poligono("1"), _poligono("2"), _poligono("3"), _ponto("9")),
-        ids_selecionados=("2",),
+        id_selecionado="2",
     )
     gaveta = MontarGavetaDesenhos()(entrada)
-    por_tipo = {poco.tipo: poco for poco in gaveta.pocos}
-    assert por_tipo[TipoDesenho.POLIGONO].id_selecionado == "2"
-    assert por_tipo[TipoDesenho.PONTO].id_selecionado == "9"
+    assert gaveta.id_selecionado == "2"
 
 
-def test_escolha_apagada_devolve_a_selecao_ao_ultimo() -> None:
-    entrada = _gaveta_desenhos_input((_poligono("1"), _poligono("2")), ids_selecionados=("3",))
+def test_escolha_apagada_deixa_a_gaveta_sem_selecao() -> None:
+    entrada = _gaveta_desenhos_input((_poligono("1"), _poligono("2")), id_selecionado="3")
     gaveta = MontarGavetaDesenhos()(entrada)
-    assert gaveta.pocos[0].id_selecionado == "2"
+    assert gaveta.id_selecionado is None

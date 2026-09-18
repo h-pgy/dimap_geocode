@@ -33,13 +33,13 @@ POLIGONO_GEOJSON = {
 
 def _postar_desenhos(
     desenhos: list[dict[str, Any]],
-    selecionados: list[str] | None = None,
+    selecionado: str = "",
 ) -> HttpResponse:
     return Client().post(  # type: ignore[return-value]
         reverse("mapping:desenhos_da_bancada"),
         {
             "desenhos": json.dumps(desenhos),
-            "selecionados": json.dumps(selecionados or []),
+            "selecionado": selecionado,
         },
     )
 
@@ -50,10 +50,13 @@ def _postar_desenhos(
 
 
 def test_desenhos_da_bancada_abrem_a_gaveta_sem_login() -> None:
-    resposta = _postar_desenhos([
-        {"id_bancada": "1", "geometria": PONTO_GEOJSON},
-        {"id_bancada": "2", "geometria": POLIGONO_GEOJSON},
-    ])
+    resposta = _postar_desenhos(
+        [
+            {"id_bancada": "1", "geometria": PONTO_GEOJSON},
+            {"id_bancada": "2", "geometria": POLIGONO_GEOJSON},
+        ],
+        selecionado="2",
+    )
     assert resposta.status_code == 200
     soup = BeautifulSoup(resposta.content.decode(), "html.parser")
 
@@ -62,7 +65,10 @@ def test_desenhos_da_bancada_abrem_a_gaveta_sem_login() -> None:
 
     radios = soup.find_all("input", class_="linha-desenho__marca")
     marcados = {radio["value"] for radio in radios if radio.has_attr("checked")}
-    assert marcados == {"1", "2"}
+    assert marcados == {"2"}
+    formularios = {id(radio.find_parent("form")) for radio in radios}
+    assert len(formularios) == 1
+    assert radios[0].find_parent("form") is not None
 
     limpar = soup.select_one('[command="show-modal"][commandfor="limpar-desenhos"]')
     assert limpar is not None
