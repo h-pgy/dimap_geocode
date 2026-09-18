@@ -2353,7 +2353,7 @@ html[data-theme="dimap"] {
   /* UI concorrente se recolhe: a busca sai por cima quando a gaveta abre, na mesma direção da
      .glass-hide-up. */
   .tela-home:has(.gaveta-lateral-toggle:checked) .search-hero {
-    @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
+    @apply opacity-0 -translate-y-5 scale-95 pointer-events-none invisible;
   }
 
   /* ÁTOMO · .valor-ausente (SPEC localizacao_lote/001) — o "não informado" de um atributo que a

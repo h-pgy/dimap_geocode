@@ -1,11 +1,12 @@
 ---
 spec: design/013
-versao: v1
-atualizado_em: 2026-09-05
+versao: v2
+atualizado_em: 2026-09-17
 testes_tdd: false
 implementado: true
 changelog:
   - v1: versão inicial
+  - v2: "[bugfix] busca recolhida seguia com o vidro desfocado sobre o mapa, travando o desenho embaixo dela"
 ---
 
 # SPEC design/013 — Gaveta lateral e a paleta

@@ -1,27 +1,28 @@
-// Repinta o que já está no mapa (SPEC design/020): o selecionado em tinta plena, os demais
-// atenuados. Utilitário de Leaflet — nenhum estado de domínio aqui.
-import { CORES_DESENHO } from "./catalogo.js";
+// Repinta o que já está no mapa (SPEC design/020): o selecionado ganha ênfase, os demais ficam no
+// traço normal. Utilitário de Leaflet — nenhum estado de domínio aqui.
+import { CORES_DESENHO, TRACO_POR_TIPO } from "./catalogo.js";
+import { iconePonto } from "./ferramentas.js";
 
-// Marcador não tem setStyle: a atenuação dele é opacidade.
-function pintar(camada, cor, pleno) {
-  if (camada.setStyle) {
-    camada.setStyle({
-      color: cor,
-      fillColor: cor,
-      weight: pleno ? 4 : 2,
-      opacity: pleno ? 1 : 0.45,
-      fillOpacity: pleno ? 0.45 : 0.1,
-    });
-  } else {
-    camada.setOpacity(pleno ? 1 : 0.45);
-  }
-}
+const Z_PONTO_SELECIONADO = 1000;
 
 // A camada diz o tipo dela: Rectangle herda de Polygon, e Polyline não — a mesma checagem da bancada.
-function corDoTipo(camada) {
-  if (camada instanceof L.Polygon) return CORES_DESENHO.poligono;
-  if (camada instanceof L.Polyline) return CORES_DESENHO.linha;
-  return CORES_DESENHO.ponto;
+function tipoDaCamada(camada) {
+  if (camada instanceof L.Polygon) return "poligono";
+  if (camada instanceof L.Polyline) return "linha";
+  return "ponto";
+}
+
+function pintar(camada, selecionado) {
+  const tipo = tipoDaCamada(camada);
+  const estado = selecionado ? "selecionado" : "normal";
+  if (tipo === "ponto") {
+    camada.setIcon(iconePonto(estado));
+    camada.setZIndexOffset(selecionado ? Z_PONTO_SELECIONADO : 0);
+    return;
+  }
+  const cor = CORES_DESENHO[tipo];
+  camada.setStyle({ color: cor, fillColor: cor, ...TRACO_POR_TIPO[tipo][estado] });
+  if (selecionado) camada.bringToFront();
 }
 
 export function destacarSelecionados(mapa) {
@@ -29,7 +30,6 @@ export function destacarSelecionados(mapa) {
     Array.from(document.querySelectorAll(".linha-desenho__marca:checked")).map((radio) => radio.value),
   );
   mapa.pm.getGeomanLayers().forEach((camada) => {
-    const id = String(L.Util.stamp(camada));
-    pintar(camada, corDoTipo(camada), marcados.has(id));
+    pintar(camada, marcados.has(String(L.Util.stamp(camada))));
   });
 }

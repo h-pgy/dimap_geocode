@@ -1,6 +1,6 @@
 ---
 spec: design/020
-versao: v3
+versao: v4
 atualizado_em: 2026-09-17
 testes_tdd: true
 implementado: true
@@ -8,6 +8,7 @@ changelog:
   - v1: versão inicial
   - v2: "[bugfix] círculo chegava à gaveta como ponto: a conversão não trocava a camada no mapa"
   - v3: ponto passa a mostrar a posição em graus decimais, com graus-minutos-segundos no hover; ações ganham swell
+  - v4: clicar num desenho no mapa marca a linha dele na gaveta, e os não selecionados deixam de ser atenuados
 ---
 
 # SPEC design/020 — Os desenhos da bancada na gaveta
@@ -24,8 +25,11 @@ para dizer sobre qual geometria as ações vão operar.
       hover sobre ela mostra a mesma posição em **graus, minutos e segundos**, com hemisfério.
 - [ ] O **último desenhado** de um tipo nasce selecionado no poço dele, e desenhar de outro tipo
       **não muda** a seleção dos demais poços.
-- [ ] O desenho selecionado de cada poço aparece no mapa em **tinta plena** e os demais ficam
-      **atenuados**; trocar a seleção troca o destaque na mesma hora.
+- [ ] O desenho selecionado de cada poço aparece no mapa **realçado** — traço mais grosso ou ponto
+      maior, por cima dos demais — e os demais mantêm o **traço normal** de quando foram desenhados;
+      trocar a seleção troca o realce na mesma hora.
+- [ ] Clicar num desenho no mapa, sem ferramenta da bancada na mão, **marca a linha dele** no poço
+      do seu tipo — com o mesmo destaque da marca pela gaveta — e abre a gaveta se estava recolhida.
 - [ ] Apagar um desenho tira a linha do poço; apagado o último do tipo, **o poço some**; apagados
       todos, **a gaveta some**.
 - [ ] Modificar geometria já desenhada — vértices, mover, girar, recortar — **refaz as medidas** da
@@ -164,6 +168,7 @@ class GavetaDesenhos(BaseModel):
 ## 4 · Fora de escopo
 - Ações sobre o desenho selecionado: polígono → [localizacao_lote/003](../localizacao_lote/003-lotes-do-desenho.md); ponto e linha — sem dono ainda.
 - Enquadrar o mapa no desenho selecionado ao marcá-lo — sem dono ainda.
+- Clicar num desenho com a gaveta ocupada pela entidade de uma busca, devolvendo a ela a lista dos desenhos — sem dono ainda.
 - Nome próprio dado à mão a um desenho, no lugar do rótulo por ordem — sem dono ainda.
 - Perímetro do polígono ao lado da área — sem dono ainda.
 - Sobrevivência dos desenhos a uma recarga da página — sem dono ainda, como já rege design/018.
@@ -174,6 +179,7 @@ class GavetaDesenhos(BaseModel):
 - `@services/domain/lotes_mais_proximos/mais_proximo.py` → `_para_geos`: a conversão para `GEOSGeometry` a promover.
 - `@services/domain/geometry` → `reprojetar`, `PointGeometry`, `LineGeometry`, `PolygonGeometry`.
 - `@templates/lote_geocoder/partials/_gaveta_lote.html` → a casca da gaveta: cabeçalho, corpo rolável, paleta.
+- `@static/src/js/mapa/desenho/ferramentas.js` → `ferramentaAtiva`: quem está na mão, lido do plugin.
 - `@static/src/tema-dimap.dev.css` → `.card-well`, `.gaveta-lateral*`, `.scroll-etched`, `.tooltip`: o tooltip já tematizado.
 - `@templates/core/home.html` → `.badge-ponto`, `.badge-linha`, `.badge-poligono`: a marca de tipo que já existe.
 - Skills: `mock`, `componentes-frontend`, `leaflet-geoman`, `htmx`, `ontologia`, `test-django-views`.
@@ -418,21 +424,37 @@ passa a ser catálogo, que é onde a tabela do design/018 já mora.
 export const CORES_DESENHO = { ponto: "#00B4D8", linha: "#0F766E", poligono: "#D84F7F" };
 ```
 
-**`static/src/js/mapa/desenho/destaque.js`** — utilitário de Leaflet: repinta o que já está no mapa.
+**`static/src/js/mapa/desenho/catalogo.js`** — o traço normal, que a ferramenta usa ao desenhar, e
+o realce do selecionado, que só soma ênfase sobre ele.
 
 ```javascript
-// Marcador não tem setStyle: a atenuação dele é opacidade.
-function pintar(camada, cor, pleno) {
-  if (camada.setStyle) camada.setStyle({ color: cor, fillColor: cor, weight: pleno ? 4 : 2,
-                                         opacity: pleno ? 1 : 0.45, fillOpacity: pleno ? 0.45 : 0.1 });
-  else camada.setOpacity(pleno ? 1 : 0.45);
-}
+export const TRACO_POR_TIPO = {
+  linha: { normal: { weight: 5, opacity: 1 }, selecionado: { weight: 8, opacity: 1 } },
+  poligono: {
+    normal: { weight: 3, opacity: 1, fillOpacity: 0.35 },
+    selecionado: { weight: 6, opacity: 1, fillOpacity: 0.55 },
+  },
+};
+// Marcador não passa de opacidade 1: o realce do ponto é tamanho.
+export const DIAMETRO_PONTO = { normal: 14, selecionado: 22 };
+```
 
-// A camada diz o tipo dela: Rectangle herda de Polygon, e Polyline não — a mesma checagem da bancada.
-function corDoTipo(camada) {
-  if (camada instanceof L.Polygon) return CORES_DESENHO.poligono;
-  if (camada instanceof L.Polyline) return CORES_DESENHO.linha;
-  return CORES_DESENHO.ponto;
+**`static/src/js/mapa/desenho/destaque.js`** — utilitário de Leaflet: repinta o que já está no mapa.
+O ícone do ponto sai de `iconePonto(estado)` em `ferramentas.js`, o mesmo que a ferramenta usa ao
+desenhar.
+
+```javascript
+function pintar(camada, selecionado) {
+  const tipo = tipoDaCamada(camada);   // Rectangle herda de Polygon, e Polyline não
+  const estado = selecionado ? "selecionado" : "normal";
+  if (tipo === "ponto") {
+    camada.setIcon(iconePonto(estado));
+    camada.setZIndexOffset(selecionado ? Z_PONTO_SELECIONADO : 0);
+    return;
+  }
+  const cor = CORES_DESENHO[tipo];
+  camada.setStyle({ color: cor, fillColor: cor, ...TRACO_POR_TIPO[tipo][estado] });
+  if (selecionado) camada.bringToFront();
 }
 
 export function destacarSelecionados(mapa) {
@@ -440,9 +462,45 @@ export function destacarSelecionados(mapa) {
     Array.from(document.querySelectorAll(".linha-desenho__marca:checked")).map((radio) => radio.value),
   );
   mapa.pm.getGeomanLayers().forEach((camada) => {
-    const id = String(L.Util.stamp(camada));
-    pintar(camada, corDoTipo(camada), marcados.has(id));
+    pintar(camada, marcados.has(String(L.Util.stamp(camada))));
   });
+}
+```
+
+**`static/src/js/mapa/desenho/selecao.js`** — o caminho de volta: o clique no traço marca o radio
+dele. Quem repinta continua sendo o `change` do radio; o mapa não guarda seleção nenhuma.
+
+```javascript
+// Um ouvinte no mapa, e não um por camada: camada que ouve click vira alvo do Leaflet, e o marcador
+// (bubblingMouseEvents: false) engoliria o clique — inclusive o cursor do Geoman, que cria o vértice.
+export function inicializarSelecao(mapa) {
+  mapa.on("click", (evento) => selecionar(mapa, evento));
+}
+
+function selecionar(mapa, evento) {
+  // Com ferramenta na mão o clique é do plugin: vértice, arrasto, apagar.
+  if (mapa.pm.globalDrawModeEnabled() || ferramentaAtiva(mapa)) return;
+  // O traço clicado é achado pelo elemento DOM dele; resultado da busca não tem linha na gaveta.
+  const alvo = evento.originalEvent.target;
+  const camada = mapa.pm.getGeomanLayers().find((c) => c.getElement()?.contains(alvo));
+  if (!camada) return;
+  const radio = document.querySelector(`.linha-desenho__marca[value="${L.Util.stamp(camada)}"]`);
+  if (!radio) return;
+
+  // O clique é no desenho que a gaveta lista: não chega ao "clique fora" do design/019.
+  L.DomEvent.stopPropagation(evento.originalEvent);
+  radio.checked = true;
+  radio.dispatchEvent(new Event("change", { bubbles: true }));   // destaque no mapa, como pela gaveta
+  abrirGaveta(radio.closest(".gaveta-lateral"));
+  radio.closest(".linha-desenho").scrollIntoView({ block: "nearest" });
+}
+
+// Mesmo gesto da paleta: o checkbox e o change que a bancada escuta para se reacomodar.
+function abrirGaveta(gaveta) {
+  const toggle = gaveta.querySelector(".gaveta-lateral-toggle");
+  if (toggle.checked) return;
+  toggle.checked = true;
+  toggle.dispatchEvent(new Event("change", { bubbles: true }));
 }
 ```
 
@@ -453,6 +511,7 @@ ao assentamento do swap.
 inicializarBancadaDesenho(mapa);
 inicializarSincronia(mapa, container);   // NOVO nesta SPEC
 inicializarEnvio(mapa);                  // NOVO nesta SPEC
+inicializarSelecao(mapa);                // NOVO nesta SPEC
 document.addEventListener("change", (evento) => {
   if (evento.target.matches(".linha-desenho__marca")) destacarSelecionados(mapa);
 });
@@ -492,9 +551,13 @@ A posição do ponto é lida em SIRGAS 2000 geográfico (4674), e não no CRS do
 é o referencial oficial do Brasil, o mesmo do CRS métrico. O custo é uma setting nova e um datum
 diferente do mapa, que o milésimo de segundo (≈3 cm) pode chegar a mostrar.
 
+O clique num desenho para a propagação do evento nativo. É o jeito de o clique no traço não ser lido
+como "fora da gaveta" pelo design/019 sem que este conheça o Leaflet. Custo: nenhum outro ouvinte de
+`click` no `document` vê esse clique — a torrezinha do encaixe aberta, por exemplo, não se fecha nele.
+
 Os testes do §8 não cobrem JavaScript: o projeto não tem infraestrutura de teste de JS nem de render,
-como já registrado em design/017 e design/018. Custo: o destaque no mapa e o refazer das medidas ao
-fechar o modo de modificação só têm prova no smoke test manual.
+como já registrado em design/017 e design/018. Custo: o destaque no mapa, a marca pelo clique no
+desenho e o refazer das medidas ao fechar o modo de modificação só têm prova no smoke test manual.
 
 ## 8 · Testes (TDD)
 - `test_poco_por_tipo_na_ordem_da_bancada` — dois polígonos e um ponto viram dois poços, o do ponto

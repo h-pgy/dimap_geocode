@@ -30,3 +30,19 @@ export const MODOS_GLOBAIS = {
 // Cor do traço por tipo (SPEC design/018 §3): ponto em água, linha em accent, polígono em sakura.
 // ferramentas.js pinta ao desenhar, destaque.js repinta ao selecionar — os dois leem daqui.
 export const CORES_DESENHO = { ponto: "#00B4D8", linha: "#0F766E", poligono: "#D84F7F" };
+
+// O traço normal é o do desenho recém-feito; o selecionado só soma ênfase sobre ele. Linha não tem
+// preenchimento: só a espessura a deixa visível e clicável.
+export const TRACO_POR_TIPO = {
+  linha: {
+    normal: { weight: 5, opacity: 1 },
+    selecionado: { weight: 8, opacity: 1 },
+  },
+  poligono: {
+    normal: { weight: 3, opacity: 1, fillOpacity: 0.35 },
+    selecionado: { weight: 6, opacity: 1, fillOpacity: 0.55 },
+  },
+};
+
+// Diâmetro do marcador de ponto: marcador não passa de opacidade 1, então o realce é tamanho.
+export const DIAMETRO_PONTO = { normal: 14, selecionado: 22 };

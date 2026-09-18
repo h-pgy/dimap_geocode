@@ -1,6 +1,6 @@
 // O adaptador do plugin Leaflet-Geoman (SPEC design/018): quem está ligado, o que ligar e quando
 // o Ok se arma. O estado da bancada é LIDO do plugin, nunca guardado em paralelo.
-import { CORES_DESENHO, GEOMETRIAS, MODOS_GLOBAIS } from "./catalogo.js";
+import { CORES_DESENHO, DIAMETRO_PONTO, GEOMETRIAS, MODOS_GLOBAIS, TRACO_POR_TIPO } from "./catalogo.js";
 
 // Qual cursor cada ferramenta pede. Recortar desenha o corte, então é mira, não mão.
 export const CURSOR_DA_FERRAMENTA = {
@@ -56,29 +56,37 @@ export function desligarTudo(mapa) {
   Object.values(MODOS_GLOBAIS).forEach(([, desligar]) => mapa.pm[desligar]());
 }
 
-function pinturaDe(forma) {
-  if (forma === "Marker" || forma === "CircleMarker") return CORES_DESENHO.ponto;
-  if (forma === "Line") return CORES_DESENHO.linha;
-  return CORES_DESENHO.poligono;
+function tipoDaForma(forma) {
+  if (forma === "Marker" || forma === "CircleMarker") return "ponto";
+  if (forma === "Line") return "linha";
+  return "poligono";
+}
+
+export function iconePonto(estado) {
+  const diametro = DIAMETRO_PONTO[estado];
+  return L.divIcon({
+    className: "",
+    iconSize: [diametro, diametro],
+    iconAnchor: [diametro / 2, diametro / 2],
+    html:
+      '<span style="display:block;width:' +
+      diametro +
+      "px;height:" +
+      diametro +
+      "px;border-radius:9999px;background:" +
+      CORES_DESENHO.ponto +
+      ';border:2px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(72,202,228,.9)"></span>',
+  });
 }
 
 function opcoesDesenho(forma) {
-  const cor = pinturaDe(forma);
+  const tipo = tipoDaForma(forma);
+  const cor = CORES_DESENHO[tipo];
   return {
-    pathOptions: { color: cor, fillColor: cor, fillOpacity: 0.35, weight: 3 },
+    pathOptions: { color: cor, fillColor: cor, ...TRACO_POR_TIPO[tipo]?.normal },
     templineStyle: { color: cor, weight: 2 },
     hintlineStyle: { color: cor, dashArray: "6,6", weight: 2 },
-    markerStyle: {
-      icon: L.divIcon({
-        className: "",
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-        html:
-          '<span style="display:block;width:14px;height:14px;border-radius:9999px;background:' +
-          CORES_DESENHO.ponto +
-          ';border:2px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(72,202,228,.9)"></span>',
-      }),
-    },
+    markerStyle: { icon: iconePonto("normal") },
   };
 }
 
