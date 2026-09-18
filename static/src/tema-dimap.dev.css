@@ -1502,6 +1502,11 @@ html[data-theme="dimap"] {
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
   }
   .item-menu-rotulo { @apply flex-1 min-w-0 truncate font-medium; }
+  /* Variante (SPEC design/020): o .item-menu que incha sob o ponteiro, como o .btn-etched-swell.
+     O .item-menu segue intocado: incha só quem pede a classe. */
+  .item-menu-swell { @apply origin-center; }
+  .item-menu-swell:hover,
+  .item-menu-swell:focus-visible { @apply scale-[1.03]; }
   .item-menu-apoio  { @apply block text-[13px] font-normal text-base-content/60 truncate; }
 
   /* Cartão de ação (SPEC autorizacao/006): a forma explicativa. Material: os tokens de gelo do tema
@@ -2893,6 +2898,47 @@ html[data-theme="dimap"] {
   :root:has(.modal-toggle:checked) .bancada-conjunto {
     @apply opacity-0 pointer-events-none;
   }
+
+  /* ==================== ÁTOMO · .linha-desenho (SPEC design/020) ==================== */
+  /* A linha selecionável de um desenho, no poço da gaveta. A escolha salta: o trilho da tinta do
+     tipo cresce em `::before`, e a placa vira gelo. O cursor acende em água, como o [data-ativo]
+     do .select-onsen. */
+  .linha-desenho {
+    @apply relative flex items-center gap-2.5 w-full text-left pl-4 pr-3 py-2 rounded-xl text-sm;
+    @apply border border-transparent cursor-pointer text-base-content transition-all duration-200;
+  }
+  .linha-desenho::before {
+    content: "";
+    @apply absolute left-1 top-1/2 -translate-y-1/2 w-1 h-0 rounded-full transition-all duration-200;
+    @apply bg-[var(--tinta-desenho)];
+  }
+  .linha-desenho:has(.linha-desenho__marca:checked) {
+    @apply font-bold bg-white/75 border-white/70;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),0_4px_14px_rgba(7,58,84,0.16),0_0_16px_rgba(72,202,228,0.28)];
+  }
+  .linha-desenho:has(.linha-desenho__marca:checked)::before { @apply h-7; }
+  /* Realce do cursor, como o [data-ativo] do .select-onsen: hover e foco de teclado. */
+  .linha-desenho:hover,
+  .linha-desenho:has(.linha-desenho__marca:focus-visible) {
+    @apply bg-agua-400/45 border-transparent text-rocha-950 outline-none;
+    @apply shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+  }
+
+  .linha-desenho__marca { @apply sr-only; }
+  .linha-desenho__rotulo { @apply truncate; }
+  .linha-desenho__medida { @apply ml-auto shrink-0 font-medium tabular-nums text-base-content/70 transition-colors duration-200; }
+  .linha-desenho:has(.linha-desenho__marca:checked) .linha-desenho__medida,
+  .linha-desenho:hover .linha-desenho__medida { @apply text-inherit; }
+
+  /* ==================== MOLÉCULA · .poco-desenhos (SPEC design/020) ==================== */
+  /* O poço de um tipo: a lista de .linha-desenho na tinta daquela geometria, sobre o .card-well
+     composto no HTML. .poco-desenhos__acoes é a âncora vazia que a ação do tipo preenche por
+     OOB — sem ação nenhuma inscrita ainda, ela some (`empty:hidden`). */
+  .poco-desenhos { @apply flex flex-col gap-1.5 p-2.5; }
+  .poco-desenhos--ponto    { --tinta-desenho: var(--color-agua-500); }
+  .poco-desenhos--linha    { --tinta-desenho: var(--color-accent); }
+  .poco-desenhos--poligono { --tinta-desenho: var(--color-sakura-500); }
+  .poco-desenhos__acoes { @apply empty:hidden; }
 }
 
 /* ==================== CURSOR DO MAPA (SPEC design/018) ==================== */

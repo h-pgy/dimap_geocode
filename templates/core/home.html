@@ -4,7 +4,7 @@
 {% block title %}DIMAP GeoCoder{% endblock %}
 
 {% block content %}
-<div class="tela-home relative h-screen w-screen overflow-hidden">
+<div class="tela-home relative h-screen w-screen overflow-hidden" data-url-desenhos="{% url 'mapping:desenhos_da_bancada' %}">
   {% include "mapping/_mapa_fullscreen.html" %}
   {% include "documentos/partials/_glifos_documento.html" %}
   {% include "documentos/partials/_atalho_validar.html" %}

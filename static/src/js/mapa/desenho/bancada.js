@@ -80,6 +80,8 @@ export function inicializarBancadaDesenho(mapa) {
 
   function renderizar() {
     const ativa = ferramentaAtiva(mapa, formaEmDesenho);
+    // Lido pelo clique fora da gaveta (SPEC design/019), que não tem o mapa em mãos.
+    conjunto.dataset.ferramentaAtiva = ativa || "";
     const dona = ativa ? categoriaDaFerramenta(ativa) : null;
 
     categorias.forEach((botao) => {
@@ -270,8 +272,13 @@ export function inicializarBancadaDesenho(mapa) {
   mapa.on("pm:drawend", renderizar);
 
   // Círculo não existe em GeoJSON: vira polígono antes de qualquer coisa depender dele.
+  // circleToPolygon só devolve o polígono: a troca no mapa é feita aqui. removeLayer não dispara
+  // pm:remove, então a sincronia só ouve o pm:create — já com o polígono no lugar.
   mapa.on("pm:create", (evento) => {
-    if (evento.shape === "Circle") L.PM.Utils.circleToPolygon(evento.layer, 60);
+    if (evento.shape === "Circle") {
+      L.PM.Utils.circleToPolygon(evento.layer, 60).addTo(mapa);
+      mapa.removeLayer(evento.layer);
+    }
     renderizar();
   });
   mapa.on("pm:remove", renderizar);

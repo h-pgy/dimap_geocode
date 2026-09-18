@@ -3,6 +3,9 @@ import { adicionarBaseWms } from "./camada_base.js";
 import { adicionarResultado } from "./camada_resultado.js";
 import { inicializarControlesMapa } from "./controles_mapa.js";
 import { inicializarBancadaDesenho } from "./desenho/bancada.js";
+import { destacarSelecionados } from "./desenho/destaque.js";
+import { inicializarEnvio } from "./desenho/envio.js";
+import { inicializarSincronia } from "./desenho/sincronia.js";
 
 let mapa = null;
 let camadaResultado = null;
@@ -20,6 +23,8 @@ function montarMapaBase() {
   const baseMaps = adicionarBaseWms(mapa, wms);
   inicializarControlesMapa(mapa, baseMaps);
   inicializarBancadaDesenho(mapa);
+  inicializarSincronia(mapa, mapa.getContainer().parentElement);
+  inicializarEnvio(mapa);
 }
 
 // htmx:afterSwap dispara a cada swap (garantido) — nele buscamos o payload por id no DOM. O
@@ -37,6 +42,16 @@ function aplicarResultado() {
   camadaResultado = adicionarResultado(mapa, data.geometria, data.cor);
 }
 
+// Trocar a marca de um poço repinta na hora; assentado um swap novo da gaveta (design/020), o
+// selecionado de cada poço precisa do mesmo destaque — inclusive na primeira renderização.
+function destacarSeHouverMapa() {
+  if (mapa) destacarSelecionados(mapa);
+}
+
 // §11 caso (1): callbacks de evento do HTMX, registrados uma única vez (carregados no base.html).
 document.addEventListener("DOMContentLoaded", montarMapaBase);
+document.addEventListener("change", (evento) => {
+  if (evento.target.matches(".linha-desenho__marca")) destacarSeHouverMapa();
+});
 htmx.on("htmx:afterSwap", aplicarResultado);
+htmx.on("htmx:afterSettle", destacarSeHouverMapa);

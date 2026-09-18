@@ -1,6 +1,6 @@
 // O adaptador do plugin Leaflet-Geoman (SPEC design/018): quem está ligado, o que ligar e quando
 // o Ok se arma. O estado da bancada é LIDO do plugin, nunca guardado em paralelo.
-import { GEOMETRIAS, MODOS_GLOBAIS } from "./catalogo.js";
+import { CORES_DESENHO, GEOMETRIAS, MODOS_GLOBAIS } from "./catalogo.js";
 
 // Qual cursor cada ferramenta pede. Recortar desenha o corte, então é mira, não mão.
 export const CURSOR_DA_FERRAMENTA = {
@@ -56,15 +56,10 @@ export function desligarTudo(mapa) {
   Object.values(MODOS_GLOBAIS).forEach(([, desligar]) => mapa.pm[desligar]());
 }
 
-// Cor do traço por tipo (SPEC §3 design/018): ponto em água, linha em accent, polígono em sakura.
-const COR_PONTO = "#00B4D8";
-const COR_LINHA = "#0F766E";
-const COR_POLIGONO = "#D84F7F";
-
 function pinturaDe(forma) {
-  if (forma === "Marker" || forma === "CircleMarker") return COR_PONTO;
-  if (forma === "Line") return COR_LINHA;
-  return COR_POLIGONO;
+  if (forma === "Marker" || forma === "CircleMarker") return CORES_DESENHO.ponto;
+  if (forma === "Line") return CORES_DESENHO.linha;
+  return CORES_DESENHO.poligono;
 }
 
 function opcoesDesenho(forma) {
@@ -80,7 +75,7 @@ function opcoesDesenho(forma) {
         iconAnchor: [7, 7],
         html:
           '<span style="display:block;width:14px;height:14px;border-radius:9999px;background:' +
-          COR_PONTO +
+          CORES_DESENHO.ponto +
           ';border:2px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(72,202,228,.9)"></span>',
       }),
     },

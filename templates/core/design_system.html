@@ -2064,6 +2064,11 @@
               <span class="item-menu-apoio">Ofertas próximas com características similares</span>
             </span>
           </button>
+          <span class="text-overline mt-2">.item-menu-swell (SPEC design/020) <span class="font-normal text-base-content/50">— a variante que incha sob o ponteiro</span></span>
+          <button class="card-well item-menu item-menu-swell">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+            <span class="item-menu-rotulo">Lotes sob o polígono</span>
+          </button>
         </div>
         <div class="card-well p-5 flex flex-col gap-3">
           <div class="menu-acoes-cartoes">
@@ -2944,6 +2949,44 @@
             </div>
           </div>
           <p class="text-xs text-base-content/60 mt-2">Corpo inteiriço (<span class="text-code">.glass-panel-thick</span>) com alça (<span class="text-code">.bancada-alca</span>), categorias de geometria (<span class="text-code">.bancada-desenho__categoria</span>), o submenu que a categoria/o lápis abrem dentro do próprio corpo (<span class="text-code">.bancada-submenu__tool</span>) e o poço de controles (<span class="text-code">.bancada-desenho__controle</span>) — editar, apagar, concluir, suspender e encaixe. Substitui a toolbar nativa do Leaflet-Geoman.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">.poco-desenhos + .linha-desenho (SPEC design/020) <span class="font-normal text-base-content/50">— o poço da gaveta, um por tipo desenhado</span></span>
+          <div class="grid md:grid-cols-3 gap-4 mt-3">
+            <form class="poco-desenhos poco-desenhos--ponto card-well">
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-ponto" class="linha-desenho__marca" checked>
+                <span class="linha-desenho__rotulo">Ponto 1</span>
+                <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′40,320″ S · 46°39′23,760″ O">-23.561, -46.657</span>
+              </label>
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-ponto" class="linha-desenho__marca">
+                <span class="linha-desenho__rotulo">Ponto 2</span>
+                <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′44,280″ S · 46°39′19,080″ O">-23.562, -46.655</span>
+              </label>
+            </form>
+            <form class="poco-desenhos poco-desenhos--linha card-well">
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-linha" class="linha-desenho__marca" checked>
+                <span class="linha-desenho__rotulo">Linha 1</span>
+                <span class="linha-desenho__medida">318 m</span>
+              </label>
+            </form>
+            <form class="poco-desenhos poco-desenhos--poligono card-well">
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-poligono" class="linha-desenho__marca">
+                <span class="linha-desenho__rotulo">Polígono 1</span>
+                <span class="linha-desenho__medida">1.240 m²</span>
+              </label>
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-poligono" class="linha-desenho__marca" checked>
+                <span class="linha-desenho__rotulo">Polígono 2</span>
+                <span class="linha-desenho__medida">18.702 m²</span>
+              </label>
+            </form>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Um poço por tipo desenhado, na tinta daquela geometria (<span class="text-code">--tinta-desenho</span>). A linha marcada lê o próprio radio (<span class="text-code">:has(.linha-desenho__marca:checked)</span>) — nenhum estado de seleção em JavaScript. O ponto mostra a posição em graus decimais com sinal, e o tooltip a traz em graus, minutos e segundos; linha mede comprimento, polígono mede área.</p>
         </div>
 
         <div>

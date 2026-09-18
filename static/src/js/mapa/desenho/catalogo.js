@@ -26,3 +26,7 @@ export const MODOS_GLOBAIS = {
   cut: ["enableGlobalCutMode", "disableGlobalCutMode", "globalCutModeEnabled"],
   remove: ["enableGlobalRemovalMode", "disableGlobalRemovalMode", "globalRemovalModeEnabled"],
 };
+
+// Cor do traço por tipo (SPEC design/018 §3): ponto em água, linha em accent, polígono em sakura.
+// ferramentas.js pinta ao desenhar, destaque.js repinta ao selecionar — os dois leem daqui.
+export const CORES_DESENHO = { ponto: "#00B4D8", linha: "#0F766E", poligono: "#D84F7F" };

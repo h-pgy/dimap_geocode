@@ -1,0 +1,21 @@
+<form class="poco-desenhos poco-desenhos--{{ poco.tipo }} card-well">
+  {% for medido in poco.desenhos %}
+    <label class="linha-desenho">
+      <input type="radio" name="id_bancada" class="linha-desenho__marca"
+             value="{{ medido.desenho.id_bancada }}"
+             {% if medido.desenho.id_bancada == poco.id_selecionado %}checked{% endif %}>
+      <span class="linha-desenho__rotulo">{{ poco.tipo|capfirst }} {{ forloop.counter }}</span>
+      {% if medido.medida %}
+        <span class="linha-desenho__medida">{{ medido.medida.valor|floatformat:0 }} {{ medido.medida.unidade }}</span>
+      {% endif %}
+      {% if medido.posicao %}
+        {% with lat=medido.posicao.latitude lon=medido.posicao.longitude %}
+          {# Ponto decimal, não vírgula: a vírgula já separa latitude de longitude. #}
+          <span class="linha-desenho__medida tooltip tooltip-left"
+                data-tip="{{ lat.graus }}°{{ lat.minutos|stringformat:'02d' }}′{% if lat.segundos < 10 %}0{% endif %}{{ lat.segundos|floatformat:3 }}″ {{ lat.hemisferio }} · {{ lon.graus }}°{{ lon.minutos|stringformat:'02d' }}′{% if lon.segundos < 10 %}0{% endif %}{{ lon.segundos|floatformat:3 }}″ {{ lon.hemisferio }}">{{ lat.graus_decimais|stringformat:'.3f' }}, {{ lon.graus_decimais|stringformat:'.3f' }}</span>
+        {% endwith %}
+      {% endif %}
+    </label>
+  {% endfor %}
+  <div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}"></div>
+</form>

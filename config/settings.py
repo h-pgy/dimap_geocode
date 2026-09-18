@@ -366,6 +366,8 @@ MAP_OUTPUT_CRS = 4326
 # CRS projetado/métrico p/ interpolar o número do endereço sobre o segmento (§7.3);
 # 31983 = SIRGAS 2000 / UTM 23S, nativo do GeoSampa.
 MAP_INTERPOLATION_CRS = 31983
+# CRS geográfico em que a posição de um ponto é exibida: SIRGAS 2000, o referencial oficial do Brasil.
+MAP_GEOGRAPHIC_CRS = 4674
 MAP_CENTRO_DEFAULT: list[float] = [-23.55, -46.63]
 # 14 preenche a viewport com a ortofoto sem mostrar os limites do município (em 12/13 sobra "vazio").
 MAP_ZOOM_DEFAULT = 14

@@ -6,4 +6,5 @@ app_name = "mapping"
 
 urlpatterns = [
     path("fundo-ortofoto/", views.fundo_ortofoto, name="fundo_ortofoto"),
+    path("desenhos-da-bancada/", views.desenhos_da_bancada, name="desenhos_da_bancada"),
 ]

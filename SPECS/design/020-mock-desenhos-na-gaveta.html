@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/020 — Os desenhos da bancada na gaveta (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ÁTOMO · .linha-desenho — a linha selecionável de um desenho. A escolha salta (trilho do
+         tipo, pino aceso e placa de gelo); o cursor acende em água, como o [data-ativo] do
+         .select-onsen. */
+      .linha-desenho {
+        @apply relative flex items-center gap-2.5 w-full text-left pl-4 pr-3 py-2 rounded-xl text-sm;
+        @apply border border-transparent cursor-pointer text-base-content transition-all duration-200;
+      }
+      .linha-desenho::before {
+        content: "";
+        @apply absolute left-1 top-1/2 -translate-y-1/2 w-1 h-0 rounded-full transition-all duration-200;
+        @apply bg-[var(--tinta-desenho)];
+      }
+      .linha-desenho__pino {
+        @apply w-2.5 h-2.5 shrink-0 rounded-full border border-white/70 opacity-45 transition-all duration-200;
+        @apply bg-[var(--tinta-desenho)];
+      }
+      .linha-desenho:has(.linha-desenho__marca:checked) {
+        @apply font-bold bg-white/75 border-white/70;
+        @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),0_4px_14px_rgba(7,58,84,0.16),0_0_16px_rgba(72,202,228,0.28)];
+      }
+      .linha-desenho:has(.linha-desenho__marca:checked)::before { @apply h-7; }
+      .linha-desenho:has(.linha-desenho__marca:checked) .linha-desenho__pino {
+        @apply opacity-100 shadow-[0_0_8px_var(--tinta-desenho)];
+      }
+      /* Realce do cursor, como o [data-ativo] do .select-onsen: hover e foco de teclado. */
+      .linha-desenho:hover,
+      .linha-desenho:has(.linha-desenho__marca:focus-visible) {
+        @apply bg-agua-400/45 border-transparent text-rocha-950 outline-none;
+        @apply shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+      }
+
+      .linha-desenho__marca { @apply sr-only; }
+      .linha-desenho__rotulo { @apply truncate; }
+      .linha-desenho__medida { @apply ml-auto shrink-0 font-medium tabular-nums text-base-content/70 transition-colors duration-200; }
+      .linha-desenho:has(.linha-desenho__marca:checked) .linha-desenho__medida,
+      .linha-desenho:hover .linha-desenho__medida { @apply text-inherit; }
+
+      /* MOLÉCULA · .placa-lista — a PLACA ASSENTADA que guarda uma lista rolável (a leitura do
+         .mapa-gaveta, SPEC design/013): o .glass-panel entra composto no HTML, e a placa sobe do
+         poço pela aresta de luz e pela sombra. A pista mostra duas linhas inteiras e a pontinha da
+         terceira — é a aresta cortada que diz que há mais, e a barra gravada (SPEC user_admin/013)
+         que leva até lá. Serve à lista de desenhos e à de ações, e é o que as faz simétricas. */
+      .placa-lista {
+        @apply flex flex-col gap-1.5 p-2.5 transition-all duration-300;
+        border-radius: var(--radius-placa);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.9),
+          0 6px 16px rgba(7, 58, 84, 0.28),
+          0 0 18px rgba(72, 202, 228, 0.22);
+      }
+      .placa-lista:hover {
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 1),
+          0 10px 22px rgba(7, 58, 84, 0.32),
+          0 0 24px rgba(72, 202, 228, 0.32);
+      }
+      .placa-lista__cabecalho { @apply flex items-center gap-2 px-1; }
+      .placa-lista__contagem {
+        @apply ml-auto text-[11px] font-bold tabular-nums leading-none px-2 py-1 rounded-full;
+        @apply bg-rocha-950/8 text-rocha-700;
+      }
+      .placa-lista__pista { @apply relative; --folga-topo: 0.25rem; }
+      /* A coluna da direita é reservada para a barra gravada não correr por cima da linha, como na
+         .table-onsen-wrap. */
+      .placa-lista__rolador {
+        @apply overflow-y-auto overscroll-contain;
+        max-height: var(--altura-pista, 5rem);
+        padding-right: 1.125rem;
+        scrollbar-width: none;
+      }
+      .placa-lista__rolador::-webkit-scrollbar { display: none; }
+      /* Filho único do rolador: é ele que o ResizeObserver do scroll_etched.js observa para saber
+         que a lista mudou de tamanho. Linhas soltas no rolador deixariam a barra surda. */
+      .placa-lista__conteudo { @apply flex flex-col gap-1.5; }
+      /* A linha de desenho é mais baixa que a de ação: a pista encolhe junto, senão a terceira
+         linha apareceria inteira e a pontinha deixaria de convidar a rolar. */
+      .placa-lista--desenhos { --altura-pista: 4.25rem; }
+
+      /* MOLÉCULA · .poco-desenhos — o poço de um tipo: a placa dos desenhos e a placa das ações,
+         na tinta daquela geometria. */
+      .poco-desenhos { @apply flex flex-col gap-2 p-2.5; }
+      .poco-desenhos--ponto    { --tinta-desenho: var(--color-agua-500); }
+      .poco-desenhos--linha    { --tinta-desenho: var(--color-accent); }
+      .poco-desenhos--poligono { --tinta-desenho: var(--color-sakura-500); }
+      .poco-desenhos__acoes { @apply empty:hidden; }
+
+      /* VARIANTE · .item-menu-swell — o .item-menu que incha sob o ponteiro, como o
+         .btn-etched-swell. O .item-menu segue intocado: incha só quem pede a classe. */
+      .item-menu-swell { @apply origin-center; }
+      .item-menu-swell:hover,
+      .item-menu-swell:focus-visible { @apply scale-[1.03]; }
+
+      /* andaime do mock: moldura que faz as vezes da casca da home */
+      .quadro-tela { @apply relative h-[34rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)]; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Defs da gravação e glifos da bancada: os partials da própria aplicação. -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- Fundo: o mapa vivo da home, de mapping/_mapa_fullscreen.html. -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC design/020 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Os desenhos da bancada na gaveta</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          Um poço por tipo desenhado, a linha de cada traço com a sua medida, o selecionado em tinta
+          plena no mapa — e a placa de ações que o router entrega a cada tipo.
+        </p>
+      </header>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">2 · Átomos</h2>
+
+        <!-- .linha-desenho -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.linha-desenho — nas três tintas</p>
+          <div class="grid md:grid-cols-3 gap-4">
+
+            <!-- estado: tinta de polígono, uma marcada e uma em repouso -->
+            <div class="card-well poco-desenhos poco-desenhos--poligono">
+              <div class="flex flex-col gap-1.5">
+                <label class="linha-desenho">
+                  <input type="radio" name="atomo-poligono" class="linha-desenho__marca" checked>
+                  <span class="linha-desenho__pino"></span>
+                  <span class="linha-desenho__rotulo">Polígono 1</span>
+                  <span class="linha-desenho__medida">1.240 m²</span>
+                </label>
+                <label class="linha-desenho">
+                  <input type="radio" name="atomo-poligono" class="linha-desenho__marca">
+                  <span class="linha-desenho__pino"></span>
+                  <span class="linha-desenho__rotulo">Polígono 2</span>
+                  <span class="linha-desenho__medida">18.702 m²</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- estado: tinta de linha -->
+            <div class="card-well poco-desenhos poco-desenhos--linha">
+              <div class="flex flex-col gap-1.5">
+                <label class="linha-desenho">
+                  <input type="radio" name="atomo-linha" class="linha-desenho__marca" checked>
+                  <span class="linha-desenho__pino"></span>
+                  <span class="linha-desenho__rotulo">Linha 1</span>
+                  <span class="linha-desenho__medida">318 m</span>
+                </label>
+                <label class="linha-desenho">
+                  <input type="radio" name="atomo-linha" class="linha-desenho__marca">
+                  <span class="linha-desenho__pino"></span>
+                  <span class="linha-desenho__rotulo">Linha 2</span>
+                  <span class="linha-desenho__medida">1.026 m</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- estado: tinta de ponto — a posição, com graus-minutos-segundos no tooltip -->
+            <div class="card-well poco-desenhos poco-desenhos--ponto">
+              <div class="flex flex-col gap-1.5">
+                <label class="linha-desenho">
+                  <input type="radio" name="atomo-ponto" class="linha-desenho__marca" checked>
+                  <span class="linha-desenho__pino"></span>
+                  <span class="linha-desenho__rotulo">Ponto 1</span>
+                  <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′40,320″ S · 46°39′23,760″ O">-23.561, -46.657</span>
+                </label>
+                <label class="linha-desenho">
+                  <input type="radio" name="atomo-ponto" class="linha-desenho__marca">
+                  <span class="linha-desenho__pino"></span>
+                  <span class="linha-desenho__rotulo">Ponto 2</span>
+                  <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′44,280″ S · 46°39′19,080″ O">-23.562, -46.655</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .placa-lista -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.placa-lista — quatro ações (rola, a terceira pela pontinha), duas e uma</p>
+          <div class="grid md:grid-cols-3 gap-4 items-start" data-acoes-demo></div>
+        </div>
+
+        <!-- .poco-desenhos -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.poco-desenhos — com ações, sem nenhuma e com um desenho só</p>
+          <div class="grid md:grid-cols-3 gap-4 items-start" data-pocos-demo></div>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="flex flex-col gap-6">
+        <h2 class="section-title">4 · Organismos</h2>
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          A gaveta dos desenhos, na casca da SPEC design/013: um poço por tipo, na ordem ponto, linha,
+          polígono, cada um com a placa de ações do seu tipo.
+        </p>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">três tipos no mapa · um selecionado em cada poço</span>
+          <div class="quadro-tela" data-gaveta-desenhos="cheia" data-toggle="org-cheia" data-aberta></div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- estado: com desenhos no mapa — selecionar a linha repinta o traço -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">cinco traços no mapa · troque a marca e veja a tinta mudar</span>
+
+          <!-- página: core/home.html -->
+          <div class="quadro-tela tela-home">
+            <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+            <div id="mapa-tela" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+
+            <!-- fica na página: a UI flutuante da busca, que já existe -->
+            <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4 transition-all duration-500 ease-in-out">
+              <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+                <div class="relative w-full flex items-center">
+                  <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                  <input type="search" placeholder="Rua, endereço, codlog ou nº de contribuinte…" class="input input-glass pl-11" />
+                </div>
+              </div>
+            </div>
+
+            <!-- página: <div id="gaveta-entidade"></div> — alvo do swap (innerHTML) da rota dos desenhos -->
+            <div id="gaveta-entidade">
+              <!-- partial: mapping/_gaveta_desenhos.html — mapping:desenhos_da_bancada, a cada pm:create/pm:remove -->
+              <!-- partial: mapping/_poco_desenhos.html — um por tipo, incluído pelo de cima -->
+              <!-- /partial -->
+            </div>
+
+            <!-- fica na página: mapping/_bancada_desenho.html -->
+            <div data-bancada="direita"></div>
+          </div>
+        </div>
+
+        <!-- estados da tela -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- estado de falta: nada desenhado — sem gaveta, sem paleta -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">nada desenhado · a gaveta não existe</span>
+            <div class="quadro-tela tela-home">
+              <div></div>
+              <div data-bancada="esquerda"></div>
+            </div>
+          </div>
+
+          <!-- estado: um polígono só -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">um polígono · poço único, já marcado</span>
+            <div class="quadro-tela tela-home">
+              <div data-gaveta-desenhos="um" data-toggle="tela-um" data-aberta></div>
+              <div data-bancada="direita"></div>
+            </div>
+          </div>
+
+          <!-- estado: gaveta recolhida — só a paleta -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta recolhida · a lista não se perde</span>
+            <div class="quadro-tela tela-home">
+              <div data-gaveta-desenhos="cheia" data-toggle="tela-recolhida"></div>
+              <div data-bancada="direita"></div>
+            </div>
+          </div>
+
+          <!-- estado: tipo sem ação para o perfil — o rodapé some -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">perfil sem ação para o tipo · o rodapé some</span>
+            <div class="quadro-tela tela-home">
+              <div data-gaveta-desenhos="sem-acao" data-toggle="tela-sem-acao" data-aberta></div>
+              <div data-bancada="direita"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    // andaime do mock: erro de carga aparece na tela, não só no console.
+    function denunciar(mensagem) {
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        '<pre class="fixed top-0 inset-x-0 z-50 m-0 p-3 text-xs bg-error text-error-content whitespace-pre-wrap">' + mensagem + "</pre>",
+      );
+    }
+    window.addEventListener("error", (evento) => denunciar("erro: " + evento.message));
+    window.addEventListener("unhandledrejection", (evento) => denunciar("falhou: " + evento.reason));
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    // No produto a config desce do servidor; o mock não tem Django por trás do Live Server.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5614, -46.6559];
+    const CORES_DESENHO = { ponto: "#00B4D8", linha: "#0F766E", poligono: "#D84F7F" };
+    const BADGE_TIPO = { ponto: "badge-ponto", linha: "badge-linha", poligono: "badge-poligono" };
+    const TITULO_POCO = { ponto: "Pontos", linha: "Linhas", poligono: "Polígonos" };
+    const ORDEM_TIPOS = ["ponto", "linha", "poligono"];
+    const NUMERO = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+
+    // andaime do mock: ações fictícias, só para medir a densidade da lista. Quem diz quais
+    // aparecem é o router (§3.5 do CLAUDE.md), por perfil e tipo de entidade.
+    const GLIFOS_ACAO = {
+      lotes: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
+      amostra: '<circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+      estudo: '<path d="M12 3l8 5-3 11H7L4 8z"/>',
+      exportar: '<path d="M12 4v10m0 0l-4-4m4 4l4-4M4 18h16"/>',
+      cruzados: '<path d="M4 20L20 4M4 4l16 16"/>',
+      sob: '<path d="M12 21s7-6.5 7-11a7 7 0 10-14 0c0 4.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+    };
+    const ACOES_POR_TIPO = {
+      ponto: [["sob", "Lote sob o ponto"], ["amostra", "Ofertas próximas"]],
+      linha: [["cruzados", "Lotes que a linha cruza"]],
+      poligono: [
+        ["lotes", "Lotes contidos"],
+        ["amostra", "Amostragem de ofertas"],
+        ["estudo", "Área de estudo"],
+        ["exportar", "Exportar GeoJSON"],
+      ],
+    };
+
+    // ── A marcação em julgamento ────────────────────────────────────────────────────────────────
+    function itemAcao(glifo, rotulo) {
+      return (
+        // No produto é o submit do formulário do poço; aqui, botão inerte para o clique não recarregar.
+        '<button type="button" class="card-well item-menu item-menu-swell">' +
+        '<span class="icone-acao icone-acao-pequeno icone-acao-acende">' +
+        '<svg viewBox="0 0 24 24">' + GLIFOS_ACAO[glifo] + "</svg></span>" +
+        '<span class="item-menu-rotulo">' + rotulo + "</span>" +
+        "</button>"
+      );
+    }
+
+    function placaLista(cabecalho, linhas, modificador) {
+      return (
+        '<div class="placa-lista glass-panel' + (modificador ? " " + modificador : "") + '">' +
+        '<div class="placa-lista__cabecalho">' + cabecalho + "</div>" +
+        '<div class="placa-lista__pista" data-scroll-etched>' +
+        '<div class="placa-lista__rolador" data-rolador>' +
+        '<div class="placa-lista__conteudo">' + linhas + "</div>" +
+        "</div>" +
+        '<div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>' +
+        "</div>" +
+        "</div>"
+      );
+    }
+
+    function acoesPoco(acoes) {
+      if (!acoes.length) return "";
+      return placaLista(
+        '<span class="text-overline">Ações</span><span class="placa-lista__contagem">' + acoes.length + "</span>",
+        acoes.map(([g, r]) => itemAcao(g, r)).join(""),
+      );
+    }
+
+    // Andaime: no produto, o domínio entrega graus/minutos/segundos já arredondados.
+    const SEGUNDO = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    function eixo(valor, positivo, negativo) {
+      const milesimos = Math.round(Math.abs(valor) * 3600000);
+      return {
+        curta: valor.toFixed(3),
+        gms: Math.floor(milesimos / 3600000) + "°" + String(Math.floor((milesimos % 3600000) / 60000)).padStart(2, "0") +
+          "′" + SEGUNDO.format((milesimos % 60000) / 1000) + "″ " + (valor < 0 ? negativo : positivo),
+      };
+    }
+    function posicao(lat, lng) {
+      const la = eixo(lat, "N", "S");
+      const lo = eixo(lng, "L", "O");
+      return {
+        curta: la.curta + ", " + lo.curta,
+        gms: la.gms + " · " + lo.gms,
+      };
+    }
+
+    function linhaDesenho(item, marcado) {
+      const medida = item.medida
+        ? '<span class="linha-desenho__medida">' + NUMERO.format(item.medida.valor) + " " + item.medida.unidade + "</span>"
+        : item.posicao
+          ? '<span class="linha-desenho__medida tooltip tooltip-left" data-tip="' + item.posicao.gms + '">' + item.posicao.curta + "</span>"
+          : "";
+      return (
+        '<label class="linha-desenho">' +
+        '<input type="radio" name="id_bancada" class="linha-desenho__marca" value="' + item.id + '"' +
+        (marcado ? " checked" : "") + ">" +
+        '<span class="linha-desenho__pino"></span>' +
+        '<span class="linha-desenho__rotulo">' + item.rotulo + "</span>" +
+        medida +
+        "</label>"
+      );
+    }
+
+    function pocoDesenhos(tipo, itens, idMarcado, acoes) {
+      const cabecalho =
+        '<span class="badge ' + BADGE_TIPO[tipo] + ' badge-sm">' + TITULO_POCO[tipo] + "</span>" +
+        '<span class="placa-lista__contagem">' + itens.length + "</span>";
+      return (
+        '<form class="card-well poco-desenhos poco-desenhos--' + tipo + '">' +
+        placaLista(
+          cabecalho,
+          itens.map((item) => linhaDesenho(item, item.id === idMarcado)).join(""),
+          "placa-lista--desenhos",
+        ) +
+        '<div class="poco-desenhos__acoes">' + acoesPoco(acoes || []) + "</div>" +
+        "</form>"
+      );
+    }
+
+    function gavetaDesenhos(pocos, idToggle, aberta) {
+      const casca = document.createElement("div");
+      casca.className = "gaveta-lateral";
+      casca.innerHTML =
+        '<input type="checkbox" id="' + idToggle + '" class="gaveta-lateral-toggle"' + (aberta ? " checked" : "") + ">" +
+        '<div class="gaveta-lateral-painel glass-drawer-panel-denso">' +
+        '<header class="gaveta-lateral-cabecalho">' +
+        '<p class="text-overline text-madeira-600">Bancada de desenho</p>' +
+        '<h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Desenhos no mapa</h2>' +
+        "</header>" +
+        // andaime do mock: a gaveta fica SEM a barra gravada. O scroll_etched.js resolve
+        // [data-barra] por busca em toda a subárvore, e a barra da placa de ações — que é o que
+        // esta SPEC põe em julgamento — seria capturada pela gaveta. Ver o relato ao usuário.
+        '<div class="gaveta-lateral-corpo">' +
+        '<div class="gaveta-lateral-rolador">' +
+        '<div class="gaveta-lateral-conteudo">' + pocos + "</div>" +
+        "</div>" +
+        "</div>" +
+        "</div>" +
+        '<label for="' + idToggle + '" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">' +
+        '<svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>' +
+        "</label>";
+      return casca;
+    }
+
+    // ── andaime do mock: os estados estáticos, com medidas fixas ────────────────────────────────
+    const DESENHOS = {
+      pontos: [
+        { id: "1", rotulo: "Ponto 1", posicao: posicao(-23.5612, -46.6566) },
+        { id: "2", rotulo: "Ponto 2", posicao: posicao(-23.5623, -46.6553) },
+        { id: "9", rotulo: "Ponto 3", posicao: posicao(-23.99999999, -46.633308) },
+      ],
+      linhas: [{ id: "3", rotulo: "Linha 1", medida: { valor: 318, unidade: "m" } }],
+      poligonos: [
+        { id: "4", rotulo: "Polígono 1", medida: { valor: 1240, unidade: "m²" } },
+        { id: "5", rotulo: "Polígono 2", medida: { valor: 18702, unidade: "m²" } },
+        { id: "6", rotulo: "Polígono 3", medida: { valor: 640, unidade: "m²" } },
+        { id: "7", rotulo: "Polígono 4", medida: { valor: 96410, unidade: "m²" } },
+      ],
+    };
+
+    const ESTADOS = {
+      um: () => pocoDesenhos("poligono", [DESENHOS.poligonos[0]], "4", ACOES_POR_TIPO.poligono),
+      cheia: () =>
+        pocoDesenhos("ponto", DESENHOS.pontos, "2", ACOES_POR_TIPO.ponto) +
+        pocoDesenhos("linha", DESENHOS.linhas, "3", ACOES_POR_TIPO.linha) +
+        pocoDesenhos("poligono", DESENHOS.poligonos, "5", ACOES_POR_TIPO.poligono),
+      "sem-acao": () =>
+        pocoDesenhos("linha", DESENHOS.linhas, "3", []) +
+        pocoDesenhos("poligono", DESENHOS.poligonos, "5", []),
+    };
+
+    document.querySelectorAll("[data-gaveta-desenhos]").forEach((alvo) => {
+      alvo.appendChild(
+        gavetaDesenhos(ESTADOS[alvo.dataset.gavetaDesenhos](), alvo.dataset.toggle, alvo.hasAttribute("data-aberta")),
+      );
+    });
+
+    document.querySelector("[data-acoes-demo]").innerHTML = [
+      '<div class="card-well p-3">' + acoesPoco(ACOES_POR_TIPO.poligono) + "</div>",
+      '<div class="card-well p-3">' + acoesPoco(ACOES_POR_TIPO.ponto) + "</div>",
+      '<div class="card-well p-3">' + acoesPoco(ACOES_POR_TIPO.linha) + "</div>",
+    ].join("");
+    document.querySelector("[data-pocos-demo]").innerHTML =
+      pocoDesenhos("poligono", DESENHOS.poligonos, "5", ACOES_POR_TIPO.poligono) +
+      pocoDesenhos("poligono", DESENHOS.poligonos, "4", []) +
+      pocoDesenhos("ponto", [DESENHOS.pontos[0]], "1", ACOES_POR_TIPO.ponto);
+
+    // ── Fundo, glifos e bancada: os partials da própria aplicação ───────────────────────────────
+    async function partial(caminho) {
+      const r = await fetch(caminho);
+      if (!r.ok) throw new Error(r.status + " em " + caminho + " — sirva a RAIZ do projeto");
+      return (await r.text()).replace(TAG_DE_TEMPLATE, "").trim();
+    }
+
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers,
+        version: WMS.version,
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+
+    const [filtros, glifos, fundo, bancada] = await Promise.all([
+      partial("/templates/partials/_filtros_gravacao.html"),
+      partial("/templates/mapping/_glifos_desenho.html"),
+      partial("/templates/mapping/_mapa_fullscreen.html"),
+      partial("/templates/mapping/_bancada_desenho.html"),
+    ]);
+    document.getElementById("defs-aplicacao").innerHTML = filtros + glifos;
+    document.getElementById("fundo-home").innerHTML = fundo;
+    base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15));
+
+    // A bancada entra como cenário, SEM id algum e sem o bancada.js: o que esta SPEC julga é a
+    // gaveta, e o módulo da aplicação procura os controles por getElementById.
+    const bancadaCenario = (estado) =>
+      bancada
+        .replace('id="bancada-conjunto"', 'data-estado="' + estado + '"')
+        .replace(/\s+id="[^"]*"/g, "");
+
+    document.querySelectorAll("[data-bancada]").forEach((alvo) => {
+      alvo.outerHTML = bancadaCenario(alvo.dataset.bancada);
+    });
+    document.querySelectorAll("[data-estado]").forEach((conjunto) => {
+      conjunto.classList.remove("bancada-conjunto--fechada");
+      conjunto.querySelector(".bancada-alca").setAttribute("aria-expanded", "true");
+      conjunto.dataset.dock = conjunto.dataset.estado === "esquerda" ? "left" : "right";
+    });
+
+    const { montarBarrasGravadas } = await import("/static/src/js/ui/scroll_etched.js");
+    montarBarrasGravadas();
+
+    // ── O mapa da tela montada, com traços de exemplo em Leaflet puro ───────────────────────────
+    const mapaTela = base(L.map("mapa-tela", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 17));
+    const iconePonto = L.divIcon({
+      className: "",
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+      html: '<span style="display:block;width:14px;height:14px;border-radius:9999px;background:' +
+        CORES_DESENHO.ponto + ';border:2px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(72,202,228,.9)"></span>',
+    });
+
+    const EXEMPLOS = [
+      { id: "p1", tipo: "ponto", rotulo: "Ponto 1", posicao: posicao(-23.5612, -46.6566), camada: L.marker([-23.5612, -46.6566], { icon: iconePonto }) },
+      { id: "p2", tipo: "ponto", rotulo: "Ponto 2", posicao: posicao(-23.5623, -46.6553), camada: L.marker([-23.5623, -46.6553], { icon: iconePonto }) },
+      {
+        id: "l1", tipo: "linha", rotulo: "Linha 1", medida: { valor: 318, unidade: "m" },
+        camada: L.polyline([[-23.5600, -46.6545], [-23.5608, -46.6537], [-23.5618, -46.6534]]),
+      },
+      {
+        id: "g1", tipo: "poligono", rotulo: "Polígono 1", medida: { valor: 13400, unidade: "m²" },
+        camada: L.polygon([[-23.5604, -46.6574], [-23.5604, -46.6562], [-23.5615, -46.6562], [-23.5615, -46.6574]]),
+      },
+      {
+        id: "g2", tipo: "poligono", rotulo: "Polígono 2", medida: { valor: 5300, unidade: "m²" },
+        camada: L.polygon([[-23.5621, -46.6548], [-23.5621, -46.6541], [-23.5627, -46.6541], [-23.5627, -46.6548]]),
+      },
+    ];
+    EXEMPLOS.forEach((desenho) => desenho.camada.addTo(mapaTela));
+    mapaTela.fitBounds(L.featureGroup(EXEMPLOS.map((d) => d.camada)).getBounds(), {
+      paddingTopLeft: [440, 100],
+      paddingBottomRight: [90, 90],
+    });
+
+    const alvoGaveta = document.getElementById("gaveta-entidade");
+
+    function destacar() {
+      const marcados = new Set(
+        Array.from(alvoGaveta.querySelectorAll(".linha-desenho__marca:checked")).map((radio) => radio.value),
+      );
+      EXEMPLOS.forEach(({ id, tipo, camada }) => {
+        const cor = CORES_DESENHO[tipo];
+        const pleno = marcados.has(id);
+        if (camada.setStyle) {
+          camada.setStyle({
+            color: cor, fillColor: cor, weight: pleno ? 4 : 2,
+            opacity: pleno ? 1 : 0.4, fillOpacity: pleno ? 0.45 : 0.1,
+          });
+        } else {
+          camada.setOpacity(pleno ? 1 : 0.4);
+        }
+      });
+    }
+
+    const pocos = ORDEM_TIPOS.map((tipo) => {
+      const itens = EXEMPLOS.filter((desenho) => desenho.tipo === tipo);
+      if (!itens.length) return "";
+      return pocoDesenhos(tipo, itens, itens[itens.length - 1].id, ACOES_POR_TIPO[tipo]);
+    }).join("");
+    alvoGaveta.appendChild(gavetaDesenhos(pocos, "gaveta-desenhos-viva", true));
+    montarBarrasGravadas();
+    destacar();
+
+    document.addEventListener("change", (evento) => {
+      if (evento.target.matches(".linha-desenho__marca")) destacar();
+    });
+  </script>
+</body>
+</html>

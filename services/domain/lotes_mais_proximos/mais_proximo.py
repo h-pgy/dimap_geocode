@@ -1,9 +1,8 @@
-import json
 from collections.abc import Callable, Iterable
 
 from django.contrib.gis.geos import GEOSGeometry
 
-from services.domain.geometry import PointGeometry, PolygonGeometry, reprojetar
+from services.domain.geometry import para_geos, reprojetar
 from services.domain.lote_geocod import LoteFeature, feature_para_lote
 from services.integrations.wfs import (
     CqlDWithin,
@@ -32,7 +31,7 @@ class LoteMaisProximo:
 
     def pipeline(self, entrada: LoteMaisProximoInput) -> LoteProximo:
         ponto_camada = reprojetar(entrada.ponto, entrada.camada.crs_saida, entrada.camada.crs_camada)
-        ponto_geos = self._para_geos(ponto_camada, entrada.camada.crs_camada)
+        ponto_geos = para_geos(ponto_camada, entrada.camada.crs_camada)
         request = self._montar_request(ponto_geos, entrada)
         candidatos = self._candidatos(request, ponto_geos, entrada.camada.crs_camada)
         if not candidatos:
@@ -40,11 +39,6 @@ class LoteMaisProximo:
         # O codlog já filtrou no servidor, então nenhum vizinho de outra rua chega aqui.
         escolhido = min(candidatos, key=lambda c: c.distancia_m)
         return self._para_saida(escolhido, entrada.camada)
-
-    def _para_geos(self, geometria: PointGeometry | PolygonGeometry, srid: int) -> GEOSGeometry:
-        geos = GEOSGeometry(json.dumps(geometria.model_dump()))
-        geos.srid = srid
-        return geos
 
     def _montar_request(self, ponto: GEOSGeometry, entrada: LoteMaisProximoInput) -> WfsFeatureRequest:
         return WfsFeatureRequest(
@@ -79,7 +73,7 @@ class LoteMaisProximo:
         return candidatos
 
     def _distancia_m(self, lote: LoteFeature, ponto: GEOSGeometry, crs_camada: int) -> float:
-        poligono = self._para_geos(lote.geometry, crs_camada)
+        poligono = para_geos(lote.geometry, crs_camada)
         return poligono.distance(ponto)
 
     def _para_saida(self, escolhido: LoteProximo, camada: CamadaLotes) -> LoteProximo:
