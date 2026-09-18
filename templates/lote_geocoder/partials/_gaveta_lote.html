@@ -5,12 +5,12 @@
     <header class="gaveta-lateral-cabecalho">
       <p class="text-overline text-madeira-600">Entidade localizada</p>
       <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
-      {% if lote.sql %}
-        <p class="text-code text-sm font-medium mt-2">SQL {{ lote.sql }}</p>
+      {% if gaveta.lote.sql %}
+        <p class="text-code text-sm font-medium mt-2">SQL {{ gaveta.lote.sql }}</p>
       {% else %}
         <p class="text-sm font-medium mt-2">Sem contribuinte</p>
       {% endif %}
-      {% if lote.possui_lancamento %}
+      {% if gaveta.lote.possui_lancamento %}
         <span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>
       {% else %}
         <span class="badge badge-neutral badge-soft badge-sm font-bold mt-3">Sem lançamento ativo</span>
@@ -42,8 +42,8 @@
               </div>
               <div class="min-w-0">
                 <p class="text-overline mb-0.5">Endereço cadastrado</p>
-                {% if lote.endereco_completo %}
-                  <p class="font-bold leading-tight">{{ lote.endereco_completo }}</p>
+                {% if gaveta.lote.endereco_completo %}
+                  <p class="font-bold leading-tight">{{ gaveta.lote.endereco_completo }}</p>
                 {% else %}
                   <p class="valor-ausente">não informado</p>
                 {% endif %}
@@ -52,60 +52,80 @@
             <div class="h-px w-full bg-rocha-950/10"></div>
             <div class="flex items-baseline justify-between gap-4">
               <p class="text-overline">Codlog</p>
-              {% if lote.codlog %}
-                <p class="text-code text-sm">{{ lote.codlog }}</p>
+              {% if gaveta.lote.codlog %}
+                <p class="text-code text-sm">{{ gaveta.lote.codlog }}</p>
               {% else %}
                 <p class="text-sm valor-ausente">não informado</p>
               {% endif %}
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
-            <div class="card-well p-4">
-              <p class="text-overline mb-1">Terreno</p>
-              {% if lote.area_terreno_m2 is not None %}
-                <p class="text-xl font-bold tabular-nums">{{ lote.area_terreno_m2|floatformat:0 }} <span class="text-sm font-normal text-base-content/60">m²</span></p>
-              {% else %}
-                <p class="valor-ausente">não informado</p>
-              {% endif %}
+          <div class="card-well p-4 flex flex-col gap-3">
+            <p class="text-overline">Área de terreno</p>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-overline mb-1">Cadastro</p>
+                {% if gaveta.lote.area_terreno_m2 is not None %}
+                  <p class="text-xl font-bold tabular-nums">{{ gaveta.lote.area_terreno_m2|floatformat:"0g" }} <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                {% else %}
+                  <p class="valor-ausente">não informado</p>
+                {% endif %}
+              </div>
+              <div>
+                <p class="text-overline mb-1">Polígono</p>
+                <p class="text-xl font-bold tabular-nums">{{ gaveta.area_poligono_m2|floatformat:"0g" }} <span class="text-sm font-normal text-base-content/60">m²</span></p>
+              </div>
             </div>
-            <div class="card-well p-4">
-              <p class="text-overline mb-1">Construída</p>
-              {% if lote.area_construida_m2 is not None %}
-                <p class="text-xl font-bold tabular-nums">{{ lote.area_construida_m2|floatformat:0 }} <span class="text-sm font-normal text-base-content/60">m²</span></p>
-              {% else %}
-                <p class="valor-ausente">não informado</p>
-              {% endif %}
+            <div class="h-px w-full bg-rocha-950/10"></div>
+            {# O "+" é apresentação: floatformat só escreve o sinal negativo. #}
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+              <p class="text-overline">Divergência</p>
+              {% with diferenca=gaveta.diferenca_area_pct divergencia=gaveta.divergencia_area %}
+                {% if diferenca is None %}
+                  <p class="text-lg valor-ausente">não informado</p>
+                {% else %}
+                  <span class="badge {% if divergencia == 'erro' %}badge-error{% elif divergencia == 'alerta' %}badge-warning{% else %}badge-neutral{% endif %} badge-soft badge-lg text-lg font-bold px-4 tabular-nums">{% if diferenca > 0 %}+{% endif %}{{ diferenca|floatformat:1 }}%</span>
+                {% endif %}
+              {% endwith %}
             </div>
+          </div>
+
+          <div class="card-well p-4 flex items-baseline justify-between gap-4">
+            <p class="text-overline">Área construída</p>
+            {% if gaveta.lote.area_construida_m2 is not None %}
+              <p class="text-xl font-bold tabular-nums">{{ gaveta.lote.area_construida_m2|floatformat:"0g" }} <span class="text-sm font-normal text-base-content/60">m²</span></p>
+            {% else %}
+              <p class="valor-ausente">não informado</p>
+            {% endif %}
           </div>
 
           <p class="text-overline pt-1">Cadastro</p>
           <div class="grid grid-cols-3 gap-3">
             <div class="card-well p-3">
               <p class="text-overline mb-1">Setor</p>
-              <p class="text-code text-lg font-bold">{{ lote.setor }}</p>
+              <p class="text-code text-lg font-bold">{{ gaveta.lote.setor }}</p>
             </div>
             <div class="card-well p-3">
               <p class="text-overline mb-1">Quadra</p>
-              <p class="text-code text-lg font-bold">{{ lote.quadra }}</p>
+              <p class="text-code text-lg font-bold">{{ gaveta.lote.quadra }}</p>
             </div>
             <div class="card-well p-3">
               <p class="text-overline mb-1">Lote</p>
-              <p class="text-code text-lg font-bold">{{ lote.lote }}</p>
+              <p class="text-code text-lg font-bold">{{ gaveta.lote.lote }}</p>
             </div>
           </div>
 
           <dl class="card-well ficha-atributos">
             <dt class="text-overline">Tipo de quadra</dt>
-            {% if lote.tipo_quadra %}<dd class="text-code">{{ lote.tipo_quadra }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
+            {% if gaveta.lote.tipo_quadra %}<dd class="text-code">{{ gaveta.lote.tipo_quadra }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
             <dt class="text-overline">Tipo de lote</dt>
-            <dd class="text-code">{{ lote.tipo_lote }}</dd>
+            <dd class="text-code">{{ gaveta.lote.tipo_lote }}</dd>
             <dt class="text-overline">Condomínio</dt>
-            {% if lote.condominio %}<dd class="text-code">{{ lote.condominio }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
+            {% if gaveta.lote.condominio %}<dd class="text-code">{{ gaveta.lote.condominio }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
             <dt class="text-overline">Uso</dt>
-            {% if lote.uso %}<dd>{{ lote.uso }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
+            {% if gaveta.lote.uso %}<dd>{{ gaveta.lote.uso }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
             <dt class="text-overline">CIB</dt>
-            {% if lote.cib %}<dd class="text-code">{{ lote.cib }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
+            {% if gaveta.lote.cib %}<dd class="text-code">{{ gaveta.lote.cib }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
           </dl>
         </div>
       </div>

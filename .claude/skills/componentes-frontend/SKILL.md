@@ -243,6 +243,11 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
   `.loading` do daisyUI (a UI de vidro nunca bloqueia sem feedback). Use `.htmx-added`/`.htmx-swapping`
   para amarrar animações de entrada/saída dos partials.
 - **JS restrito** (regra do projeto): callbacks de eventos HTMX e utilitários do Leaflet, nada mais.
+- **Gancho de JS se registra no teste do CSS.** Classe posta em `class=` só para o JS achar o
+  elemento por seletor (`closest(".linha-desenho__confirmar-apagar")`), sem regra no tema, não sai
+  no `output.css` — e o `tests/static/test_css_compilado.py` (marker `integration`) a acusa como
+  classe ausente. Todo gancho novo entra, **na mesma entrega**, em `CLASSES_SEM_ESTILO` desse
+  teste. Classe que tem estilo **não** entra ali: se ela falta no CSS, o bug é real.
 
 ## 8. Setup técnico (Tailwind 4 + daisyUI 5)
 

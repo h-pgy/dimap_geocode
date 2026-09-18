@@ -8,16 +8,25 @@ from django.test import Client
 from django.urls import reverse
 
 import apps.lote_geocoder.views as views
+from services.domain.geometry import PolygonGeometry, reprojetar
 from services.integrations.wfs import WfsFeatureCollection
 
 # ---------------------------------------------------------------------------
 # Builders
 # ---------------------------------------------------------------------------
 
-POLYGON_GEOM: dict[str, object] = {
-    "type": "Polygon",
-    "coordinates": [[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]],
-}
+
+
+def _retangulo_no_mapa(largura: float, altura: float) -> dict[str, object]:
+    x0 = 333000.0
+    y0 = 7395000.0
+    anel = [[x0, y0], [x0 + largura, y0], [x0 + largura, y0 + altura], [x0, y0 + altura], [x0, y0]]
+    metrico = PolygonGeometry(type="Polygon", coordinates=[anel])
+    return reprojetar(metrico, 31983, 4326).model_dump()
+
+
+# 600 m² no polígono contra 250,5 m² no cadastro: divergência de +139,5%.
+POLYGON_GEOM: dict[str, object] = _retangulo_no_mapa(20.0, 30.0)
 
 _PROPS_LOTE_COM_SQL: dict[str, object] = {
     "cd_identificador": "POL001",
@@ -93,6 +102,7 @@ def test_geocodificar_lote_abre_gaveta_com_sql(
     assert "SQL 005.003.0048-5" in conteudo
     assert "Lançamento ativo" in conteudo
     assert _toggle_marcado(conteudo)
+    assert re.search(r'badge-error[^"]*">\s*\+139,5%', conteudo)
 
 
 def test_gaveta_mostra_nao_informado_para_atributo_ausente(
@@ -103,8 +113,11 @@ def test_gaveta_mostra_nao_informado_para_atributo_ausente(
     _instalar_fetcher_fake(monkeypatch, [_page([_feat(props)])])
 
     resposta = client.post(reverse("lote_geocoder:geocodificar"), _POST_LOTE)
+    conteudo = resposta.content.decode()
 
-    assert "não informado" in resposta.content.decode()
+    assert re.search(r"Divergência</p>\s*<p[^>]*valor-ausente[^>]*>não informado", conteudo)
+    assert re.search(r"Cadastro</p>\s*<p[^>]*valor-ausente[^>]*>não informado", conteudo)
+    assert re.search(r"Polígono</p>\s*<p[^>]*>600 ", conteudo)
 
 
 def test_lote_sem_contribuinte_nao_inventa_sql(

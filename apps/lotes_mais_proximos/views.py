@@ -11,6 +11,7 @@ from apps.lotes_mais_proximos.contexto import camada_lotes
 from apps.mapping.context import contexto_aviso, contexto_mapa
 from services.domain.geometry import GeoFeature, PointGeometry, to_geojson_feature_collection
 from services.domain.geometry.models import GeoJsonProperties
+from services.domain.lote_geocod import GavetaLoteInput, MontarGavetaLote
 from services.domain.lotes_mais_proximos import (
     LoteMaisProximo,
     LoteMaisProximoInput,
@@ -22,6 +23,7 @@ from services.integrations.wfs import build_fetcher
 MAP_COR_PONTO: str = settings.MAP_COR_PONTO
 MAP_COR_POLIGONO: str = settings.MAP_COR_POLIGONO
 MAP_COR_POLIGONO_CONDOMINIO: str = settings.MAP_COR_POLIGONO_CONDOMINIO
+MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 LOTE_MAIS_PROXIMO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_RAIO_M
 
 TEMPLATE_RESULTADO_MAIS_PROXIMO = "lotes_mais_proximos/partials/_resultado_mais_proximo.html"
@@ -72,8 +74,11 @@ def _contexto_mais_proximo(
         "type": "FeatureCollection",
         "features": [_ponto_feature(ponto), *lote_geojson["features"]],
     }
+    gaveta = MontarGavetaLote()(
+        GavetaLoteInput(lote=proximo.lote, crs_metrico=MAP_INTERPOLATION_CRS)
+    )
     return contexto_mapa(geojson, MAP_COR_POLIGONO) | {
-        "lote": proximo.lote.attributes,
+        "gaveta": gaveta,
         "distancia_m": proximo.distancia_m,
         "origem_busca": origem,
     }

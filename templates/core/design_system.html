@@ -3053,6 +3053,88 @@
           </div>
           <p class="text-xs text-base-content/60 mt-2">Rótulo e valor, linha a linha, dentro do poço — grade <span class="text-code">[auto_1fr]</span>, e não colunas fixas: o rótulo toma só o espaço que precisa, o valor ocupa o resto, alinhado à direita.</p>
         </div>
+
+        <div>
+          <span class="text-overline">Confronto de áreas do terreno (SPEC localizacao_lote/001)</span>
+          <div class="grid sm:grid-cols-2 gap-4 mt-3">
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Área de terreno</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Cadastro</p>
+                  <p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Polígono</p>
+                  <p class="text-xl font-bold tabular-nums">1.462 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <p class="text-overline">Divergência</p>
+                <span class="badge badge-neutral badge-soft badge-lg text-lg font-bold px-4 tabular-nums">+0,8%</span>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Área de terreno</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Cadastro</p>
+                  <p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Polígono</p>
+                  <p class="text-xl font-bold tabular-nums">1.412 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <p class="text-overline">Divergência</p>
+                <span class="badge badge-warning badge-soft badge-lg text-lg font-bold px-4 tabular-nums">-2,6%</span>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Área de terreno</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Cadastro</p>
+                  <p class="text-xl font-bold tabular-nums">94 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Polígono</p>
+                  <p class="text-xl font-bold tabular-nums">40 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <p class="text-overline">Divergência</p>
+                <span class="badge badge-error badge-soft badge-lg text-lg font-bold px-4 tabular-nums">-57,1%</span>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Área de terreno</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Cadastro</p>
+                  <p class="valor-ausente">não informado</p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Polígono</p>
+                  <p class="text-xl font-bold tabular-nums">3.210 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <p class="text-overline">Divergência</p>
+                <p class="text-lg valor-ausente">não informado</p>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Área declarada no cadastro contra a medida no polígono, e a divergência entre elas centralizada no poço. A cor do badge é a faixa: neutro até 2%, <span class="text-code">badge-warning</span> acima de 2%, <span class="text-code">badge-error</span> acima de 5%. Sem área no cadastro, a divergência é <span class="text-code">.valor-ausente</span>.</p>
+        </div>
       </div>
     </section>
 

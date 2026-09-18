@@ -8,11 +8,17 @@ from django.views.decorators.http import require_POST
 
 from apps.mapping.context import contexto_aviso, contexto_mapa
 from services.domain.geometry import GeoFeature, to_geojson_feature_collection
-from services.domain.lote_geocod import LoteGeocoder, LoteGeocodInput
+from services.domain.lote_geocod import (
+    GavetaLoteInput,
+    LoteGeocoder,
+    LoteGeocodInput,
+    MontarGavetaLote,
+)
 from services.integrations.wfs import build_fetcher
 from services.domain.geometry.models import GeoJsonProperties
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
+MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 WFS_LAYER_LOTE_CIDADAO: str = settings.WFS_LAYER_LOTE_CIDADAO
 MAP_COR_POLIGONO: str = settings.MAP_COR_POLIGONO
 MAP_COR_POLIGONO_CONDOMINIO: str = settings.MAP_COR_POLIGONO_CONDOMINIO
@@ -58,10 +64,13 @@ def geocodificar_lote(
         )
     geojson = to_geojson_feature_collection(features, _properties)
     # A gaveta fala de UM lote: o primeiro polígono é o lote pedido (ver Caveats da SPEC).
+    gaveta = MontarGavetaLote()(
+        GavetaLoteInput(lote=features[0], crs_metrico=MAP_INTERPOLATION_CRS)
+    )
     return render(
         request,
         "lote_geocoder/partials/_resultado_lote.html",
-        contexto_mapa(geojson, MAP_COR_POLIGONO) | {"lote": features[0].attributes},
+        contexto_mapa(geojson, MAP_COR_POLIGONO) | {"gaveta": gaveta},
     )
 
 
