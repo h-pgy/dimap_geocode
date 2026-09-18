@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC localizacao_lote/003 — Lotes que cruzam um desenho (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* MOLÉCULA · .placa-lista — a placa assentada que guarda uma lista curta dentro de um poço:
+         o .glass-panel entra composto no HTML, e a placa sobe do poço pela aresta de luz e pela
+         sombra. */
+      .placa-lista {
+        @apply flex flex-col gap-1.5 p-2.5 transition-all duration-300;
+        border-radius: var(--radius-placa);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.9),
+          0 6px 16px rgba(7, 58, 84, 0.28),
+          0 0 18px rgba(72, 202, 228, 0.22);
+      }
+      .placa-lista:hover {
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 1),
+          0 10px 22px rgba(7, 58, 84, 0.32),
+          0 0 24px rgba(72, 202, 228, 0.32);
+      }
+      .placa-lista__cabecalho { @apply flex items-center gap-2 px-1; }
+      .placa-lista__contagem {
+        @apply ml-auto text-[11px] font-bold tabular-nums leading-none px-2 py-1 rounded-full;
+        @apply bg-rocha-950/8 text-rocha-700;
+      }
+      .placa-lista__conteudo { @apply flex flex-col gap-1.5; }
+
+      /* VARIANTE · .table-onsen-compacta — a .table-onsen em linha baixa, para a tabela que divide
+         a altura com o mapa. */
+      .table-onsen-compacta thead th { @apply p-1.5; }
+      .table-onsen-compacta tbody td { @apply px-3 py-1.5 text-[13px]; }
+
+      /* VARIANTE · .gaveta-inferior-rasa — altura fixa em vez de teto. É a medida conhecida que
+         deixa a gaveta lateral parar acima dela. Abaixo do tablet vale a gaveta de tela inteira. */
+      @media (width >= 48rem) {
+        .gaveta-inferior-rasa { height: var(--gaveta-rasa-altura); }
+        .gaveta-inferior-rasa .gaveta-cabecalho { @apply pb-2; }
+        .gaveta-inferior-rasa .gaveta-coluna { @apply py-3; }
+
+        /* A gaveta lateral sobe a borda de baixo enquanto a rasa está aberta: nada se sobrepõe. */
+        .tela-home .gaveta-lateral { transition-property: transform, bottom; }
+        .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa) .gaveta-lateral {
+          bottom: calc(var(--gaveta-rasa-altura) + 0.75rem);
+        }
+      }
+
+      /* ÁTOMO · .realce-resultado / .realce-resultado-forte — o halo da feature realçada no mapa, na tinta de rocha
+         do próprio traço. Vai no <path> do Leaflet; o traço e o preenchimento vêm do catálogo em JS. */
+      .realce-resultado { filter: drop-shadow(0 0 4px rgba(65, 90, 119, 0.75)); }
+      .realce-resultado-forte {
+        filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 10px rgba(46, 69, 96, 0.9));
+      }
+
+      /* ORGANISMO · troca da gaveta lateral — o troca_gaveta.js diz no alvo do swap como a gaveta
+         nova chega: "entrada" desliza, "troca" funde só o conteúdo do painel, "mesma" não anima. */
+      @starting-style {
+        [data-troca-gaveta="entrada"] > .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) {
+          transform: translateX(-100%);
+        }
+        [data-troca-gaveta="troca"] .gaveta-lateral-painel > * { opacity: 0; }
+      }
+      [data-troca-gaveta="troca"] .gaveta-lateral-painel > * { @apply transition-opacity duration-150 ease-in-out; }
+      [data-troca-gaveta="troca"].htmx-swapping .gaveta-lateral-painel > * { @apply opacity-0; }
+
+      /* ORGANISMO · contexto de ação — enquanto o contexto_acao.js mantém a marca, a busca fica
+         recolhida, como sob a gaveta lateral aberta. */
+      .tela-home:has(#contexto-acao[data-contexto-acao]) .search-hero {
+        @apply opacity-0 -translate-y-5 scale-95 pointer-events-none invisible;
+      }
+
+      /* andaime do mock: moldura que faz as vezes da casca da home. O contain segura a
+         .gaveta-inferior, que é fixed, dentro do quadro. */
+      .quadro-tela {
+        @apply relative h-[40rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+    }
+
+    /* TOKEN · a altura da gaveta inferior rasa. */
+    :root { --gaveta-rasa-altura: 16rem; }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Defs da gravação e glifos da bancada: os partials da própria aplicação. -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- Fundo: o mapa vivo da home, de mapping/_mapa_fullscreen.html. -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC localizacao_lote/003 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Lotes que cruzam um desenho</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          A ação "Lotes contidos" no poço do polígono selecionado. Acionada, a bancada sai de cena: a
+          tabela dos lotes sobe embaixo, e a gaveta lateral passa a ser a do lote escolhido.
+        </p>
+      </header>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">2 · Átomos</h2>
+
+        <!-- ícone da ação: static/src/acoes/lotes_mais_proximos/lotes_contidos/icones/ -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.icone-acao · lotes_mais_proximos.lotes_contidos — pequeno e grande</p>
+          <div class="flex items-end gap-8">
+            <span class="icone-acao icone-acao-pequeno text-agua-700" data-icone-lotes></span>
+            <span class="icone-acao icone-acao-grande text-agua-700" data-icone-lotes></span>
+          </div>
+        </div>
+
+        <!-- traço do lote no mapa -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">traço do lote · em repouso, sob o ponteiro da tabela (1º) e escolhido (3º); o desenho, transparente, por baixo</p>
+          <div class="card-well mapa-gaveta-moldura max-w-3xl">
+            <div class="mapa-gaveta h-72">
+              <div class="absolute inset-0" data-mapa-estatico="21" data-ponteiro="0" data-escolhido="2" data-sem-gaveta></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .placa-lista -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.placa-lista — a placa de ações do poço, com a ação desta SPEC</p>
+          <div class="grid md:grid-cols-3 gap-4 items-start">
+            <div class="card-well p-3" data-placa-demo></div>
+          </div>
+        </div>
+
+        <!-- .poco-desenhos com a ação -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.poco-desenhos — polígono selecionado (ação à vista), seleção em outro poço (recolhida) e ponto selecionado (sem ação)</p>
+          <div class="grid md:grid-cols-3 gap-4 items-start" data-pocos-demo></div>
+        </div>
+
+        <!-- .table-onsen-compacta -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.table-onsen-compacta — a tabela em linha baixa</p>
+          <div class="h-56 flex flex-col max-w-3xl" data-tabela-demo></div>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="flex flex-col gap-6">
+        <h2 class="section-title">4 · Organismos</h2>
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          A gaveta inferior rasa: altura fixa, cabeçalho numa linha e só a tabela.
+        </p>
+
+        <div class="flex flex-col gap-6">
+          <!-- estado: lotes encontrados -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">seis lotes</span>
+            <div class="quadro-tela h-[26rem]">
+              <div class="absolute inset-0 z-0" data-mapa-estatico="21"></div>
+              <div data-gaveta-inferior="21"></div>
+            </div>
+          </div>
+
+          <!-- estado de falta: o desenho não cruza lote algum -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">nenhum lote · o estado de falta escrito</span>
+            <div class="quadro-tela h-[26rem]">
+              <div class="absolute inset-0 z-0" data-mapa-estatico="23"></div>
+              <div data-gaveta-inferior="23"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · selecione um polígono e acione "Lotes contidos"; clique numa linha ou num lote; clique no desenho, fora dos lotes, para voltar à bancada. O Polígono 3 não cruza lote, o 4 se cruza em "8"</span>
+
+          <!-- página: core/home.html -->
+          <div class="quadro-tela tela-home">
+            <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+            <div id="mapa-tela" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+
+            <!-- fica na página: a UI flutuante da busca, que já existe -->
+            <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4 transition-all duration-500 ease-in-out">
+              <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+                <div class="relative w-full flex items-center">
+                  <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                  <input type="search" placeholder="Rua, endereço, codlog ou nº de contribuinte…" class="input input-glass pl-11" />
+                </div>
+              </div>
+              <!-- fica na página: #resultado-busca, alvo do hx-post da ação -->
+              <div id="resultado-tela" class="pointer-events-auto w-11/12 max-w-2xl mt-3">
+                <!-- partial: mapping/_mapa.html (payload) ou mapping/_aviso.html (recusa) -->
+                <!-- /partial -->
+              </div>
+            </div>
+
+            <!-- página: <div id="gaveta-entidade"></div> — alvo do swap da rota dos desenhos, da linha da tabela e do lote no mapa -->
+            <div id="gaveta-entidade">
+              <!-- partial: mapping/_gaveta_desenhos.html — mapping:desenhos_da_bancada; o toggle é recolhido pelo OOB de mapping/_recolher_gaveta_oob.html -->
+              <!-- partial: lote_geocoder/partials/_gaveta_lote.html — lotes_mais_proximos:detalhe_do_lote -->
+              <!-- /partial -->
+            </div>
+
+            <!-- fica na página: mapping/_bancada_desenho.html -->
+            <div data-bancada></div>
+
+            <!-- página: <div id="gaveta-inferior-conteudo"></div> — nasce vazio; alvo do OOB (innerHTML) de lotes_mais_proximos:lotes_do_desenho -->
+            <!-- página: <div id="contexto-acao" hidden></div> — a marca do contexto; alvo do OOB da ação -->
+            <div id="contexto-acao" hidden></div>
+
+            <div id="gaveta-inferior-conteudo">
+              <!-- partial: mapping/_resultado_acao.html, estendido por lotes_mais_proximos/partials/_resultado_desenho.html — toggle #gaveta-resultado marcado + placa -->
+              <!-- /partial -->
+            </div>
+          </div>
+        </div>
+
+        <!-- estado: tabela aberta e um lote na gaveta lateral, que para acima da inferior -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">lote escolhido · a gaveta do lote para acima da tabela</span>
+          <div class="quadro-tela tela-home">
+            <div class="absolute inset-0 z-0" data-mapa-estatico="21" data-com-lateral data-escolhido="1"></div>
+            <div data-tela-lote></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    // andaime do mock: erro de carga aparece na tela, não só no console.
+    function denunciar(mensagem) {
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        '<pre class="fixed top-0 inset-x-0 z-50 m-0 p-3 text-xs bg-error text-error-content whitespace-pre-wrap">' + mensagem + "</pre>",
+      );
+    }
+    window.addEventListener("error", (evento) => denunciar("erro: " + evento.message));
+    window.addEventListener("unhandledrejection", (evento) => denunciar("falhou: " + evento.reason));
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    // No produto a config desce do servidor; o mock não tem Django por trás do Live Server.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5614, -46.6559];
+    const COR = { ponto: "#00B4D8", poligono: "#D84F7F" };
+    // De static/src/js/mapa/desenho/catalogo.js e camada_resultado.js.
+    const TRACO_POLIGONO = {
+      normal: { weight: 3, opacity: 1, fillOpacity: 0.35 },
+      selecionado: { weight: 6, opacity: 1, fillOpacity: 0.55 },
+    };
+    // PEÇA DESTA SPEC (static/src/js/mapa/interacao_resultado.js): o lote em rocha, distinto do desenho em
+    // sakura; sob o ponteiro da tabela ele acende, escolhido acende mais. rocha-600 / rocha-400 / rocha-800.
+    const REALCE_LOTE = {
+      normal: { color: "#5B7290", weight: 1.5, opacity: 0.9, fillColor: "#8FA3BB", fillOpacity: 0.18, brilho: null },
+      ponteiro: { color: "#5B7290", weight: 3, opacity: 1, fillColor: "#8FA3BB", fillOpacity: 0.4, brilho: "realce-resultado" },
+      escolhido: { color: "#2E4560", weight: 4, opacity: 1, fillColor: "#778DA9", fillOpacity: 0.55, brilho: "realce-resultado-forte" },
+    };
+    const TRACO_LOTE = REALCE_LOTE.normal;
+    // Com resultado no mapa o desenho desce para baixo dos lotes e fica mais transparente.
+    const DESENHO_SOB_RESULTADO = { fillOpacity: 0.2 };
+
+    function pintarLote(camada, estado) {
+      const { brilho, ...traco } = REALCE_LOTE[estado];
+      camada.setStyle(traco);
+      const elemento = camada.getElement();
+      elemento?.classList.remove("realce-resultado", "realce-resultado-forte");
+      if (brilho) {
+        elemento?.classList.add(brilho);
+        camada.bringToFront();
+      }
+    }
+    const DIAMETRO_PONTO = { normal: 14, selecionado: 22 };
+    const NUMERO = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+
+    // ── PEÇA DESTA SPEC: static/src/acoes/lotes_mais_proximos/lotes_contidos/icones/{pequeno,grande}.svg
+    const SVG_LOTES_CONTIDOS =
+      '<svg viewBox="0 0 24 24">' +
+      '<path d="M3.5 7 12 3.2 20.5 7.5 19 19.5 5 20.8z" stroke-dasharray="2.2 2.4"/>' +
+      '<rect x="7.6" y="8.6" width="8.8" height="8.2" rx="0.8"/>' +
+      '<path d="M12 8.6v8.2M7.6 12.7h8.8"/>' +
+      "</svg>";
+
+    // ── andaime do mock: os desenhos e os lotes que o WFS devolveria ────────────────────────────
+    const DESENHOS = [
+      { id: "11", tipo: "ponto", rotulo: "Ponto 1", latlng: [-23.5612, -46.6583] },
+      {
+        id: "21", tipo: "poligono", rotulo: "Polígono 1", area: 13400,
+        anel: [[-23.5604, -46.6574], [-23.5604, -46.6562], [-23.5615, -46.6562], [-23.5615, -46.6574]],
+        grade: [3, 2],
+      },
+      {
+        id: "22", tipo: "poligono", rotulo: "Polígono 2", area: 5300,
+        anel: [[-23.5621, -46.6548], [-23.5621, -46.6541], [-23.5627, -46.6541], [-23.5627, -46.6548]],
+        grade: [2, 1],
+      },
+      {
+        id: "23", tipo: "poligono", rotulo: "Polígono 3", area: 2100,
+        anel: [[-23.5593, -46.6547], [-23.5593, -46.6541], [-23.5598, -46.6541], [-23.5598, -46.6547]],
+        grade: [0, 0],
+      },
+      {
+        id: "24", tipo: "poligono", rotulo: "Polígono 4", area: 900, laco: true,
+        anel: [[-23.5628, -46.6572], [-23.5634, -46.6563], [-23.5628, -46.6563], [-23.5634, -46.6572]],
+        grade: [0, 0],
+      },
+    ];
+    const RUAS = ["AV PAULISTA", "R FREI CANECA", "AL SANTOS", "R PEIXOTO GOMIDE", "R AUGUSTA"];
+
+    // Os lotes transbordam o desenho: basta encostar para entrar (Caveats da SPEC).
+    function lotesDo(desenho) {
+      const [colunas, linhas] = desenho.grade;
+      if (!colunas) return [];
+      const lats = desenho.anel.map(([lat]) => lat);
+      const lngs = desenho.anel.map(([, lng]) => lng);
+      const folga = 0.00012;
+      const norte = Math.max(...lats) + folga;
+      const sul = Math.min(...lats) - folga;
+      const oeste = Math.min(...lngs) - folga;
+      const leste = Math.max(...lngs) + folga;
+      const passoLat = (norte - sul) / linhas;
+      const passoLng = (leste - oeste) / colunas;
+      const lotes = [];
+      for (let l = 0; l < linhas; l++) {
+        for (let c = 0; c < colunas; c++) {
+          const n = lotes.length;
+          const topo = norte - l * passoLat;
+          const esquerda = oeste + c * passoLng;
+          lotes.push({
+            id: desenho.id + "-" + n,
+            sql: "009.0" + (34 + Number(desenho.id)) + "." + String(21 + n * 2).padStart(4, "0") + "-" + ((n * 7) % 10),
+            endereco: RUAS[(n + Number(desenho.id)) % RUAS.length] + ", " + (1500 + n * 38),
+            ativo: n % 4 !== 3,
+            anel: [
+              [topo - 0.00002, esquerda + 0.00002],
+              [topo - 0.00002, esquerda + passoLng - 0.00002],
+              [topo - passoLat + 0.00002, esquerda + passoLng - 0.00002],
+              [topo - passoLat + 0.00002, esquerda + 0.00002],
+            ],
+          });
+        }
+      }
+      return lotes;
+    }
+    const desenhoPorId = (id) => DESENHOS.find((d) => d.id === id);
+    const lotePorId = (id) => lotesDo(desenhoPorId(id.split("-")[0])).find((l) => l.id === id);
+
+    // ── A marcação em julgamento ────────────────────────────────────────────────────────────────
+    function itemLotesContidos() {
+      return (
+        // No produto: hx-post="{% url item.url_name %}" hx-include=".linha-desenho__marca:checked".
+        '<button type="button" class="card-well item-menu item-menu-swell" data-acao-lotes' +
+        ' title="Lotes cadastrados que o polígono marcado cruza.">' +
+        '<span class="icone-acao icone-acao-pequeno icone-acao-acende">' + SVG_LOTES_CONTIDOS + "</span>" +
+        '<span class="item-menu-rotulo">Lotes contidos</span>' +
+        "</button>"
+      );
+    }
+
+    function placaAcoes() {
+      return (
+        '<div class="placa-lista glass-panel">' +
+        '<div class="placa-lista__cabecalho"><span class="text-overline">Ações</span><span class="placa-lista__contagem">1</span></div>' +
+        '<div class="placa-lista__conteudo">' + itemLotesContidos() + "</div>" +
+        "</div>"
+      );
+    }
+
+    function linhaDesenho(desenho, marcado) {
+      const medida = desenho.area
+        ? '<span class="linha-desenho__medida">' + NUMERO.format(desenho.area) + " m²</span>"
+        : '<span class="linha-desenho__medida">' + desenho.latlng.map((v) => v.toFixed(3)).join(", ") + "</span>";
+      return (
+        '<label class="linha-desenho">' +
+        '<input type="radio" name="id_bancada" class="linha-desenho__marca" value="' + desenho.id + '"' + (marcado ? " checked" : "") + ">" +
+        '<span class="linha-desenho__rotulo">' + desenho.rotulo + "</span>" +
+        medida +
+        '<button type="button" class="linha-desenho__apagar etched" aria-label="Apagar ' + desenho.rotulo + '">' +
+        '<svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>' +
+        "</label>"
+      );
+    }
+
+    function pocoDesenhos(tipo, desenhos, idMarcado, comAcao) {
+      // Sem espaço dentro da âncora quando não há ação: é o :empty que a recolhe.
+      return (
+        '<div class="poco-desenhos poco-desenhos--' + tipo + ' card-well">' +
+        desenhos.map((d) => linhaDesenho(d, d.id === idMarcado)).join("") +
+        '<div class="poco-desenhos__acoes">' +
+        (comAcao ? '<div class="poco-desenhos__acoes-recorte">' + placaAcoes() + "</div>" : "") +
+        "</div>" +
+        "</div>"
+      );
+    }
+
+    const PALETA = (idToggle) =>
+      '<label for="' + idToggle + '" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">' +
+      '<svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>' +
+      "</label>";
+
+    // mapping/_gaveta_desenhos.html
+    function gavetaDesenhos(idMarcado, idToggle, aberta) {
+      const casca = document.createElement("div");
+      casca.className = "gaveta-lateral";
+      // No produto: data-gaveta="desenhos" na raiz de _gaveta_desenhos.html.
+      casca.dataset.gaveta = "desenhos";
+      casca.innerHTML =
+        '<input type="checkbox" id="' + idToggle + '" class="gaveta-lateral-toggle"' + (aberta ? " checked" : "") + ">" +
+        '<div class="gaveta-lateral-painel glass-drawer-panel-denso">' +
+        '<header class="gaveta-lateral-cabecalho">' +
+        '<p class="text-overline text-madeira-600">Bancada de desenho</p>' +
+        '<h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Desenhos no mapa</h2>' +
+        "</header>" +
+        '<div class="gaveta-lateral-corpo" data-scroll-etched>' +
+        '<div class="gaveta-lateral-rolador" data-rolador>' +
+        '<form class="gaveta-lateral-conteudo">' +
+        pocoDesenhos("ponto", DESENHOS.filter((d) => d.tipo === "ponto"), idMarcado, false) +
+        pocoDesenhos("poligono", DESENHOS.filter((d) => d.tipo === "poligono"), idMarcado, true) +
+        '<button type="button" class="btn-etched btn-etched-swell etched self-end">Limpar desenhos</button>' +
+        "</form>" +
+        "</div>" +
+        '<div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>' +
+        "</div>" +
+        "</div>" +
+        PALETA(idToggle);
+      return casca;
+    }
+
+    // lote_geocoder/partials/_gaveta_lote.html (SPEC 001), com dados de andaime.
+    function gavetaLote(lote, idToggle) {
+      const badge = lote.ativo
+        ? '<span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>'
+        : '<span class="badge badge-neutral badge-soft badge-sm font-bold mt-3">Sem lançamento ativo</span>';
+      const casca = document.createElement("div");
+      casca.className = "gaveta-lateral";
+      // No produto: data-gaveta="lote-{{ id_poligono }}" na raiz de _gaveta_lote.html.
+      casca.dataset.gaveta = "lote-" + lote.id;
+      casca.innerHTML =
+        '<input type="checkbox" id="' + idToggle + '" class="gaveta-lateral-toggle" checked>' +
+        '<div class="gaveta-lateral-painel glass-drawer-panel-denso">' +
+        '<header class="gaveta-lateral-cabecalho">' +
+        '<p class="text-overline text-madeira-600">Entidade localizada</p>' +
+        '<h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>' +
+        '<p class="text-code text-sm font-medium mt-2">SQL ' + lote.sql + "</p>" + badge +
+        "</header>" +
+        '<div class="gaveta-lateral-corpo" data-scroll-etched>' +
+        '<div class="gaveta-lateral-rolador" data-rolador>' +
+        '<div class="gaveta-lateral-conteudo">' +
+        '<div class="card-well p-4 flex flex-col gap-3">' +
+        '<div class="flex gap-4 items-center">' +
+        '<div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">' +
+        '<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' +
+        "</div>" +
+        '<div class="min-w-0"><p class="text-overline mb-0.5">Endereço cadastrado</p><p class="font-bold leading-tight">' + lote.endereco + "</p></div>" +
+        "</div>" +
+        '<div class="h-px w-full bg-rocha-950/10"></div>' +
+        '<div class="flex items-baseline justify-between gap-4"><p class="text-overline">Codlog</p><p class="text-code text-sm">159247</p></div>' +
+        "</div>" +
+        '<div class="card-well p-4 flex flex-col gap-3">' +
+        '<p class="text-overline">Área de terreno</p>' +
+        '<div class="grid grid-cols-2 gap-4">' +
+        '<div><p class="text-overline mb-1">Cadastro</p><p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p></div>' +
+        '<div><p class="text-overline mb-1">Polígono</p><p class="text-xl font-bold tabular-nums">1.512 <span class="text-sm font-normal text-base-content/60">m²</span></p></div>' +
+        "</div>" +
+        '<div class="h-px w-full bg-rocha-950/10"></div>' +
+        '<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4"><p class="text-overline">Divergência</p>' +
+        '<span class="badge badge-neutral badge-soft badge-lg text-lg font-bold px-4 tabular-nums">+4,3%</span></div>' +
+        "</div>" +
+        '<div class="card-well p-4 flex items-baseline justify-between gap-4"><p class="text-overline">Área construída</p>' +
+        '<p class="text-xl font-bold tabular-nums">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p></div>' +
+        '<p class="text-overline pt-1">Cadastro</p>' +
+        '<div class="grid grid-cols-3 gap-3">' +
+        '<div class="card-well p-3"><p class="text-overline mb-1">Setor</p><p class="text-code text-lg font-bold">009</p></div>' +
+        '<div class="card-well p-3"><p class="text-overline mb-1">Quadra</p><p class="text-code text-lg font-bold">' + lote.sql.slice(4, 7) + "</p></div>" +
+        '<div class="card-well p-3"><p class="text-overline mb-1">Lote</p><p class="text-code text-lg font-bold">' + lote.sql.slice(8, 12) + "</p></div>" +
+        "</div>" +
+        '<dl class="card-well ficha-atributos">' +
+        '<dt class="text-overline">Tipo de quadra</dt><dd class="text-code">U</dd>' +
+        '<dt class="text-overline">Tipo de lote</dt><dd class="text-code">F</dd>' +
+        '<dt class="text-overline">Condomínio</dt><dd class="valor-ausente">não informado</dd>' +
+        '<dt class="text-overline">Uso</dt><dd>Comércio e serviços</dd>' +
+        '<dt class="text-overline">CIB</dt><dd class="text-code">1234567-8</dd>' +
+        "</dl>" +
+        "</div>" +
+        "</div>" +
+        '<div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>' +
+        "</div>" +
+        "</div>" +
+        PALETA(idToggle);
+      return casca;
+    }
+
+    function tabelaLotes(lotes) {
+      const th = (rotulo) =>
+        '<th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">' + rotulo + "</span></div></th>";
+      const linhas = lotes
+        .map(
+          (lote) =>
+            // No produto: hx-get="{% url 'lotes_mais_proximos:detalhe_do_lote' %}?id=…" hx-target="#gaveta-entidade".
+            '<tr data-id-feature="' + lote.id + '">' +
+            '<td class="text-code whitespace-nowrap">' + lote.sql + "</td>" +
+            "<td>" + lote.endereco + "</td>" +
+            "<td>" +
+            (lote.ativo
+              ? '<span class="badge badge-success badge-soft badge-xs">Ativo</span>'
+              : '<span class="badge badge-neutral badge-soft badge-xs whitespace-nowrap">Sem lançamento</span>') +
+            "</td></tr>",
+        )
+        .join("");
+      return (
+        '<div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>' +
+        '<div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>' +
+        '<table class="table table-onsen table-onsen-compacta"><thead data-cabecalho><tr>' + th("SQL") + th("Endereço") + th("Lançamento") + "</tr></thead>" +
+        "<tbody>" + linhas + "</tbody></table>" +
+        "</div>" +
+        '<div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>' +
+        "</div>"
+      );
+    }
+
+    // lotes_mais_proximos/partials/_resultado_desenho.html (corpo da base mapping/_resultado_acao.html)
+    function gavetaInferior(desenho, idToggle) {
+      const lotes = lotesDo(desenho);
+      const quantidade = lotes.length
+        ? lotes.length + (lotes.length === 1 ? " lote" : " lotes")
+        : "nenhum lote";
+      const coluna = lotes.length
+        ? tabelaLotes(lotes)
+        : '<div class="gaveta-vazia">' +
+          '<svg class="w-8 h-8 etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 4h16v16H4z" stroke-dasharray="2.5 2.5"/></svg>' +
+          "<p>O " + desenho.rotulo.toLowerCase() + " não cruza nenhum lote cadastrado.</p></div>";
+      const casca = document.createElement("div");
+      casca.innerHTML =
+        '<input type="checkbox" id="' + idToggle + '" class="gaveta-toggle" checked>' +
+        '<aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-label="Lotes contidos">' +
+        '<label for="' + idToggle + '" class="gaveta-alca" tabindex="0" aria-label="Fechar"><span class="etched-line"></span></label>' +
+        '<header class="gaveta-cabecalho items-center">' +
+        '<div class="min-w-0 flex items-baseline gap-3 flex-wrap">' +
+        '<h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Lotes contidos</h2>' +
+        '<span class="badge badge-poligono badge-sm">' + desenho.rotulo + "</span>" +
+        '<p class="text-sm text-base-content/70"><span class="font-bold text-base-content tabular-nums">' + quantidade + "</span>" +
+        " · desenho de " + NUMERO.format(desenho.area) + " m²</p>" +
+        "</div>" +
+        '<label for="' + idToggle + '" class="btn btn-glass btn-sm btn-circle" aria-label="Fechar">' +
+        '<svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+        "</label>" +
+        "</header>" +
+        '<div class="gaveta-corpo"><section class="gaveta-coluna">' + coluna + "</section></div>" +
+        "</aside>";
+      return casca;
+    }
+
+    // mapping/_aviso.html, com a mensagem da recusa.
+    function aviso(mensagem) {
+      return (
+        '<div role="alert" class="alert alert-warning alert-soft">' +
+        '<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-8.02 13.89A1.5 1.5 0 003.57 20h16.86a1.5 1.5 0 001.3-2.25L13.71 3.86a1.5 1.5 0 00-2.6 0z"/></svg>' +
+        "<span>" + mensagem + "</span></div>"
+      );
+    }
+
+    // ── andaime do mock: os estados estáticos ───────────────────────────────────────────────────
+    document.querySelectorAll("[data-icone-lotes]").forEach((alvo) => (alvo.innerHTML = SVG_LOTES_CONTIDOS));
+    document.querySelector("[data-placa-demo]").innerHTML = placaAcoes();
+    // Cada estado no seu formulário: radios sem formulário formariam um grupo só na página.
+    const POLIGONOS = DESENHOS.filter((d) => d.tipo === "poligono");
+    document.querySelector("[data-pocos-demo]").innerHTML = [
+      pocoDesenhos("poligono", POLIGONOS, "22", true),
+      pocoDesenhos("poligono", POLIGONOS, null, true),
+      pocoDesenhos("ponto", DESENHOS.filter((d) => d.tipo === "ponto"), "11", false),
+    ].map((poco) => "<form>" + poco + "</form>").join("");
+    document.querySelector("[data-tabela-demo]").innerHTML = tabelaLotes(lotesDo(desenhoPorId("21")));
+
+    document.querySelectorAll("[data-gaveta-inferior]").forEach((alvo, indice) => {
+      alvo.replaceWith(...gavetaInferior(desenhoPorId(alvo.dataset.gavetaInferior), "org-inferior-" + indice).childNodes);
+    });
+    document.querySelectorAll("[data-tela-lote]").forEach((alvo) => {
+      alvo.replaceWith(
+        gavetaLote(lotesDo(desenhoPorId("21"))[1], "tela-lote-lateral"),
+        ...gavetaInferior(desenhoPorId("21"), "tela-lote-inferior").childNodes,
+      );
+    });
+
+    // ── Fundo, glifos e bancada: os partials da própria aplicação ───────────────────────────────
+    async function partial(caminho) {
+      const r = await fetch(caminho);
+      if (!r.ok) throw new Error(r.status + " em " + caminho + " — sirva a RAIZ do projeto");
+      return (await r.text()).replace(TAG_DE_TEMPLATE, "").trim();
+    }
+
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers,
+        version: WMS.version,
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+
+    function iconePonto(estado) {
+      const d = DIAMETRO_PONTO[estado];
+      return L.divIcon({
+        className: "",
+        iconSize: [d, d],
+        iconAnchor: [d / 2, d / 2],
+        html: '<span style="display:block;width:' + d + "px;height:" + d + "px;border-radius:9999px;background:" +
+          COR.ponto + ';border:2px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(72,202,228,.9)"></span>',
+      });
+    }
+
+    const [filtros, glifos, fundo, bancada] = await Promise.all([
+      partial("/templates/partials/_filtros_gravacao.html"),
+      partial("/templates/mapping/_glifos_desenho.html"),
+      partial("/templates/mapping/_mapa_fullscreen.html"),
+      partial("/templates/mapping/_bancada_desenho.html"),
+    ]);
+    document.getElementById("defs-aplicacao").innerHTML = filtros + glifos;
+    document.getElementById("fundo-home").innerHTML = fundo;
+    base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15));
+
+    // A bancada entra como cenário, sem id algum e sem o bancada.js.
+    document.querySelectorAll("[data-bancada]").forEach((alvo) => {
+      alvo.outerHTML = bancada.replace(/\s+id="[^"]*"/g, "");
+    });
+
+    // Mapas estáticos: o desenho, transparente, e por cima dele os lotes.
+    document.querySelectorAll("[data-mapa-estatico]").forEach((alvo, indice) => {
+      alvo.id = "mapa-estatico-" + indice;
+      const desenho = desenhoPorId(alvo.dataset.mapaEstatico);
+      const mapa = base(L.map(alvo.id, {
+        zoomControl: false, minZoom: 13, maxZoom: 19,
+        dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+      }));
+      const recuo = alvo.hasAttribute("data-com-lateral") ? 440 : 60;
+      const piso = alvo.hasAttribute("data-sem-gaveta") ? 30 : 290;
+      // A vista vem antes das camadas: sem ela o Leaflet não cria os <path> que o realce toca.
+      mapa.fitBounds(L.polygon(desenho.anel).getBounds(), { maxZoom: 18, paddingTopLeft: [recuo, 30], paddingBottomRight: [60, piso] });
+      L.polygon(desenho.anel, {
+        color: COR.poligono, fillColor: COR.poligono, ...TRACO_POLIGONO.normal, ...DESENHO_SOB_RESULTADO,
+      }).addTo(mapa);
+      const camadasLote = lotesDo(desenho).map((lote) => L.polygon(lote.anel, TRACO_LOTE).addTo(mapa));
+      if (alvo.dataset.escolhido) pintarLote(camadasLote[Number(alvo.dataset.escolhido)], "escolhido");
+      if (alvo.dataset.ponteiro) pintarLote(camadasLote[Number(alvo.dataset.ponteiro)], "ponteiro");
+    });
+
+    const { montarBarrasGravadas } = await import("/static/src/js/ui/scroll_etched.js");
+    montarBarrasGravadas();
+
+    // ── andaime do mock: a tela ao vivo faz as vezes do HTMX e do init.js ──────────────────────
+    const mapaTela = base(L.map("mapa-tela", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 17));
+    const alvoGaveta = document.getElementById("gaveta-entidade");
+    const alvoInferior = document.getElementById("gaveta-inferior-conteudo");
+    const alvoResultado = document.getElementById("resultado-tela");
+    let camadaResultado = null;
+
+    // PEÇA DESTA SPEC (static/src/js/ui/troca_gaveta.js), aqui sem o htmx: o modo vai no alvo antes
+    // do swap, e a "troca" espera o fade-out — no produto, o swapOverride "innerHTML swap:150ms".
+    const espera = (ms) => new Promise((pronto) => setTimeout(pronto, ms));
+    async function trocarGaveta(nova) {
+      const aberta = alvoGaveta.querySelector(":scope > .gaveta-lateral > .gaveta-lateral-toggle:checked");
+      const atual = alvoGaveta.querySelector(":scope > .gaveta-lateral")?.dataset.gaveta;
+      const modo = !aberta ? "entrada" : atual === nova.dataset.gaveta ? "mesma" : "troca";
+      alvoGaveta.dataset.trocaGaveta = modo;
+      if (modo === "troca") {
+        alvoGaveta.classList.add("htmx-swapping");
+        await espera(150);
+        alvoGaveta.classList.remove("htmx-swapping");
+      }
+      alvoGaveta.replaceChildren(nova);
+      montarBarrasGravadas();
+    }
+
+    // PEÇA DESTA SPEC (static/src/js/ui/contexto_acao.js): a marca chega pelo OOB da ação e sai
+    // quando o controle que ela aponta é desmarcado.
+    const slotContexto = document.getElementById("contexto-acao");
+    document.addEventListener("change", (evento) => {
+      const encerraCom = slotContexto.dataset.encerraCom;
+      if (!encerraCom || evento.target.checked || !evento.target.matches(encerraCom)) return;
+      slotContexto.removeAttribute("data-contexto-acao");
+      slotContexto.removeAttribute("data-encerra-com");
+    });
+
+    // A gaveta dos desenhos, remontada como a rota dos desenhos faria.
+    async function mostrarDesenhos(idMarcado) {
+      await trocarGaveta(gavetaDesenhos(idMarcado, "gaveta-desenhos-toggle", true));
+      destacar();
+    }
+
+    // design/020 + selecao.js desta SPEC: traço com radio marca; sem radio, a bancada volta.
+    function clicarNoDesenho(desenho) {
+      const radio = alvoGaveta.querySelector('.linha-desenho__marca[value="' + desenho.id + '"]');
+      if (!radio) {
+        mostrarDesenhos(desenho.id);
+        return;
+      }
+      radio.checked = true;
+      radio.dispatchEvent(new Event("change", { bubbles: true }));
+      alvoGaveta.querySelector(".gaveta-lateral-toggle").checked = true;
+    }
+
+    DESENHOS.forEach((desenho) => {
+      desenho.camada = desenho.tipo === "ponto"
+        ? L.marker(desenho.latlng, { icon: iconePonto("normal") })
+        : L.polygon(desenho.anel, { color: COR.poligono, fillColor: COR.poligono, ...TRACO_POLIGONO.normal });
+      desenho.camada.addTo(mapaTela);
+      desenho.camada.on("click", (evento) => {
+        L.DomEvent.stopPropagation(evento);
+        clicarNoDesenho(desenho);
+      });
+    });
+    mapaTela.fitBounds(L.featureGroup(DESENHOS.map((d) => d.camada)).getBounds(), {
+      paddingTopLeft: [440, 100],
+      paddingBottomRight: [90, 90],
+    });
+
+    function destacar() {
+      const marcado = alvoGaveta.querySelector(".linha-desenho__marca:checked")?.value;
+      DESENHOS.forEach((desenho) => {
+        const estado = desenho.id === marcado ? "selecionado" : "normal";
+        if (desenho.tipo === "ponto") {
+          desenho.camada.setIcon(iconePonto(estado));
+          return;
+        }
+        desenho.camada.setStyle(TRACO_POLIGONO[estado]);
+      });
+      DESENHOS.find((d) => d.id === marcado)?.camada.bringToFront?.();
+    }
+
+    // mapping/_recolher_gaveta_oob.html
+    function recolherDesenhos() {
+      const toggle = alvoGaveta.querySelector(".gaveta-lateral-toggle");
+      if (toggle) toggle.checked = false;
+    }
+
+    // interacao_resultado.js desta SPEC: estado visual do mapa, e só dele.
+    const camadasLote = new Map();
+    let idEscolhido = null;
+    let idSobPonteiro = null;
+
+    function realcarLotes() {
+      camadasLote.forEach((camada, id) => {
+        const estado = id === idEscolhido ? "escolhido" : id === idSobPonteiro ? "ponteiro" : "normal";
+        pintarLote(camada, estado);
+      });
+      // O escolhido fica por cima do lote sob o ponteiro.
+      camadasLote.get(idEscolhido)?.bringToFront();
+    }
+
+    // lote_geocoder/partials/_gaveta_lote.html em #gaveta-entidade
+    function abrirLote(idLote) {
+      idEscolhido = idLote;
+      realcarLotes();
+      trocarGaveta(gavetaLote(lotePorId(idLote), "gaveta-lote-toggle"));
+    }
+
+    function lotesContidos() {
+      const desenho = desenhoPorId(alvoGaveta.querySelector(".linha-desenho__marca:checked").value);
+      alvoResultado.replaceChildren();
+      recolherDesenhos();
+      if (desenho.laco) {
+        alvoResultado.innerHTML = aviso("O desenho se cruza (Self-intersection): corrija o traço antes de buscar os lotes.");
+        return;
+      }
+      if (camadaResultado) camadaResultado.remove();
+      camadasLote.clear();
+      idEscolhido = null;
+      idSobPonteiro = null;
+      const lotes = lotesDo(desenho);
+      camadaResultado = L.featureGroup(
+        lotes.map((lote) => {
+          const camada = L.polygon(lote.anel, TRACO_LOTE)
+            .bindTooltip("SQL " + lote.sql, { direction: "top", sticky: true })
+            .on("click", () => abrirLote(lote.id));
+          camadasLote.set(lote.id, camada);
+          return camada;
+        }),
+      ).addTo(mapaTela);
+      // init.js desta SPEC: o desenho desce para baixo do resultado, mais transparente.
+      DESENHOS.forEach((d) => {
+        if (d.camada.setStyle) d.camada.setStyle(DESENHO_SOB_RESULTADO);
+        d.camada.bringToBack?.();
+      });
+      alvoInferior.replaceChildren(...gavetaInferior(desenho, "lotes-desenho-vivo").childNodes);
+      // mapping/_contexto_acao_oob.html: a marca e o controle que a encerra.
+      slotContexto.dataset.contextoAcao = "lotes_mais_proximos.lotes_contidos";
+      slotContexto.dataset.encerraCom = "#lotes-desenho-vivo";
+      montarBarrasGravadas();
+      const enquadrar = lotes.length ? camadaResultado.getBounds() : desenho.camada.getBounds();
+      mapaTela.fitBounds(enquadrar, { maxZoom: 18, paddingTopLeft: [440, 80], paddingBottomRight: [80, 290] });
+    }
+
+    mostrarDesenhos(null);
+
+    alvoGaveta.addEventListener("change", (evento) => {
+      if (evento.target.matches(".linha-desenho__marca")) destacar();
+    });
+    document.addEventListener("click", (evento) => {
+      if (evento.target.closest("[data-acao-lotes]") && alvoGaveta.contains(evento.target)) lotesContidos();
+      const linha = evento.target.closest("tr[data-id-feature]");
+      if (linha && alvoInferior.contains(linha)) abrirLote(linha.dataset.idFeature);
+    });
+    document.addEventListener("mouseover", (evento) => {
+      const linha = evento.target.closest("tr[data-id-feature]");
+      const id = linha && alvoInferior.contains(linha) ? linha.dataset.idFeature : null;
+      if (id === idSobPonteiro) return;
+      idSobPonteiro = id;
+      realcarLotes();
+    });
+  </script>
+</body>
+</html>

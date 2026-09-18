@@ -1,6 +1,6 @@
 ---
 spec: localizacao_lote/003
-versao: v3
+versao: v4
 atualizado_em: 2026-09-18
 testes_tdd: false
 implementado: false
@@ -9,6 +9,7 @@ changelog:
   - v1: versão inicial
   - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
   - v3: gatilho passa a ser a ação do poço de polígonos, oferecida por um registro de ações sobre desenho
+  - v4: a ação aparece só com um polígono selecionado, opera sobre ele e leva ao contexto do resultado — tabela embaixo, gaveta do lote ao lado
 ---
 
 # SPEC localizacao_lote/003 — Lotes que cruzam um desenho
@@ -19,32 +20,37 @@ cruza, no contexto de um imóvel que ocupa mais de um lote, para ver de uma vez 
 aquele terreno.
 
 ## 2 · Condições de pronto
-- [ ] Todo poço de polígonos da gaveta dos desenhos traz, abaixo da lista, a ação **"Lotes
-      contidos"**, inclusive para quem não fez login; os poços de ponto e de linha não a trazem.
-- [ ] Uma ação administrativa inscrita para um tipo de desenho só aparece no poço desse tipo para
-      quem tem competência para executá-la.
-- [ ] Acionar "Lotes contidos" desenha no mapa **todos os lotes que intersectam o polígono marcado no
-      poço**, como ele está no mapa naquele momento — inclusive depois de editado —, e abre a
-      **gaveta inferior** com a quantidade e a tabela deles (SQL, endereço, situação do lançamento).
-- [ ] Marcar outro polígono no poço e acionar a ação de novo troca os lotes do mapa e da tabela pelos
-      do polígono marcado.
-- [ ] Depois da busca, a gaveta lateral segue com a lista dos desenhos e a marca de cada poço intacta,
-      e o desenho continua no mapa, por cima dos lotes.
-- [ ] Clicar numa linha da tabela abre a **gaveta de detalhe** com os dados daquele lote, iguais aos
-      da gaveta do lote da SPEC [localizacao_lote/001](001-dados-do-lote-na-gaveta.md) — um lote por
-      vez.
-- [ ] Polígono que se auto-intersecta é recusado com mensagem em português no aviso do mapa, sem
-      consultar o WFS.
-- [ ] Polígono acima da área máxima configurada é recusado do mesmo jeito, com mensagem que cita a
-      área máxima.
+- [ ] Com um **polígono selecionado** na gaveta dos desenhos, o poço de polígonos traz, abaixo da
+      lista, a ação **"Lotes contidos"**, inclusive para quem não fez login; sem seleção, ou com um
+      ponto ou uma linha selecionados, ela não aparece em poço algum.
+- [ ] Uma ação administrativa inscrita para um tipo de desenho só aparece no poço desse tipo, quando o
+      selecionado é dele, e só para quem tem competência para executá-la.
+- [ ] Acionar "Lotes contidos" desenha no mapa **todos os lotes que intersectam o polígono selecionado
+      na gaveta**, como ele está no mapa naquele momento — inclusive depois de editado —, abre a
+      **gaveta inferior** só com a quantidade e a tabela deles (SQL, endereço, situação do lançamento)
+      e **recolhe a gaveta dos desenhos**; os lotes vêm em **cinza**, por cima dos polígonos
+      desenhados, que ficam na cor deles e mais transparentes.
+- [ ] Passar o ponteiro numa linha da tabela **realça** o lote dela no mapa, na mesma cor; o lote
+      escolhido — pela linha ou pelo mapa — fica com um realce **mais forte**, até outro ser escolhido.
+- [ ] Com a gaveta inferior aberta, a gaveta lateral termina **acima** dela, e a **barra de busca fica
+      recolhida**; fechar a gaveta inferior encerra o contexto da ação e devolve a busca.
+- [ ] Clicar numa linha da tabela, **ou num lote no mapa**, abre a gaveta lateral com a gaveta do lote
+      da SPEC [localizacao_lote/001](001-dados-do-lote-na-gaveta.md) — um lote por vez —, e a tabela
+      continua aberta; com a gaveta lateral já aberta, o conteúdo **troca por fade**, sem ela recolher.
+- [ ] Clicar num **desenho** no mapa, fora dos lotes, devolve a gaveta dos desenhos, com ele selecionado; e
+      acionar a ação de novo com outro polígono troca os lotes do mapa e da tabela pelos dele.
+- [ ] Polígono que se auto-intersecta, ou acima da área máxima configurada, é recusado sem consultar o
+      WFS, com mensagem em português no aviso do mapa — a da área cita a área máxima —, e a gaveta dos
+      desenhos recolhe para o aviso ficar à vista.
 - [ ] Polígono que não cruza lote algum mostra o estado de falta escrito na gaveta inferior.
-- [ ] O design da ação no poço, da tabela na gaveta inferior e da gaveta de detalhe foi aprovado no
-      mock e as peças novas portadas para o tema e o styleguide antes de qualquer template da
-      aplicação usá-las.
+- [ ] O design da ação no poço, da gaveta inferior com a tabela e da gaveta lateral acima dela foi
+      aprovado no mock e as peças novas portadas para o tema e o styleguide antes de qualquer template
+      da aplicação usá-las.
 
 ## 3 · Domínio
 O desenho é o [Desenho](../design/020-desenhos-na-gaveta.md#3--domínio) da gaveta dos desenhos; a
-pergunta que esta SPEC faz a ele é só "qual polígono está marcado, e como ele está agora?". A
+pergunta que esta SPEC faz a ela é só "qual é o desenho selecionado (`GavetaDesenhos.id_selecionado`),
+e como ele está agora?". A
 consulta espacial é do submódulo `lotes_mais_proximos`, com a
 [CamadaLotes](002-lote-mais-proximo-do-endereco.md#3--domínio) e a reprojeção da SPEC 002. O ato
 administrativo é o `AcaoImplementada` do registro de competências (SPECs `autorizacao/`), consumido
@@ -62,8 +68,20 @@ class LotesDoDesenho(BaseModel):
     lotes: tuple[LoteFeature, ...] = ()
 ```
 
-**`services/domain/lote_geocod/models.py`** — o lote por identificador do polígono, que a gaveta de
-detalhe (e a SPEC [certidao_lancamento/001](../certidao_lancamento/001-certidao-de-um-lote.md))
+**`services/domain/geometry/models.py`** — `GeoJsonProperties` inteiro.
+
+```python
+class GeoJsonProperties(BaseModel):
+    """Contrato de propriedades GeoJSON interpretadas e esperadas pelo frontend (Leaflet)."""
+    popup_html: str | None = None
+    rotulo: str | None = None
+    cor: str | None = None
+    url_ficha: str | None = None   # ALTERADO nesta SPEC: a rota que o clique na feature abre na gaveta lateral
+    id: str | None = None          # ALTERADO nesta SPEC: o que liga a linha da tabela à feature no mapa
+```
+
+**`services/domain/lote_geocod/models.py`** — o lote por identificador do polígono, que a gaveta do
+lote aberta pela tabela ou pelo mapa (e a SPEC [certidao_lancamento/001](../certidao_lancamento/001-certidao-de-um-lote.md))
 consulta.
 
 ```python
@@ -120,7 +138,7 @@ class ItemPoco(BaseModel):
 **Mock:** [003-mock-lotes-do-desenho.html](003-mock-lotes-do-desenho.html) — leia a skill `mock`.
 
 ## 4 · Fora de escopo
-- Tirar lotes do conjunto e destacar o lote selecionado no mapa — SPEC [localizacao_lote/004](004-revisao-do-conjunto.md).
+- Tirar lotes do conjunto — SPEC [localizacao_lote/004](004-revisao-do-conjunto.md).
 - Refazer a busca sozinha quando o polígono é **editado, arrastado ou apagado** depois dela — sem dono ainda.
 - Percentual de cada lote contido no desenho e a modalidade "a maior" × "a menor" — SPEC
   [certidao_lancamento/003](../certidao_lancamento/003-certidao-a-maior-e-a-menor.md).
@@ -128,13 +146,15 @@ class ItemPoco(BaseModel):
 
 ## 5 · Peças de referência a compor
 - `@static/src/js/mapa/desenho/envio.js` → `inicializarEnvio`: enxerta no envio a geometria atual do traço marcado.
+- `@static/src/js/mapa/desenho/sincronia.js` → o envio da coleção que monta a gaveta dos desenhos.
+- `@templates/lote_geocoder/partials/_gaveta_lote.html` → a gaveta que a linha e o lote do mapa abrem.
 - `@services/domain/desenho` → `Desenho`, `TipoDesenho`.
 - `@services/domain/geometry` → `reprojetar` (SPEC 002), `para_geos` (design/020).
 - `@services/integrations/wfs` → `CqlFilter`, `CqlPredicate`, `build_fetcher`.
-- `@services/domain/lote_geocod` → `feature_para_lote`, `LoteFeature`.
+- `@services/domain/lote_geocod` → `feature_para_lote`, `LoteFeature`, `MontarGavetaLote`: os dados da gaveta do lote.
 - `@apps/competencias` → `AcaoImplementada`, `slugs_liberados`, `{% icone_acao %}` + `_icone_acao.html`; `@services/domain/autorizacao` → `PADRAO_SLUG`.
-- `@apps/mapping/context.py` → `contexto_mapa`, `contexto_aviso`; `@templates/lote_geocoder/partials/_gaveta_lote.html` → conteúdo da gaveta de detalhe.
-- `@static/src/tema-dimap.dev.css` → `.placa-lista`, `.item-menu-swell`, `.gaveta-inferior`, `.gaveta-coluna`, `.table-onsen`, `.gaveta-lateral-detalhe`.
+- `@apps/mapping/context.py` → `contexto_mapa`, `contexto_aviso`.
+- `@static/src/tema-dimap.dev.css` → `.item-menu-swell`, `.gaveta-inferior`, `.gaveta-cabecalho`, `.gaveta-coluna`, `.gaveta-vazia`, `.table-onsen`, `.tabela-onsen-gaveta`.
 - Skills: `leaflet-geoman`, `wfs-fetcher`, `htmx`, `painel`, `mock`, `componentes-frontend`, `test-django-views`.
 
 ## 6 · Snippets
@@ -207,7 +227,9 @@ class OfertarNoPoco:
         return ItemPoco(slug=acao.slug, nome=acao.nome, tooltip=acao.tooltip, url_name=item.acao.url_name)
 ```
 
-**`apps/mapping/views.py`** — a gaveta dos desenhos entrega cada poço já com o que ele oferece.
+**`apps/mapping/views.py`** — a gaveta dos desenhos entrega cada poço já com o que ele oferece. O
+router não olha a seleção: ela muda no navegador sem ida ao servidor, e quem mostra as ações só no
+poço do selecionado é o CSS do `.poco-desenhos` (design/020).
 
 ```python
     gaveta = MontarGavetaDesenhos()(entrada)
@@ -220,24 +242,39 @@ class OfertarNoPoco:
     return render(request, TEMPLATE_GAVETA_DESENHOS, {"gaveta": gaveta, "pocos": pocos})
 ```
 
-**`templates/mapping/_poco_desenhos.html`** — a âncora do rodapé ganha os itens. O botão está dentro
-do `<form>` do poço: o `hx-post` leva o `id_bancada` marcado, e o `envio.js` enxerta o `desenho`.
+**`templates/mapping/_gaveta_desenhos.html`** — o laço dos poços passa a desempacotar os pares; o resto
+da gaveta (o `<form>` único, o limpar, a contagem por tipo em `gaveta.pocos`) segue como está.
+
+```html
+<form class="gaveta-lateral-conteudo">
+  {% for poco, itens in pocos %}                                         {# ALTERADO #}
+    {% include "mapping/_poco_desenhos.html" with poco=poco itens=itens %}
+  {% endfor %}
+  ...
+</form>
+```
+
+**`templates/mapping/_poco_desenhos.html`** — a âncora do rodapé ganha o recorte e, dentro dele, os
+itens. O `hx-include` pesca o **único** radio `id_bancada` marcado na gaveta inteira — que, com o
+botão à vista, é sempre um desenho deste poço —, e o `envio.js` enxerta o `desenho` lido do mapa.
 
 ```html
 {% load icones %}
-<div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}">
-  {% if itens %}
-    {# A casca .placa-lista com cabeçalho "Ações" e a contagem, como no mock do design/020. #}
+{# Sem espaço entre a âncora e o {% if %}: com itens vazios ela tem de sair :empty, senão o empty:hidden não a recolhe. #}
+<div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}">{% if itens %}
+  <div class="poco-desenhos__acoes-recorte">
+    {# A casca .placa-lista (molécula nova, no mock) com cabeçalho "Ações" e a contagem. #}
     {% for item in itens %}
       {% icone_acao item.slug "pequeno" as svg %}
       <button type="button" class="card-well item-menu item-menu-swell" title="{{ item.tooltip }}"
-              hx-post="{% url item.url_name %}" hx-target="#resultado-busca" hx-swap="innerHTML">
+              hx-post="{% url item.url_name %}" hx-include=".linha-desenho__marca:checked"
+              hx-target="#resultado-busca" hx-swap="innerHTML">
         {% include "competencias/partials/_icone_acao.html" with svg=svg variante="pequeno" %}
         <span class="item-menu-rotulo">{{ item.nome }}</span>
       </button>
     {% endfor %}
-  {% endif %}
-</div>
+  </div>
+{% endif %}</div>
 ```
 
 **`services/integrations/wfs/models.py`**
@@ -344,7 +381,7 @@ class BuscarLotesDoDesenho:
 
 ```python
 class ConsultaLotesDoDesenho(BaseModel):
-    """O formulário do poço: o radio marcado e a geometria que o envio.js enxertou."""
+    """O formulário da gaveta: o único radio marcado e a geometria que o envio.js enxertou."""
 
     id_bancada: str
     desenho: PolygonGeometry
@@ -368,7 +405,7 @@ def lotes_do_desenho(request: HttpRequest) -> HttpResponse:
     try:
         resultado = BuscarLotesDoDesenho(build_fetcher(settings))(entrada)
     except (DesenhoInvalidoError, DesenhoGrandeDemaisError) as erro:
-        return render(request, "mapping/_aviso.html", contexto_aviso(str(erro)))
+        return render(request, "mapping/_recusa_acao.html", contexto_aviso(str(erro)))
     return render(request, TEMPLATE_RESULTADO_DESENHO, contexto_lotes_do_desenho(resultado))
 
 
@@ -383,24 +420,289 @@ def detalhe_do_lote(request: HttpRequest) -> HttpResponse:
     lote = LotePorIdentificador(build_fetcher(settings))(entrada)
     if lote is None:
         return render(request, "mapping/_aviso.html", contexto_aviso(MSG_LOTE_NAO_ENCONTRADO))
-    return render(request, TEMPLATE_DETALHE_LOTE, {"lote": lote.attributes})
+    # A gaveta do lote da SPEC 001, intacta: é ela que ocupa a gaveta lateral (#gaveta-entidade).
+    gaveta = MontarGavetaLote()(GavetaLoteInput(lote=lote, crs_metrico=MAP_INTERPOLATION_CRS))
+    return render(request, "lote_geocoder/partials/_gaveta_lote.html", {"gaveta": gaveta})
 ```
 
-**`templates/lotes_mais_proximos/partials/_resultado_desenho.html`** — mapa no alvo da busca + gaveta
-inferior fora de banda. A gaveta lateral **não** é tocada: é ela que carrega a lista dos desenhos.
+### Peças reaproveitáveis por toda ação
+
+Uma ação que devolve resultado ao mapa responde pela mesma base, e a home reage a ela sem saber qual
+ação foi: a gaveta inferior de resultado, o contexto de ação, a troca da gaveta lateral e a interação
+com as features do resultado. A ação só preenche o corpo da gaveta e dá a cada feature `id` e
+`url_ficha`.
+
+**`templates/mapping/_resultado_acao.html`** — a base que a resposta da ação estende: payload do mapa,
+gaveta inferior de resultado fora de banda, gaveta dos desenhos recolhida e a marca do contexto. O
+toggle da gaveta de resultado tem id fixo, e é ele que encerra o contexto.
 
 ```html
 {% include "mapping/_mapa.html" %}
-<div id="gaveta-inferior-conteudo" hx-swap-oob="innerHTML">{% include "lotes_mais_proximos/partials/_tabela_lotes.html" %}</div>
-{# Linha da tabela: hx-get em lotes_mais_proximos:detalhe_do_lote?id=… com alvo em #gaveta-detalhe. #}
+<div id="gaveta-inferior-conteudo" hx-swap-oob="innerHTML">
+  {# O toggle vem marcado junto da placa: é o swap que abre a gaveta, sem JS. #}
+  <input type="checkbox" id="gaveta-resultado" class="gaveta-toggle" checked>
+  <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-labelledby="gaveta-resultado-titulo">
+    <label for="gaveta-resultado" class="gaveta-alca" tabindex="0" aria-label="Fechar"><span class="etched-line"></span></label>
+    <header class="gaveta-cabecalho items-center">
+      <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+        <h2 id="gaveta-resultado-titulo" class="text-xl font-bold tracking-tight leading-none text-madeira-700">{% block titulo %}{% endblock %}</h2>
+        {% block resumo %}{% endblock %}
+      </div>
+      ...  {# o ✕ com for="gaveta-resultado" #}
+    </header>
+    <div class="gaveta-corpo">{% block corpo %}{% endblock %}</div>
+  </aside>
+</div>
+{% include "mapping/_recolher_gaveta_oob.html" with toggle="gaveta-desenhos-toggle" %}
+{% include "mapping/_contexto_acao_oob.html" with encerra_com="#gaveta-resultado" %}
 ```
 
-**`static/src/js/mapa/init.js`** — o resultado entra por último no `overlayPane`; o desenho volta
-para cima dele.
+**`templates/mapping/_recusa_acao.html`** — a recusa de uma ação: o aviso do mapa e a gaveta dos
+desenhos recolhida, para a busca, onde o aviso mora, ficar à vista.
+
+```html
+{% include "mapping/_aviso.html" %}
+{% include "mapping/_recolher_gaveta_oob.html" with toggle="gaveta-desenhos-toggle" %}
+```
+
+**`templates/mapping/_recolher_gaveta_oob.html`** — o toggle de uma gaveta lateral desmarcado. Só ele é
+trocado: o conteúdo fica no DOM, e a paleta reabre a gaveta.
+
+```html
+<input type="checkbox" id="{{ toggle }}" class="gaveta-lateral-toggle" hx-swap-oob="true">
+```
+
+**`templates/mapping/_contexto_acao_oob.html`** — a marca do contexto: o slug de quem o abriu e o
+controle que, desmarcado, o encerra. O slot `<div id="contexto-acao" hidden></div>` mora na
+`core/home.html`; `acao` vem do contexto da view.
+
+```html
+<div id="contexto-acao" hidden hx-swap-oob="true"
+     data-contexto-acao="{{ acao }}" data-encerra-com="{{ encerra_com }}"></div>
+```
+
+**`apps/mapping/context.py`** — o contexto de toda resposta de ação: o do mapa, o slug e a cor única
+dos resultados de ação, distinta da dos desenhos.
+
+```python
+def contexto_resultado_acao(acao: str, geojson: dict[str, Any]) -> dict[str, Any]:
+    return contexto_mapa(geojson, MAP_COR_RESULTADO_ACAO) | {"acao": acao}
+    # MAP_COR_RESULTADO_ACAO: setting nova, rocha-600 da paleta, como as MAP_COR_* de hoje
+```
+
+**`static/src/js/ui/contexto_acao.js`** — tira a marca quando o controle apontado por ela é
+desmarcado. Quem esconde a busca é o CSS, lendo a marca.
 
 ```javascript
-camadaResultado = adicionarResultado(mapa, data.geometria, data.cor, data.enquadrar);
-mapa.pm.getGeomanLayers().forEach((camada) => camada.bringToFront());
+export function inicializarContextoAcao() {
+  document.addEventListener("change", (evento) => {
+    const slot = document.getElementById("contexto-acao");
+    const encerraCom = slot?.dataset.encerraCom;
+    if (!encerraCom || evento.target.checked || !evento.target.matches(encerraCom)) return;
+    slot.removeAttribute("data-contexto-acao");
+    slot.removeAttribute("data-encerra-com");
+  });
+}
+```
+
+**`static/src/js/ui/troca_gaveta.js`** — callback de `htmx:beforeSwap` no `#gaveta-entidade`: diz no
+alvo como a gaveta nova chega, comparando o `data-gaveta` da raiz de hoje com o da resposta. A
+`_gaveta_desenhos.html` leva `data-gaveta="desenhos"`; a `_gaveta_lote.html`, `data-gaveta="lote-{{ id }}"`.
+
+```javascript
+const ALVO = "gaveta-entidade";
+const TROCA_COM_FADE = "innerHTML swap:150ms settle:200ms";
+
+function chave(raiz) {
+  return raiz.querySelector(".gaveta-lateral")?.dataset.gaveta ?? null;
+}
+
+function modo(alvo, html) {
+  if (!alvo.querySelector(":scope > .gaveta-lateral > .gaveta-lateral-toggle:checked")) return "entrada";
+  const molde = document.createElement("template");
+  molde.innerHTML = html;
+  // A mesma gaveta redesenhada (a bancada, a cada traço) não anima: só outra entidade troca.
+  return chave(molde.content) === chave(alvo) ? "mesma" : "troca";
+}
+
+export function inicializarTrocaGaveta() {
+  htmx.on("htmx:beforeSwap", (evento) => {
+    const alvo = evento.detail.target;
+    if (alvo.id !== ALVO) return;
+    alvo.dataset.trocaGaveta = modo(alvo, evento.detail.serverResponse);
+    if (alvo.dataset.trocaGaveta === "troca") evento.detail.swapOverride = TROCA_COM_FADE;
+  });
+}
+```
+
+**`static/src/js/mapa/interacao_resultado.js`** — utilitário de Leaflet para qualquer resultado no
+mapa: os desenhos descem para baixo dele, a feature com `url_ficha` abre a gaveta dela, e a feature
+cujo `id` está sob o ponteiro ou escolhido numa `[data-id-feature]` da gaveta inferior acende. Estado
+visual do mapa, e só dele; o escolhido zera a cada resultado novo.
+
+```javascript
+const DESENHO_SOB_RESULTADO = { fillOpacity: 0.2 };
+// Traço em JS porque é estilo de <path> do Leaflet; o halo é classe do tema.
+const REALCE = {
+  normal: { weight: 1.5, fillOpacity: 0.18, brilho: null },
+  ponteiro: { weight: 3, fillOpacity: 0.4, brilho: "realce-resultado" },
+  escolhido: { weight: 4, fillOpacity: 0.55, brilho: "realce-resultado-forte" },
+};
+
+let resultado = null;
+const estado = { idEscolhido: null, idSobPonteiro: null };
+
+function realcar() {
+  resultado?.eachLayer((camada) => {
+    const id = camada.feature?.properties?.id;
+    pintar(camada, id === estado.idEscolhido ? "escolhido" : id === estado.idSobPonteiro ? "ponteiro" : "normal");
+  });
+}
+
+function escolher(id) {
+  estado.idEscolhido = id;
+  realcar();
+}
+
+// Uma vez, no init.js: os gatilhos vêm da gaveta inferior, que é trocada a cada resultado.
+export function inicializarInteracaoResultado() {
+  const linha = (evento) => evento.target.closest("#gaveta-inferior-conteudo [data-id-feature]");
+  document.addEventListener("mouseover", (evento) => {
+    const id = linha(evento)?.dataset.idFeature ?? null;
+    if (id === estado.idSobPonteiro) return;
+    estado.idSobPonteiro = id;
+    realcar();
+  });
+  // A linha pede a gaveta pelo próprio hx-get; aqui ela só vira a escolhida.
+  document.addEventListener("click", (evento) => {
+    const id = linha(evento)?.dataset.idFeature;
+    if (id) escolher(id);
+  });
+}
+
+// A cada resultado aplicado, no aplicarResultado do init.js.
+export function interagirComResultado(mapa, camadaResultado) {
+  resultado = camadaResultado;
+  estado.idEscolhido = null;
+  estado.idSobPonteiro = null;
+  mapa.pm.getGeomanLayers().forEach((camada) => {
+    if (camada.setStyle) camada.setStyle(DESENHO_SOB_RESULTADO);   // o marcador de ponto não tem estilo
+    camada.bringToBack?.();
+  });
+  camadaResultado.eachLayer((camada) => {
+    const { id, url_ficha: urlFicha } = camada.feature?.properties ?? {};
+    if (!urlFicha) return;
+    camada.on("click", () => {
+      escolher(id);
+      htmx.ajax("GET", urlFicha, { target: "#gaveta-entidade", swap: "innerHTML" });
+    });
+  });
+  realcar();
+}
+```
+
+**`static/src/js/mapa/init.js`** — os três inicializadores entram no `montarMapaBase`, e o
+`aplicarResultado` passa a entregar a camada nova à interação.
+
+```javascript
+camadaResultado = adicionarResultado(mapa, data.geometria, data.cor);
+interagirComResultado(mapa, camadaResultado);                    // NOVO
+```
+
+**`static/src/tema-dimap.dev.css`** — as peças de tela do padrão. A gaveta rasa tem altura fixa, e é
+essa medida que deixa a lateral parar acima dela.
+
+```css
+/* VARIANTE · .gaveta-inferior-rasa, e a lateral da home que termina acima dela. */
+@media (width >= 48rem) {
+  .gaveta-inferior-rasa { height: var(--gaveta-rasa-altura); }   /* TOKEN novo: 16rem */
+  .tela-home .gaveta-lateral { transition-property: transform, bottom; }
+  .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa) .gaveta-lateral {
+    bottom: calc(var(--gaveta-rasa-altura) + 0.75rem);
+  }
+}
+
+/* VARIANTE · .table-onsen-compacta — linha baixa, para a tabela que divide a altura com o mapa. */
+.table-onsen-compacta thead th { @apply p-1.5; }
+.table-onsen-compacta tbody td { @apply px-3 py-1.5 text-[13px]; }
+
+/* Os três modos do troca_gaveta.js — entrada desliza, troca funde só o conteúdo do painel, mesma não anima. */
+@starting-style {
+  [data-troca-gaveta="entrada"] > .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) {
+    transform: translateX(-100%);
+  }
+  [data-troca-gaveta="troca"] .gaveta-lateral-painel > * { opacity: 0; }
+}
+[data-troca-gaveta="troca"] .gaveta-lateral-painel > * { @apply transition-opacity duration-150 ease-in-out; }
+[data-troca-gaveta="troca"].htmx-swapping .gaveta-lateral-painel > * { @apply opacity-0; }
+
+/* Com a marca de contexto de ação, a busca recolhe como sob a gaveta lateral aberta. */
+.tela-home:has(#contexto-acao[data-contexto-acao]) .search-hero {
+  @apply opacity-0 -translate-y-5 scale-95 pointer-events-none invisible;
+}
+
+/* ÁTOMO · o halo da feature realçada, na tinta de rocha dos resultados de ação. */
+.realce-resultado { filter: drop-shadow(0 0 4px rgba(65, 90, 119, 0.75)); }
+.realce-resultado-forte {
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 10px rgba(46, 69, 96, 0.9));
+}
+```
+
+**`static/src/js/mapa/desenho/selecao.js`** — o desenho cujo radio não está no DOM (a gaveta lateral é
+a de uma entidade) pede a gaveta dos desenhos de volta, já com ele selecionado.
+
+```javascript
+const radio = document.querySelector(`.linha-desenho__marca[value="${L.Util.stamp(camada)}"]`);
+if (!radio) {                                                    // ALTERADO: antes, só return
+  L.DomEvent.stopPropagation(evento.originalEvent);
+  pedirGavetaDesenhos(String(L.Util.stamp(camada)));             // exportado de sincronia.js
+  return;
+}
+```
+
+**`static/src/js/mapa/desenho/sincronia.js`** — o `enviar` vira `pedirGavetaDesenhos(selecionado)`,
+exportado; os eventos do plugin o chamam com o marcado da gaveta, como hoje.
+
+### O que é só desta ação
+
+**`apps/lotes_mais_proximos/contexto.py`** — cada lote vai ao mapa com o `id` que a linha da tabela
+também carrega e a rota da gaveta dele.
+
+```python
+def _properties_lote_do_desenho(lote: LoteFeature) -> GeoJsonProperties:
+    return GeoJsonProperties(
+        id=lote.attributes.id_poligono,
+        rotulo=f"SQL {lote.attributes.sql}",
+        url_ficha=f"{reverse('lotes_mais_proximos:detalhe_do_lote')}?id={lote.attributes.id_poligono}",
+    )
+
+
+def contexto_lotes_do_desenho(resultado: LotesDoDesenho) -> dict[str, Any]:
+    geojson = to_geojson_feature_collection(resultado.lotes, _properties_lote_do_desenho)
+    return contexto_resultado_acao(CONSULTA_LOTES_CONTIDOS.slug, geojson) | {"resultado": resultado}
+```
+
+**`templates/lotes_mais_proximos/partials/_resultado_desenho.html`** — o `TEMPLATE_RESULTADO_DESENHO`
+só preenche a base: título, resumo e a tabela.
+
+```html
+{% extends "mapping/_resultado_acao.html" %}
+{% block titulo %}Lotes contidos{% endblock %}
+{% block resumo %}
+  ...  {# badge do desenho, quantidade de lotes e área do desenho #}
+{% endblock %}
+{% block corpo %}
+  <section class="gaveta-coluna">
+    ...  {# table.table-onsen.table-onsen-compacta #}
+    {% for lote in resultado.lotes %}
+      <tr data-id-feature="{{ lote.attributes.id_poligono }}"
+          hx-get="{% url 'lotes_mais_proximos:detalhe_do_lote' %}?id={{ lote.attributes.id_poligono }}"
+          hx-target="#gaveta-entidade" hx-swap="innerHTML">…</tr>
+    {% empty %}
+      ...  {# .gaveta-vazia: o desenho não cruza lote algum #}
+    {% endfor %}
+  </section>
+{% endblock %}
 ```
 
 ## 7 · Caveats
@@ -420,13 +722,61 @@ A gaveta dos desenhos passa a conhecer o usuário da sessão, para resolver as c
 esconde o ato de quem não pode executá-lo. O custo é que a gaveta dos desenhos deixa de ser a mesma
 para todos, e cada montagem dela consulta as permissões.
 
-A ação aparece em todo poço de polígonos, e o polígono inválido ou grande demais só é recusado ao
-acioná-la. Conferir cada traço na montagem da gaveta refaria a conferência a cada desenho criado,
+A ação aparece para todo polígono selecionado, e o polígono inválido ou grande demais só é recusado
+ao acioná-la. Conferir cada traço na montagem da gaveta refaria a conferência a cada desenho criado,
 apagado ou modificado. O custo é um botão oferecido para um desenho que vai ser recusado.
+
+O router oferece a ação a todo poço de polígonos, sem olhar a seleção, e é o CSS da gaveta que a
+mostra só no poço do selecionado. A seleção muda no navegador sem ida ao servidor, então o servidor
+não sabe qual poço está com ela. O custo é o botão no DOM de um poço sem seleção; a rota recusa
+qualquer `desenho` que não seja polígono, venha de onde vier.
 
 A busca não se refaz quando o polígono é editado depois dela. O resultado é de um clique, e o servidor
 não guarda o desenho entre um envio e outro. O custo é tabela e mapa descrevendo um traço que já não
 está na tela até o próximo clique na ação.
+
+Toda ação que devolve resultado ao mapa responde pela base `mapping/_resultado_acao.html`, e a home
+reage à resposta sem saber qual ação foi. É o que faz a próxima ação sobre desenho ser só o corpo da
+gaveta e as `properties` das features. O custo é que a base supõe ação disparada da bancada — ela
+recolhe a gaveta dos desenhos — e uma gaveta de resultado por vez: ação com outro formato de resultado
+pede outra base.
+
+Acionar uma ação recolhe a gaveta dos desenhos, e abrir uma feature a troca pela gaveta dela. A busca
+leva do contexto da bancada ao do resultado, e a gaveta lateral mostra uma entidade por vez. O custo é
+que trocar de polígono exige voltar à bancada, pela paleta ou pelo clique no desenho, e a base da
+resposta conhecer o id do toggle da gaveta dos desenhos.
+
+Com resultado no mapa, os desenhos descem para baixo dele, mais transparentes. É o que dá ao clique
+sobre uma feature a gaveta dela, e ao clique no desenho fora delas a volta à bancada. O custo é o
+desenho só ser clicável onde nenhuma feature o cobre, e desenho feito ou reselecionado depois do
+resultado voltar para cima, com o preenchimento cheio, até o próximo resultado.
+
+A gaveta de resultado tem altura fixa, e a home encurta a gaveta lateral enquanto ela está aberta. A
+medida conhecida é o que deixa a lateral parar acima da inferior sem JavaScript. O custo é a regra de
+layout da home conhecer as duas gavetas, e poucas linhas deixarem a placa com sobra.
+
+A gaveta lateral que chega por swap no `#gaveta-entidade` ganha coreografia de chegada, pedida pelo
+usuário, sem alterar o organismo: o `troca_gaveta.js` marca o alvo e o CSS lê a marca. Sem estado
+anterior a transição do toggle não tem de onde partir, e só o JS sabe se a gaveta de antes estava
+aberta e era outra. O custo é o JS ler o `data-gaveta` do HTML da resposta, e toda gaveta que entra
+no `#gaveta-entidade` passar a depender desse atributo na raiz.
+
+O contexto de ação é uma marca no DOM, e não cookie nem estado em JavaScript. O servidor a manda junto
+da resposta da ação, o CSS a lê e o `contexto_acao.js` só a apaga. O custo é que ela só sai pelo
+controle que aponta: um contexto encerrado por outro caminho deixa a busca recolhida até a página
+recarregar.
+
+A feature escolhida e a sob o ponteiro vivem em JavaScript, no `interacao_resultado.js`. É estado
+visual de um controle do mapa, pedido pelo usuário, e o servidor não tem como saber onde está o
+ponteiro. O custo é que o realce some quando a camada é redesenhada, sem memória da escolhida.
+
+Todo resultado de ação vai ao mapa na mesma cor, `MAP_COR_RESULTADO_ACAO`, distinta da dos desenhos.
+É o que separa, sem legenda, o que a pessoa traçou do que o sistema devolveu. O custo é que duas ações
+não se distinguem pela cor, e o halo do realce, escrito em rocha no tema, só casa com essa cor.
+
+Os testes do §8 não cobrem JavaScript, como já registrado em design/020. O custo é que a ordem das
+camadas, o realce, o clique no lote, a volta à bancada pelo desenho, a troca da gaveta por fade e o
+fim do contexto de ação só têm prova no smoke test manual.
 
 `LOTES_DESENHO_AREA_MAXIMA_M2` (250.000 m² por padrão) limita o tamanho da consulta. Sem ele, um
 desenho sobre um bairro devolveria dezenas de milhares de lotes numa página do navegador. O custo é
@@ -438,20 +788,25 @@ recusar desenho legítimo acima do corte até alguém calibrá-lo no ambiente.
 - `test_ato_sobre_desenho_so_para_quem_tem_a_caneta` — com um registro fake, o ato sai só quando o
   slug está nos liberados, e a consulta sai com os liberados vazios.
 - `test_gaveta_anonima_traz_lotes_contidos_no_poco_de_poligonos` — POST anônimo com um ponto e um
-  polígono devolve o botão com `hx-post` para `lotes_mais_proximos:lotes_do_desenho` dentro do
-  formulário do poço de polígonos, e nenhum no do ponto.
+  polígono, o polígono selecionado, devolve o botão com `hx-post` para
+  `lotes_mais_proximos:lotes_do_desenho` e `hx-include=".linha-desenho__marca:checked"` no
+  `.poco-desenhos__acoes-recorte` do poço de polígonos; o poço do ponto
+  tem a âncora `.poco-desenhos__acoes` vazia, sem nó algum dentro.
 - `test_intersects_com_desenho_reprojetado` — o CQL do request capturado é
   `INTERSECTS(campo, POLYGON((…)))` com coordenadas UTM, e o `srsName` pedido é o do mapa.
 - `test_desenho_invalido_ou_grande_demais_recusado_sem_consultar` — laço em "8" levanta
   `DesenhoInvalidoError`, área acima do corte levanta `DesenhoGrandeDemaisError`, e o fetcher fake
   não é chamado em nenhum dos dois.
 - `test_lotes_do_desenho_traz_area_e_lotes` — duas features viram dois `LoteFeature` e a área em m².
-- `test_lotes_do_desenho_devolve_mapa_e_tabela_sem_tocar_a_gaveta_lateral` — POST anônimo com
-  `id_bancada` e `desenho` devolve o payload do mapa e o OOB da gaveta inferior com a quantidade e uma
-  linha por lote, e nenhum OOB em `#gaveta-entidade`.
-- `test_lotes_do_desenho_invalido_responde_aviso` — POST com laço em "8" devolve o aviso do mapa com
-  a mensagem, sem payload de mapa.
-- `test_detalhe_do_lote_abre_gaveta_de_detalhe` — GET devolve o conteúdo da gaveta do lote com o SQL,
-  e o `LotePorIdentificador` filtra `cd_identificador = id`.
+- `test_lotes_do_desenho_devolve_mapa_tabela_e_recolhe_os_desenhos` — POST anônimo com `id_bancada` e
+  `desenho` devolve o payload do mapa, com `id`, `cor` cinza e `url_ficha` em cada lote; o OOB da
+  gaveta de resultado, com o toggle `#gaveta-resultado` marcado, a quantidade e uma linha por lote com o mesmo `data-id-feature`
+  e `hx-get` mirando `#gaveta-entidade`; o OOB do toggle da gaveta dos desenhos desmarcado; e o OOB
+  do `#contexto-acao` com o slug da ação e `data-encerra-com="#gaveta-resultado"`.
+- `test_lotes_do_desenho_recusa_invalido_e_nao_poligono` — POST com laço em "8" devolve o aviso do
+  mapa com a mensagem e o toggle da gaveta dos desenhos desmarcado, sem payload de mapa; POST com
+  `id_bancada` e um `desenho` de ponto é recusado pela validação; nenhum dos dois consulta o WFS.
+- `test_detalhe_do_lote_abre_a_gaveta_do_lote` — GET devolve a gaveta do lote da SPEC 001 com o SQL
+  e `data-gaveta="lote-<id>"` na raiz, e o `LotePorIdentificador` filtra `cd_identificador = id`.
 - `test_lotes_do_desenho_no_geosampa` — retângulo real conhecido devolve os lotes esperados
   *(marker `integration`)*.

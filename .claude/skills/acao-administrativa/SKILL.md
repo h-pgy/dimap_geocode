@@ -26,6 +26,10 @@ e as telas de concessão.
 **A busca nunca conhece ação alguma.** A dependência é de mão única: a ação consome o resultado da
 busca por DTO. Se você se pegou importando algo de uma ação dentro do núcleo de busca, pare.
 
+**Só quando a ação opera sobre um desenho do mapa** (ponto, linha ou polígono da bancada), leia também
+a skill `acao-sobre-desenho`: ela cobre a inscrição no registro de desenho, a seleção do desenho e as
+gavetas do resultado. Para as demais ações, esta skill basta.
+
 ## 2 · Antes de escrever: o que perguntar ao usuário
 
 Estas seis coisas mudam o código e **não** se deduzem do pedido. Se a SPEC ou o pedido não disserem,
