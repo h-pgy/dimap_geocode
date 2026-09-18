@@ -1,70 +1,62 @@
 ---
 spec: localizacao_lote/003
-versao: v2
-atualizado_em: 2026-09-17
+versao: v3
+atualizado_em: 2026-09-18
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
   - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
+  - v3: gatilho passa a ser a ação do poço de polígonos, oferecida por um registro de ações sobre desenho
 ---
 
 # SPEC localizacao_lote/003 — Lotes que cruzam um desenho
 
 ## 1 · User story
-Quem usa o mapa desenha um polígono sobre um terreno e pede os lotes cadastrados que ele cruza, no
-contexto de um imóvel que ocupa mais de um lote, para ver de uma vez quais lotes compõem aquele
-terreno.
+Quem usa o mapa marca um polígono desenhado sobre um terreno e pede os lotes cadastrados que ele
+cruza, no contexto de um imóvel que ocupa mais de um lote, para ver de uma vez quais lotes compõem
+aquele terreno.
 
 ## 2 · Condições de pronto
-- [ ] Concluir um **polígono** na bancada de desenho (polígono, retângulo ou círculo) abre a gaveta
-      lateral com a **área do desenho** e o botão **"Buscar lotes contidos no polígono"**, sem login.
-- [ ] Acionar o botão desenha no mapa **todos os lotes que intersectam** o desenho e abre a
-      **gaveta inferior** com a tabela deles (SQL, endereço, situação do lançamento); a gaveta lateral
-      passa a mostrar a área e a **quantidade** de lotes.
+- [ ] Todo poço de polígonos da gaveta dos desenhos traz, abaixo da lista, a ação **"Lotes
+      contidos"**, inclusive para quem não fez login; os poços de ponto e de linha não a trazem.
+- [ ] Uma ação administrativa inscrita para um tipo de desenho só aparece no poço desse tipo para
+      quem tem competência para executá-la.
+- [ ] Acionar "Lotes contidos" desenha no mapa **todos os lotes que intersectam o polígono marcado no
+      poço**, como ele está no mapa naquele momento — inclusive depois de editado —, e abre a
+      **gaveta inferior** com a quantidade e a tabela deles (SQL, endereço, situação do lançamento).
+- [ ] Marcar outro polígono no poço e acionar a ação de novo troca os lotes do mapa e da tabela pelos
+      do polígono marcado.
+- [ ] Depois da busca, a gaveta lateral segue com a lista dos desenhos e a marca de cada poço intacta,
+      e o desenho continua no mapa, por cima dos lotes.
 - [ ] Clicar numa linha da tabela abre a **gaveta de detalhe** com os dados daquele lote, iguais aos
       da gaveta do lote da SPEC [localizacao_lote/001](001-dados-do-lote-na-gaveta.md) — um lote por
       vez.
-- [ ] O desenho continua no mapa, por cima dos lotes, depois da busca.
-- [ ] Desenho que se auto-intersecta é recusado **já na oferta**, com mensagem em português, e o botão
-      não aparece; a busca recusa pelo mesmo critério, sem consultar o WFS.
-- [ ] Desenho acima da área máxima configurada é recusado do mesmo jeito, com mensagem que cita a área
-      máxima.
-- [ ] Desenho que não cruza lote algum mostra o estado de falta escrito na gaveta inferior.
-- [ ] Concluir um novo polígono troca a oferta da gaveta pela do desenho novo.
-- [ ] O design da gaveta do desenho, da tabela na gaveta inferior e da gaveta de detalhe foi
-      aprovado no mock e as peças novas portadas para o tema e o styleguide antes de qualquer
-      template da aplicação usá-las.
+- [ ] Polígono que se auto-intersecta é recusado com mensagem em português no aviso do mapa, sem
+      consultar o WFS.
+- [ ] Polígono acima da área máxima configurada é recusado do mesmo jeito, com mensagem que cita a
+      área máxima.
+- [ ] Polígono que não cruza lote algum mostra o estado de falta escrito na gaveta inferior.
+- [ ] O design da ação no poço, da tabela na gaveta inferior e da gaveta de detalhe foi aprovado no
+      mock e as peças novas portadas para o tema e o styleguide antes de qualquer template da
+      aplicação usá-las.
 
 ## 3 · Domínio
-O desenho é a geometria que a [bancada](../design/018-bancada-desenho.md) produz; a pergunta que esta
-SPEC faz a ela é só "qual polígono foi concluído?". A consulta espacial é do submódulo
-`lotes_mais_proximos`, com a [CamadaLotes](002-lote-mais-proximo-do-endereco.md#3--domínio) e a
-reprojeção da SPEC 002.
+O desenho é o [Desenho](../design/020-desenhos-na-gaveta.md#3--domínio) da gaveta dos desenhos; a
+pergunta que esta SPEC faz a ele é só "qual polígono está marcado, e como ele está agora?". A
+consulta espacial é do submódulo `lotes_mais_proximos`, com a
+[CamadaLotes](002-lote-mais-proximo-do-endereco.md#3--domínio) e a reprojeção da SPEC 002. O ato
+administrativo é o `AcaoImplementada` do registro de competências (SPECs `autorizacao/`), consumido
+sem alteração.
 
 **`services/domain/lotes_mais_proximos/models.py`**
 
 ```python
-class Desenho(BaseModel):
-    """O polígono que o usuário traçou, no CRS do mapa. Só polígono simples: a bancada não produz outro."""
-
-    model_config = ConfigDict(frozen=True)
-
-    geometria: PolygonGeometry
-    crs: int
-
-    @model_validator(mode="after")
-    def _so_poligono_simples(self) -> Self:
-        if self.geometria.type != "Polygon":
-            raise ValueError("O desenho precisa ser um polígono simples.")
-        return self
-
-
 class LotesDoDesenho(BaseModel):
     """O que a consulta apurou: o desenho, a área dele e os lotes que ele cruza."""
 
-    desenho: Desenho
+    desenho: Desenho   # o de services/domain/desenho
     # Guardada: depende do CRS métrico da camada, que não mora no desenho.
     area_m2: float = Field(gt=0)
     lotes: tuple[LoteFeature, ...] = ()
@@ -81,25 +73,172 @@ class LotePorIdentificadorInput(BaseModel):
     output_crs: int
 ```
 
+**`apps/mapping/acoes_desenho.py`** — o que um poço pode oferecer, em duas naturezas, como o
+`ItemAcao` × `ItemLivre` do painel.
+
+```python
+class AcaoSobreDesenho(BaseModel):
+    """Ato administrativo inscrito no REGISTRO que opera sobre desenho: só aparece a quem tem a caneta."""
+
+    model_config = ConfigDict(frozen=True)
+
+    acao: AcaoImplementada
+    tipos: frozenset[TipoDesenho] = Field(min_length=1)
+
+
+class ConsultaSobreDesenho(BaseModel):
+    """Rota aberta que opera sobre desenho. Fora do REGISTRO: não é concedível e aparece a todos."""
+
+    model_config = ConfigDict(frozen=True)
+
+    slug: str = Field(pattern=PADRAO_SLUG)   # mesmo formato das ações: é ele que encontra o SVG
+    nome: str
+    tooltip: str
+    url_name: str
+    tipos: frozenset[TipoDesenho] = Field(min_length=1)
+
+
+class RegistroDesenho(BaseModel):
+    """Coleção explícita e curada do que opera sobre desenho."""
+
+    model_config = ConfigDict(frozen=True)
+
+    itens: tuple[AcaoSobreDesenho | ConsultaSobreDesenho, ...]
+
+
+class ItemPoco(BaseModel):
+    """O que o poço desenha: as duas naturezas convergem para o mesmo item."""
+
+    model_config = ConfigDict(frozen=True)
+
+    slug: str
+    nome: str
+    tooltip: str
+    url_name: str
+```
+
+**Mock:** [003-mock-lotes-do-desenho.html](003-mock-lotes-do-desenho.html) — leia a skill `mock`.
+
 ## 4 · Fora de escopo
 - Tirar lotes do conjunto e destacar o lote selecionado no mapa — SPEC [localizacao_lote/004](004-revisao-do-conjunto.md).
-- Recalcular a busca quando o desenho é **editado, arrastado ou apagado** depois dela — sem dono ainda.
+- Refazer a busca sozinha quando o polígono é **editado, arrastado ou apagado** depois dela — sem dono ainda.
 - Percentual de cada lote contido no desenho e a modalidade "a maior" × "a menor" — SPEC
   [certidao_lancamento/003](../certidao_lancamento/003-certidao-a-maior-e-a-menor.md).
-- Linha e ponto desenhados como entrada de busca — sem dono ainda.
+- Primeiro ato administrativo sobre desenho (amostragem de ofertas, por exemplo) e consultas dos poços de ponto e de linha — sem dono ainda.
 
 ## 5 · Peças de referência a compor
-- `@static/src/js/mapa/desenho/bancada.js` → handler de `pm:create`: onde o círculo já vira polígono.
-- `@services/domain/geometry/reprojecao.py` → `reprojetar` (SPEC 002).
+- `@static/src/js/mapa/desenho/envio.js` → `inicializarEnvio`: enxerta no envio a geometria atual do traço marcado.
+- `@services/domain/desenho` → `Desenho`, `TipoDesenho`.
+- `@services/domain/geometry` → `reprojetar` (SPEC 002), `para_geos` (design/020).
 - `@services/integrations/wfs` → `CqlFilter`, `CqlPredicate`, `build_fetcher`.
 - `@services/domain/lote_geocod` → `feature_para_lote`, `LoteFeature`.
-- `@templates/lote_geocoder/partials/_gaveta_lote.html` → conteúdo da gaveta de detalhe.
-- `@static/src/tema-dimap.dev.css` → `.gaveta-inferior`, `.gaveta-coluna`, `.table-onsen`, `.gaveta-lateral-detalhe`.
-- Skills: `leaflet-geoman`, `wfs-fetcher`, `mock`, `componentes-frontend`, `test-django-views`.
+- `@apps/competencias` → `AcaoImplementada`, `slugs_liberados`, `{% icone_acao %}` + `_icone_acao.html`; `@services/domain/autorizacao` → `PADRAO_SLUG`.
+- `@apps/mapping/context.py` → `contexto_mapa`, `contexto_aviso`; `@templates/lote_geocoder/partials/_gaveta_lote.html` → conteúdo da gaveta de detalhe.
+- `@static/src/tema-dimap.dev.css` → `.placa-lista`, `.item-menu-swell`, `.gaveta-inferior`, `.gaveta-coluna`, `.table-onsen`, `.gaveta-lateral-detalhe`.
+- Skills: `leaflet-geoman`, `wfs-fetcher`, `htmx`, `painel`, `mock`, `componentes-frontend`, `test-django-views`.
 
 ## 6 · Snippets
 
 > Comentários didáticos: **não são portados** para o código (§7.2 do CLAUDE.md).
+
+**`apps/lotes_mais_proximos/desenho_declarado.py`** — o app declara o que oferece sobre desenho, como
+declara ações em `acoes_declaradas.py`.
+
+```python
+CONSULTA_LOTES_CONTIDOS = ConsultaSobreDesenho(
+    slug="lotes_mais_proximos.lotes_contidos",
+    nome="Lotes contidos",
+    tooltip="Lotes cadastrados que o polígono marcado cruza.",
+    url_name="lotes_mais_proximos:lotes_do_desenho",
+    tipos=frozenset({TipoDesenho.POLIGONO}),
+)
+```
+
+**`apps/mapping/registro_desenho.py`** — ponto único de inscrição: oferecer algo sobre desenho é
+acrescentar uma linha aqui. Um ato entra envolvendo a constante que já está no `REGISTRO`.
+
+```python
+def _construir_registro() -> RegistroDesenho:
+    return RegistroDesenho(
+        itens=(
+            CONSULTA_LOTES_CONTIDOS,
+            # AcaoSobreDesenho(acao=ACAO_AMOSTRAGEM_OFERTAS, tipos=frozenset({TipoDesenho.POLIGONO})),
+        )
+    )
+
+
+REGISTRO_DESENHO = _construir_registro()
+```
+
+**`apps/mapping/acoes_desenho.py`** — o router: tipo do poço + canetas do usuário → o que o poço
+oferece.
+
+```python
+class OfertaPocoInput(BaseModel):
+    tipo: TipoDesenho
+    slugs_liberados: frozenset[str]   # já resolvidos pela view: o router não vê request
+
+
+class OfertarNoPoco:
+    def __init__(self, registro: RegistroDesenho) -> None:
+        self.registro = registro
+
+    def __call__(self, entrada: OfertaPocoInput) -> tuple[ItemPoco, ...]:
+        return self.pipeline(entrada)
+
+    def pipeline(self, entrada: OfertaPocoInput) -> tuple[ItemPoco, ...]:
+        return tuple(
+            self._item(item)
+            for item in self.registro.itens
+            if entrada.tipo in item.tipos and self._liberado(item, entrada.slugs_liberados)
+        )
+
+    def _liberado(self, item: AcaoSobreDesenho | ConsultaSobreDesenho, slugs: frozenset[str]) -> bool:
+        # A consulta não é ato: não há caneta que a libere, nem que a esconda.
+        # O router só filtra; quem recusa o ato é a proteção da rota, a cada execução.
+        if isinstance(item, ConsultaSobreDesenho):
+            return True
+        return item.acao.acao.slug in slugs
+
+    def _item(self, item: AcaoSobreDesenho | ConsultaSobreDesenho) -> ItemPoco:
+        if isinstance(item, ConsultaSobreDesenho):
+            return ItemPoco(slug=item.slug, nome=item.nome, tooltip=item.tooltip, url_name=item.url_name)
+        acao = item.acao.acao
+        return ItemPoco(slug=acao.slug, nome=acao.nome, tooltip=acao.tooltip, url_name=item.acao.url_name)
+```
+
+**`apps/mapping/views.py`** — a gaveta dos desenhos entrega cada poço já com o que ele oferece.
+
+```python
+    gaveta = MontarGavetaDesenhos()(entrada)
+    ofertar = OfertarNoPoco(REGISTRO_DESENHO)                                   # NOVO
+    liberados = slugs_liberados(request.user)                                  # NOVO: anônimo → vazio
+    pocos = [
+        (poco, ofertar(OfertaPocoInput(tipo=poco.tipo, slugs_liberados=liberados)))
+        for poco in gaveta.pocos
+    ]
+    return render(request, TEMPLATE_GAVETA_DESENHOS, {"gaveta": gaveta, "pocos": pocos})
+```
+
+**`templates/mapping/_poco_desenhos.html`** — a âncora do rodapé ganha os itens. O botão está dentro
+do `<form>` do poço: o `hx-post` leva o `id_bancada` marcado, e o `envio.js` enxerta o `desenho`.
+
+```html
+{% load icones %}
+<div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}">
+  {% if itens %}
+    {# A casca .placa-lista com cabeçalho "Ações" e a contagem, como no mock do design/020. #}
+    {% for item in itens %}
+      {% icone_acao item.slug "pequeno" as svg %}
+      <button type="button" class="card-well item-menu item-menu-swell" title="{{ item.tooltip }}"
+              hx-post="{% url item.url_name %}" hx-target="#resultado-busca" hx-swap="innerHTML">
+        {% include "competencias/partials/_icone_acao.html" with svg=svg variante="pequeno" %}
+        <span class="item-menu-rotulo">{{ item.nome }}</span>
+      </button>
+    {% endfor %}
+  {% endif %}
+</div>
+```
 
 **`services/integrations/wfs/models.py`**
 
@@ -123,12 +262,21 @@ class CqlFilter(BaseModel):
 ```python
 class LotesDoDesenhoInput(BaseModel):
     desenho: Desenho
+    crs_mapa: int          # o desenho não carrega CRS: vem do mapa, pela orquestração
     camada: CamadaLotes
     area_maxima_m2: float = Field(gt=0)
 
+    @model_validator(mode="after")
+    def _so_poligono(self) -> Self:
+        # O Desenho da bancada aceita ponto e linha; esta consulta, não.
+        if self.desenho.tipo is not TipoDesenho.POLIGONO:
+            raise ValueError("A busca de lotes precisa de um polígono.")
+        return self
+
 
 class ConferenciaDesenhoInput(BaseModel):
-    desenho: Desenho
+    geometria: PolygonGeometry
+    crs_mapa: int
     crs_metrico: int
     area_maxima_m2: float = Field(gt=0)
 
@@ -139,14 +287,14 @@ class DesenhoConferido(BaseModel):
 
 
 class ConferirDesenho:
-    """A oferta e a busca recusam pelo mesmo critério: é uma peça só, composta pelas duas."""
+    """Recusa o polígono que o GeoServer não deve receber: laço que se cruza ou área acima do corte."""
 
     def __call__(self, entrada: ConferenciaDesenhoInput) -> DesenhoConferido:
         return self.pipeline(entrada)
 
     def pipeline(self, entrada: ConferenciaDesenhoInput) -> DesenhoConferido:
-        projetado = reprojetar(entrada.desenho.geometria, entrada.desenho.crs, entrada.crs_metrico)
-        geos = GEOSGeometry(json.dumps(projetado.model_dump()))
+        projetado = reprojetar(entrada.geometria, entrada.crs_mapa, entrada.crs_metrico)
+        geos = para_geos(projetado, entrada.crs_metrico)
         if not geos.valid:
             raise DesenhoInvalidoError(geos.valid_reason)
         if geos.area > entrada.area_maxima_m2:
@@ -165,7 +313,8 @@ class BuscarLotesDoDesenho:
     def pipeline(self, entrada: LotesDoDesenhoInput) -> LotesDoDesenho:
         # A conferência vem ANTES da rede: o GeoServer não paga por desenho que vai ser recusado.
         conferido = self._conferir(ConferenciaDesenhoInput(
-            desenho=entrada.desenho,
+            geometria=entrada.desenho.geometria,   # polígono garantido pelo validator do input
+            crs_mapa=entrada.crs_mapa,
             crs_metrico=entrada.camada.crs_camada,
             area_maxima_m2=entrada.area_maxima_m2,
         ))
@@ -191,40 +340,35 @@ class BuscarLotesDoDesenho:
         )
 ```
 
-**`apps/lotes_mais_proximos/views.py`** — três rotas abertas.
+**`apps/lotes_mais_proximos/views.py`** — duas rotas abertas.
 
 ```python
-def _desenho(dados: QueryDict) -> Desenho:
-    geometria = PolygonGeometry.model_validate_json(dados.get("desenho", ""))
-    return Desenho(geometria=geometria, crs=MAP_OUTPUT_CRS)
+class ConsultaLotesDoDesenho(BaseModel):
+    """O formulário do poço: o radio marcado e a geometria que o envio.js enxertou."""
 
+    id_bancada: str
+    desenho: PolygonGeometry
 
-@require_POST
-def ofertar_desenho(request: HttpRequest) -> HttpResponse:
-    # Confere e mede, sem consultar lote: o desenho ruim é recusado já aqui, antes do botão existir.
-    desenho = _desenho(request.POST)
-    try:
-        conferido = ConferirDesenho()(ConferenciaDesenhoInput(
-            desenho=desenho,
-            crs_metrico=MAP_INTERPOLATION_CRS,
-            area_maxima_m2=LOTES_DESENHO_AREA_MAXIMA_M2,
-        ))
-    except (DesenhoInvalidoError, DesenhoGrandeDemaisError) as erro:
-        return render(request, TEMPLATE_AVISO_DESENHO, {"mensagem": str(erro)})
-    return render(request, TEMPLATE_OFERTA_DESENHO, contexto_oferta(desenho, conferido))
+    @field_validator("desenho", mode="before")
+    @classmethod
+    def _do_json(cls, valor: object) -> object:
+        # Sem o envio.js o campo não chega: vira ValidationError e cai no middleware.
+        return json.loads(valor) if isinstance(valor, str) else valor
 
 
 @require_POST
 def lotes_do_desenho(request: HttpRequest) -> HttpResponse:
+    consulta = ConsultaLotesDoDesenho.model_validate(request.POST.dict())
     entrada = LotesDoDesenhoInput(
-        desenho=_desenho(request.POST),
+        desenho=Desenho(id_bancada=consulta.id_bancada, geometria=consulta.desenho),
+        crs_mapa=MAP_OUTPUT_CRS,
         camada=camada_lotes(),
         area_maxima_m2=LOTES_DESENHO_AREA_MAXIMA_M2,
     )
     try:
         resultado = BuscarLotesDoDesenho(build_fetcher(settings))(entrada)
     except (DesenhoInvalidoError, DesenhoGrandeDemaisError) as erro:
-        return render(request, TEMPLATE_AVISO_DESENHO, {"mensagem": str(erro)})
+        return render(request, "mapping/_aviso.html", contexto_aviso(str(erro)))
     return render(request, TEMPLATE_RESULTADO_DESENHO, contexto_lotes_do_desenho(resultado))
 
 
@@ -238,24 +382,17 @@ def detalhe_do_lote(request: HttpRequest) -> HttpResponse:
     # LotePorIdentificador devolve LoteFeature | None: o polígono pode ter saído da camada.
     lote = LotePorIdentificador(build_fetcher(settings))(entrada)
     if lote is None:
-        return render(request, TEMPLATE_AVISO_DESENHO, {"mensagem": MSG_LOTE_NAO_ENCONTRADO})
+        return render(request, "mapping/_aviso.html", contexto_aviso(MSG_LOTE_NAO_ENCONTRADO))
     return render(request, TEMPLATE_DETALHE_LOTE, {"lote": lote.attributes})
 ```
 
-**`static/src/js/mapa/desenho/oferta.js`** — cola de Leaflet → HTMX; nenhum estado.
+**`templates/lotes_mais_proximos/partials/_resultado_desenho.html`** — mapa no alvo da busca + gaveta
+inferior fora de banda. A gaveta lateral **não** é tocada: é ela que carrega a lista dos desenhos.
 
-```javascript
-// A URL vem do markup (data-url-ofertar-desenho no container do mapa): o JS não conhece rota.
-export function ofertarDesenho(mapa, container) {
-  mapa.on("pm:create", (evento) => {
-    if (!["Polygon", "Rectangle", "Circle"].includes(evento.shape)) return;
-    htmx.ajax("POST", container.dataset.urlOfertarDesenho, {
-      target: "#gaveta-entidade",
-      swap: "innerHTML",
-      values: { desenho: JSON.stringify(evento.layer.toGeoJSON().geometry) },
-    });
-  });
-}
+```html
+{% include "mapping/_mapa.html" %}
+<div id="gaveta-inferior-conteudo" hx-swap-oob="innerHTML">{% include "lotes_mais_proximos/partials/_tabela_lotes.html" %}</div>
+{# Linha da tabela: hx-get em lotes_mais_proximos:detalhe_do_lote?id=… com alvo em #gaveta-detalhe. #}
 ```
 
 **`static/src/js/mapa/init.js`** — o resultado entra por último no `overlayPane`; o desenho volta
@@ -266,48 +403,55 @@ camadaResultado = adicionarResultado(mapa, data.geometria, data.cor, data.enquad
 mapa.pm.getGeomanLayers().forEach((camada) => camada.bringToFront());
 ```
 
-**`templates/lotes_mais_proximos/partials/_resultado_desenho.html`** — mapa + três placas fora de banda.
-
-```html
-{% include "mapping/_mapa.html" %}
-<div id="gaveta-entidade" hx-swap-oob="innerHTML">{% include "lotes_mais_proximos/partials/_gaveta_desenho.html" %}</div>
-<div id="gaveta-inferior-conteudo" hx-swap-oob="innerHTML">{% include "lotes_mais_proximos/partials/_tabela_lotes.html" %}</div>
-{# Linha da tabela: hx-get em lotes_mais_proximos:detalhe_do_lote?id=… com alvo em #gaveta-detalhe. #}
-```
-
 ## 7 · Caveats
 Um lote entra na lista quando **intersecta** o desenho, basta encostar. É o predicado que o
 GeoServer resolve numa ida só. O custo é que um traço impreciso traz o vizinho por uma lasca; quem
 tira esse vizinho é a SPEC 004.
 
-O desenho viaja no formulário da gaveta como GeoJSON, e o servidor não guarda nada entre a oferta e
-a busca. A home não tem sessão de trabalho, e guardar o desenho criaria estado que ninguém limpa. O
-custo é que o GeoJSON vai e volta a cada passo, e que editar o desenho no mapa depois da oferta não
-muda o que o botão manda.
+O registro e o router do desenho moram em `apps/mapping`, e não em `services/`. Eles operam sobre
+`AcaoImplementada` e `url_name`, que são peças da camada Django, como o resolvedor do painel. O custo
+é regra de oferta fora do domínio, testável só com o Django carregado.
+
+`apps/mapping` passa a importar a declaração de cada app que oferece algo sobre desenho, como o
+`REGISTRO` de competências importa as ações. É o que mantém a inscrição num ponto só, revisável em
+code review. O custo é que cada app novo de ação sobre desenho edita o registro do `mapping`.
+
+A gaveta dos desenhos passa a conhecer o usuário da sessão, para resolver as canetas. É o router que
+esconde o ato de quem não pode executá-lo. O custo é que a gaveta dos desenhos deixa de ser a mesma
+para todos, e cada montagem dela consulta as permissões.
+
+A ação aparece em todo poço de polígonos, e o polígono inválido ou grande demais só é recusado ao
+acioná-la. Conferir cada traço na montagem da gaveta refaria a conferência a cada desenho criado,
+apagado ou modificado. O custo é um botão oferecido para um desenho que vai ser recusado.
+
+A busca não se refaz quando o polígono é editado depois dela. O resultado é de um clique, e o servidor
+não guarda o desenho entre um envio e outro. O custo é tabela e mapa descrevendo um traço que já não
+está na tela até o próximo clique na ação.
 
 `LOTES_DESENHO_AREA_MAXIMA_M2` (250.000 m² por padrão) limita o tamanho da consulta. Sem ele, um
 desenho sobre um bairro devolveria dezenas de milhares de lotes numa página do navegador. O custo é
 recusar desenho legítimo acima do corte até alguém calibrá-lo no ambiente.
 
-`htmx.ajax` é chamado de dentro de um callback do Leaflet-Geoman. É cola entre as duas bibliotecas
-e não carrega estado de domínio, que é o que o §7.2 do CLAUDE.md permite. O custo é um ponto em que
-a requisição não nasce de atributo HTMX no markup.
-
 ## 8 · Testes (TDD)
-- `test_intersects_monta_cql` — `CqlIntersects` gera `INTERSECTS(campo, POLYGON((…)))`.
-- `test_desenho_reprojetado_para_crs_da_camada_antes_da_consulta` — o WKT do request capturado tem
-  coordenadas UTM e o `srsName` pedido é o do mapa.
+- `test_poco_oferece_so_o_que_opera_sobre_o_tipo` — com um registro fake, a consulta de polígono sai
+  para o poço de polígonos e não para o de ponto.
+- `test_ato_sobre_desenho_so_para_quem_tem_a_caneta` — com um registro fake, o ato sai só quando o
+  slug está nos liberados, e a consulta sai com os liberados vazios.
+- `test_gaveta_anonima_traz_lotes_contidos_no_poco_de_poligonos` — POST anônimo com um ponto e um
+  polígono devolve o botão com `hx-post` para `lotes_mais_proximos:lotes_do_desenho` dentro do
+  formulário do poço de polígonos, e nenhum no do ponto.
+- `test_intersects_com_desenho_reprojetado` — o CQL do request capturado é
+  `INTERSECTS(campo, POLYGON((…)))` com coordenadas UTM, e o `srsName` pedido é o do mapa.
 - `test_desenho_invalido_ou_grande_demais_recusado_sem_consultar` — laço em "8" levanta
   `DesenhoInvalidoError`, área acima do corte levanta `DesenhoGrandeDemaisError`, e o fetcher fake
   não é chamado em nenhum dos dois.
-- `test_ofertar_desenho_invalido_responde_aviso_sem_botao` — a oferta de um laço em "8" traz a
-  mensagem e não traz o formulário de busca.
 - `test_lotes_do_desenho_traz_area_e_lotes` — duas features viram dois `LoteFeature` e a área em m².
-- `test_lote_por_identificador_filtra_cd_identificador` — o request usa `cd_identificador = id`.
-- `test_ofertar_desenho_anonimo_abre_gaveta_com_area_e_botao` — POST sem login devolve a gaveta com a
-  área e o formulário para `lotes_mais_proximos:lotes_do_desenho` carregando o desenho.
-- `test_lotes_do_desenho_devolve_mapa_resumo_e_tabela` — payload do mapa, OOB da gaveta lateral com a
-  quantidade e OOB da gaveta inferior com uma linha por lote.
-- `test_detalhe_do_lote_abre_gaveta_de_detalhe` — GET devolve o conteúdo da gaveta do lote com o SQL.
+- `test_lotes_do_desenho_devolve_mapa_e_tabela_sem_tocar_a_gaveta_lateral` — POST anônimo com
+  `id_bancada` e `desenho` devolve o payload do mapa e o OOB da gaveta inferior com a quantidade e uma
+  linha por lote, e nenhum OOB em `#gaveta-entidade`.
+- `test_lotes_do_desenho_invalido_responde_aviso` — POST com laço em "8" devolve o aviso do mapa com
+  a mensagem, sem payload de mapa.
+- `test_detalhe_do_lote_abre_gaveta_de_detalhe` — GET devolve o conteúdo da gaveta do lote com o SQL,
+  e o `LotePorIdentificador` filtra `cd_identificador = id`.
 - `test_lotes_do_desenho_no_geosampa` — retângulo real conhecido devolve os lotes esperados
   *(marker `integration`)*.
