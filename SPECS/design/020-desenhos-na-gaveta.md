@@ -1,7 +1,7 @@
 ---
 spec: design/020
-versao: v4
-atualizado_em: 2026-09-17
+versao: v7
+atualizado_em: 2026-09-18
 testes_tdd: true
 implementado: true
 changelog:
@@ -9,6 +9,9 @@ changelog:
   - v2: "[bugfix] círculo chegava à gaveta como ponto: a conversão não trocava a camada no mapa"
   - v3: ponto passa a mostrar a posição em graus decimais, com graus-minutos-segundos no hover; ações ganham swell
   - v4: clicar num desenho no mapa marca a linha dele na gaveta, e os não selecionados deixam de ser atenuados
+  - v5: a linha selecionada ganha um X que apaga o desenho depois de confirmação
+  - v6: a gaveta ganha o botão "Limpar desenhos", que apaga todos os desenhos do mapa de uma vez
+  - v7: limpar desenhos passa a pedir confirmação, com a contagem por tipo do que será apagado
 ---
 
 # SPEC design/020 — Os desenhos da bancada na gaveta
@@ -20,9 +23,9 @@ para dizer sobre qual geometria as ações vão operar.
 ## 2 · Condições de pronto
 - [ ] Concluir um desenho na bancada abre a gaveta lateral com **um poço por tipo desenhado** —
       ponto, linha e polígono, nessa ordem —, cada poço listando os desenhos do seu tipo, sem login.
-- [ ] A linha de cada desenho mostra a medida dele: **área** no polígono, **comprimento** na linha.
-- [ ] A linha do ponto mostra a **posição** dele em graus decimais com sinal — latitude, longitude —, e o
-      hover sobre ela mostra a mesma posição em **graus, minutos e segundos**, com hemisfério.
+- [ ] A linha de cada desenho mostra a medida dele: **área** no polígono, **comprimento** na linha; a
+      do ponto mostra a **posição** em graus decimais com sinal — latitude, longitude —, e o hover sobre
+      ela a mesma posição em **graus, minutos e segundos**, com hemisfério.
 - [ ] O **último desenhado** de um tipo nasce selecionado no poço dele, e desenhar de outro tipo
       **não muda** a seleção dos demais poços.
 - [ ] O desenho selecionado de cada poço aparece no mapa **realçado** — traço mais grosso ou ponto
@@ -30,8 +33,14 @@ para dizer sobre qual geometria as ações vão operar.
       trocar a seleção troca o realce na mesma hora.
 - [ ] Clicar num desenho no mapa, sem ferramenta da bancada na mão, **marca a linha dele** no poço
       do seu tipo — com o mesmo destaque da marca pela gaveta — e abre a gaveta se estava recolhida.
-- [ ] Apagar um desenho tira a linha do poço; apagado o último do tipo, **o poço some**; apagados
-      todos, **a gaveta some**.
+- [ ] Apagar um desenho — pela borracha da bancada ou pela gaveta — tira o traço do mapa e a linha do
+      poço; apagado o último do tipo, **o poço some**; apagados todos, **a gaveta some**. Abaixo do
+      último poço, à direita, **Limpar desenhos** pergunta se confirma, mostrando **quantos desenhos
+      de cada tipo** serão apagados, na cor do tipo; só a confirmação apaga todos, e a gaveta some.
+- [ ] A linha selecionada traz um **X** no canto superior direito, e as demais reservam o lugar dele
+      sem mostrá-lo; clicar no X **pergunta se confirma** a deleção, com o item seguindo selecionado
+      na gaveta e realçado no mapa enquanto a pergunta está aberta. Só a confirmação apaga:
+      **cancelar**, `Esc` ou clicar fora da pergunta a fecha sem mudar nada.
 - [ ] Modificar geometria já desenhada — vértices, mover, girar, recortar — **refaz as medidas** da
       lista ao sair do modo de modificação.
 - [ ] A gaveta dos desenhos ocupa a gaveta da entidade: concluir um desenho **troca** o que estava
@@ -51,6 +60,17 @@ class TipoDesenho(StrEnum):
     PONTO = "ponto"
     LINHA = "linha"
     POLIGONO = "poligono"
+
+    @property
+    def rotulo(self) -> str:   # ALTERADO nesta SPEC: o nome do tipo como se lê, com acento
+        return ROTULO_POR_TIPO[self]
+
+
+ROTULO_POR_TIPO = {
+    TipoDesenho.PONTO: "ponto",
+    TipoDesenho.LINHA: "linha",
+    TipoDesenho.POLIGONO: "polígono",
+}
 
 
 TIPO_POR_GEOMETRIA = {
@@ -181,6 +201,9 @@ class GavetaDesenhos(BaseModel):
 - `@templates/lote_geocoder/partials/_gaveta_lote.html` → a casca da gaveta: cabeçalho, corpo rolável, paleta.
 - `@static/src/js/mapa/desenho/ferramentas.js` → `ferramentaAtiva`: quem está na mão, lido do plugin.
 - `@static/src/tema-dimap.dev.css` → `.card-well`, `.gaveta-lateral*`, `.scroll-etched`, `.tooltip`: o tooltip já tematizado.
+- `@templates/competencias/partials/_modal_remover.html` → `.modal-glass` + `.modal-box-glass`: a pergunta de confirmação que já existe.
+- `@static/src/tema-dimap.dev.css` → `.btn-etched` + `.btn-etched-swell`: o botão gravado do "limpar filtros", que incha e acende em água sob o ponteiro.
+- Sprite de glifos → `#glifo-x`: o X.
 - `@templates/core/home.html` → `.badge-ponto`, `.badge-linha`, `.badge-poligono`: a marca de tipo que já existe.
 - Skills: `mock`, `componentes-frontend`, `leaflet-geoman`, `htmx`, `ontologia`, `test-django-views`.
 
@@ -338,7 +361,8 @@ def desenhos_da_bancada(request: HttpRequest) -> HttpResponse:
 ```
 
 **`templates/mapping/_poco_desenhos.html`** — cada poço é um formulário: o radio carrega o
-`id_bancada` do traço, e o rodapé é onde a SPEC da ação pendura o botão dela.
+`id_bancada` do traço, e o rodapé é onde a SPEC da ação pendura o botão dela. Cada linha leva o X e a
+pergunta de confirmação dela.
 
 ```html
 <form class="poco-desenhos card-well">
@@ -361,7 +385,29 @@ def desenhos_da_bancada(request: HttpRequest) -> HttpResponse:
           </span>
         {% endwith %}
       {% endif %}
+      {# NOVO: o X está em toda linha — nas não marcadas fica invisível, só guardando o lugar. #}
+      {# O invoker abre o <dialog> na top layer sem JS: a gaveta de vidro não o prende. #}
+      <button type="button" class="linha-desenho__apagar etched"
+              commandfor="apagar-desenho-{{ medido.desenho.id_bancada }}" command="show-modal"
+              aria-label="Apagar {{ poco.tipo }} {{ forloop.counter }}">
+        <svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg>
+      </button>
     </label>
+    {# NOVO. Fora do <label>: clique dentro da pergunta não pode chegar ao radio. #}
+    <dialog id="apagar-desenho-{{ medido.desenho.id_bancada }}" class="modal modal-glass" closedby="any">
+      <div class="modal-box modal-box-glass glass-panel-thick">
+        <p class="text-overline">Apagar desenho</p>
+        <p>{{ poco.tipo|capfirst }} {{ forloop.counter }}</p>
+        <div class="modal-action">
+          <button type="button" class="btn btn-glass btn-sm"
+                  commandfor="apagar-desenho-{{ medido.desenho.id_bancada }}" command="close">Cancelar</button>
+          {# O value é o id_bancada: é por ele que o JS acha a camada a tirar do mapa. #}
+          <button type="button" class="btn btn-onsen btn-sm linha-desenho__confirmar-apagar"
+                  value="{{ medido.desenho.id_bancada }}"
+                  commandfor="apagar-desenho-{{ medido.desenho.id_bancada }}" command="close">Apagar</button>
+        </div>
+      </div>
+    </dialog>
   {% endfor %}
   {# Vazio nesta iteração: é a âncora que a ação do tipo preenche por OOB (localizacao_lote/003). #}
   <div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}"></div>
@@ -504,6 +550,69 @@ function abrirGaveta(gaveta) {
 }
 ```
 
+**`templates/mapping/_gaveta_desenhos.html`** — o botão fecha o conteúdo da gaveta, depois do último
+poço. Peça pronta do tema: nada de CSS novo.
+
+```html
+<div class="gaveta-lateral-conteudo">
+  {% for poco in gaveta.pocos %}
+    {% include "mapping/_poco_desenhos.html" with poco=poco %}
+  {% endfor %}
+  {# NOVO. self-end: o conteúdo é coluna flex, e o botão encosta à direita. #}
+  <button type="button" class="btn-etched btn-etched-swell etched self-end"
+          commandfor="limpar-desenhos" command="show-modal">
+    Limpar desenhos
+  </button>
+  {# NOVO. A mesma pergunta do X, com a contagem de cada poço na badge da cor do tipo. #}
+  <dialog id="limpar-desenhos" class="modal modal-glass" closedby="any">
+    <div class="modal-box modal-box-glass glass-panel-thick">
+      <p class="text-overline">Limpar desenhos</p>
+      <p>Apagar todos os desenhos do mapa?</p>
+      {% for poco in gaveta.pocos %}
+        {% with total=poco.desenhos|length %}
+          <span class="badge badge-{{ poco.tipo }} badge-sm">{{ total }} {{ poco.tipo.rotulo }}{{ total|pluralize }}</span>
+        {% endwith %}
+      {% endfor %}
+      <div class="modal-action">
+        <button type="button" class="btn btn-glass btn-sm" commandfor="limpar-desenhos" command="close">Cancelar</button>
+        <button type="button" class="btn btn-onsen btn-sm" data-limpar-desenhos
+                commandfor="limpar-desenhos" command="close">Apagar todos</button>
+      </div>
+    </div>
+  </dialog>
+</div>
+```
+
+**`static/src/js/mapa/desenho/apagar.js`** — utilitário de Leaflet: a confirmação tira a camada do
+mapa, o limpar tira todas, e os dois avisam pelo mesmo evento da borracha do Geoman. Quem refaz a
+gaveta continua sendo a sincronia.
+
+```javascript
+export function inicializarApagar(mapa) {
+  document.addEventListener("click", (evento) => {
+    const confirmar = evento.target.closest(".linha-desenho__confirmar-apagar");
+    if (confirmar) apagar(mapa, confirmar.value);
+    if (evento.target.closest("[data-limpar-desenhos]")) limpar(mapa);   // NOVO
+  });
+}
+
+function apagar(mapa, id) {
+  const camada = mapa.pm.getGeomanLayers().find((c) => String(L.Util.stamp(c)) === id);
+  if (!camada) return;
+  mapa.removeLayer(camada);
+  // removeLayer não dispara pm:remove: disparado à mão, a bancada se reacomoda e a sincronia
+  // reenvia a coleção exatamente como na borracha.
+  mapa.fire("pm:remove", { layer: camada, shape: camada.pm.getShape() });
+}
+
+// NOVO. Um pm:remove só, depois de tirar todas: a sincronia reenvia a coleção — já vazia — uma
+// vez, em vez de uma requisição por camada disputando a gaveta.
+function limpar(mapa) {
+  mapa.pm.getGeomanLayers().forEach((camada) => mapa.removeLayer(camada));
+  mapa.fire("pm:remove", { layer: null });
+}
+```
+
 **`static/src/js/mapa/init.js`** — a sincronia entra depois da bancada, e o destaque reage à marca e
 ao assentamento do swap.
 
@@ -512,6 +621,7 @@ inicializarBancadaDesenho(mapa);
 inicializarSincronia(mapa, container);   // NOVO nesta SPEC
 inicializarEnvio(mapa);                  // NOVO nesta SPEC
 inicializarSelecao(mapa);                // NOVO nesta SPEC
+inicializarApagar(mapa);                 // NOVO nesta SPEC
 document.addEventListener("change", (evento) => {
   if (evento.target.matches(".linha-desenho__marca")) destacarSelecionados(mapa);
 });
@@ -522,7 +632,9 @@ document.body.addEventListener("htmx:afterSettle", () => destacarSelecionados(ma
 `.linha-desenho__marca`, `__rotulo` e `__medida`) e a molécula `.poco-desenhos`, composta sobre o
 `.card-well`. A linha marcada lê o próprio radio (`:has(.linha-desenho__marca:checked)`) — nenhum
 estado de seleção em JavaScript. E a variante `.item-menu-swell`, empilhada sobre o `.item-menu` da
-linha de ação, que incha sob o ponteiro sem alterar o `.item-menu`.
+linha de ação, que incha sob o ponteiro sem alterar o `.item-menu`. O átomo `.linha-desenho` ganha o
+elemento `__apagar`: o X gravado em cinza de rocha, `invisible` fora da linha marcada, que sob o
+ponteiro incha e acende em água — a receita do `.btn-etched-swell`.
 
 ## 7 · Caveats
 A coleção inteira sobe a cada mudança, e o servidor não guarda nada entre um envio e o outro. A home
@@ -555,9 +667,24 @@ O clique num desenho para a propagação do evento nativo. É o jeito de o cliqu
 como "fora da gaveta" pelo design/019 sem que este conheça o Leaflet. Custo: nenhum outro ouvinte de
 `click` no `document` vê esse clique — a torrezinha do encaixe aberta, por exemplo, não se fecha nele.
 
+O átomo `.linha-desenho`, já implementado, é alterado: toda linha reserva a coluna do X. A alteração
+foi pedida pelo usuário, e o X invisível é o que mantém as medidas alinhadas entre linha marcada e não
+marcada. Custo: toda tela que compõe `.linha-desenho` passa a ter essa coluna.
+
+A deleção pela gaveta dispara `pm:remove` à mão, sem passar pelo modo de remoção do Geoman — no
+limpar, um evento só e sem camada. Assim a bancada e a sincronia reagem a um evento só, sem um segundo
+caminho de reenvio. Custo: `apagar.js` depende do nome e do formato de um evento do plugin, e uma
+troca de versão que o altere, ou um ouvinte novo que leia a camada do evento, o quebra em silêncio.
+
+A pergunta de confirmação é um `<dialog>` por linha — mais um para o limpar —, aberto pelos atributos `command`/`commandfor`, e
+fecha no clique fora por `closedby`. É o que põe a pergunta na top layer, acima do vidro da gaveta,
+sem uma linha de JS para abri-la. Custo: exige navegador recente — onde `closedby` faltar, a pergunta
+só fecha pelo Cancelar ou pelo `Esc` —, e a marcação da pergunta se repete a cada desenho.
+
 Os testes do §8 não cobrem JavaScript: o projeto não tem infraestrutura de teste de JS nem de render,
 como já registrado em design/017 e design/018. Custo: o destaque no mapa, a marca pelo clique no
-desenho e o refazer das medidas ao fechar o modo de modificação só têm prova no smoke test manual.
+desenho, a deleção pela gaveta e o refazer das medidas ao fechar o modo de modificação só têm prova
+no smoke test manual.
 
 ## 8 · Testes (TDD)
 - `test_poco_por_tipo_na_ordem_da_bancada` — dois polígonos e um ponto viram dois poços, o do ponto
@@ -573,9 +700,11 @@ desenho e o refazer das medidas ao fechar o modo de modificação só têm prova
 - `test_escolha_apagada_devolve_a_selecao_ao_ultimo` — id escolhido que não está mais na coleção faz
   o último do tipo assumir.
 - `test_desenhos_da_bancada_abrem_a_gaveta_sem_login` — POST anônimo devolve a gaveta com um poço por
-  tipo e um radio por desenho, o do selecionado marcado.
-- `test_radio_carrega_o_id_da_camada` — cada radio traz o `id_bancada` do seu desenho no `value`, que
-  é o que a ação submete.
+  tipo e um radio por desenho, o do selecionado marcado, e o botão de limpar depois do último poço, cuja pergunta traz a contagem
+  de cada tipo na badge dele (`1 ponto`, `1 polígono`).
+- `test_linha_carrega_o_id_da_camada` — cada radio traz o `id_bancada` do seu desenho no `value`, que
+  é o que a ação submete, e toda linha tem um X que abre a pergunta cujo botão de confirmar leva o
+  mesmo `id_bancada`.
 - `test_colecao_vazia_nao_devolve_gaveta` — POST sem desenho algum devolve corpo vazio, e a gaveta
   sai de cena.
 - `test_home_carrega_a_sincronia_dos_desenhos` — a home declara a URL da rota no container do mapa e

@@ -2904,7 +2904,7 @@ html[data-theme="dimap"] {
      tipo cresce em `::before`, e a placa vira gelo. O cursor acende em água, como o [data-ativo]
      do .select-onsen. */
   .linha-desenho {
-    @apply relative flex items-center gap-2.5 w-full text-left pl-4 pr-3 py-2 rounded-xl text-sm;
+    @apply relative flex items-center gap-2.5 w-full text-left pl-4 pr-7 py-2 rounded-xl text-sm;
     @apply border border-transparent cursor-pointer text-base-content transition-all duration-200;
   }
   .linha-desenho::before {
@@ -2929,6 +2929,21 @@ html[data-theme="dimap"] {
   .linha-desenho__medida { @apply ml-auto shrink-0 font-medium tabular-nums text-base-content/70 transition-colors duration-200; }
   .linha-desenho:has(.linha-desenho__marca:checked) .linha-desenho__medida,
   .linha-desenho:hover .linha-desenho__medida { @apply text-inherit; }
+  /* O X de apagar mora em toda linha: nas não marcadas fica invisível, guardando a coluna que
+     mantém as medidas alinhadas. Em repouso é gravação (.etched no markup); sob o ponteiro incha e
+     enche de água, como o .btn-etched-swell. */
+  .linha-desenho__apagar {
+    @apply absolute top-0.5 right-0.5 flex items-center justify-center w-5 h-5 rounded-full cursor-pointer;
+    @apply transition-all duration-300 origin-center;
+  }
+  .linha-desenho__apagar svg { @apply w-3 h-3; }
+  .linha-desenho:not(:has(.linha-desenho__marca:checked)) .linha-desenho__apagar { @apply invisible; }
+  .linha-desenho__apagar:hover,
+  .linha-desenho__apagar:focus-visible {
+    @apply scale-[1.25] outline-none;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
 
   /* ==================== MOLÉCULA · .poco-desenhos (SPEC design/020) ==================== */
   /* O poço de um tipo: a lista de .linha-desenho na tinta daquela geometria, sobre o .card-well

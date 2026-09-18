@@ -2959,11 +2959,13 @@
                 <input type="radio" name="design-system-ponto" class="linha-desenho__marca" checked>
                 <span class="linha-desenho__rotulo">Ponto 1</span>
                 <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′40,320″ S · 46°39′23,760″ O">-23.561, -46.657</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
               </label>
               <label class="linha-desenho">
                 <input type="radio" name="design-system-ponto" class="linha-desenho__marca">
                 <span class="linha-desenho__rotulo">Ponto 2</span>
                 <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′44,280″ S · 46°39′19,080″ O">-23.562, -46.655</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
               </label>
             </form>
             <form class="poco-desenhos poco-desenhos--linha card-well">
@@ -2971,6 +2973,7 @@
                 <input type="radio" name="design-system-linha" class="linha-desenho__marca" checked>
                 <span class="linha-desenho__rotulo">Linha 1</span>
                 <span class="linha-desenho__medida">318 m</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
               </label>
             </form>
             <form class="poco-desenhos poco-desenhos--poligono card-well">
@@ -2978,15 +2981,29 @@
                 <input type="radio" name="design-system-poligono" class="linha-desenho__marca">
                 <span class="linha-desenho__rotulo">Polígono 1</span>
                 <span class="linha-desenho__medida">1.240 m²</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
               </label>
               <label class="linha-desenho">
                 <input type="radio" name="design-system-poligono" class="linha-desenho__marca" checked>
                 <span class="linha-desenho__rotulo">Polígono 2</span>
                 <span class="linha-desenho__medida">18.702 m²</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar" commandfor="design-system-apagar-desenho" command="show-modal"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
               </label>
+              <dialog id="design-system-apagar-desenho" class="modal modal-glass" closedby="any">
+                <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+                  <div>
+                    <p class="text-overline">Apagar desenho</p>
+                    <p class="text-[18px] font-bold text-rocha-950">Polígono 2</p>
+                  </div>
+                  <div class="modal-action">
+                    <button type="button" class="btn btn-glass btn-sm" commandfor="design-system-apagar-desenho" command="close">Cancelar</button>
+                    <button type="button" class="btn btn-onsen btn-sm" commandfor="design-system-apagar-desenho" command="close">Apagar</button>
+                  </div>
+                </div>
+              </dialog>
             </form>
           </div>
-          <p class="text-xs text-base-content/60 mt-2">Um poço por tipo desenhado, na tinta daquela geometria (<span class="text-code">--tinta-desenho</span>). A linha marcada lê o próprio radio (<span class="text-code">:has(.linha-desenho__marca:checked)</span>) — nenhum estado de seleção em JavaScript. O ponto mostra a posição em graus decimais com sinal, e o tooltip a traz em graus, minutos e segundos; linha mede comprimento, polígono mede área.</p>
+          <p class="text-xs text-base-content/60 mt-2">Um poço por tipo desenhado, na tinta daquela geometria (<span class="text-code">--tinta-desenho</span>). A linha marcada lê o próprio radio (<span class="text-code">:has(.linha-desenho__marca:checked)</span>) — nenhum estado de seleção em JavaScript. O ponto mostra a posição em graus decimais com sinal, e o tooltip a traz em graus, minutos e segundos; linha mede comprimento, polígono mede área. O X de apagar (<span class="text-code">.linha-desenho__apagar</span>) está em toda linha, mas só a marcada o mostra — nas outras ele guarda a coluna; gravado em repouso, incha e enche de água sob o ponteiro, e abre a pergunta de confirmação num <span class="text-code">&lt;dialog&gt;</span> com <span class="text-code">.modal-glass</span> (experimente no Polígono 2).</p>
         </div>
 
         <div>

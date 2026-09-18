@@ -11,6 +11,17 @@ class TipoDesenho(StrEnum):
     LINHA = "linha"
     POLIGONO = "poligono"
 
+    @property
+    def rotulo(self) -> str:
+        return ROTULO_POR_TIPO[self]
+
+
+ROTULO_POR_TIPO = {
+    TipoDesenho.PONTO: "ponto",
+    TipoDesenho.LINHA: "linha",
+    TipoDesenho.POLIGONO: "polígono",
+}
+
 
 TIPO_POR_GEOMETRIA = {
     "Point": TipoDesenho.PONTO,

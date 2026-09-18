@@ -14,6 +14,30 @@
           {% for poco in gaveta.pocos %}
             {% include "mapping/_poco_desenhos.html" with poco=poco %}
           {% endfor %}
+          <button type="button" class="btn-etched btn-etched-swell etched self-end"
+                  commandfor="limpar-desenhos" command="show-modal">
+            Limpar desenhos
+          </button>
+          <dialog id="limpar-desenhos" class="modal modal-glass" closedby="any">
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+              <div>
+                <p class="text-overline">Limpar desenhos</p>
+                <p class="text-[18px] font-bold text-rocha-950">Apagar todos os desenhos do mapa?</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                {% for poco in gaveta.pocos %}
+                  {% with total=poco.desenhos|length %}
+                    <span class="badge badge-{{ poco.tipo }} badge-sm">{{ total }} {{ poco.tipo.rotulo }}{{ total|pluralize }}</span>
+                  {% endwith %}
+                {% endfor %}
+              </div>
+              <div class="modal-action">
+                <button type="button" class="btn btn-glass btn-sm" commandfor="limpar-desenhos" command="close">Cancelar</button>
+                <button type="button" class="btn btn-onsen btn-sm" data-limpar-desenhos
+                        commandfor="limpar-desenhos" command="close">Apagar todos</button>
+              </div>
+            </div>
+          </dialog>
         </div>
       </div>
       <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>

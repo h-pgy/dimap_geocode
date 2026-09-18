@@ -15,7 +15,28 @@
                 data-tip="{{ lat.graus }}°{{ lat.minutos|stringformat:'02d' }}′{% if lat.segundos < 10 %}0{% endif %}{{ lat.segundos|floatformat:3 }}″ {{ lat.hemisferio }} · {{ lon.graus }}°{{ lon.minutos|stringformat:'02d' }}′{% if lon.segundos < 10 %}0{% endif %}{{ lon.segundos|floatformat:3 }}″ {{ lon.hemisferio }}">{{ lat.graus_decimais|stringformat:'.3f' }}, {{ lon.graus_decimais|stringformat:'.3f' }}</span>
         {% endwith %}
       {% endif %}
+      <button type="button" class="linha-desenho__apagar etched"
+              commandfor="apagar-desenho-{{ medido.desenho.id_bancada }}" command="show-modal"
+              aria-label="Apagar {{ poco.tipo }} {{ forloop.counter }}">
+        <svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg>
+      </button>
     </label>
+    {# Fora do label: clique dentro da pergunta não pode chegar ao radio. #}
+    <dialog id="apagar-desenho-{{ medido.desenho.id_bancada }}" class="modal modal-glass" closedby="any">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+        <div>
+          <p class="text-overline">Apagar desenho</p>
+          <p class="text-[18px] font-bold text-rocha-950">{{ poco.tipo|capfirst }} {{ forloop.counter }}</p>
+        </div>
+        <div class="modal-action">
+          <button type="button" class="btn btn-glass btn-sm"
+                  commandfor="apagar-desenho-{{ medido.desenho.id_bancada }}" command="close">Cancelar</button>
+          <button type="button" class="btn btn-onsen btn-sm linha-desenho__confirmar-apagar"
+                  value="{{ medido.desenho.id_bancada }}"
+                  commandfor="apagar-desenho-{{ medido.desenho.id_bancada }}" command="close">Apagar</button>
+        </div>
+      </div>
+    </dialog>
   {% endfor %}
   <div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}"></div>
 </form>

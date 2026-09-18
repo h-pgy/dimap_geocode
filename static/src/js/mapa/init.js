@@ -2,6 +2,7 @@ import { criarMapa } from "./criar_mapa.js";
 import { adicionarBaseWms } from "./camada_base.js";
 import { adicionarResultado } from "./camada_resultado.js";
 import { inicializarControlesMapa } from "./controles_mapa.js";
+import { inicializarApagar } from "./desenho/apagar.js";
 import { inicializarBancadaDesenho } from "./desenho/bancada.js";
 import { destacarSelecionados } from "./desenho/destaque.js";
 import { inicializarEnvio } from "./desenho/envio.js";
@@ -27,6 +28,7 @@ function montarMapaBase() {
   inicializarSincronia(mapa, mapa.getContainer().parentElement);
   inicializarEnvio(mapa);
   inicializarSelecao(mapa);
+  inicializarApagar(mapa);
 }
 
 // htmx:afterSwap dispara a cada swap (garantido) — nele buscamos o payload por id no DOM. O
