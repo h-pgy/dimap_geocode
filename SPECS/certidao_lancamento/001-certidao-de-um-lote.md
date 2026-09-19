@@ -305,7 +305,7 @@ def acoes(request: HttpRequest) -> HttpResponse:
 @require_GET
 def modal(request: HttpRequest) -> HttpResponse:
     # contexto_modal decide entre formulário e aviso (lote que sumiu, sem lançamento, condominial).
-    lote = ler_lote(request.GET.get("lote", ""))
+    lote = ler_lote(request.GET.get("id", ""))
     return render(request, TEMPLATE_MODAL, contexto_modal(lote))
 
 
@@ -346,7 +346,7 @@ def emitir(request: HttpRequest) -> HttpResponse:
     <p class="text-overline">Ações</p>
     {% for item in itens %}
       <button type="button" class="btn btn-onsen btn-sm"
-              hx-get="{% url item.url_name %}?lote={{ id_entidade }}"
+              hx-get="{% url item.url_name %}?id={{ id_entidade }}"
               hx-target="#poco-modal">
         {{ item.acao.acao.nome_curto }}
       </button>

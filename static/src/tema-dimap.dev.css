@@ -3001,6 +3001,25 @@ html[data-theme="dimap"] {
   .table-onsen-compacta thead th { @apply p-1.5; }
   .table-onsen-compacta tbody td { @apply px-3 py-1.5 text-[13px]; }
 
+  /* ÁTOMO · .btn-lixeira (SPEC localizacao_lote/004) — a lixeira da linha da tabela, com o visual do
+     controle de apagar da bancada: madeira em repouso; sob o ponteiro incha, enche de água e brilha. */
+  .btn-lixeira {
+    @apply w-7 h-7 rounded-lg grid place-items-center cursor-pointer
+           text-madeira-700 border border-transparent transition-all duration-200;
+  }
+  .btn-lixeira svg { @apply w-4 h-4 transition-all duration-200; }
+  .btn-lixeira:hover,
+  .btn-lixeira:focus-visible {
+    @apply bg-white/60 outline-none;
+    box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
+  }
+  .btn-lixeira:hover svg,
+  .btn-lixeira:focus-visible svg {
+    @apply scale-110 text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .btn-lixeira:active { @apply scale-95; }
+
   /* VARIANTE · .gaveta-inferior-rasa (SPEC localizacao_lote/003) — altura fixa em vez de teto.
      Abaixo do tablet vale a gaveta de tela inteira. */
   @media (width >= 48rem) {
@@ -3068,6 +3087,21 @@ html[data-theme="dimap"] {
      fica recolhida, como sob a gaveta lateral aberta. */
   .tela-home:has(#contexto-acao[data-contexto-acao]) .search-hero {
     @apply opacity-0 -translate-y-5 scale-95 pointer-events-none invisible;
+  }
+
+  /* ESTADO · saída da gaveta de resultado (SPEC localizacao_lote/004) — sem JS. O aviso de fechar
+     aberto recolhe a placa como se recolhida e mostra a paleta; o aviso entra depois da descida. */
+  .gaveta-toggle:checked + .gaveta-inferior-rasa:has(.gaveta-inferior-aviso-fechar[open]) { @apply translate-y-full; }
+  .gaveta-toggle:checked + .gaveta-inferior-rasa:has(.gaveta-inferior-aviso-fechar[open]) > .paleta-gaveta-inferior {
+    @apply opacity-100;
+  }
+  .gaveta-inferior-aviso-fechar[open] { transition-delay: 400ms; }
+
+  /* Encerramento em curso (.htmx-swapping no alvo): a placa desce, paleta e aviso somem em fade.
+     A duração casa com o swap:500ms do _fechar_gaveta.html e do _aviso_limpeza.html. */
+  #gaveta-inferior-conteudo.htmx-swapping .gaveta-inferior-rasa { @apply translate-y-full duration-500; }
+  #gaveta-inferior-conteudo.htmx-swapping :is(.paleta-gaveta-inferior, .gaveta-inferior-aviso-fechar) {
+    @apply opacity-0 duration-500;
   }
 }
 

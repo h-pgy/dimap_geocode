@@ -1,0 +1,8 @@
+<div id="controles-conjunto" class="flex items-center gap-2" {% if oob %}hx-swap-oob="true"{% endif %}>
+  {% if limpar_lotes.aviso %}
+    <button type="button" class="btn-etched btn-etched-swell etched"
+            commandfor="aviso-limpar-lotes" command="show-modal">Limpar lotes</button>
+    {% include "mapping/_aviso_limpeza.html" with id="aviso-limpar-lotes" limpeza=limpar_lotes rotulo="Limpar lotes" %}
+  {% endif %}
+  {% include "mapping/_fechar_gaveta.html" %}
+</div>

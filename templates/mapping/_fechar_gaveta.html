@@ -1,0 +1,16 @@
+{# O swap:500ms é o intervalo em que o CSS anima a saída; deve casar com a duração de .htmx-swapping no tema. #}
+{% with limpeza=limpeza_ao_fechar %}
+  {% if limpeza.aviso %}
+    <button type="button" class="btn-etched btn-etched-swell etched self-center" aria-label="Fechar"
+            commandfor="aviso-fechar-gaveta" command="show-modal">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    {% include "mapping/_aviso_limpeza.html" with id="aviso-fechar-gaveta" fecha_gaveta=True %}
+  {% else %}
+    <button type="button" class="btn-etched btn-etched-swell etched self-center" aria-label="Fechar"
+            hx-post="{{ limpeza.url }}" hx-vals='{{ limpeza.hx_vals }}'
+            hx-target="#gaveta-inferior-conteudo" hx-swap="innerHTML swap:500ms">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  {% endif %}
+{% endwith %}

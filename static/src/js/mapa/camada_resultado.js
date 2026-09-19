@@ -3,7 +3,7 @@
 // ele seria repintado, rebaixado, listado na gaveta e apagado como um deles. O encaixe continua valendo.
 const FORA_DA_BANCADA = { pmIgnore: true, snapIgnore: false };
 
-export function adicionarResultado(map, geometria, corPadrao) {
+export function adicionarResultado(map, geometria, corPadrao, enquadrar = true) {
   const camada = L.geoJSON(geometria, {
     ...FORA_DA_BANCADA,
     style: (f) => {
@@ -20,9 +20,13 @@ export function adicionarResultado(map, geometria, corPadrao) {
       if (p.rotulo) layer.bindTooltip(p.rotulo, { direction: "top", sticky: true });
     },
   }).addTo(map);
+  if (enquadrar) enquadrarCamada(map, camada);
+  return camada;
+}
+
+function enquadrarCamada(map, camada) {
   const b = camada.getBounds();
   b.isValid()
     ? map.fitBounds(b, { maxZoom: 18, padding: [20, 20] })
     : map.setView(b.getCenter(), 17);
-  return camada;
 }

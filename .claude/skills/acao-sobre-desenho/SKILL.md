@@ -49,6 +49,7 @@ Se a SPEC ou o pedido não disserem, **pergunte em bloco, de uma vez**; sem resp
 | **Nome, tooltip e slug** | Nenhum: o slug decide a pasta do SVG e, no ato, é chave do registro. |
 | **Glifo do ícone** (variante `pequeno`) | Proponha em palavras e **espere o ok** antes de gravar o SVG (skill `painel`). |
 | **O resultado vai ao mapa com gaveta inferior?** | Sim, pela base `_resultado_acao.html` (§5). Outro formato de resultado pede outra base, e isso é SPEC própria. |
+| **O que fechar a gaveta limpa?** O estado que a ação guardou (sessão, rascunho…), se pede aviso antes, e o que o aviso conta | **Nenhum — pergunte sempre.** Toda ação com gaveta de resultado declara a sua limpeza ao fechar (SPEC localizacao_lote/004). |
 | **As features do resultado abrem gaveta lateral?** Qual? | Se a entidade já tem gaveta (lote, logradouro…), reusa a gaveta dela, intacta. |
 | **Limites de conferência** (área máxima, validade da geometria…) | Toda conferência que evita ida inútil à rede vem **antes** da rede, com mensagem em português. |
 | **Ato: estrutural? alcance? operação e alvo?** | As perguntas da skill `acao-administrativa` §2. O alvo do registro é o desenho (`alvo_tipo="desenho"`) ou a entidade que ele resolveu — pergunte. |

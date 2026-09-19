@@ -1,5 +1,6 @@
 import json
 from typing import Any
+from uuid import uuid4
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
@@ -8,8 +9,18 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_GET, require_POST
 from pydantic import BaseModel, field_validator
 
-from apps.lotes_mais_proximos.contexto import camada_lotes, contexto_lotes_do_desenho
-from apps.mapping.context import contexto_aviso, contexto_mapa
+from apps.lotes_mais_proximos.contexto import (
+    camada_lotes,
+    contexto_lotes_do_desenho,
+    contexto_revisao_do_conjunto,
+)
+from apps.lotes_mais_proximos.sessao import (
+    ConjuntoNaSessao,
+    conjunto_vigente,
+    descartar_conjunto,
+    guardar_conjunto,
+)
+from apps.mapping.context import contexto_aviso, contexto_encerramento_acao, contexto_mapa
 from services.domain.desenho import Desenho
 from services.domain.geometry import (
     GeoFeature,
@@ -26,13 +37,17 @@ from services.domain.lote_geocod import (
 )
 from services.domain.lotes_mais_proximos import (
     BuscarLotesDoDesenho,
+    ConjuntoDeLotes,
     DesenhoGrandeDemaisError,
     DesenhoInvalidoError,
+    EsvaziarConjunto,
     LoteMaisProximo,
     LoteMaisProximoInput,
     LoteProximo,
     LotesDoDesenhoInput,
     NenhumLoteProximoError,
+    RemocaoDoConjuntoInput,
+    RemoverDoConjunto,
 )
 from services.integrations.wfs import build_fetcher
 
@@ -47,9 +62,16 @@ WFS_LAYER_LOTE_CIDADAO: str = settings.WFS_LAYER_LOTE_CIDADAO
 
 TEMPLATE_RESULTADO_MAIS_PROXIMO = "lotes_mais_proximos/partials/_resultado_mais_proximo.html"
 TEMPLATE_RESULTADO_DESENHO = "lotes_mais_proximos/partials/_resultado_desenho.html"
+TEMPLATE_REVISAO_DO_CONJUNTO = "lotes_mais_proximos/partials/_revisao_do_conjunto.html"
+TEMPLATE_ENCERRAMENTO_ACAO = "mapping/_encerramento_acao.html"
+TEMPLATE_AVISO = "mapping/_aviso.html"
 TEMPLATE_RECUSA_ACAO = "mapping/_recusa_acao.html"
 TEMPLATE_GAVETA_LOTE = "lote_geocoder/partials/_gaveta_lote.html"
 
+MSG_CONJUNTO_NAO_VIGENTE = (
+    "Este resultado foi substituído por outra consulta ou já foi descartado. "
+    "Refaça a consulta a partir do desenho."
+)
 MSG_LOTE_NAO_ENCONTRADO = "O lote não foi encontrado no cadastro: ele pode ter saído da base."
 
 # O raio sai da mesma constante que alimentou a consulta; a exceção não precisa carregá-lo de volta.
@@ -156,10 +178,57 @@ def lotes_do_desenho(request: HttpRequest) -> HttpResponse:
         area_maxima_m2=LOTES_DESENHO_AREA_MAXIMA_M2,
     )
     try:
-        resultado = BuscarLotesDoDesenho(build_fetcher(settings))(entrada)
+        apurado = BuscarLotesDoDesenho(build_fetcher(settings))(entrada)
     except (DesenhoInvalidoError, DesenhoGrandeDemaisError) as erro:
         return render(request, TEMPLATE_RECUSA_ACAO, contexto_aviso(str(erro)))
-    return render(request, TEMPLATE_RESULTADO_DESENHO, contexto_lotes_do_desenho(resultado))
+    guardado = ConjuntoNaSessao(chave=uuid4().hex, conjunto=ConjuntoDeLotes(apurado=apurado))
+    guardar_conjunto(request.session, guardado)
+    return render(request, TEMPLATE_RESULTADO_DESENHO, contexto_lotes_do_desenho(guardado))
+
+
+class RemocaoDoConjunto(BaseModel):
+    chave: str
+    id_poligono: str
+
+
+class ConjuntoAlvo(BaseModel):
+    chave: str
+
+
+@require_POST
+def remover_do_conjunto(request: HttpRequest) -> HttpResponse:
+    """Rota aberta (SPEC localizacao_lote/004): revisão de dado público, sem ato administrativo."""
+    remocao = RemocaoDoConjunto.model_validate(request.POST.dict())
+    conjunto = conjunto_vigente(request.session, remocao.chave)
+    if conjunto is None:
+        return render(request, TEMPLATE_AVISO, contexto_aviso(MSG_CONJUNTO_NAO_VIGENTE))
+    revisado = RemoverDoConjunto()(
+        RemocaoDoConjuntoInput(conjunto=conjunto, id_poligono=remocao.id_poligono)
+    )
+    guardado = ConjuntoNaSessao(chave=remocao.chave, conjunto=revisado)
+    guardar_conjunto(request.session, guardado)
+    return render(request, TEMPLATE_REVISAO_DO_CONJUNTO, contexto_revisao_do_conjunto(guardado))
+
+
+@require_POST
+def limpar_conjunto(request: HttpRequest) -> HttpResponse:
+    """Rota aberta (SPEC localizacao_lote/004): revisão de dado público, sem ato administrativo."""
+    alvo = ConjuntoAlvo.model_validate(request.POST.dict())
+    conjunto = conjunto_vigente(request.session, alvo.chave)
+    if conjunto is None:
+        return render(request, TEMPLATE_AVISO, contexto_aviso(MSG_CONJUNTO_NAO_VIGENTE))
+    guardado = ConjuntoNaSessao(chave=alvo.chave, conjunto=EsvaziarConjunto()(conjunto))
+    guardar_conjunto(request.session, guardado)
+    return render(request, TEMPLATE_REVISAO_DO_CONJUNTO, contexto_revisao_do_conjunto(guardado))
+
+
+@require_POST
+def fechar_conjunto(request: HttpRequest) -> HttpResponse:
+    """Rota aberta (SPEC localizacao_lote/004): a limpeza ao fechar dos lotes intersectados."""
+    alvo = ConjuntoAlvo.model_validate(request.POST.dict())
+    descartar_conjunto(request.session, alvo.chave)
+    # Responde igual com chave vigente ou não: a aba que fecha sempre limpa o próprio mapa.
+    return render(request, TEMPLATE_ENCERRAMENTO_ACAO, contexto_encerramento_acao())
 
 
 @require_GET

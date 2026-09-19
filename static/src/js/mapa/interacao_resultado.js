@@ -1,3 +1,5 @@
+import { cancelarPincagem, pincarLinha } from "../ui/pincar_linha.js";
+
 // Utilitário de Leaflet para qualquer resultado de ação no mapa (SPEC localizacao_lote/003): os
 // desenhos descem para baixo dele, a feature com url_ficha abre a gaveta dela, e a feature cujo id
 // está sob o ponteiro, ou escolhido numa [data-id-feature] da gaveta inferior, acende. Estado visual
@@ -10,6 +12,7 @@ const REALCE = {
   escolhido: { weight: 4, fillOpacity: 0.55, brilho: "realce-resultado-forte" },
 };
 const BRILHOS = ["realce-resultado", "realce-resultado-forte"];
+const LINHAS = "#gaveta-inferior-conteudo tr[data-id-feature]";
 
 let resultado = null;
 const estado = { idEscolhido: null, idSobPonteiro: null };
@@ -36,8 +39,19 @@ function realcar() {
   });
 }
 
-function escolher(id) {
+function marcarLinha(id, { aoTopo }) {
+  cancelarPincagem();
+  document.querySelectorAll(`${LINHAS}[data-ativo]`).forEach((tr) => tr.removeAttribute("data-ativo"));
+  const linha = [...document.querySelectorAll(LINHAS)].find((tr) => tr.dataset.idFeature === id);
+  if (!linha) return;
+  linha.setAttribute("data-ativo", "true");
+  // A ordem só muda na tela; a próxima troca da tabela a restaura.
+  if (aoTopo) pincarLinha(linha);
+}
+
+function escolher(id, opcoes = { aoTopo: false }) {
   estado.idEscolhido = id;
+  marcarLinha(id, opcoes);
   realcar();
 }
 
@@ -72,7 +86,7 @@ export function interagirComResultado(mapa, camadaResultado) {
     camada.on("click", (evento) => {
       // Sem isso o "clique fora" do design/019 recolheria a gaveta que este clique vai trocar.
       L.DomEvent.stopPropagation(evento.originalEvent);
-      escolher(id);
+      escolher(id, { aoTopo: true });
       htmx.ajax("GET", urlFicha, { target: "#gaveta-entidade", swap: "innerHTML" });
     });
   });

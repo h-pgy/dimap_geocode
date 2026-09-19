@@ -1,13 +1,14 @@
 ---
 spec: certidao_lancamento/002
-versao: v2
-atualizado_em: 2026-09-17
+versao: v3
+atualizado_em: 2026-09-18
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco, artefato]
 changelog:
   - v1: versão inicial
   - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
+  - v3: o conjunto vem da sessão e é relido no GeoSampa só na emissão, e a ação passa à gaveta inferior dos lotes intersectados
 ---
 
 # SPEC certidao_lancamento/002 — Certidão de Existência de Lançamento de um conjunto de lotes
@@ -19,30 +20,35 @@ imóvel que ocupa vários lotes, para obter um PDF selado que atesta o lançamen
 o terreno sobre eles.
 
 ## 2 · Condições de pronto
-- [ ] A gaveta do desenho traz o poço **"Ações"** com **"Emitir certidão de lançamento"** só para quem
-      tem a concessão; sem ação liberada, o poço não aparece.
-- [ ] O modal do conjunto lista os lotes que a certidão vai cobrir e pede processo SEI e interessado,
-      com as mesmas recusas da SPEC [001](001-certidao-de-um-lote.md).
-- [ ] Conjunto com algum lote **sem lançamento ativo** ou **condominial** abre o modal listando esses
-      lotes, sem formulário, para que sejam tirados na tabela antes.
-- [ ] Na emissão, o conjunto é **refeito no servidor** a partir do desenho e dos removidos: lote que
-      o desenho não cruza não entra, mesmo mandado no POST.
-- [ ] Se o conjunto refeito na emissão **difere** do que o modal mostrou, a emissão é recusada com a
-      explicação, e nada é emitido.
+- [ ] A gaveta inferior dos lotes intersectados traz o poço **"Ações"** com **"Emitir certidão de
+      lançamento"** só para quem tem a concessão; sem ação liberada, o poço não aparece.
+- [ ] O modal do conjunto lista os lotes que restaram na tabela e pede processo SEI e interessado,
+      com as mesmas recusas da SPEC [001](001-certidao-de-um-lote.md), **sem consultar o GeoServer**.
+- [ ] Conjunto **vazio**, ou com algum lote **sem lançamento ativo** ou **condominial**, abre o modal
+      com o aviso — listando os lotes impeditivos, quando houver —, sem formulário, para que sejam
+      tirados na tabela antes.
+- [ ] Na emissão, os lotes do conjunto guardado são **relidos no GeoSampa**, e a certidão atesta os
+      dados dessa leitura; lote que apareceu no desenho depois da consulta não entra.
+- [ ] Se o conjunto relido na emissão **difere** do que o modal mostrou — lote tirado na tabela depois,
+      lote que saiu da camada, id forjado no POST ou resultado substituído por outra consulta —, a
+      emissão é recusada com a explicação, e nada é emitido.
+- [ ] Lote que perdeu o lançamento entre o modal e a emissão devolve o modal com o aviso de lotes
+      impeditivos, e nada é emitido.
 - [ ] A certidão traz o requerimento, a área do desenho, a **tabela** com SQL, endereço e complemento
       de cada lote, o despacho no plural e a planta com a ortofoto, os lotes e o **desenho em destaque
       por cima**.
 - [ ] A certidão de **um** lote continua saindo com o texto da SPEC 001.
 - [ ] A emissão entra no acervo e fica **registrada** com operação própria, distinguível da emissão de
       um lote.
-- [ ] O design do poço de ações na gaveta do desenho, do modal do conjunto e do aviso de lotes
+- [ ] O design do poço de ações na gaveta inferior, do modal do conjunto e do aviso de lotes
       impeditivos foi aprovado no mock e as peças novas portadas para o tema e o styleguide antes de
       qualquer template da aplicação usá-las.
 
 ## 3 · Domínio
-O conjunto é o [ConjuntoDeLotes](../localizacao_lote/004-revisao-do-conjunto.md#3--domínio), refeito
-por `RevisarConjunto` a cada passo. A certidão de um lote e a do conjunto são **o mesmo documento**
-com objetos diferentes: o objeto é um tipo, e cada subtipo sabe se identificar e se declarar.
+O conjunto é o [ConjuntoDeLotes](../localizacao_lote/004-revisao-do-conjunto.md#3--domínio) guardado
+na sessão; a pergunta que esta SPEC faz a ele é "quais lotes restaram, e como o GeoSampa os descreve
+agora?". A certidão de um lote e a do conjunto são **o mesmo documento** com objetos diferentes: o
+objeto é um tipo, e cada subtipo sabe se identificar e se declarar.
 
 **`services/domain/certidao_lancamento/models.py`** — `CertidaoLancamentoInput` inteiro e o objeto.
 
@@ -99,18 +105,12 @@ class CertidaoLancamentoInput(BaseModel):
         return self
 ```
 
-**`apps/acoes_entidade/estrutura.py`** — `TipoEntidade` e a consulta inteiros.
+**`apps/acoes_entidade/estrutura.py`** — `TipoEntidade` inteiro.
 
 ```python
 class TipoEntidade(StrEnum):
-    LOTE = "lote"
-    CONJUNTO_LOTES = "conjunto_lotes"   # ALTERADO nesta SPEC
-
-
-class ConsultaAcoesEntidade(BaseModel):
-    tipo: TipoEntidade
-    # ALTERADO nesta SPEC: None para o conjunto, que não tem identificador — ele viaja no formulário da tabela.
-    id: str | None = None
+    LOTE = "lote"                      # id: o id_poligono
+    CONJUNTO_LOTES = "conjunto_lotes"  # ALTERADO nesta SPEC — id: a chave do conjunto na sessão
 ```
 
 **Mock:** [002-mock-certidao-do-conjunto.html](002-mock-certidao-do-conjunto.html) — leia a skill `mock`.
@@ -122,13 +122,14 @@ class ConsultaAcoesEntidade(BaseModel):
 - Limite de quantidade de lotes numa certidão além da área máxima do desenho — sem dono ainda.
 
 ## 5 · Peças de referência a compor
-- `@services/domain/lotes_mais_proximos/conjunto.py` → `RevisarConjunto` (SPEC localizacao_lote/004).
+- `@services/domain/lotes_mais_proximos/do_desenho.py` → `BuscarLotesDoDesenho` (SPEC localizacao_lote/003): a releitura.
+- `@apps/lotes_mais_proximos/sessao.py` → `conjunto_vigente` (SPEC localizacao_lote/004): o conjunto pela chave.
+- `@apps/lotes_mais_proximos/contexto.py` → `camada_lotes`: a camada da releitura.
 - `@services/domain/certidao_lancamento/certidao.py` → `MontarCertidaoLancamento`, `CertidaoLancamento` (SPEC 001).
 - `@apps/certidao_lancamento/emissao.py` → `emitir_certidao_lancamento` (SPEC 001).
 - `@apps/acoes_entidade` → contrato, `acoes_liberadas` e a rota do poço (SPEC 001).
 - `@services/domain/planta_localizacao` → `CamadaPlanta`, `EstiloGeometria` (SPEC documentos_oficiais/011).
 - `@services/domain/geometry/reprojecao.py` → `reprojetar` (SPEC localizacao_lote/002).
-- `@templates/lotes_mais_proximos/partials/_tabela_lotes.html` → o formulário `#conjunto-lotes` com desenho e removidos.
 - Skills: `acao-administrativa`, `documento-oficial`, `erros-de-formulario`, `mock`, `escrever-testes`.
 
 ## 6 · Snippets
@@ -180,52 +181,119 @@ class MontarCertidaoLancamento:
                 )
 ```
 
-**`apps/certidao_lancamento/emissao.py`** — a planta do conjunto: lotes de contexto, desenho por cima.
+**`services/domain/lotes_mais_proximos/conjunto.py`** — a releitura: a mesma consulta da SPEC
+localizacao_lote/003 sobre o desenho guardado, recortada aos lotes escolhidos.
 
 ```python
-def camadas_da_planta_do_conjunto(apurado: LotesDoDesenho, crs_metrico: int) -> tuple[CamadaPlanta, ...]:
-    lotes = tuple(reprojetar(l.geometry, l.crs, crs_metrico) for l in apurado.lotes)
-    desenho = reprojetar(apurado.conjunto.desenho.geometria, apurado.conjunto.desenho.crs, crs_metrico)
+class ReleituraDoConjuntoInput(BaseModel):
+    conjunto: ConjuntoDeLotes
+    crs_mapa: int
+    camada: CamadaLotes
+    area_maxima_m2: float = Field(gt=0)
+
+
+class RelerConjunto:
+    def __init__(self, buscar: Callable[[LotesDoDesenhoInput], LotesDoDesenho]) -> None:
+        self._buscar = buscar
+
+    def __call__(self, entrada: ReleituraDoConjuntoInput) -> ConjuntoDeLotes:
+        return self.pipeline(entrada)
+
+    def pipeline(self, entrada: ReleituraDoConjuntoInput) -> ConjuntoDeLotes:
+        apurado = self._buscar(LotesDoDesenhoInput(
+            desenho=entrada.conjunto.apurado.desenho,
+            crs_mapa=entrada.crs_mapa,
+            camada=entrada.camada,
+            area_maxima_m2=entrada.area_maxima_m2,
+        ))
+        escolhidos = {lote.attributes.id_poligono for lote in entrada.conjunto.lotes}
+        # O que o desenho cruza hoje e não foi escolhido entra como removido: nem a camada acrescenta lote.
+        # O escolhido que saiu da camada simplesmente não volta — é a conferência da emissão que o acusa.
+        return ConjuntoDeLotes(
+            apurado=apurado,
+            removidos=frozenset(lote.attributes.id_poligono for lote in apurado.lotes) - escolhidos,
+        )
+```
+
+**`apps/certidao_lancamento/emissao.py`** — a releitura com o instante, a conferência e a planta.
+
+```python
+class ConjuntoLido(BaseModel):
+    """O conjunto como o GeoSampa respondeu na emissão, e o instante: é ele que o rodapé declara."""
+
+    conjunto: ConjuntoDeLotes
+    consultado_em: AwareDatetime
+
+
+def reler_conjunto(conjunto: ConjuntoDeLotes) -> ConjuntoLido:
+    reler = RelerConjunto(BuscarLotesDoDesenho(build_fetcher(settings)))
+    relido = reler(ReleituraDoConjuntoInput(
+        conjunto=conjunto,
+        crs_mapa=MAP_OUTPUT_CRS,
+        camada=camada_lotes(),
+        area_maxima_m2=LOTES_DESENHO_AREA_MAXIMA_M2,
+    ))
+    return ConjuntoLido(conjunto=relido, consultado_em=timezone.localtime())
+
+
+def conferir_confirmados(lido: ConjuntoLido, confirmados: frozenset[str]) -> None:
+    # O modal mostrou uma lista; a certidão atesta exatamente essa lista ou não sai.
+    relidos = frozenset(lote.attributes.id_poligono for lote in lido.conjunto.lotes)
+    if relidos != confirmados:
+        raise ConjuntoAlteradoError(entraram=relidos - confirmados, sairam=confirmados - relidos)
+
+
+def camadas_da_planta_do_conjunto(
+    conjunto: ConjuntoDeLotes,
+    crs_mapa: int,
+    crs_metrico: int,
+) -> tuple[CamadaPlanta, ...]:
+    lotes = tuple(reprojetar(lote.geometry, lote.crs, crs_metrico) for lote in conjunto.lotes)
+    # O desenho não carrega CRS: está no do mapa, que a orquestração informa.
+    desenho = reprojetar(conjunto.apurado.desenho.geometria, crs_mapa, crs_metrico)
     return (
         CamadaPlanta(geometrias=lotes, estilo=EstiloGeometria.CONTEXTO),
         CamadaPlanta(geometrias=(desenho,), estilo=EstiloGeometria.DESTAQUE),
     )
-
-
-def conferir_confirmados(apurado: LotesDoDesenho, confirmados: frozenset[str]) -> None:
-    # O modal mostrou uma lista; a certidão atesta exatamente essa lista ou não sai.
-    refeitos = frozenset(l.attributes.id_poligono for l in apurado.lotes)
-    if refeitos != confirmados:
-        raise ConjuntoAlteradoError(entraram=refeitos - confirmados, sairam=confirmados - refeitos)
 ```
 
-**`apps/certidao_lancamento/views.py`**
+**`apps/certidao_lancamento/views.py`** — o conjunto chega pela chave; o GeoServer só é consultado
+depois que o formulário passou.
 
 ```python
 @acao_protegida(ACAO_EMITIR_CERTIDAO_LANCAMENTO)
 @require_GET
 def modal_conjunto(request: HttpRequest) -> HttpResponse:
-    # GET com hx-include do formulário da tabela: abrir o modal é leitura e não vira linha no registro.
-    apurado = revisar_conjunto(conjunto_do_request(request.GET))
-    return render(request, TEMPLATE_MODAL_CONJUNTO, contexto_modal_conjunto(apurado))
+    # Abrir o modal é leitura: sai da sessão, sem GeoServer e sem linha no registro.
+    chave = request.GET.get("id", "")
+    conjunto = conjunto_vigente(request.session, chave)
+    # contexto_modal_conjunto decide entre formulário e aviso (substituído, vazio, lotes impeditivos).
+    return render(request, TEMPLATE_MODAL_CONJUNTO, contexto_modal_conjunto(conjunto, chave))
 
 
 @acao_protegida(ACAO_EMITIR_CERTIDAO_LANCAMENTO)
 @require_POST
 def emitir_conjunto(request: HttpRequest) -> HttpResponse:
     leitura = ler_pedido_certidao(request.POST)
-    apurado = revisar_conjunto(conjunto_do_request(request.POST))
+    chave = request.POST.get("chave", "")
+    conjunto = conjunto_vigente(request.session, chave)
+    if conjunto is None:
+        return render(request, TEMPLATE_CONJUNTO_ALTERADO, contexto_conjunto_substituido(), status=409)
     if leitura.recusa is not None:
-        contexto = contexto_modal_conjunto(apurado, valores=request.POST, recusa=leitura.recusa)
+        contexto = contexto_modal_conjunto(conjunto, chave, valores=request.POST, recusa=leitura.recusa)
         return render(request, TEMPLATE_MODAL_CONJUNTO, contexto, status=422)
+    lido = reler_conjunto(conjunto)
     try:
-        conferir_confirmados(apurado, frozenset(request.POST.getlist("confirmados")))
+        conferir_confirmados(lido, frozenset(request.POST.getlist("confirmados")))
     except ConjuntoAlteradoError as erro:
         return render(request, TEMPLATE_CONJUNTO_ALTERADO, {"erro": erro}, status=409)
+    if not certificaveis(lido.conjunto):
+        # O lançamento pode ter caído depois do modal: o aviso volta com os dados relidos.
+        return render(request, TEMPLATE_MODAL_CONJUNTO, contexto_modal_conjunto(lido.conjunto, chave), status=422)
     documento = emitir_certidao_do_conjunto(
         autor=_perfil(request),
         pedido=leitura.dto,
-        apurado=apurado,
+        lido=lido,
         base_url=request.build_absolute_uri("/"),
     )
     registrar_ato(
@@ -237,40 +305,37 @@ def emitir_conjunto(request: HttpRequest) -> HttpResponse:
     return render(request, TEMPLATE_CERTIDAO_EMITIDA, {"codigo": documento.codigo})
 ```
 
+**`templates/certidao_lancamento/partials/_modal_conjunto.html`** — o formulário leva a chave e a lista
+que o modal mostrou.
+
+```html
+<input type="hidden" name="chave" value="{{ chave }}">
+{% for lote in conjunto.lotes %}
+  <input type="hidden" name="confirmados" value="{{ lote.attributes.id_poligono }}">
+{% endfor %}
+```
+
 **`apps/certidao_lancamento/emissao.py`** — o envelope do conjunto.
 
 ```python
-        alvo=AlvoDoAto(tipo="conjunto_lotes", identificador=f"{len(apurado.lotes)} lotes"),
+        alvo=AlvoDoAto(tipo="conjunto_lotes", identificador=f"{len(lido.conjunto.lotes)} lotes"),
         operacao="emitir_conjunto",
         campos_publicos=("contribuintes", "processo"),
         extras={
-            "contribuintes": ", ".join(l.attributes.sql or "" for l in apurado.lotes),
+            "contribuintes": ", ".join(lote.attributes.sql or "" for lote in lido.conjunto.lotes),
             "processo": pedido.processo,
         },
 ```
 
-**`templates/acoes_entidade/partials/_poco_acoes.html`** — no conjunto, o botão leva o formulário da tabela.
+**`templates/lotes_mais_proximos/partials/_resultado_desenho.html`** — a gaveta inferior pede o poço
+ao router com a chave do conjunto, fora da `#tabela-conjunto`: a lixeira não o repede a cada remoção.
 
 ```html
-{# ALTERADO nesta SPEC: sem id de entidade, o botão inclui #conjunto-lotes em vez de ?lote= #}
-{% if itens %}
-  <div class="card-well p-4 flex flex-col gap-2">
-    <p class="text-overline">Ações</p>
-    {% for item in itens %}
-      <button type="button" class="btn btn-onsen btn-sm"
-              hx-get="{% url item.url_name %}{% if id_entidade %}?lote={{ id_entidade }}{% endif %}"
-              {% if not id_entidade %}hx-include="#conjunto-lotes"{% endif %}
-              hx-target="#poco-modal">
-        {{ item.acao.acao.nome_curto }}
-      </button>
-    {% endfor %}
-  </div>
-{% endif %}
-```
-
-```html
-{# templates/lotes_mais_proximos/partials/_gaveta_desenho.html — o resumo do desenho pede o poço ao router #}
-<div hx-get="{% url 'acoes_entidade:acoes' %}?tipo=conjunto_lotes" hx-trigger="load" hx-swap="outerHTML"></div>
+{% block corpo %}
+  {% include "lotes_mais_proximos/partials/_tabela_conjunto.html" %}
+  <div hx-get="{% url 'acoes_entidade:acoes' %}?tipo=conjunto_lotes&id={{ chave }}"   {# NOVO #}
+       hx-trigger="load" hx-swap="outerHTML"></div>
+{% endblock %}
 ```
 
 **`apps/acoes_entidade/declaradas.py`**
@@ -290,14 +355,19 @@ A certidão do conjunto é a **mesma ação** da certidão de um lote, com outra
 (`emitir_conjunto`). É o mesmo ato, e quem pode certificar um lote pode certificar vários. O custo é
 que não dá para conceder uma sem a outra.
 
-O modal do conjunto abre por GET com o desenho e os removidos na query string (`hx-include`). Abrir o
-modal é leitura, e POST gravaria uma execução a cada abertura. O custo é uma URL longa: desenho com
-muitos vértices pode passar do limite de URL de algum proxy no caminho.
+O modal lê o conjunto da sessão, e só a emissão volta ao GeoSampa, uma vez. A certidão atesta o
+lançamento no instante da emissão, como a de um lote, e a sessão guarda o cadastro do momento da
+consulta. O custo é uma consulta `INTERSECTS` por emissão, e uma recusa `409` quando um lote escolhido
+sai da camada entre a consulta e a emissão.
 
-O conjunto é refeito no WFS três vezes: na tabela, no modal e na emissão. É o que impede que o
-navegador acrescente lote e que a certidão ateste lista diferente da conferida. O custo são três
-consultas `INTERSECTS` por certidão, e uma recusa `409` quando a camada muda entre o modal e a
-emissão.
+Na releitura, lote que o desenho passou a cruzar depois da consulta entra como removido. A pessoa
+revisou uma lista, e a certidão não pode atestar lote que ela não viu. O custo é a certidão omitir um
+lote novo na camada até alguém refazer a consulta.
+
+`apps/certidao_lancamento` passa a conhecer `apps/lotes_mais_proximos`: a chave da sessão, pelo
+`conjunto_vigente`, e a camada, pelo `camada_lotes`. É a ação consumindo o resultado da consulta, na
+mão única do §3.5 do CLAUDE.md. O custo é a certidão depender do formato em que a consulta guarda o
+conjunto na sessão.
 
 `CertidaoLancamentoInput` troca `imovel` por `objeto`, e o montador passa a despachar por subtipo.
 Um documento só evita que o timbre, o selo e o rodapé das duas certidões divirjam no primeiro ajuste.
@@ -307,17 +377,24 @@ O custo é que mexer no texto de um subtipo exige rodar o teste do outro.
 
 **Comportamento**
 - `test_certidao_input_recusa_conjunto_com_lote_sem_lancamento` — a mensagem cita o lote impeditivo.
-- `test_conjunto_desenhado_recusa_lista_vazia` — `ConjuntoDesenhado(lotes=())` falha na construção.
 - `test_montar_certidao_do_conjunto_lista_todos_os_sqls_e_a_area` — a tabela tem uma linha por lote e
   o parágrafo cita a área formatada.
 - `test_certidao_de_um_lote_mantem_o_texto` — com `LoteUnico`, os blocos saem como na SPEC 001.
 - `test_planta_do_conjunto_poe_desenho_em_destaque_sobre_lotes_de_contexto` — `camadas_da_planta_do_conjunto`
   devolve os lotes em contexto e o desenho em destaque, todos no CRS métrico.
-- `test_poco_de_acoes_do_desenho_so_para_quem_tem_concessao` *(marker `banco`)*.
-- `test_modal_do_conjunto_com_lote_impeditivo_lista_os_lotes_sem_formulario` *(marker `banco`)*.
-- `test_emissao_refaz_o_conjunto_e_ignora_lote_forjado` — id de lote de fora do desenho no POST não
-  aparece na certidão *(marker `banco`)*.
-- `test_conjunto_alterado_desde_o_modal_e_recusado_sem_emitir` — 409 e nenhum `DocumentoEmitido`
+- `test_reler_conjunto_mantem_so_os_escolhidos` — com fetcher fake, lote novo que o desenho passou a
+  cruzar entra em `removidos`, escolhido que sumiu da camada não volta, e os demais trazem os
+  atributos relidos.
+- `test_poco_de_acoes_da_gaveta_inferior_so_para_quem_tem_concessao` — com a chave do conjunto no `id`
+  *(marker `banco`)*.
+- `test_modal_do_conjunto_le_a_sessao_sem_consultar_o_wfs` — lista os lotes restantes com a chave e os
+  `confirmados` ocultos; com lote impeditivo ou conjunto vazio, traz o aviso sem formulário *(marker
+  `banco`)*.
+- `test_emissao_certifica_os_lotes_relidos` — o endereço mudado na camada depois da consulta sai na
+  certidão com o valor novo; lote que perdeu o lançamento devolve o modal com o aviso, 422, sem
+  emitir *(marker `banco`)*.
+- `test_conjunto_diferente_do_modal_e_recusado_sem_emitir` — lote tirado depois do modal, lote que saiu
+  da camada, id forjado nos `confirmados` e chave substituída dão 409, e nenhum `DocumentoEmitido`
   *(marker `banco`)*.
 - `test_amostra_certidao_do_conjunto` — PDF com tabela e planta fictícia *(marker `artefato`)*.
 

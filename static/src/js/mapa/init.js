@@ -9,7 +9,6 @@ import { inicializarEnvio } from "./desenho/envio.js";
 import { inicializarSelecao } from "./desenho/selecao.js";
 import { inicializarSincronia } from "./desenho/sincronia.js";
 import { inicializarInteracaoResultado, interagirComResultado } from "./interacao_resultado.js";
-import { inicializarContextoAcao } from "../ui/contexto_acao.js";
 import { inicializarTrocaGaveta } from "../ui/troca_gaveta.js";
 
 let mapa = null;
@@ -33,15 +32,14 @@ function montarMapaBase() {
   inicializarSelecao(mapa);
   inicializarApagar(mapa);
   inicializarInteracaoResultado();
-  inicializarContextoAcao();
   inicializarTrocaGaveta();
 }
 
 // htmx:afterSwap dispara a cada swap (garantido) — nele buscamos o payload por id no DOM. O
 // marcador dataset.aplicado garante que cada payload seja desenhado uma única vez: swaps de
 // sugestão/aviso (sem payload novo) e disparos repetidos não redesenham; um novo resultado
-// substitui o <script> anterior, entra sem marca e é aplicado. adicionarResultado já reenquadra
-// o mapa (fitBounds) sobre as features.
+// substitui o <script> anterior, entra sem marca e é aplicado. adicionarResultado reenquadra
+// o mapa (fitBounds) sobre as features, salvo quando o payload pede o contrário (revisão do conjunto).
 function aplicarResultado() {
   if (!mapa) return;
   const script = document.getElementById("mapa-payload");
@@ -49,7 +47,7 @@ function aplicarResultado() {
   script.dataset.aplicado = "1";
   const data = JSON.parse(script.textContent);
   if (camadaResultado) mapa.removeLayer(camadaResultado);
-  camadaResultado = adicionarResultado(mapa, data.geometria, data.cor);
+  camadaResultado = adicionarResultado(mapa, data.geometria, data.cor, data.enquadrar);
   interagirComResultado(mapa, camadaResultado);
 }
 

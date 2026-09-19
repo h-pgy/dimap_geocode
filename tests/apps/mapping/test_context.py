@@ -44,7 +44,7 @@ def test_contexto_mapa_base_valida_camadas_como_camada_base_item() -> None:
 def test_contexto_mapa() -> None:
     geom = {"type": "Point", "coordinates": [-46.63, -23.55]}
     resultado = contexto_mapa(geom, "#48CAE4")
-    assert resultado == {"payload": {"geometria": geom, "cor": "#48CAE4"}}
+    assert resultado == {"payload": {"geometria": geom, "cor": "#48CAE4", "enquadrar": True}}
 
 
 def test_contexto_aviso() -> None:

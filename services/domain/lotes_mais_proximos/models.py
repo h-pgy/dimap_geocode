@@ -38,3 +38,21 @@ class LotesDoDesenho(BaseModel):
     # Guardada: depende do CRS métrico da camada, que não mora no desenho.
     area_m2: float = Field(gt=0)
     lotes: tuple[LoteFeature, ...] = ()
+
+
+class ConjuntoDeLotes(BaseModel):
+    """O que a consulta apurou e o que a pessoa tirou. Remover é o único gesto — nada se acrescenta."""
+
+    model_config = ConfigDict(frozen=True)
+
+    apurado: LotesDoDesenho
+    removidos: frozenset[str] = frozenset()  # id_poligono dos lotes tirados
+
+    @property
+    def lotes(self) -> tuple[LoteFeature, ...]:
+        # Derivado: a ordem é a da consulta, e os removidos ficam registrados para quem precisar deles.
+        return tuple(
+            lote
+            for lote in self.apurado.lotes
+            if lote.attributes.id_poligono not in self.removidos
+        )

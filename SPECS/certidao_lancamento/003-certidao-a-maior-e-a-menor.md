@@ -1,13 +1,14 @@
 ---
 spec: certidao_lancamento/003
-versao: v2
-atualizado_em: 2026-09-17
+versao: v3
+atualizado_em: 2026-09-18
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [artefato]
 changelog:
   - v1: versão inicial
   - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
+  - v3: a modalidade passa a ser derivada do conjunto guardado na sessão, e não da apuração
 ---
 
 # SPEC certidao_lancamento/003 — Certidão "a maior" e "a menor"
@@ -25,9 +26,10 @@ lote declarada.
       **parcialmente contido**.
 - [ ] Com algum lote totalmente contido, o conjunto é da modalidade **"a maior"**; sem nenhum, é
       **"a menor"** — inclusive o desenho que cai parte no lote A e parte no lote B.
-- [ ] A tabela da gaveta inferior mostra o percentual de cada lote, e a gaveta do desenho mostra a
+- [ ] A tabela da gaveta inferior mostra o percentual de cada lote, e o resumo dela mostra a
       **modalidade**.
-- [ ] Tirar um lote na tabela **recalcula a modalidade** com os lotes que restaram.
+- [ ] Tirar um lote na tabela **recalcula a modalidade** com os lotes que restaram, sem consultar o
+      GeoServer.
 - [ ] A certidão "a maior" declara que os imóveis compõem a área desenhada e traz, para cada um,
       área do lote, área contida e percentual.
 - [ ] A certidão "a menor" declara que a área desenhada **está contida** nos imóveis relacionados e traz
@@ -39,10 +41,11 @@ lote declarada.
 
 ## 3 · Domínio
 A participação de um lote é a medida da intersecção entre ele e o [Desenho](../localizacao_lote/003-lotes-do-desenho.md#3--domínio),
-apurada no CRS métrico da camada. A modalidade **não é escolha de ninguém**: é derivada das
-participações dos lotes que restaram depois da revisão da SPEC [localizacao_lote/004](../localizacao_lote/004-revisao-do-conjunto.md).
+apurada no CRS métrico da camada e guardada junto do lote. A modalidade **não é escolha de ninguém**:
+é derivada das participações dos lotes que restam no [ConjuntoDeLotes](../localizacao_lote/004-revisao-do-conjunto.md#3--domínio).
 
-**`services/domain/lotes_mais_proximos/models.py`** — `LoteNoDesenho` novo e `LotesDoDesenho` inteiro.
+**`services/domain/lotes_mais_proximos/models.py`** — `LoteNoDesenho` novo, `LotesDoDesenho` e
+`ConjuntoDeLotes` inteiros.
 
 ```python
 class ModalidadeConjunto(StrEnum):
@@ -66,20 +69,38 @@ class LoteNoDesenho(BaseModel):
 
 
 class LotesDoDesenho(BaseModel):
-    conjunto: ConjuntoDeLotes
+    """O que a consulta apurou: o desenho, a área dele e os lotes que ele cruza."""
+
+    desenho: Desenho
     area_m2: float = Field(gt=0)
     # ALTERADO nesta SPEC: cada lote vem com a sua participação no desenho.
     lotes: tuple[LoteNoDesenho, ...] = ()
     # ALTERADO nesta SPEC: o limiar é do processo, mas a modalidade precisa dele para ser derivada.
     limiar_totalmente_contido: float = Field(gt=0, le=100)
 
-    # ALTERADO nesta SPEC
-    @computed_field
+
+class ConjuntoDeLotes(BaseModel):
+    """O que a consulta apurou e o que a pessoa tirou. Remover é o único gesto — nada se acrescenta."""
+
+    model_config = ConfigDict(frozen=True)
+
+    apurado: LotesDoDesenho
+    removidos: frozenset[str] = frozenset()
+
+    @property
+    def lotes(self) -> tuple[LoteNoDesenho, ...]:   # ALTERADO nesta SPEC: a participação vem junto
+        return tuple(
+            item for item in self.apurado.lotes
+            if item.lote.attributes.id_poligono not in self.removidos
+        )
+
+    # ALTERADO nesta SPEC: dos lotes que restam, não dos apurados — tirar um lote a recalcula.
     @property
     def modalidade(self) -> ModalidadeConjunto | None:
         if not self.lotes:
             return None
-        if any(l.percentual_contido >= self.limiar_totalmente_contido for l in self.lotes):
+        limiar = self.apurado.limiar_totalmente_contido
+        if any(item.percentual_contido >= limiar for item in self.lotes):
             return ModalidadeConjunto.A_MAIOR
         return ModalidadeConjunto.A_MENOR
 ```
@@ -121,11 +142,10 @@ skill `mock`.
 
 ## 5 · Peças de referência a compor
 - `@services/domain/lotes_mais_proximos/do_desenho.py` → `BuscarLotesDoDesenho`, `ConferirDesenho` (SPEC localizacao_lote/003).
-- `@services/domain/lotes_mais_proximos/conjunto.py` → `RevisarConjunto` (SPEC localizacao_lote/004).
-- `@services/domain/geometry/reprojecao.py` → `reprojetar` (SPEC localizacao_lote/002).
+- `@services/domain/lotes_mais_proximos/conjunto.py` → `RemoverDoConjunto` (SPEC localizacao_lote/004), `RelerConjunto` (SPEC 002).
+- `@services/domain/geometry` → `reprojetar` (SPEC localizacao_lote/002), `para_geos` (design/020).
 - `@services/domain/certidao_lancamento/certidao.py` → `MontarCertidaoLancamento` (SPECs 001 e 002).
 - `@apps/certidao_lancamento/emissao.py` → `emitir_certidao_do_conjunto` (SPEC 002).
-- `@templates/lotes_mais_proximos/partials/_tabela_lotes.html` e `_gaveta_desenho.html` (SPECs localizacao_lote/003 e 004).
 - Skills: `ontologia`, `documento-oficial`, `mock`, `escrever-testes`.
 
 ## 6 · Snippets
@@ -141,10 +161,12 @@ mede e só então reprojeta.
             nome_camada=camada.nome,
             # ALTERADO: no CRS da camada, e não do mapa — área em grau não é área.
             srs_name=f"EPSG:{camada.crs_camada}",
-            cql_filter=CqlFilter(predicates=[CqlIntersects(field=camada.campo_geometria, wkt=_wkt(projetado))]),
+            cql_filter=CqlFilter(predicates=[
+                CqlIntersects(field=camada.campo_geometria, wkt=_wkt(projetado, camada.crs_camada)),
+            ]),
             count=PAGE_SIZE,
         )
-        desenho = GEOSGeometry(json.dumps(projetado.model_dump()))
+        desenho = para_geos(projetado, camada.crs_camada)
         return tuple(
             self._participacao(lote, desenho, camada)
             for page in self.fetcher(request)
@@ -153,13 +175,37 @@ mede e só então reprojeta.
         )
 
     def _participacao(self, lote: LoteFeature, desenho: GEOSGeometry, camada: CamadaLotes) -> LoteNoDesenho:
-        poligono = GEOSGeometry(json.dumps(lote.geometry.model_dump()))
+        poligono = para_geos(lote.geometry, camada.crs_camada)
         return LoteNoDesenho(
             lote=_reprojetar_lote(lote, camada.crs_saida),
             area_lote_m2=poligono.area,
             # Intersecção de GEOS e não o INTERSECTS do servidor: o servidor diz SE cruza, não QUANTO.
             area_intersecao_m2=poligono.intersection(desenho).area,
         )
+```
+
+Quem lia `lote.attributes` de um item do conjunto passa a ler `item.lote.attributes`: o
+`RemoverDoConjunto` e o `RelerConjunto`, o `_properties_lote_do_desenho` e a `_tabela_conjunto.html`.
+
+**`apps/certidao_lancamento/emissao.py`** — o objeto da certidão sai do conjunto relido: as medidas e a
+modalidade do dia da emissão.
+
+```python
+def conjunto_desenhado(lido: ConjuntoLido) -> ConjuntoDesenhado:
+    conjunto = lido.conjunto
+    return ConjuntoDesenhado(
+        participacoes=tuple(
+            ParticipacaoCertificada(
+                imovel=item.lote.attributes,
+                area_lote_m2=item.area_lote_m2,
+                area_intersecao_m2=item.area_intersecao_m2,
+                percentual_contido=item.percentual_contido,
+            )
+            for item in conjunto.lotes
+        ),
+        area_desenho_m2=conjunto.apurado.area_m2,
+        modalidade=conjunto.modalidade,   # nunca None aqui: conjunto vazio não chega à emissão (SPEC 002)
+    )
 ```
 
 **`services/domain/certidao_lancamento/certidao.py`** — o texto por modalidade.
@@ -215,10 +261,15 @@ ABERTURA_POR_MODALIDADE = {
 LOTE_LIMIAR_TOTALMENTE_CONTIDO: float = settings.LOTE_LIMIAR_TOTALMENTE_CONTIDO   # 99.0 por padrão
 ```
 
-**`templates/lotes_mais_proximos/partials/_tabela_lotes.html`** — a coluna nova.
+**`templates/lotes_mais_proximos/partials/_tabela_conjunto.html`** e **`_resumo_conjunto.html`** — a
+coluna nova e a modalidade; os dois voltam a cada lixeira (SPEC localizacao_lote/004).
 
 ```html
 <td class="tabular-nums text-right">{{ item.percentual_contido|floatformat:2 }}%</td>
+```
+
+```html
+{% if conjunto.modalidade %}<span class="badge …">{{ conjunto.modalidade.label }}</span>{% endif %}
 ```
 
 ## 7 · Caveats
@@ -238,8 +289,8 @@ a modalidade depende da revisão da tabela: tirar o único lote inteiro vira o c
 
 A busca do desenho passa a pedir os lotes no CRS métrico e a reprojetar cada um para o mapa no
 servidor, com uma intersecção GEOS por lote. É o que dá área em metro quadrado sem uma segunda
-consulta. O custo é trabalho proporcional ao número de lotes a cada passo da revisão, contido pela
-área máxima do desenho.
+consulta, e a revisão reaproveita as medidas guardadas na sessão. O custo é trabalho proporcional ao
+número de lotes na consulta e na releitura da emissão, contido pela área máxima do desenho.
 
 ## 8 · Testes (TDD)
 - `test_participacao_mede_intersecao_e_percentual_do_lote` — lote 20×20 com metade dentro dá 400 m²,
@@ -250,10 +301,10 @@ consulta. O custo é trabalho proporcional ao número de lotes a cada passo da r
   dá "a menor".
 - `test_busca_mede_no_crs_metrico_e_devolve_lotes_no_crs_do_mapa` — o request pede `EPSG:31983` e os
   lotes devolvidos estão em 4326.
-- `test_remover_o_lote_inteiro_vira_a_menor` — `RevisarConjunto` sem o único lote inteiro devolve
-  "a menor".
-- `test_tabela_e_resumo_mostram_percentual_e_modalidade` — a tabela traz `50,00%` e a gaveta do desenho
-  traz a modalidade.
+- `test_remover_o_lote_inteiro_vira_a_menor` — `RemoverDoConjunto` tirando o único lote inteiro
+  devolve um conjunto "a menor".
+- `test_tabela_e_resumo_mostram_percentual_e_modalidade` — a tabela traz `50,00%` e o resumo da gaveta
+  inferior traz a modalidade, também na resposta da lixeira.
 - `test_certidao_a_maior_traz_areas_e_percentuais_por_lote` — título "a maior" e uma linha por lote com
   as três medidas.
 - `test_certidao_a_menor_declara_area_contida` — título "a menor" e a abertura "está contida".

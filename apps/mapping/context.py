@@ -3,6 +3,7 @@ from typing import Any
 
 from django.conf import settings
 
+from apps.mapping.limpeza import Limpeza
 from config.pontos_fundo import PontoFundo
 from services.domain.desenho import Desenho
 from services.utils.sorteio import sortear_diferente
@@ -19,6 +20,8 @@ MAP_TILES_PUBLICOS_ZOOM_MAXIMO: int = settings.MAP_TILES_PUBLICOS_ZOOM_MAXIMO
 MAP_FUNDO_PONTOS: dict[str, PontoFundo] = settings.MAP_FUNDO_PONTOS
 MAP_FUNDO_DIR: Path = settings.MAP_FUNDO_DIR
 MAP_COR_RESULTADO_ACAO: str = settings.MAP_COR_RESULTADO_ACAO
+
+GEOJSON_VAZIO: dict[str, Any] = {"type": "FeatureCollection", "features": []}
 
 
 def contexto_mapa_base() -> dict[str, Any]:
@@ -64,19 +67,31 @@ def contexto_fundo_admin() -> dict[str, Any]:
     return {"ortofoto_fundo": sortear_diferente(disponiveis, None) if disponiveis else None}
 
 
-def contexto_mapa(geometria: dict[str, Any], cor: str) -> dict[str, Any]:
+def contexto_mapa(geometria: dict[str, Any], cor: str, enquadrar: bool = True) -> dict[str, Any]:
     """Monta o contexto de payload de um resultado: geometria GeoJSON 4326 + cor, sem WMS
     (o mapa singleton já existe). Agnóstico de domínio — só geometria pronta."""
-    return {"payload": {"geometria": geometria, "cor": cor}}
+    return {"payload": {"geometria": geometria, "cor": cor, "enquadrar": enquadrar}}
 
 
-def contexto_resultado_acao(acao: str, desenho: Desenho, geojson: dict[str, Any]) -> dict[str, Any]:
+def contexto_resultado_acao(
+    acao: str,
+    desenho: Desenho,
+    geojson: dict[str, Any],
+    limpeza_ao_fechar: Limpeza,
+    enquadrar: bool = True,
+) -> dict[str, Any]:
     """O contexto de toda resposta de ação: o do mapa, na cor única dos resultados de ação, o slug de
-    quem abriu o contexto e o desenho sobre o qual ele opera."""
-    return contexto_mapa(geojson, MAP_COR_RESULTADO_ACAO) | {
+    quem abriu o contexto, o desenho sobre o qual ele opera e a limpeza que o ✕ da gaveta dispara."""
+    return contexto_mapa(geojson, MAP_COR_RESULTADO_ACAO, enquadrar) | {
         "acao": acao,
         "desenho": desenho.id_bancada,
+        "limpeza_ao_fechar": limpeza_ao_fechar,
     }
+
+
+def contexto_encerramento_acao() -> dict[str, Any]:
+    # FeatureCollection vazia: o aplicarResultado tira a camada anterior e não põe nada.
+    return contexto_mapa(GEOJSON_VAZIO, MAP_COR_RESULTADO_ACAO, enquadrar=False)
 
 
 def contexto_aviso(mensagem: str) -> dict[str, Any]:
