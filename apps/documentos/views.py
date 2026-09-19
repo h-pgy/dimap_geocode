@@ -3,7 +3,6 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
-from apps.mapping.context import contexto_fundo_admin
 from services.domain.documento_selado import (
     ConferenciaInput,
     TamanhoDoUpload,
@@ -41,13 +40,12 @@ def pagina_conferencia(request: HttpRequest) -> HttpResponse:
                 contexto = {
                     "recusa": recusa,
                     "valores": {"codigo": codigo},
-                    **contexto_fundo_admin(),
                 }
                 return render(request, "documentos/conferencia_codigo.html", contexto, status=422)
             return redirect("documentos:conferir", codigo=codigo)
-        return render(request, "documentos/conferencia_codigo.html", contexto_fundo_admin())
+        return render(request, "documentos/conferencia_codigo.html")
     if via in ("arquivo", "documento", "upload"):
-        contexto = {"tamanho_maximo_mb": TAMANHO_MAXIMO_MB, **contexto_fundo_admin()}
+        contexto = {"tamanho_maximo_mb": TAMANHO_MAXIMO_MB}
         return render(request, "documentos/conferencia.html", contexto)
     if via == "form_upload":
         return render(
@@ -55,7 +53,7 @@ def pagina_conferencia(request: HttpRequest) -> HttpResponse:
             "documentos/partials/_form_upload.html",
             {"tamanho_maximo_mb": TAMANHO_MAXIMO_MB},
         )
-    return render(request, "documentos/escolha_conferencia.html", contexto_fundo_admin())
+    return render(request, "documentos/escolha_conferencia.html")
 
 
 def conferir_por_codigo(request: HttpRequest, codigo: str) -> HttpResponse:
@@ -67,7 +65,7 @@ def conferir_por_codigo(request: HttpRequest, codigo: str) -> HttpResponse:
     if registro is None:
         return render(request, "documentos/partials/_nao_localizado.html", status=404)
     # A ficha, e não a linha: a tela do código e a do upload mostram a mesma coisa.
-    contexto = {"ficha": ler_ficha_do_ato(registro.envelope), **contexto_fundo_admin()}
+    contexto = {"ficha": ler_ficha_do_ato(registro.envelope)}
     return render(request, "documentos/conferencia_por_codigo.html", contexto)
 
 

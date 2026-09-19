@@ -13,7 +13,6 @@ from typing import Any
 from django.utils import timezone
 
 from apps.core.tabela import colunas_da_tabela, marca_descendente
-from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.consulta import posicao_de
 from apps.unidades.direcao import (
     alarme_sem_direcao,
@@ -54,8 +53,7 @@ def contexto_criar_unidade(
     raiz: bool = False,
 ) -> dict[str, Any]:
     return (
-        contexto_fundo_admin()
-        | _catalogos_de_unidade(ids_permitidos)
+        _catalogos_de_unidade(ids_permitidos)
         | contexto_cor_sugerida(None)
         | {"raiz": raiz}
     )
@@ -68,8 +66,7 @@ def contexto_listagem_unidades(
     alcance_extincao: Collection[int] = (),
 ) -> dict[str, Any]:
     return (
-        contexto_fundo_admin()
-        | contexto_organograma(unidade_em_foco, extintas=extintas)
+        contexto_organograma(unidade_em_foco, extintas=extintas)
         | contexto_corpo_unidades(consulta, unidade_em_foco, extintas, alcance_extincao)
         | {
             "colunas": colunas_da_tabela(consulta, ColunaUnidade, ROTULO_COLUNAS_UNIDADE),
@@ -155,8 +152,7 @@ def contexto_secao_direcao(
 def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
     """Uma passagem só: quem a tela carrega para desenhar é quem ela usa para decidir."""
     return (
-        contexto_fundo_admin()
-        | _catalogos_de_unidade()
+        _catalogos_de_unidade()
         | contexto_organograma(unidade)
         | contexto_secao_direcao(unidade)
         | {

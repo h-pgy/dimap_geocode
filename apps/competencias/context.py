@@ -28,7 +28,6 @@ from apps.competencias.historico import linhas_de_execucoes
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, Delegacao
 from apps.competencias.registro import REGISTRO
 from apps.core.tabela import colunas_da_tabela, consulta_da_listagem, marca_descendente
-from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.context import contexto_organograma
 from apps.unidades.models import Unidade
 from apps.unidades.paleta import hex_da_cor
@@ -65,8 +64,7 @@ def contexto_da_tela(perfil: Perfil, unidade_alvo: Unidade | None = None) -> dic
     # isso que o dispensa da conferência do decorator, que num GET sem parâmetro não roda.
     alvo = unidade_alvo or _primeira_dirigida(ramos)
     return (
-        contexto_fundo_admin()
-        | contexto_organograma(
+        contexto_organograma(
             alvo,
             arvores=ramos,
             # Nesta tela o card escolhe o alvo: levar à página da unidade seria sair no meio do
@@ -135,8 +133,7 @@ def contexto_da_tela_conceder(perfil: Perfil, unidade_alvo: Unidade | None = Non
     ramos = ramos_do_alcance(perfil)
     alvo = unidade_alvo or _primeira_dirigida(ramos)
     return (
-        contexto_fundo_admin()
-        | contexto_organograma(
+        contexto_organograma(
             alvo,
             arvores=ramos,
             com_link=False,
@@ -338,8 +335,7 @@ def _subtitulo_unidade(unidade: Unidade) -> str:
 def contexto_registro_acoes(perfil: Perfil, parametros: Mapping[str, str]) -> dict[str, Any]:
     consulta = consulta_da_listagem(parametros, ColunaExecucao)
     return (
-        contexto_fundo_admin()
-        | contexto_corpo_execucoes(perfil, parametros)
+        contexto_corpo_execucoes(perfil, parametros)
         | {
             "colunas": colunas_da_tabela(consulta, ColunaExecucao, ROTULO_COLUNAS_EXECUCAO),
             "ordenar_por": consulta.ordenar_por or "",

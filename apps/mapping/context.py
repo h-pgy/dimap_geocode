@@ -22,6 +22,7 @@ MAP_FUNDO_DIR: Path = settings.MAP_FUNDO_DIR
 MAP_COR_RESULTADO_ACAO: str = settings.MAP_COR_RESULTADO_ACAO
 
 GEOJSON_VAZIO: dict[str, Any] = {"type": "FeatureCollection", "features": []}
+COOKIE_ORTOFOTO_FUNDO = "ortofoto_fundo"
 
 
 def contexto_mapa_base() -> dict[str, Any]:
@@ -60,11 +61,15 @@ def _cache_clear() -> None:
 ortofotos_disponiveis.cache_clear = _cache_clear  # type: ignore[attr-defined]
 
 
-def contexto_fundo_admin() -> dict[str, Any]:
-    """Contexto do fundo à deriva da área administrativa: ortofoto pré-gerada sorteada, sem
-    nenhuma requisição ao GeoSampa em tempo de request (SPEC design/010)."""
+def ortofoto_do_fundo(em_tela: str | None) -> str | None:
+    """A ortofoto do fundo à deriva (SPEC design/010 v8): a que já está na tela de quem navega,
+    enquanto ela existir no disco — só a primeira tela e o rodízio sorteiam."""
     disponiveis = ortofotos_disponiveis()
-    return {"ortofoto_fundo": sortear_diferente(disponiveis, None) if disponiveis else None}
+    if not disponiveis:
+        return None
+    if em_tela in disponiveis:
+        return em_tela
+    return sortear_diferente(disponiveis, None)
 
 
 def contexto_mapa(geometria: dict[str, Any], cor: str, enquadrar: bool = True) -> dict[str, Any]:

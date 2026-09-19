@@ -1691,11 +1691,11 @@ html[data-theme="dimap"] {
 
   /* ==================== FUNDO DE ORTOFOTO (SPEC design/010) ==================== */
 
-  /* .fundo-rocha — átomo (SPEC design/017): o piso que existe exatamente quando a ortofoto não
-     existe. Sem ele, o que a tinta mix-blend-multiply da lente encontra atrás é o branco da
-     página, que ela só consegue tingir. */
+  /* .fundo-rocha — átomo (SPEC design/017): o piso, sempre presente por baixo da ortofoto (SPEC
+     design/010 v8). Sem ele, enquanto a foto decodifica, a lente mix-blend-multiply só consegue
+     tingir o branco da página — o flash a cada navegação. */
   .fundo-rocha {
-    @apply fixed inset-0 z-0 pointer-events-none hidden overflow-hidden;
+    @apply fixed inset-0 z-0 pointer-events-none overflow-hidden;
     background-image:
       radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.35) 0%, transparent 62%),
       linear-gradient(163deg,
@@ -1703,7 +1703,6 @@ html[data-theme="dimap"] {
         var(--color-rocha-300) 46%,
         var(--color-rocha-500) 100%);
   }
-  html.fundo-desligado .fundo-rocha { @apply block; }
 
   /* .fundo-rocha__grao — átomo. Tile de turbulência como IMAGEM, nunca como `filter`: filtro de
      tela cheia repinta a cada quadro. */
@@ -2209,6 +2208,12 @@ html[data-theme="dimap"] {
 @media (prefers-reduced-motion: reduce) {
   .fundo-ortofoto__deriva,
   .fundo-ortofoto__imagem { animation: none; }
+}
+
+/* A página antiga fica na tela até a nova estar pintada, e as duas se cruzam: nenhum quadro
+   intermediário (rocha sem foto, deriva recomeçando) aparece ao navegar (SPEC design/010 v8). */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
 }
 
 /* A gaveta e o que veio depois dela pertencem ao design system: reabre a camada fechada acima

@@ -3,6 +3,7 @@ fundo de ortofoto da área administrativa — sem ato administrativo, sem login 
 CLAUDE.md).
 """
 
+import re
 from pathlib import Path
 
 from django.test import Client
@@ -32,6 +33,12 @@ def _instalar_catalogo_no_disco(
     monkeypatch.setattr(mapping_context, "MAP_FUNDO_DIR", tmp_path)
     monkeypatch.setattr(mapping_context, "MAP_FUNDO_PONTOS", pontos)
     mapping_context.ortofotos_disponiveis.cache_clear()
+
+
+def _ortofoto_da_pagina(html: str) -> str:
+    achado = re.search(r'data-ortofoto="([^"]*)"', html)
+    assert achado is not None
+    return achado.group(1)
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +85,34 @@ def test_camada_do_rodizio_chega_transparente(
 
     assert "fundo-ortofoto__camada--visivel" not in do_rodizio.content.decode()
     assert "fundo-ortofoto__camada--visivel" in da_pagina.content.decode()
+
+
+def test_navegar_mantem_o_fundo_que_esta_em_tela(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_catalogo_no_disco(tmp_path, monkeypatch, ("anhangabau", "ibirapuera", "butanta"))
+    cliente = Client()
+    cliente.cookies["ortofoto_fundo"] = "ibirapuera"
+
+    vistas = {
+        _ortofoto_da_pagina(cliente.get(reverse("autenticacao:login")).content.decode()) for _ in range(10)
+    }
+
+    assert vistas == {"ibirapuera"}
+
+
+def test_fundo_em_tela_fora_do_disco_volta_ao_sorteio(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_catalogo_no_disco(tmp_path, monkeypatch, ("anhangabau",))
+    cliente = Client()
+    cliente.cookies["ortofoto_fundo"] = "../../settings"
+
+    resposta = cliente.get(reverse("autenticacao:login"))
+
+    assert _ortofoto_da_pagina(resposta.content.decode()) == "anhangabau"
 
 
 def test_camada_declara_a_ortofoto_que_mostra(

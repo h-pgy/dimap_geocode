@@ -1,7 +1,7 @@
 ---
 spec: design/010
-versao: v7
-atualizado_em: 2026-08-28
+versao: v8
+atualizado_em: 2026-09-19
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
@@ -14,6 +14,8 @@ changelog:
   - v6: a conexão do comando declara o timeout do GetMap
   - v7: a troca ganha crossfade — o `transition:true` nativo não estava suavizando, então o fade
     passa a ser manual, via as classes que o próprio HTMX aplica no swap (sem JS)
+  - v8: fim do flash branco ao navegar — rocha sempre por baixo, carga da página sem fade, a
+    ortofoto em tela mantida entre telas e view transition entre documentos
 ---
 
 # SPEC design/010 — Ortofotos de fundo pré-geradas
@@ -25,7 +27,8 @@ com o fundo montado, sem esperar o carregamento do mapa a cada navegação.
 ## 2 · Condições de pronto
 - [ ] A área administrativa **não faz nenhuma requisição ao GeoSampa** em tempo de request, e uma
       ortofoto já vista **não é rebuscada**.
-- [ ] Cada abertura de tela entra num **ponto sorteado**, e o fundo **troca sozinho a cada minuto**.
+- [ ] A primeira tela entra num **ponto sorteado**, a navegação **mantém o que está em tela** sem
+      flash, e o fundo **troca sozinho a cada minuto**.
 - [ ] O servidor **troca o fundo na hora**, **desliga** e **ajusta a velocidade** da deriva.
 - [ ] Desligar o fundo ou mudar a velocidade **permanece** na tela seguinte e na sessão seguinte.
 - [ ] A deriva **nunca descobre a borda da imagem**, em qualquer proporção de tela.
@@ -279,11 +282,27 @@ def ortofotos_disponiveis() -> tuple[str, ...]:
     return tuple(chave for chave in MAP_FUNDO_PONTOS if (MAP_FUNDO_DIR / f"{chave}.png").exists())
 
 
-def contexto_fundo_admin() -> dict[str, Any]:
+def ortofoto_do_fundo(em_tela: str | None) -> str | None:
     disponiveis = ortofotos_disponiveis()
-    return {"ortofoto_fundo": sortear_diferente(disponiveis, None) if disponiveis else None}
+    if not disponiveis:
+        return None
+    if em_tela in disponiveis:
+        return em_tela
+    return sortear_diferente(disponiveis, None)
 ```
 
+**`apps/mapping/context_processors.py`** — toda tela lê a ortofoto que já estava em tela (cookie
+`ortofoto_fundo`, escrito pelo `fundo_ortofoto.js` ao revelar cada camada), em vez de sortear outra.
+```python
+def fundo_admin(request: HttpRequest) -> dict[str, Any]:
+    return {"ortofoto_fundo": ortofoto_do_fundo(request.COOKIES.get(COOKIE_ORTOFOTO_FUNDO))}
+```
+
+A rocha fica sempre por baixo da ortofoto: a lente nunca tinge o branco da página enquanto a foto
+decodifica. A camada da carga da página nasce visível, sem fade — o fade de rocha para foto a cada
+navegação era ele mesmo o flash; só o rodízio (design/011) faz crossfade. O `<img>` pede
+`decoding="sync"` para o primeiro quadro esperar a foto em cache, e a navegação entre telas usa
+`@view-transition { navigation: auto; }`: a página antiga só sai quando a nova está pintada.
 **`templates/mapping/_fundo_ortofoto.html`**
 ```django
 <div class="fundo-ortofoto" id="fundo-ortofoto"

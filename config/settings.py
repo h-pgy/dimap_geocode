@@ -540,6 +540,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.autenticacao.context_processors.contexto_usuario_autenticado",
+                "apps.mapping.context_processors.fundo_admin",
             ],
         },
     },

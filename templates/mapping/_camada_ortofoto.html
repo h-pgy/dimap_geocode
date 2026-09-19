@@ -1,10 +1,13 @@
 {% load static %}
+{# Só a camada do rodízio entra transparente: na carga da página o fade de rocha para foto seria o flash #}
+{# a cada navegação (SPEC design/010 v8). #}
 <div class="fundo-ortofoto__camada{% if not entrando %} fundo-ortofoto__camada--visivel{% endif %}"
      data-ortofoto="{{ ortofoto_fundo|default:'' }}">
   {% if ortofoto_fundo %}
   <div class="fundo-ortofoto__deriva">
     {# <img>, e não background-image: só o elemento que mostra a imagem sabe dizer que decodificou. #}
-    <img class="fundo-ortofoto__imagem" alt="" aria-hidden="true"
+    {# decoding="sync": o primeiro quadro espera a foto já em cache, em vez de pintar a rocha e trocar no seguinte. #}
+    <img class="fundo-ortofoto__imagem" alt="" aria-hidden="true" decoding="sync" fetchpriority="high"
          src="{% static "img/ortofotos_fundo/"|add:ortofoto_fundo|add:".png" %}" />
   </div>
   {% endif %}

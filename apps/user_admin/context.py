@@ -13,7 +13,6 @@ from typing import Any
 from django.utils import timezone
 
 from apps.core.tabela import colunas_da_tabela, marca_descendente
-from apps.mapping.context import contexto_fundo_admin
 from apps.unidades.context import catalogo_de_unidades, contexto_do_modal_de_unidade
 from apps.unidades.direcao import alarme_sem_direcao, estado_da_direcao
 from apps.unidades.paleta import hex_da_cor
@@ -107,8 +106,7 @@ def contexto_criar_perfil(
     # criacao_usuarios/006). `pode_administrador` (SPEC user_admin/022) é o mesmo `has_perm` da
     # barreira, resolvido pela view — nunca uma segunda regra escrita na tela.
     return (
-        contexto_fundo_admin()
-        | contexto_do_modal_de_unidade(ids_permitidos)
+        contexto_do_modal_de_unidade(ids_permitidos)
         | _catalogos_de_lotacao(ids_permitidos)
         | _icone_administrador()
         | {"pode_administrador": pode_administrador}
@@ -168,8 +166,7 @@ def contexto_pagina_perfil(
 ) -> dict[str, Any]:
     """O que a página lê. Sem catálogo nenhum: os selects são do modal, que vem por rota."""
     return (
-        contexto_fundo_admin()
-        | contexto_exercicio(perfil, pode_designar=pode_designar_substituto)
+        contexto_exercicio(perfil, pode_designar=pode_designar_substituto)
         | _icone_administrador()
         | {
             "perfil": perfil,
@@ -672,8 +669,7 @@ def contexto_listagem_servidores(
     # As colunas viajam com o termo e a ordem em vigor: carregada com filtro na query string, a
     # página nasce com as peças afundadas e a seta entintada, sem JavaScript de estado.
     return (
-        contexto_fundo_admin()
-        | contexto_corpo_servidores(consulta, exonerados, alcance_exoneracao)
+        contexto_corpo_servidores(consulta, exonerados, alcance_exoneracao)
         | _icone_exoneracao()
         | {
             "colunas": colunas_da_tabela(consulta, ColunaServidor, ROTULO_DA_COLUNA),

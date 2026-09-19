@@ -34,7 +34,6 @@ from apps.autenticacao.schemas import (
 )
 from apps.autenticacao.senha import gravar_senha
 from apps.autenticacao.services import autenticar_primeiro_login, resolver_estado_rf
-from apps.mapping.context import contexto_fundo_admin
 from apps.user_admin.models import Perfil
 from services.utils.erros_formulario import ErroBruto
 
@@ -65,11 +64,11 @@ def login_view(request: HttpRequest) -> HttpResponse:
             )
             # RF limpo, e não preservado: o campo pré-preenchido convidaria a testar senhas em
             # sequência contra o mesmo RF sem digitar nada de novo.
-            contexto = {"recusa": recusa, "rf": "", **contexto_fundo_admin()}
+            contexto = {"recusa": recusa, "rf": ""}
             return render(request, "autenticacao/login.html", contexto, status=422)
         login(request, user)
         return redirect(reverse("painel:painel"))
-    return render(request, "autenticacao/login.html", contexto_fundo_admin())
+    return render(request, "autenticacao/login.html")
 
 
 @require_POST
@@ -88,7 +87,7 @@ def primeiro_login_otp_view(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "autenticacao/primeiro_login.html",
-        {"rf": rf, **contexto_fundo_admin()},
+        {"rf": rf},
     )
 
 
@@ -111,7 +110,7 @@ def validar_otp_view(request: HttpRequest) -> HttpResponse:
         return render(
             request,
             "autenticacao/primeiro_login.html",
-            {"rf": rf, "recusa": recusa, **contexto_fundo_admin()},
+            {"rf": rf, "recusa": recusa},
             status=422,
         )
     # Sessão de primeiro acesso: `senha_provisoria` segue True até a SPEC autenticacao/002 gravar
@@ -135,14 +134,13 @@ def _dispensa_senha_atual(request: HttpRequest) -> bool:
 def definir_senha_view(request: HttpRequest) -> HttpResponse:
     contexto = {
         "dispensa_senha_atual": _dispensa_senha_atual(request),
-        **contexto_fundo_admin(),
     }
     return render(request, TEMPLATE_DEFINIR_SENHA, contexto)
 
 
 @login_required
 def redefinir_senha_view(request: HttpRequest) -> HttpResponse:
-    contexto = {"dispensa_senha_atual": False, **contexto_fundo_admin()}
+    contexto = {"dispensa_senha_atual": False}
     return render(request, TEMPLATE_DEFINIR_SENHA, contexto)
 
 
@@ -157,7 +155,6 @@ def gravar_senha_view(request: HttpRequest) -> HttpResponse:
         contexto = {
             "dispensa_senha_atual": dispensa,
             "recusa": desfecho.recusa,
-            **contexto_fundo_admin(),
         }
         return render(request, TEMPLATE_DEFINIR_SENHA, contexto, status=422)
 
@@ -188,7 +185,7 @@ def esqueci_senha_view(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "autenticacao/esqueci_senha.html",
-        {"destino": destino, **contexto_fundo_admin()},
+        {"destino": destino},
     )
 
 
@@ -240,7 +237,6 @@ def recuperar_senha_view(request: HttpRequest, uidb64: str, token: str) -> HttpR
         return render(
             request,
             "autenticacao/link_invalido.html",
-            contexto_fundo_admin(),
             status=410,
         )
     # A ordem importa: `login()` atualiza `last_login`, que entra no hash do token — é esta linha
