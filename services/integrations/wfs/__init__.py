@@ -4,6 +4,7 @@ from .fetcher import WfsFetcher
 from .models import (
     CqlDWithin,
     CqlFilter,
+    CqlIntersects,
     CqlPredicate,
     WfsConnectionConfig,
     WfsFeature,
@@ -24,6 +25,7 @@ __all__ = [
     "CqlFilter",
     "CqlPredicate",
     "CqlDWithin",
+    "CqlIntersects",
     "WfsHttpError",
     "WfsInvalidResponseError",
     "WfsTimeoutError",

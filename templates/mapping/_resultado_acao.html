@@ -1,0 +1,25 @@
+{% include "mapping/_mapa.html" %}
+<div id="gaveta-inferior-conteudo" hx-swap-oob="innerHTML">
+  {# O toggle vem marcado junto da placa: é o swap que abre a gaveta, sem JS. #}
+  <input type="checkbox" id="gaveta-resultado" class="gaveta-toggle" checked>
+  <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-labelledby="gaveta-resultado-titulo">
+    {# Filho imediato da placa, lido por :has(> ...): recolher não fecha nem encerra o contexto. #}
+    <input type="checkbox" id="gaveta-resultado-recolhida" class="gaveta-inferior-recolher">
+    <label for="gaveta-resultado-recolhida" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span></label>
+    <label for="gaveta-resultado-recolhida" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+      <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+    </label>
+    <header class="gaveta-cabecalho items-center">
+      <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+        <h2 id="gaveta-resultado-titulo" class="text-xl font-bold tracking-tight leading-none text-madeira-700">{% block titulo %}{% endblock %}</h2>
+        {% block resumo %}{% endblock %}
+      </div>
+      <label for="gaveta-resultado" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </label>
+    </header>
+    <div class="gaveta-corpo">{% block corpo %}{% endblock %}</div>
+  </aside>
+</div>
+{% include "mapping/_recolher_gaveta_oob.html" with toggle="gaveta-desenhos-toggle" %}
+{% include "mapping/_contexto_acao_oob.html" with encerra_com="#gaveta-resultado" %}

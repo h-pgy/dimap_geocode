@@ -75,6 +75,9 @@ html[data-theme="dimap"] {
   --gaveta-largura: 24rem;
   --gaveta-detalhe-largura: 22rem;
   --gaveta-recuo: 2rem;
+  /* Gaveta inferior rasa (SPEC localizacao_lote/003): altura fixa, e não teto. É a medida
+     conhecida que deixa a gaveta lateral da home parar acima dela sem JavaScript. */
+  --gaveta-rasa-altura: 16rem;
 }
 
 @theme {
@@ -2967,6 +2970,104 @@ html[data-theme="dimap"] {
   .poco-desenhos__acoes-recorte {
     @apply min-h-0 overflow-clip;
     overflow-clip-margin: 1.5rem;
+  }
+
+  /* ==================== MOLÉCULA · .placa-lista (SPEC localizacao_lote/003) ==================== */
+  /* A placa assentada que guarda uma lista curta dentro de um poço — as ações do .poco-desenhos. O
+     .glass-panel entra composto no HTML; a placa sobe do poço pela aresta de luz e pela sombra. */
+  .placa-lista {
+    @apply flex flex-col gap-1.5 p-2.5 transition-all duration-300;
+    border-radius: var(--radius-placa);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 6px 16px rgba(7, 58, 84, 0.28),
+      0 0 18px rgba(72, 202, 228, 0.22);
+  }
+  .placa-lista:hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 10px 22px rgba(7, 58, 84, 0.32),
+      0 0 24px rgba(72, 202, 228, 0.32);
+  }
+  .placa-lista__cabecalho { @apply flex items-center gap-2 px-1; }
+  .placa-lista__contagem {
+    @apply ml-auto text-[11px] font-bold tabular-nums leading-none px-2 py-1 rounded-full;
+    @apply bg-rocha-950/8 text-rocha-700;
+  }
+  .placa-lista__conteudo { @apply flex flex-col gap-1.5; }
+
+  /* VARIANTE · .table-onsen-compacta (SPEC localizacao_lote/003) — a .table-onsen em linha baixa,
+     para a tabela que divide a altura com o mapa. */
+  .table-onsen-compacta thead th { @apply p-1.5; }
+  .table-onsen-compacta tbody td { @apply px-3 py-1.5 text-[13px]; }
+
+  /* VARIANTE · .gaveta-inferior-rasa (SPEC localizacao_lote/003) — altura fixa em vez de teto.
+     Abaixo do tablet vale a gaveta de tela inteira. */
+  @media (width >= 48rem) {
+    .gaveta-inferior-rasa { height: var(--gaveta-rasa-altura); }
+    .gaveta-inferior-rasa .gaveta-cabecalho { @apply pb-2; }
+    .gaveta-inferior-rasa .gaveta-coluna { @apply py-3; }
+
+    /* A gaveta lateral sobe a borda de baixo enquanto a rasa está aberta: nada se sobrepõe. */
+    .tela-home .gaveta-lateral { transition-property: transform, bottom; }
+    .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa) .gaveta-lateral {
+      bottom: calc(var(--gaveta-rasa-altura) + 0.75rem);
+    }
+  }
+
+  /* A rasa sobe devagar e assenta: mais longa que a gaveta comum, e só desacelerando. Chegando pelo
+     swap já aberta, ela sobe do rodapé em vez de aparecer pronta. */
+  .gaveta-inferior-rasa { @apply duration-1000 ease-out; }
+  @starting-style {
+    .gaveta-toggle:checked + .gaveta-inferior-rasa { @apply translate-y-full; }
+  }
+
+  /* ÁTOMO · .paleta-gaveta-inferior (SPEC localizacao_lote/003) — a .paleta-gaveta virada para o
+     rodapé: meio disco sobre a borda de cima da placa, centrado. Composta no HTML com .paleta-gaveta;
+     só aparece com a gaveta rasa recolhida. */
+  .paleta-gaveta-inferior {
+    @apply top-auto left-1/2 bottom-full -translate-x-1/2 translate-y-0 opacity-0 pointer-events-none;
+    @apply w-[4.5rem] h-9 rounded-none rounded-t-full border-l border-b-0 bg-gradient-to-t;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),0_-8px_24px_rgba(7,58,84,0.28),0_0_20px_rgba(72,202,228,0.25)];
+  }
+
+  /* ESTADO · .gaveta-inferior-rasa recolhida — a alça recolhe, a placa sai da tela e só a paleta
+     fica na borda, como a gaveta lateral fechada. O controle mora DENTRO da placa: recolher não
+     desmarca o .gaveta-toggle, que só o ✕ fecha. */
+  .gaveta-inferior-recolher { @apply sr-only; }
+  .gaveta-toggle:checked + .gaveta-inferior-rasa:has(> .gaveta-inferior-recolher:checked) { @apply translate-y-full; }
+  .gaveta-toggle:checked + .gaveta-inferior-rasa:has(> .gaveta-inferior-recolher:checked) > .paleta-gaveta-inferior {
+    @apply opacity-100 pointer-events-auto;
+  }
+  /* Recolhida, a lateral volta à altura inteira. */
+  .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa > .gaveta-inferior-recolher:checked) .gaveta-lateral {
+    @apply bottom-0;
+  }
+
+  /* ÁTOMO · .realce-resultado / .realce-resultado-forte (SPEC localizacao_lote/003) — o halo da
+     feature de resultado de ação realçada no mapa, na tinta de rocha dos resultados. Vai no <path>
+     do Leaflet; traço e preenchimento vêm do interacao_resultado.js. */
+  .realce-resultado { filter: drop-shadow(0 0 4px rgba(65, 90, 119, 0.75)); }
+  .realce-resultado-forte {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 10px rgba(46, 69, 96, 0.9));
+  }
+
+  /* ORGANISMO · troca da gaveta lateral (SPEC localizacao_lote/003) — o troca_gaveta.js diz no
+     alvo do swap como a gaveta nova chega: "entrada" desliza, "troca" funde só o conteúdo do
+     painel, "mesma" não anima. */
+  @starting-style {
+    [data-troca-gaveta="entrada"] > .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) {
+      transform: translateX(-100%);
+    }
+    [data-troca-gaveta="troca"] .gaveta-lateral-painel > * { opacity: 0; }
+  }
+  [data-troca-gaveta="troca"] .gaveta-lateral-painel > * { @apply transition-opacity duration-150 ease-in-out; }
+  [data-troca-gaveta="troca"].htmx-swapping .gaveta-lateral-painel > * { @apply opacity-0; }
+
+  /* ORGANISMO · contexto de ação (SPEC localizacao_lote/003) — enquanto a marca existe, a busca
+     fica recolhida, como sob a gaveta lateral aberta. */
+  .tela-home:has(#contexto-acao[data-contexto-acao]) .search-hero {
+    @apply opacity-0 -translate-y-5 scale-95 pointer-events-none invisible;
   }
 }
 

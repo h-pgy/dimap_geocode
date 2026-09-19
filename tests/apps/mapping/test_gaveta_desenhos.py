@@ -105,6 +105,29 @@ def test_linha_carrega_o_id_da_camada() -> None:
         assert confirmar["value"] == marca["value"]
 
 
+def test_gaveta_anonima_traz_lotes_intersectados_no_poco_de_poligonos() -> None:
+    resposta = _postar_desenhos(
+        [
+            {"id_bancada": "1", "geometria": PONTO_GEOJSON},
+            {"id_bancada": "2", "geometria": POLIGONO_GEOJSON},
+        ],
+        selecionado="2",
+    )
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    recorte = soup.select_one("#acoes-desenho-poligono .poco-desenhos__acoes-recorte")
+    assert recorte is not None
+    botao = recorte.find("button", attrs={"hx-post": reverse("lotes_mais_proximos:lotes_do_desenho")})
+    assert botao is not None
+    assert botao["hx-include"] == ".linha-desenho__marca:checked"
+    assert "Lotes intersectados" in botao.get_text()
+
+    ancora_ponto = soup.select_one("#acoes-desenho-ponto")
+    assert ancora_ponto is not None
+    assert ancora_ponto.contents == []
+
+
 def test_colecao_vazia_nao_devolve_gaveta() -> None:
     resposta = _postar_desenhos([])
     assert resposta.status_code == 200

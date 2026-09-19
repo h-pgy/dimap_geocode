@@ -223,6 +223,19 @@ export function inicializarBancadaDesenho(mapa) {
     return gaveta.offsetWidth;
   }
 
+  // A gaveta inferior de resultado (SPEC localizacao_lote/003), aberta ou recolhida: consultada a
+  // cada vez, como a lateral, porque chega e sai por OOB.
+  function gavetaInferior() {
+    return document.querySelector(".gaveta-toggle:checked + .gaveta-inferior");
+  }
+
+  function recuoDaGavetaInferior() {
+    const placa = gavetaInferior();
+    if (!placa) return 0;
+    if (!placa.querySelector(":scope > .gaveta-inferior-recolher:checked")) return placa.offsetHeight;
+    return placa.querySelector(".paleta-gaveta-inferior")?.offsetHeight ?? 0;
+  }
+
   const arrasto = inicializarArrasto(
     { conjunto, alca, barra, telaMapa },
     {
@@ -237,6 +250,8 @@ export function inicializarBancadaDesenho(mapa) {
       renderizar,
       esquerdaTomada: () => gavetaDaEntidade() !== null,
       recuoEsquerdo: recuoDaGaveta,
+      rodapeTomado: () => gavetaInferior() !== null,
+      recuoInferior: recuoDaGavetaInferior,
     },
   );
 
@@ -244,9 +259,12 @@ export function inicializarBancadaDesenho(mapa) {
   // assentamento do swap também confere.
   function acompanharGaveta() {
     if (gavetaDaEntidade()) arrasto.desocuparEsquerda();
+    if (gavetaInferior()) arrasto.desocuparRodape();
   }
   document.addEventListener("change", (evento) => {
-    if (evento.target.matches(".gaveta-lateral-toggle")) acompanharGaveta();
+    if (evento.target.matches(".gaveta-lateral-toggle, .gaveta-toggle, .gaveta-inferior-recolher")) {
+      acompanharGaveta();
+    }
   });
   document.body.addEventListener("htmx:afterSettle", acompanharGaveta);
 

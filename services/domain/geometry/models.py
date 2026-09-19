@@ -70,3 +70,5 @@ class GeoJsonProperties(BaseModel):
     popup_html: str | None = None
     rotulo: str | None = None
     cor: str | None = None
+    url_ficha: str | None = None  # a rota que o clique na feature abre na gaveta lateral
+    id: str | None = None  # o que liga a linha da tabela à feature no mapa

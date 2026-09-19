@@ -163,6 +163,11 @@ class _Settings(BaseSettings):
     # Raio de busca do lote mais próximo do endereço interpolado (SPEC localizacao_lote/002) — corte
     # operacional, calibra-se no ambiente conforme o tamanho típico das quadras.
     lote_mais_proximo_raio_m: float = Field(default=50.0, alias="LOTE_MAIS_PROXIMO_RAIO_M")
+    # Teto da área do desenho na busca de lotes intersectados (SPEC localizacao_lote/003): sem ele um
+    # desenho sobre um bairro devolveria dezenas de milhares de lotes.
+    lotes_desenho_area_maxima_m2: float = Field(
+        default=250_000.0, alias="LOTES_DESENHO_AREA_MAXIMA_M2"
+    )
 
     wms_url: str = Field(
         default="https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
@@ -190,6 +195,9 @@ class _Settings(BaseSettings):
     map_cor_ponto: str = Field(default=_GEOMETRIAS["ponto"], alias="MAP_COR_PONTO")
     map_cor_poligono_condominio: str = Field(
         default=_ESCALAS["sakura"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
+    )
+    map_cor_resultado_acao: str = Field(
+        default=_ESCALAS["rocha"]["600"], alias="MAP_COR_RESULTADO_ACAO"
     )
     map_tiles_publicos_url: str = Field(
         default="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
@@ -328,6 +336,7 @@ WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds
 WFS_RETRY_WAIT_MAX_SECONDS = _env.wfs_retry_wait_max_seconds
 
 LOTE_MAIS_PROXIMO_RAIO_M = _env.lote_mais_proximo_raio_m
+LOTES_DESENHO_AREA_MAXIMA_M2 = _env.lotes_desenho_area_maxima_m2
 
 # WMS (GeoSampa → Leaflet tile layer). Config lida aqui e injetada no contexto do
 # app mapping; o JS nunca hardcoda URL, versão ou nomes de camadas (§11).
@@ -376,6 +385,9 @@ MAP_COR_POLIGONO = _env.map_cor_poligono
 MAP_COR_PONTO = _env.map_cor_ponto
 # Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (sakura-700).
 MAP_COR_POLIGONO_CONDOMINIO = _env.map_cor_poligono_condominio
+# Cor única de todo resultado de ação (SPEC localizacao_lote/003): separa o que a pessoa traçou do
+# que o sistema devolveu (rocha-600). O halo .realce-resultado do tema é escrito nessa tinta.
+MAP_COR_RESULTADO_ACAO = _env.map_cor_resultado_acao
 
 MAP_TILES_PUBLICOS_URL = _env.map_tiles_publicos_url
 MAP_TILES_PUBLICOS_SUBDOMINIOS = _env.map_tiles_publicos_subdominios

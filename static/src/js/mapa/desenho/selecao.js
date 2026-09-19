@@ -1,4 +1,5 @@
 import { ferramentaAtiva } from "./ferramentas.js";
+import { pedirGavetaDesenhos } from "./sincronia.js";
 
 // Um ouvinte no mapa, e não um por camada: camada que ouve click vira alvo do Leaflet, e o marcador
 // (bubblingMouseEvents: false) engole o clique — inclusive o cursor do Geoman, que cria o vértice.
@@ -12,11 +13,16 @@ function selecionar(mapa, evento) {
   const alvo = evento.originalEvent.target;
   const camada = mapa.pm.getGeomanLayers().find((c) => c.getElement()?.contains(alvo));
   if (!camada) return;
-  const radio = document.querySelector(`.linha-desenho__marca[value="${L.Util.stamp(camada)}"]`);
-  if (!radio) return;
-
+  // O vão sem lote dentro do polígono de origem o reselecionaria e o traria por cima dos lotes.
+  if (String(L.Util.stamp(camada)) === document.getElementById("contexto-acao")?.dataset.desenho) return;
   // Sem isso o "clique fora" do design/019 recolheria a gaveta que este clique acabou de abrir.
   L.DomEvent.stopPropagation(evento.originalEvent);
+  const radio = document.querySelector(`.linha-desenho__marca[value="${L.Util.stamp(camada)}"]`);
+  // A lateral mostra uma entidade (SPEC localizacao_lote/003): a bancada volta, com ele selecionado.
+  if (!radio) {
+    pedirGavetaDesenhos(String(L.Util.stamp(camada)));
+    return;
+  }
   radio.checked = true;
   radio.dispatchEvent(new Event("change", { bubbles: true }));
   abrirGaveta(radio.closest(".gaveta-lateral"));

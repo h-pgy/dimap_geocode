@@ -35,71 +35,30 @@
        O que já está no tema NÃO se repete aqui. -->
   <script type="text/css" id="tokens-spec">
     @layer components {
-      /* MOLÉCULA · .placa-lista — a placa assentada que guarda uma lista curta dentro de um poço:
-         o .glass-panel entra composto no HTML, e a placa sobe do poço pela aresta de luz e pela
-         sombra. */
-      .placa-lista {
-        @apply flex flex-col gap-1.5 p-2.5 transition-all duration-300;
-        border-radius: var(--radius-placa);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.9),
-          0 6px 16px rgba(7, 58, 84, 0.28),
-          0 0 18px rgba(72, 202, 228, 0.22);
-      }
-      .placa-lista:hover {
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 1),
-          0 10px 22px rgba(7, 58, 84, 0.32),
-          0 0 24px rgba(72, 202, 228, 0.32);
-      }
-      .placa-lista__cabecalho { @apply flex items-center gap-2 px-1; }
-      .placa-lista__contagem {
-        @apply ml-auto text-[11px] font-bold tabular-nums leading-none px-2 py-1 rounded-full;
-        @apply bg-rocha-950/8 text-rocha-700;
-      }
-      .placa-lista__conteudo { @apply flex flex-col gap-1.5; }
-
-      /* VARIANTE · .table-onsen-compacta — a .table-onsen em linha baixa, para a tabela que divide
-         a altura com o mapa. */
-      .table-onsen-compacta thead th { @apply p-1.5; }
-      .table-onsen-compacta tbody td { @apply px-3 py-1.5 text-[13px]; }
-
-      /* VARIANTE · .gaveta-inferior-rasa — altura fixa em vez de teto. É a medida conhecida que
-         deixa a gaveta lateral parar acima dela. Abaixo do tablet vale a gaveta de tela inteira. */
-      @media (width >= 48rem) {
-        .gaveta-inferior-rasa { height: var(--gaveta-rasa-altura); }
-        .gaveta-inferior-rasa .gaveta-cabecalho { @apply pb-2; }
-        .gaveta-inferior-rasa .gaveta-coluna { @apply py-3; }
-
-        /* A gaveta lateral sobe a borda de baixo enquanto a rasa está aberta: nada se sobrepõe. */
-        .tela-home .gaveta-lateral { transition-property: transform, bottom; }
-        .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa) .gaveta-lateral {
-          bottom: calc(var(--gaveta-rasa-altura) + 0.75rem);
-        }
+      /* ÁTOMO · .paleta-gaveta-inferior — a .paleta-gaveta virada para o rodapé: meio disco sobre a
+         borda de cima da placa, centrado. Composta no HTML com .paleta-gaveta; só aparece recolhida. */
+      .paleta-gaveta-inferior {
+        @apply top-auto left-1/2 bottom-full -translate-x-1/2 translate-y-0 opacity-0 pointer-events-none;
+        @apply w-[4.5rem] h-9 rounded-none rounded-t-full border-l border-b-0 bg-gradient-to-t;
+        @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),0_-8px_24px_rgba(7,58,84,0.28),0_0_20px_rgba(72,202,228,0.25)];
       }
 
-      /* ÁTOMO · .realce-resultado / .realce-resultado-forte — o halo da feature realçada no mapa, na tinta de rocha
-         do próprio traço. Vai no <path> do Leaflet; o traço e o preenchimento vêm do catálogo em JS. */
-      .realce-resultado { filter: drop-shadow(0 0 4px rgba(65, 90, 119, 0.75)); }
-      .realce-resultado-forte {
-        filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 10px rgba(46, 69, 96, 0.9));
-      }
-
-      /* ORGANISMO · troca da gaveta lateral — o troca_gaveta.js diz no alvo do swap como a gaveta
-         nova chega: "entrada" desliza, "troca" funde só o conteúdo do painel, "mesma" não anima. */
+      /* VARIANTE · .gaveta-inferior-rasa sobe devagar e assenta: mais longa que a gaveta comum, e só
+         desacelerando. Chegando pelo swap já aberta, ela sobe do rodapé em vez de aparecer pronta. */
+      .gaveta-inferior-rasa { @apply duration-1000 ease-out; }
       @starting-style {
-        [data-troca-gaveta="entrada"] > .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) {
-          transform: translateX(-100%);
-        }
-        [data-troca-gaveta="troca"] .gaveta-lateral-painel > * { opacity: 0; }
+        .gaveta-toggle:checked + .gaveta-inferior-rasa { @apply translate-y-full; }
       }
-      [data-troca-gaveta="troca"] .gaveta-lateral-painel > * { @apply transition-opacity duration-150 ease-in-out; }
-      [data-troca-gaveta="troca"].htmx-swapping .gaveta-lateral-painel > * { @apply opacity-0; }
 
-      /* ORGANISMO · contexto de ação — enquanto o contexto_acao.js mantém a marca, a busca fica
-         recolhida, como sob a gaveta lateral aberta. */
-      .tela-home:has(#contexto-acao[data-contexto-acao]) .search-hero {
-        @apply opacity-0 -translate-y-5 scale-95 pointer-events-none invisible;
+      /* ESTADO · .gaveta-inferior-rasa recolhida — a placa sai da tela e só a paleta fica na borda. */
+      .gaveta-inferior-recolher { @apply sr-only; }
+      .gaveta-toggle:checked + .gaveta-inferior-rasa:has(> .gaveta-inferior-recolher:checked) { @apply translate-y-full; }
+      .gaveta-toggle:checked + .gaveta-inferior-rasa:has(> .gaveta-inferior-recolher:checked) > .paleta-gaveta-inferior {
+        @apply opacity-100 pointer-events-auto;
+      }
+      /* Recolhida, a lateral volta à altura inteira. */
+      .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa > .gaveta-inferior-recolher:checked) .gaveta-lateral {
+        @apply bottom-0;
       }
 
       /* andaime do mock: moldura que faz as vezes da casca da home. O contain segura a
@@ -109,9 +68,6 @@
         contain: layout;
       }
     }
-
-    /* TOKEN · a altura da gaveta inferior rasa. */
-    :root { --gaveta-rasa-altura: 16rem; }
   </script>
 </head>
 
@@ -129,7 +85,7 @@
         <p class="text-overline text-madeira-600">SPEC localizacao_lote/003 · mock de validação</p>
         <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Lotes que cruzam um desenho</h1>
         <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
-          A ação "Lotes contidos" no poço do polígono selecionado. Acionada, a bancada sai de cena: a
+          A ação "Lotes intersectados" no poço do polígono selecionado. Acionada, a bancada sai de cena: a
           tabela dos lotes sobe embaixo, e a gaveta lateral passa a ser a do lote escolhido.
         </p>
       </header>
@@ -138,9 +94,9 @@
       <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
         <h2 class="section-title">2 · Átomos</h2>
 
-        <!-- ícone da ação: static/src/acoes/lotes_mais_proximos/lotes_contidos/icones/ -->
+        <!-- ícone da ação: static/src/acoes/lotes_mais_proximos/lotes_intersectados/icones/ -->
         <div class="flex flex-col gap-3">
-          <p class="text-overline">.icone-acao · lotes_mais_proximos.lotes_contidos — pequeno e grande</p>
+          <p class="text-overline">.icone-acao · lotes_mais_proximos.lotes_intersectados — pequeno e grande</p>
           <div class="flex items-end gap-8">
             <span class="icone-acao icone-acao-pequeno text-agua-700" data-icone-lotes></span>
             <span class="icone-acao icone-acao-grande text-agua-700" data-icone-lotes></span>
@@ -200,6 +156,15 @@
             </div>
           </div>
 
+          <!-- estado: recolhida pela paleta — sobra só a paleta; o ✕ é o único que fecha -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">recolhida · clique na paleta para reabrir</span>
+            <div class="quadro-tela h-[26rem]">
+              <div class="absolute inset-0 z-0" data-mapa-estatico="21" data-sem-gaveta></div>
+              <div data-gaveta-inferior="21" data-recolhida></div>
+            </div>
+          </div>
+
           <!-- estado de falta: o desenho não cruza lote algum -->
           <div class="flex flex-col gap-2">
             <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">nenhum lote · o estado de falta escrito</span>
@@ -216,7 +181,7 @@
         <h2 class="section-title">5 · Tela montada</h2>
 
         <div class="flex flex-col gap-2">
-          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · selecione um polígono e acione "Lotes contidos"; clique numa linha ou num lote; clique no desenho, fora dos lotes, para voltar à bancada. O Polígono 3 não cruza lote, o 4 se cruza em "8"</span>
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · selecione um polígono e acione "Lotes intersectados"; clique numa linha ou num lote; clique no desenho, fora dos lotes, para voltar à bancada. O Polígono 3 não cruza lote, o 4 se cruza em "8"</span>
 
           <!-- página: core/home.html -->
           <div class="quadro-tela tela-home">
@@ -256,6 +221,15 @@
               <!-- partial: mapping/_resultado_acao.html, estendido por lotes_mais_proximos/partials/_resultado_desenho.html — toggle #gaveta-resultado marcado + placa -->
               <!-- /partial -->
             </div>
+          </div>
+        </div>
+
+        <!-- estado: gaveta inferior recolhida e um lote na gaveta lateral, na altura inteira -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">tabela recolhida · a gaveta do lote volta à altura inteira</span>
+          <div class="quadro-tela tela-home">
+            <div class="absolute inset-0 z-0" data-mapa-estatico="21" data-com-lateral data-sem-gaveta data-escolhido="1"></div>
+            <div data-tela-lote data-recolhida></div>
           </div>
         </div>
 
@@ -320,8 +294,8 @@
     const DIAMETRO_PONTO = { normal: 14, selecionado: 22 };
     const NUMERO = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 
-    // ── PEÇA DESTA SPEC: static/src/acoes/lotes_mais_proximos/lotes_contidos/icones/{pequeno,grande}.svg
-    const SVG_LOTES_CONTIDOS =
+    // ── PEÇA DESTA SPEC: static/src/acoes/lotes_mais_proximos/lotes_intersectados/icones/{pequeno,grande}.svg
+    const SVG_LOTES_INTERSECTADOS =
       '<svg viewBox="0 0 24 24">' +
       '<path d="M3.5 7 12 3.2 20.5 7.5 19 19.5 5 20.8z" stroke-dasharray="2.2 2.4"/>' +
       '<rect x="7.6" y="8.6" width="8.8" height="8.2" rx="0.8"/>' +
@@ -393,13 +367,13 @@
     const lotePorId = (id) => lotesDo(desenhoPorId(id.split("-")[0])).find((l) => l.id === id);
 
     // ── A marcação em julgamento ────────────────────────────────────────────────────────────────
-    function itemLotesContidos() {
+    function itemLotesIntersectados() {
       return (
         // No produto: hx-post="{% url item.url_name %}" hx-include=".linha-desenho__marca:checked".
         '<button type="button" class="card-well item-menu item-menu-swell" data-acao-lotes' +
         ' title="Lotes cadastrados que o polígono marcado cruza.">' +
-        '<span class="icone-acao icone-acao-pequeno icone-acao-acende">' + SVG_LOTES_CONTIDOS + "</span>" +
-        '<span class="item-menu-rotulo">Lotes contidos</span>' +
+        '<span class="icone-acao icone-acao-pequeno icone-acao-acende">' + SVG_LOTES_INTERSECTADOS + "</span>" +
+        '<span class="item-menu-rotulo">Lotes intersectados</span>' +
         "</button>"
       );
     }
@@ -408,7 +382,7 @@
       return (
         '<div class="placa-lista glass-panel">' +
         '<div class="placa-lista__cabecalho"><span class="text-overline">Ações</span><span class="placa-lista__contagem">1</span></div>' +
-        '<div class="placa-lista__conteudo">' + itemLotesContidos() + "</div>" +
+        '<div class="placa-lista__conteudo">' + itemLotesIntersectados() + "</div>" +
         "</div>"
       );
     }
@@ -566,7 +540,7 @@
     }
 
     // lotes_mais_proximos/partials/_resultado_desenho.html (corpo da base mapping/_resultado_acao.html)
-    function gavetaInferior(desenho, idToggle) {
+    function gavetaInferior(desenho, idToggle, recolhida = false) {
       const lotes = lotesDo(desenho);
       const quantidade = lotes.length
         ? lotes.length + (lotes.length === 1 ? " lote" : " lotes")
@@ -579,17 +553,22 @@
       const casca = document.createElement("div");
       casca.innerHTML =
         '<input type="checkbox" id="' + idToggle + '" class="gaveta-toggle" checked>' +
-        '<aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-label="Lotes contidos">' +
-        '<label for="' + idToggle + '" class="gaveta-alca" tabindex="0" aria-label="Fechar"><span class="etched-line"></span></label>' +
+        '<aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-label="Lotes intersectados">' +
+        // No produto: #gaveta-resultado-recolhida, filho imediato da placa; só o ✕ aponta para o toggle de fora.
+        '<input type="checkbox" id="' + idToggle + '-recolhida" class="gaveta-inferior-recolher"' + (recolhida ? " checked" : "") + ">" +
+        '<label for="' + idToggle + '-recolhida" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span></label>' +
+        '<label for="' + idToggle + '-recolhida" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">' +
+        '<svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>' +
+        "</label>" +
         '<header class="gaveta-cabecalho items-center">' +
         '<div class="min-w-0 flex items-baseline gap-3 flex-wrap">' +
-        '<h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Lotes contidos</h2>' +
+        '<h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Lotes intersectados</h2>' +
         '<span class="badge badge-poligono badge-sm">' + desenho.rotulo + "</span>" +
         '<p class="text-sm text-base-content/70"><span class="font-bold text-base-content tabular-nums">' + quantidade + "</span>" +
         " · desenho de " + NUMERO.format(desenho.area) + " m²</p>" +
         "</div>" +
-        '<label for="' + idToggle + '" class="btn btn-glass btn-sm btn-circle" aria-label="Fechar">' +
-        '<svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+        '<label for="' + idToggle + '" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">' +
+        '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
         "</label>" +
         "</header>" +
         '<div class="gaveta-corpo"><section class="gaveta-coluna">' + coluna + "</section></div>" +
@@ -607,7 +586,7 @@
     }
 
     // ── andaime do mock: os estados estáticos ───────────────────────────────────────────────────
-    document.querySelectorAll("[data-icone-lotes]").forEach((alvo) => (alvo.innerHTML = SVG_LOTES_CONTIDOS));
+    document.querySelectorAll("[data-icone-lotes]").forEach((alvo) => (alvo.innerHTML = SVG_LOTES_INTERSECTADOS));
     document.querySelector("[data-placa-demo]").innerHTML = placaAcoes();
     // Cada estado no seu formulário: radios sem formulário formariam um grupo só na página.
     const POLIGONOS = DESENHOS.filter((d) => d.tipo === "poligono");
@@ -619,12 +598,14 @@
     document.querySelector("[data-tabela-demo]").innerHTML = tabelaLotes(lotesDo(desenhoPorId("21")));
 
     document.querySelectorAll("[data-gaveta-inferior]").forEach((alvo, indice) => {
-      alvo.replaceWith(...gavetaInferior(desenhoPorId(alvo.dataset.gavetaInferior), "org-inferior-" + indice).childNodes);
+      alvo.replaceWith(...gavetaInferior(
+        desenhoPorId(alvo.dataset.gavetaInferior), "org-inferior-" + indice, alvo.hasAttribute("data-recolhida"),
+      ).childNodes);
     });
-    document.querySelectorAll("[data-tela-lote]").forEach((alvo) => {
+    document.querySelectorAll("[data-tela-lote]").forEach((alvo, indice) => {
       alvo.replaceWith(
-        gavetaLote(lotesDo(desenhoPorId("21"))[1], "tela-lote-lateral"),
-        ...gavetaInferior(desenhoPorId("21"), "tela-lote-inferior").childNodes,
+        gavetaLote(lotesDo(desenhoPorId("21"))[1], "tela-lote-lateral-" + indice),
+        ...gavetaInferior(desenhoPorId("21"), "tela-lote-inferior-" + indice, alvo.hasAttribute("data-recolhida")).childNodes,
       );
     });
 
@@ -802,7 +783,7 @@
       trocarGaveta(gavetaLote(lotePorId(idLote), "gaveta-lote-toggle"));
     }
 
-    function lotesContidos() {
+    function lotesIntersectados() {
       const desenho = desenhoPorId(alvoGaveta.querySelector(".linha-desenho__marca:checked").value);
       alvoResultado.replaceChildren();
       recolherDesenhos();
@@ -830,8 +811,11 @@
         d.camada.bringToBack?.();
       });
       alvoInferior.replaceChildren(...gavetaInferior(desenho, "lotes-desenho-vivo").childNodes);
+      // bancada.js desta SPEC: com gaveta inferior, o rodapé é dela — a bancada encaixada embaixo vai para a direita.
+      const bancadaTela = document.querySelector(".tela-home .bancada-conjunto");
+      if (bancadaTela?.dataset.dock === "bottom") bancadaTela.dataset.dock = "right";
       // mapping/_contexto_acao_oob.html: a marca e o controle que a encerra.
-      slotContexto.dataset.contextoAcao = "lotes_mais_proximos.lotes_contidos";
+      slotContexto.dataset.contextoAcao = "lotes_mais_proximos.lotes_intersectados";
       slotContexto.dataset.encerraCom = "#lotes-desenho-vivo";
       montarBarrasGravadas();
       const enquadrar = lotes.length ? camadaResultado.getBounds() : desenho.camada.getBounds();
@@ -844,7 +828,7 @@
       if (evento.target.matches(".linha-desenho__marca")) destacar();
     });
     document.addEventListener("click", (evento) => {
-      if (evento.target.closest("[data-acao-lotes]") && alvoGaveta.contains(evento.target)) lotesContidos();
+      if (evento.target.closest("[data-acao-lotes]") && alvoGaveta.contains(evento.target)) lotesIntersectados();
       const linha = evento.target.closest("tr[data-id-feature]");
       if (linha && alvoInferior.contains(linha)) abrirLote(linha.dataset.idFeature);
     });

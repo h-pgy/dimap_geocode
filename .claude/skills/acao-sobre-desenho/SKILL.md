@@ -7,8 +7,8 @@ description: Como construir algo que opera sobre um desenho da bancada no DIMAP 
 
 O desenho da bancada (SPEC `design/020`) é uma entidade territorial como as outras: pode ser o input
 de uma consulta ou de um ato administrativo. O padrão nasceu na SPEC
-[`localizacao_lote/003`](../../../SPECS/localizacao_lote/003-lotes-do-desenho.md) (v4), com a
-consulta "Lotes contidos". **É a fonte de verdade**: os snippets dela são a referência de código, e
+[`localizacao_lote/003`](../../../SPECS/localizacao_lote/003-lotes-do-desenho.md) (v6), com a
+consulta "Lotes intersectados". **É a fonte de verdade**: os snippets dela são a referência de código, e
 esta skill é o raciocínio de como repetir o padrão.
 
 > **Confira o `implementado:` da SPEC 003 antes de assumir que uma peça existe.** Enquanto ela estiver
@@ -32,7 +32,7 @@ Um poço oferece dois tipos de item, como o `ItemLivre` × `ItemAcao` do painel.
 | Quem vê o botão | todos, inclusive anônimo | quem tem a caneta (`slugs_liberados`) |
 | Está no `REGISTRO` de competências? | **não** — não é concedível | **sim** — é uma `AcaoImplementada` |
 | Proteção da rota | nenhuma; a exceção de rota aberta vai **declarada na SPEC** | `@acao_protegida`, registro da execução — skill `acao-administrativa` |
-| Exemplo | "Lotes contidos" (SPEC 003) | amostragem de ofertas sobre um polígono (futuro) |
+| Exemplo | "Lotes intersectados" (SPEC 003) | amostragem de ofertas sobre um polígono (futuro) |
 
 Critério: se existe um perfil que **não** pode executá-la, é ato. Se qualquer um pode, é consulta,
 e inscrevê-la no `REGISTRO` só polui o catálogo e as telas de concessão.
@@ -89,7 +89,7 @@ estar em `variantes_icone` do contrato.
 def _construir_registro() -> RegistroDesenho:
     return RegistroDesenho(
         itens=(
-            CONSULTA_LOTES_CONTIDOS,
+            CONSULTA_LOTES_INTERSECTADOS,
             CONSULTA_X,                                   # a linha nova
         )
     )
@@ -221,7 +221,9 @@ def _properties_x(item: ...) -> GeoJsonProperties:
 
 def contexto_x(resultado: ...) -> dict[str, Any]:
     geojson = to_geojson_feature_collection(resultado.itens, _properties_x)
-    return contexto_resultado_acao(CONSULTA_X.slug, geojson) | {"resultado": resultado}
+    # O desenho de origem vai na marca do contexto: é ele que fica inerte ao clique (§5.4).
+    contexto = contexto_resultado_acao(CONSULTA_X.slug, resultado.desenho, geojson)
+    return contexto | {"resultado": resultado}
 ```
 
 O que a base já faz, e a ação **não repete**:
@@ -229,9 +231,9 @@ O que a base já faz, e a ação **não repete**:
 | Peça | O que faz |
 |---|---|
 | `{% include "mapping/_mapa.html" %}` | o payload do mapa, na cor única `MAP_COR_RESULTADO_ACAO` (via `contexto_resultado_acao`) |
-| OOB `#gaveta-inferior-conteudo` | a gaveta inferior **rasa**, com o toggle `#gaveta-resultado` **já marcado**: o swap abre a gaveta, sem JS |
+| OOB `#gaveta-inferior-conteudo` | a gaveta inferior **rasa**, com o toggle `#gaveta-resultado` **já marcado**: o swap abre a gaveta, sem JS, e ela sobe do rodapé. Dentro da placa, o `#gaveta-resultado-recolhida` (alça recolhe, paleta reabre) e o ✕ gravado, que fecha (§5.2) |
 | `_recolher_gaveta_oob.html` com `toggle="gaveta-desenhos-toggle"` | recolhe a gaveta dos desenhos (só o toggle é trocado; o conteúdo fica no DOM e a paleta reabre) |
-| `_contexto_acao_oob.html` com `encerra_com="#gaveta-resultado"` | a marca do contexto de ação (§5) |
+| `_contexto_acao_oob.html` com `encerra_com="#gaveta-resultado"` | a marca do contexto de ação, com o slug e o desenho de origem (§5.4) |
 
 A recusa responde por **`mapping/_recusa_acao.html`**: o aviso do mapa + a gaveta dos desenhos
 recolhida, para o aviso (que mora na busca) ficar à vista. Sem payload de mapa.
@@ -259,9 +261,12 @@ toggles e uma marca no DOM, que o servidor manda e o CSS lê.
 | Ação recusada | desenhos recolhida | — (a que houver fica) | visível, com o aviso | `_recusa_acao.html` |
 | Clica numa linha ou numa feature | **gaveta da entidade**, acima da inferior | continua aberta | recolhida | `hx-get`/`url_ficha` → `#gaveta-entidade` |
 | Clica em outra linha/feature | a entidade nova **troca por fade**, sem recolher | aberta | recolhida | `troca_gaveta.js` |
-| Clica num desenho fora das features | **desenhos**, com ele selecionado | aberta | recolhida | `selecao.js` → `pedirGavetaDesenhos` |
+| Clica no desenho de **origem**, fora das features | nada: vale como clique no mapa vazio | aberta | recolhida | `selecao.js` lê `data-desenho` da marca |
+| Clica em **outro** desenho fora das features | **desenhos**, com ele selecionado | aberta | recolhida | `selecao.js` → `pedirGavetaDesenhos` |
 | Aciona de novo com outro polígono | desenhos recolhida | resultado **trocado** | recolhida | a mesma resposta |
-| Fecha a inferior (✕ ou alça) | como estava | fechada | **volta** | `contexto_acao.js` apaga a marca |
+| Recolhe a inferior (alça) | volta à **altura inteira** | fora da tela, só a **paleta** na borda | recolhida | CSS do `#gaveta-resultado-recolhida` |
+| Puxa pela paleta | termina acima da inferior | **aberta** de novo, subindo devagar | recolhida | idem |
+| Fecha a inferior (✕) | como estava | fechada, sem paleta | **volta** | `contexto_acao.js` apaga a marca |
 
 ### 5.2 Lateral acima da inferior
 
@@ -277,6 +282,21 @@ A gaveta inferior de resultado é a variante **`.gaveta-inferior-rasa`**, de **a
 É a medida conhecida que deixa a lateral parar acima da inferior **sem JS**. Não troque a rasa por
 uma inferior de altura variável: a lateral passaria a cobrir a tabela. Em telas `< 48rem` a regra não
 vale.
+
+**Recolher não é fechar.** A alça marca o `.gaveta-inferior-recolher`, que mora **dentro** da placa e é
+lido por `:has(> …)`: a placa sai da tela, sobra a `.paleta-gaveta-inferior` (a paleta da lateral
+virada para o rodapé) e a lateral volta à altura inteira. O `.gaveta-toggle` de fora, que encerra o
+contexto (§5.4), **só o ✕ desmarca**. Não aponte a alça para o `#gaveta-resultado`: recolher a tabela
+custaria o resultado, que só volta refazendo a ação.
+
+### 5.2.1 A bancada fora do rodapé
+
+Com gaveta inferior presente, aberta ou recolhida, o rodapé é dela, como a esquerda é da gaveta
+lateral, e pelo mesmo mecanismo do `arrasto.js`: o `bancada.js` entrega `rodapeTomado` e
+`recuoInferior` (ao lado de `esquerdaTomada` e `recuoEsquerdo`), e chama `desocuparRodape` quando a
+gaveta chega, abre ou recolhe. A bancada encaixada embaixo vai para a direita; a solta atrás da gaveta
+sobe acima dela; largar perto do rodapé não encaixa. Ela segue arrastável para qualquer outro lugar e
+não volta sozinha ao rodapé quando a gaveta fecha.
 
 ### 5.3 A troca da gaveta lateral
 
@@ -294,16 +314,25 @@ entidades diferentes contam como "mesma" e a troca não anima.
 ### 5.4 O contexto de ação
 
 A marca é o slot `<div id="contexto-acao" hidden>` da `core/home.html`, preenchido por OOB com
-`data-contexto-acao="<slug>"` e `data-encerra-com="#gaveta-resultado"`. O CSS esconde a busca enquanto
-a marca existe; o `contexto_acao.js` só a apaga quando o controle apontado por `data-encerra-com` é
-desmarcado. Consequência: **fechar a gaveta inferior é o único jeito de encerrar o contexto.** Um
-contexto encerrado por outro caminho deixa a busca recolhida até recarregar. Se a sua ação precisar
-de outro jeito de encerrar, é outro `encerra_com`, não JS novo.
+`data-contexto-acao="<slug>"`, `data-desenho="<id_bancada>"` e `data-encerra-com="#gaveta-resultado"`.
+O CSS esconde a busca enquanto a marca existe; o `contexto_acao.js` só a apaga quando o controle
+apontado por `data-encerra-com` é desmarcado.
+
+O `data-desenho` é o desenho de **origem** do resultado, e quem o declara é o servidor
+(`contexto_resultado_acao` recebe o `Desenho`). Enquanto a marca existe, o `selecao.js` ignora o clique
+nele: um polígono que cruza a rua tem vãos sem lote, e o clique ali o reselecionaria e o traria por
+cima das features, que deixariam de ser clicáveis. A regra acaba junto com o contexto. Não tente
+deduzir a origem no JS pelo radio marcado: ele também existe sob resultado de busca comum.
+
+Consequência: **fechar a gaveta inferior pelo ✕ é o único jeito de encerrar o contexto** — recolher
+não encerra. Um contexto encerrado por outro caminho deixa a busca recolhida até recarregar. Se a sua
+ação precisar de outro jeito de encerrar, é outro `encerra_com`, não JS novo.
 
 ### 5.5 A volta à bancada
 
 Com a lateral mostrando uma entidade, o radio do desenho não está no DOM. O `selecao.js`, ao não
-achar o radio, pede a gaveta dos desenhos de volta por `pedirGavetaDesenhos(id)` (exportado de
+achar o radio de um desenho que **não** é o de origem (§5.4), pede a gaveta dos desenhos de volta por
+`pedirGavetaDesenhos(id)` (exportado de
 `sincronia.js`), já com ele selecionado. Para voltar sem clicar no mapa, há a paleta.
 
 ## 6 · O mapa com resultado
@@ -311,10 +340,16 @@ achar o radio, pede a gaveta dos desenhos de volta por `pedirGavetaDesenhos(id)`
 O `interacao_resultado.js` é chamado pelo `aplicarResultado` do `init.js` a cada resultado:
 
 - **os desenhos descem** (`bringToBack`) e ficam mais transparentes (`fillOpacity: 0.2`): o clique
-  sobre uma feature é da feature, e o clique no desenho fora delas volta à bancada;
+  sobre uma feature é da feature, e o clique em outro desenho fora delas volta à bancada;
 - feature com `url_ficha` abre a gaveta dela no `#gaveta-entidade` e vira a **escolhida**;
 - linha da tabela sob o ponteiro acende a feature de mesmo `id` (**ponteiro**); a clicada vira a
   **escolhida**, com realce mais forte, até outra ser escolhida. O escolhido zera a cada resultado.
+
+**O resultado não é desenho.** O `mapa.pm.getGeomanLayers()` do plugin devolve **toda** camada
+vetorial do mapa, não só os traços da bancada. Por isso o `camada_resultado.js` cria o resultado com
+`pmIgnore: true` (e `snapIgnore: false`, para o encaixe continuar valendo): sem isso ele seria repintado
+na tinta do desenho pelo `destaque.js`, rebaixado junto com os desenhos, listado na gaveta dos desenhos
+e apagado pelo "Limpar desenhos". Camada nova que vá ao mapa fora da bancada precisa da mesma opção.
 
 Todo resultado de ação usa a mesma cor, `MAP_COR_RESULTADO_ACAO`, distinta das tintas dos desenhos, e
 o halo `.realce-resultado(-forte)` é escrito nessa tinta. **Não dê cor própria à sua ação**: é a cor
@@ -372,6 +407,9 @@ O JavaScript (ordem das camadas, realce, clique na feature, volta à bancada, fa
 - **Cor própria no resultado**, ou `properties.id` diferente do `data-id-feature`: o realce não liga
   linha e feature.
 - **Gaveta lateral nova sem `data-gaveta`** na raiz.
+- **Camada no mapa sem `pmIgnore`** fora da bancada: o Geoman a trata como desenho (§6).
+- **Chamar `contexto_resultado_acao` sem o desenho de origem**: o polígono volta a cobrir as features
+  quando clicado num vão (§5.4).
 - **Resolver no JS o que é da resposta**: abrir a inferior, recolher a lateral e marcar o contexto
   são OOBs do servidor. JS novo, só estado visual de controle, e com aprovação do usuário (§7.2 do
   CLAUDE.md).

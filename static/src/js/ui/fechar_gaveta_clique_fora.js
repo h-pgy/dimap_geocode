@@ -12,6 +12,12 @@ function naBancada(alvo) {
   return Boolean(document.getElementById("bancada-conjunto")?.contains(alvo));
 }
 
+// A gaveta inferior de resultado convive com a lateral (SPEC localizacao_lote/003): a linha dela
+// troca o conteúdo da lateral, e recolhê-la antes faria a gaveta nova entrar deslizando.
+function naGavetaInferior(alvo) {
+  return Boolean(alvo.closest?.(".gaveta-inferior"));
+}
+
 let origemClique = null;
 
 // Captura: o clique que conclui o traço desliga a ferramenta, e o do submenu recria o próprio botão,
@@ -22,7 +28,7 @@ document.addEventListener(
     origemClique = {
       x: evento.clientX,
       y: evento.clientY,
-      poupaGaveta: haFerramentaAtiva() || naBancada(evento.target),
+      poupaGaveta: haFerramentaAtiva() || naBancada(evento.target) || naGavetaInferior(evento.target),
     };
   },
   { capture: true },

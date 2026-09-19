@@ -3,6 +3,7 @@ from collections.abc import Callable, Iterable
 from services.integrations.wfs import (
     CqlDWithin,
     CqlFilter,
+    CqlIntersects,
     CqlPredicate,
     WfsFeature,
     WfsFeatureCollection,
@@ -95,7 +96,7 @@ class LoteGeocoder:
         return lotes
 
     def _montar_request(self, entrada: LoteGeocodInput) -> WfsFeatureRequest:
-        predicates: list[CqlPredicate | CqlDWithin] = [
+        predicates: list[CqlPredicate | CqlDWithin | CqlIntersects] = [
             CqlPredicate(field="cd_setor_fiscal", op="=", value=entrada.setor),
             CqlPredicate(field="cd_quadra_fiscal", op="=", value=entrada.quadra),
             CqlPredicate(field="cd_lote", op="=", value=entrada.lote),

@@ -11,5 +11,7 @@ _resolvedor = ResolvedorIcones()
 
 
 @register.simple_tag
-def icone_acao(slug: str, variante: VarianteIcone) -> str:
-    return _resolvedor(slug, variante)
+def icone_acao(slug: str, variante: VarianteIcone | str) -> str:
+    # O template também passa a variante como literal ("pequeno"): o StrEnum aceita os dois.
+    variante_icone = VarianteIcone(variante)
+    return _resolvedor(slug, variante_icone)

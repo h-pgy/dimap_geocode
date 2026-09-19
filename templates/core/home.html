@@ -16,6 +16,11 @@
   {# Entidade localizada pela busca (SPEC localizacao_lote/001): nasce vazia, sem casca nem paleta. #}
   <div id="gaveta-entidade"></div>
 
+  {# Resultado de ação sobre desenho (SPEC localizacao_lote/003): a gaveta inferior chega por OOB, #}
+  {# e a marca do contexto de ação recolhe a busca enquanto ela estiver aberta. #}
+  <div id="gaveta-inferior-conteudo"></div>
+  <div id="contexto-acao" hidden></div>
+
   {# UI flutuante sobre o mapa (skill componentes-frontend §6/mock_ui): sem pointer-events no #}
   {# layer, cada painel reabre a interação em pointer-events-auto. #}
   <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">

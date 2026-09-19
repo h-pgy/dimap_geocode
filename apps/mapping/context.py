@@ -4,6 +4,7 @@ from typing import Any
 from django.conf import settings
 
 from config.pontos_fundo import PontoFundo
+from services.domain.desenho import Desenho
 from services.utils.sorteio import sortear_diferente
 
 WMS_URL: str = settings.WMS_URL
@@ -17,6 +18,7 @@ MAP_TILES_PUBLICOS_ATRIBUICAO: str = settings.MAP_TILES_PUBLICOS_ATRIBUICAO
 MAP_TILES_PUBLICOS_ZOOM_MAXIMO: int = settings.MAP_TILES_PUBLICOS_ZOOM_MAXIMO
 MAP_FUNDO_PONTOS: dict[str, PontoFundo] = settings.MAP_FUNDO_PONTOS
 MAP_FUNDO_DIR: Path = settings.MAP_FUNDO_DIR
+MAP_COR_RESULTADO_ACAO: str = settings.MAP_COR_RESULTADO_ACAO
 
 
 def contexto_mapa_base() -> dict[str, Any]:
@@ -66,6 +68,15 @@ def contexto_mapa(geometria: dict[str, Any], cor: str) -> dict[str, Any]:
     """Monta o contexto de payload de um resultado: geometria GeoJSON 4326 + cor, sem WMS
     (o mapa singleton já existe). Agnóstico de domínio — só geometria pronta."""
     return {"payload": {"geometria": geometria, "cor": cor}}
+
+
+def contexto_resultado_acao(acao: str, desenho: Desenho, geojson: dict[str, Any]) -> dict[str, Any]:
+    """O contexto de toda resposta de ação: o do mapa, na cor única dos resultados de ação, o slug de
+    quem abriu o contexto e o desenho sobre o qual ele opera."""
+    return contexto_mapa(geojson, MAP_COR_RESULTADO_ACAO) | {
+        "acao": acao,
+        "desenho": desenho.id_bancada,
+    }
 
 
 def contexto_aviso(mensagem: str) -> dict[str, Any]:

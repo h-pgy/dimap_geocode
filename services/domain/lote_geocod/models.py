@@ -81,3 +81,9 @@ class LoteAttributes(BaseModel):
 
 
 LoteFeature = GeoFeature[PolygonGeometry, LoteAttributes]
+
+
+class LotePorIdentificadorInput(BaseModel):
+    id_poligono: str = Field(pattern=r"^\d+$")
+    layer_name: str
+    output_crs: int

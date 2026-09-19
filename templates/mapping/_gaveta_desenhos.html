@@ -1,5 +1,5 @@
 {% if gaveta.pocos %}
-<div class="gaveta-lateral">
+<div class="gaveta-lateral" data-gaveta="desenhos">
   <input type="checkbox" id="gaveta-desenhos-toggle" class="gaveta-lateral-toggle" checked>
 
   <div class="gaveta-lateral-painel glass-drawer-panel-denso">
@@ -12,8 +12,8 @@
       <div class="gaveta-lateral-rolador" data-rolador>
         {# Um formulário só: os radios de todos os poços formam um grupo, e a ação submete o marcado. #}
         <form class="gaveta-lateral-conteudo">
-          {% for poco in gaveta.pocos %}
-            {% include "mapping/_poco_desenhos.html" with poco=poco %}
+          {% for poco, itens in pocos %}
+            {% include "mapping/_poco_desenhos.html" with poco=poco itens=itens %}
           {% endfor %}
           <button type="button" class="btn-etched btn-etched-swell etched self-end"
                   commandfor="limpar-desenhos" command="show-modal">

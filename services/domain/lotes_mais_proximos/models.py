@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from services.domain.desenho import Desenho
 from services.domain.geometry import PointGeometry
 from services.domain.lote_geocod import LoteFeature
 
@@ -28,3 +29,12 @@ class LoteMaisProximoInput(BaseModel):
     codlog: str = Field(pattern=r"^\d{6}$")
     raio_m: float = Field(gt=0)
     camada: CamadaLotes
+
+
+class LotesDoDesenho(BaseModel):
+    """O que a consulta apurou: o desenho, a área dele e os lotes que ele cruza."""
+
+    desenho: Desenho
+    # Guardada: depende do CRS métrico da camada, que não mora no desenho.
+    area_m2: float = Field(gt=0)
+    lotes: tuple[LoteFeature, ...] = ()

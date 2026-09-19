@@ -1,15 +1,17 @@
 ---
 spec: localizacao_lote/003
-versao: v4
+versao: v6
 atualizado_em: 2026-09-18
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
   - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
   - v3: gatilho passa a ser a ação do poço de polígonos, oferecida por um registro de ações sobre desenho
   - v4: a ação aparece só com um polígono selecionado, opera sobre ele e leva ao contexto do resultado — tabela embaixo, gaveta do lote ao lado
+  - v5: o desenho que originou o resultado não responde ao clique enquanto o contexto de ação dura, e o resultado nasce fora da bancada
+  - v6: a alça recolhe a gaveta inferior, que volta pela paleta, e só o ✕ a fecha; com ela presente, a bancada não encaixa no rodapé
 ---
 
 # SPEC localizacao_lote/003 — Lotes que cruzam um desenho
@@ -21,28 +23,36 @@ aquele terreno.
 
 ## 2 · Condições de pronto
 - [ ] Com um **polígono selecionado** na gaveta dos desenhos, o poço de polígonos traz, abaixo da
-      lista, a ação **"Lotes contidos"**, inclusive para quem não fez login; sem seleção, ou com um
-      ponto ou uma linha selecionados, ela não aparece em poço algum.
-- [ ] Uma ação administrativa inscrita para um tipo de desenho só aparece no poço desse tipo, quando o
-      selecionado é dele, e só para quem tem competência para executá-la.
-- [ ] Acionar "Lotes contidos" desenha no mapa **todos os lotes que intersectam o polígono selecionado
+      lista, a ação **"Lotes intersectados"**, inclusive para quem não fez login; sem seleção, ou com um
+      ponto ou uma linha selecionados, ela não aparece em poço algum. Uma ação administrativa inscrita
+      para um tipo de desenho só aparece no poço desse tipo, quando o selecionado é dele, e só para
+      quem tem competência para executá-la.
+- [ ] Acionar "Lotes intersectados" desenha no mapa **todos os lotes que intersectam o polígono selecionado
       na gaveta**, como ele está no mapa naquele momento — inclusive depois de editado —, abre a
       **gaveta inferior** só com a quantidade e a tabela deles (SQL, endereço, situação do lançamento)
       e **recolhe a gaveta dos desenhos**; os lotes vêm em **cinza**, por cima dos polígonos
-      desenhados, que ficam na cor deles e mais transparentes.
+      desenhados, que ficam na cor deles e mais transparentes. Polígono que não cruza lote algum
+      mostra o estado de falta escrito na gaveta inferior.
 - [ ] Passar o ponteiro numa linha da tabela **realça** o lote dela no mapa, na mesma cor; o lote
       escolhido — pela linha ou pelo mapa — fica com um realce **mais forte**, até outro ser escolhido.
 - [ ] Com a gaveta inferior aberta, a gaveta lateral termina **acima** dela, e a **barra de busca fica
-      recolhida**; fechar a gaveta inferior encerra o contexto da ação e devolve a busca.
+      recolhida**. A **alça** recolhe a gaveta inferior para fora da tela, deixando só uma **paleta** na
+      borda de baixo, como a da gaveta lateral, que a puxa de volta, subindo devagar; recolhida, a
+      lateral volta à altura inteira e o contexto continua. Só o **✕**, gravado, a fecha, encerra o
+      contexto da ação e devolve a busca.
+- [ ] Enquanto há gaveta inferior, aberta ou recolhida, a bancada de desenho **não encaixa no rodapé**:
+      a que estava encaixada embaixo vai para a direita, a solta atrás da gaveta sobe acima dela, e
+      largá-la perto do rodapé não a encaixa ali; ela segue arrastável para qualquer outro lugar.
 - [ ] Clicar numa linha da tabela, **ou num lote no mapa**, abre a gaveta lateral com a gaveta do lote
       da SPEC [localizacao_lote/001](001-dados-do-lote-na-gaveta.md) — um lote por vez —, e a tabela
       continua aberta; com a gaveta lateral já aberta, o conteúdo **troca por fade**, sem ela recolher.
-- [ ] Clicar num **desenho** no mapa, fora dos lotes, devolve a gaveta dos desenhos, com ele selecionado; e
-      acionar a ação de novo com outro polígono troca os lotes do mapa e da tabela pelos dele.
+- [ ] Clicar em **outro** desenho no mapa, fora dos lotes, devolve a gaveta dos desenhos, com ele
+      selecionado; e acionar a ação de novo com outro polígono troca os lotes do mapa e da tabela pelos
+      dele. Até o ✕ encerrar o contexto, o polígono que originou o resultado **não responde ao
+      clique** — nem nos vãos sem lote — e os lotes seguem por cima dele.
 - [ ] Polígono que se auto-intersecta, ou acima da área máxima configurada, é recusado sem consultar o
       WFS, com mensagem em português no aviso do mapa — a da área cita a área máxima —, e a gaveta dos
       desenhos recolhe para o aviso ficar à vista.
-- [ ] Polígono que não cruza lote algum mostra o estado de falta escrito na gaveta inferior.
 - [ ] O design da ação no poço, da gaveta inferior com a tabela e da gaveta lateral acima dela foi
       aprovado no mock e as peças novas portadas para o tema e o styleguide antes de qualquer template
       da aplicação usá-las.
@@ -154,6 +164,7 @@ class ItemPoco(BaseModel):
 - `@services/domain/lote_geocod` → `feature_para_lote`, `LoteFeature`, `MontarGavetaLote`: os dados da gaveta do lote.
 - `@apps/competencias` → `AcaoImplementada`, `slugs_liberados`, `{% icone_acao %}` + `_icone_acao.html`; `@services/domain/autorizacao` → `PADRAO_SLUG`.
 - `@apps/mapping/context.py` → `contexto_mapa`, `contexto_aviso`.
+- `@static/src/js/mapa/desenho/arrasto.js` → `esquerdaTomada`, `recuoEsquerdo`, `desocuparEsquerda`: o guarda da gaveta lateral, que o do rodapé repete.
 - `@static/src/tema-dimap.dev.css` → `.item-menu-swell`, `.gaveta-inferior`, `.gaveta-cabecalho`, `.gaveta-coluna`, `.gaveta-vazia`, `.table-onsen`, `.tabela-onsen-gaveta`.
 - Skills: `leaflet-geoman`, `wfs-fetcher`, `htmx`, `painel`, `mock`, `componentes-frontend`, `test-django-views`.
 
@@ -165,9 +176,9 @@ class ItemPoco(BaseModel):
 declara ações em `acoes_declaradas.py`.
 
 ```python
-CONSULTA_LOTES_CONTIDOS = ConsultaSobreDesenho(
-    slug="lotes_mais_proximos.lotes_contidos",
-    nome="Lotes contidos",
+CONSULTA_LOTES_INTERSECTADOS = ConsultaSobreDesenho(
+    slug="lotes_mais_proximos.lotes_intersectados",
+    nome="Lotes intersectados",
     tooltip="Lotes cadastrados que o polígono marcado cruza.",
     url_name="lotes_mais_proximos:lotes_do_desenho",
     tipos=frozenset({TipoDesenho.POLIGONO}),
@@ -181,7 +192,7 @@ acrescentar uma linha aqui. Um ato entra envolvendo a constante que já está no
 def _construir_registro() -> RegistroDesenho:
     return RegistroDesenho(
         itens=(
-            CONSULTA_LOTES_CONTIDOS,
+            CONSULTA_LOTES_INTERSECTADOS,
             # AcaoSobreDesenho(acao=ACAO_AMOSTRAGEM_OFERTAS, tipos=frozenset({TipoDesenho.POLIGONO})),
         )
     )
@@ -433,8 +444,10 @@ com as features do resultado. A ação só preenche o corpo da gaveta e dá a ca
 `url_ficha`.
 
 **`templates/mapping/_resultado_acao.html`** — a base que a resposta da ação estende: payload do mapa,
-gaveta inferior de resultado fora de banda, gaveta dos desenhos recolhida e a marca do contexto. O
-toggle da gaveta de resultado tem id fixo, e é ele que encerra o contexto.
+gaveta inferior de resultado fora de banda, gaveta dos desenhos recolhida e a marca do contexto. A
+gaveta tem dois controles: o toggle `#gaveta-resultado`, de id fixo, que só o ✕ desmarca e que encerra
+o contexto; e o `#gaveta-resultado-recolhida`, **dentro** da placa, que a alça marca e a paleta
+desmarca.
 
 ```html
 {% include "mapping/_mapa.html" %}
@@ -442,13 +455,23 @@ toggle da gaveta de resultado tem id fixo, e é ele que encerra o contexto.
   {# O toggle vem marcado junto da placa: é o swap que abre a gaveta, sem JS. #}
   <input type="checkbox" id="gaveta-resultado" class="gaveta-toggle" checked>
   <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-labelledby="gaveta-resultado-titulo">
-    <label for="gaveta-resultado" class="gaveta-alca" tabindex="0" aria-label="Fechar"><span class="etched-line"></span></label>
+    {# NOVO: filho imediato da placa, lido por :has(> ...) — recolher não fecha nem encerra o contexto. #}
+    <input type="checkbox" id="gaveta-resultado-recolhida" class="gaveta-inferior-recolher">
+    <label for="gaveta-resultado-recolhida" class="gaveta-alca" tabindex="0"               {# ALTERADO: antes, for="gaveta-resultado" #}
+           aria-label="Recolher a gaveta"><span class="etched-line"></span></label>
+    {# NOVO: a paleta da gaveta lateral virada para o rodapé; só aparece recolhida. #}
+    <label for="gaveta-resultado-recolhida" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+      <svg class="etched paleta-gaveta-glifo" ...><path d="M6 15l6-6 6 6"/></svg>
+    </label>
     <header class="gaveta-cabecalho items-center">
       <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
         <h2 id="gaveta-resultado-titulo" class="text-xl font-bold tracking-tight leading-none text-madeira-700">{% block titulo %}{% endblock %}</h2>
         {% block resumo %}{% endblock %}
       </div>
-      ...  {# o ✕ com for="gaveta-resultado" #}
+      {# ALTERADO: o ✕ gravado, que incha e acende em ciano — composição do .btn-etched-swell. #}
+      <label for="gaveta-resultado" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">
+        <svg class="w-5 h-5" ...><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </label>
     </header>
     <div class="gaveta-corpo">{% block corpo %}{% endblock %}</div>
   </aside>
@@ -472,21 +495,23 @@ trocado: o conteúdo fica no DOM, e a paleta reabre a gaveta.
 <input type="checkbox" id="{{ toggle }}" class="gaveta-lateral-toggle" hx-swap-oob="true">
 ```
 
-**`templates/mapping/_contexto_acao_oob.html`** — a marca do contexto: o slug de quem o abriu e o
-controle que, desmarcado, o encerra. O slot `<div id="contexto-acao" hidden></div>` mora na
-`core/home.html`; `acao` vem do contexto da view.
+**`templates/mapping/_contexto_acao_oob.html`** — a marca do contexto: o slug de quem o abriu, o
+desenho sobre o qual ele opera e o controle que, desmarcado, o encerra. O slot
+`<div id="contexto-acao" hidden></div>` mora na `core/home.html`; `acao` e `desenho` vêm do contexto
+da view.
 
 ```html
 <div id="contexto-acao" hidden hx-swap-oob="true"
-     data-contexto-acao="{{ acao }}" data-encerra-com="{{ encerra_com }}"></div>
+     data-contexto-acao="{{ acao }}" data-desenho="{{ desenho }}"             {# ALTERADO: data-desenho #}
+     data-encerra-com="{{ encerra_com }}"></div>
 ```
 
-**`apps/mapping/context.py`** — o contexto de toda resposta de ação: o do mapa, o slug e a cor única
-dos resultados de ação, distinta da dos desenhos.
+**`apps/mapping/context.py`** — o contexto de toda resposta de ação: o do mapa, o slug, o desenho de
+origem e a cor única dos resultados de ação, distinta da dos desenhos.
 
 ```python
-def contexto_resultado_acao(acao: str, geojson: dict[str, Any]) -> dict[str, Any]:
-    return contexto_mapa(geojson, MAP_COR_RESULTADO_ACAO) | {"acao": acao}
+def contexto_resultado_acao(acao: str, desenho: Desenho, geojson: dict[str, Any]) -> dict[str, Any]:
+    return contexto_mapa(geojson, MAP_COR_RESULTADO_ACAO) | {"acao": acao, "desenho": desenho.id_bancada}
     # MAP_COR_RESULTADO_ACAO: setting nova, rocha-600 da paleta, como as MAP_COR_* de hoje
 ```
 
@@ -500,6 +525,7 @@ export function inicializarContextoAcao() {
     const encerraCom = slot?.dataset.encerraCom;
     if (!encerraCom || evento.target.checked || !evento.target.matches(encerraCom)) return;
     slot.removeAttribute("data-contexto-acao");
+    slot.removeAttribute("data-desenho");                        // NOVO: o desenho volta a ser clicável
     slot.removeAttribute("data-encerra-com");
   });
 }
@@ -601,6 +627,14 @@ export function interagirComResultado(mapa, camadaResultado) {
 }
 ```
 
+**`static/src/js/mapa/camada_resultado.js`** — resultado não é desenho. O `getGeomanLayers()` do plugin
+devolve toda camada vetorial do mapa; sem `pmIgnore`, o resultado seria repintado, rebaixado, listado
+na gaveta e apagado como um traço da bancada. O encaixe nele continua valendo.
+
+```javascript
+const FORA_DA_BANCADA = { pmIgnore: true, snapIgnore: false };   // NOVO: nas opções do L.geoJSON e do circleMarker
+```
+
 **`static/src/js/mapa/init.js`** — os três inicializadores entram no `montarMapaBase`, e o
 `aplicarResultado` passa a entregar a camada nova à interação.
 
@@ -620,6 +654,29 @@ essa medida que deixa a lateral parar acima dela.
   .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa) .gaveta-lateral {
     bottom: calc(var(--gaveta-rasa-altura) + 0.75rem);
   }
+}
+
+/* NOVO · a rasa sobe devagar e assenta; chegando pelo swap já aberta, sobe do rodapé. */
+.gaveta-inferior-rasa { @apply duration-1000 ease-out; }
+@starting-style {
+  .gaveta-toggle:checked + .gaveta-inferior-rasa { @apply translate-y-full; }
+}
+
+/* NOVO · ÁTOMO .paleta-gaveta-inferior — a .paleta-gaveta virada para o rodapé, só na rasa recolhida. */
+.paleta-gaveta-inferior {
+  @apply top-auto left-1/2 bottom-full -translate-x-1/2 translate-y-0 opacity-0 pointer-events-none;
+  @apply w-[4.5rem] h-9 rounded-none rounded-t-full border-l border-b-0 bg-gradient-to-t;
+  @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),0_-8px_24px_rgba(7,58,84,0.28),0_0_20px_rgba(72,202,228,0.25)];
+}
+
+/* NOVO · recolhida, a placa sai da tela, a paleta fica na borda e a lateral volta à altura inteira. */
+.gaveta-inferior-recolher { @apply sr-only; }
+.gaveta-toggle:checked + .gaveta-inferior-rasa:has(> .gaveta-inferior-recolher:checked) { @apply translate-y-full; }
+.gaveta-toggle:checked + .gaveta-inferior-rasa:has(> .gaveta-inferior-recolher:checked) > .paleta-gaveta-inferior {
+  @apply opacity-100 pointer-events-auto;
+}
+.tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa > .gaveta-inferior-recolher:checked) .gaveta-lateral {
+  @apply bottom-0;
 }
 
 /* VARIANTE · .table-onsen-compacta — linha baixa, para a tabela que divide a altura com o mapa. */
@@ -648,10 +705,13 @@ essa medida que deixa a lateral parar acima dela.
 }
 ```
 
-**`static/src/js/mapa/desenho/selecao.js`** — o desenho cujo radio não está no DOM (a gaveta lateral é
-a de uma entidade) pede a gaveta dos desenhos de volta, já com ele selecionado.
+**`static/src/js/mapa/desenho/selecao.js`** — o desenho de origem do contexto de ação não responde: o
+clique nele vale como clique no mapa vazio. Qualquer outro desenho cujo radio não está no DOM (a
+gaveta lateral é a de uma entidade) pede a gaveta dos desenhos de volta, já com ele selecionado.
 
 ```javascript
+// NOVO: sem isso, o vão sem lote dentro do polígono o reselecionaria e o traria por cima dos lotes.
+if (String(L.Util.stamp(camada)) === document.getElementById("contexto-acao")?.dataset.desenho) return;
 const radio = document.querySelector(`.linha-desenho__marca[value="${L.Util.stamp(camada)}"]`);
 if (!radio) {                                                    // ALTERADO: antes, só return
   L.DomEvent.stopPropagation(evento.originalEvent);
@@ -679,7 +739,7 @@ def _properties_lote_do_desenho(lote: LoteFeature) -> GeoJsonProperties:
 
 def contexto_lotes_do_desenho(resultado: LotesDoDesenho) -> dict[str, Any]:
     geojson = to_geojson_feature_collection(resultado.lotes, _properties_lote_do_desenho)
-    return contexto_resultado_acao(CONSULTA_LOTES_CONTIDOS.slug, geojson) | {"resultado": resultado}
+    return contexto_resultado_acao(CONSULTA_LOTES_INTERSECTADOS.slug, resultado.desenho, geojson) | {"resultado": resultado}
 ```
 
 **`templates/lotes_mais_proximos/partials/_resultado_desenho.html`** — o `TEMPLATE_RESULTADO_DESENHO`
@@ -687,7 +747,7 @@ só preenche a base: título, resumo e a tabela.
 
 ```html
 {% extends "mapping/_resultado_acao.html" %}
-{% block titulo %}Lotes contidos{% endblock %}
+{% block titulo %}Lotes intersectados{% endblock %}
 {% block resumo %}
   ...  {# badge do desenho, quantidade de lotes e área do desenho #}
 {% endblock %}
@@ -747,13 +807,27 @@ que trocar de polígono exige voltar à bancada, pela paleta ou pelo clique no d
 resposta conhecer o id do toggle da gaveta dos desenhos.
 
 Com resultado no mapa, os desenhos descem para baixo dele, mais transparentes. É o que dá ao clique
-sobre uma feature a gaveta dela, e ao clique no desenho fora delas a volta à bancada. O custo é o
+sobre uma feature a gaveta dela, e ao clique em outro desenho fora delas a volta à bancada. O custo é o
 desenho só ser clicável onde nenhuma feature o cobre, e desenho feito ou reselecionado depois do
 resultado voltar para cima, com o preenchimento cheio, até o próximo resultado.
+
+O desenho de origem não responde ao clique enquanto o contexto de ação dura. Um polígono que cruza a
+rua tem vãos sem lote, e o clique ali o reselecionaria e o traria por cima dos lotes, que deixariam de
+ser clicáveis. Quem diz qual é a origem é o servidor, na marca do contexto, e a regra acaba com ela. O
+custo é o ponteiro de mão sobre um traço que não responde, e voltar a ele na bancada só pela paleta ou
+fechando a gaveta inferior pelo ✕.
 
 A gaveta de resultado tem altura fixa, e a home encurta a gaveta lateral enquanto ela está aberta. A
 medida conhecida é o que deixa a lateral parar acima da inferior sem JavaScript. O custo é a regra de
 layout da home conhecer as duas gavetas, e poucas linhas deixarem a placa com sobra.
+
+Recolher e fechar são gestos distintos: a alça recolhe, a paleta puxa de volta e o ✕ fecha. Tirar a
+tabela da frente não pode custar o resultado, que só volta refazendo a ação. O custo é que fechar uma
+gaveta recolhida pede reabri-la antes, para chegar ao ✕.
+
+Com gaveta inferior, o rodapé é dela: a bancada não encaixa ali, como já não encaixa à esquerda com a
+gaveta lateral, e pelo mesmo mecanismo — o `arrasto.js` recebe do `bancada.js` se o rodapé está
+tomado e quanto ele ocupa. O custo é a bancada não voltar sozinha ao rodapé quando a gaveta fecha.
 
 A gaveta lateral que chega por swap no `#gaveta-entidade` ganha coreografia de chegada, pedida pelo
 usuário, sem alterar o organismo: o `troca_gaveta.js` marca o alvo e o CSS lê a marca. Sem estado
@@ -787,7 +861,7 @@ recusar desenho legítimo acima do corte até alguém calibrá-lo no ambiente.
   para o poço de polígonos e não para o de ponto.
 - `test_ato_sobre_desenho_so_para_quem_tem_a_caneta` — com um registro fake, o ato sai só quando o
   slug está nos liberados, e a consulta sai com os liberados vazios.
-- `test_gaveta_anonima_traz_lotes_contidos_no_poco_de_poligonos` — POST anônimo com um ponto e um
+- `test_gaveta_anonima_traz_lotes_intersectados_no_poco_de_poligonos` — POST anônimo com um ponto e um
   polígono, o polígono selecionado, devolve o botão com `hx-post` para
   `lotes_mais_proximos:lotes_do_desenho` e `hx-include=".linha-desenho__marca:checked"` no
   `.poco-desenhos__acoes-recorte` do poço de polígonos; o poço do ponto
@@ -800,9 +874,12 @@ recusar desenho legítimo acima do corte até alguém calibrá-lo no ambiente.
 - `test_lotes_do_desenho_traz_area_e_lotes` — duas features viram dois `LoteFeature` e a área em m².
 - `test_lotes_do_desenho_devolve_mapa_tabela_e_recolhe_os_desenhos` — POST anônimo com `id_bancada` e
   `desenho` devolve o payload do mapa, com `id`, `cor` cinza e `url_ficha` em cada lote; o OOB da
-  gaveta de resultado, com o toggle `#gaveta-resultado` marcado, a quantidade e uma linha por lote com o mesmo `data-id-feature`
+  gaveta de resultado, com o toggle `#gaveta-resultado` marcado, o `#gaveta-resultado-recolhida`
+  desmarcado dentro da placa, com a alça e a paleta apontando para ele e o ✕ para o
+  `#gaveta-resultado`, a quantidade e uma linha por lote com o mesmo `data-id-feature`
   e `hx-get` mirando `#gaveta-entidade`; o OOB do toggle da gaveta dos desenhos desmarcado; e o OOB
-  do `#contexto-acao` com o slug da ação e `data-encerra-com="#gaveta-resultado"`.
+  do `#contexto-acao` com o slug da ação, `data-desenho` com o `id_bancada` enviado e
+  `data-encerra-com="#gaveta-resultado"`.
 - `test_lotes_do_desenho_recusa_invalido_e_nao_poligono` — POST com laço em "8" devolve o aviso do
   mapa com a mensagem e o toggle da gaveta dos desenhos desmarcado, sem payload de mapa; POST com
   `id_bancada` e um `desenho` de ponto é recusado pela validação; nenhum dos dois consulta o WFS.

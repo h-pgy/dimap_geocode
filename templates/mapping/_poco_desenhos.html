@@ -1,3 +1,4 @@
+{% load icones %}
 {# <div>, não <form>: radios de formulários diferentes não formam um grupo só. #}
 <div class="poco-desenhos poco-desenhos--{{ poco.tipo }} card-well">
   {% for medido in poco.desenhos %}
@@ -39,5 +40,27 @@
       </div>
     </dialog>
   {% endfor %}
-  <div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}"></div>
+  {# Sem espaço entre a âncora e o if: sem itens ela tem de sair :empty, senão o empty:hidden não a recolhe. #}
+  <div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}">{% if itens %}
+    <div class="poco-desenhos__acoes-recorte">
+      <div class="placa-lista glass-panel">
+        <div class="placa-lista__cabecalho">
+          <span class="text-overline">Ações</span>
+          <span class="placa-lista__contagem">{{ itens|length }}</span>
+        </div>
+        <div class="placa-lista__conteudo">
+          {% for item in itens %}
+            {% icone_acao item.slug "pequeno" as svg %}
+            {# O hx-include pesca o único radio marcado na gaveta; o envio.js enxerta a geometria atual. #}
+            <button type="button" class="card-well item-menu item-menu-swell" title="{{ item.tooltip }}"
+                    hx-post="{% url item.url_name %}" hx-include=".linha-desenho__marca:checked"
+                    hx-target="#resultado-busca" hx-swap="innerHTML">
+              {% include "competencias/partials/_icone_acao.html" with svg=svg variante="pequeno" %}
+              <span class="item-menu-rotulo">{{ item.nome }}</span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}</div>
 </div>

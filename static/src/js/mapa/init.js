@@ -8,6 +8,9 @@ import { destacarSelecionados } from "./desenho/destaque.js";
 import { inicializarEnvio } from "./desenho/envio.js";
 import { inicializarSelecao } from "./desenho/selecao.js";
 import { inicializarSincronia } from "./desenho/sincronia.js";
+import { inicializarInteracaoResultado, interagirComResultado } from "./interacao_resultado.js";
+import { inicializarContextoAcao } from "../ui/contexto_acao.js";
+import { inicializarTrocaGaveta } from "../ui/troca_gaveta.js";
 
 let mapa = null;
 let camadaResultado = null;
@@ -29,6 +32,9 @@ function montarMapaBase() {
   inicializarEnvio(mapa);
   inicializarSelecao(mapa);
   inicializarApagar(mapa);
+  inicializarInteracaoResultado();
+  inicializarContextoAcao();
+  inicializarTrocaGaveta();
 }
 
 // htmx:afterSwap dispara a cada swap (garantido) — nele buscamos o payload por id no DOM. O
@@ -44,6 +50,7 @@ function aplicarResultado() {
   const data = JSON.parse(script.textContent);
   if (camadaResultado) mapa.removeLayer(camadaResultado);
   camadaResultado = adicionarResultado(mapa, data.geometria, data.cor);
+  interagirComResultado(mapa, camadaResultado);
 }
 
 // Trocar a marca de um poço repinta na hora; assentado um swap novo da gaveta (design/020), o
@@ -52,10 +59,16 @@ function destacarSeHouverMapa() {
   if (mapa) destacarSelecionados(mapa);
 }
 
+// Só o swap que traz a bancada repinta: o de um resultado ou de outra gaveta devolveria aos desenhos
+// o preenchimento cheio que o resultado acabou de baixar (SPEC localizacao_lote/003).
+function destacarSeTrouxeBancada(evento) {
+  if (evento.detail.target.querySelector(".linha-desenho__marca")) destacarSeHouverMapa();
+}
+
 // §11 caso (1): callbacks de evento do HTMX, registrados uma única vez (carregados no base.html).
 document.addEventListener("DOMContentLoaded", montarMapaBase);
 document.addEventListener("change", (evento) => {
   if (evento.target.matches(".linha-desenho__marca")) destacarSeHouverMapa();
 });
 htmx.on("htmx:afterSwap", aplicarResultado);
-htmx.on("htmx:afterSettle", destacarSeHouverMapa);
+htmx.on("htmx:afterSettle", destacarSeTrouxeBancada);

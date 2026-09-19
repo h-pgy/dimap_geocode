@@ -44,8 +44,16 @@ class CqlDWithin(BaseModel):
         return f"DWITHIN({self.field}, {self.wkt}, {self.distancia_m}, meters)"
 
 
+class CqlIntersects(BaseModel):
+    field: str
+    wkt: str = Field(pattern=PADRAO_WKT)
+
+    def to_cql(self) -> str:
+        return f"INTERSECTS({self.field}, {self.wkt})"
+
+
 class CqlFilter(BaseModel):
-    predicates: list[CqlPredicate | CqlDWithin] = Field(default_factory=list)
+    predicates: list[CqlPredicate | CqlDWithin | CqlIntersects] = Field(default_factory=list)
     logic: Literal["AND", "OR"] = "AND"
     # escape-hatch: bypassa o escape — usar com cautela
     raw_cql: str | None = None

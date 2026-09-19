@@ -23,7 +23,15 @@ function limitar(valor, minimo, maximo) {
 // a bancada abre, fecha ou muda de encaixe — a bancada nunca chama desligarTudo/renderizar direto.
 export function inicializarArrasto(refs, ganchos) {
   const { conjunto, alca, barra, telaMapa } = refs;
-  const { fecharSubmenus, recolherFerramentas, renderizar, esquerdaTomada, recuoEsquerdo } = ganchos;
+  const {
+    fecharSubmenus,
+    recolherFerramentas,
+    renderizar,
+    esquerdaTomada,
+    recuoEsquerdo,
+    rodapeTomado,
+    recuoInferior,
+  } = ganchos;
 
   // Sem isto, arrastar a bancada arrasta o mapa e a roda sobre ela dá zoom.
   L.DomEvent.disableClickPropagation(conjunto);
@@ -64,7 +72,7 @@ export function inicializarArrasto(refs, ganchos) {
     const limite = telaMapa.getBoundingClientRect();
     const caixa = conjunto.getBoundingClientRect();
     conjunto.style.left = limitar(x - limite.left, recuoEsquerdo(), limite.width - caixa.width) + "px";
-    conjunto.style.top = limitar(y - limite.top, 0, limite.height - caixa.height) + "px";
+    conjunto.style.top = limitar(y - limite.top, 0, limite.height - caixa.height - recuoInferior()) + "px";
   }
 
   function reancorar(dock) {
@@ -118,7 +126,7 @@ export function inicializarArrasto(refs, ganchos) {
     let dock = null;
     if (x < MARGEM_ENCAIXE && !esquerdaTomada()) dock = "left";
     else if (limite.width - x < MARGEM_ENCAIXE) dock = "right";
-    else if (limite.height - y < MARGEM_ENCAIXE) dock = "bottom";
+    else if (limite.height - y < MARGEM_ENCAIXE && !rodapeTomado()) dock = "bottom";
     // Fora de qualquer borda a bancada fica onde foi largada, mas deitada: em pé ela só existe
     // encaixada na lateral, que é o que justifica a coluna.
     if (!dock) {
@@ -189,5 +197,20 @@ export function inicializarArrasto(refs, ganchos) {
     if (solta && parseFloat(conjunto.style.left) < recuo) conjunto.style.left = recuo + "px";
   }
 
-  return { desocuparEsquerda };
+  // Chamado quando a gaveta inferior aparece, abre ou recolhe (SPEC localizacao_lote/003): o rodapé
+  // é dela. Encaixada embaixo, a bancada vai para a direita (troca de eixo); solta atrás da gaveta,
+  // é empurrada para cima dela.
+  function desocuparRodape() {
+    if (conjunto.classList.contains("bancada-conjunto--transmutando")) return;
+    const solta = conjunto.classList.contains("bancada-conjunto--solta");
+    if (!solta) {
+      if (conjunto.dataset.dock === "bottom") transmutarPara("right");
+      return;
+    }
+    const limite = telaMapa.getBoundingClientRect();
+    const teto = limite.height - conjunto.getBoundingClientRect().height - recuoInferior();
+    if (parseFloat(conjunto.style.top) > teto) conjunto.style.top = Math.max(0, teto) + "px";
+  }
+
+  return { desocuparEsquerda, desocuparRodape };
 }

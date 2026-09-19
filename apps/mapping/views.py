@@ -3,10 +3,13 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
+from apps.competencias.resolucao import slugs_liberados
 from services.domain.desenho import GavetaDesenhosInput, MontarGavetaDesenhos
 from services.utils.sorteio import sortear_diferente
 
+from .acoes_desenho import OfertaPocoInput, OfertarNoPoco
 from .context import ortofotos_disponiveis
+from .registro_desenho import REGISTRO_DESENHO
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
@@ -39,4 +42,10 @@ def desenhos_da_bancada(request: HttpRequest) -> HttpResponse:
         crs_geografico=MAP_GEOGRAPHIC_CRS,
     )
     gaveta = MontarGavetaDesenhos()(entrada)
-    return render(request, TEMPLATE_GAVETA_DESENHOS, {"gaveta": gaveta})
+    ofertar = OfertarNoPoco(REGISTRO_DESENHO)
+    liberados = slugs_liberados(request.user)
+    pocos = [
+        (poco, ofertar(OfertaPocoInput(tipo=poco.tipo, slugs_liberados=liberados)))
+        for poco in gaveta.pocos
+    ]
+    return render(request, TEMPLATE_GAVETA_DESENHOS, {"gaveta": gaveta, "pocos": pocos})
