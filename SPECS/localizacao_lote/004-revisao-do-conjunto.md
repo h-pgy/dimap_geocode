@@ -2,8 +2,8 @@
 spec: localizacao_lote/004
 versao: v7
 atualizado_em: 2026-09-18
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: []
 changelog:
   - v1: versão inicial
@@ -23,31 +23,31 @@ engano — um a um ou todos de uma vez —, no contexto de um traço que pegou v
 chegar ao conjunto que de fato compõe o terreno.
 
 ## 2 · Condições de pronto
-- [ ] Cada linha da tabela tem uma **lixeira**; acioná-la tira o lote da tabela **e** do mapa, sem
+- [x] Cada linha da tabela tem uma **lixeira**; acioná-la tira o lote da tabela **e** do mapa, sem
       reenquadrar o mapa, sem abrir a gaveta do lote e **sem consultar o GeoServer**, e o resumo da
       gaveta passa a contar **só os lotes que restaram**.
-- [ ] Tirar lotes em sequência acumula: um lote tirado não volta ao tirar o próximo.
-- [ ] Tirar o último lote mostra um estado de falta escrito **próprio**, distinto do desenho que não
+- [x] Tirar lotes em sequência acumula: um lote tirado não volta ao tirar o próximo.
+- [x] Tirar o último lote mostra um estado de falta escrito **próprio**, distinto do desenho que não
       cruza lote algum.
-- [ ] **"Limpar lotes"** abre um aviso que diz **quantos lotes estão na tela**; confirmado, tira todos
+- [x] **"Limpar lotes"** abre um aviso que diz **quantos lotes estão na tela**; confirmado, tira todos
       da tabela e do mapa, sem consultar o GeoServer, e a gaveta **fica aberta** no estado de falta do
       conjunto esvaziado. Cancelado, nada muda.
-- [ ] **Fechar** a gaveta pelo ✕ faz a gaveta **descer como ao recolher** e só então abre o aviso,
+- [x] **Fechar** a gaveta pelo ✕ faz a gaveta **descer como ao recolher** e só então abre o aviso,
       dizendo que todos os lotes serão tirados. Cancelado, a gaveta volta a subir. Confirmado, a paleta
       e o aviso somem **com fade**, os lotes saem do mapa, a busca volta e o conjunto é descartado da
       sessão. **Recolher** a gaveta não pede nem descarta nada.
-- [ ] Com o conjunto já vazio, "Limpar lotes" não aparece, e o ✕ fecha **sem aviso**, com a gaveta
+- [x] Com o conjunto já vazio, "Limpar lotes" não aparece, e o ✕ fecha **sem aviso**, com a gaveta
       descendo.
-- [ ] Acionar "Lotes intersectados" de novo **recomeça** o conjunto, com todos os lotes do desenho.
-- [ ] Um identificador de lote que não está no conjunto, mandado para remoção, **não muda** o conjunto.
-- [ ] Remover ou limpar a partir de um resultado que **não é o vigente** na sessão (substituído por
+- [x] Acionar "Lotes intersectados" de novo **recomeça** o conjunto, com todos os lotes do desenho.
+- [x] Um identificador de lote que não está no conjunto, mandado para remoção, **não muda** o conjunto.
+- [x] Remover ou limpar a partir de um resultado que **não é o vigente** na sessão (substituído por
       consulta de outra aba, ou já descartado) é recusado com aviso em português, e o conjunto vigente
       fica intacto; fechar a gaveta desse resultado só a fecha naquela aba.
-- [ ] Clicar num lote **no mapa** marca a linha dele na tabela como **ativa** (a marca `data-ativo` da
+- [x] Clicar num lote **no mapa** marca a linha dele na tabela como **ativa** (a marca `data-ativo` da
       `.table-onsen`), a **sobe deslizando** até a primeira posição, como na tabela de unidades, e rola a tabela ao topo, para a lixeira ficar à
       mão e a linha nunca ficar sob o cabeçalho; a linha antes ativa perde a marca. A marca e a
       ordem voltam ao normal quando a tabela é trocada (revisão, nova consulta).
-- [ ] A lixeira da linha da tabela existe como átomo no tema e no styleguide, com o visual da lixeira
+- [x] A lixeira da linha da tabela existe como átomo no tema e no styleguide, com o visual da lixeira
       da bancada, antes de qualquer template da aplicação usá-la.
 
 ## 3 · Domínio
