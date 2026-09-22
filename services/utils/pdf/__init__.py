@@ -24,6 +24,7 @@ from .models import (
 from .numeracao import CanvasMarcado
 from .qr_code import MODULO_MINIMO_MM, QrCodePdf, QrCodePdfInput, qr_code_pdf
 from .quadro import QuadroInput, QuadroPdf, quadro_pdf
+from .raster import imagem_raster
 from .tabela import (
     EstiloTabela,
     FundoDoCabecalho,
@@ -83,6 +84,7 @@ __all__ = [
     "carregar_vetor",
     "desenhar_forma",
     "gerar_pdf",
+    "imagem_raster",
     "qr_code_pdf",
     "quadro_pdf",
     "tabela_pdf",

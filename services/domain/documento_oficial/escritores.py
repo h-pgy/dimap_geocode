@@ -14,6 +14,7 @@ from services.utils.pdf import (
     VetorNomeado,
     VetorReferenciado,
     carregar_vetor,
+    imagem_raster,
     qr_code_pdf,
     quadro_pdf,
     tabela_pdf,
@@ -23,6 +24,7 @@ from services.utils.qr_code import QrCodeInput, gerar_qr_code
 from .models import (
     BlocoTextual,
     Imagem,
+    ImagemRaster,
     Lista,
     Paragrafo,
     QrCode,
@@ -129,6 +131,16 @@ class EscritorImagem:
         return desenho
 
 
+class EscritorImagemRaster:
+    def __call__(self, bloco: ImagemRaster) -> Flowable:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: ImagemRaster) -> Flowable:
+        imagem = imagem_raster(bloco.conteudo, bloco.largura_mm)
+        imagem.hAlign = "CENTER"
+        return imagem
+
+
 class EscritorQrCode:
     """O bloco diz o que o QR carrega; gerar o símbolo é do utilitário e assentá-lo é do motor.
     Sem `Tema` no construtor: um QR não tem cor, fonte nem entrelinha a herdar."""
@@ -204,6 +216,7 @@ def montar_escritores(tema: Tema) -> dict[str, Callable[[Any], Flowable]]:
         "lista": EscritorLista(tema),
         "tabela": EscritorTabela(tema),
         "imagem": EscritorImagem(tema),
+        "imagem_raster": EscritorImagemRaster(),
         "qr_code": EscritorQrCode(),
         "selo_de_fecho": EscritorSeloDeFecho(tema),
     }

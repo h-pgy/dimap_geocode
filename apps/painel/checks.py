@@ -21,6 +21,8 @@ ACOES_SEM_CARD: frozenset[str] = frozenset(
         # servidor/unidade específico, alcançada pela "Lista de servidores"/"Ver o organograma".
         "user_admin.editar_servidor",
         "unidades.editar_unidade",
+        # Opera sobre um lote localizado: o botão mora na gaveta do lote (apps/acoes_lote).
+        "certidao_lancamento.emitir",
     }
 )
 

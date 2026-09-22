@@ -21,7 +21,9 @@ urlpatterns: list[URLResolver | URLPattern] = [
     path("lote/", include("apps.lote_matcher.urls")),
     path("lote/", include("apps.lote_geocoder.urls")),
     path("lote/", include("apps.lotes_mais_proximos.urls")),
+    path("lote/", include("apps.acoes_lote.urls")),
     path("endereco/", include("apps.address_geocoder.urls")),
+    path("certidao-lancamento/", include("apps.certidao_lancamento.urls")),
     path("", include("apps.documentos.urls")),
 ]
 

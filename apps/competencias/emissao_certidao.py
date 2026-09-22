@@ -65,18 +65,22 @@ def _tipo_certidao() -> CertidaoAtos:
     return CertidaoAtos(tema=tema, config=config, selo_config=selo_config)
 
 
+def autor_do_ato(perfil: Perfil) -> AutorDoAto:
+    return AutorDoAto(
+        nome=f"{perfil.nome} {perfil.sobrenome}",
+        unidade=perfil.unidade.sigla,
+        cargo_base=perfil.cargo_base.nome,
+        cargo_comissao=perfil.cargo_comissao.nome if perfil.cargo_comissao else None,
+        substituindo=_cargo_substituido(perfil),
+    )
+
+
 def _envelope(perfil: Perfil, recorte: RecorteDeclarado) -> EnvelopeAto:
     return EnvelopeAto(
         codigo=gerar_codigo(),
         acao=ACAO_EMITIR_CERTIDAO_ATOS.acao.slug,
         operacao="emitir",
-        autor=AutorDoAto(
-            nome=f"{perfil.nome} {perfil.sobrenome}",
-            unidade=perfil.unidade.sigla,
-            cargo_base=perfil.cargo_base.nome,
-            cargo_comissao=perfil.cargo_comissao.nome if perfil.cargo_comissao else None,
-            substituindo=_cargo_substituido(perfil),
-        ),
+        autor=autor_do_ato(perfil),
         alvo=AlvoDoAto(tipo="servidor", identificador=perfil.rf),
         emitido_em=timezone.localtime(),
         campos_publicos=("periodo", "tipos"),

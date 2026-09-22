@@ -3,11 +3,16 @@ from .config import DocumentoSettingsLike, build_marcacao_config, build_tema_con
 from .escritores import montar_escritores
 from .estilos import MontarTema, montar_tema
 from .fecho import AcrescentarSeloDeFecho, acrescentar_selo_de_fecho
-from .marcacoes_concretas import marcacao_fazenda_dimap, marcacao_fazenda_dimap_selado
+from .marcacoes_concretas import (
+    marcacao_fazenda_dimap,
+    marcacao_fazenda_dimap_selado,
+    marcacao_fazenda_dimap_selado_com_nota,
+)
 from .marcas import (
     CabecalhoTimbrado,
     CabecalhoUnidade,
     MarcaDagua,
+    NotaDeRodape,
     NumeracaoPaginas,
     QrCodeRodape,
     RodapeComQr,
@@ -25,6 +30,7 @@ from .models import (
     DocumentoAmostraInput,
     DocumentoRenderizado,
     Imagem,
+    ImagemRaster,
     Lista,
     MarcacaoConfig,
     PaletaDocumento,
@@ -59,11 +65,13 @@ __all__ = [
     "DocumentoRenderizado",
     "DocumentoSettingsLike",
     "Imagem",
+    "ImagemRaster",
     "Lista",
     "MarcaDagua",
     "MarcacaoConfig",
     "MontarDocumentoAmostra",
     "MontarTema",
+    "NotaDeRodape",
     "NumeracaoPaginas",
     "PaletaDocumento",
     "PaletaSelo",
@@ -91,6 +99,7 @@ __all__ = [
     "build_tema_config",
     "marcacao_fazenda_dimap",
     "marcacao_fazenda_dimap_selado",
+    "marcacao_fazenda_dimap_selado_com_nota",
     "montar_documento_amostra",
     "montar_escritores",
     "montar_tema",

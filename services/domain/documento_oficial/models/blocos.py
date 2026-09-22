@@ -67,6 +67,14 @@ class Imagem(BlocoDocumento):
     largura_mm: float
 
 
+class ImagemRaster(BlocoDocumento):
+    """Imagem que só existe como pixel — a planta. Os bytes vêm prontos: o bloco não busca nada."""
+
+    tipo: Literal["imagem_raster"] = "imagem_raster"
+    conteudo: bytes = Field(min_length=1)
+    largura_mm: float = Field(gt=0)
+
+
 class QrCode(BlocoDocumento):
     """O bloco guarda o que o símbolo DIZ, nunca a imagem dele: o QR é derivado do conteúdo, e
     guardá-lo pronto seria o mesmo dado em dois lugares."""
@@ -88,6 +96,6 @@ class SeloDeFecho(BlocoDocumento):
 
 
 Bloco = Annotated[
-    Titulo | Subtitulo | Paragrafo | Lista | Tabela | Imagem | QrCode | SeloDeFecho,
+    Titulo | Subtitulo | Paragrafo | Lista | Tabela | Imagem | ImagemRaster | QrCode | SeloDeFecho,
     Field(discriminator="tipo"),
 ]

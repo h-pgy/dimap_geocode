@@ -73,6 +73,10 @@ class RodapeEndereco(LinhasDeTexto):
     posicao = Posicao.INFERIOR
 
 
+class NotaDeRodape(LinhasDeTexto):
+    posicao = Posicao.INFERIOR
+
+
 class CabecalhoTimbrado(Marca):
     """Timbre à esquerda, unidade à direita, na MESMA faixa. Empilhadas, as duas marcas somariam a
     altura de cada uma e o cabeçalho comeria a página; lado a lado, a faixa é a do mais alto."""

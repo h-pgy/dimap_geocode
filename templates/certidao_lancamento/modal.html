@@ -1,0 +1,66 @@
+{% load icones %}
+<div class="modal modal-open modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+    <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+      <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+        <span class="w-6 h-6 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
+          {% icone_acao "certidao_lancamento.emitir" "pequeno" %}
+        </span>
+      </span>
+      <div class="min-w-0">
+        <p class="text-overline">Certidão de Existência de Lançamento</p>
+        <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL {{ lote.feature.attributes.sql }}</p>
+        <p class="text-xs text-base-content/70 truncate">{{ lote.feature.attributes.endereco_formatado }}</p>
+      </div>
+    </header>
+
+    {% if lote.pode_certificar %}
+      {% if recusa %}
+        <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
+          <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+          <span>{{ recusa.mensagem }}</span>
+        </div>
+      {% endif %}
+
+      <form hx-post="{% url 'certidao_lancamento:emitir' %}" hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-4">
+        <input type="hidden" name="id" value="{{ lote.feature.attributes.id_poligono }}">
+
+        <div class="flex flex-col gap-1">
+          <label class="text-overline text-xs {% if recusa.campo == 'processo' %}text-error{% endif %}">Processo SEI</label>
+          <input type="text"
+                 name="processo"
+                 value="{{ valores.processo }}"
+                 data-mascara="0000.0000/0000000-0"
+                 placeholder="0000.0000/0000000-0"
+                 class="input input-glass input-sm w-full font-mono {% if recusa.campo == 'processo' %}campo-realce-erro{% endif %}"
+                 autofocus>
+          <span class="form-field-hint">Formato obrigatório: NNNN.AAAA/NNNNNNN-D (máscara automática ao digitar)</span>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-overline text-xs {% if recusa.campo == 'interessado' %}text-error{% endif %}">Nome do interessado</label>
+          <input type="text"
+                 name="interessado"
+                 value="{{ valores.interessado }}"
+                 placeholder="Nome completo ou razão social"
+                 class="input input-glass input-sm w-full {% if recusa.campo == 'interessado' %}campo-realce-erro{% endif %}">
+          <span class="form-field-hint">Consta no requerimento da certidão oficial.</span>
+        </div>
+
+        <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+          <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Cancelar</button>
+          <button type="submit" class="btn btn-onsen btn-sm">Emitir certidão</button>
+        </div>
+      </form>
+    {% else %}
+      <div role="alert" class="alert alert-warning alert-soft text-xs flex items-start gap-2 p-3">
+        <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+        <span>{{ motivo_recusa_lote }}</span>
+      </div>
+      <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+        <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</button>
+      </div>
+    {% endif %}
+  </div>
+  <label class="modal-backdrop" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</label>
+</div>

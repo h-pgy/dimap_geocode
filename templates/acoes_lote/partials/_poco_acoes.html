@@ -1,0 +1,16 @@
+{% load icones %}
+{% if itens %}
+  <div class="card-well p-4 flex flex-col gap-2">
+    <p class="text-overline">Ações</p>
+    {% for item in itens %}
+      <button type="button" class="btn btn-onsen btn-sm gap-2"
+              hx-get="{% url item.url_name %}?id={{ id_entidade }}&sql={{ sql }}"
+              hx-target="#poco-modal">
+        <span class="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
+          {% icone_acao item.acao.acao.slug "pequeno" %}
+        </span>
+        {{ item.acao.acao.nome_curto }}
+      </button>
+    {% endfor %}
+  </div>
+{% endif %}

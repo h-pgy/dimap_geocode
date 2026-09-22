@@ -1,4 +1,5 @@
 from django import template
+from django.utils.safestring import mark_safe
 
 from services.domain.autorizacao import VarianteIcone
 
@@ -14,4 +15,4 @@ _resolvedor = ResolvedorIcones()
 def icone_acao(slug: str, variante: VarianteIcone | str) -> str:
     # O template também passa a variante como literal ("pequeno"): o StrEnum aceita os dois.
     variante_icone = VarianteIcone(variante)
-    return _resolvedor(slug, variante_icone)
+    return mark_safe(_resolvedor(slug, variante_icone))

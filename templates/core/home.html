@@ -20,6 +20,7 @@
   {# e a marca do contexto de ação recolhe a busca enquanto ela estiver aberta. #}
   <div id="gaveta-inferior-conteudo"></div>
   <div id="contexto-acao" hidden></div>
+  <div id="poco-modal" class="poco-modal"></div>
 
   {# UI flutuante sobre o mapa (skill componentes-frontend §6/mock_ui): sem pointer-events no #}
   {# layer, cada painel reabre a interação em pointer-events-auto. #}
@@ -84,4 +85,6 @@
   <script type="module" src="{% static 'js/busca/atalho_foco_busca.js' %}"></script>
   {# Clique fora da gaveta lateral a recolhe (SPEC design/019) #}
   <script type="module" src="{% static 'js/ui/fechar_gaveta_clique_fora.js' %}"></script>
+  {# Máscara progressiva para campos com [data-mascara] (SPEC certidao_lancamento/001) #}
+  <script type="module" src="{% static 'js/ui/campo_mascarado.js' %}"></script>
 {% endblock %}

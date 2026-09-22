@@ -127,6 +127,10 @@
             <dt class="text-overline">CIB</dt>
             {% if gaveta.lote.cib %}<dd class="text-code">{{ gaveta.lote.cib }}</dd>{% else %}<dd class="valor-ausente">não informado</dd>{% endif %}
           </dl>
+
+          {% if gaveta.lote.sql %}
+            <div hx-get="{% url 'acoes_lote:acoes' %}?sql={{ gaveta.lote.sql }}&id={{ gaveta.lote.id_poligono }}" hx-trigger="load" hx-swap="outerHTML"></div>
+          {% endif %}
         </div>
       </div>
       <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>

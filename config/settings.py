@@ -497,6 +497,8 @@ INSTALLED_APPS = [
     "apps.lotes_mais_proximos",
     "apps.amostrador_ofertas",
     "apps.documentos",
+    "apps.acoes_lote",
+    "apps.certidao_lancamento",
 ]
 
 MIDDLEWARE = [

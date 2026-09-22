@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC certidao_lancamento/001 — Certidão de lançamento de um lote (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet para o mapa vivo da home (skill `mock`) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* andaime do mock: moldura que faz as vezes da casca da home */
+      .quadro-tela {
+        @apply relative h-[42rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+  <!-- Defs da gravação: partial da própria aplicação -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- Glifos de SVG para o mock: selo oficial, download, alerta e o glifo novo da ação -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <!-- NOVO nesta SPEC: centralizado em static/src/acoes/certidao_lancamento/emitir/icones/pequeno.svg -->
+      <!-- Documento oficial com a casinha no canto superior esquerdo -->
+      <g id="glifo-certidao-lancamento">
+        <!-- Documento oficial fornecido com caneta -->
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M10.9436 1.25H13.0564C14.8942 1.24998 16.3498 1.24997 17.489 1.40314C18.6614 1.56076 19.6104 1.89288 20.3588 2.64124C20.6516 2.93414 20.6516 3.40901 20.3588 3.7019C20.0659 3.9948 19.591 3.9948 19.2981 3.7019C18.8749 3.27869 18.2952 3.02502 17.2892 2.88976C16.2615 2.75159 14.9068 2.75 13 2.75H11C9.09318 2.75 7.73851 2.75159 6.71085 2.88976C5.70476 3.02502 5.12511 3.27869 4.7019 3.7019C4.27869 4.12511 4.02502 4.70476 3.88976 5.71085C3.75159 6.73851 3.75 8.09318 3.75 10V14C3.75 15.9068 3.75159 17.2615 3.88976 18.2892C4.02502 19.2952 4.27869 19.8749 4.7019 20.2981C5.12511 20.7213 5.70476 20.975 6.71085 21.1102C7.73851 21.2484 9.09318 21.25 11 21.25H13C14.9068 21.25 16.2615 21.2484 17.2892 21.1102C18.2952 20.975 18.8749 20.7213 19.2981 20.2981C19.994 19.6022 20.2048 18.5208 20.2414 15.9892C20.2474 15.575 20.588 15.2441 21.0022 15.2501C21.4163 15.2561 21.7472 15.5967 21.7412 16.0108C21.7061 18.4383 21.549 20.1685 20.3588 21.3588C19.6104 22.1071 18.6614 22.4392 17.489 22.5969C16.3498 22.75 14.8942 22.75 13.0564 22.75H10.9436C9.10583 22.75 7.65019 22.75 6.51098 22.5969C5.33856 22.4392 4.38961 22.1071 3.64124 21.3588C2.89288 20.6104 2.56076 19.6614 2.40314 18.489C2.24997 17.3498 2.24998 15.8942 2.25 14.0564V9.94358C2.24998 8.10582 2.24997 6.65019 2.40314 5.51098C2.56076 4.33856 2.89288 3.38961 3.64124 2.64124C4.38961 1.89288 5.33856 1.56076 6.51098 1.40314C7.65019 1.24997 9.10582 1.24998 10.9436 1.25ZM18.1131 7.04556C19.1739 5.98481 20.8937 5.98481 21.9544 7.04556C23.0152 8.1063 23.0152 9.82611 21.9544 10.8869L17.1991 15.6422C16.9404 15.901 16.7654 16.076 16.5693 16.2289C16.3387 16.4088 16.0892 16.563 15.8252 16.6889C15.6007 16.7958 15.3659 16.8741 15.0187 16.9897L12.9351 17.6843C12.4751 17.8376 11.9679 17.7179 11.625 17.375C11.2821 17.0321 11.1624 16.5249 11.3157 16.0649L11.9963 14.0232C12.001 14.0091 12.0056 13.9951 12.0102 13.9813C12.1259 13.6342 12.2042 13.3993 12.3111 13.1748C12.437 12.9108 12.5912 12.6613 12.7711 12.4307C12.924 12.2346 13.099 12.0596 13.3578 11.8009C13.3681 11.7906 13.3785 11.7802 13.3891 11.7696L18.1131 7.04556ZM20.8938 8.10622C20.4188 7.63126 19.6488 7.63126 19.1738 8.10622L18.992 8.288C19.0019 8.32149 19.0132 8.3571 19.0262 8.39452C19.1202 8.66565 19.2988 9.02427 19.6372 9.36276C19.9757 9.70125 20.3343 9.87975 20.6055 9.97382C20.6429 9.9868 20.6785 9.99812 20.712 10.008L20.8938 9.8262C21.3687 9.35124 21.3687 8.58118 20.8938 8.10622ZM19.5664 11.1536C19.2485 10.9866 18.9053 10.7521 18.5766 10.4234C18.2479 10.0947 18.0134 9.75146 17.8464 9.43357L14.4497 12.8303C14.1487 13.1314 14.043 13.2388 13.9538 13.3532C13.841 13.4979 13.7442 13.6545 13.6652 13.8202C13.6028 13.9511 13.5539 14.0936 13.4193 14.4976L13.019 15.6985L13.3015 15.981L14.5024 15.5807C14.9064 15.4461 15.0489 15.3972 15.1798 15.3348C15.3455 15.2558 15.5021 15.159 15.6468 15.0462C15.7612 14.957 15.8686 14.8513 16.1697 14.5503L19.5664 11.1536ZM7.25 9C7.25 8.58579 7.58579 8.25 8 8.25H14.5C14.9142 8.25 15.25 8.58579 15.25 9C15.25 9.41421 14.9142 9.75 14.5 9.75H8C7.58579 9.75 7.25 9.41421 7.25 9ZM7.25 13C7.25 12.5858 7.58579 12.25 8 12.25H10.5C10.9142 12.25 11.25 12.5858 11.25 13C11.25 13.4142 10.9142 13.75 10.5 13.75H8C7.58579 13.75 7.25 13.4142 7.25 13ZM7.25 17C7.25 16.5858 7.58579 16.25 8 16.25H9.5C9.91421 16.25 10.25 16.5858 10.25 17C10.25 17.4142 9.91421 17.75 9.5 17.75H8C7.58579 17.75 7.25 17.4142 7.25 17Z" fill="currentColor"/>
+        <!-- Casinha no canto superior esquerdo -->
+        <path d="M1.2 5L4.5 2.2L7.8 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2.2 4.8V8.8H6.8V4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3.8 8.8V6.6H5.2V8.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- JÁ EXISTE: glifo de selo / certidão selada -->
+      <g id="glifo-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="m8.7 12 2.4 2.4 4.2-4.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- JÁ EXISTE: glifo de download -->
+      <g id="glifo-baixar">
+        <path d="M12 4v12m0 0 4-4m-4 4-4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- JÁ EXISTE: glifo de alerta / aviso -->
+      <g id="glifo-alerta">
+        <path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- Fundo: o mapa da home -->
+  <div id="fundo-home" class="fixed inset-0 z-0 opacity-40 pointer-events-none"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC certidao_lancamento/001 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Certidão de lançamento de um lote</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-3xl">
+          A ação <span class="text-code">certidao_lancamento.emitir</span> oferecida na gaveta lateral do lote localizado pelo router de ações de entidade.
+          O mock aprova o glifo da ação, o poço de ações na gaveta lateral, as quatro faces do modal (formulário limpo, erro 422, recusa com aviso e confirmação selada) e a experiência ao vivo sobre o mapa.
+        </p>
+      </header>
+
+      <!-- ==================================================================== -->
+      <!-- 2 · ÁTOMOS                                                            -->
+      <!-- ==================================================================== -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h2 class="section-title">2 · Átomos</h2>
+          <p class="text-xs text-base-content/70">O glifo da ação e os campos do formulário nos seus estados visuais.</p>
+        </div>
+
+        <!-- Glifo da ação -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">Glifo da ação · certidao_lancamento.emitir (variante pequeno: 24×24 · casinha com documento oficial ao lado)</p>
+          <div class="card-well p-5 flex flex-wrap items-center gap-8">
+            <div class="flex flex-col items-center gap-2">
+              <div class="w-8 h-8 flex items-center justify-center text-rocha-900">
+                <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+              </div>
+              <span class="text-overline">repouso</span>
+            </div>
+
+            <div class="flex flex-col items-center gap-2">
+              <div class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+              </div>
+              <span class="text-overline">.icon-bubble</span>
+            </div>
+
+            <div class="flex flex-col items-center gap-2">
+              <div class="icon-bubble w-11 h-11 bg-madeira-600/15 border-madeira-600/30 text-madeira-700">
+                <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+              </div>
+              <span class="text-overline">variante madeira</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campos de entrada -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">Campos de formulário · .input-glass com estados e máscara</p>
+          <div class="grid sm:grid-cols-3 gap-4">
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-overline">máscara progressiva</span>
+                <span class="badge badge-xs badge-ghost font-mono">interativo</span>
+              </div>
+              <input type="text" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0">
+              <span class="form-field-hint text-[11px]">Digite só números; formata em tempo real.</span>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">preenchido válido (16 dígitos)</span>
+              <input type="text" class="input input-glass input-sm w-full font-mono font-medium" data-mascara="0000.0000/0000000-0" value="6017.2026/0048912-3">
+              <span class="form-field-hint text-[11px] text-success">Formato SEI válido</span>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline text-error">.campo-realce-erro</span>
+              <input type="text" class="input input-glass input-sm w-full campo-realce-erro font-mono" value="6017.2026/123-4">
+              <span class="form-field-hint text-[11px] text-error">Incompleto / recusa 422</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================== -->
+      <!-- 3 · MOLÉCULAS                                                         -->
+      <!-- ==================================================================== -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h2 class="section-title">3 · Moléculas</h2>
+          <p class="text-xs text-base-content/70">O poço de ações na gaveta lateral e o cabeçalho de identificação do imóvel no modal.</p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- Poço com ação liberada -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">templates/acoes_lote/partials/_poco_acoes.html (autorizado)</p>
+            <div class="card-well p-4 flex flex-col gap-2.5">
+              <p class="text-overline">Ações</p>
+              <button type="button" class="btn btn-onsen btn-sm w-full justify-start gap-2.5">
+                <svg class="w-4 h-4 shrink-0"><use href="#glifo-certidao-lancamento"/></svg>
+                Certidão de lançamento
+              </button>
+            </div>
+            <span class="form-field-hint">Renderizado na gaveta lateral quando o servidor possui competência concedida.</span>
+          </div>
+
+          <!-- Poço sem ação liberada (anônimo / sem competência) -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">_poco_acoes.html (anônimo ou sem concessão)</p>
+            <div class="card-well p-6 flex flex-col items-center justify-center text-center gap-1 min-h-[5rem] border-dashed border-rocha-950/15">
+              <span class="text-xs italic text-base-content/50">Nenhuma ação liberada para este perfil.</span>
+              <span class="text-xs text-base-content/40">O poço sai vazio (:empty) e fica oculto na gaveta.</span>
+            </div>
+            <span class="form-field-hint">A busca nunca expõe botões de ações restritas a quem não pode executá-las.</span>
+          </div>
+        </div>
+
+        <!-- Identificação do Imóvel no Modal -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">Identificação do Lote no cabeçalho do Modal</p>
+          <div class="card-well p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="icon-bubble w-10 h-10 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                <svg class="w-5 h-5"><use href="#glifo-certidao-lancamento"/></svg>
+              </span>
+              <div>
+                <p class="text-overline mb-0.5">Imóvel certificado</p>
+                <p class="font-bold text-sm text-rocha-950">RUA AUGUSTA, 100 — APTO 12</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-code text-xs font-semibold">SQL 012.345.6789-0</span>
+              <span class="badge badge-success badge-soft badge-sm font-bold">Lançamento ativo</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================== -->
+      <!-- 4 · ORGANISMOS                                                        -->
+      <!-- ==================================================================== -->
+      <section id="organismos" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h2 class="section-title">4 · Organismos</h2>
+          <p class="text-xs text-base-content/70">
+            As quatro faces do modal da certidão em <span class="text-code">#poco-modal</span>.
+            A caixa permanece com o mesmo tamanho e materiais; apenas o miolo troca de acordo com o estado do fluxo.
+          </p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-8 items-start">
+          <!-- 4·A: Formulário inicial -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-agua-800">4·A · Formulário inicial de emissão</span>
+              <span class="badge badge-neutral badge-soft badge-xs">GET 200</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+                <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                  <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-overline">Certidão de Existência de Lançamento</p>
+                  <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL 012.345.6789-0</p>
+                  <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12</p>
+                </div>
+              </header>
+
+              <form class="flex flex-col gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="text-overline text-xs">Processo SEI</label>
+                  <input type="text" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0">
+                  <span class="form-field-hint">Formato: NNNN.AAAA/NNNNNNN-D (digite apenas números ou cole formatado)</span>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="text-overline text-xs">Nome do interessado</label>
+                  <input type="text" class="input input-glass input-sm w-full" placeholder="Nome completo ou razão social">
+                  <span class="form-field-hint">Consta no requerimento da certidão oficial.</span>
+                </div>
+
+                <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+                  <button type="button" class="btn btn-glass btn-sm">Cancelar</button>
+                  <button type="button" class="btn btn-onsen btn-sm">Emitir certidão</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- 4·B: Erro de validação 422 -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-error">4·B · Recusa de formulário com realce</span>
+              <span class="badge badge-error badge-soft badge-xs">POST 422</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+                <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                  <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-overline">Certidão de Existência de Lançamento</p>
+                  <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL 012.345.6789-0</p>
+                  <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12</p>
+                </div>
+              </header>
+
+              <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
+                <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
+                <span>O número do processo SEI não está no formato padrão (NNNN.AAAA/NNNNNNN-D).</span>
+              </div>
+
+              <form class="flex flex-col gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="text-overline text-xs text-error">Processo SEI</label>
+                  <input type="text" class="input input-glass input-sm w-full campo-realce-erro font-mono" data-mascara="0000.0000/0000000-0" value="6017.2026/123-4">
+                  <span class="text-xs text-error">Formato inválido. Exemplo correto: 6017.2026/0012345-6</span>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="text-overline text-xs">Nome do interessado</label>
+                  <input type="text" class="input input-glass input-sm w-full" value="Empresa Construtora Exemplo Ltda">
+                </div>
+
+                <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+                  <button type="button" class="btn btn-glass btn-sm">Cancelar</button>
+                  <button type="button" class="btn btn-onsen btn-sm">Emitir certidão</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- 4·C: Lote não certificável (Aviso sem formulário) -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-warning-content">4·C · Lote sem lançamento ou condominial</span>
+              <span class="badge badge-warning badge-soft badge-xs">Aviso</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+                <span class="icon-bubble w-11 h-11 bg-warning/15 border-warning/30 text-warning-content shrink-0">
+                  <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-overline">Certidão de Existência de Lançamento</p>
+                  <p class="text-base font-bold text-rocha-950 leading-tight">Impossível emitir pelo sistema</p>
+                </div>
+              </header>
+
+              <div class="card-well p-4 flex flex-col gap-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-neutral badge-soft badge-sm">Sem lançamento ativo</span>
+                  <span class="text-code text-xs">Lote 012.345.0001</span>
+                </div>
+                <p class="text-sm text-base-content/85">
+                  Este lote não possui lançamento ativo no cadastro imobiliário oficial do Município (situação diferente de <strong>ATIVO</strong> ou ausência de número de contribuinte com dígito).
+                </p>
+                <p class="text-xs text-base-content/65">
+                  Apenas imóveis com lançamento cadastrado podem obter a certidão automatizada. Para casos especiais, consulte o expediente manual da unidade.
+                </p>
+              </div>
+
+              <div class="modal-action pt-2">
+                <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto">Fechar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4·D: Confirmação com Certidão Emitida -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-success">4·D · Certidão emitida com sucesso</span>
+              <span class="badge badge-success badge-soft badge-xs">Sucesso</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <div class="card-well flex flex-col items-center text-center gap-3 p-6">
+                <span class="icon-bubble w-14 h-14 bg-success/15 border-success/30 text-success">
+                  <svg class="w-7 h-7"><use href="#glifo-selo"/></svg>
+                </span>
+                <div>
+                  <span class="text-overline text-success font-bold">Certidão selada e emitida</span>
+                  <h3 class="text-lg font-bold text-rocha-950 mt-0.5">Documento registrado no acervo</h3>
+                </div>
+                <div class="flex flex-col items-center gap-1 bg-white/40 border border-rocha-950/10 rounded-lg px-4 py-2 w-full">
+                  <span class="text-overline text-xs">Código de autenticidade</span>
+                  <span class="text-code text-base font-bold tracking-wider text-rocha-950">2026-CL-8F92-A1B4</span>
+                </div>
+                <p class="text-xs text-base-content/70">
+                  Emitida de forma automatizada com consulta oficial ao GeoSampa em 22/09/2026 às 09:45.
+                </p>
+              </div>
+
+              <a href="001-amostra-certidao.pdf" target="_blank" download="certidao_lancamento_2026-CL-8F92-A1B4.pdf" class="btn btn-onsen gap-2 w-full justify-center">
+                <svg class="w-4 h-4"><use href="#glifo-baixar"/></svg>
+                Baixar Certidão (PDF de Amostra)
+              </a>
+
+              <details class="collapse collapse-arrow bg-white/50 border border-rocha-950/10 rounded-lg text-left text-xs">
+                <summary class="collapse-title font-semibold text-rocha-900 py-2.5 px-3 min-h-0 text-xs flex items-center justify-between">
+                  <span>Prévia textual dos dados da certidão</span>
+                </summary>
+                <div class="collapse-content px-3 pb-3 text-rocha-800 space-y-2 text-[11px] leading-relaxed border-t border-rocha-950/5 pt-2">
+                  <div class="p-2.5 bg-rocha-50 rounded border border-rocha-950/10 font-mono whitespace-pre-wrap select-all">PREFEITURA DO MUNICÍPIO DE SÃO PAULO
+SECRETARIA MUNICIPAL DA FAZENDA
+SUBSECRETARIA DA RECEITA MUNICIPAL — DEPARTAMENTO DE TRIBUTAÇÃO E JULGAMENTO
+DIVISÃO DE MAPEAMENTO E CADASTRO FISCAL — DIMAP
+
+CERTIDÃO DE EXISTÊNCIA DE LANÇAMENTO
+
+1. REQUERIMENTO
+Interessado: Empresa Construtora Exemplo Ltda
+Processo Administrativo SEI nº: 6017.2026/0012345-6
+
+2. IDENTIFICAÇÃO DO IMÓVEL
+O imóvel objeto desta certidão está localizado no endereço RUA AUGUSTA (codlog: 01234-5), número 100, complemento APTO 12, São Paulo - SP.
+Setor-Quadra-Lote (SQL / Número de Contribuinte): 012.345.6789-0
+
+3. DESPACHO E DECLARAÇÃO OFICIAL
+Solicitação deferida.
+Com base nas informações consultadas de forma automatizada junto à base de dados oficial do Município de São Paulo, declara-se que o imóvel acima identificado possui lançamento ativo do Imposto Predial e Territorial Urbano (IPTU) pelo contribuinte número 012.345.6789-0.
+
+4. LOCALIZAÇÃO DO IMÓVEL (PLANTA CADASTRAL)
+--------------------------------------------------------------------------------
+[PLANTA DE LOCALIZAÇÃO DO LOTE — WMS GEOSAMPA / MDC CADASTRAL (150 mm)]
+Geometria do Lote destacada no Sistema de Coordenadas Métricas Oficiais (SIRGAS 2000 / UTM 23S)
+Coordenadas de Enquadramento: E: 331045.2, N: 7393412.8 | Escala 1:1000 | Camadas: Lote Cidadão + Arruamento Oficial
+--------------------------------------------------------------------------------
+
+São Paulo, 22 de setembro de 2026.
+
+AUTENTICIDADE E ASSINATURA ELETRÔNICA DO ATO
+Código de Autenticidade: 2026-CL-8F92-A1B4
+Ato Administrativo: certidao_lancamento.emitir (Alvo: SQL 012.345.6789-0)
+Emitido por: Auditor-Fiscal Tributário Municipal (RF 835.916-4)
+Conferência Pública: https://geocoder.dimap.pmsp.gov.br/documentos/conferir?codigo=2026-CL-8F92-A1B4
+
+Certidão emitida de forma automatizada. Dados cadastrais consultados no GeoSampa em 22/09/2026 às 09:45.
+DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo</div>
+                </div>
+              </details>
+
+              <div class="modal-action mt-0 pt-1">
+                <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto">Fechar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================== -->
+      <!-- 5 · TELA MONTADA (HOME VIVA COM GAVETA E MODAL)                       -->
+      <!-- ==================================================================== -->
+      <section id="tela" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h2 class="section-title">5 · Tela montada — Fluxo Interativo</h2>
+          <p class="text-xs text-base-content/70">
+            A gaveta lateral do lote localizado e o modal aberto em <span class="text-code">#poco-modal</span> sobre a home.
+            Utilize a barra de controle abaixo para acionar a abertura e experimentar cada face do fluxo em tempo real.
+          </p>
+        </div>
+
+        <!-- Barra de andaime do mock -->
+        <div class="card-well p-3 flex flex-wrap items-center justify-between gap-3 bg-white/40">
+          <div class="flex items-center gap-2">
+            <span class="text-overline">Andaime do Mock:</span>
+            <span class="text-xs text-base-content/70">Simular estado no modal:</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" id="btn-estado-form" class="btn btn-sm btn-glass">1. Formulário Limpo</button>
+            <button type="button" id="btn-estado-erro" class="btn btn-sm btn-glass">2. Erro (422)</button>
+            <button type="button" id="btn-estado-aviso" class="btn btn-sm btn-glass">3. Aviso (Lote Não Certificável)</button>
+            <button type="button" id="btn-estado-sucesso" class="btn btn-sm btn-onsen">4. Sucesso (PDF Emitido)</button>
+            <button type="button" id="btn-fechar-modal" class="btn btn-sm btn-glass text-error">✕ Fechar</button>
+          </div>
+        </div>
+
+        <!-- Moldura da Home -->
+        <div class="quadro-tela relative">
+          <!-- Mapa Leaflet da tela montada -->
+          <div id="mapa-tela" class="absolute inset-0 z-0"></div>
+
+          <!-- Gaveta Lateral do Lote (SPEC localizacao_lote/001) -->
+          <div id="gaveta-entidade" class="absolute top-0 bottom-0 left-0 z-10">
+            <div class="gaveta-lateral" data-gaveta="lote-3198301">
+              <input type="checkbox" id="gaveta-lote-toggle-montada" class="gaveta-lateral-toggle" checked>
+
+              <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+                <header class="gaveta-lateral-cabecalho">
+                  <p class="text-overline text-madeira-600">Entidade localizada</p>
+                  <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
+                  <p class="text-code text-sm font-medium mt-2">SQL 012.345.6789-0</p>
+                  <span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>
+                </header>
+
+                <div class="gaveta-lateral-corpo" style="overflow-y: auto;">
+                  <div class="gaveta-lateral-conteudo flex flex-col gap-3 p-4">
+                    <!-- Endereço -->
+                    <div class="card-well p-4 flex flex-col gap-3">
+                      <div class="flex gap-4 items-center">
+                        <div class="icon-bubble w-10 h-10 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </div>
+                        <div class="min-w-0">
+                          <p class="text-overline mb-0.5">Endereço cadastrado</p>
+                          <p class="font-bold leading-tight text-sm">RUA AUGUSTA, 100 — APTO 12</p>
+                        </div>
+                      </div>
+                      <div class="h-px w-full bg-rocha-950/10"></div>
+                      <div class="flex items-baseline justify-between gap-4">
+                        <p class="text-overline">Codlog</p>
+                        <p class="text-code text-xs">01234-5</p>
+                      </div>
+                    </div>
+
+                    <!-- Confronto de áreas -->
+                    <div class="card-well p-4 flex flex-col gap-2">
+                      <p class="text-overline">Área de terreno</p>
+                      <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p class="text-overline text-[10px]">Cadastro</p>
+                          <p class="font-bold tabular-nums">450 m²</p>
+                        </div>
+                        <div>
+                          <p class="text-overline text-[10px]">Polígono</p>
+                          <p class="font-bold tabular-nums">452 m²</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- O POÇO DE AÇÕES INJETADO NA GAVETA DO LOTE -->
+                    <!-- partial: templates/acoes_lote/partials/_poco_acoes.html -->
+                    <div class="card-well p-4 flex flex-col gap-2 bg-white/40 border border-agua-600/20">
+                      <p class="text-overline text-agua-900 font-bold">Ações disponíveis</p>
+                      <button type="button" id="btn-disparar-modal" class="btn btn-onsen btn-sm w-full justify-start gap-2.5 shadow-sm">
+                        <svg class="w-4 h-4 shrink-0"><use href="#glifo-certidao-lancamento"/></svg>
+                        Certidão de lançamento
+                      </button>
+                    </div>
+                    <!-- /partial -->
+                  </div>
+                </div>
+              </div>
+
+              <label for="gaveta-lote-toggle-montada" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+                <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </label>
+            </div>
+          </div>
+
+          <!-- O POÇO DE MODAL DA HOME (SPEC criacao_usuarios/007, design/007) -->
+          <!-- templates/core/home.html: <div id="poco-modal" class="poco-modal"></div> -->
+          <div id="poco-modal-montado" class="poco-modal absolute inset-0 z-30 pointer-events-none flex items-center justify-center p-4">
+            <!-- Modal ao vivo (injetado por HTMX) -->
+            <div id="modal-container-vivo" class="hidden pointer-events-auto transition-all duration-200">
+              <!-- Conteúdo alternado via JS no mock -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Templates para o poço de modal da tela montada -->
+  <template id="tmpl-modal-form">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL 012.345.6789-0</p>
+            <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12</p>
+          </div>
+        </header>
+
+        <form class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs">Processo SEI</label>
+            <input type="text" id="campo-processo-sei" name="processo" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0" autofocus>
+            <span class="form-field-hint">Digite apenas os números (ex.: 6017202600123456); a pontuação entra sozinha.</span>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs">Nome do interessado</label>
+            <input type="text" id="campo-interessado" name="interessado" class="input input-glass input-sm w-full" placeholder="Nome completo ou razão social" value="Empresa Construtora Exemplo Ltda">
+            <span class="form-field-hint">Consta no requerimento da certidão oficial.</span>
+          </div>
+
+          <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+            <button type="button" class="btn btn-glass btn-sm fechar-modal-btn">Cancelar</button>
+            <button type="button" id="simular-submeter" class="btn btn-onsen btn-sm">Emitir certidão</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <template id="tmpl-modal-erro">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL 012.345.6789-0</p>
+            <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12</p>
+          </div>
+        </header>
+
+        <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
+          <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
+          <span>O número do processo SEI não está no formato padrão (NNNN.AAAA/NNNNNNN-D).</span>
+        </div>
+
+        <form class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs text-error">Processo SEI</label>
+            <input type="text" id="campo-processo-sei-erro" name="processo" class="input input-glass input-sm w-full campo-realce-erro font-mono" data-mascara="0000.0000/0000000-0" value="6017.2026/123-4">
+            <span class="text-xs text-error">Formato inválido. Digite os 16 dígitos ou complete o número (NNNN.AAAA/NNNNNNN-D).</span>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs">Nome do interessado</label>
+            <input type="text" name="interessado" class="input input-glass input-sm w-full" value="Empresa Construtora Exemplo Ltda">
+          </div>
+
+          <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+            <button type="button" class="btn btn-glass btn-sm fechar-modal-btn">Cancelar</button>
+            <button type="button" id="simular-submeter-erro" class="btn btn-onsen btn-sm">Emitir certidão</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <template id="tmpl-modal-aviso">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-warning/15 border-warning/30 text-warning-content shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Impossível emitir pelo sistema</p>
+          </div>
+        </header>
+
+        <div class="card-well p-4 flex flex-col gap-2.5">
+          <div class="flex items-center gap-2">
+            <span class="badge badge-neutral badge-soft badge-sm">Sem lançamento ativo</span>
+            <span class="text-code text-xs">Lote 012.345.0001</span>
+          </div>
+          <p class="text-sm text-base-content/85">
+            Este lote não possui lançamento ativo no cadastro imobiliário oficial do Município (situação diferente de <strong>ATIVO</strong> ou ausência de número de contribuinte com dígito).
+          </p>
+          <p class="text-xs text-base-content/65">
+            Apenas imóveis com lançamento cadastrado podem obter a certidão automatizada. Para casos especiais, consulte o expediente manual da unidade.
+          </p>
+        </div>
+
+        <div class="modal-action pt-2">
+          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto fechar-modal-btn">Fechar</button>
+        </div>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <template id="tmpl-modal-sucesso">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <div class="card-well flex flex-col items-center text-center gap-3 p-6">
+          <span class="icon-bubble w-14 h-14 bg-success/15 border-success/30 text-success">
+            <svg class="w-7 h-7"><use href="#glifo-selo"/></svg>
+          </span>
+          <div>
+            <span class="text-overline text-success font-bold">Certidão selada e emitida</span>
+            <h3 class="text-lg font-bold text-rocha-950 mt-0.5">Documento registrado no acervo</h3>
+          </div>
+          <div class="flex flex-col items-center gap-1 bg-white/40 border border-rocha-950/10 rounded-lg px-4 py-2 w-full">
+            <span class="text-overline text-xs">Código de autenticidade</span>
+            <span class="text-code text-base font-bold tracking-wider text-rocha-950">2026-CL-8F92-A1B4</span>
+          </div>
+          <p class="text-xs text-base-content/70">
+            Emitida de forma automatizada com consulta oficial ao GeoSampa em 22/09/2026 às 09:45.
+          </p>
+        </div>
+
+        <a href="001-amostra-certidao.pdf" target="_blank" download="certidao_lancamento_2026-CL-8F92-A1B4.pdf" class="btn btn-onsen gap-2 w-full justify-center">
+          <svg class="w-4 h-4"><use href="#glifo-baixar"/></svg>
+          Baixar Certidão (PDF de Amostra)
+        </a>
+
+        <details class="collapse collapse-arrow bg-white/50 border border-rocha-950/10 rounded-lg text-left text-xs">
+          <summary class="collapse-title font-semibold text-rocha-900 py-2.5 px-3 min-h-0 text-xs flex items-center justify-between">
+            <span>Prévia textual dos dados da certidão</span>
+          </summary>
+          <div class="collapse-content px-3 pb-3 text-rocha-800 space-y-2 text-[11px] leading-relaxed border-t border-rocha-950/5 pt-2">
+            <div class="p-2.5 bg-rocha-50 rounded border border-rocha-950/10 font-mono whitespace-pre-wrap select-all">PREFEITURA DO MUNICÍPIO DE SÃO PAULO
+SECRETARIA MUNICIPAL DA FAZENDA
+SUBSECRETARIA DA RECEITA MUNICIPAL — DEPARTAMENTO DE TRIBUTAÇÃO E JULGAMENTO
+DIVISÃO DE MAPEAMENTO E CADASTRO FISCAL — DIMAP
+
+CERTIDÃO DE EXISTÊNCIA DE LANÇAMENTO
+
+1. REQUERIMENTO
+Interessado: Empresa Construtora Exemplo Ltda
+Processo Administrativo SEI nº: 6017.2026/0012345-6
+
+2. IDENTIFICAÇÃO DO IMÓVEL
+O imóvel objeto desta certidão está localizado no endereço RUA AUGUSTA (codlog: 01234-5), número 100, complemento APTO 12, São Paulo - SP.
+Setor-Quadra-Lote (SQL / Número de Contribuinte): 012.345.6789-0
+
+3. DESPACHO E DECLARAÇÃO OFICIAL
+Solicitação deferida.
+Com base nas informações consultadas de forma automatizada junto à base de dados oficial do Município de São Paulo, declara-se que o imóvel acima identificado possui lançamento ativo do Imposto Predial e Territorial Urbano (IPTU) pelo contribuinte número 012.345.6789-0.
+
+4. LOCALIZAÇÃO DO IMÓVEL (PLANTA CADASTRAL)
+--------------------------------------------------------------------------------
+[PLANTA DE LOCALIZAÇÃO DO LOTE — WMS GEOSAMPA / MDC CADASTRAL (150 mm)]
+Geometria do Lote destacada no Sistema de Coordenadas Métricas Oficiais (SIRGAS 2000 / UTM 23S)
+Coordenadas de Enquadramento: E: 331045.2, N: 7393412.8 | Escala 1:1000 | Camadas: Lote Cidadão + Arruamento Oficial
+--------------------------------------------------------------------------------
+
+São Paulo, 22 de setembro de 2026.
+
+AUTENTICIDADE E ASSINATURA ELETRÔNICA DO ATO
+Código de Autenticidade: 2026-CL-8F92-A1B4
+Ato Administrativo: certidao_lancamento.emitir (Alvo: SQL 012.345.6789-0)
+Emitido por: Auditor-Fiscal Tributário Municipal (RF 835.916-4)
+Conferência Pública: https://geocoder.dimap.pmsp.gov.br/documentos/conferir?codigo=2026-CL-8F92-A1B4
+
+Certidão emitida de forma automatizada. Dados cadastrais consultados no GeoSampa em 22/09/2026 às 09:45.
+DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo</div>
+          </div>
+        </details>
+
+        <div class="modal-action mt-0 pt-1">
+          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto fechar-modal-btn">Fechar</button>
+        </div>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <!-- Script de montagem e interações do mock -->
+  <script type="module">
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+
+    // Carrega defs e filtros oficiais se servido pelo Live Server
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((svg) => document.getElementById("defs-aplicacao").innerHTML = svg.replace(TAG_DE_TEMPLATE, "").trim())
+      .catch(() => {});
+
+    // Coordenadas centrais e lote de amostra (Jardins / Bela Vista)
+    const CENTRO = [-23.5614, -46.6559];
+    const LOTE_POLIGONO = {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [[
+          [-46.6567, -23.5608], [-46.6551, -23.5608],
+          [-46.6551, -23.5620], [-46.6567, -23.5620], [-46.6567, -23.5608],
+        ]],
+      },
+    };
+
+    function inicializarMapa(idElemento) {
+      const el = document.getElementById(idElemento);
+      if (!el) return null;
+      const mapa = L.map(idElemento, { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 16);
+      
+      // Camada base WMS GeoSampa ou OpenStreetMap como fallback
+      L.tileLayer.wms("https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows", {
+        layers: "geoportal:MapaBase_Politico",
+        version: "1.3.0",
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+
+      // Polígono do lote em tom Sakura (SPEC design/003)
+      L.geoJSON(LOTE_POLIGONO, {
+        style: {
+          color: "#D84F7F",
+          weight: 3,
+          opacity: 1,
+          fillColor: "#D84F7F",
+          fillOpacity: 0.35,
+        },
+      }).addTo(mapa);
+
+      return mapa;
+    }
+
+    inicializarMapa("fundo-home");
+    const mapaTela = inicializarMapa("mapa-tela");
+
+    // =========================================================================
+    // Máscara progressiva de input (padrão static/src/js/ui/campo_mascarado.js)
+    // =========================================================================
+    const SLOT_DE_DIGITO = "0";
+
+    function contarDigitos(texto) {
+      return texto.replace(/\D/g, "").length;
+    }
+
+    function formatarMascara(digitos, gabarito) {
+      let saida = "";
+      let lidos = 0;
+      for (const marca of gabarito) {
+        if (lidos >= digitos.length) return saida;
+        if (marca === SLOT_DE_DIGITO) {
+          saida += digitos[lidos];
+          lidos += 1;
+        } else {
+          saida += marca;
+        }
+      }
+      return saida + digitos.slice(lidos);
+    }
+
+    function posicaoAposDigitos(texto, quantidade) {
+      if (quantidade === 0) return 0;
+      let vistos = 0;
+      for (let i = 0; i < texto.length; i += 1) {
+        if (!/\d/.test(texto[i])) continue;
+        vistos += 1;
+        if (vistos === quantidade) return i + 1;
+      }
+      return texto.length;
+    }
+
+    function aplicarMascara(campo) {
+      const gabarito = campo.dataset.mascara;
+      if (!gabarito) return;
+      const limite = contarDigitos(gabarito);
+      const cursor = campo.selectionStart ?? campo.value.length;
+      const digitosAEsquerda = contarDigitos(campo.value.slice(0, cursor));
+      const digitos = campo.value.replace(/\D/g, "");
+
+      campo.value = formatarMascara(digitos, gabarito);
+      if (document.activeElement === campo) {
+        const posicao = posicaoAposDigitos(campo.value, digitosAEsquerda);
+        campo.setSelectionRange(posicao, posicao);
+      }
+
+      const excede = digitos.length > limite;
+      campo.classList.toggle("campo-realce-erro", excede);
+      campo.setAttribute("aria-invalid", excede ? "true" : "false");
+      campo.dataset.digitosCompletos = digitos.length === limite ? "sim" : "nao";
+    }
+
+    function montarMascaras(raiz) {
+      raiz.querySelectorAll("[data-mascara]").forEach((campo) => {
+        campo.addEventListener("input", () => aplicarMascara(campo));
+        // Se já tiver valor (ou ao colar), aplica imediatamente
+        if (campo.value) aplicarMascara(campo);
+      });
+    }
+
+    // Inicializa campos com máscara já existentes na página (seções 2 e 4)
+    montarMascaras(document);
+
+    // Lógica do Modal interativo na tela montada
+    const containerVivo = document.getElementById("modal-container-vivo");
+
+    function renderizarNoPoco(templateId) {
+      const tmpl = document.getElementById(templateId);
+      if (!tmpl) return;
+      containerVivo.innerHTML = "";
+      containerVivo.appendChild(tmpl.content.cloneNode(true));
+      containerVivo.classList.remove("hidden");
+
+      // Monta as máscaras no formulário recém-injetado
+      montarMascaras(containerVivo);
+
+      // Foca o primeiro campo com autofocus ou campo de processo
+      const foco = containerVivo.querySelector("[autofocus]") || containerVivo.querySelector("input[name='processo']");
+      if (foco) setTimeout(() => foco.focus(), 50);
+
+      // Liga os botões de fechar
+      containerVivo.querySelectorAll(".fechar-modal-btn").forEach((btn) => {
+        btn.addEventListener("click", fecharModal);
+      });
+
+      // Validação interativa ao submeter a certidão
+      const ligarSubmissao = (seletor) => {
+        const btn = containerVivo.querySelector(seletor);
+        if (!btn) return;
+        btn.addEventListener("click", () => {
+          const campoProcesso = containerVivo.querySelector("input[name='processo']");
+          const campoInteressado = containerVivo.querySelector("input[name='interessado']");
+          const digitos = (campoProcesso?.value || "").replace(/\D/g, "");
+          const processoValido = digitos.length === 16;
+          const interessadoValido = Boolean(campoInteressado?.value.trim());
+
+          if (processoValido && interessadoValido) {
+            renderizarNoPoco("tmpl-modal-sucesso");
+          } else {
+            renderizarNoPoco("tmpl-modal-erro");
+          }
+        });
+      };
+
+      ligarSubmissao("#simular-submeter");
+      ligarSubmissao("#simular-submeter-erro");
+    }
+
+    function fecharModal() {
+      containerVivo.classList.add("hidden");
+      containerVivo.innerHTML = "";
+    }
+
+    // Botões da barra de andaime
+    document.getElementById("btn-estado-form").addEventListener("click", () => renderizarNoPoco("tmpl-modal-form"));
+    document.getElementById("btn-estado-erro").addEventListener("click", () => renderizarNoPoco("tmpl-modal-erro"));
+    document.getElementById("btn-estado-aviso").addEventListener("click", () => renderizarNoPoco("tmpl-modal-aviso"));
+    document.getElementById("btn-estado-sucesso").addEventListener("click", () => renderizarNoPoco("tmpl-modal-sucesso"));
+    document.getElementById("btn-fechar-modal").addEventListener("click", fecharModal);
+
+    // Botão dentro da gaveta lateral montada
+    document.getElementById("btn-disparar-modal").addEventListener("click", () => {
+      renderizarNoPoco("tmpl-modal-form");
+    });
+  </script>
+</body>
+</html>

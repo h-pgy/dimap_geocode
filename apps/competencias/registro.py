@@ -8,6 +8,9 @@ from apps.cargos.acoes_declaradas import (
     ACAO_REATIVAR_CARGO,
     ACAO_REATIVAR_CARGO_BASE,
 )
+from apps.certidao_lancamento.acoes_declaradas import (
+    ACAO_EMITIR_CERTIDAO_LANCAMENTO,
+)
 from apps.unidades.acoes_declaradas import (
     ACAO_CRIAR_UNIDADE,
     ACAO_CRIAR_UNIDADE_RAIZ,
@@ -40,6 +43,7 @@ def _construir_registro() -> RegistroAcoes:
             ACAO_DEFINIR_ATRIBUICAO,
             ACAO_CONCEDER,
             ACAO_EMITIR_CERTIDAO_ATOS,
+            ACAO_EMITIR_CERTIDAO_LANCAMENTO,
             ACAO_CRIAR_SERVIDOR,
             ACAO_EDITAR_SERVIDOR,
             ACAO_TORNAR_ADMINISTRADOR,

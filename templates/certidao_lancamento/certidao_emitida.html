@@ -1,0 +1,35 @@
+<div class="modal modal-open modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+    <div class="card-well flex flex-col items-center text-center gap-3 p-6">
+      <span class="icon-bubble w-14 h-14 bg-success/15 border-success/30 text-success">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+          <path d="m8.7 12 2.4 2.4 4.2-4.6"/>
+        </svg>
+      </span>
+      <div>
+        <span class="text-overline text-success font-bold">Certidão selada e emitida</span>
+        <h3 class="text-lg font-bold text-rocha-950 mt-0.5">Documento registrado no acervo</h3>
+      </div>
+      <div class="flex flex-col items-center gap-1 bg-white/40 border border-rocha-950/10 rounded-lg px-4 py-2 w-full">
+        <span class="text-overline text-xs">Código de autenticidade</span>
+        <span class="text-code text-base font-bold tracking-wider text-rocha-950">{{ codigo }}</span>
+      </div>
+      <p class="text-xs text-base-content/70">
+        Emitida de forma automatizada com consulta oficial ao GeoSampa.
+      </p>
+    </div>
+
+    <a href="{% url 'documentos:segunda_via' codigo=codigo %}" target="_blank" class="btn btn-onsen gap-2 w-full justify-center">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+      </svg>
+      Baixar certidão
+    </a>
+
+    <div class="modal-action mt-0 pt-1">
+      <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</button>
+    </div>
+  </div>
+  <label class="modal-backdrop" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</label>
+</div>

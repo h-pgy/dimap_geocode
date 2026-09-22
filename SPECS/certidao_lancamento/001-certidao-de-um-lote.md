@@ -1,12 +1,16 @@
 ---
 spec: certidao_lancamento/001
-versao: v1
-atualizado_em: 2026-09-15
-testes_tdd: false
-implementado: false
+versao: v5
+atualizado_em: 2026-09-22
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco, artefato]
 changelog:
   - v1: versão inicial
+  - v2: composição com a gaveta de lote refatorada e LotePorIdentificador já implementado
+  - v3: máscara progressiva no campo do processo SEI (data-mascara) e redesenho do glifo da ação
+  - v4: inscrição da ação no catálogo central de competências (registro.py)
+  - v5: router renomeado para acoes_lote com enforcement de SQL válido na borda
 ---
 
 # SPEC certidao_lancamento/001 — Certidão de Existência de Lançamento de um lote
@@ -17,37 +21,44 @@ Lançamento daquele lote para o interessado de um processo SEI, para obter um PD
 lançamento do IPTU e mostra onde o imóvel fica.
 
 ## 2 · Condições de pronto
-- [ ] A gaveta do lote traz o poço **"Ações"** com o botão **"Emitir certidão de lançamento"** só para
-      quem tem a concessão; sem nenhuma ação liberada, o poço **não aparece**.
-- [ ] O botão abre um modal que pede o **número do processo SEI** e o **nome do interessado**.
-- [ ] Processo fora do formato `NNNN.AAAA/NNNNNNN-D`, ou interessado em branco, volta ao modal com o
+- [x] A gaveta do lote traz o poço **"Ações"** com o botão **"Emitir certidão de lançamento"** só para
+      quem tem a concessão e apenas quando o lote possui **SQL válido**; sem nenhuma ação liberada ou em
+      lote sem SQL (ex.: municipal), o poço **não aparece**.
+- [x] O botão abre um modal que pede o **número do processo SEI** e o **nome do interessado**.
+- [x] O campo do processo SEI possui **máscara progressiva** (`data-mascara="0000.0000/0000000-0"` via
+      `@static/src/js/ui/campo_mascarado.js`), permitindo que a pessoa digite apenas números e a formatação
+      `NNNN.AAAA/NNNNNNN-D` seja aplicada automaticamente em tempo real.
+- [x] Processo fora do formato `NNNN.AAAA/NNNNNNN-D`, ou interessado em branco, volta ao modal com o
       campo destacado e a mensagem em português.
-- [ ] Lote **sem lançamento ativo**, **condominial** ou que **não existe mais** no GeoSampa abre o
+- [x] Lote **sem lançamento ativo**, **condominial** ou que **não existe mais** no GeoSampa abre o
       modal com o aviso de que a certidão não pode ser emitida pelo sistema, sem formulário — e a
       emissão recusa pelo mesmo critério.
-- [ ] Na emissão, o lote é **lido de novo no GeoSampa** pelo identificador do polígono — nenhum dado
+- [x] Na emissão, o lote é **lido de novo no GeoSampa** pelo identificador do polígono — nenhum dado
       do imóvel vem do navegador.
-- [ ] A certidão traz o requerimento (interessado e processo), a identificação do imóvel, o despacho
+- [x] A certidão traz o requerimento (interessado e processo), a identificação do imóvel, o despacho
       que declara o lançamento pelo SQL, a **planta de localização** do lote e o fecho selado.
-- [ ] O rodapé de toda página declara que a certidão foi emitida de forma automatizada e **quando os
+- [x] O rodapé de toda página declara que a certidão foi emitida de forma automatizada e **quando os
       dados cadastrais foram consultados**.
-- [ ] A certidão emitida entra no **acervo**, confere pelo código e a segunda via devolve os mesmos
+- [x] A certidão emitida entra no **acervo**, confere pelo código e a segunda via devolve os mesmos
       bytes; o modal troca o formulário pelo botão de download.
-- [ ] A emissão fica **registrada** no Registro de Ações, com o código da certidão como alvo.
-- [ ] O design do poço de ações, do modal, do aviso e da confirmação foi aprovado no mock — incluindo
-      o glifo do ícone da ação — e as peças novas portadas para o tema e o styleguide antes de
-      qualquer template da aplicação usá-las.
+- [x] A emissão fica **registrada** no Registro de Ações, com o código da certidão como alvo.
+- [x] O design do poço de ações, do modal, do aviso e da confirmação foi aprovado no mock. O ícone da
+      ação mora em caminho único e centralizado (`static/src/acoes/certidao_lancamento/emitir/icones/pequeno.svg`),
+      satisfazendo o system check `competencias.E003`; os templates da aplicação consomem o ícone
+      exclusivamente de forma centralizada (via templatetag `{% load icones %}{% icone_acao ... "pequeno" %}`),
+      sem jamais recriar ou duplicar o SVG inline nos templates HTML.
 
 ## 3 · Domínio
 A certidão é ato administrativo sobre um [LoteAttributes](../localizacao_lote/001-dados-do-lote-na-gaveta.md#3--domínio)
 que `possui_lancamento`. Ao envelope da SPEC [documentos_oficiais/007](../documentos_oficiais/007-envelope-do-ato-e-selo-no-papel.md)
 esta SPEC pergunta quem assina e sob qual código; ao acervo da [008](../documentos_oficiais/008-acervo-e-conferencia.md),
 onde a via fica; à [planta](../documentos_oficiais/011-planta-de-localizacao.md), a imagem do lote em
-destaque; e ao [LotePorIdentificador](../localizacao_lote/003-lotes-do-desenho.md#3--domínio), o lote
-relido na emissão.
+destaque; e ao [LotePorIdentificador](../localizacao_lote/003-lotes-do-desenho.md#3--domínio) (já
+implementado em `services/domain/lote_geocod`), o lote relido na emissão.
 
-As ações sobre entidade territorial ganham aqui o **router** do §3.5 do CLAUDE.md: um contrato em
-código diz quais ações cada tipo de entidade oferece, e a gaveta recebe só as liberadas ao perfil.
+As ações sobre o lote ganham aqui o **router de ações do lote** (`apps/acoes_lote`): um contrato em
+código diz quais ações o lote oferece, a rota faz o enforcement de receber um número de SQL formalmente
+válido (`SSS.QQQ.LLLL-D`), e a gaveta recebe só as liberadas ao perfil.
 
 **`services/domain/certidao_lancamento/models.py`**
 
@@ -86,27 +97,28 @@ class CertidaoLancamentoInput(BaseModel):
         return self
 ```
 
-**`apps/acoes_entidade/estrutura.py`** — o contrato do router.
+**`apps/acoes_lote/estrutura.py`** — o contrato do router de lote.
 
 ```python
-class TipoEntidade(StrEnum):
-    LOTE = "lote"
+PADRAO_SQL = r"^\d{3}\.\d{3}\.\d{4}-\d$"
 
 
-class AcaoDeEntidade(BaseModel):
-    """Uma ação oferecida sobre um tipo de entidade. A rota recebe o identificador da entidade por query."""
+class AcaoDeLote(BaseModel):
+    """Uma ação oferecida sobre o lote fiscal. A rota recebe o identificador do polígono e o SQL."""
 
     model_config = ConfigDict(frozen=True)
 
     acao: AcaoImplementada
-    url_name: str   # rota do modal; pode diferir do url_name do contrato quando a ação opera sobre mais de um tipo
+    url_name: str   # rota do modal da ação
     variante_icone: VarianteIcone = VarianteIcone.PEQUENO
 
 
-class ContratoAcoesEntidade(BaseModel):
+class ContratoAcoesLote(BaseModel):
+    """Coleção explícita do que opera sobre um lote fiscal."""
+
     model_config = ConfigDict(frozen=True)
 
-    por_tipo: Mapping[TipoEntidade, tuple[AcaoDeEntidade, ...]]
+    itens: tuple[AcaoDeLote, ...]
 ```
 
 **Mock:** [001-mock-certidao-de-um-lote.html](001-mock-certidao-de-um-lote.html) — leia a skill `mock`.
@@ -122,9 +134,13 @@ class ContratoAcoesEntidade(BaseModel):
 - `@apps/competencias/emissao_certidao.py` → `emitir_certidao_atos`: sequência envelope → render → selo → acervo.
 - `@services/domain/certidao_atos_administrativos/certidao.py` → `MontarCertidaoAtos`/`CertidaoAtos`: o molde do tipo selado.
 - `@apps/competencias/protecao.py` → `acao_protegida`, `registrar_ato`.
+- `@apps/competencias/registro.py` → `_construir_registro`: ponto único de inscrição no catálogo de ações do sistema.
 - `@apps/competencias/resolucao.py` → `slugs_liberados`: o conjunto que o router filtra.
 - `@services/utils/erros_formulario` → `Formulario`, `LeitorDeFormulario`: o modal com realce.
-- `@services/domain/lote_geocod` → `LotePorIdentificador` (SPEC localizacao_lote/003).
+- `@services/domain/lote_geocod` → `LotePorIdentificador`, `LoteAttributes`, `LoteFeature`.
+- `@templates/lote_geocoder/partials/_gaveta_lote.html` → a gaveta lateral montada por `MontarGavetaLote` (SPEC localizacao_lote/001): ponto de injeção condicional do poço de ações de lote via HTMX quando há SQL.
+- `@templates/core/home.html` → `#poco-modal`: poço dos modais de ações do lote.
+- `@static/src/js/ui/campo_mascarado.js` → máscara progressiva no input (`[data-mascara="0000.0000/0000000-0"]`).
 - `@services/domain/planta_localizacao` → `GerarPlantaLocalizacao` (SPEC documentos_oficiais/011).
 - Skills: `acao-administrativa`, `documento-oficial`, `erros-de-formulario`, `painel`, `mock`, `escrever-testes`.
 
@@ -182,9 +198,10 @@ class MontarCertidaoLancamento:
         )
 
     def _identificacao(self, imovel: LoteAttributes) -> str:
+        codlog_txt = f" (codlog: {imovel.codlog[:5]}-{imovel.codlog[5:]})" if imovel.codlog else ""
         texto = (
-            f"O imóvel objeto desta certidão está localizado no endereço {imovel.nome_logradouro} "
-            f"(codlog: {imovel.codlog[:5]}-{imovel.codlog[5:]}), número {imovel.numero_porta}"
+            f"O imóvel objeto desta certidão está localizado no endereço {imovel.nome_logradouro}{codlog_txt}, "
+            f"número {imovel.numero_porta}"
         )
         return f"{texto}, complemento {imovel.complemento}." if imovel.complemento else f"{texto}."
 
@@ -270,32 +287,81 @@ ACAO_EMITIR_CERTIDAO_LANCAMENTO = instanciar_acao(
 )
 ```
 
-**`apps/acoes_entidade/declaradas.py` e `resolucao.py`** — o router: tipo × perfil.
+**`apps/competencias/registro.py`** — inscrição da ação no catálogo central de competências (skill `acao-administrativa` §3.2).
 
 ```python
-ACOES_ENTIDADE = ContratoAcoesEntidade(por_tipo={
-    TipoEntidade.LOTE: (AcaoDeEntidade(acao=ACAO_EMITIR_CERTIDAO_LANCAMENTO, url_name="certidao_lancamento:modal"),),
-})
+from apps.certidao_lancamento.acoes_declaradas import ACAO_EMITIR_CERTIDAO_LANCAMENTO
 
 
-def acoes_liberadas(tipo: TipoEntidade, slugs: frozenset[str]) -> tuple[AcaoDeEntidade, ...]:
-    # O router filtra; a rota decide. Esconder o botão não protege nada.
-    return tuple(item for item in ACOES_ENTIDADE.por_tipo.get(tipo, ()) if item.acao.acao.slug in slugs)
+def _construir_registro() -> RegistroAcoes:
+    return RegistroAcoes(
+        acoes=(
+            ...,
+            ACAO_EMITIR_CERTIDAO_LANCAMENTO,
+        )
+    )
 ```
 
-**`apps/acoes_entidade/views.py`** — rota aberta: anônimo recebe o poço vazio, não um login.
+**`static/src/acoes/certidao_lancamento/emitir/icones/pequeno.svg`** — ícone da ação (centralizado no projeto)
+
+Conforme a convenção do projeto (skill `acao-administrativa` §3.3) e o system check `competencias.E003`,
+o ícone da ação mora em um arquivo SVG único e centralizado na raiz de assets da ação, **NUNCA** sendo
+recriado ou duplicado inline nos templates HTML da aplicação.
+
+O SVG herda as cores do contexto (`currentColor`) e combina a base oficial do documento com a casinha
+no canto superior esquerdo:
+
+```xml
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M10.9436 1.25H13.0564C14.8942 1.24998 16.3498 1.24997 17.489 1.40314C18.6614 1.56076 19.6104 1.89288 20.3588 2.64124C20.6516 2.93414 20.6516 3.40901 20.3588 3.7019C20.0659 3.9948 19.591 3.9948 19.2981 3.7019C18.8749 3.27869 18.2952 3.02502 17.2892 2.88976C16.2615 2.75159 14.9068 2.75 13 2.75H11C9.09318 2.75 7.73851 2.75159 6.71085 2.88976C5.70476 3.02502 5.12511 3.27869 4.7019 3.7019C4.27869 4.12511 4.02502 4.70476 3.88976 5.71085C3.75159 6.73851 3.75 8.09318 3.75 10V14C3.75 15.9068 3.75159 17.2615 3.88976 18.2892C4.02502 19.2952 4.27869 19.8749 4.7019 20.2981C5.12511 20.7213 5.70476 20.975 6.71085 21.1102C7.73851 21.2484 9.09318 21.25 11 21.25H13C14.9068 21.25 16.2615 21.2484 17.2892 21.1102C18.2952 20.975 18.8749 20.7213 19.2981 20.2981C19.994 19.6022 20.2048 18.5208 20.2414 15.9892C20.2474 15.575 20.588 15.2441 21.0022 15.2501C21.4163 15.2561 21.7472 15.5967 21.7412 16.0108C21.7061 18.4383 21.549 20.1685 20.3588 21.3588C19.6104 22.1071 18.6614 22.4392 17.489 22.5969C16.3498 22.75 14.8942 22.75 13.0564 22.75H10.9436C9.10583 22.75 7.65019 22.75 6.51098 22.5969C5.33856 22.4392 4.38961 22.1071 3.64124 21.3588C2.89288 20.6104 2.56076 19.6614 2.40314 18.489C2.24997 17.3498 2.24998 15.8942 2.25 14.0564V9.94358C2.24998 8.10582 2.24997 6.65019 2.40314 5.51098C2.56076 4.33856 2.89288 3.38961 3.64124 2.64124C4.38961 1.89288 5.33856 1.56076 6.51098 1.40314C7.65019 1.24997 9.10582 1.24998 10.9436 1.25ZM18.1131 7.04556C19.1739 5.98481 20.8937 5.98481 21.9544 7.04556C23.0152 8.1063 23.0152 9.82611 21.9544 10.8869L17.1991 15.6422C16.9404 15.901 16.7654 16.076 16.5693 16.2289C16.3387 16.4088 16.0892 16.563 15.8252 16.6889C15.6007 16.7958 15.3659 16.8741 15.0187 16.9897L12.9351 17.6843C12.4751 17.8376 11.9679 17.7179 11.625 17.375C11.2821 17.0321 11.1624 16.5249 11.3157 16.0649L11.9963 14.0232C12.001 14.0091 12.0056 13.9951 12.0102 13.9813C12.1259 13.6342 12.2042 13.3993 12.3111 13.1748C12.437 12.9108 12.5912 12.6613 12.7711 12.4307C12.924 12.2346 13.099 12.0596 13.3578 11.8009C13.3681 11.7906 13.3785 11.7802 13.3891 11.7696L18.1131 7.04556ZM20.8938 8.10622C20.4188 7.63126 19.6488 7.63126 19.1738 8.10622L18.992 8.288C19.0019 8.32149 19.0132 8.3571 19.0262 8.39452C19.1202 8.66565 19.2988 9.02427 19.6372 9.36276C19.9757 9.70125 20.3343 9.87975 20.6055 9.97382C20.6429 9.9868 20.6785 9.99812 20.712 10.008L20.8938 9.8262C21.3687 9.35124 21.3687 8.58118 20.8938 8.10622ZM19.5664 11.1536C19.2485 10.9866 18.9053 10.7521 18.5766 10.4234C18.2479 10.0947 18.0134 9.75146 17.8464 9.43357L14.4497 12.8303C14.1487 13.1314 14.043 13.2388 13.9538 13.3532C13.841 13.4979 13.7442 13.6545 13.6652 13.8202C13.6028 13.9511 13.5539 14.0936 13.4193 14.4976L13.019 15.6985L13.3015 15.981L14.5024 15.5807C14.9064 15.4461 15.0489 15.3972 15.1798 15.3348C15.3455 15.2558 15.5021 15.159 15.6468 15.0462C15.7612 14.957 15.8686 14.8513 16.1697 14.5503L19.5664 11.1536ZM7.25 9C7.25 8.58579 7.58579 8.25 8 8.25H14.5C14.9142 8.25 15.25 8.58579 15.25 9C15.25 9.41421 14.9142 9.75 14.5 9.75H8C7.58579 9.75 7.25 9.41421 7.25 9ZM7.25 13C7.25 12.5858 7.58579 12.25 8 12.25H10.5C10.9142 12.25 11.25 12.5858 11.25 13C11.25 13.4142 10.9142 13.75 10.5 13.75H8C7.58579 13.75 7.25 13.4142 7.25 13ZM7.25 17C7.25 16.5858 7.58579 16.25 8 16.25H9.5C9.91421 16.25 10.25 16.5858 10.25 17C10.25 17.4142 9.91421 17.75 9.5 17.75H8C7.58579 17.75 7.25 17.4142 7.25 17Z" fill="currentColor"/>
+  <path d="M1.2 5L4.5 2.2L7.8 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M2.2 4.8V8.8H6.8V4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M3.8 8.8V6.6H5.2V8.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+```
+
+**`apps/acoes_lote/declaradas.py` e `resolucao.py`** — o router do lote: contrato × perfil.
 
 ```python
+ACOES_LOTE = ContratoAcoesLote(
+    itens=(
+        AcaoDeLote(acao=ACAO_EMITIR_CERTIDAO_LANCAMENTO, url_name="certidao_lancamento:modal"),
+    )
+)
+
+
+def acoes_liberadas(slugs: frozenset[str]) -> tuple[AcaoDeLote, ...]:
+    # O router filtra; a rota decide. Esconder o botão não protege nada.
+    return tuple(item for item in ACOES_LOTE.itens if item.acao.acao.slug in slugs)
+```
+
+**`apps/acoes_lote/views.py`** — rota aberta: recebe SQL e ID; anônimo ou lote sem SQL válido recebe o poço vazio, não um login.
+
+```python
+class ConsultaAcoesLote(BaseModel):
+    """Enforcement: toda ação de lote exige o número de contribuinte (SQL) válido e o id do polígono."""
+
+    model_config = ConfigDict(frozen=True, str_strip_whitespace=True)
+
+    sql: str = Field(pattern=PADRAO_SQL)
+    id: str = Field(pattern=r"^\d+$")
+
+
 @require_GET
 def acoes(request: HttpRequest) -> HttpResponse:
-    consulta = ConsultaAcoesEntidade.model_validate(request.GET.dict())   # tipo + id da entidade
-    itens = acoes_liberadas(consulta.tipo, slugs_liberados(request.user))
-    return render(request, TEMPLATE_POCO_ACOES, {"itens": itens, "id_entidade": consulta.id})
+    try:
+        consulta = ConsultaAcoesLote.model_validate(request.GET.dict())
+    except ValidationError:
+        return HttpResponse("")
+    itens = acoes_liberadas(slugs_liberados(request.user))
+    return render(request, TEMPLATE_POCO_ACOES, {"itens": itens, "id_entidade": consulta.id, "sql": consulta.sql})
 ```
 
 ```html
 {# templates/lote_geocoder/partials/_gaveta_lote.html — a busca conhece o router, não as ações #}
-<div hx-get="{% url 'acoes_entidade:acoes' %}?tipo=lote&id={{ lote.id_poligono }}" hx-trigger="load" hx-swap="outerHTML"></div>
+{% if gaveta.lote.sql %}
+  <div hx-get="{% url 'acoes_lote:acoes' %}?sql={{ gaveta.lote.sql }}&id={{ gaveta.lote.id_poligono }}" hx-trigger="load" hx-swap="outerHTML"></div>
+{% endif %}
 ```
 
 **`apps/certidao_lancamento/views.py`**
@@ -313,7 +379,7 @@ def modal(request: HttpRequest) -> HttpResponse:
 @require_POST
 def emitir(request: HttpRequest) -> HttpResponse:
     leitura = ler_pedido_certidao(request.POST)
-    lote = ler_lote(request.POST.get("lote", ""))
+    lote = ler_lote(request.POST.get("id", ""))
     if leitura.recusa is not None or not certificavel(lote):
         contexto = contexto_modal(lote, valores=request.POST, recusa=leitura.recusa)
         return render(request, TEMPLATE_MODAL, contexto, status=422)
@@ -332,27 +398,106 @@ def emitir(request: HttpRequest) -> HttpResponse:
     return render(request, TEMPLATE_CERTIDAO_EMITIDA, {"codigo": documento.codigo})
 ```
 
-**`templates/core/home.html`** — o poço dos modais que as ações de entidade abrem.
+**`templates/core/home.html`** — o poço dos modais que as ações do lote abrem e carregamento da máscara.
 
 ```html
-<div id="poco-modal"></div>
+<div id="poco-modal" class="poco-modal"></div>
+```
+E no `{% block scripts %}`:
+```html
+<script type="module" src="{% static 'js/ui/campo_mascarado.js' %}"></script>
 ```
 
-**`templates/acoes_entidade/partials/_poco_acoes.html`** — sem item liberado, nada é desenhado.
+**`templates/acoes_lote/partials/_poco_acoes.html`** — sem item liberado, nada é desenhado; ícone centralizado via `icone_acao`.
 
 ```html
+{% load icones %}
 {% if itens %}
   <div class="card-well p-4 flex flex-col gap-2">
     <p class="text-overline">Ações</p>
     {% for item in itens %}
-      <button type="button" class="btn btn-onsen btn-sm"
-              hx-get="{% url item.url_name %}?id={{ id_entidade }}"
+      <button type="button" class="btn btn-onsen btn-sm gap-2"
+              hx-get="{% url item.url_name %}?id={{ id_entidade }}&sql={{ sql }}"
               hx-target="#poco-modal">
+        <span class="w-4 h-4 shrink-0 flex items-center justify-center">
+          {% icone_acao item.acao.acao.slug "pequeno" %}
+        </span>
         {{ item.acao.acao.nome_curto }}
       </button>
     {% endfor %}
   </div>
 {% endif %}
+```
+
+**`templates/certidao_lancamento/modal.html`** — modal de emissão com máscara progressiva e ícone centralizado.
+
+```html
+{% load icones %}
+<div class="modal modal-open modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+    <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+      <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+        <span class="w-6 h-6 flex items-center justify-center">
+          {% icone_acao "certidao_lancamento.emitir" "pequeno" %}
+        </span>
+      </span>
+      <div class="min-w-0">
+        <p class="text-overline">Certidão de Existência de Lançamento</p>
+        <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL {{ lote.feature.attributes.sql }}</p>
+        <p class="text-xs text-base-content/70 truncate">{{ lote.feature.attributes.endereco_formatado }}</p>
+      </div>
+    </header>
+
+    {% if lote.pode_certificar %}
+      {% if recusa %}
+        <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
+          <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
+          <span>{{ recusa.mensagem }}</span>
+        </div>
+      {% endif %}
+
+      <form hx-post="{% url 'certidao_lancamento:emitir' %}" hx-target="#poco-modal" hx-swap="outerHTML" class="flex flex-col gap-4">
+        <input type="hidden" name="id" value="{{ lote.feature.attributes.id_poligono }}">
+
+        <div class="flex flex-col gap-1">
+          <label class="text-overline text-xs {% if recusa.campo == 'processo' %}text-error{% endif %}">Processo SEI</label>
+          <input type="text"
+                 name="processo"
+                 value="{{ valores.processo }}"
+                 data-mascara="0000.0000/0000000-0"
+                 placeholder="0000.0000/0000000-0"
+                 class="input input-glass input-sm w-full font-mono {% if recusa.campo == 'processo' %}campo-realce-erro{% endif %}"
+                 autofocus>
+          <span class="form-field-hint">Formato obrigatório: NNNN.AAAA/NNNNNNN-D (máscara automática ao digitar)</span>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-overline text-xs {% if recusa.campo == 'interessado' %}text-error{% endif %}">Nome do interessado</label>
+          <input type="text"
+                 name="interessado"
+                 value="{{ valores.interessado }}"
+                 placeholder="Nome completo ou razão social"
+                 class="input input-glass input-sm w-full {% if recusa.campo == 'interessado' %}campo-realce-erro{% endif %}">
+          <span class="form-field-hint">Consta no requerimento da certidão oficial.</span>
+        </div>
+
+        <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+          <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Cancelar</button>
+          <button type="submit" class="btn btn-onsen btn-sm">Emitir certidão</button>
+        </div>
+      </form>
+    {% else %}
+      <div role="alert" class="alert alert-warning alert-soft text-xs flex items-start gap-2 p-3">
+        <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
+        <span>{{ motivo_recusa_lote }}</span>
+      </div>
+      <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+        <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</button>
+      </div>
+    {% endif %}
+  </div>
+  <label class="modal-backdrop" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</label>
+</div>
 ```
 
 **`apps/certidao_lancamento/emissao.py`** — orquestração; único ponto que lê settings.
@@ -425,20 +570,22 @@ def emitir_certidao_lancamento(
 ACOES_SEM_CARD: frozenset[str] = frozenset({
     "user_admin.editar_servidor",
     "unidades.editar_unidade",
-    # Opera sobre um lote localizado: o botão mora na gaveta do lote (apps/acoes_entidade).
+    # Opera sobre um lote localizado: o botão mora na gaveta do lote (apps/acoes_lote).
     "certidao_lancamento.emitir",
 })
 ```
 
 ## 7 · Caveats
-O router de ações de entidade (`apps/acoes_entidade`) é um contrato próprio, parecido com o
+O router de ações de lote (`apps/acoes_lote`) é um contrato próprio, parecido com o
 `ItemAcao` do painel. O card do painel e o botão da gaveta têm destino, variante de ícone e
 parâmetro diferentes, e reusar o `ItemAcao` acoplaria a gaveta ao painel. O custo são duas
 estruturas quase irmãs, e `painel.E004` só enxerga a ação pela linha em `ACOES_SEM_CARD`.
 
-A gaveta do lote (busca) carrega o poço de ações por `hx-get` ao router. É o que mantém a busca sem
-importar ação alguma. O custo é uma segunda requisição por lote localizado, também para o anônimo,
-que recebe o poço vazio.
+A gaveta do lote carrega o poço de ações por `hx-get` ao router apenas quando `gaveta.lote.sql`
+estiver preenchido. É o que mantém a gaveta sem importar ação alguma e poupa requisição inútil em
+lotes municipais, compondo tanto com a busca direta (`localizacao_lote/001`) quanto com o lote
+mais próximo (`002`) e os lotes do desenho (`003`/`004`). O custo é uma segunda requisição por lote
+localizado com SQL, também para o anônimo, que recebe o poço vazio.
 
 O lote é lido **duas vezes** no WFS: ao abrir o modal (para decidir se há formulário) e na emissão.
 A leitura da emissão é a que vale, porque o modal pode ficar aberto enquanto a camada muda. O custo é
@@ -471,12 +618,14 @@ mesma condição escrita no template do modal e no validador.
   processo, endereço com codlog-DV e o SQL no despacho.
 - `test_certidao_traz_planta_e_nota_com_instante_da_consulta` — há um `ImagemRaster` e a nota do rodapé
   cita data e hora de `consultado_em`.
-- `test_poco_de_acoes_so_para_quem_tem_concessao` — anônimo e autenticado sem concessão recebem o poço
-  vazio; com concessão, o botão aponta para o modal com o id do lote *(marker `banco`)*.
+- `test_poco_de_acoes_lote_so_para_quem_tem_concessao_e_sql_valido` — anônimo e autenticado sem concessão
+  recebem o poço vazio; com concessão e SQL válido, o botão aponta para o modal com o id e o sql *(marker `banco`)*.
+- `test_router_acoes_lote_recusa_sql_invalido_ou_ausente` — parâmetros sem SQL ou com formato divergente
+  do padrão `SSS.QQQ.LLLL-D` devolvem poço vazio sem erro 500 *(marker `banco`)*.
 - `test_modal_de_lote_sem_lancamento_ou_inexistente_mostra_aviso_sem_formulario` — lote municipal e
   fetcher vazio abrem o aviso *(marker `banco`)*.
 - `test_emissao_rele_lote_pelo_identificador` — o imóvel certificado é o que o fetcher fake devolve
-  para o `cd_identificador` do POST; campos de endereço mandados no POST são ignorados
+  para o `id` do POST; campos de endereço mandados no POST são ignorados
   *(marker `banco`)*.
 - `test_emissao_guarda_via_no_acervo_e_devolve_download` — `DocumentoEmitido` gravado, segunda via com
   os mesmos bytes, resposta com o link *(marker `banco`)*.
