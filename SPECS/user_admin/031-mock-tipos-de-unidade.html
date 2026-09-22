@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC user_admin/031 — Tipos de unidade como ato administrativo (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`).
+       Sem Leaflet: a ortofoto é pré-gerada (SPEC design/010), não mapa vivo. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system: fonte ÚNICA em static/src/tema-dimap.dev.css (SPEC design/004).
+       Carrega o tema e concatena as peças desta SPEC no MESMO bloco text/tailwindcss. -->
+  <script>
+    (async function carregarTema() {
+      const caminhos = [
+        "/static/src/tema-dimap.dev.css",
+        "../../static/src/tema-dimap.dev.css",
+        "../static/src/tema-dimap.dev.css"
+      ];
+      let css = null;
+      for (const caminho of caminhos) {
+        try {
+          const r = await fetch(caminho);
+          if (r.ok) { css = await r.text(); break; }
+        } catch (_) {}
+      }
+      if (css) {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec-031").textContent;
+        document.head.appendChild(s);
+      } else {
+        (document.body || document.documentElement).insertAdjacentHTML(
+          "afterbegin",
+          "<p style='position:fixed;top:0;left:0;right:0;z-index:99999;margin:0;padding:1rem;background:#fff3f3;border-bottom:2px solid #b00;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — abra o mock por um servidor com raiz no projeto (Live Server). Via file:// o fetch é bloqueado.</p>"
+        );
+      }
+    })();
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec-031">
+    @layer components {
+      /* ==================== ÁTOMO · RÓTULO DO TIPO DE UNIDADE ==================== */
+      .rotulo-tipo-unidade { @apply text-inherit; }
+      .rotulo-tipo-unidade-extinto {
+        @apply text-warning underline decoration-dotted decoration-warning/45 underline-offset-4;
+      }
+
+      /* ==================== ÁTOMO · O EXTINTO DENTRO DO SELECT DE VIDRO ==================== */
+      .select-onsen-option[data-extinto] { @apply text-warning; }
+      .select-onsen-option[data-extinto][aria-selected="true"] { @apply text-warning font-medium; }
+      .select-onsen-option[data-extinto][data-ativo="true"] { @apply text-warning; }
+      .select-onsen-trigger[data-extinto] { @apply text-warning; }
+
+      /* ==================== ÁTOMO · CADEADO DO CAMPO TRAVADO ==================== */
+      .campo-onsen-cadeado {
+        @apply grid place-items-center w-7 h-7 shrink-0 rounded-full text-base-content/45;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content antialiased">
+  <!-- Filtro de gravação no gelo + glifos usados neste mock -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="2.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1.6" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.85" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-2" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="1.2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <!-- Glifos utilitários -->
+      <g id="glifo-alerta"><path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/></g>
+      <g id="glifo-lixeira">
+        <path d="M4.2 6.8h15.6"/>
+        <path d="M9.6 6.8V4.6h4.8v2.2"/>
+        <path d="M6 6.8l1 13a2 2 0 0 0 2 1.8h6a2 2 0 0 0 2-1.8l1-13"/>
+      </g>
+      <g id="glifo-lapis">
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </g>
+      <g id="glifo-cadeado">
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+      </g>
+      <g id="glifo-raiz">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </g>
+      <g id="glifo-reativar">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/>
+      </g>
+      <g id="glifo-info">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 8h.01M12 11v5"/>
+      </g>
+
+      <!-- Símbolo base: Tipo de Unidade (templo com níveis estruturais) -->
+      <g id="glifo-tipo-unidade">
+        <path d="M2.5 7.5 8 4l5.5 3.5z"/>
+        <path d="M4.5 9v6.5M8 9v6.5M11.5 9v6.5"/>
+        <path d="M3 15.5h10M2.5 18h11"/>
+        <path d="M17 6h4.5M17 10h4.5M17 14h4.5M17 18h4.5"/>
+      </g>
+
+      <!-- As 4 ações + listagem -->
+      <g id="g-criar-tipo-unidade">
+        <path d="M2.5 7.5 8 4l5.5 3.5z"/>
+        <path d="M4.5 9v6.5M8 9v6.5M11.5 9v6.5"/>
+        <path d="M3 15.5h10M2.5 18h11"/>
+        <path d="M19.5 14v6M16.5 17h6"/>
+      </g>
+
+      <g id="g-editar-tipo-unidade">
+        <path d="M2.5 7.5 8 4l5.5 3.5z"/>
+        <path d="M4.5 9v6.5M8 9v6.5M11.5 9v6.5"/>
+        <path d="M3 15.5h10M2.5 18h11"/>
+        <path d="M16 20.5h1.8L22 16.3a1 1 0 0 0-1.4-1.4L16.4 19.1v1.4z"/>
+      </g>
+
+      <g id="g-extinguir-tipo-unidade">
+        <path d="M2.5 7.5 8 4l5.5 3.5z"/>
+        <path d="M4.5 9v6.5M8 9v6.5M11.5 9v6.5"/>
+        <path d="M3 15.5h10M2.5 18h11"/>
+        <path d="M16 14.5h5.5M17.5 14.5v-1.5h2.5v1.5M16.8 14.5l.5 5.5h3.8l.5-5.5"/>
+      </g>
+
+      <g id="g-reativar-tipo-unidade">
+        <path d="M2.5 7.5 8 4l5.5 3.5z"/>
+        <path d="M4.5 9v6.5M8 9v6.5M11.5 9v6.5"/>
+        <path d="M3 15.5h10M2.5 18h11"/>
+        <path d="M15.5 18a4 4 0 1 0 4-4 4.3 4.3 0 0 0-3 1.2L15.5 16"/>
+        <path d="M15.5 13v3h3"/>
+      </g>
+
+      <g id="g-lista-tipos-unidade">
+        <path d="M2.5 7.5 8 4l5.5 3.5z"/>
+        <path d="M4.5 9v6.5M8 9v6.5M11.5 9v6.5"/>
+        <path d="M3 15.5h10M2.5 18h11"/>
+        <path d="M17 7.5h5M17 11.5h5M17 15.5h5M17 19.5h5"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 p-8 max-w-6xl mx-auto flex flex-col gap-16">
+    <header class="border-b border-base-200 pb-4">
+      <p class="text-overline text-agua-700">Mock de validação</p>
+      <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC user_admin/031 — Tipos de unidade como ato administrativo</h1>
+      <nav class="flex flex-wrap gap-4 mt-3 text-xs text-base-content/70">
+        <a href="#tokens" class="link-tabela-onsen">1 · Tokens</a>
+        <span>·</span>
+        <a href="#atomos" class="link-tabela-onsen">2 · Átomos</a>
+        <span>·</span>
+        <a href="#moleculas" class="link-tabela-onsen">3 · Moléculas</a>
+        <span>·</span>
+        <a href="#organismos" class="link-tabela-onsen">4 · Organismos</a>
+        <span>·</span>
+        <a href="#tela" class="link-tabela-onsen font-semibold text-agua-700">5 · Tela montada</a>
+      </nav>
+    </header>
+
+    <!-- ==================================================================== -->
+    <!-- 1 · TOKENS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="tokens" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">1 · Tokens</h2>
+        <p class="text-xs text-base-content/70">O glifo institucional com marcação de níveis à direita é a base dos cinco atos do catálogo.</p>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-wrap items-end gap-10">
+        <div class="flex flex-col items-center gap-2">
+          <svg class="w-9 h-9 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-tipo-unidade"/></svg>
+          <span class="text-overline">#glifo-tipo-unidade</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <svg class="w-9 h-9 text-rocha-800" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+          <span class="text-overline">#glifo-cadeado</span>
+        </div>
+
+        <div class="flex flex-col gap-3 pl-6 border-l border-white/60">
+          <div class="flex items-end gap-8">
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-criar-tipo-unidade"/></svg></span>
+              <span class="text-overline">criar_tipo_unidade</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-editar-tipo-unidade"/></svg></span>
+              <span class="text-overline">editar_tipo_unidade</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-extinguir-tipo-unidade"/></svg></span>
+              <span class="text-overline">extinguir_tipo_unidade</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-reativar-tipo-unidade"/></svg></span>
+              <span class="text-overline">reativar_tipo_unidade</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-tipos-unidade"/></svg></span>
+              <span class="text-overline">painel.lista_tipos_unidade</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4 pt-3 border-t border-white/60">
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-criar-tipo-unidade"/></svg></span>
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-editar-tipo-unidade"/></svg></span>
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-extinguir-tipo-unidade"/></svg></span>
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-reativar-tipo-unidade"/></svg></span>
+            <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-lista-tipos-unidade"/></svg></span>
+            <span class="text-overline">variante pequena · 20px</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 2 · ÁTOMOS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">2 · Átomos</h2>
+        <p class="text-xs text-base-content/70">O rótulo extinto recebe a marca amarela e o tooltip. Nível e exigência de titular são identificados por badges semânticos.</p>
+      </div>
+
+      <!-- .rotulo-tipo-unidade -->
+      <div class="glass-panel p-6 flex flex-col gap-6">
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">.rotulo-tipo-unidade · .rotulo-tipo-unidade-extinto nos diversos contextos</span>
+          <div class="card-well p-5 flex flex-col gap-4">
+            <div class="flex flex-wrap items-center gap-8">
+              <span class="rotulo-tipo-unidade text-[15px]">Divisão</span>
+              <span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto text-[15px]" title="Tipo de unidade extinto">Seção</span>
+              <span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto text-[15px]" title="Tipo de unidade extinto">Superintendência Regional</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-8">
+              <p class="linha-pessoa-meta">Tipo da unidade: <span class="rotulo-tipo-unidade">Departamento</span></p>
+              <p class="linha-pessoa-meta">Tipo da unidade: <span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto" title="Tipo de unidade extinto">Seção</span></p>
+            </div>
+            <div class="flex flex-wrap items-center gap-8">
+              <span class="badge badge-poligono badge-sm"><span class="rotulo-tipo-unidade">Divisão</span></span>
+              <span class="badge badge-poligono badge-sm"><span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto" title="Tipo de unidade extinto">Seção</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Badges de Nível, Raiz e Titular -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">Badges estruturais de tipo de unidade</span>
+          <div class="card-well p-5 flex flex-wrap items-center gap-4">
+            <span class="badge badge-soft badge-primary">Nível 9</span>
+            <span class="badge badge-soft badge-primary">Nível 4</span>
+            <span class="badge badge-soft badge-accent">Raiz permitida</span>
+            <span class="badge badge-soft badge-neutral text-base-content/60">Subordinada</span>
+            <span class="badge badge-soft badge-warning font-medium">Alta administração</span>
+            <span class="badge badge-soft badge-info font-medium">Mínimo CDA-IV</span>
+          </div>
+        </div>
+
+        <!-- O extinto dentro de um <select> -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">O tipo extinto dentro do seletor de cadastro de unidades (com data-extinto)</span>
+          <div class="card-well p-5 max-w-md flex flex-col gap-3">
+            <label class="form-field">
+              <span class="text-overline">Tipo de unidade</span>
+              <select class="select select-glass w-full">
+                <option>Divisão (Nível 3 · CDA-IV)</option>
+                <option>Departamento (Nível 4 · CDA-V)</option>
+                <option selected data-extinto="true" title="Tipo de unidade extinto" class="text-warning">Seção [Extinto] (Nível 2 · CDA-III)</option>
+                <option>Equipe (Nível 1 · CDA-II)</option>
+              </select>
+              <span class="form-field-hint text-warning">Este tipo está extinto e é mantido apenas porque a unidade já o utilizava.</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 3 · MOLÉCULAS                                                         -->
+    <!-- ==================================================================== -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">3 · Moléculas</h2>
+        <p class="text-xs text-base-content/70">Campos travados exibem o cadeado com motivo detalhado no tooltip; ações por linha adaptam-se ao estado do registro.</p>
+      </div>
+
+      <div class="glass-panel p-6 flex flex-col gap-6">
+        <!-- Campo travado com tooltip -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">Campo estrutural com trava ativa (unidades vigentes vinculadas)</span>
+          <div class="card-well p-5 grid sm:grid-cols-2 gap-6">
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between">
+                <span class="text-overline">Nível hierárquico</span>
+                <span class="campo-onsen-cadeado tooltip tooltip-left" data-tip="14 unidade(s) utilizam este tipo. Realoque-as ou extinga-as antes de alterar nível ou subordinação.">
+                  <svg class="w-4 h-4 etched" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                </span>
+              </div>
+              <p class="etched etched-rotulo text-[15px] py-2">Nível 3</p>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between">
+                <span class="text-overline">Exigência de titular</span>
+                <span class="campo-onsen-cadeado tooltip tooltip-left" data-tip="14 unidade(s) utilizam este tipo. Realoque-as antes de alterar os requisitos de cargo do titular.">
+                  <svg class="w-4 h-4 etched" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                </span>
+              </div>
+              <p class="etched etched-rotulo text-[15px] py-2">Nível mínimo CDA-IV</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toggle de extintos e ações por linha -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">Ações de linha na tabela-onsen</span>
+          <div class="card-well p-5 flex flex-wrap items-center justify-between gap-6">
+            <div class="flex items-center gap-3">
+              <label class="barra-acoes-chave">
+                <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar tipos extintos" />
+                <span class="text-overline">Mostrar tipos extintos</span>
+              </label>
+            </div>
+
+            <div class="flex items-center gap-6 border-l border-white/60 pl-6">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-base-content/60">Linha ativa:</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar o tipo de unidade">
+                  <span class="etched icon-etched">✎</span>
+                </button>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir o tipo de unidade">
+                  <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                </button>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-base-content/60">Linha extinta:</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle text-warning" title="Reativar tipo de unidade">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 4 · ORGANISMOS                                                        -->
+    <!-- ==================================================================== -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">4 · Organismos</h2>
+        <p class="text-xs text-base-content/70">Os quatro modais de ato e o grupo no painel da aba Estrutura Administrativa.</p>
+      </div>
+
+      <div class="grid gap-6 xl:grid-cols-2">
+        <!-- face: cadastrar tipo -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">cadastrar tipo de unidade · formulário novo</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-criar-tipo-unidade"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Cadastrar tipo de unidade</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">O tipo passa a definir subordinação e requisitos para novas unidades.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Identificação e Nível</p>
+              <div class="grid sm:grid-cols-3 gap-4">
+                <label class="form-field sm:col-span-2">
+                  <span class="text-overline">Nome do tipo</span>
+                  <input type="text" class="input input-glass" placeholder="Ex.: Divisão Especial" />
+                </label>
+                <label class="form-field">
+                  <span class="text-overline">Nível (1 a 9)</span>
+                  <input type="number" min="1" max="9" class="input input-glass" value="3" />
+                </label>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer mt-1">
+                <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" />
+                <span class="text-[13px] text-base-content/80">Pode ser unidade raiz (encabeçar organograma)</span>
+              </label>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Requisitos do Titular</p>
+              <div class="flex flex-col gap-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="modal-criar-titular" class="radio radio-sm radio-primary" checked />
+                  <span class="text-[13px] text-base-content/80">Exige cargo de chefia com nível mínimo</span>
+                </label>
+                <div class="pl-6">
+                  <select class="select select-glass w-full max-w-xs">
+                    <option>Nível 2 · CDA-II</option>
+                    <option>Nível 3 · CDA-III</option>
+                    <option selected>Nível 4 · CDA-IV</option>
+                    <option>Nível 5 · CDA-V</option>
+                    <option>Nível 6 · CDA-VI</option>
+                  </select>
+                </div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="modal-criar-titular" class="radio radio-sm radio-primary" />
+                  <span class="text-[13px] text-base-content/80">Exige Alta Administração (sem nível numérico)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-3">
+              <p class="text-overline">Tipos filhos vedados</p>
+              <p class="text-xs text-base-content/60">Selecione os tipos que esta unidade não admite como subordinadas diretas:</p>
+              <div class="flex flex-wrap gap-2 pt-1">
+                <label class="badge badge-soft badge-neutral cursor-pointer hover:badge-primary gap-1">
+                  <input type="checkbox" class="sr-only" /> <span>Divisão</span>
+                </label>
+                <label class="badge badge-soft badge-neutral cursor-pointer hover:badge-primary gap-1">
+                  <input type="checkbox" class="sr-only" /> <span>Departamento</span>
+                </label>
+                <label class="badge badge-soft badge-neutral cursor-pointer hover:badge-primary gap-1">
+                  <input type="checkbox" class="sr-only" /> <span>Coordenação</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Cadastrar tipo</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: editar, com unidades vinculadas -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">editar tipo · alvo com unidades ativas (estrutura travada)</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-editar-tipo-unidade"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar tipo de unidade</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">Divisão · Nível 3</p>
+              </div>
+            </div>
+
+            <!-- Alerta explicativo da trava -->
+            <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+              <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                <strong>14 unidades</strong> utilizam este tipo de unidade. Realoque-as ou extinga-as antes de alterar nível, permissão de raiz, requisitos de titular ou regras de subordinação. O <strong>nome</strong> segue editável.
+              </p>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Identificação</p>
+              <div class="campo-onsen">
+                <input type="checkbox" id="mock-editar-nome" class="campo-onsen-toggle" checked />
+                <span class="text-overline etched-rotulo">Nome</span>
+                <div class="campo-onsen-linha">
+                  <p class="campo-onsen-valor">Divisão</p>
+                  <div class="campo-onsen-campo">
+                    <input type="text" class="input input-glass" value="Divisão Técnica" />
+                  </div>
+                  <label for="mock-editar-nome" class="campo-onsen-lapis btn btn-ghost btn-glass btn-xs btn-circle shrink-0" title="Editar o nome">
+                    <span class="etched icon-etched campo-onsen-lapis-abre">✎</span><span class="etched icon-etched campo-onsen-lapis-fecha">✕</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <div class="flex items-center justify-between">
+                <p class="text-overline">Estrutura e requisitos (travados)</p>
+                <span class="campo-onsen-cadeado tooltip tooltip-left" data-tip="14 unidades utilizam este tipo no organograma ativo.">
+                  <svg class="w-4 h-4 etched" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                </span>
+              </div>
+              <div class="grid sm:grid-cols-2 gap-4">
+                <div class="form-field">
+                  <span class="text-overline">Nível</span>
+                  <p class="etched etched-rotulo text-[15px] py-1.5">3</p>
+                </div>
+                <div class="form-field">
+                  <span class="text-overline">Pode ser raiz</span>
+                  <p class="etched etched-rotulo text-[15px] py-1.5">Não</p>
+                </div>
+                <div class="form-field sm:col-span-2">
+                  <span class="text-overline">Requisito do Titular</span>
+                  <p class="etched etched-rotulo text-[15px] py-1.5">Nível mínimo CDA-IV</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Salvar alterações</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: extinguir -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">extinguir tipo · alvo com unidades ativas</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-extinguir-tipo-unidade"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir tipo de unidade</h2>
+                <p class="text-sm text-base-content/70 mt-0.5">O tipo sai das opções de criação de novas unidades.</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-3">
+              <p class="text-overline">Tipo a extinguir</p>
+              <p class="text-lg font-bold text-madeira-700">Departamento · Nível 4</p>
+              <p class="text-xs text-base-content/70">Requisito: CDA-V · Não admite filhas do tipo Coordenação</p>
+            </div>
+
+            <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+              <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+              <p class="text-[13px] text-base-content/80">
+                As <strong>4 unidades ativas</strong> deste tipo continuarão funcionando normalmente no organograma com seus titulares e competências. O tipo apenas <strong>deixará de ser oferecido</strong> na criação de novas unidades.
+              </p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-error btn-soft btn-sm">Extinguir Departamento</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- face: reativar -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">reativar tipo · restauração ao catálogo de unidades</span>
+          <div class="glass-panel-thick modal-box-glass p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-reativar-tipo-unidade"/></svg></span>
+              <div>
+                <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reativar tipo de unidade</h2>
+                <p class="text-sm text-base-content/70 mt-0.5"><span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto" title="Tipo de unidade extinto">Seção</span> · Nível 2</p>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-3">
+              <p class="text-overline">Situação atual</p>
+              <p class="text-[13px] text-base-content/80">Este tipo foi extinto em 01/03/2026. A reativação devolverá a opção de criar unidades do tipo <strong>Seção</strong> em toda a secretaria.</p>
+            </div>
+
+            <div class="modal-action">
+              <label class="btn btn-glass btn-sm">Cancelar</label>
+              <button type="button" class="btn btn-onsen btn-sm">Reativar Seção</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Representação no Painel: Aba Estrutura Administrativa -->
+      <div class="flex flex-col gap-2 mt-6">
+        <span class="text-overline">Grupo "Tipos de Unidade" no painel da aba Estrutura Administrativa</span>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- Visão Superusuário -->
+          <div class="glass-panel p-6 flex flex-col gap-4">
+            <div class="flex items-center justify-between border-b border-white/60 pb-3">
+              <p class="text-sm font-bold text-madeira-700">Visão: Administrador do Sistema (Superusuário)</p>
+              <span class="badge badge-sm badge-primary">Todos os cards liberados</span>
+            </div>
+            <div class="flex flex-col gap-3">
+              <span class="text-overline">Grupo: Tipos de Unidade</span>
+              <div class="grid sm:grid-cols-2 gap-3">
+                <div class="card-well p-4 flex items-center gap-3">
+                  <span class="icone-acao icone-acao-pequeno text-agua-700"><svg viewBox="0 0 24 24"><use href="#g-lista-tipos-unidade"/></svg></span>
+                  <div>
+                    <p class="text-xs font-bold text-madeira-700">Tipos de unidade</p>
+                    <p class="text-[11px] text-base-content/60">Lista do catálogo</p>
+                  </div>
+                </div>
+                <div class="card-well p-4 flex items-center gap-3">
+                  <span class="icone-acao icone-acao-pequeno text-agua-700"><svg viewBox="0 0 24 24"><use href="#g-criar-tipo-unidade"/></svg></span>
+                  <div>
+                    <p class="text-xs font-bold text-madeira-700">Novo tipo</p>
+                    <p class="text-[11px] text-base-content/60">Cadastrar no catálogo</p>
+                  </div>
+                </div>
+                <div class="card-well p-4 flex items-center gap-3">
+                  <span class="icone-acao icone-acao-pequeno text-agua-700"><svg viewBox="0 0 24 24"><use href="#g-editar-tipo-unidade"/></svg></span>
+                  <div>
+                    <p class="text-xs font-bold text-madeira-700">Editar tipo</p>
+                    <p class="text-[11px] text-base-content/60">Modificar propriedades</p>
+                  </div>
+                </div>
+                <div class="card-well p-4 flex items-center gap-3">
+                  <span class="icone-acao icone-acao-pequeno text-error"><svg viewBox="0 0 24 24"><use href="#g-extinguir-tipo-unidade"/></svg></span>
+                  <div>
+                    <p class="text-xs font-bold text-madeira-700">Extinguir tipo</p>
+                    <p class="text-[11px] text-base-content/60">Retirar da criação</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Visão Servidor Comum -->
+          <div class="glass-panel p-6 flex flex-col gap-4">
+            <div class="flex items-center justify-between border-b border-white/60 pb-3">
+              <p class="text-sm font-bold text-madeira-700">Visão: Servidor Comum (Sem perfil de admin)</p>
+              <span class="badge badge-sm badge-neutral">Leitura aberta</span>
+            </div>
+            <div class="flex flex-col gap-3">
+              <span class="text-overline">Grupo: Tipos de Unidade</span>
+              <div class="grid sm:grid-cols-2 gap-3">
+                <div class="card-well p-4 flex items-center gap-3 sm:col-span-2">
+                  <span class="icone-acao icone-acao-pequeno text-agua-700"><svg viewBox="0 0 24 24"><use href="#g-lista-tipos-unidade"/></svg></span>
+                  <div>
+                    <p class="text-xs font-bold text-madeira-700">Tipos de unidade</p>
+                    <p class="text-[11px] text-base-content/60">O catálogo de tipos de unidade da DIMAP, seus níveis e requisitos de titular.</p>
+                  </div>
+                </div>
+              </div>
+              <p class="text-[11px] text-base-content/50 italic mt-2">Os cards de ato administrativo (cadastrar, editar, extinguir, reativar) não aparecem para quem não administra o sistema.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 5 · TELA MONTADA                                                      -->
+    <!-- ==================================================================== -->
+    <section id="tela" class="flex flex-col gap-6">
+      <div>
+        <h2 class="text-lg font-bold text-madeira-700">5 · Tela montada</h2>
+        <p class="text-xs text-base-content/70">A listagem completa na tabela-onsen. O toggle filtra os tipos extintos exclusivamente no cliente.</p>
+      </div>
+
+      <!-- página: unidades/tipos_unidade_list.html -->
+      <div class="w-full">
+        <div class="max-w-6xl mx-auto w-full glass-panel p-6 sm:p-8 flex flex-col gap-5">
+
+          <!-- fica na página: cabeçalho -->
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Tipos de unidade</h1>
+              <p class="text-sm text-base-content/70 mt-1">11 tipos no catálogo. O nível maior indica maior abrangência na hierarquia.</p>
+            </div>
+          </div>
+
+          <!-- partial: unidades/partials/_barra_acoes_tipos_unidade.html -->
+          <div class="barra-acoes glass-panel">
+            <div class="barra-acoes-gestos">
+              <!-- Botão visível apenas para administrador do sistema ({% if perms.unidades.criar_tipo_unidade %}) -->
+              <button type="button" class="btn btn-onsen btn-sm gap-1.5 barra-admin" onclick="document.getElementById('modal-criar-demo').showModal()">
+                <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-criar-tipo-unidade"/></svg></span>
+                Novo tipo
+              </button>
+            </div>
+            <div class="barra-acoes-gestos items-center gap-6">
+              <!-- Simulação de permissões no mock para validação visual -->
+              <div class="flex items-center gap-2 text-xs bg-white/40 px-3 py-1 rounded-lg border border-white/60">
+                <span class="text-overline text-base-content/60">Perfil:</span>
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="simular-perfil" value="admin" checked onchange="alternarPerfil(this.value)" class="radio radio-xs radio-primary" />
+                  <span class="text-xs font-semibold">Administrador</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer ml-1">
+                  <input type="radio" name="simular-perfil" value="comum" onchange="alternarPerfil(this.value)" class="radio radio-xs radio-primary" />
+                  <span class="text-xs">Servidor comum</span>
+                </label>
+              </div>
+
+              <label class="barra-acoes-chave">
+                <input type="checkbox" class="toggle-onsen" id="toggle-extintos-tabela" onchange="alternarExtintos(this.checked)" aria-label="Mostrar tipos extintos" />
+                <span class="text-overline">Mostrar tipos extintos</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- partial: unidades/partials/_tabela_tipos_unidade.html -->
+          <div class="card-well pb-2 table-onsen-poco" data-scroll-etched>
+            <div class="table-onsen-wrap">
+              <table class="table table-onsen">
+                <thead>
+                  <tr>
+                    <th>
+                      <div class="th-onsen">
+                        <span class="text-overline">Tipo de unidade</span>
+                      </div>
+                    </th>
+                    <th class="w-24">
+                      <div class="th-onsen">
+                        <span class="text-overline">Nível</span>
+                      </div>
+                    </th>
+                    <th class="w-28">
+                      <div class="th-onsen">
+                        <span class="text-overline">Pode ser raiz</span>
+                      </div>
+                    </th>
+                    <th class="w-48">
+                      <div class="th-onsen">
+                        <span class="text-overline">Requisito do Titular</span>
+                      </div>
+                    </th>
+                    <th>
+                      <div class="th-onsen">
+                        <span class="text-overline">Tipos filhos vedados</span>
+                      </div>
+                    </th>
+                    <th class="w-28 text-right">
+                      <div class="th-onsen justify-end">
+                        <span class="text-overline">Unidades</span>
+                      </div>
+                    </th>
+                    <!-- Coluna de ações renderizada somente para quem administra o sistema -->
+                    <th class="w-24 text-right coluna-acoes">
+                      <div class="th-onsen justify-end">
+                        <span class="text-overline">Ações</span>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+
+                <!-- partial: unidades/partials/_corpo_tipos_unidade.html — alvo do hx-get de busca e ordenação -->
+                <tbody id="corpo-tipos">
+                  <!-- Linha 1: Gabinete -->
+                  <tr>
+                    <td>
+                      <span class="rotulo-tipo-unidade td-nome-unidade">Gabinete da/do Secretária/o</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-primary font-bold">9</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-accent font-medium">Sim</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-warning font-medium">Alta administração</span></td>
+                    <td class="text-xs text-base-content/70">Divisão</td>
+                    <td class="text-right">1</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar" onclick="document.getElementById('modal-editar-travado-demo').showModal()">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir" onclick="document.getElementById('modal-extinguir-demo').showModal()">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 2: Secretaria Executiva -->
+                  <tr>
+                    <td>
+                      <span class="rotulo-tipo-unidade td-nome-unidade">Secretaria Executiva</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-primary font-bold">8</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-warning font-medium">Alta administração</span></td>
+                    <td class="text-xs text-base-content/70">Divisão, Departamento</td>
+                    <td class="text-right">1</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar" onclick="document.getElementById('modal-editar-travado-demo').showModal()">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir" onclick="document.getElementById('modal-extinguir-demo').showModal()">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 3: Subsecretaria -->
+                  <tr>
+                    <td>
+                      <span class="rotulo-tipo-unidade td-nome-unidade">Subsecretaria</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-primary font-bold">7</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-warning font-medium">Alta administração</span></td>
+                    <td class="text-xs text-base-content/70">Divisão</td>
+                    <td class="text-right">1</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar" onclick="document.getElementById('modal-editar-travado-demo').showModal()">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir" onclick="document.getElementById('modal-extinguir-demo').showModal()">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 4: Coordenadoria -->
+                  <tr>
+                    <td>
+                      <span class="rotulo-tipo-unidade td-nome-unidade">Coordenadoria</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-primary font-bold">6</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-info font-medium">Mínimo CDA-VI</span></td>
+                    <td class="text-xs text-base-content/70">Divisão</td>
+                    <td class="text-right">3</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar" onclick="document.getElementById('modal-editar-travado-demo').showModal()">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir" onclick="document.getElementById('modal-extinguir-demo').showModal()">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 5: Assessoria -->
+                  <tr>
+                    <td>
+                      <span class="rotulo-tipo-unidade td-nome-unidade">Assessoria</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-primary font-bold">6</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-info font-medium">Mínimo CDA-V</span></td>
+                    <td class="text-xs text-base-content/70">Divisão, Departamento, Coordenação</td>
+                    <td class="text-right">2</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar" onclick="document.getElementById('modal-editar-travado-demo').showModal()">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir" onclick="document.getElementById('modal-extinguir-demo').showModal()">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 6: Coordenação -->
+                  <tr>
+                    <td>
+                      <span class="rotulo-tipo-unidade td-nome-unidade">Coordenação</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-primary font-bold">5</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-info font-medium">Mínimo CDA-V</span></td>
+                    <td class="text-xs text-base-content/40">—</td>
+                    <td class="text-right">3</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar" onclick="document.getElementById('modal-editar-travado-demo').showModal()">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir" onclick="document.getElementById('modal-extinguir-demo').showModal()">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 7: Departamento -->
+                  <tr>
+                    <td>
+                      <span class="rotulo-tipo-unidade td-nome-unidade">Departamento</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-primary font-bold">4</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-info font-medium">Mínimo CDA-V</span></td>
+                    <td class="text-xs text-base-content/40">—</td>
+                    <td class="text-right">4</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar" onclick="document.getElementById('modal-editar-travado-demo').showModal()">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir" onclick="document.getElementById('modal-extinguir-demo').showModal()">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 8: Divisão -->
+                  <tr>
+                    <td>
+                      <span class="rotulo-tipo-unidade td-nome-unidade">Divisão</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-primary font-bold">3</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-info font-medium">Mínimo CDA-IV</span></td>
+                    <td class="text-xs text-base-content/40">—</td>
+                    <td class="text-right">14</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar" onclick="document.getElementById('modal-editar-travado-demo').showModal()">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir" onclick="document.getElementById('modal-extinguir-demo').showModal()">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 9: Equipe -->
+                  <tr>
+                    <td>
+                      <span class="rotulo-tipo-unidade td-nome-unidade">Equipe</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-primary font-bold">1</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-info font-medium">Mínimo CDA-II</span></td>
+                    <td class="text-xs text-base-content/40">—</td>
+                    <td class="text-right">6</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar" onclick="document.getElementById('modal-editar-travado-demo').showModal()">
+                          <span class="etched icon-etched">✎</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Extinguir" onclick="document.getElementById('modal-extinguir-demo').showModal()">
+                          <svg class="w-4 h-4 icon-etched icon-etched-critico text-error" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 10 (EXTINTA): Seção -->
+                  <tr class="linha-extinta hidden bg-warning/5">
+                    <td>
+                      <span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto td-nome-unidade" title="Tipo de unidade extinto">Seção</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-warning font-bold">2</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-warning font-medium">Mínimo CDA-III</span></td>
+                    <td class="text-xs text-base-content/40">—</td>
+                    <td class="text-right">2</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle text-warning" title="Reativar tipo de unidade" onclick="document.getElementById('modal-reativar-demo').showModal()">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Linha 11 (EXTINTA): Superintendência Especial (0 unidades) -->
+                  <tr class="linha-extinta hidden bg-warning/5">
+                    <td>
+                      <span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto td-nome-unidade" title="Tipo de unidade extinto">Superintendência Especial</span>
+                    </td>
+                    <td><span class="badge badge-sm badge-soft badge-warning font-bold">7</span></td>
+                    <td><span class="text-xs text-base-content/50">Não</span></td>
+                    <td><span class="badge badge-sm badge-soft badge-warning font-medium">Alta administração</span></td>
+                    <td class="text-xs text-base-content/70">Divisão, Departamento</td>
+                    <td class="text-right text-base-content/40">0</td>
+                    <td class="text-right coluna-acoes">
+                      <div class="inline-flex items-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle text-warning" title="Reativar tipo de unidade" onclick="document.getElementById('modal-reativar-demo').showModal()">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAIS INTERATIVOS (DEMO DO MOCK)                                    -->
+  <!-- ==================================================================== -->
+  <dialog id="modal-criar-demo" class="modal modal-glass">
+    <div class="glass-panel-thick modal-box modal-box-glass p-6 sm:p-7 max-w-xl flex flex-col gap-5 rounded-2xl">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-criar-tipo-unidade"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Cadastrar tipo de unidade</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">O tipo passa a existir no catálogo para novas unidades.</p>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Identificação e Nível</p>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <label class="form-field sm:col-span-2">
+            <span class="text-overline">Nome do tipo</span>
+            <input type="text" class="input input-glass" placeholder="Ex.: Gerência de Polo" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Nível (1 a 9)</span>
+            <input type="number" min="1" max="9" class="input input-glass" value="3" />
+          </label>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer mt-1">
+          <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" />
+          <span class="text-[13px] text-base-content/80">Pode ser unidade raiz</span>
+        </label>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Requisitos do Titular</p>
+        <div class="flex flex-col gap-2.5">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="demo-titular" class="radio radio-sm radio-primary" checked />
+            <span class="text-[13px] text-base-content/80">Nível mínimo de chefia</span>
+          </label>
+          <div class="pl-6">
+            <select class="select select-glass w-full max-w-xs">
+              <option>Nível 2 · CDA-II</option>
+              <option>Nível 3 · CDA-III</option>
+              <option selected>Nível 4 · CDA-IV</option>
+              <option>Nível 5 · CDA-V</option>
+              <option>Nível 6 · CDA-VI</option>
+            </select>
+          </div>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="demo-titular" class="radio radio-sm radio-primary" />
+            <span class="text-[13px] text-base-content/80">Alta Administração</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-glass btn-sm">Cancelar</button></form>
+        <button type="button" class="btn btn-onsen btn-sm" onclick="alert('Ação administrativa: cadastrar tipo de unidade gravado.'); document.getElementById('modal-criar-demo').close();">Cadastrar tipo</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="modal-editar-travado-demo" class="modal modal-glass">
+    <div class="glass-panel-thick modal-box modal-box-glass p-6 sm:p-7 max-w-xl flex flex-col gap-5 rounded-2xl">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-editar-tipo-unidade"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Editar tipo de unidade</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">Divisão · Nível 3</p>
+        </div>
+      </div>
+
+      <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+        <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+        <p class="text-[13px] text-base-content/80">
+          <strong>14 unidades</strong> utilizam este tipo de unidade. Realoque-as ou extinga-as antes de alterar nível, permissão de raiz, requisitos de titular ou regras de subordinação. O <strong>nome</strong> segue editável.
+        </p>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Identificação</p>
+        <label class="form-field">
+          <span class="text-overline">Nome</span>
+          <input type="text" class="input input-glass" value="Divisão" />
+        </label>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <p class="text-overline">Estrutura (travada)</p>
+          <span class="campo-onsen-cadeado tooltip tooltip-left" data-tip="14 unidades utilizam este tipo.">
+            <svg class="w-4 h-4 etched" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+          </span>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <span class="text-overline text-base-content/50">Nível</span>
+            <p class="etched etched-rotulo text-[15px] py-1">3</p>
+          </div>
+          <div>
+            <span class="text-overline text-base-content/50">Titular</span>
+            <p class="etched etched-rotulo text-[15px] py-1">Mínimo CDA-IV</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-glass btn-sm">Cancelar</button></form>
+        <button type="button" class="btn btn-onsen btn-sm" onclick="alert('Ação administrativa: alterações salvas.'); document.getElementById('modal-editar-travado-demo').close();">Salvar alterações</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="modal-extinguir-demo" class="modal modal-glass">
+    <div class="glass-panel-thick modal-box modal-box-glass p-6 sm:p-7 max-w-lg flex flex-col gap-5 rounded-2xl">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-error mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-extinguir-tipo-unidade"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir tipo de unidade</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">O tipo sai das opções de criação de novas unidades.</p>
+        </div>
+      </div>
+
+      <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+        <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
+        <p class="text-[13px] text-base-content/80">
+          As unidades ativas deste tipo continuarão válidas no organograma com seus titulares e competências. O tipo apenas deixará de ser oferecido ao cadastrar novas unidades.
+        </p>
+      </div>
+
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-glass btn-sm">Cancelar</button></form>
+        <button type="button" class="btn btn-error btn-soft btn-sm" onclick="alert('Ação administrativa: tipo de unidade extinto.'); document.getElementById('modal-extinguir-demo').close();">Confirmar extinção</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="modal-reativar-demo" class="modal modal-glass">
+    <div class="glass-panel-thick modal-box modal-box-glass p-6 sm:p-7 max-w-lg flex flex-col gap-5 rounded-2xl">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-reativar-tipo-unidade"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Reativar tipo de unidade</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">Devolve o tipo às opções de cadastro de unidades.</p>
+        </div>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-2">
+        <p class="text-sm text-base-content/80">A reativação restabelece este tipo de unidade para uso em todo o organograma.</p>
+      </div>
+
+      <div class="modal-action">
+        <form method="dialog"><button class="btn btn-glass btn-sm">Cancelar</button></form>
+        <button type="button" class="btn btn-onsen btn-sm" onclick="alert('Ação administrativa: tipo de unidade reativado.'); document.getElementById('modal-reativar-demo').close();">Reativar tipo</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Script simples para a interatividade do mock -->
+  <script>
+    function alternarExtintos(mostrar) {
+      const linhasExtintas = document.querySelectorAll('.linha-extinta');
+      linhasExtintas.forEach(linha => {
+        if (mostrar) {
+          linha.classList.remove('hidden');
+        } else {
+          linha.classList.add('hidden');
+        }
+      });
+    }
+
+    function alternarPerfil(perfil) {
+      const isAdmin = perfil === 'admin';
+      document.querySelectorAll('.barra-admin').forEach(el => el.classList.toggle('hidden', !isAdmin));
+      document.querySelectorAll('.coluna-acoes').forEach(el => el.classList.toggle('hidden', !isAdmin));
+    }
+  </script>
+</body>
+</html>
