@@ -39,7 +39,7 @@ LARGURA_PLANTA_MM = 150.0
 
 
 class MontarCertidaoLancamentoInput(BaseModel):
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(frozen=True)
 
     certidao: CertidaoLancamentoInput
     selo: SeloImpresso
@@ -98,6 +98,9 @@ class CertidaoLancamento:
         self._selo_config = selo_config
         self._renderizar = RenderizarDocumentoOficial(tema)
 
+    def __call__(self, pedido: CertidaoLancamentoInput) -> DocumentoRenderizado:
+        return self.pipeline(pedido)
+
     def pipeline(self, pedido: CertidaoLancamentoInput) -> DocumentoRenderizado:
         selo = montar_selo_impresso(
             SeloImpressoInput(
@@ -123,7 +126,8 @@ class CertidaoLancamento:
 
     def _nota(self, pedido: CertidaoLancamentoInput) -> tuple[str, ...]:
         momento = pedido.consultado_em
+        # Duas linhas, e não uma frase: numa linha só o rodapé estoura a faixa e quebra no meio.
         return (
-            "Certidão emitida de forma automática",
-            f"Dados cadastrais consultados em {momento:%d/%m/%Y} - {momento:%H:%M} no GeoSampa",
+            "Certidão emitida de forma automatizada",
+            f"Dados cadastrais consultados no GeoSampa em {momento:%d/%m/%Y} às {momento:%H:%M}",
         )

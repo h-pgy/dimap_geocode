@@ -1,4 +1,5 @@
-from typing import Any, Self
+from typing import Self
+
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 from services.domain.documento_selado import EnvelopeAto
 from services.domain.lote_geocod.models import LoteAttributes
@@ -19,12 +20,12 @@ class PedidoCertidao(BaseModel):
 class CertidaoLancamentoInput(BaseModel):
     """Tudo já apurado: o domínio do documento não vai ao WFS nem ao banco."""
 
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(frozen=True)
 
     envelope: EnvelopeAto
     pedido: PedidoCertidao
     imovel: LoteAttributes
-    planta: PlantaLocalizacao | Any
+    planta: PlantaLocalizacao
     # O instante da leitura do lote no GeoSampa: é ele, e não o da assinatura, que o rodapé declara.
     consultado_em: AwareDatetime
     base_url: str

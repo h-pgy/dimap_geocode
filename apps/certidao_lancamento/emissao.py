@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.utils import timezone
-from pydantic import AwareDatetime, BaseModel
+from pydantic import AwareDatetime, BaseModel, ConfigDict, SecretStr
 
 from apps.competencias.emissao_certidao import autor_do_ato
 from apps.documentos.acervo import guardar_documento
@@ -36,9 +36,21 @@ from services.domain.planta_localizacao import (
     PlantaLocalizacaoInput,
 )
 from services.integrations.wfs import build_fetcher
-from services.integrations.wms import build_wms_fetcher
+from services.integrations.wms import WmsError, build_wms_fetcher
 from services.utils.assinatura import SelarInput, selar_documento
+from services.utils.erros_formulario import RecusaDeFormulario
 from .acoes_declaradas import ACAO_EMITIR_CERTIDAO_LANCAMENTO
+
+WFS_LAYER_LOTE_CIDADAO: str = settings.WFS_LAYER_LOTE_CIDADAO
+WMS_LAYER_ORTOFOTO: str = settings.WMS_LAYER_ORTOFOTO
+MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
+ASSINATURA_SEGREDO: SecretStr = settings.ASSINATURA_SEGREDO
+ASSINATURA_ID_CHAVE: str = settings.ASSINATURA_ID_CHAVE
+
+MOTIVO_SEM_ORTOFOTO = (
+    "Não foi possível obter a imagem de localização do imóvel agora. "
+    "Tente novamente em instantes."
+)
 
 
 class LoteLido(BaseModel):
@@ -59,8 +71,8 @@ def ler_lote(id_poligono: str) -> LoteLido | None:
     feature = LotePorIdentificador(build_fetcher(settings))(
         LotePorIdentificadorInput(
             id_poligono=id_poligono,
-            layer_name=settings.WFS_LAYER_LOTE_CIDADAO,
-            output_crs=settings.MAP_INTERPOLATION_CRS,
+            layer_name=WFS_LAYER_LOTE_CIDADAO,
+            output_crs=MAP_INTERPOLATION_CRS,
         )
     )
     if feature is None:
@@ -68,10 +80,19 @@ def ler_lote(id_poligono: str) -> LoteLido | None:
     return LoteLido(feature=feature, consultado_em=timezone.localtime())
 
 
+class DesfechoEmissao(BaseModel):
+    """Ou o documento, ou a recusa — o mesmo contrato de `DesfechoUnidade` e `DesfechoCargo`."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    documento: DocumentoEmitido | None = None
+    recusa: RecusaDeFormulario = RecusaDeFormulario()
+
+
 def planta_config() -> PlantaConfig:
     return PlantaConfig(
-        camada_ortofoto=settings.WMS_LAYER_ORTOFOTO,
-        crs=settings.MAP_INTERPOLATION_CRS,
+        camada_ortofoto=WMS_LAYER_ORTOFOTO,
+        crs=MAP_INTERPOLATION_CRS,
     )
 
 
@@ -87,7 +108,7 @@ def emitir_certidao_lancamento(
     pedido: PedidoCertidao,
     lote: LoteLido,
     base_url: str,
-) -> DocumentoEmitido:
+) -> DesfechoEmissao:
     imovel = lote.feature.attributes
     envelope = EnvelopeAto(
         codigo=gerar_codigo(),
@@ -99,18 +120,22 @@ def emitir_certidao_lancamento(
         campos_publicos=("contribuinte", "processo"),
         extras={"contribuinte": imovel.sql, "processo": pedido.processo},
     )
-    planta = GerarPlantaLocalizacao(build_wms_fetcher(settings))(
-        PlantaLocalizacaoInput(
-            camadas=(
-                CamadaPlanta(
-                    geometrias=(lote.feature.geometry,),
-                    estilo=EstiloGeometria.DESTAQUE,
+    try:
+        planta = GerarPlantaLocalizacao(build_wms_fetcher(settings))(
+            PlantaLocalizacaoInput(
+                camadas=(
+                    CamadaPlanta(
+                        geometrias=(lote.feature.geometry,),
+                        estilo=EstiloGeometria.DESTAQUE,
+                    ),
                 ),
-            ),
-            config=planta_config(),
+                config=planta_config(),
+            )
         )
-    )
-    renderizado = _tipo_certidao().pipeline(
+    except WmsError:
+        # A view não conhece WMS; ela lê o desfecho, como nas demais telas de formulário.
+        return DesfechoEmissao(recusa=RecusaDeFormulario(gerais=(MOTIVO_SEM_ORTOFOTO,)))
+    renderizado = _tipo_certidao()(
         CertidaoLancamentoInput(
             envelope=envelope,
             pedido=pedido,
@@ -125,8 +150,8 @@ def emitir_certidao_lancamento(
             pdf=renderizado.pdf,
             dados=montar_envelope(envelope),
             campos_publicos=envelope.campos_publicos,
-            segredo=settings.ASSINATURA_SEGREDO,
-            id_chave=settings.ASSINATURA_ID_CHAVE,
+            segredo=ASSINATURA_SEGREDO,
+            id_chave=ASSINATURA_ID_CHAVE,
         )
     )
-    return guardar_documento(selado, envelope, execucao=None)
+    return DesfechoEmissao(documento=guardar_documento(selado, envelope, execucao=None))

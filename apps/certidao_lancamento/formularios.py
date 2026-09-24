@@ -4,7 +4,6 @@ from services.utils.erros_formulario import (
     Formulario,
     LeitorDeFormulario,
     RegraDeErro,
-    TradutorDeRecusa,
 )
 
 FORMULARIO_CERTIDAO = Formulario(
@@ -31,4 +30,3 @@ FORMULARIO_CERTIDAO = Formulario(
 )
 
 ler_pedido_certidao = LeitorDeFormulario(PedidoCertidao, FORMULARIO_CERTIDAO)
-traduzir_recusa_certidao = TradutorDeRecusa(FORMULARIO_CERTIDAO)

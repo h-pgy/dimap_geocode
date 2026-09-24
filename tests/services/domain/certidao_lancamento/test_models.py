@@ -4,13 +4,18 @@ para emissão da certidão (recusa de lote sem lançamento ou condominial).
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
 
 from pydantic import ValidationError
 import pytest
 
+from services.domain.certidao_lancamento.models import (
+    CertidaoLancamentoInput,
+    PedidoCertidao,
+)
 from services.domain.documento_selado import AlvoDoAto, AutorDoAto, EnvelopeAto
 from services.domain.lote_geocod.models import LoteAttributes
+from services.domain.planta_localizacao import PlantaLocalizacao
+from services.integrations.wms.models import BoundingBox
 
 
 # ---------------------------------------------------------------------------
@@ -58,14 +63,23 @@ def _imovel(**overrides: object) -> LoteAttributes:
     return LoteAttributes(**(defaults | overrides))  # type: ignore[arg-type]
 
 
+def _planta() -> PlantaLocalizacao:
+    enquadramento = BoundingBox(
+        minx=0.0,
+        miny=0.0,
+        maxx=100.0,
+        maxy=100.0,
+        crs="EPSG:31983",
+    )
+    return PlantaLocalizacao(png=b"\x89PNG\r\n\x1a\n", enquadramento=enquadramento)
+
+
 # ---------------------------------------------------------------------------
 # Validação do PedidoCertidao
 # ---------------------------------------------------------------------------
 
 
 def test_pedido_recusa_processo_fora_do_formato_sei() -> None:
-    from services.domain.certidao_lancamento.models import PedidoCertidao  # type: ignore[import-not-found]
-
     # Formato completo aceito
     pedido = PedidoCertidao(
         processo="6017.2026/0012345-6",
@@ -104,12 +118,10 @@ def test_pedido_recusa_processo_fora_do_formato_sei() -> None:
 
 
 def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
-    from services.domain.certidao_lancamento.models import CertidaoLancamentoInput, PedidoCertidao  # type: ignore[import-not-found]
-
     pedido = PedidoCertidao(processo="6017.2026/0012345-6", interessado="João da Silva")
     envelope = _envelope()
     agora = datetime.now(timezone.utc)
-    planta_fake = MagicMock()
+    planta = _planta()
 
     # Lote municipal (sem lançamento ativo)
     lote_municipal = _imovel(digito=None, situacao="ATIVO")
@@ -119,7 +131,7 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
             envelope=envelope,
             pedido=pedido,
             imovel=lote_municipal,
-            planta=planta_fake,
+            planta=planta,
             consultado_em=agora,
             base_url="https://geocoder.dimap.pmsp/",
         )
@@ -133,7 +145,7 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
             envelope=envelope,
             pedido=pedido,
             imovel=lote_inativo,
-            planta=planta_fake,
+            planta=planta,
             consultado_em=agora,
             base_url="https://geocoder.dimap.pmsp/",
         )
@@ -147,7 +159,7 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
             envelope=envelope,
             pedido=pedido,
             imovel=lote_condominial,
-            planta=planta_fake,
+            planta=planta,
             consultado_em=agora,
             base_url="https://geocoder.dimap.pmsp/",
         )
@@ -159,8 +171,22 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
         envelope=envelope,
         pedido=pedido,
         imovel=lote_valido,
-        planta=planta_fake,
+        planta=planta,
         consultado_em=agora,
         base_url="https://geocoder.dimap.pmsp/",
     )
     assert input_valido.imovel.sql == "005.003.0048-5"
+
+
+def test_certidao_input_recusa_planta_de_outro_tipo() -> None:
+    pedido = PedidoCertidao(processo="6017.2026/0012345-6", interessado="João da Silva")
+
+    with pytest.raises(ValidationError):
+        CertidaoLancamentoInput(
+            envelope=_envelope(),
+            pedido=pedido,
+            imovel=_imovel(),
+            planta="isto não é uma planta",  # type: ignore[arg-type]
+            consultado_em=datetime.now(timezone.utc),
+            base_url="https://geocoder.dimap.pmsp/",
+        )

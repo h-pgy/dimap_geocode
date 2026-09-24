@@ -10,40 +10,35 @@
       <div class="min-w-0">
         <p class="text-overline">Certidão de Existência de Lançamento</p>
         <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL {{ lote.feature.attributes.sql }}</p>
-        <p class="text-xs text-base-content/70 truncate">{{ lote.feature.attributes.endereco_formatado }}</p>
+        <p class="text-xs text-base-content/70 truncate">{{ lote.feature.attributes.endereco_completo }}</p>
       </div>
     </header>
 
     {% if lote.pode_certificar %}
-      {% if recusa %}
-        <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
-          <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
-          <span>{{ recusa.mensagem }}</span>
-        </div>
-      {% endif %}
+      {% include "partials/_tarja_recusa.html" with erros=recusa.mensagens titulo="Não foi possível emitir a certidão" %}
 
       <form hx-post="{% url 'certidao_lancamento:emitir' %}" hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-4">
         <input type="hidden" name="id" value="{{ lote.feature.attributes.id_poligono }}">
 
         <div class="flex flex-col gap-1">
-          <label class="text-overline text-xs {% if recusa.campo == 'processo' %}text-error{% endif %}">Processo SEI</label>
+          <label class="text-overline text-xs">Processo SEI</label>
           <input type="text"
                  name="processo"
                  value="{{ valores.processo }}"
                  data-mascara="0000.0000/0000000-0"
                  placeholder="0000.0000/0000000-0"
-                 class="input input-glass input-sm w-full font-mono {% if recusa.campo == 'processo' %}campo-realce-erro{% endif %}"
+                 class="input input-glass input-sm w-full font-mono {{ recusa.realce.processo }}"
                  autofocus>
           <span class="form-field-hint">Formato obrigatório: NNNN.AAAA/NNNNNNN-D (máscara automática ao digitar)</span>
         </div>
 
         <div class="flex flex-col gap-1">
-          <label class="text-overline text-xs {% if recusa.campo == 'interessado' %}text-error{% endif %}">Nome do interessado</label>
+          <label class="text-overline text-xs">Nome do interessado</label>
           <input type="text"
                  name="interessado"
                  value="{{ valores.interessado }}"
                  placeholder="Nome completo ou razão social"
-                 class="input input-glass input-sm w-full {% if recusa.campo == 'interessado' %}campo-realce-erro{% endif %}">
+                 class="input input-glass input-sm w-full {{ recusa.realce.interessado }}">
           <span class="form-field-hint">Consta no requerimento da certidão oficial.</span>
         </div>
 
@@ -53,10 +48,7 @@
         </div>
       </form>
     {% else %}
-      <div role="alert" class="alert alert-warning alert-soft text-xs flex items-start gap-2 p-3">
-        <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
-        <span>{{ motivo_recusa_lote }}</span>
-      </div>
+      {% include "partials/_tarja_recusa.html" with erros=motivos_recusa_lote titulo="Certidão indisponível para este lote" tom="pendente" %}
       <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
         <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</button>
       </div>

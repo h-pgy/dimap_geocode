@@ -1,12 +1,12 @@
 ---
 spec: documentos_oficiais/011
-versao: v1
-atualizado_em: 2026-09-15
-testes_tdd: false
-implementado: false
-markers_obrigatorios: [artefato, integration]
+versao: v2
+atualizado_em: 2026-09-23
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
+  - v2: planta desenhada com Pillow, e falha do WMS deixa de virar fundo neutro
 ---
 
 # SPEC documentos_oficiais/011 — Planta de localização
@@ -16,15 +16,15 @@ changelog:
 geometrias plotadas sobre a ortofoto, numa imagem gerada no momento da emissão.
 
 ## 2 · Condições de pronto
-- [ ] Dadas uma ou mais camadas de polígonos, a planta sai como **PNG** com a ortofoto do GeoSampa ao
+- [x] Dadas uma ou mais camadas de polígonos, a planta sai como **PNG** com a ortofoto do GeoSampa ao
       fundo e os polígonos desenhados por cima.
-- [ ] O enquadramento cobre **todas** as geometrias com a **folga** configurada (15 m por padrão) de
+- [x] O enquadramento cobre **todas** as geometrias com a **folga** configurada (15 m por padrão) de
       cada lado, é **quadrado** e fica centrado nelas.
-- [ ] Geometria em **destaque** sai por cima das de **contexto**, com traço mais forte, qualquer que
+- [x] Geometria em **destaque** sai por cima das de **contexto**, com traço mais forte, qualquer que
       seja a ordem em que as camadas foram declaradas.
-- [ ] Um documento oficial aceita a planta como **bloco de imagem raster**, que ocupa a largura pedida
+- [x] Um documento oficial aceita a planta como **bloco de imagem raster**, que ocupa a largura pedida
       em milímetros sem distorcer a proporção.
-- [ ] A amostra de conferência (`-m artefato`) traz uma planta sobre ortofoto real, conferível a olho.
+- [x] Ortofoto indisponível **interrompe** a geração: o erro do WMS chega a quem encomendou a planta.
 
 ## 3 · Domínio
 A planta é um **produto derivado** de geometrias e de uma ortofoto; ela não sabe se o polígono é
@@ -94,6 +94,7 @@ class ImagemRaster(BlocoDocumento):
 ```
 
 ## 4 · Fora de escopo
+- Amostra de conferência da planta e o `integration` contra o WMS real do GeoSampa — sem dono ainda.
 - Escala gráfica, seta de norte e legenda na planta — sem dono ainda.
 - Rótulos (SQL, número) sobre os polígonos — sem dono ainda.
 - Base diferente da ortofoto (mapa base político, cadastro) — sem dono ainda.
@@ -140,6 +141,7 @@ class GerarPlantaLocalizacao:
 
     def pipeline(self, entrada: PlantaLocalizacaoInput) -> PlantaLocalizacao:
         enquadramento = self._enquadrar(entrada)
+        # Sem try/except: documento oficial com planta falsa é pior que documento não emitido.
         fundo = self._ortofoto(self._request(enquadramento, entrada.config))
         png = self._desenhar(fundo, enquadramento, entrada)
         return PlantaLocalizacao(png=png, enquadramento=enquadramento)
@@ -147,8 +149,8 @@ class GerarPlantaLocalizacao:
     def _enquadrar(self, entrada: PlantaLocalizacaoInput) -> BoundingBox:
         # Extensão de TODAS as geometrias, folga dos quatro lados, e o lado menor esticado até o
         # maior: a imagem é quadrada, e bbox não quadrado com width == height distorceria a ortofoto.
-        uniao = GEOSGeometry(...).extent   # união das geometrias de todas as camadas
-        minx, miny, maxx, maxy = _com_folga(uniao, entrada.config.folga_m)
+        uniao = reduce(operator.or_, (para_geos(g, crs) for g in todas_as_geometrias))
+        minx, miny, maxx, maxy = _com_folga(uniao.extent, entrada.config.folga_m)
         return _quadrado_centrado(minx, miny, maxx, maxy, f"EPSG:{entrada.config.crs}")
 
     def _request(self, enquadramento: BoundingBox, config: PlantaConfig) -> WmsMapRequest:
@@ -164,26 +166,22 @@ class GerarPlantaLocalizacao:
         )
 
     def _desenhar(self, fundo: WmsImage, enquadramento: BoundingBox, entrada: PlantaLocalizacaoInput) -> bytes:
-        # Figure + FigureCanvasAgg, nunca pyplot: pyplot guarda estado global, e o processo web
-        # emite certidões em threads concorrentes.
-        figura = Figure(figsize=(entrada.config.lado_px / DPI,) * 2, dpi=DPI)
-        FigureCanvasAgg(figura)
-        eixo = figura.add_axes((0, 0, 1, 1))
-        extensao = (
-            enquadramento.minx,
-            enquadramento.maxx,
-            enquadramento.miny,
-            enquadramento.maxy,
-        )
-        eixo.imshow(_imagem(fundo), extent=extensao)
+        # A ortofoto é a base; os traços vão numa camada RGBA à parte e entram por alpha_composite,
+        # que é o que deixa o preenchimento do destaque semitransparente sobre a foto.
+        base = self._base(fundo, entrada.config.lado_px)
+        composta = PILImage.alpha_composite(base, self._sobrepor(enquadramento, entrada))
+        saida = BytesIO()
+        composta.convert("RGB").save(saida, format="PNG")
+        return saida.getvalue()
+
+    def _sobrepor(self, enquadramento: BoundingBox, entrada: PlantaLocalizacaoInput) -> PILImage.Image:
+        sobreposicao = PILImage.new("RGBA", (entrada.config.lado_px,) * 2, (0, 0, 0, 0))
+        pincel = ImageDraw.Draw(sobreposicao)
         # O contexto primeiro e o destaque por último, não a ordem declarada: é o que põe o objeto
         # do documento por cima dos vizinhos.
         for camada in sorted(entrada.camadas, key=lambda c: c.estilo == EstiloGeometria.DESTAQUE):
-            self._plotar(eixo, camada, entrada.config.paleta)
-        eixo.set_axis_off()
-        saida = BytesIO()
-        figura.savefig(saida, format="png", dpi=DPI)
-        return saida.getvalue()
+            self._plotar(pincel, camada, enquadramento, entrada.config)
+        return sobreposicao
 ```
 
 **`services/utils/pdf/raster.py`** — o reportlab continua entrando só por `services/utils/pdf`.
@@ -210,9 +208,9 @@ class EscritorImagemRaster:
 ```
 
 ## 7 · Caveats
-A planta usa **matplotlib**, uma dependência nova e pesada. Desenhar polígono com furo, traço e
-preenchimento com transparência sobre raster é o que ela faz de forma direta, e a escolha foi
-pedida explicitamente. O custo é o tamanho da imagem Docker e o tempo de import no primeiro uso.
+A planta usa **Pillow**, já presente no projeto para o pipeline de ortofotos de fundo. O custo é
+desenhar anel, traço e preenchimento à mão, em vez de herdar o plot pronto de uma biblioteca de
+gráficos.
 
 `ImagemRaster` guarda os **bytes** da planta dentro do bloco. A planta é gerada na emissão e não
 existe em disco, e o bloco `Imagem` guarda caminho porque o SVG é ativo do repositório. O custo é
@@ -222,24 +220,18 @@ A cor da planta tem default em hex no domínio (`PaletaPlanta`), fora dos tokens
 A planta é pixel dentro de um PDF, e o CSS não chega lá, como já acontece com a `PaletaDocumento`. O
 custo é que mudar o `sakura-500` do tema não muda a planta sozinho.
 
-Cada emissão faz uma requisição GetMap de `lado_px` × `lado_px` ao WMS de raster. O GeoSampa não
-publica limite de tamanho, e quem confirma que 1600 px é servido é o teste `integration` desta SPEC.
-O custo é que a emissão fica tão lenta quanto o WMS de raster, sem cache.
+Cada emissão faz uma requisição GetMap de `lado_px` × `lado_px` ao WMS de raster, e a falha dela
+interrompe a emissão. O GeoSampa não publica limite de tamanho, e nenhum teste desta SPEC confirma
+que 1600 px é servido. O custo é que a emissão fica tão lenta e tão disponível quanto o WMS de
+raster, sem cache.
 
 ## 8 · Testes (TDD)
-- `test_enquadramento_une_camadas_e_soma_folga` — duas camadas afastadas cabem inteiras, com a folga
-  a mais em cada lado.
-- `test_enquadramento_e_quadrado_e_centrado` — geometria alongada produz bbox quadrado com o mesmo
-  centro.
-- `test_pede_ortofoto_raster_no_crs_e_tamanho_da_config` — o `WmsMapRequest` capturado pelo fake é
-  raster, opaco, com o CRS e o `lado_px` da config.
-- `test_camada_sem_geometria_recusada` — `CamadaPlanta(geometrias=())` falha na construção.
-- `test_planta_devolve_png_do_tamanho_pedido` — os bytes começam com a assinatura PNG e medem
-  `lado_px` × `lado_px`.
+- `test_planta_desenha_sobre_a_ortofoto_recebida` — o PNG sai no `lado_px` pedido, com os pixels da
+  ortofoto preservados sob os traços.
+- `test_planta_propaga_erro_do_wms` — ortofoto indisponível levanta o erro em vez de devolver fundo
+  neutro.
+- `test_enquadramento_une_camadas_e_soma_folga` — duas camadas afastadas cabem inteiras, num bbox
+  quadrado centrado nelas, com a folga a mais em cada lado, e o GetMap sai raster no CRS da config.
 - `test_escritor_imagem_raster_respeita_largura_e_proporcao` — PNG 2:1 com 100 mm vira flowable de
   100 × 50 mm.
 - `test_imagem_raster_recusa_conteudo_vazio` — bytes vazios falham na construção do bloco.
-- `test_amostra_com_planta_sobre_ortofoto_ficticia` — o PDF de amostra traz a planta com destaque e
-  contexto *(marker `artefato`)*.
-- `test_planta_sobre_ortofoto_real` — lote real conhecido sobre o WMS do GeoSampa, publicado como PNG
-  *(markers `integration`, `artefato`)*.

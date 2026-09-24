@@ -1,7 +1,11 @@
+import operator
 from collections.abc import Callable
+from functools import reduce
 from io import BytesIO
+
 from PIL import Image as PILImage, ImageDraw
 
+from services.domain.geometry import para_geos
 from services.integrations.wms.models import BoundingBox, WmsImage, WmsMapRequest
 from .models import (
     CamadaPlanta,
@@ -13,6 +17,8 @@ from .models import (
 
 OrtofotoDoEnquadramento = Callable[[WmsMapRequest], WmsImage]
 DPI = 200
+LADO_PX_DE_REFERENCIA = 1600.0
+ESPESSURA_MINIMA_PX = 2
 
 
 def _com_folga(
@@ -25,29 +31,29 @@ def _com_folga(
 def _quadrado_centrado(
     minx: float, miny: float, maxx: float, maxy: float, crs: str
 ) -> BoundingBox:
-    dx = maxx - minx
-    dy = maxy - miny
-    lado = max(dx, dy)
-    cx = (minx + maxx) / 2
-    cy = (miny + maxy) / 2
+    lado = max(maxx - minx, maxy - miny)
+    centro_x = (minx + maxx) / 2
+    centro_y = (miny + maxy) / 2
     metade = lado / 2
     return BoundingBox(
-        minx=cx - metade,
-        miny=cy - metade,
-        maxx=cx + metade,
-        maxy=cy + metade,
+        minx=centro_x - metade,
+        miny=centro_y - metade,
+        maxx=centro_x + metade,
+        maxy=centro_y + metade,
         crs=crs,
     )
 
 
-def _hex_to_rgba(hex_cor: str, alpha: float = 1.0) -> tuple[int, int, int, int]:
-    h = hex_cor.lstrip("#")
-    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-    return r, g, b, int(alpha * 255)
+def _hex_para_rgba(hex_cor: str, alfa: float) -> tuple[int, int, int, int]:
+    canais = hex_cor.lstrip("#")
+    vermelho = int(canais[0:2], 16)
+    verde = int(canais[2:4], 16)
+    azul = int(canais[4:6], 16)
+    return vermelho, verde, azul, int(alfa * 255)
 
 
 class GerarPlantaLocalizacao:
-    def __init__(self, ortofoto: OrtofotoDoEnquadramento | None = None) -> None:
+    def __init__(self, ortofoto: OrtofotoDoEnquadramento) -> None:
         self._ortofoto = ortofoto
 
     def __call__(self, entrada: PlantaLocalizacaoInput) -> PlantaLocalizacao:
@@ -55,29 +61,21 @@ class GerarPlantaLocalizacao:
 
     def pipeline(self, entrada: PlantaLocalizacaoInput) -> PlantaLocalizacao:
         enquadramento = self._enquadrar(entrada)
-        fundo: WmsImage | None = None
-        if self._ortofoto is not None:
-            try:
-                fundo = self._ortofoto(self._request(enquadramento, entrada.config))
-            except Exception:
-                fundo = None
+        # Erro do WMS sobe: certidão com planta falsa é pior que certidão não emitida.
+        fundo = self._ortofoto(self._request(enquadramento, entrada.config))
         png = self._desenhar(fundo, enquadramento, entrada)
         return PlantaLocalizacao(png=png, enquadramento=enquadramento)
 
     def _enquadrar(self, entrada: PlantaLocalizacaoInput) -> BoundingBox:
-        xs: list[float] = []
-        ys: list[float] = []
-        for camada in entrada.camadas:
-            for geom in camada.geometrias:
-                for anel in geom.coordinates:
-                    for pt in anel:
-                        xs.append(pt[0])
-                        ys.append(pt[1])
-        if not xs or not ys:
-            minx, miny, maxx, maxy = 0.0, 0.0, 1.0, 1.0
-        else:
-            minx, miny, maxx, maxy = min(xs), min(ys), max(xs), max(ys)
-        minx, miny, maxx, maxy = _com_folga((minx, miny, maxx, maxy), entrada.config.folga_m)
+        uniao = reduce(
+            operator.or_,
+            (
+                para_geos(geometria, entrada.config.crs)
+                for camada in entrada.camadas
+                for geometria in camada.geometrias
+            ),
+        )
+        minx, miny, maxx, maxy = _com_folga(uniao.extent, entrada.config.folga_m)
         return _quadrado_centrado(minx, miny, maxx, maxy, f"EPSG:{entrada.config.crs}")
 
     def _request(self, enquadramento: BoundingBox, config: PlantaConfig) -> WmsMapRequest:
@@ -94,81 +92,75 @@ class GerarPlantaLocalizacao:
 
     def _desenhar(
         self,
-        fundo: WmsImage | None,
+        fundo: WmsImage,
         enquadramento: BoundingBox,
         entrada: PlantaLocalizacaoInput,
     ) -> bytes:
-        lado = entrada.config.lado_px
-        conteudo_fundo: bytes | None = None
-        if isinstance(fundo, bytes):
-            conteudo_fundo = fundo
-        elif hasattr(fundo, "content") and isinstance(fundo.content, bytes):
-            conteudo_fundo = fundo.content
-        elif hasattr(fundo, "bytes") and isinstance(fundo.bytes, bytes):
-            conteudo_fundo = fundo.bytes
-
-        if conteudo_fundo:
-            try:
-                img = PILImage.open(BytesIO(conteudo_fundo)).convert("RGBA")
-                if img.size != (lado, lado):
-                    img = img.resize((lado, lado), PILImage.Resampling.LANCZOS)
-            except Exception:
-                img = PILImage.new("RGBA", (lado, lado), (240, 243, 246, 255))
-        else:
-            img = PILImage.new("RGBA", (lado, lado), (240, 243, 246, 255))
-
-        overlay = PILImage.new("RGBA", (lado, lado), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay)
-
-        dx = enquadramento.maxx - enquadramento.minx
-        dy = enquadramento.maxy - enquadramento.miny
-        if dx <= 0:
-            dx = 1.0
-        if dy <= 0:
-            dy = 1.0
-
-        def to_px(x: float, y: float) -> tuple[float, float]:
-            px = (x - enquadramento.minx) / dx * lado
-            py = (enquadramento.maxy - y) / dy * lado
-            return px, py
-
-        camadas_ordenadas = sorted(
-            entrada.camadas, key=lambda c: c.estilo == EstiloGeometria.DESTAQUE
-        )
-        for camada in camadas_ordenadas:
-            is_destaque = camada.estilo == EstiloGeometria.DESTAQUE
-            cor_linha = (
-                entrada.config.paleta.cor_destaque
-                if is_destaque
-                else entrada.config.paleta.cor_contexto
-            )
-            espessura_pt = (
-                entrada.config.paleta.espessura_destaque_pt
-                if is_destaque
-                else entrada.config.paleta.espessura_contexto_pt
-            )
-            # Escala a espessura para a resolução da imagem em pixels
-            fator_escala = (lado / 1600.0) * (DPI / 72.0)
-            largura = max(2, int(espessura_pt * fator_escala))
-
-            # Preenchimento semitransparente para destacar o polígono sobre a foto aérea
-            if is_destaque and entrada.config.paleta.alfa_preenchimento_destaque > 0:
-                cor_fill = _hex_to_rgba(
-                    cor_linha, entrada.config.paleta.alfa_preenchimento_destaque
-                )
-                for geom in camada.geometrias:
-                    for anel in geom.coordinates:
-                        pts = [to_px(p[0], p[1]) for p in anel]
-                        if len(pts) >= 3:
-                            draw.polygon(pts, fill=cor_fill)
-
-            for geom in camada.geometrias:
-                for anel in geom.coordinates:
-                    pts = [to_px(p[0], p[1]) for p in anel]
-                    if len(pts) >= 2:
-                        draw.line(pts, fill=cor_linha, width=largura)
-
-        final_img = PILImage.alpha_composite(img, overlay).convert("RGB")
+        base = self._base(fundo, entrada.config.lado_px)
+        sobreposicao = self._sobrepor(enquadramento, entrada)
+        composta = PILImage.alpha_composite(base, sobreposicao).convert("RGB")
         saida = BytesIO()
-        final_img.save(saida, format="PNG")
+        composta.save(saida, format="PNG")
         return saida.getvalue()
+
+    def _base(self, fundo: WmsImage, lado: int) -> PILImage.Image:
+        imagem = PILImage.open(BytesIO(fundo.content)).convert("RGBA")
+        if imagem.size != (lado, lado):
+            imagem = imagem.resize((lado, lado), PILImage.Resampling.LANCZOS)
+        return imagem
+
+    def _sobrepor(
+        self, enquadramento: BoundingBox, entrada: PlantaLocalizacaoInput
+    ) -> PILImage.Image:
+        lado = entrada.config.lado_px
+        sobreposicao = PILImage.new("RGBA", (lado, lado), (0, 0, 0, 0))
+        pincel = ImageDraw.Draw(sobreposicao)
+        # O contexto primeiro e o destaque por último, não a ordem declarada: é o que põe o objeto
+        # do documento por cima dos vizinhos.
+        ordenadas = sorted(
+            entrada.camadas, key=lambda camada: camada.estilo == EstiloGeometria.DESTAQUE
+        )
+        for camada in ordenadas:
+            self._plotar(pincel, camada, enquadramento, entrada.config)
+        return sobreposicao
+
+    def _plotar(
+        self,
+        pincel: ImageDraw.ImageDraw,
+        camada: CamadaPlanta,
+        enquadramento: BoundingBox,
+        config: PlantaConfig,
+    ) -> None:
+        destaque = camada.estilo == EstiloGeometria.DESTAQUE
+        paleta = config.paleta
+        cor = paleta.cor_destaque if destaque else paleta.cor_contexto
+        espessura_pt = (
+            paleta.espessura_destaque_pt if destaque else paleta.espessura_contexto_pt
+        )
+        largura = self._largura_px(espessura_pt, config.lado_px)
+        aneis = [
+            [self._para_px(ponto, enquadramento, config.lado_px) for ponto in anel]
+            for geometria in camada.geometrias
+            for anel in geometria.coordinates
+        ]
+        if destaque and paleta.alfa_preenchimento_destaque > 0:
+            preenchimento = _hex_para_rgba(cor, paleta.alfa_preenchimento_destaque)
+            for anel in aneis:
+                if len(anel) >= 3:
+                    pincel.polygon(anel, fill=preenchimento)
+        for anel in aneis:
+            if len(anel) >= 2:
+                pincel.line(anel, fill=cor, width=largura)
+
+    def _largura_px(self, espessura_pt: float, lado_px: int) -> int:
+        escala = (lado_px / LADO_PX_DE_REFERENCIA) * (DPI / 72.0)
+        return max(ESPESSURA_MINIMA_PX, int(espessura_pt * escala))
+
+    def _para_px(
+        self, ponto: list[float], enquadramento: BoundingBox, lado: int
+    ) -> tuple[float, float]:
+        largura = enquadramento.maxx - enquadramento.minx
+        altura = enquadramento.maxy - enquadramento.miny
+        x = (ponto[0] - enquadramento.minx) / largura * lado
+        y = (enquadramento.maxy - ponto[1]) / altura * lado
+        return x, y

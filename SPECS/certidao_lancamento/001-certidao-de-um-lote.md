@@ -1,7 +1,7 @@
 ---
 spec: certidao_lancamento/001
-versao: v5
-atualizado_em: 2026-09-22
+versao: v6
+atualizado_em: 2026-09-23
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco, artefato]
@@ -11,6 +11,7 @@ changelog:
   - v3: máscara progressiva no campo do processo SEI (data-mascara) e redesenho do glifo da ação
   - v4: inscrição da ação no catálogo central de competências (registro.py)
   - v5: router renomeado para acoes_lote com enforcement de SQL válido na borda
+  - v6: "[bugfix] endereço do lote no modal, recusa de formulário inteira, emissão como desfecho e nota do rodapé em duas linhas"
 ---
 
 # SPEC certidao_lancamento/001 — Certidão de Existência de Lançamento de um lote
@@ -242,9 +243,10 @@ class CertidaoLancamento:
         # `consultado_em` chega no fuso local, resolvido pela orquestração: o domínio não importa
         # `django.utils.timezone`.
         momento = pedido.consultado_em
+        # Cada item da tupla é UMA linha da faixa. Numa frase só o rodapé estoura e quebra no meio.
         return (
-            "Certidão emitida de forma automatizada. Dados cadastrais consultados no GeoSampa em "
-            f"{momento:%d/%m/%Y} às {momento:%H:%M}.",
+            "Certidão emitida de forma automatizada",
+            f"Dados cadastrais consultados no GeoSampa em {momento:%d/%m/%Y} às {momento:%H:%M}",
         )
 ```
 
@@ -380,22 +382,24 @@ def modal(request: HttpRequest) -> HttpResponse:
 def emitir(request: HttpRequest) -> HttpResponse:
     leitura = ler_pedido_certidao(request.POST)
     lote = ler_lote(request.POST.get("id", ""))
-    if leitura.recusa is not None or not certificavel(lote):
-        contexto = contexto_modal(lote, valores=request.POST, recusa=leitura.recusa)
-        return render(request, TEMPLATE_MODAL, contexto, status=422)
-    documento = emitir_certidao_lancamento(
+    if leitura.dto is None or lote is None or not lote.pode_certificar:
+        return _modal_recusado(request, lote, request.POST, leitura.recusa)
+    desfecho = emitir_certidao_lancamento(
         autor=_perfil(request),
         pedido=leitura.dto,
         lote=lote,
         base_url=request.build_absolute_uri("/"),
     )
+    # Ortofoto indisponível recusa a emissão (SPEC refatoracao/002).
+    if desfecho.documento is None:
+        return _modal_recusado(request, lote, request.POST, desfecho.recusa)
     registrar_ato(
         request,
         operacao="emitir",
         alvo_tipo="documento",
-        alvo_identificador=documento.codigo,
+        alvo_identificador=desfecho.documento.codigo,
     )
-    return render(request, TEMPLATE_CERTIDAO_EMITIDA, {"codigo": documento.codigo})
+    return render(request, TEMPLATE_CERTIDAO_EMITIDA, {"codigo": desfecho.documento.codigo})
 ```
 
 **`templates/core/home.html`** — o poço dos modais que as ações do lote abrem e carregamento da máscara.
@@ -429,7 +433,8 @@ E no `{% block scripts %}`:
 {% endif %}
 ```
 
-**`templates/certidao_lancamento/modal.html`** — modal de emissão com máscara progressiva e ícone centralizado.
+**`templates/certidao_lancamento/_modal.html`** — modal de emissão com máscara progressiva, ícone
+centralizado e a tarja de recusa do projeto.
 
 ```html
 {% load icones %}
@@ -444,40 +449,35 @@ E no `{% block scripts %}`:
       <div class="min-w-0">
         <p class="text-overline">Certidão de Existência de Lançamento</p>
         <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL {{ lote.feature.attributes.sql }}</p>
-        <p class="text-xs text-base-content/70 truncate">{{ lote.feature.attributes.endereco_formatado }}</p>
+        <p class="text-xs text-base-content/70 truncate">{{ lote.feature.attributes.endereco_completo }}</p>
       </div>
     </header>
 
     {% if lote.pode_certificar %}
-      {% if recusa %}
-        <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
-          <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
-          <span>{{ recusa.mensagem }}</span>
-        </div>
-      {% endif %}
+      {% include "partials/_tarja_recusa.html" with erros=recusa.mensagens titulo="Não foi possível emitir a certidão" %}
 
       <form hx-post="{% url 'certidao_lancamento:emitir' %}" hx-target="#poco-modal" hx-swap="outerHTML" class="flex flex-col gap-4">
         <input type="hidden" name="id" value="{{ lote.feature.attributes.id_poligono }}">
 
         <div class="flex flex-col gap-1">
-          <label class="text-overline text-xs {% if recusa.campo == 'processo' %}text-error{% endif %}">Processo SEI</label>
+          <label class="text-overline text-xs">Processo SEI</label>
           <input type="text"
                  name="processo"
                  value="{{ valores.processo }}"
                  data-mascara="0000.0000/0000000-0"
                  placeholder="0000.0000/0000000-0"
-                 class="input input-glass input-sm w-full font-mono {% if recusa.campo == 'processo' %}campo-realce-erro{% endif %}"
+                 class="input input-glass input-sm w-full font-mono {{ recusa.realce.processo }}"
                  autofocus>
           <span class="form-field-hint">Formato obrigatório: NNNN.AAAA/NNNNNNN-D (máscara automática ao digitar)</span>
         </div>
 
         <div class="flex flex-col gap-1">
-          <label class="text-overline text-xs {% if recusa.campo == 'interessado' %}text-error{% endif %}">Nome do interessado</label>
+          <label class="text-overline text-xs">Nome do interessado</label>
           <input type="text"
                  name="interessado"
                  value="{{ valores.interessado }}"
                  placeholder="Nome completo ou razão social"
-                 class="input input-glass input-sm w-full {% if recusa.campo == 'interessado' %}campo-realce-erro{% endif %}">
+                 class="input input-glass input-sm w-full {{ recusa.realce.interessado }}">
           <span class="form-field-hint">Consta no requerimento da certidão oficial.</span>
         </div>
 
@@ -487,10 +487,7 @@ E no `{% block scripts %}`:
         </div>
       </form>
     {% else %}
-      <div role="alert" class="alert alert-warning alert-soft text-xs flex items-start gap-2 p-3">
-        <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
-        <span>{{ motivo_recusa_lote }}</span>
-      </div>
+      {% include "partials/_tarja_recusa.html" with erros=motivos_recusa_lote titulo="Certidão indisponível para este lote" %}
       <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
         <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</button>
       </div>
@@ -527,7 +524,7 @@ def emitir_certidao_lancamento(
     pedido: PedidoCertidao,
     lote: LoteLido,
     base_url: str,
-) -> DocumentoEmitido:
+) -> DesfechoEmissao:
     imovel = lote.feature.attributes
     envelope = EnvelopeAto(
         codigo=gerar_codigo(),
@@ -561,7 +558,7 @@ def emitir_certidao_lancamento(
         segredo=settings.ASSINATURA_SEGREDO,
         id_chave=settings.ASSINATURA_ID_CHAVE,
     ))
-    return guardar_documento(selado, envelope, execucao=None)
+    return DesfechoEmissao(documento=guardar_documento(selado, envelope, execucao=None))
 ```
 
 **`apps/painel/checks.py`**
@@ -602,6 +599,11 @@ certidão foi emitida.
 
 Só o **formato** do processo SEI é conferido, não o dígito verificador. O algoritmo do dígito não
 está documentado no projeto. O custo é aceitar número bem formado que não existe.
+
+A nota do rodapé é quebrada **à mão**, uma string por linha, porque o motor de marcação não mede a
+faixa e a linha longa atravessa o quadro do selo. O custo é que nada revalida a quebra: alongar o
+texto volta a transbordar, e o teste não pega — o `extract_text` de um PDF devolve a linha inteira
+mesmo quando ela sai da caixa, então só rasterizando (`pdftoppm`) se enxerga.
 
 `CertidaoLancamentoInput` recusa lote sem lançamento ou condominial também no domínio, além do aviso
 do modal. A regra "só se certifica lançamento que existe" não pode depender da tela. O custo é a

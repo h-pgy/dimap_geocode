@@ -7,7 +7,10 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, Paragraph, Table
 from pypdf import PdfReader
 
+from PIL import Image as PILImage
+
 from services.domain.documento_oficial import (
+    ImagemRaster,
     Lista,
     Paragrafo,
     QrCode,
@@ -212,3 +215,30 @@ def test_ato_em_substituicao_aparece_no_fecho() -> None:
 
     assert "em substituição a Ciclana de Tal" in texto_com
     assert "em substituição" not in texto_sem
+
+
+# ---------------------------------------------------------------------------
+# Bloco de imagem raster: a planta entra sem distorcer (SPEC documentos_oficiais/011)
+# ---------------------------------------------------------------------------
+
+
+def _png(largura: int, altura: int) -> bytes:
+    buffer = BytesIO()
+    PILImage.new("RGB", (largura, altura), (200, 210, 220)).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def test_escritor_imagem_raster_respeita_largura_e_proporcao() -> None:
+    escritores = montar_escritores(montar_tema(TemaConfig()))
+
+    flowable = escritores["imagem_raster"](
+        ImagemRaster(conteudo=_png(400, 200), largura_mm=100.0)
+    )
+
+    assert flowable.drawWidth == pytest.approx(100.0 * mm)
+    assert flowable.drawHeight == pytest.approx(50.0 * mm)
+
+
+def test_imagem_raster_recusa_conteudo_vazio() -> None:
+    with pytest.raises(ValidationError):
+        ImagemRaster(conteudo=b"", largura_mm=100.0)

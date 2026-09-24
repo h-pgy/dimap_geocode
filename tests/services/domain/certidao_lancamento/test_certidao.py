@@ -5,13 +5,25 @@ despacho com fundamentação e SQL, planta raster, rodapé com instante da consu
 
 from collections.abc import Callable
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
-from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
+from PIL import Image as PILImage, ImageDraw
+from pypdf import PdfReader
 import pytest
 
+from services.domain.certidao_lancamento.certidao import (
+    CertidaoLancamento,
+    MontarCertidaoLancamento,
+    MontarCertidaoLancamentoInput,
+)
+from services.domain.certidao_lancamento.models import (
+    CertidaoLancamentoInput,
+    PedidoCertidao,
+)
 from services.domain.documento_oficial import (
+    ImagemRaster,
     MarcacaoConfig,
     Paragrafo,
     SeloConfig,
@@ -28,7 +40,17 @@ from services.domain.documento_selado import (
     SeloImpressoInput,
     montar_selo_impresso,
 )
+from services.domain.geometry import PolygonGeometry
 from services.domain.lote_geocod.models import LoteAttributes
+from services.domain.planta_localizacao import (
+    CamadaPlanta,
+    EstiloGeometria,
+    GerarPlantaLocalizacao,
+    PlantaConfig,
+    PlantaLocalizacao,
+    PlantaLocalizacaoInput,
+)
+from services.integrations.wms.models import BoundingBox, WmsImage, WmsMapRequest
 
 artefato = pytest.mark.artefato
 
@@ -82,10 +104,79 @@ def _selo(envelope: EnvelopeAto, base_url: str = "https://geocoder.dimap.pmsp/")
     return montar_selo_impresso(SeloImpressoInput(envelope=envelope, base_url=base_url))
 
 
-def _planta(png: bytes = b"\x89PNG\r\n\x1a\nfake-planta") -> MagicMock:
-    planta = MagicMock()
-    planta.png = png
-    return planta
+PNG_1X1 = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+    b"\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\xcf\xc0\xf0\x1f\x00\x05\x00\x01\xff\x89\x99"
+    b"=\x1d\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
+def _planta(png: bytes = PNG_1X1) -> PlantaLocalizacao:
+    enquadramento = BoundingBox(
+        minx=0.0,
+        miny=0.0,
+        maxx=100.0,
+        maxy=100.0,
+        crs="EPSG:31983",
+    )
+    return PlantaLocalizacao(png=png, enquadramento=enquadramento)
+
+
+def _quadra(leste: float, norte: float, largura: float, fundo: float) -> PolygonGeometry:
+    anel = [
+        [leste, norte],
+        [leste + largura, norte],
+        [leste + largura, norte + fundo],
+        [leste, norte + fundo],
+        [leste, norte],
+    ]
+    return PolygonGeometry(type="Polygon", coordinates=[anel])
+
+
+# Quadra fictícia em SIRGAS 2000 / UTM 23S: o lote certificado e os vizinhos que o situam.
+_LOTE_CERTIFICADO = _quadra(333_040.0, 7_394_010.0, 12.0, 30.0)
+_LOTES_VIZINHOS = (
+    _quadra(333_022.0, 7_394_010.0, 16.0, 30.0),
+    _quadra(333_054.0, 7_394_010.0, 14.0, 30.0),
+    _quadra(333_022.0, 7_393_966.0, 46.0, 30.0),
+)
+
+
+def _ortofoto_sintetica(req: WmsMapRequest) -> WmsImage:
+    """Fundo procedural no lugar do GeoSampa: a amostra precisa rodar sem rede, e o que se confere
+    nela é o desenho da planta sobre um raster, não a fidelidade da imagem aérea."""
+    lado = req.width or 1600
+    imagem = PILImage.new("RGB", (lado, lado), (126, 132, 116))
+    pincel = ImageDraw.Draw(imagem)
+    passo = lado // 16
+    for indice in range(0, lado, passo):
+        tom = 104 + (indice // passo % 5) * 9
+        pincel.rectangle([indice, 0, indice + passo // 2, lado], fill=(tom, tom + 6, tom - 12))
+    # Duas faixas claras cruzando: leem-se como o arruamento sob os polígonos.
+    pincel.rectangle([0, lado // 2 - 14, lado, lado // 2 + 14], fill=(158, 154, 148))
+    pincel.rectangle([lado // 2 - 12, 0, lado // 2 + 12, lado], fill=(158, 154, 148))
+    buffer = BytesIO()
+    imagem.save(buffer, format="PNG")
+    return WmsImage(
+        content=buffer.getvalue(),
+        content_type="image/png",
+        width=lado,
+        height=lado,
+        layer=req.layer,
+        bbox=req.bbox,
+    )
+
+
+def _tipo_certidao() -> CertidaoLancamento:
+    config = MarcacaoConfig(
+        logo_horizontal=Path("static/src/img/documento_oficial/sec_fazenda_horizontal.svg"),
+        logo_vertical=Path("static/src/img/documento_oficial/sec_fazenda_vertical.svg"),
+    )
+    return CertidaoLancamento(
+        tema=montar_tema(TemaConfig()),
+        config=config,
+        selo_config=SeloConfig(),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -94,15 +185,6 @@ def _planta(png: bytes = b"\x89PNG\r\n\x1a\nfake-planta") -> MagicMock:
 
 
 def test_montar_certidao_declara_requerimento_identificacao_e_despacho() -> None:
-    from services.domain.certidao_lancamento.certidao import (  # type: ignore[import-not-found]
-        MontarCertidaoLancamento,
-        MontarCertidaoLancamentoInput,
-    )
-    from services.domain.certidao_lancamento.models import (  # type: ignore[import-not-found]
-        CertidaoLancamentoInput,
-        PedidoCertidao,
-    )
-
     envelope = _envelope()
     pedido = PedidoCertidao(processo="6017.2026/0012345-6", interessado="Maria Salgado")
     imovel = _imovel(
@@ -159,17 +241,7 @@ def test_montar_certidao_declara_requerimento_identificacao_e_despacho() -> None
     assert any(isinstance(b, SeloDeFecho) for b in conteudo.blocos)
 
 
-def test_certidao_traz_planta_e_nota_com_instante_da_consulta() -> None:
-    from services.domain.certidao_lancamento.certidao import (  # type: ignore[import-not-found]
-        CertidaoLancamento,
-        MontarCertidaoLancamento,
-        MontarCertidaoLancamentoInput,
-    )
-    from services.domain.certidao_lancamento.models import (  # type: ignore[import-not-found]
-        CertidaoLancamentoInput,
-        PedidoCertidao,
-    )
-
+def test_certidao_traz_planta_raster_na_largura_pedida() -> None:
     envelope = _envelope()
     pedido = PedidoCertidao(processo="6017.2026/0012345-6", interessado="Maria Salgado")
     imovel = _imovel()
@@ -193,69 +265,66 @@ def test_certidao_traz_planta_e_nota_com_instante_da_consulta() -> None:
         quadro=SeloConfig().fecho,
     ))
 
-    # Verifica a presença da planta raster
-    raster = next(
-        b for b in conteudo.blocos
-        if getattr(b, "tipo", None) == "imagem_raster" or b.__class__.__name__ == "ImagemRaster"
-    )
-    assert getattr(raster, "largura_mm") == 150.0
-    assert getattr(raster, "conteudo") == planta_png
+    raster = next(b for b in conteudo.blocos if isinstance(b, ImagemRaster))
+    assert raster.largura_mm == 150.0
+    assert raster.conteudo == planta_png
 
-    # Verifica a nota de rodapé com o instante da consulta cadastral
-    tema = montar_tema(TemaConfig())
-    config = MarcacaoConfig(
-        logo_horizontal=Path("static/src/img/documento_oficial/sec_fazenda_horizontal.svg"),
-        logo_vertical=Path("static/src/img/documento_oficial/sec_fazenda_vertical.svg"),
+
+def test_rodape_declara_emissao_automatizada_e_instante_da_consulta() -> None:
+    envelope = _envelope()
+    certidao_input = CertidaoLancamentoInput(
+        envelope=envelope,
+        pedido=PedidoCertidao(
+            processo="6017.2026/0012345-6",
+            interessado="Maria Salgado",
+        ),
+        imovel=_imovel(),
+        planta=_planta(),
+        consultado_em=datetime(2026, 9, 22, 14, 30, tzinfo=ZoneInfo("America/Sao_Paulo")),
+        base_url="https://geocoder.dimap.pmsp/",
     )
-    tipo = CertidaoLancamento(tema=tema, config=config, selo_config=SeloConfig())
-    nota = tipo._nota(certidao_input)
-    assert nota == (
-        "Certidão emitida de forma automática",
-        "Dados cadastrais consultados em 22/09/2026 - 14:30 no GeoSampa",
-    )
+
+    renderizado = _tipo_certidao()(certidao_input)
+
+    texto = PdfReader(BytesIO(renderizado.pdf)).pages[0].extract_text()
+    assert "de forma automatizada" in texto
+    assert "22/09/2026" in texto
+    assert "14:30" in texto
 
 
 @artefato
 def test_amostra_certidao_de_lancamento(
     publicar_artefato: Callable[[str, bytes], Path],
 ) -> None:
-    from services.domain.certidao_lancamento.certidao import CertidaoLancamento  # type: ignore[import-not-found]
-    from services.domain.certidao_lancamento.models import (  # type: ignore[import-not-found]
-        CertidaoLancamentoInput,
-        PedidoCertidao,
-    )
-
-    # PNG 1x1 mínimo válido para o motor de PDF renderizar sem erro
-    png_minimo = (
-        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
-        b"\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\xcf\xc0\xf0\x1f\x00\x05\x00\x01\xff\x89\x99"
-        b"=\x1d\x00\x00\x00\x00IEND\xaeB`\x82"
-    )
-    tema = montar_tema(TemaConfig())
-    config = MarcacaoConfig(
-        logo_horizontal=Path("static/src/img/documento_oficial/sec_fazenda_horizontal.svg"),
-        logo_vertical=Path("static/src/img/documento_oficial/sec_fazenda_vertical.svg"),
-    )
-    tipo = CertidaoLancamento(tema=tema, config=config, selo_config=SeloConfig())
-
-    envelope = _envelope()
-    pedido = PedidoCertidao(processo="6017.2026/0012345-6", interessado="Maria Salgado de Almeida")
-    imovel = _imovel(
-        nome_logradouro="AV PAULISTA",
-        numero_porta="100",
-        codlog="123450",
-        complemento="APTO 42",
+    # A planta sai do pipeline de verdade (`GerarPlantaLocalizacao`), não de bytes fabricados: a
+    # amostra só serve para conferir a olho se for a saída que o sistema produz.
+    planta = GerarPlantaLocalizacao(ortofoto=_ortofoto_sintetica)(
+        PlantaLocalizacaoInput(
+            camadas=(
+                CamadaPlanta(geometrias=_LOTES_VIZINHOS, estilo=EstiloGeometria.CONTEXTO),
+                CamadaPlanta(geometrias=(_LOTE_CERTIFICADO,), estilo=EstiloGeometria.DESTAQUE),
+            ),
+            config=PlantaConfig(camada_ortofoto="geoportal:ORTO_RGB", crs=31983),
+        )
     )
     certidao_input = CertidaoLancamentoInput(
-        envelope=envelope,
-        pedido=pedido,
-        imovel=imovel,
-        planta=_planta(png=png_minimo),
+        envelope=_envelope(),
+        pedido=PedidoCertidao(
+            processo="6017.2026/0012345-6",
+            interessado="Maria Salgado de Almeida",
+        ),
+        imovel=_imovel(
+            nome_logradouro="AV PAULISTA",
+            numero_porta="100",
+            codlog="123450",
+            complemento="APTO 42",
+        ),
+        planta=planta,
         consultado_em=datetime(2026, 9, 22, 14, 30, tzinfo=ZoneInfo("America/Sao_Paulo")),
         base_url="https://geocoder.dimap.pmsp/",
     )
 
-    renderizado = tipo.pipeline(certidao_input)
+    renderizado = _tipo_certidao()(certidao_input)
     caminho = publicar_artefato("certidao_lancamento_amostra.pdf", renderizado.pdf)
 
     assert caminho.exists()

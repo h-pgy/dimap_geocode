@@ -5,9 +5,10 @@ de segurança da ação administrativa (skill `acao-administrativa`).
 """
 
 from datetime import timedelta
+from io import BytesIO
 from itertools import count
-from unittest.mock import MagicMock
 
+from PIL import Image as PILImage
 from django.conf import settings as django_settings
 from django.test import Client
 from django.urls import reverse
@@ -23,6 +24,9 @@ from apps.user_admin.models import Perfil, TipoImpedimento
 from apps.user_admin.schemas import NovoImpedimento
 from services.domain.geometry import GeoFeature, PolygonGeometry
 from services.domain.lote_geocod.models import LoteAttributes, LoteFeature
+from apps.certidao_lancamento.emissao import LoteLido
+from services.integrations.wms import WmsHttpError
+from services.integrations.wms.models import WmsImage
 from services.utils.assinatura import ConferirInput, EstadoSelo, conferir_selo
 
 banco = pytest.mark.banco
@@ -111,18 +115,42 @@ def _lote_feature(attributes: LoteAttributes) -> LoteFeature:
     return GeoFeature(geometry=geom, attributes=attributes, crs=31983)
 
 
-def _lote_lido(attributes: LoteAttributes | None = None) -> object:
+def _lote_lido(attributes: LoteAttributes | None = None) -> LoteLido:
     attrs = attributes or _lote_attributes()
-    feat = _lote_feature(attrs)
-    try:
-        from apps.certidao_lancamento.emissao import LoteLido  # type: ignore[import-not-found]
+    return LoteLido(feature=_lote_feature(attrs), consultado_em=timezone.localtime())
 
-        return LoteLido(feature=feat, consultado_em=timezone.localtime())
-    except ImportError:
-        fake = MagicMock()
-        fake.feature = feat
-        fake.consultado_em = timezone.localtime()
-        return fake
+
+def _ortofoto_disponivel(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A emissão só entrega certidão com planta real: o WMS entra pelo fetcher falso."""
+
+    def _fetcher(_settings: object) -> object:
+        def _buscar(req: object) -> WmsImage:
+            lado = getattr(req, "width", 200)
+            imagem = PILImage.new("RGB", (lado, lado), (120, 140, 120))
+            buffer = BytesIO()
+            imagem.save(buffer, format="PNG")
+            return WmsImage(
+                content=buffer.getvalue(),
+                content_type="image/png",
+                width=lado,
+                height=lado,
+                layer=req.layer,  # type: ignore[attr-defined]
+                bbox=req.bbox,  # type: ignore[attr-defined]
+            )
+
+        return _buscar
+
+    monkeypatch.setattr("apps.certidao_lancamento.emissao.build_wms_fetcher", _fetcher)
+
+
+def _ortofoto_indisponivel(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _fetcher(_settings: object) -> object:
+        def _buscar(_req: object) -> WmsImage:
+            raise WmsHttpError("GeoSampa fora do ar")
+
+        return _buscar
+
+    monkeypatch.setattr("apps.certidao_lancamento.emissao.build_wms_fetcher", _fetcher)
 
 
 def _url_modal() -> str:
@@ -155,7 +183,7 @@ def test_modal_de_lote_sem_lancamento_ou_inexistente_mostra_aviso_sem_formulario
     resp_inexistente = client.get(_url_modal(), {"id": "9999", "sql": "005.003.0048-5"})
     assert resp_inexistente.status_code == 200
     assert "<form" not in resp_inexistente.content.decode()
-    assert "alert-warning" in resp_inexistente.content.decode()
+    assert "tarja-vinculo-pendente" in resp_inexistente.content.decode()
 
     # 2. Lote municipal / sem lançamento ativo (possui_lancamento == False)
     lote_sem_lancamento = _lote_lido(_lote_attributes(digito=None))
@@ -163,7 +191,7 @@ def test_modal_de_lote_sem_lancamento_ou_inexistente_mostra_aviso_sem_formulario
     resp_sem_lanc = client.get(_url_modal(), {"id": "1002", "sql": "005.003.0048-5"})
     assert resp_sem_lanc.status_code == 200
     assert "<form" not in resp_sem_lanc.content.decode()
-    assert "alert-warning" in resp_sem_lanc.content.decode()
+    assert "tarja-vinculo-pendente" in resp_sem_lanc.content.decode()
 
     # 3. Lote condominial (is_condominio == True)
     lote_condominio = _lote_lido(_lote_attributes(condominio="01"))
@@ -171,7 +199,7 @@ def test_modal_de_lote_sem_lancamento_ou_inexistente_mostra_aviso_sem_formulario
     resp_cond = client.get(_url_modal(), {"id": "1003", "sql": "005.003.0048-5"})
     assert resp_cond.status_code == 200
     assert "<form" not in resp_cond.content.decode()
-    assert "alert-warning" in resp_cond.content.decode()
+    assert "tarja-vinculo-pendente" in resp_cond.content.decode()
 
     # 4. Lote certificável com lançamento: abre modal com formulário
     lote_valido = _lote_lido(_lote_attributes())
@@ -198,6 +226,7 @@ def test_emissao_rele_lote_pelo_identificador(
     client.force_login(servidor)
 
     # Imóvel oficial retornado pelo WFS
+    _ortofoto_disponivel(monkeypatch)
     lote_oficial = _lote_lido(
         _lote_attributes(
             id_poligono="1001",
@@ -248,6 +277,7 @@ def test_emissao_guarda_via_no_acervo_e_devolve_download(
     _conceder(atribuicao, servidor.cargo_base)
     client.force_login(servidor)
 
+    _ortofoto_disponivel(monkeypatch)
     lote_valido = _lote_lido(_lote_attributes(id_poligono="1001"))
     monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote_valido)
 
@@ -303,6 +333,82 @@ def test_formulario_invalido_volta_ao_modal_com_realce(
     corpo = resposta.content.decode()
     assert "campo-realce-erro" in corpo
     assert "<form" in corpo
+
+
+# ---------------------------------------------------------------------------
+# Conformidade (SPEC refatoracao/002 §8)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_modal_mostra_endereco_do_lote(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    unidade = _unidade("CLAN-ENDERECO")
+    servidor = _perfil(unidade, rf="890100")
+    _conceder(_atribuir(unidade, _acao(SLUG_ACAO)), servidor.cargo_base)
+    client.force_login(servidor)
+
+    lote = _lote_lido(
+        _lote_attributes(nome_logradouro="AV PAULISTA", numero_porta="100", complemento="APTO 42")
+    )
+    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote)
+
+    corpo = client.get(_url_modal(), {"id": "1001", "sql": "005.003.0048-5"}).content.decode()
+
+    assert "AV PAULISTA" in corpo
+    assert "APTO 42" in corpo
+
+
+@banco
+@pytest.mark.django_db
+def test_formulario_com_dois_campos_invalidos_realca_os_dois(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unidade = _unidade("CLAN-DOIS-ERROS")
+    servidor = _perfil(unidade, rf="890110")
+    _conceder(_atribuir(unidade, _acao(SLUG_ACAO)), servidor.cargo_base)
+    client.force_login(servidor)
+
+    lote = _lote_lido(_lote_attributes(id_poligono="1001"))
+    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote)
+
+    resposta = client.post(
+        _url_emitir(),
+        {"id": "1001", "processo": "nao-e-processo", "interessado": ""},
+    )
+
+    assert resposta.status_code == 422
+    corpo = resposta.content.decode()
+    # Os dois controles realcados e as duas mensagens na tarja.
+    assert corpo.count("campo-realce-erro") == 2
+    assert "formato padr" in corpo
+    assert "Informe o nome completo" in corpo
+
+
+@banco
+@pytest.mark.django_db
+def test_emissao_recusa_quando_ortofoto_indisponivel(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unidade = _unidade("CLAN-SEM-ORTO")
+    servidor = _perfil(unidade, rf="890120")
+    _conceder(_atribuir(unidade, _acao(SLUG_ACAO)), servidor.cargo_base)
+    client.force_login(servidor)
+
+    _ortofoto_indisponivel(monkeypatch)
+    lote = _lote_lido(_lote_attributes(id_poligono="1001"))
+    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote)
+
+    antes = DocumentoEmitido.objects.count()
+    resposta = client.post(
+        _url_emitir(),
+        {"id": "1001", "processo": "6017.2026/0012345-6", "interessado": "Marina Salgado"},
+    )
+
+    assert resposta.status_code == 422
+    assert "imagem de localiza" in resposta.content.decode()
+    # Certidao sem planta real nao existe: nada entra no acervo.
+    assert DocumentoEmitido.objects.count() == antes
 
 
 # ---------------------------------------------------------------------------
@@ -422,6 +528,7 @@ def test_emissao_grava_autor_cargo_unidade_operacao_e_alvo(
     atribuicao = _atribuir(unidade_autor, acao)
     _conceder(atribuicao, servidor.cargo_base)
 
+    _ortofoto_disponivel(monkeypatch)
     lote_valido = _lote_lido(_lote_attributes(id_poligono="1001"))
     monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote_valido)
 
