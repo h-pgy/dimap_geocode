@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC certidao_lancamento/002 — Certidão de lançamento de um conjunto de lotes (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet para o mapa vivo da home (skill `mock`) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .gaveta-coluna-acoes — coluna lateral para o poço de ações na gaveta inferior rasa */
+      .gaveta-coluna-acoes {
+        @apply flex-none w-full md:w-72 overflow-hidden flex flex-col justify-center;
+      }
+
+      /* andaime do mock: moldura que faz as vezes da casca da home */
+      .quadro-tela {
+        @apply relative h-[44rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+  <!-- Defs da gravação: partial da própria aplicação -->
+  <div id="defs-aplicacao" hidden class="hidden"></div>
+
+  <!-- Glifos de SVG para o mock: selo oficial, download, alertas e o glifo da ação -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <!-- Glifo da ação: certidao_lancamento.emitir (centralizado em static/src/acoes/certidao_lancamento/emitir/icones/pequeno.svg) -->
+      <g id="glifo-certidao-lancamento">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M10.9436 1.25H13.0564C14.8942 1.24998 16.3498 1.24997 17.489 1.40314C18.6614 1.56076 19.6104 1.89288 20.3588 2.64124C20.6516 2.93414 20.6516 3.40901 20.3588 3.7019C20.0659 3.9948 19.591 3.9948 19.2981 3.7019C18.8749 3.27869 18.2952 3.02502 17.2892 2.88976C16.2615 2.75159 14.9068 2.75 13 2.75H11C9.09318 2.75 7.73851 2.75159 6.71085 2.88976C5.70476 3.02502 5.12511 3.27869 4.7019 3.7019C4.27869 4.12511 4.02502 4.70476 3.88976 5.71085C3.75159 6.73851 3.75 8.09318 3.75 10V14C3.75 15.9068 3.75159 17.2615 3.88976 18.2892C4.02502 19.2952 4.27869 19.8749 4.7019 20.2981C5.12511 20.7213 5.70476 20.975 6.71085 21.1102C7.73851 21.2484 9.09318 21.25 11 21.25H13C14.9068 21.25 16.2615 21.2484 17.2892 21.1102C18.2952 20.975 18.8749 20.7213 19.2981 20.2981C19.994 19.6022 20.2048 18.5208 20.2414 15.9892C20.2474 15.575 20.588 15.2441 21.0022 15.2501C21.4163 15.2561 21.7472 15.5967 21.7412 16.0108C21.7061 18.4383 21.549 20.1685 20.3588 21.3588C19.6104 22.1071 18.6614 22.4392 17.489 22.5969C16.3498 22.75 14.8942 22.75 13.0564 22.75H10.9436C9.10583 22.75 7.65019 22.75 6.51098 22.5969C5.33856 22.4392 4.38961 22.1071 3.64124 21.3588C2.89288 20.6104 2.56076 19.6614 2.40314 18.489C2.24997 17.3498 2.24998 15.8942 2.25 14.0564V9.94358C2.24998 8.10582 2.24997 6.65019 2.40314 5.51098C2.56076 4.33856 2.89288 3.38961 3.64124 2.64124C4.38961 1.89288 5.33856 1.56076 6.51098 1.40314C7.65019 1.24997 9.10582 1.24998 10.9436 1.25ZM18.1131 7.04556C19.1739 5.98481 20.8937 5.98481 21.9544 7.04556C23.0152 8.1063 23.0152 9.82611 21.9544 10.8869L17.1991 15.6422C16.9404 15.901 16.7654 16.076 16.5693 16.2289C16.3387 16.4088 16.0892 16.563 15.8252 16.6889C15.6007 16.7958 15.3659 16.8741 15.0187 16.9897L12.9351 17.6843C12.4751 17.8376 11.9679 17.7179 11.625 17.375C11.2821 17.0321 11.1624 16.5249 11.3157 16.0649L11.9963 14.0232C12.001 14.0091 12.0056 13.9951 12.0102 13.9813C12.1259 13.6342 12.2042 13.3993 12.3111 13.1748C12.437 12.9108 12.5912 12.6613 12.7711 12.4307C12.924 12.2346 13.099 12.0596 13.3578 11.8009C13.3681 11.7906 13.3785 11.7802 13.3891 11.7696L18.1131 7.04556ZM20.8938 8.10622C20.4188 7.63126 19.6488 7.63126 19.1738 8.10622L18.992 8.288C19.0019 8.32149 19.0132 8.3571 19.0262 8.39452C19.1202 8.66565 19.2988 9.02427 19.6372 9.36276C19.9757 9.70125 20.3343 9.87975 20.6055 9.97382C20.6429 9.9868 20.6785 9.99812 20.712 10.008L20.8938 9.8262C21.3687 9.35124 21.3687 8.58118 20.8938 8.10622ZM19.5664 11.1536C19.2485 10.9866 18.9053 10.7521 18.5766 10.4234C18.2479 10.0947 18.0134 9.75146 17.8464 9.43357L14.4497 12.8303C14.1487 13.1314 14.043 13.2388 13.9538 13.3532C13.841 13.4979 13.7442 13.6545 13.6652 13.8202C13.6028 13.9511 13.5539 14.0936 13.4193 14.4976L13.019 15.6985L13.3015 15.981L14.5024 15.5807C14.9064 15.4461 15.0489 15.3972 15.1798 15.3348C15.3455 15.2558 15.5021 15.159 15.6468 15.0462C15.7612 14.957 15.8686 14.8513 16.1697 14.5503L19.5664 11.1536ZM7.25 9C7.25 8.58579 7.58579 8.25 8 8.25H14.5C14.9142 8.25 15.25 8.58579 15.25 9C15.25 9.41421 14.9142 9.75 14.5 9.75H8C7.58579 9.75 7.25 9.41421 7.25 9ZM7.25 13C7.25 12.5858 7.58579 12.25 8 12.25H10.5C10.9142 12.25 11.25 12.5858 11.25 13C11.25 13.4142 10.9142 13.75 10.5 13.75H8C7.58579 13.75 7.25 13.4142 7.25 13ZM7.25 17C7.25 16.5858 7.58579 16.25 8 16.25H9.5C9.91421 16.25 10.25 16.5858 10.25 17C10.25 17.4142 9.91421 17.75 9.5 17.75H8C7.58579 17.75 7.25 17.4142 7.25 17Z" fill="currentColor"/>
+        <path d="M1.2 5L4.5 2.2L7.8 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2.2 4.8V8.8H6.8V4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3.8 8.8V6.6H5.2V8.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Glifo de selo / documento oficial emitido -->
+      <g id="glifo-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="m8.7 12 2.4 2.4 4.2-4.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Glifo de download -->
+      <g id="glifo-baixar">
+        <path d="M12 4v12m0 0 4-4m-4 4-4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Glifo de alerta / atenção -->
+      <g id="glifo-alerta">
+        <path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Glifo de lixeira / tirar do conjunto -->
+      <g id="glifo-apagar">
+        <path d="M4 7h16M9.5 4.2h5M6.4 7l.9 12.4h9.4L17.6 7M10 10.8v5.6M14 10.8v5.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Glifo de polígono / conjunto desenhado -->
+      <g id="glifo-poligono">
+        <path d="M12 3.5 20.2 9.6 17 19.4H7L3.8 9.6z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+        <circle cx="12" cy="3.5" r="1.9" fill="currentColor"/>
+        <circle cx="20.2" cy="9.6" r="1.9" fill="currentColor"/>
+        <circle cx="3.8" cy="9.6" r="1.9" fill="currentColor"/>
+        <circle cx="17" cy="19.4" r="1.9" fill="currentColor"/>
+        <circle cx="7" cy="19.4" r="1.9" fill="currentColor"/>
+      </g>
+      <!-- Glifo de fechar (x) -->
+      <g id="glifo-x">
+        <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- Fundo: o mapa da home com transparência -->
+  <div id="fundo-home" class="fixed inset-0 z-0 opacity-40 pointer-events-none"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC certidao_lancamento/002 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Certidão de lançamento de um conjunto de lotes</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-3xl">
+          A ação <span class="text-code">certidao_lancamento.emitir</span> oferecida na gaveta inferior dos lotes intersectados para quem tem a concessão.
+          O mock aprova o poço de ações na gaveta inferior (com concessão × sem concessão), o modal do conjunto com a lista de lotes confirmados, as recusas (erro 422 de formulário, aviso de lotes impeditivos sem formulário, aviso de conjunto vazio, recusa 409 de conjunto alterado na releitura) e a confirmação com emissão da certidão única para múltiplos lotes, selada e registrada no acervo.
+        </p>
+      </header>
+
+      <!-- ==================================================================== -->
+      <!-- 2 · ÁTOMOS                                                            -->
+      <!-- ==================================================================== -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h2 class="section-title">2 · Átomos</h2>
+          <p class="text-xs text-base-content/70">O glifo da ação, badges de situação cadastral dos lotes e campos de entrada.</p>
+        </div>
+
+        <!-- Glifo da ação e badges -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">Glifo da ação · certidao_lancamento.emitir (variante pequeno: 24×24 · documento oficial com casa)</p>
+          <div class="card-well p-5 flex flex-wrap items-center gap-8">
+            <div class="flex flex-col items-center gap-2">
+              <div class="w-8 h-8 flex items-center justify-center text-rocha-900">
+                <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+              </div>
+              <span class="text-overline">repouso</span>
+            </div>
+
+            <div class="flex flex-col items-center gap-2">
+              <div class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+              </div>
+              <span class="text-overline">.icon-bubble ciano</span>
+            </div>
+
+            <div class="flex flex-col items-center gap-2">
+              <div class="icon-bubble w-11 h-11 bg-madeira-600/15 border-madeira-600/30 text-madeira-700">
+                <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+              </div>
+              <span class="text-overline">.icon-bubble madeira</span>
+            </div>
+
+            <div class="flex flex-col items-center gap-2">
+              <div class="w-11 h-11 flex items-center justify-center">
+                <span class="icone-acao icone-acao-pequeno icone-acao-acende text-agua-700">
+                  <svg viewBox="0 0 24 24"><use href="#glifo-certidao-lancamento"/></svg>
+                </span>
+              </div>
+              <span class="text-overline">.icone-acao gaveta</span>
+            </div>
+
+            <div class="h-10 w-px bg-rocha-950/10 mx-2"></div>
+
+            <div class="flex flex-col items-center gap-2">
+              <span class="badge badge-poligono badge-sm font-semibold">Conjunto · 3 lotes</span>
+              <span class="text-overline">entidade conjunto</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Badges de situação dos lotes para a regra de certificabilidade -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">Badges de situação do lote (§3 da SPEC: lançamentos ativos são certificáveis; sem lançamento ou condomínio barram)</p>
+          <div class="card-well p-5 flex flex-wrap items-center gap-6">
+            <div class="flex flex-col gap-1">
+              <span class="badge badge-success badge-soft badge-sm font-bold">Lançamento ativo</span>
+              <span class="form-field-hint text-[11px]">Certificável</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="badge badge-neutral badge-soft badge-sm font-bold">Sem lançamento ativo</span>
+              <span class="form-field-hint text-[11px] text-warning-content font-medium">Impeditivo</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="badge badge-warning badge-soft badge-sm font-bold">Condominial</span>
+              <span class="form-field-hint text-[11px] text-warning-content font-medium">Impeditivo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campos de entrada -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">Campos de formulário · .input-glass com estados e máscara progressiva de Processo SEI</p>
+          <div class="grid sm:grid-cols-3 gap-4">
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-overline">máscara progressiva</span>
+                <span class="badge badge-xs badge-ghost font-mono">interativo</span>
+              </div>
+              <input type="text" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0">
+              <span class="form-field-hint text-[11px]">Digite só números; formata em tempo real.</span>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">preenchido válido (16 dígitos)</span>
+              <input type="text" class="input input-glass input-sm w-full font-mono font-medium" data-mascara="0000.0000/0000000-0" value="6017.2026/0048912-3">
+              <span class="form-field-hint text-[11px] text-success">Formato SEI válido</span>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline text-error">.campo-realce-erro</span>
+              <input type="text" class="input input-glass input-sm w-full campo-realce-erro font-mono" value="6017.2026/123-4">
+              <span class="form-field-hint text-[11px] text-error">Incompleto / recusa 422</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================== -->
+      <!-- 3 · MOLÉCULAS                                                         -->
+      <!-- ==================================================================== -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h2 class="section-title">3 · Moléculas</h2>
+          <p class="text-xs text-base-content/70">O poço de ações na gaveta inferior rasa, a lista de lotes no modal e o aviso de lotes impeditivos.</p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6 items-start">
+          <!-- 3.1: Poço na gaveta inferior (Autorizado) -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">3.1 · Molécula Oficial: Poço na gaveta inferior (com concessão)</p>
+            <div class="card-well px-4 pt-2.5 pb-3 flex flex-col gap-1 max-h-full">
+              <p class="text-overline shrink-0 leading-none">Ações</p>
+              <div class="flex flex-col gap-2.5 px-1 py-1 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent)]">
+                <button type="button" class="btn btn-onsen btn-sm gap-2 justify-start">
+                  <span class="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
+                    <svg viewBox="0 0 24 24"><use href="#glifo-certidao-lancamento"/></svg>
+                  </span>
+                  Certidão de lançamento
+                </button>
+              </div>
+            </div>
+            <span class="form-field-hint">Molécula oficial: altura proporcional auto, centralizado verticalmente na coluna, topo enxuto e respiro interno entre botões (.gap-2.5) com dissolução/blur nas bordas da rolagem.</span>
+          </div>
+
+          <!-- 3.2: Poço na gaveta lateral (Autorizado) -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">3.2 · Molécula Oficial: Poço na gaveta lateral do lote (com concessão)</p>
+            <div class="card-well px-4 pt-2.5 pb-3 flex flex-col gap-1 w-full">
+              <p class="text-overline shrink-0 leading-none">Ações</p>
+              <div class="flex flex-col gap-2.5 px-1 py-1 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent)]">
+                <button type="button" class="btn btn-onsen btn-sm gap-2 justify-start">
+                  <span class="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
+                    <svg viewBox="0 0 24 24"><use href="#glifo-certidao-lancamento"/></svg>
+                  </span>
+                  Certidão de lançamento
+                </button>
+              </div>
+            </div>
+            <span class="form-field-hint">A mesma molécula oficial no corpo da gaveta lateral (_gaveta_lote.html / _poco_acoes.html), padronizada para todos os menus de ações reduzidos.</span>
+          </div>
+        </div>
+
+        <!-- 3.3: Poço sem ação liberada (Anônimo / Sem competência) -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">3.3 · Poço sem ação liberada · Anônimo ou sem concessão</p>
+          <div class="card-well p-6 flex flex-col items-center justify-center text-center gap-1 min-h-[5.5rem] border-dashed border-rocha-950/15">
+            <span class="text-xs italic text-base-content/50">Nenhuma ação liberada para este perfil.</span>
+            <span class="text-xs text-base-content/40">O poço não é renderizado e o conteúdo adjacente ocupa 100% da largura.</span>
+          </div>
+          <span class="form-field-hint">As gavetas nunca expõem botões administrativos a quem não tem caneta.</span>
+        </div>
+
+        <!-- 3.4: Tabela compacta de lotes confirmados para o cabeçalho do Modal -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">3.4 · Lista dos lotes confirmados dentro do Modal</p>
+          <div class="card-well p-3 flex flex-col gap-2 bg-white/40">
+            <div class="flex items-center justify-between px-1">
+              <span class="text-overline text-[11px]">3 imóveis no conjunto a certificar:</span>
+              <span class="text-xs text-base-content/60">Área do desenho: 1.250,40 m²</span>
+            </div>
+            <div class="table-onsen-wrap max-h-36 overflow-y-auto rounded-lg border border-rocha-950/10">
+              <table class="table table-onsen table-onsen-compacta w-full">
+                <thead>
+                  <tr>
+                    <th><div class="th-onsen"><span class="text-overline text-[10px]">Contribuinte</span></div></th>
+                    <th><div class="th-onsen"><span class="text-overline text-[10px]">Endereço</span></div></th>
+                    <th><div class="th-onsen"><span class="text-overline text-[10px]">Complemento</span></div></th>
+                    <th><div class="th-onsen"><span class="text-overline text-[10px]">Situação</span></div></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-code whitespace-nowrap text-xs">012.345.6789-0</td>
+                    <td class="text-xs">RUA AUGUSTA, 100</td>
+                    <td class="text-xs">APTO 12</td>
+                    <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                  </tr>
+                  <tr>
+                    <td class="text-code whitespace-nowrap text-xs">012.345.6790-3</td>
+                    <td class="text-xs">RUA AUGUSTA, 102</td>
+                    <td class="text-xs">LOJA 1</td>
+                    <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                  </tr>
+                  <tr>
+                    <td class="text-code whitespace-nowrap text-xs">012.345.6791-1</td>
+                    <td class="text-xs">RUA AUGUSTA, 104</td>
+                    <td class="text-xs text-base-content/40">—</td>
+                    <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3.3: Bloco de lotes impeditivos -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">3.3 · Bloco de lotes impeditivos (exibido quando há lotes sem lançamento ou condomínio)</p>
+          <div class="card-well p-4 flex flex-col gap-2.5 border-l-4 border-l-warning">
+            <div class="flex items-center gap-2">
+              <span class="icon-bubble w-8 h-8 bg-warning/15 border-warning/30 text-warning-content shrink-0">
+                <svg class="w-4 h-4"><use href="#glifo-alerta"/></svg>
+              </span>
+              <div>
+                <p class="font-bold text-xs text-rocha-950">Lotes impeditivos encontrados no conjunto</p>
+                <p class="text-[11px] text-base-content/70">A certidão só pode ser emitida se todos os lotes possuírem lançamento ativo.</p>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1.5 mt-1">
+              <div class="flex items-center justify-between p-2 rounded bg-white/50 border border-rocha-950/10 text-xs">
+                <span class="text-code font-semibold">012.345.0002-8 · RUA AUGUSTA, 98</span>
+                <span class="badge badge-neutral badge-soft badge-xs">Sem lançamento ativo</span>
+              </div>
+              <div class="flex items-center justify-between p-2 rounded bg-white/50 border border-rocha-950/10 text-xs">
+                <span class="text-code font-semibold">012.345.0005-2 · RUA AUGUSTA, 106</span>
+                <span class="badge badge-warning badge-soft badge-xs">Condominial</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================== -->
+      <!-- 4 · ORGANISMOS                                                        -->
+      <!-- ==================================================================== -->
+      <section id="organismos" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h2 class="section-title">4 · Organismos</h2>
+          <p class="text-xs text-base-content/70">
+            As faces do modal da certidão do conjunto em <span class="text-code">#poco-modal</span>.
+            A caixa mantém os mesmos materiais e dimensões; o conteúdo varia conforme o estado da verificação e do fluxo.
+          </p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-8 items-start">
+          <!-- 4·A: Formulário inicial do conjunto -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-agua-800">4·A · Formulário inicial de emissão do conjunto</span>
+              <span class="badge badge-neutral badge-soft badge-xs">GET 200</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+                <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                  <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-overline">Certidão de Existência de Lançamento</p>
+                  <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de 3 lotes fiscais</p>
+                  <p class="text-xs text-base-content/70">Terreno desenhado · Área total: 1.250,40 m²</p>
+                </div>
+              </header>
+
+              <!-- Lista dos lotes que restaram na tabela -->
+              <div class="card-well p-3 flex flex-col gap-2 bg-white/40">
+                <span class="text-overline text-[11px]">Lotes confirmados a certificar:</span>
+                <div class="table-onsen-wrap max-h-28 overflow-y-auto rounded-lg border border-rocha-950/10">
+                  <table class="table table-onsen table-onsen-compacta w-full">
+                    <thead>
+                      <tr>
+                        <th><div class="th-onsen"><span class="text-overline text-[10px]">Contribuinte</span></div></th>
+                        <th><div class="th-onsen"><span class="text-overline text-[10px]">Endereço</span></div></th>
+                        <th><div class="th-onsen"><span class="text-overline text-[10px]">Situação</span></div></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="text-code text-xs">012.345.6789-0</td>
+                        <td class="text-xs truncate max-w-[12rem]">RUA AUGUSTA, 100 — APTO 12</td>
+                        <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                      </tr>
+                      <tr>
+                        <td class="text-code text-xs">012.345.6790-3</td>
+                        <td class="text-xs truncate max-w-[12rem]">RUA AUGUSTA, 102 — LOJA 1</td>
+                        <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                      </tr>
+                      <tr>
+                        <td class="text-code text-xs">012.345.6791-1</td>
+                        <td class="text-xs truncate max-w-[12rem]">RUA AUGUSTA, 104</td>
+                        <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <form class="flex flex-col gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="text-overline text-xs">Processo SEI</label>
+                  <input type="text" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0">
+                  <span class="form-field-hint">Formato: NNNN.AAAA/NNNNNNN-D (digite apenas números ou cole formatado)</span>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="text-overline text-xs">Nome do interessado</label>
+                  <input type="text" class="input input-glass input-sm w-full" placeholder="Nome completo ou razão social">
+                  <span class="form-field-hint">Consta no requerimento da certidão oficial.</span>
+                </div>
+
+                <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+                  <button type="button" class="btn btn-glass btn-sm">Cancelar</button>
+                  <button type="button" class="btn btn-onsen btn-sm">Emitir certidão</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- 4·B: Erro de validação 422 -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-error">4·B · Recusa de formulário com realce</span>
+              <span class="badge badge-error badge-soft badge-xs">POST 422</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+                <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+                  <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-overline">Certidão de Existência de Lançamento</p>
+                  <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de 3 lotes fiscais</p>
+                  <p class="text-xs text-base-content/70">Terreno desenhado · Área total: 1.250,40 m²</p>
+                </div>
+              </header>
+
+              <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
+                <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
+                <span>O número do processo SEI não está no formato padrão (NNNN.AAAA/NNNNNNN-D).</span>
+              </div>
+
+              <form class="flex flex-col gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="text-overline text-xs text-error">Processo SEI</label>
+                  <input type="text" class="input input-glass input-sm w-full campo-realce-erro font-mono" data-mascara="0000.0000/0000000-0" value="6017.2026/123-4">
+                  <span class="text-xs text-error">Formato inválido. Exemplo correto: 6017.2026/0012345-6</span>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="text-overline text-xs">Nome do interessado</label>
+                  <input type="text" class="input input-glass input-sm w-full" value="Empresa Construtora Exemplo Ltda">
+                </div>
+
+                <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+                  <button type="button" class="btn btn-glass btn-sm">Cancelar</button>
+                  <button type="button" class="btn btn-onsen btn-sm">Emitir certidão</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- 4·C: Lotes impeditivos no conjunto (Condições 3 e 6) -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-warning-content">4·C · Lotes impeditivos no conjunto (sem formulário)</span>
+              <span class="badge badge-warning badge-soft badge-xs">Aviso 422</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+                <span class="icon-bubble w-11 h-11 bg-warning/15 border-warning/30 text-warning-content shrink-0">
+                  <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-overline">Certidão de Existência de Lançamento</p>
+                  <p class="text-base font-bold text-rocha-950 leading-tight">Lotes impeditivos no conjunto</p>
+                </div>
+              </header>
+
+              <div class="card-well p-4 flex flex-col gap-3">
+                <p class="text-sm text-base-content/85">
+                  O conjunto possui <strong>2 lotes</strong> que não atendem às condições para emissão automatizada da certidão (sem lançamento ativo no IPTU ou condominiais):
+                </p>
+
+                <div class="flex flex-col gap-2 mt-1">
+                  <div class="flex items-center justify-between p-2.5 rounded bg-white/60 border border-rocha-950/10 text-xs">
+                    <div>
+                      <p class="font-bold text-rocha-950">Lote 012.345.0002</p>
+                      <p class="text-[11px] text-base-content/70">RUA AUGUSTA, 98</p>
+                    </div>
+                    <span class="badge badge-neutral badge-soft badge-sm">Sem lançamento ativo</span>
+                  </div>
+
+                  <div class="flex items-center justify-between p-2.5 rounded bg-white/60 border border-rocha-950/10 text-xs">
+                    <div>
+                      <p class="font-bold text-rocha-950">Lote 012.345.0005</p>
+                      <p class="text-[11px] text-base-content/70">RUA AUGUSTA, 106</p>
+                    </div>
+                    <span class="badge badge-warning badge-soft badge-sm">Condominial</span>
+                  </div>
+                </div>
+
+                <p class="text-xs text-base-content/65 mt-1">
+                  Remova os lotes impeditivos utilizando o botão de lixeira na tabela da gaveta inferior antes de solicitar a certidão.
+                </p>
+              </div>
+
+              <div class="modal-action pt-2">
+                <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto">Voltar à tabela</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4·D: Conjunto Vazio (Condição 3) -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-warning-content">4·D · Conjunto vazio (sem formulário)</span>
+              <span class="badge badge-warning badge-soft badge-xs">Aviso</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+                <span class="icon-bubble w-11 h-11 bg-warning/15 border-warning/30 text-warning-content shrink-0">
+                  <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-overline">Certidão de Existência de Lançamento</p>
+                  <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de lotes vazio</p>
+                </div>
+              </header>
+
+              <div class="card-well p-4 flex flex-col gap-2.5">
+                <p class="text-sm text-base-content/85">
+                  Todos os lotes foram removidos da tabela ou o polígono desenhado não intersecta nenhum lote cadastrado.
+                </p>
+                <p class="text-xs text-base-content/65">
+                  É necessário que ao menos 1 lote cadastrado e com lançamento ativo componha o conjunto para emissão da certidão.
+                </p>
+              </div>
+
+              <div class="modal-action pt-2">
+                <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto">Fechar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4·E: Conjunto Alterado na Emissão (Condição 5 - 409 Conflict) -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-error">4·E · Conjunto alterado na conferência oficial</span>
+              <span class="badge badge-error badge-soft badge-xs">POST 409 Conflict</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+                <span class="icon-bubble w-11 h-11 bg-error/15 border-error/30 text-error shrink-0">
+                  <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-overline">Certidão de Existência de Lançamento</p>
+                  <p class="text-base font-bold text-rocha-950 leading-tight">Composição do conjunto foi alterada</p>
+                </div>
+              </header>
+
+              <div class="card-well p-4 flex flex-col gap-2.5">
+                <p class="text-sm text-base-content/85">
+                  A releitura oficial junto à base do GeoSampa identificou divergência entre os lotes confirmados e os dados atuais do desenho.
+                </p>
+                <div class="p-2.5 rounded bg-error/10 border border-error/20 text-xs text-error font-medium">
+                  1 lote foi alterado ou removido após a abertura do modal de confirmação. Nada foi emitido.
+                </div>
+                <p class="text-xs text-base-content/65">
+                  Por segurança e fé pública, a certidão atesta com exatidão a lista inspecionada. Reabra a solicitação para confirmar a nova composição.
+                </p>
+              </div>
+
+              <div class="modal-action pt-2">
+                <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto">Revisar conjunto</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4·F: Confirmação com Certidão do Conjunto Emitida -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-overline text-success">4·F · Certidão do conjunto emitida com sucesso</span>
+              <span class="badge badge-success badge-soft badge-xs">POST 200</span>
+            </div>
+
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
+              <div class="card-well flex flex-col items-center text-center gap-3 p-6">
+                <span class="icon-bubble w-14 h-14 bg-success/15 border-success/30 text-success">
+                  <svg class="w-7 h-7"><use href="#glifo-selo"/></svg>
+                </span>
+                <div>
+                  <span class="text-overline text-success font-bold">Certidão do conjunto selada e emitida</span>
+                  <h3 class="text-lg font-bold text-rocha-950 mt-0.5">Documento registrado no acervo</h3>
+                </div>
+                <div class="flex flex-col items-center gap-1 bg-white/40 border border-rocha-950/10 rounded-lg px-4 py-2 w-full">
+                  <span class="text-overline text-xs">Código de autenticidade</span>
+                  <span class="text-code text-base font-bold tracking-wider text-rocha-950">2026-CL-9B41-C7D2</span>
+                </div>
+                <p class="text-xs text-base-content/70">
+                  Emitida de forma automatizada com releitura oficial ao GeoSampa em 29/09/2026 às 12:15.
+                </p>
+              </div>
+
+              <a href="002-amostra-certidao-conjunto.pdf" target="_blank" download="certidao_lancamento_conjunto_2026-CL-9B41-C7D2.pdf" class="btn btn-onsen gap-2 w-full justify-center">
+                <svg class="w-4 h-4"><use href="#glifo-baixar"/></svg>
+                Baixar Certidão do Conjunto (PDF de Amostra)
+              </a>
+
+              <details class="collapse collapse-arrow bg-white/50 border border-rocha-950/10 rounded-lg text-left text-xs">
+                <summary class="collapse-title font-semibold text-rocha-900 py-2.5 px-3 min-h-0 text-xs flex items-center justify-between">
+                  <span>Prévia textual dos dados da certidão do conjunto</span>
+                </summary>
+                <div class="collapse-content px-3 pb-3 text-rocha-800 space-y-2 text-[11px] leading-relaxed border-t border-rocha-950/5 pt-2">
+                  <div class="p-2.5 bg-rocha-50 rounded border border-rocha-950/10 font-mono whitespace-pre-wrap select-all">PREFEITURA DO MUNICÍPIO DE SÃO PAULO
+SECRETARIA MUNICIPAL DA FAZENDA
+SUBSECRETARIA DA RECEITA MUNICIPAL — DEPARTAMENTO DE TRIBUTAÇÃO E JULGAMENTO
+DIVISÃO DE MAPEAMENTO E CADASTRO FISCAL — DIMAP
+
+CERTIDÃO DE EXISTÊNCIA DE LANÇAMENTO
+
+1. REQUERIMENTO
+Interessado: Empresa Construtora Exemplo Ltda
+Processo Administrativo SEI nº: 6017.2026/0012345-6
+
+2. IDENTIFICAÇÃO DOS IMÓVEIS
+Os imóveis objeto desta certidão compõem a área delimitada na planta de localização, com 1.250,40 m², e são os relacionados abaixo:
+
++--------------------+-----------------------------+--------------+
+| Contribuinte       | Endereço                    | Complemento  |
++--------------------+-----------------------------+--------------+
+| 012.345.6789-0     | RUA AUGUSTA, 100            | APTO 12      |
+| 012.345.6790-3     | RUA AUGUSTA, 102            | LOJA 1       |
+| 012.345.6791-1     | RUA AUGUSTA, 104            | —            |
++--------------------+-----------------------------+--------------+
+
+3. DESPACHO E DECLARAÇÃO OFICIAL
+Solicitação deferida.
+Com base nas informações consultadas de forma automatizada junto à base de dados oficial do Município de São Paulo, declara-se que os imóveis acima relacionados possuem lançamento do Imposto Predial e Territorial Urbano (IPTU) pelos respectivos contribuintes.
+
+4. LOCALIZAÇÃO DOS IMÓVEIS (PLANTA CADASTRAL)
+--------------------------------------------------------------------------------
+[PLANTA DE LOCALIZAÇÃO DO CONJUNTO — MDC CADASTRAL / WMS GEOSAMPA (150 mm)]
+Lotes fiscais destacados em CONTEXTO e Polígono do Terreno desenhado em DESTAQUE por cima.
+Sistema de Coordenadas Métricas Oficiais (SIRGAS 2000 / UTM 23S) | Escala 1:1250
+--------------------------------------------------------------------------------
+
+São Paulo, 29 de setembro de 2026.
+
+AUTENTICIDADE E ASSINATURA ELETRÔNICA DO ATO
+Código de Autenticidade: 2026-CL-9B41-C7D2
+Ato Administrativo: certidao_lancamento.emitir (Alvo: conjunto_lotes — 3 lotes)
+Operação: emitir_conjunto | Contribuintes: 012.345.6789-0, 012.345.6790-3, 012.345.6791-1
+Emitido por: Auditor-Fiscal Tributário Municipal (RF 835.916-4)
+Conferência Pública: https://geocoder.dimap.pmsp.gov.br/documentos/conferir?codigo=2026-CL-9B41-C7D2
+
+Certidão emitida de forma automatizada. Dados cadastrais consultados no GeoSampa em 29/09/2026 às 12:15.
+DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo</div>
+                </div>
+              </details>
+
+              <div class="modal-action mt-0 pt-1">
+                <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto">Fechar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================== -->
+      <!-- 5 · TELA MONTADA (HOME VIVA COM GAVETA INFERIOR E MODAL)              -->
+      <!-- ==================================================================== -->
+      <section id="tela" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div>
+          <h2 class="section-title">5 · Tela montada — Fluxo Interativo</h2>
+          <p class="text-xs text-base-content/70">
+            A gaveta inferior rasa dos lotes intersectados no rodapé, com a tabela do conjunto e o poço de ações à direita.
+            Clique no botão <strong>"Emitir certidão de lançamento"</strong> na gaveta ou utilize os controles do andaime abaixo para testar cada face.
+          </p>
+        </div>
+
+        <!-- Barra de andaime do mock -->
+        <div class="card-well p-3 flex flex-wrap items-center justify-between gap-3 bg-white/40">
+          <div class="flex items-center gap-2">
+            <span class="text-overline">Andaime do Mock:</span>
+            <span class="text-xs text-base-content/70">Simular estado no modal:</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" id="btn-estado-form" class="btn btn-sm btn-glass">1. Form Limpo (3 lotes)</button>
+            <button type="button" id="btn-estado-erro" class="btn btn-sm btn-glass">2. Erro (422)</button>
+            <button type="button" id="btn-estado-aviso-impeditivo" class="btn btn-sm btn-glass">3. Lotes Impeditivos</button>
+            <button type="button" id="btn-estado-aviso-vazio" class="btn btn-sm btn-glass">4. Conjunto Vazio</button>
+            <button type="button" id="btn-estado-recusa-409" class="btn btn-sm btn-glass">5. Recusa (409)</button>
+            <button type="button" id="btn-estado-sucesso" class="btn btn-sm btn-onsen">6. Sucesso (PDF)</button>
+            <button type="button" id="btn-alternar-perfil" class="btn btn-sm btn-glass">Perfil: Com concessão</button>
+            <button type="button" id="btn-fechar-modal" class="btn btn-sm btn-glass text-error">✕ Fechar</button>
+          </div>
+        </div>
+
+        <!-- Barra de andaime: Simulação de Quantidade de Ações no Poço da Gaveta -->
+        <div class="card-well p-3 flex flex-wrap items-center justify-between gap-3 bg-white/50 border border-agua-600/30">
+          <div class="flex items-center gap-2">
+            <span class="text-overline text-agua-950 font-bold">Simular Ações no Poço:</span>
+            <span class="text-xs text-base-content/70">Cresce conforme os itens até a altura da tabela ao lado (com rolagem interna):</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2" id="grupo-botoes-qtd-acoes">
+            <button type="button" id="btn-qtd-1" class="btn btn-sm btn-onsen font-semibold">1 Ação (compacto)</button>
+            <button type="button" id="btn-qtd-2" class="btn btn-sm btn-glass">2 Ações</button>
+            <button type="button" id="btn-qtd-3" class="btn btn-sm btn-glass">3 Ações</button>
+            <button type="button" id="btn-qtd-5" class="btn btn-sm btn-glass">5 Ações (limite da tabela + rola)</button>
+            <div class="h-6 w-px bg-rocha-950/20 mx-1 hidden sm:block"></div>
+            <button type="button" id="btn-alternar-gaveta-lateral" class="btn btn-sm btn-glass">Gaveta Lateral do Lote</button>
+          </div>
+        </div>
+
+        <!-- Moldura da Home -->
+        <!-- página: core/home.html -->
+        <div class="quadro-tela tela-home relative">
+          <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+          <div id="mapa-tela" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+
+          <!-- fica na página: barra de busca flutuante da home -->
+          <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4 transition-all duration-500 ease-in-out">
+            <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2 mt-4">
+              <div class="relative w-full flex items-center">
+                <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="search" placeholder="Rua, endereço, codlog ou nº de contribuinte…" class="input input-glass pl-11" />
+              </div>
+            </div>
+          </div>
+
+          <!-- página: <div id="gaveta-entidade"></div> -->
+          <!-- partial: templates/lote_geocoder/partials/_gaveta_lote.html -->
+          <div id="gaveta-entidade" class="absolute top-0 bottom-0 left-0 z-20 pointer-events-none">
+            <div class="gaveta-lateral pointer-events-auto" data-gaveta="lote-3198301">
+              <input type="checkbox" id="gaveta-lote-toggle-montada" class="gaveta-lateral-toggle">
+
+              <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+                <header class="gaveta-lateral-cabecalho">
+                  <p class="text-overline text-madeira-600">Entidade localizada</p>
+                  <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
+                  <p class="text-code text-sm font-medium mt-2">SQL 012.345.6789-0</p>
+                  <span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>
+                </header>
+
+                <div class="gaveta-lateral-corpo" data-scroll-etched>
+                  <div class="gaveta-lateral-rolador" data-rolador>
+                    <div class="gaveta-lateral-conteudo flex flex-col gap-3 p-4">
+                      <!-- Endereço -->
+                      <div class="card-well p-4 flex flex-col gap-3">
+                        <div class="flex gap-4 items-center">
+                          <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                          </div>
+                          <div class="min-w-0">
+                            <p class="text-overline mb-0.5">Endereço cadastrado</p>
+                            <p class="font-bold leading-tight">RUA AUGUSTA, 100</p>
+                            <p class="text-xs text-base-content/70">Consolação · APTO 12</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- MOLÉCULA OFICIAL: POÇO DE AÇÕES REDUZIDO NA GAVETA LATERAL -->
+                      <!-- partial: templates/acoes_lote/partials/_poco_acoes.html -->
+                      <div class="card-well px-4 pt-2.5 pb-3 flex flex-col gap-1 w-full" id="poco-acoes-lote-lateral">
+                        <p class="text-overline shrink-0 leading-none">Ações</p>
+                        <div class="flex flex-col gap-2.5 px-1 py-1 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent)]">
+                          <button type="button" class="btn btn-onsen btn-sm gap-2 justify-start btn-acao-certidao"
+                                  title="Emite a certidão de lançamento para este lote">
+                            <span class="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
+                              <svg viewBox="0 0 24 24"><use href="#glifo-certidao-lancamento"/></svg>
+                            </span>
+                            Certidão de lançamento
+                          </button>
+                        </div>
+                      </div>
+                      <!-- /partial -->
+                    </div>
+                  </div>
+                  <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+                </div>
+              </div>
+
+              <label for="gaveta-lote-toggle-montada" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou fechar a gaveta do lote">
+                <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+              </label>
+            </div>
+          </div>
+          <!-- /partial -->
+
+          <!-- página: <div id="contexto-acao" hidden></div> -->
+          <div id="contexto-acao" hidden></div>
+
+          <!-- página: <div id="gaveta-inferior-conteudo"></div> -->
+          <!-- partial: mapping/_resultado_acao.html estendido por lotes_mais_proximos/partials/_resultado_desenho.html -->
+          <div id="gaveta-inferior-conteudo" class="absolute inset-x-0 bottom-0 z-20">
+            <input type="checkbox" id="gaveta-resultado" class="gaveta-toggle" checked>
+            <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-labelledby="gaveta-resultado-titulo">
+              <input type="checkbox" id="gaveta-resultado-recolhida" class="gaveta-inferior-recolher">
+              <label for="gaveta-resultado-recolhida" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span></label>
+              <label for="gaveta-resultado-recolhida" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+                <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+              </label>
+
+              <!-- Cabeçalho da gaveta -->
+              <header class="gaveta-cabecalho items-center">
+                <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+                  <h2 id="gaveta-resultado-titulo" class="text-xl font-bold tracking-tight leading-none text-madeira-700">Lotes intersectados</h2>
+                  <div class="flex items-center gap-2">
+                    <span id="badge-contador-lotes" class="badge badge-poligono badge-sm font-semibold">3 lotes</span>
+                    <span class="text-xs text-base-content/70">Terreno desenhado · 1.250,40 m²</span>
+                  </div>
+                </div>
+                <!-- partial: mapping/_fechar_gaveta.html -->
+                <button type="button" class="btn btn-ghost btn-circle btn-sm" aria-label="Fechar resultado">
+                  <svg class="w-4 h-4"><use href="#glifo-x"/></svg>
+                </button>
+                <!-- /partial -->
+              </header>
+
+              <!-- Corpo da gaveta com tabela à esquerda e poço de ações à direita -->
+              <div class="gaveta-corpo">
+                <!-- partial: lotes_mais_proximos/partials/_tabela_conjunto.html — alvo de hx-swap ao retirar lote -->
+                <section id="tabela-conjunto" class="gaveta-coluna flex-1 min-w-0">
+                  <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+                    <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+                      <table class="table table-onsen table-onsen-compacta w-full">
+                        <thead data-cabecalho>
+                          <tr>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Lançamento</span></div></th>
+                            <th class="w-10"></th>
+                          </tr>
+                        </thead>
+                        <tbody id="tabela-linhas-conjunto">
+                          <tr class="linha-lote-interativa" data-lote-id="1">
+                            <td class="text-code whitespace-nowrap">012.345.6789-0</td>
+                            <td class="truncate max-w-[14rem]">RUA AUGUSTA, 100 — APTO 12</td>
+                            <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                            <td>
+                              <button type="button" class="btn-lixeira btn-remover-lote" data-remover-id="1" aria-label="Tirar do conjunto" title="Tirar do conjunto">
+                                <svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg>
+                              </button>
+                            </td>
+                          </tr>
+                          <tr class="linha-lote-interativa" data-lote-id="2">
+                            <td class="text-code whitespace-nowrap">012.345.6790-3</td>
+                            <td class="truncate max-w-[14rem]">RUA AUGUSTA, 102 — LOJA 1</td>
+                            <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                            <td>
+                              <button type="button" class="btn-lixeira btn-remover-lote" data-remover-id="2" aria-label="Tirar do conjunto" title="Tirar do conjunto">
+                                <svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg>
+                              </button>
+                            </td>
+                          </tr>
+                          <tr class="linha-lote-interativa" data-lote-id="3">
+                            <td class="text-code whitespace-nowrap">012.345.6791-1</td>
+                            <td class="truncate max-w-[14rem]">RUA AUGUSTA, 104</td>
+                            <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                            <td>
+                              <button type="button" class="btn-lixeira btn-remover-lote" data-remover-id="3" aria-label="Tirar do conjunto" title="Tirar do conjunto">
+                                <svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </section>
+                <!-- /partial -->
+
+                <!-- partial: acoes_entidade/partials/_poco_acoes_conjunto.html — carregado via hx-get na gaveta inferior (só para quem tem concessão) -->
+                <section id="poco-acoes-conjunto" class="gaveta-coluna gaveta-coluna-acoes">
+                  <div id="poco-acoes-card-well" class="card-well px-4 pt-2.5 pb-3 flex flex-col gap-1 max-h-full my-auto overflow-hidden transition-all duration-200">
+                    <p class="text-overline shrink-0 leading-none">Ações</p>
+                    <div id="poco-acoes-lista" class="flex flex-col gap-2.5 px-1 py-1 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent)]">
+                      <button type="button" id="btn-disparar-modal" class="btn btn-onsen btn-sm gap-2 justify-start btn-acao-certidao"
+                              title="Emite uma única certidão para todos os lotes que restaram na tabela">
+                        <span class="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
+                          <svg viewBox="0 0 24 24"><use href="#glifo-certidao-lancamento"/></svg>
+                        </span>
+                        Certidão de lançamento
+                      </button>
+                    </div>
+                  </div>
+                </section>
+                <!-- /partial -->
+              </div>
+            </aside>
+          </div>
+          <!-- /partial -->
+
+          <!-- O POÇO DE MODAL DA HOME (SPEC criacao_usuarios/007, design/007) -->
+          <!-- templates/core/home.html: <div id="poco-modal" class="poco-modal"></div> -->
+          <div id="poco-modal-montado" class="poco-modal absolute inset-0 z-30 pointer-events-none flex items-center justify-center p-4">
+            <!-- Modal ao vivo (injetado por HTMX) -->
+            <div id="modal-container-vivo" class="hidden pointer-events-auto transition-all duration-200">
+              <!-- Conteúdo alternado via JS no mock -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TEMPLATES PARA O POÇO DE MODAL DA TELA MONTADA                            -->
+  <!-- ========================================================================= -->
+
+  <!-- Template 1: Formulário Limpo do Conjunto (GET 200) -->
+  <template id="tmpl-modal-form">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de 3 lotes fiscais</p>
+            <p class="text-xs text-base-content/70">Terreno desenhado · Área total: 1.250,40 m²</p>
+          </div>
+        </header>
+
+        <!-- Lista dos lotes confirmados -->
+        <div class="card-well p-3 flex flex-col gap-2 bg-white/40">
+          <span class="text-overline text-[11px]">Lotes confirmados a certificar:</span>
+          <div class="table-onsen-wrap max-h-28 overflow-y-auto rounded-lg border border-rocha-950/10">
+            <table class="table table-onsen table-onsen-compacta w-full">
+              <thead>
+                <tr>
+                  <th><div class="th-onsen"><span class="text-overline text-[10px]">Contribuinte</span></div></th>
+                  <th><div class="th-onsen"><span class="text-overline text-[10px]">Endereço</span></div></th>
+                  <th><div class="th-onsen"><span class="text-overline text-[10px]">Situação</span></div></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-code text-xs">012.345.6789-0</td>
+                  <td class="text-xs truncate max-w-[12rem]">RUA AUGUSTA, 100 — APTO 12</td>
+                  <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                </tr>
+                <tr>
+                  <td class="text-code text-xs">012.345.6790-3</td>
+                  <td class="text-xs truncate max-w-[12rem]">RUA AUGUSTA, 102 — LOJA 1</td>
+                  <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                </tr>
+                <tr>
+                  <td class="text-code text-xs">012.345.6791-1</td>
+                  <td class="text-xs truncate max-w-[12rem]">RUA AUGUSTA, 104</td>
+                  <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <form class="flex flex-col gap-4">
+          <!-- Hidden inputs da requisição (§3 e §6 da SPEC) -->
+          <input type="hidden" name="chave" value="conjunto_sessao_8f92">
+          <input type="hidden" name="confirmados" value="lote_3198301">
+          <input type="hidden" name="confirmados" value="lote_3198302">
+          <input type="hidden" name="confirmados" value="lote_3198303">
+
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs">Processo SEI</label>
+            <input type="text" id="campo-processo-sei" name="processo" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0" autofocus>
+            <span class="form-field-hint">Digite apenas os números (ex.: 6017202600123456); a formatação é automática.</span>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs">Nome do interessado</label>
+            <input type="text" id="campo-interessado" name="interessado" class="input input-glass input-sm w-full" placeholder="Nome completo ou razão social" value="Empresa Construtora Exemplo Ltda">
+            <span class="form-field-hint">Consta no requerimento da certidão oficial.</span>
+          </div>
+
+          <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+            <button type="button" class="btn btn-glass btn-sm fechar-modal-btn">Cancelar</button>
+            <button type="button" id="simular-submeter" class="btn btn-onsen btn-sm">Emitir certidão</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <!-- Template 2: Erro de Validação de Formulário 422 -->
+  <template id="tmpl-modal-erro">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de 3 lotes fiscais</p>
+            <p class="text-xs text-base-content/70">Terreno desenhado · Área total: 1.250,40 m²</p>
+          </div>
+        </header>
+
+        <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
+          <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
+          <span>O número do processo SEI não está no formato padrão (NNNN.AAAA/NNNNNNN-D).</span>
+        </div>
+
+        <form class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs text-error">Processo SEI</label>
+            <input type="text" id="campo-processo-sei-erro" name="processo" class="input input-glass input-sm w-full campo-realce-erro font-mono" data-mascara="0000.0000/0000000-0" value="6017.2026/123-4">
+            <span class="text-xs text-error">Formato inválido. Digite os 16 dígitos ou complete o número (NNNN.AAAA/NNNNNNN-D).</span>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs">Nome do interessado</label>
+            <input type="text" name="interessado" class="input input-glass input-sm w-full" value="Empresa Construtora Exemplo Ltda">
+          </div>
+
+          <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+            <button type="button" class="btn btn-glass btn-sm fechar-modal-btn">Cancelar</button>
+            <button type="button" id="simular-submeter-erro" class="btn btn-onsen btn-sm">Emitir certidão</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <!-- Template 3: Aviso de Lotes Impeditivos (Condições 3 e 6 - sem formulário) -->
+  <template id="tmpl-modal-aviso-impeditivo">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-warning/15 border-warning/30 text-warning-content shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Lotes impeditivos no conjunto</p>
+          </div>
+        </header>
+
+        <div class="card-well p-4 flex flex-col gap-3">
+          <p class="text-sm text-base-content/85">
+            O conjunto possui <strong>2 lotes</strong> que não atendem às condições para emissão automatizada da certidão (sem lançamento ativo no IPTU ou condominiais):
+          </p>
+
+          <div class="flex flex-col gap-2 mt-1">
+            <div class="flex items-center justify-between p-2.5 rounded bg-white/60 border border-rocha-950/10 text-xs">
+              <div>
+                <p class="font-bold text-rocha-950">Lote 012.345.0002</p>
+                <p class="text-[11px] text-base-content/70">RUA AUGUSTA, 98</p>
+              </div>
+              <span class="badge badge-neutral badge-soft badge-sm">Sem lançamento ativo</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2.5 rounded bg-white/60 border border-rocha-950/10 text-xs">
+              <div>
+                <p class="font-bold text-rocha-950">Lote 012.345.0005</p>
+                <p class="text-[11px] text-base-content/70">RUA AUGUSTA, 106</p>
+              </div>
+              <span class="badge badge-warning badge-soft badge-sm">Condominial</span>
+            </div>
+          </div>
+
+          <p class="text-xs text-base-content/65 mt-1">
+            Remova os lotes impeditivos utilizando o botão de lixeira na tabela da gaveta inferior antes de solicitar a certidão.
+          </p>
+        </div>
+
+        <div class="modal-action pt-2">
+          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto fechar-modal-btn">Voltar à tabela</button>
+        </div>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <!-- Template 4: Aviso de Conjunto Vazio (Condição 3) -->
+  <template id="tmpl-modal-aviso-vazio">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-warning/15 border-warning/30 text-warning-content shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de lotes vazio</p>
+          </div>
+        </header>
+
+        <div class="card-well p-4 flex flex-col gap-2.5">
+          <p class="text-sm text-base-content/85">
+            Todos os lotes foram removidos da tabela ou o polígono desenhado não cruza nenhum lote cadastrado.
+          </p>
+          <p class="text-xs text-base-content/65">
+            É necessário que ao menos 1 lote cadastrado e com lançamento ativo componha o conjunto para emissão da certidão.
+          </p>
+        </div>
+
+        <div class="modal-action pt-2">
+          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto fechar-modal-btn">Fechar</button>
+        </div>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <!-- Template 5: Recusa 409 - Conjunto Alterado (Condição 5) -->
+  <template id="tmpl-modal-recusa-409">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-error/15 border-error/30 text-error shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Composição do conjunto foi alterada</p>
+          </div>
+        </header>
+
+        <div class="card-well p-4 flex flex-col gap-2.5">
+          <p class="text-sm text-base-content/85">
+            A releitura oficial junto à base do GeoSampa identificou divergência entre os lotes confirmados e os dados atuais do desenho.
+          </p>
+          <div class="p-2.5 rounded bg-error/10 border border-error/20 text-xs text-error font-medium">
+            1 lote foi alterado ou removido após a abertura do modal de confirmação. Nada foi emitido.
+          </div>
+          <p class="text-xs text-base-content/65">
+            Por segurança e fé pública, a certidão atesta com exatidão a lista inspecionada. Reabra a solicitação para confirmar a nova composição.
+          </p>
+        </div>
+
+        <div class="modal-action pt-2">
+          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto fechar-modal-btn">Revisar conjunto</button>
+        </div>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <!-- Template 6: Confirmação com Certidão do Conjunto Emitida (POST 200) -->
+  <template id="tmpl-modal-sucesso">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+        <div class="card-well flex flex-col items-center text-center gap-3 p-6">
+          <span class="icon-bubble w-14 h-14 bg-success/15 border-success/30 text-success">
+            <svg class="w-7 h-7"><use href="#glifo-selo"/></svg>
+          </span>
+          <div>
+            <span class="text-overline text-success font-bold">Certidão do conjunto selada e emitida</span>
+            <h3 class="text-lg font-bold text-rocha-950 mt-0.5">Documento registrado no acervo</h3>
+          </div>
+          <div class="flex flex-col items-center gap-1 bg-white/40 border border-rocha-950/10 rounded-lg px-4 py-2 w-full">
+            <span class="text-overline text-xs">Código de autenticidade</span>
+            <span class="text-code text-base font-bold tracking-wider text-rocha-950">2026-CL-9B41-C7D2</span>
+          </div>
+          <p class="text-xs text-base-content/70">
+            Emitida de forma automatizada com releitura oficial ao GeoSampa em 29/09/2026 às 12:15.
+          </p>
+        </div>
+
+        <a href="002-amostra-certidao-conjunto.pdf" target="_blank" download="certidao_lancamento_conjunto_2026-CL-9B41-C7D2.pdf" class="btn btn-onsen gap-2 w-full justify-center">
+          <svg class="w-4 h-4"><use href="#glifo-baixar"/></svg>
+          Baixar Certidão do Conjunto (PDF de Amostra)
+        </a>
+
+        <details class="collapse collapse-arrow bg-white/50 border border-rocha-950/10 rounded-lg text-left text-xs">
+          <summary class="collapse-title font-semibold text-rocha-900 py-2.5 px-3 min-h-0 text-xs flex items-center justify-between">
+            <span>Prévia textual dos dados da certidão do conjunto</span>
+          </summary>
+          <div class="collapse-content px-3 pb-3 text-rocha-800 space-y-2 text-[11px] leading-relaxed border-t border-rocha-950/5 pt-2">
+            <div class="p-2.5 bg-rocha-50 rounded border border-rocha-950/10 font-mono whitespace-pre-wrap select-all">PREFEITURA DO MUNICÍPIO DE SÃO PAULO
+SECRETARIA MUNICIPAL DA FAZENDA
+SUBSECRETARIA DA RECEITA MUNICIPAL — DEPARTAMENTO DE TRIBUTAÇÃO E JULGAMENTO
+DIVISÃO DE MAPEAMENTO E CADASTRO FISCAL — DIMAP
+
+CERTIDÃO DE EXISTÊNCIA DE LANÇAMENTO
+
+1. REQUERIMENTO
+Interessado: Empresa Construtora Exemplo Ltda
+Processo Administrativo SEI nº: 6017.2026/0012345-6
+
+2. IDENTIFICAÇÃO DOS IMÓVEIS
+Os imóveis objeto desta certidão compõem a área delimitada na planta de localização, com 1.250,40 m², e são os relacionados abaixo:
+
++--------------------+-----------------------------+--------------+
+| Contribuinte       | Endereço                    | Complemento  |
++--------------------+-----------------------------+--------------+
+| 012.345.6789-0     | RUA AUGUSTA, 100            | APTO 12      |
+| 012.345.6790-3     | RUA AUGUSTA, 102            | LOJA 1       |
+| 012.345.6791-1     | RUA AUGUSTA, 104            | —            |
++--------------------+-----------------------------+--------------+
+
+3. DESPACHO E DECLARAÇÃO OFICIAL
+Solicitação deferida.
+Com base nas informações consultadas de forma automatizada junto à base de dados oficial do Município de São Paulo, declara-se que os imóveis acima relacionados possuem lançamento do Imposto Predial e Territorial Urbano (IPTU) pelos respectivos contribuintes.
+
+4. LOCALIZAÇÃO DOS IMÓVEIS (PLANTA CADASTRAL)
+--------------------------------------------------------------------------------
+[PLANTA DE LOCALIZAÇÃO DO CONJUNTO — MDC CADASTRAL / WMS GEOSAMPA (150 mm)]
+Lotes fiscais destacados em CONTEXTO e Polígono do Terreno desenhado em DESTAQUE por cima.
+Sistema de Coordenadas Métricas Oficiais (SIRGAS 2000 / UTM 23S) | Escala 1:1250
+--------------------------------------------------------------------------------
+
+São Paulo, 29 de setembro de 2026.
+
+AUTENTICIDADE E ASSINATURA ELETRÔNICA DO ATO
+Código de Autenticidade: 2026-CL-9B41-C7D2
+Ato Administrativo: certidao_lancamento.emitir (Alvo: conjunto_lotes — 3 lotes)
+Operação: emitir_conjunto | Contribuintes: 012.345.6789-0, 012.345.6790-3, 012.345.6791-1
+Emitido por: Auditor-Fiscal Tributário Municipal (RF 835.916-4)
+Conferência Pública: https://geocoder.dimap.pmsp.gov.br/documentos/conferir?codigo=2026-CL-9B41-C7D2
+
+Certidão emitida de forma automatizada. Dados cadastrais consultados no GeoSampa em 29/09/2026 às 12:15.
+DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo</div>
+          </div>
+        </details>
+
+        <div class="modal-action mt-0 pt-1">
+          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto fechar-modal-btn">Fechar</button>
+        </div>
+      </div>
+      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+    </div>
+  </template>
+
+  <script type="module">
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+
+    // Carga de defs de gravação (filtros SVG do Onsen de Inverno)
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((html) => {
+        document.getElementById("defs-aplicacao").innerHTML = html.replace(TAG_DE_TEMPLATE, "").trim();
+      })
+      .catch(() => {});
+
+    // =========================================================================
+    // Inicialização do Leaflet nos containers de mapa
+    // =========================================================================
+    function inicializarMapa(idElemento) {
+      const container = document.getElementById(idElemento);
+      if (!container) return null;
+
+      const mapa = L.map(idElemento, {
+        center: [-23.5505, -46.6333],
+        zoom: 18,
+        zoomControl: false,
+        attributionControl: false,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+      }).addTo(mapa);
+
+      // Polígonos dos lotes intersectados no mapa (cor sakura)
+      const loteA = L.polygon([
+        [-23.5503, -46.6336],
+        [-23.5503, -46.6332],
+        [-23.5506, -46.6332],
+        [-23.5506, -46.6336],
+      ], {
+        color: "#D84F7F",
+        weight: 2,
+        fillColor: "#D84F7F",
+        fillOpacity: 0.35,
+      }).addTo(mapa);
+
+      const loteB = L.polygon([
+        [-23.5503, -46.6332],
+        [-23.5503, -46.6328],
+        [-23.5506, -46.6328],
+        [-23.5506, -46.6332],
+      ], {
+        color: "#D84F7F",
+        weight: 2,
+        fillColor: "#D84F7F",
+        fillOpacity: 0.35,
+      }).addTo(mapa);
+
+      const loteC = L.polygon([
+        [-23.5506, -46.6336],
+        [-23.5506, -46.6328],
+        [-23.5509, -46.6328],
+        [-23.5509, -46.6336],
+      ], {
+        color: "#D84F7F",
+        weight: 2,
+        fillColor: "#D84F7F",
+        fillOpacity: 0.35,
+      }).addTo(mapa);
+
+      // Polígono do terreno desenhado (em destaque, ciano translúcido com borda tracejada)
+      L.polygon([
+        [-23.5502, -46.6337],
+        [-23.5502, -46.6327],
+        [-23.5510, -46.6327],
+        [-23.5510, -46.6337],
+      ], {
+        color: "#0096C7",
+        weight: 2.5,
+        dashArray: "5, 5",
+        fillColor: "#48CAE4",
+        fillOpacity: 0.20,
+      }).addTo(mapa);
+
+      return { mapa, lotes: { 1: loteA, 2: loteB, 3: loteC } };
+    }
+
+    inicializarMapa("fundo-home");
+    const ambienteTela = inicializarMapa("mapa-tela");
+
+    // =========================================================================
+    // Máscara progressiva de input (padrão static/src/js/ui/campo_mascarado.js)
+    // =========================================================================
+    const SLOT_DE_DIGITO = "0";
+
+    function contarDigitos(texto) {
+      return texto.replace(/\D/g, "").length;
+    }
+
+    function formatarMascara(digitos, gabarito) {
+      let saida = "";
+      let lidos = 0;
+      for (const marca of gabarito) {
+        if (lidos >= digitos.length) return saida;
+        if (marca === SLOT_DE_DIGITO) {
+          saida += digitos[lidos];
+          lidos += 1;
+        } else {
+          saida += marca;
+        }
+      }
+      return saida + digitos.slice(lidos);
+    }
+
+    function posicaoAposDigitos(texto, quantidade) {
+      if (quantidade === 0) return 0;
+      let vistos = 0;
+      for (let i = 0; i < texto.length; i += 1) {
+        if (!/\d/.test(texto[i])) continue;
+        vistos += 1;
+        if (vistos === quantidade) return i + 1;
+      }
+      return texto.length;
+    }
+
+    function aplicarMascara(campo) {
+      const gabarito = campo.dataset.mascara;
+      if (!gabarito) return;
+      const limite = contarDigitos(gabarito);
+      const cursor = campo.selectionStart ?? campo.value.length;
+      const digitosAEsquerda = contarDigitos(campo.value.slice(0, cursor));
+      const digitos = campo.value.replace(/\D/g, "");
+
+      campo.value = formatarMascara(digitos, gabarito);
+      if (document.activeElement === campo) {
+        const posicao = posicaoAposDigitos(campo.value, digitosAEsquerda);
+        campo.setSelectionRange(posicao, posicao);
+      }
+
+      const excede = digitos.length > limite;
+      campo.classList.toggle("campo-realce-erro", excede);
+      campo.setAttribute("aria-invalid", excede ? "true" : "false");
+      campo.dataset.digitosCompletos = digitos.length === limite ? "sim" : "nao";
+    }
+
+    function montarMascaras(raiz) {
+      raiz.querySelectorAll("[data-mascara]").forEach((campo) => {
+        campo.addEventListener("input", () => aplicarMascara(campo));
+        if (campo.value) aplicarMascara(campo);
+      });
+    }
+
+    montarMascaras(document);
+
+    // =========================================================================
+    // Lógica do Modal interativo na tela montada
+    // =========================================================================
+    const containerVivo = document.getElementById("modal-container-vivo");
+
+    function renderizarNoPoco(templateId) {
+      const tmpl = document.getElementById(templateId);
+      if (!tmpl) return;
+      containerVivo.innerHTML = "";
+      containerVivo.appendChild(tmpl.content.cloneNode(true));
+      containerVivo.classList.remove("hidden");
+
+      montarMascaras(containerVivo);
+
+      const foco = containerVivo.querySelector("[autofocus]") || containerVivo.querySelector("input[name='processo']");
+      if (foco) setTimeout(() => foco.focus(), 50);
+
+      containerVivo.querySelectorAll(".fechar-modal-btn").forEach((btn) => {
+        btn.addEventListener("click", fecharModal);
+      });
+
+      const ligarSubmissao = (seletor) => {
+        const btn = containerVivo.querySelector(seletor);
+        if (!btn) return;
+        btn.addEventListener("click", () => {
+          const campoProcesso = containerVivo.querySelector("input[name='processo']");
+          const campoInteressado = containerVivo.querySelector("input[name='interessado']");
+          const digitos = (campoProcesso?.value || "").replace(/\D/g, "");
+          const processoValido = digitos.length === 16;
+          const interessadoValido = Boolean(campoInteressado?.value.trim());
+
+          if (processoValido && interessadoValido) {
+            renderizarNoPoco("tmpl-modal-sucesso");
+          } else {
+            renderizarNoPoco("tmpl-modal-erro");
+          }
+        });
+      };
+
+      ligarSubmissao("#simular-submeter");
+      ligarSubmissao("#simular-submeter-erro");
+    }
+
+    function fecharModal() {
+      containerVivo.classList.add("hidden");
+      containerVivo.innerHTML = "";
+    }
+
+    // Botões da barra de andaime
+    document.getElementById("btn-estado-form").addEventListener("click", () => renderizarNoPoco("tmpl-modal-form"));
+    document.getElementById("btn-estado-erro").addEventListener("click", () => renderizarNoPoco("tmpl-modal-erro"));
+    document.getElementById("btn-estado-aviso-impeditivo").addEventListener("click", () => renderizarNoPoco("tmpl-modal-aviso-impeditivo"));
+    document.getElementById("btn-estado-aviso-vazio").addEventListener("click", () => renderizarNoPoco("tmpl-modal-aviso-vazio"));
+    document.getElementById("btn-estado-recusa-409").addEventListener("click", () => renderizarNoPoco("tmpl-modal-recusa-409"));
+    document.getElementById("btn-estado-sucesso").addEventListener("click", () => renderizarNoPoco("tmpl-modal-sucesso"));
+    document.getElementById("btn-fechar-modal").addEventListener("click", fecharModal);
+
+    // =========================================================================
+    // Simulação da Quantidade de Ações no Poço da Gaveta
+    // =========================================================================
+    const ACOES_MOCK_LISTA = [
+      {
+        id: "btn-disparar-modal",
+        nome: "Certidão de lançamento",
+        classe: "btn-acao-certidao",
+        icone: '<svg viewBox="0 0 24 24"><use href="#glifo-certidao-lancamento"/></svg>',
+        title: "Emite uma única certidão para todos os lotes que restaram na tabela",
+      },
+      {
+        id: "btn-acao-geosampa",
+        nome: "Visualizar no GeoSampa",
+        classe: "",
+        icone: '<svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg>',
+        title: "Visualiza o conjunto selecionado no mapa do GeoSampa",
+      },
+      {
+        id: "btn-acao-geojson",
+        nome: "Exportar GeoJSON",
+        classe: "",
+        icone: '<svg viewBox="0 0 24 24"><use href="#glifo-baixar"/></svg>',
+        title: "Exporta as geometrias do conjunto em arquivo GeoJSON",
+      },
+      {
+        id: "btn-acao-iptu",
+        nome: "Consultar débitos IPTU",
+        classe: "",
+        icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+        title: "Consulta débitos cadastrais dos lotes do conjunto",
+      },
+      {
+        id: "btn-acao-cadastral",
+        nome: "Certidão cadastral geral",
+        classe: "",
+        icone: '<svg viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>',
+        title: "Emite certidão cadastral consolidada dos lotes",
+      },
+    ];
+
+    const containerListaAcoes = document.getElementById("poco-acoes-lista");
+    const grupoQtdAcoes = document.getElementById("grupo-botoes-qtd-acoes");
+
+    function renderizarQtdAcoes(qtd) {
+      if (!containerListaAcoes) return;
+      const acoesParaMostrar = ACOES_MOCK_LISTA.slice(0, qtd);
+      containerListaAcoes.innerHTML = acoesParaMostrar.map((item) => `
+        <button type="button" ${item.id ? `id="${item.id}"` : ""} class="btn btn-onsen btn-sm gap-2 justify-start ${item.classe}" title="${item.title}">
+          <span class="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
+            ${item.icone}
+          </span>
+          ${item.nome}
+        </button>
+      `).join("");
+
+      // Re-liga o disparador do modal para qualquer botão de certidão presente
+      const btnModal = containerListaAcoes.querySelector(".btn-acao-certidao, #btn-disparar-modal");
+      if (btnModal) {
+        btnModal.addEventListener("click", () => renderizarNoPoco("tmpl-modal-form"));
+      }
+
+      // Atualiza estilo dos botões no andaime
+      if (grupoQtdAcoes) {
+        grupoQtdAcoes.querySelectorAll("button").forEach((b) => {
+          b.classList.remove("btn-onsen", "font-semibold");
+          b.classList.add("btn-glass");
+        });
+        const btnAtivo = document.getElementById(`btn-qtd-${qtd}`);
+        if (btnAtivo) {
+          btnAtivo.classList.remove("btn-glass");
+          btnAtivo.classList.add("btn-onsen", "font-semibold");
+        }
+      }
+    }
+
+    document.getElementById("btn-qtd-1")?.addEventListener("click", () => renderizarQtdAcoes(1));
+    document.getElementById("btn-qtd-2")?.addEventListener("click", () => renderizarQtdAcoes(2));
+    document.getElementById("btn-qtd-3")?.addEventListener("click", () => renderizarQtdAcoes(3));
+    document.getElementById("btn-qtd-5")?.addEventListener("click", () => renderizarQtdAcoes(5));
+
+    // Botão dentro da gaveta inferior montada (inicial)
+    document.getElementById("btn-disparar-modal")?.addEventListener("click", () => {
+      renderizarNoPoco("tmpl-modal-form");
+    });
+
+    // Simulação do perfil com concessão x sem concessão
+    let temConcessao = true;
+    const btnAlternarPerfil = document.getElementById("btn-alternar-perfil");
+    const pocoAcoes = document.getElementById("poco-acoes-conjunto");
+
+    btnAlternarPerfil.addEventListener("click", () => {
+      temConcessao = !temConcessao;
+      if (temConcessao) {
+        btnAlternarPerfil.textContent = "Perfil: Com concessão";
+        btnAlternarPerfil.classList.remove("btn-warning");
+        pocoAcoes.style.display = "";
+      } else {
+        btnAlternarPerfil.textContent = "Perfil: Sem concessão";
+        btnAlternarPerfil.classList.add("btn-warning");
+        pocoAcoes.style.display = "none";
+      }
+    });
+
+    // =========================================================================
+    // Remoção interativa de lotes da tabela (Condição 1 e 3)
+    // =========================================================================
+    let lotesRestantes = [1, 2, 3];
+    const badgeContador = document.getElementById("badge-contador-lotes");
+    const tabelaLinhas = document.getElementById("tabela-linhas-conjunto");
+
+    function atualizarContadorLotes() {
+      const qtd = lotesRestantes.length;
+      badgeContador.textContent = `${qtd} ${qtd === 1 ? "lote" : "lotes"}`;
+
+      if (qtd === 0) {
+        tabelaLinhas.innerHTML = `
+          <tr>
+            <td colspan="4" class="p-6 text-center text-xs text-base-content/50 italic">
+              Todos os lotes foram tirados do conjunto.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    document.querySelectorAll(".btn-remover-lote").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.dataset.removerId, 10);
+        const linha = btn.closest("tr");
+        if (linha) {
+          linha.remove();
+          lotesRestantes = lotesRestantes.filter((l) => l !== id);
+          if (ambienteTela?.lotes[id]) {
+            ambienteTela.lotes[id].setStyle({ fillOpacity: 0.05, opacity: 0.2 });
+          }
+          atualizarContadorLotes();
+        }
+      });
+    });
+
+    // Realce cruzado entre linhas da tabela e polígonos no mapa
+    document.querySelectorAll(".linha-lote-interativa").forEach((linha) => {
+      const id = parseInt(linha.dataset.loteId, 10);
+      linha.addEventListener("mouseenter", () => {
+        if (ambienteTela?.lotes[id]) {
+          ambienteTela.lotes[id].setStyle({ weight: 3.5, color: "#BC3A67", fillOpacity: 0.6 });
+        }
+      });
+      linha.addEventListener("mouseleave", () => {
+        if (ambienteTela?.lotes[id]) {
+          ambienteTela.lotes[id].setStyle({ weight: 2, color: "#D84F7F", fillOpacity: 0.35 });
+        }
+      });
+    });
+
+    // =========================================================================
+    // Controle da Gaveta Lateral do Lote na Tela Montada
+    // =========================================================================
+    const btnToggleGavetaLateral = document.getElementById("btn-alternar-gaveta-lateral");
+    const toggleGavetaLateral = document.getElementById("gaveta-lote-toggle-montada");
+
+    if (btnToggleGavetaLateral && toggleGavetaLateral) {
+      btnToggleGavetaLateral.addEventListener("click", () => {
+        toggleGavetaLateral.checked = !toggleGavetaLateral.checked;
+        btnToggleGavetaLateral.textContent = toggleGavetaLateral.checked
+          ? "Gaveta Lateral: Aberta"
+          : "Gaveta Lateral: Fechada";
+      });
+
+      toggleGavetaLateral.addEventListener("change", () => {
+        btnToggleGavetaLateral.textContent = toggleGavetaLateral.checked
+          ? "Gaveta Lateral: Aberta"
+          : "Gaveta Lateral: Fechada";
+      });
+    }
+
+    document.querySelectorAll(".linha-lote-interativa").forEach((linha) => {
+      linha.addEventListener("click", (e) => {
+        if (e.target.closest(".btn-remover-lote")) return;
+        if (toggleGavetaLateral) {
+          toggleGavetaLateral.checked = true;
+          if (btnToggleGavetaLateral) {
+            btnToggleGavetaLateral.textContent = "Gaveta Lateral: Aberta";
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

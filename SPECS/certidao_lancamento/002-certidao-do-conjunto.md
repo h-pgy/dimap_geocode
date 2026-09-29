@@ -1,7 +1,7 @@
 ---
 spec: certidao_lancamento/002
-versao: v3
-atualizado_em: 2026-09-18
+versao: v4
+atualizado_em: 2026-09-29
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco, artefato]
@@ -9,6 +9,7 @@ changelog:
   - v1: versão inicial
   - v2: submódulo `lote_espacial` renomeado para `lotes_mais_proximos`
   - v3: o conjunto vem da sessão e é relido no GeoSampa só na emissão, e a ação passa à gaveta inferior dos lotes intersectados
+  - v4: padronização da molécula oficial de poço de ações reduzido no frontend (.card-well com respiro px-4 pt-2.5 pb-3, leading-none no título, gap-2.5 entre ações e máscara de dissolução/blur na rolagem), unificada entre a gaveta inferior e a gaveta lateral
 ---
 
 # SPEC certidao_lancamento/002 — Certidão de Existência de Lançamento de um conjunto de lotes
@@ -20,8 +21,12 @@ imóvel que ocupa vários lotes, para obter um PDF selado que atesta o lançamen
 o terreno sobre eles.
 
 ## 2 · Condições de pronto
-- [ ] A gaveta inferior dos lotes intersectados traz o poço **"Ações"** com **"Emitir certidão de
-      lançamento"** só para quem tem a concessão; sem ação liberada, o poço não aparece.
+- [ ] A gaveta inferior dos lotes intersectados (e a gaveta lateral do lote) adota a **molécula oficial
+      de poço de ações reduzido**: `.card-well` com respiro superior enxuto (`pt-2.5 pb-3`), título
+      colado ao topo (`leading-none`), espaçamento `gap-2.5` entre botões `.btn-onsen.btn-sm`, altura
+      adaptativa proporcional aos itens, centralização vertical e teto na altura da tabela onde passa a
+      rolar internamente com dissolução/blur suave nas bordas (`[mask-image:linear-gradient(...)]`).
+      Sem ação liberada, o poço não aparece.
 - [ ] O modal do conjunto lista os lotes que restaram na tabela e pede processo SEI e interessado,
       com as mesmas recusas da SPEC [001](001-certidao-de-um-lote.md), **sem consultar o GeoServer**.
 - [ ] Conjunto **vazio**, ou com algum lote **sem lançamento ativo** ou **condominial**, abre o modal
@@ -40,9 +45,9 @@ o terreno sobre eles.
 - [ ] A certidão de **um** lote continua saindo com o texto da SPEC 001.
 - [ ] A emissão entra no acervo e fica **registrada** com operação própria, distinguível da emissão de
       um lote.
-- [ ] O design do poço de ações na gaveta inferior, do modal do conjunto e do aviso de lotes
-      impeditivos foi aprovado no mock e as peças novas portadas para o tema e o styleguide antes de
-      qualquer template da aplicação usá-las.
+- [ ] O design do poço de ações reduzido unificado (gaveta inferior e gaveta lateral), do modal do
+      conjunto e do aviso de lotes impeditivos foi aprovado no mock e as peças novas portadas para o
+      tema e o styleguide antes de qualquer template da aplicação usá-las.
 
 ## 3 · Domínio
 O conjunto é o [ConjuntoDeLotes](../localizacao_lote/004-revisao-do-conjunto.md#3--domínio) guardado
