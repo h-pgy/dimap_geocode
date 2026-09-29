@@ -99,6 +99,7 @@ def contexto_encerramento_acao() -> dict[str, Any]:
     return contexto_mapa(GEOJSON_VAZIO, MAP_COR_RESULTADO_ACAO, enquadrar=False)
 
 
-def contexto_aviso(mensagem: str) -> dict[str, Any]:
-    """Contexto do partial de aviso do mapping: só a mensagem pronta (agnóstico de domínio)."""
-    return {"mensagem": mensagem}
+def contexto_aviso(mensagem: str, tom: str = "warning") -> dict[str, Any]:
+    """Contexto do partial de aviso do mapping: mensagem e tom (padrão 'warning')."""
+    return {"mensagem": mensagem, "tom": tom}
+

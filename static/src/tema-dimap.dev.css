@@ -1323,7 +1323,13 @@ html[data-theme="dimap"] {
   /* Painel da barra de busca: largura/padding moram AQUI, não como utilities no markup — a
      navbar mobile abaixo precisa vencê-los, e utility no HTML ganharia da regra de componente
      (layer utilities acima de layer components). Markup: class="glass-panel search-panel ...". */
-  .search-panel { @apply w-11/12 max-w-2xl p-4 transition-all duration-500 ease-in-out; }
+  .search-panel {
+    @apply w-11/12 max-w-2xl p-4;
+    transition: width 400ms ease-in-out 100ms, max-width 400ms ease-in-out 100ms, padding 400ms ease-in-out 100ms, border-radius 150ms ease-out;
+  }
+  .search-panel .input {
+    transition: height 400ms ease-in-out 100ms, border-radius 150ms ease-out;
+  }
 
   /* Navbar compacta (busca recolhida em tela estreita): abaixo de lg (64rem) a barra recolhida
      dividia o topo com os chips fixos (marca à esquerda, usuário à direita) e ficava coberta por
@@ -1335,9 +1341,29 @@ html[data-theme="dimap"] {
      #resultado-busca não vazio. A linha de dicas/badges (.search-hints) sai de cena no estado
      compacto; sugestões e resultado seguem w-11/12, abaixo da fileira. */
   @media (width < 64rem) {
-    .search-hero:has(#resultado-busca:not(:empty)) .search-panel { @apply w-[calc(100vw-9.5rem)] p-1.5 rounded-full; }
-    .search-hero:has(#resultado-busca:not(:empty)) .search-panel .input { @apply h-9 rounded-full; }
-    .search-hero:has(#resultado-busca:not(:empty)) .search-hints { @apply hidden; }
+    .search-hero:has(#resultado-busca:not(:empty)) .search-panel {
+      @apply w-[calc(100vw-9.5rem)] p-1.5;
+      border-radius: 25px;
+      transition: width 400ms ease-in-out, max-width 400ms ease-in-out, padding 400ms ease-in-out, border-radius 300ms ease-in-out 100ms;
+    }
+    .search-hero:has(#resultado-busca:not(:empty)) .search-panel .input {
+      @apply h-9;
+      border-radius: 18px;
+      transition: height 400ms ease-in-out, border-radius 300ms ease-in-out 100ms;
+    }
+    .search-hero:has(#resultado-busca:not(:empty)) .search-hints {
+      @apply opacity-0 pointer-events-none;
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      margin: 0;
+      overflow: hidden;
+      transition: opacity 100ms ease-out, max-height 250ms ease-out, padding 250ms ease-out;
+    }
+    .search-panel .search-hints {
+      max-height: 4rem;
+      transition: opacity 300ms ease-in 200ms, max-height 350ms ease-in-out 100ms, padding 350ms ease-in-out;
+    }
   }
   .cinematic-blur-layer { @apply absolute inset-0 z-10 pointer-events-none opacity-0 backdrop-blur-sm transition-opacity duration-500; }
   .cinematic-blur-layer.active { @apply opacity-100 pointer-events-auto; }

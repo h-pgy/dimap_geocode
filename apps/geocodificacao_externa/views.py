@@ -55,17 +55,22 @@ def geocodificar_externo(
     try:
         endereco = geocodificador(entrada)
     except ProvedorIndisponivelError:
-        return _aviso(request, MSG_INDISPONIVEL, falha)
+        return _aviso(request, MSG_INDISPONIVEL, falha, tom="error")
     except SemResultadoAceitoError:
-        return _aviso(request, MSG_SEM_RESULTADO, falha)
+        return _aviso(request, MSG_SEM_RESULTADO, falha, tom="warning")
     contexto = _contexto_externo(endereco) | {"aviso_fallback": _aviso_fallback(falha, endereco)}
     return render(request, TEMPLATE_RESULTADO_EXTERNO, contexto)
 
 
-def _aviso(request: HttpRequest, mensagem: str, falha: FalhaBaseOficial | None) -> HttpResponse:
+def _aviso(
+    request: HttpRequest,
+    mensagem: str,
+    falha: FalhaBaseOficial | None,
+    tom: str = "warning",
+) -> HttpResponse:
     # no Enter, o aviso diz primeiro o que a base oficial não encontrou
     texto = mensagem if falha is None else f"{falha.motivo} {mensagem}"
-    return render(request, TEMPLATE_AVISO, contexto_aviso(texto))
+    return render(request, TEMPLATE_AVISO, contexto_aviso(texto, tom=tom))
 
 
 def _aviso_fallback(falha: FalhaBaseOficial | None, endereco: EnderecoExternoFeature) -> str | None:
@@ -96,5 +101,6 @@ def selecionar(request: HttpRequest) -> HttpResponse:
     selecao = SelecaoGeocodificacaoExterna.model_validate(request.POST.dict())
     geocodificador = geocodificador_externo()
     if geocodificador is None:
-        return render(request, TEMPLATE_AVISO, contexto_aviso(MSG_INDISPONIVEL))
+        return render(request, TEMPLATE_AVISO, contexto_aviso(MSG_INDISPONIVEL, tom="error"))
     return geocodificar_externo(request, geocodificador, selecao.texto)
+

@@ -48,5 +48,12 @@ def test_contexto_mapa() -> None:
 
 
 def test_contexto_aviso() -> None:
-    resultado = contexto_aviso("Endereço não localizado.")
-    assert resultado == {"mensagem": "Endereço não localizado."}
+    assert contexto_aviso("Endereço não localizado.") == {
+        "mensagem": "Endereço não localizado.",
+        "tom": "warning",
+    }
+    assert contexto_aviso("Serviço indisponível.", tom="error") == {
+        "mensagem": "Serviço indisponível.",
+        "tom": "error",
+    }
+

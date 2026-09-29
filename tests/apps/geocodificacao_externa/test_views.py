@@ -130,16 +130,17 @@ def test_geocodificar_externo_desenha_ponto_e_abre_gaveta() -> None:
 
 
 @pytest.mark.parametrize(
-    ("provedor", "mensagem"),
+    ("provedor", "mensagem", "tom_esperado"),
     [
-        (ProvedorDuble([]), views.MSG_SEM_RESULTADO),
-        (ProvedorDuble([], erro=ProvedorIndisponivelError("cota")), views.MSG_INDISPONIVEL),
+        (ProvedorDuble([]), views.MSG_SEM_RESULTADO, "alert-warning"),
+        (ProvedorDuble([], erro=ProvedorIndisponivelError("cota")), views.MSG_INDISPONIVEL, "alert-error"),
     ],
     ids=["sem-resultado-aceito", "provedor-indisponivel"],
 )
 def test_geocodificar_externo_com_falha_responde_aviso_que_diz_qual(
     provedor: ProvedorDuble,
     mensagem: str,
+    tom_esperado: str,
 ) -> None:
     geocodificador = GeocodificadorExterno(provedor)
 
@@ -149,6 +150,7 @@ def test_geocodificar_externo_com_falha_responde_aviso_que_diz_qual(
     aviso = soup.select_one('[role="alert"]')
     assert aviso is not None
     assert mensagem in aviso.get_text()
+    assert tom_esperado in aviso["class"]
     assert _payload(soup) is None
 
 
@@ -186,4 +188,6 @@ def test_selecionar_sem_configuracao_responde_indisponivel(
     aviso = soup.select_one('[role="alert"]')
     assert aviso is not None
     assert views.MSG_INDISPONIVEL in aviso.get_text()
+    assert "alert-error" in aviso["class"]
     assert _payload(soup) is None
+
