@@ -298,6 +298,22 @@ class _Settings(BaseSettings):
     assinatura_id_chave: str = Field(default="k1", alias="ASSINATURA_ID_CHAVE")
 
     google_geocoding_token: str = Field(default="", alias="GOOGLE_GEOCODING_TOKEN")
+    geocodificacao_externa_provedor: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_PROVEDOR"
+    )
+    geocodificacao_externa_idioma: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_IDIOMA"
+    )
+    geocodificacao_externa_pais: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_PAIS"
+    )
+    geocodificacao_externa_uf: str | None = Field(default=None, alias="GEOCODIFICACAO_EXTERNA_UF")
+    geocodificacao_externa_municipio: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_MUNICIPIO"
+    )
+    geocodificacao_externa_precisao_minima: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_PRECISAO_MINIMA"
+    )
 
     @field_validator("documento_unidade", "documento_endereco", mode="before")
     @classmethod
@@ -470,6 +486,15 @@ ASSINATURA_ID_CHAVE = _env.assinatura_id_chave
 
 # SecretStr para o token não vazar em log nem traceback; vazio desliga a geocodificação externa.
 GOOGLE_GEOCODING_TOKEN = SecretStr(_env.google_geocoding_token)
+
+# Geocodificação externa (services.domain.geocodificador_externo). Todos opcionais: o padrão
+# mora na PoliticaGeocodificacao e no PROVEDOR_PADRAO do domínio.
+GEOCODIFICACAO_EXTERNA_PROVEDOR = _env.geocodificacao_externa_provedor
+GEOCODIFICACAO_EXTERNA_IDIOMA = _env.geocodificacao_externa_idioma
+GEOCODIFICACAO_EXTERNA_PAIS = _env.geocodificacao_externa_pais
+GEOCODIFICACAO_EXTERNA_UF = _env.geocodificacao_externa_uf
+GEOCODIFICACAO_EXTERNA_MUNICIPIO = _env.geocodificacao_externa_municipio
+GEOCODIFICACAO_EXTERNA_PRECISAO_MINIMA = _env.geocodificacao_externa_precisao_minima
 
 
 # Application definition

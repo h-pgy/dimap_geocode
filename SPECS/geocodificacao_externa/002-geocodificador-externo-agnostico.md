@@ -2,8 +2,8 @@
 spec: geocodificacao_externa/002
 versao: v2
 atualizado_em: 2026-09-28
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: provedor Google traduz a v4 do Geocoding e o endereço externo perde `parcial`

@@ -1,8 +1,7 @@
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Protocol
 
-from pydantic import BaseModel
+from services.utils.ambiente import definidos
 
 from .models import MarcacaoConfig, PaletaDocumento, TemaConfig, TipografiaDocumento
 
@@ -29,13 +28,6 @@ class DocumentoSettingsLike(Protocol):
     DOCUMENTO_ENTRELINHA_MARCA_MM: float | None
 
 
-def _definidos[M: BaseModel](modelo: type[M], valores: Mapping[str, object]) -> M:
-    # Só o que o ambiente DEFINIU é repassado: campo ausente deixa o default do model valer.
-    # Passar `None` adiante sobrescreveria o padrão com vazio e obrigaria cada valor a existir
-    # aqui também — duas cópias livres para divergir.
-    return modelo(**{chave: valor for chave, valor in valores.items() if valor is not None})
-
-
 def build_marcacao_config(source: DocumentoSettingsLike) -> MarcacaoConfig:
     valores: dict[str, object] = {
         "logo_horizontal": source.DOCUMENTO_LOGO_HORIZONTAL,
@@ -56,7 +48,7 @@ def build_marcacao_config(source: DocumentoSettingsLike) -> MarcacaoConfig:
 
 def build_tema_config(source: DocumentoSettingsLike) -> TemaConfig:
     return TemaConfig(
-        paleta=_definidos(
+        paleta=definidos(
             PaletaDocumento,
             {
                 "tinta": source.DOCUMENTO_COR_TINTA,
@@ -65,7 +57,7 @@ def build_tema_config(source: DocumentoSettingsLike) -> TemaConfig:
                 "fundo_cabecalho_tabela": source.DOCUMENTO_COR_FUNDO_CABECALHO_TABELA,
             },
         ),
-        tipografia=_definidos(
+        tipografia=definidos(
             TipografiaDocumento,
             {
                 "fonte": source.DOCUMENTO_FONTE,
