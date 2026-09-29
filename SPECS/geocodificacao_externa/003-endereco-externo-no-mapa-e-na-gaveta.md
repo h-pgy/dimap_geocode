@@ -1,13 +1,14 @@
 ---
 spec: geocodificacao_externa/003
-versao: v2
-atualizado_em: 2026-09-28
-testes_tdd: false
-implementado: false
+versao: v3
+atualizado_em: 2026-09-29
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
   - v2: gaveta do endereço externo sem o aviso de correspondência parcial
+  - v3: provedor e precisão declaram o próprio rótulo no domínio, e o aviso de sem lote recolhe a gaveta
 ---
 
 # SPEC geocodificacao_externa/003 — Endereço externo no mapa, na gaveta e no lote mais próximo
@@ -25,8 +26,9 @@ declarados e chegar ao lote mais próximo dele.
 - [ ] A gaveta traz **"Buscar lote mais próximo"**.
 - [ ] Acioná-lo desenha, junto do ponto, o lote de **menor distância** a até o raio configurado,
       **de qualquer logradouro**, e abre a gaveta do lote com a **distância** e o **endereço de origem**.
-- [ ] Sem lote no raio, a resposta diz isso em português com o raio usado, sem falar em logradouro, e o
-      ponto continua no mapa.
+- [ ] Sem lote no raio, a resposta diz isso em português com o raio usado, sem falar em logradouro; a
+      gaveta do endereço externo **recolhe** para o aviso aparecer, e a alça a reabre; o ponto continua
+      no mapa.
 - [ ] Sem resultado aceito pela política, ou com o provedor indisponível, a resposta é um aviso em
       português que diz **qual dos dois** aconteceu, e nada é desenhado.
 - [ ] Sem geocodificador externo configurado, a rota responde o aviso de indisponível sem tentar
@@ -39,6 +41,42 @@ O endereço é o [EnderecoExternoFeature](002-geocodificador-externo-agnostico.m
 que esta SPEC faz a ele é "o que você encontrou, por qual provedor e com que precisão?". O lote e a
 distância são o [LoteProximo](../localizacao_lote/002-lote-mais-proximo-do-endereco.md#3--domínio) e a
 [CamadaLotes](../localizacao_lote/002-lote-mais-proximo-do-endereco.md#3--domínio).
+
+**`services/domain/geocodificador_externo/models.py`**
+
+```python
+class Provedor(StrEnum):
+    GOOGLE = "google"
+
+    @property
+    def rotulo(self) -> str:  # ALTERADO nesta SPEC: o nome com que o provedor se apresenta
+        match self:
+            case Provedor.GOOGLE:
+                return "Google"
+
+
+class Precisao(StrEnum):
+    APROXIMADA = "aproximada"
+    LOGRADOURO = "logradouro"
+    INTERPOLADA = "interpolada"
+    IMOVEL = "imovel"
+
+    @property
+    def nivel(self) -> int:
+        return list(Precisao).index(self)
+
+    @property
+    def rotulo(self) -> str:  # ALTERADO nesta SPEC: como a precisão se lê na gaveta
+        match self:
+            case Precisao.APROXIMADA:
+                return "Aproximada"
+            case Precisao.LOGRADOURO:
+                return "Centro da via"
+            case Precisao.INTERPOLADA:
+                return "Interpolada na via"
+            case Precisao.IMOVEL:
+                return "No imóvel"
+```
 
 A proximidade a partir do ponto externo é uma consulta **nova** do submódulo `lotes_mais_proximos`,
 ao lado do `LoteMaisProximo` e sem compartilhar código com ele: sem codlog oficial, o raio é o único
@@ -140,14 +178,6 @@ TEMPLATE_RESULTADO_EXTERNO = "geocodificacao_externa/partials/_resultado_externo
 MSG_INDISPONIVEL = "O serviço externo de geocodificação está indisponível no momento."
 MSG_SEM_RESULTADO = "O serviço externo não localizou este endereço com precisão suficiente."
 
-ROTULO_PROVEDOR: dict[Provedor, str] = {Provedor.GOOGLE: "Google"}
-ROTULO_PRECISAO: dict[Precisao, str] = {
-    Precisao.IMOVEL: "No imóvel",
-    Precisao.INTERPOLADA: "Interpolada na via",
-    Precisao.LOGRADOURO: "Centro da via",
-    Precisao.APROXIMADA: "Aproximada",
-}
-
 
 class SelecaoGeocodificacaoExterna(BaseModel):
     texto: str
@@ -185,8 +215,8 @@ def _contexto_externo(endereco: EnderecoExternoFeature) -> dict[str, Any]:
     return contexto_mapa(geojson, MAP_COR_PONTO) | {
         "endereco": a,
         "ponto": endereco.geometry,
-        "provedor": ROTULO_PROVEDOR[a.provedor],
-        "precisao": ROTULO_PRECISAO[a.precisao],
+        "provedor": a.provedor.rotulo,  # o domínio nomeia o provedor; a view não conhece nenhum
+        "precisao": a.precisao.rotulo,
     }
 
 
@@ -212,10 +242,20 @@ o rótulo de origem; nada de codlog.
 </form>
 ```
 
+**`templates/lotes_mais_proximos/partials/_aviso_sem_lote_do_ponto.html`** — o aviso e, no mesmo
+response, o toggle da gaveta desmarcado: com a gaveta aberta a busca sai de cena e levaria o aviso junto.
+
+```html
+{% include "mapping/_aviso.html" %}
+{% include "mapping/_recolher_gaveta_oob.html" with toggle="gaveta-endereco-externo-toggle" %}
+```
+
 **`apps/lotes_mais_proximos/views.py`** — rota aberta, irmã de `mais_proximo`, sem codlog.
 
 ```python
 LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M
+
+TEMPLATE_AVISO_SEM_LOTE_DO_PONTO = "lotes_mais_proximos/partials/_aviso_sem_lote_do_ponto.html"
 
 MSG_SEM_LOTE_NO_RAIO = "Nenhum lote foi encontrado a {raio_m:.0f} metros do ponto de busca."
 
@@ -238,7 +278,7 @@ def mais_proximo_do_ponto(request: HttpRequest) -> HttpResponse:
         proximo = LoteMaisProximoDoPonto(build_fetcher(settings))(entrada)
     except NenhumLoteNoRaioError:
         mensagem = MSG_SEM_LOTE_NO_RAIO.format(raio_m=LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M)
-        return render(request, TEMPLATE_AVISO, contexto_aviso(mensagem))
+        return render(request, TEMPLATE_AVISO_SEM_LOTE_DO_PONTO, contexto_aviso(mensagem))
     return render(
         request,
         TEMPLATE_RESULTADO_MAIS_PROXIMO,
@@ -276,6 +316,11 @@ O ponto e a origem chegam do formulário da gaveta, sem recálculo no servidor, 
 Recalcular exigiria uma segunda chamada paga ao provedor. O custo é que um POST forjado consulta
 lotes em qualquer ponto, o que a camada de lotes já permite de todo modo.
 
+O aviso de sem lote do ponto recolhe a gaveta pelo id do toggle da gaveta do endereço externo, escrito
+no partial de `lotes_mais_proximos`. A rota só é alcançável por essa gaveta, e o id como literal
+repete o padrão do `_recusa_acao.html`. O custo é que `lotes_mais_proximos` passa a conhecer um id de
+`geocodificacao_externa`: renomear o toggle lá deixa o aviso invisível de novo, sem erro.
+
 ## 8 · Testes (TDD)
 Salvo quando o teste diz o contrário, o cliente dos testes de view está logado.
 
@@ -297,6 +342,7 @@ Salvo quando o teste diz o contrário, o cliente dos testes de view está logado
 - `test_mais_proximo_do_ponto_anonimo_devolve_ponto_lote_e_gaveta_do_lote` — POST sem login devolve as
   duas features e o OOB da gaveta do lote com a distância e o endereço de origem.
 - `test_mais_proximo_do_ponto_sem_lote_responde_aviso_com_raio` — o aviso traz "a 50 metros do ponto de
-  busca" e não menciona logradouro.
+  busca", não menciona logradouro, e o response traz o OOB do `gaveta-endereco-externo-toggle`
+  desmarcado.
 - `test_lote_mais_proximo_do_ponto_no_geosampa` — ponto real conhecido devolve um lote
   *(marker `integration`)*.

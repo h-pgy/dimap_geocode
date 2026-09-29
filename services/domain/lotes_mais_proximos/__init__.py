@@ -6,11 +6,18 @@ from .do_desenho import (
     DesenhoConferido,
     LotesDoDesenhoInput,
 )
-from .exceptions import DesenhoGrandeDemaisError, DesenhoInvalidoError, NenhumLoteProximoError
+from .exceptions import (
+    DesenhoGrandeDemaisError,
+    DesenhoInvalidoError,
+    NenhumLoteNoRaioError,
+    NenhumLoteProximoError,
+)
 from .mais_proximo import LoteMaisProximo
+from .mais_proximo_do_ponto import LoteMaisProximoDoPonto
 from .models import (
     CamadaLotes,
     ConjuntoDeLotes,
+    LoteMaisProximoDoPontoInput,
     LoteMaisProximoInput,
     LoteProximo,
     LotesDoDesenho,
@@ -27,10 +34,13 @@ __all__ = [
     "DesenhoInvalidoError",
     "EsvaziarConjunto",
     "LoteMaisProximo",
+    "LoteMaisProximoDoPonto",
+    "LoteMaisProximoDoPontoInput",
     "LoteMaisProximoInput",
     "LoteProximo",
     "LotesDoDesenho",
     "LotesDoDesenhoInput",
+    "NenhumLoteNoRaioError",
     "NenhumLoteProximoError",
     "RemocaoDoConjuntoInput",
     "RemoverDoConjunto",

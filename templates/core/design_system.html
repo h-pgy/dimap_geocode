@@ -3233,6 +3233,46 @@
           </div>
           <p class="text-xs text-base-content/60 mt-2">Com o visual do controle de apagar da bancada: <span class="text-code">#glifo-apagar</span> em madeira em repouso; sob o ponteiro ou o foco, incha, enche de água e brilha. Mora na última coluna da <span class="text-code">.table-onsen-compacta</span> e tira a linha do conjunto.</p>
         </div>
+
+        <div>
+          <span class="text-overline">Badge de precisão (SPEC geocodificacao_externa/003) <span class="font-normal text-base-content/50">— cabeçalho da gaveta do endereço externo</span></span>
+          <div class="card-well p-5 flex flex-wrap items-center gap-6 mt-3">
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-success badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">No imóvel</span>
+              <span class="text-[10px] font-mono text-base-content/60">imóvel</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-info badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Interpolada na via</span>
+              <span class="text-[10px] font-mono text-base-content/60">interpolada</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-warning badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Centro da via</span>
+              <span class="text-[10px] font-mono text-base-content/60">logradouro</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-warning badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Aproximada</span>
+              <span class="text-[10px] font-mono text-base-content/60">aproximada</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O <span class="text-code">.badge-soft</span> do daisyUI no lugar do grau de certeza da gaveta oficial: verde no imóvel, azul na interpolação, âmbar abaixo disso — as duas últimas só aparecem se a política baixar a precisão mínima.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Card do provedor (SPEC geocodificacao_externa/003) <span class="font-normal text-base-content/50">— quem geocodificou, fora da base oficial</span></span>
+          <div class="max-w-md mt-3">
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Geocodificado por</p>
+                <p class="font-bold leading-tight">Google</p>
+                <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Composição de <span class="text-code">.card-well</span> + <span class="text-code">.icon-bubble</span> + overline, com o glifo do globo. O nome do provedor vem do domínio; a peça não conhece nenhum.</p>
+        </div>
       </div>
     </section>
 

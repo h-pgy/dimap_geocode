@@ -163,6 +163,11 @@ class _Settings(BaseSettings):
     # Raio de busca do lote mais próximo do endereço interpolado (SPEC localizacao_lote/002) — corte
     # operacional, calibra-se no ambiente conforme o tamanho típico das quadras.
     lote_mais_proximo_raio_m: float = Field(default=50.0, alias="LOTE_MAIS_PROXIMO_RAIO_M")
+    # Raio do lote mais próximo do ponto externo (SPEC geocodificacao_externa/003): sem logradouro, é o
+    # único recorte e se calibra à parte do raio da busca oficial.
+    lote_mais_proximo_do_ponto_raio_m: float = Field(
+        default=50.0, alias="LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M"
+    )
     # Teto da área do desenho na busca de lotes intersectados (SPEC localizacao_lote/003): sem ele um
     # desenho sobre um bairro devolveria dezenas de milhares de lotes.
     lotes_desenho_area_maxima_m2: float = Field(
@@ -354,6 +359,7 @@ WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds
 WFS_RETRY_WAIT_MAX_SECONDS = _env.wfs_retry_wait_max_seconds
 
 LOTE_MAIS_PROXIMO_RAIO_M = _env.lote_mais_proximo_raio_m
+LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M = _env.lote_mais_proximo_do_ponto_raio_m
 LOTES_DESENHO_AREA_MAXIMA_M2 = _env.lotes_desenho_area_maxima_m2
 
 # WMS (GeoSampa → Leaflet tile layer). Config lida aqui e injetada no contexto do
@@ -525,6 +531,7 @@ INSTALLED_APPS = [
     "apps.logradouro_geocoder",
     "apps.lote_geocoder",
     "apps.lotes_mais_proximos",
+    "apps.geocodificacao_externa",
     "apps.amostrador_ofertas",
     "apps.documentos",
     "apps.acoes_lote",

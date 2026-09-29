@@ -31,6 +31,12 @@ class LoteMaisProximoInput(BaseModel):
     camada: CamadaLotes
 
 
+class LoteMaisProximoDoPontoInput(BaseModel):
+    ponto: PointGeometry  # no CRS de saída (o do mapa)
+    raio_m: float = Field(gt=0)
+    camada: CamadaLotes
+
+
 class LotesDoDesenho(BaseModel):
     """O que a consulta apurou: o desenho, a área dele e os lotes que ele cruza."""
 

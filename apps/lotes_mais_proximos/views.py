@@ -42,9 +42,12 @@ from services.domain.lotes_mais_proximos import (
     DesenhoInvalidoError,
     EsvaziarConjunto,
     LoteMaisProximo,
+    LoteMaisProximoDoPonto,
+    LoteMaisProximoDoPontoInput,
     LoteMaisProximoInput,
     LoteProximo,
     LotesDoDesenhoInput,
+    NenhumLoteNoRaioError,
     NenhumLoteProximoError,
     RemocaoDoConjuntoInput,
     RemoverDoConjunto,
@@ -57,10 +60,12 @@ MAP_COR_POLIGONO_CONDOMINIO: str = settings.MAP_COR_POLIGONO_CONDOMINIO
 MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 LOTE_MAIS_PROXIMO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_RAIO_M
+LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M
 LOTES_DESENHO_AREA_MAXIMA_M2: float = settings.LOTES_DESENHO_AREA_MAXIMA_M2
 WFS_LAYER_LOTE_CIDADAO: str = settings.WFS_LAYER_LOTE_CIDADAO
 
 TEMPLATE_RESULTADO_MAIS_PROXIMO = "lotes_mais_proximos/partials/_resultado_mais_proximo.html"
+TEMPLATE_AVISO_SEM_LOTE_DO_PONTO = "lotes_mais_proximos/partials/_aviso_sem_lote_do_ponto.html"
 TEMPLATE_RESULTADO_DESENHO = "lotes_mais_proximos/partials/_resultado_desenho.html"
 TEMPLATE_REVISAO_DO_CONJUNTO = "lotes_mais_proximos/partials/_revisao_do_conjunto.html"
 TEMPLATE_ENCERRAMENTO_ACAO = "mapping/_encerramento_acao.html"
@@ -79,6 +84,7 @@ MSG_SEM_LOTE_PROXIMO = (
     "Nenhum lote situado neste logradouro foi encontrado "
     "a {raio_m:.0f} metros do ponto de busca."
 )
+MSG_SEM_LOTE_NO_RAIO = "Nenhum lote foi encontrado a {raio_m:.0f} metros do ponto de busca."
 
 
 class ConsultaLoteMaisProximo(BaseModel):
@@ -89,6 +95,12 @@ class ConsultaLoteMaisProximo(BaseModel):
     codlog: str
     # Rótulo do endereço de origem, só para a gaveta ler — como `score`, é apresentação.
     origem: str = ""
+
+
+class ConsultaLoteMaisProximoDoPonto(BaseModel):
+    lon: float
+    lat: float
+    origem: str = ""  # rótulo do endereço de origem, só para a gaveta ler
 
 
 class ConsultaLotesDoDesenho(BaseModel):
@@ -160,6 +172,27 @@ def mais_proximo(request: HttpRequest) -> HttpResponse:
             "mapping/_aviso.html",
             contexto_aviso(MSG_SEM_LOTE_PROXIMO.format(raio_m=LOTE_MAIS_PROXIMO_RAIO_M)),
         )
+    return render(
+        request,
+        TEMPLATE_RESULTADO_MAIS_PROXIMO,
+        _contexto_mais_proximo(entrada.ponto, proximo, consulta.origem),
+    )
+
+
+@require_POST
+def mais_proximo_do_ponto(request: HttpRequest) -> HttpResponse:
+    """Rota aberta (SPEC geocodificacao_externa/003): lê a camada pública de lotes, sem cota paga."""
+    consulta = ConsultaLoteMaisProximoDoPonto.model_validate(request.POST.dict())
+    entrada = LoteMaisProximoDoPontoInput(
+        ponto=PointGeometry(type="Point", coordinates=[consulta.lon, consulta.lat]),
+        raio_m=LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M,
+        camada=camada_lotes(),
+    )
+    try:
+        proximo = LoteMaisProximoDoPonto(build_fetcher(settings))(entrada)
+    except NenhumLoteNoRaioError:
+        mensagem = MSG_SEM_LOTE_NO_RAIO.format(raio_m=LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M)
+        return render(request, TEMPLATE_AVISO_SEM_LOTE_DO_PONTO, contexto_aviso(mensagem))
     return render(
         request,
         TEMPLATE_RESULTADO_MAIS_PROXIMO,

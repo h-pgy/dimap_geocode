@@ -8,6 +8,12 @@ from services.domain.geometry import GeoFeature, PointGeometry
 class Provedor(StrEnum):
     GOOGLE = "google"
 
+    @property
+    def rotulo(self) -> str:
+        match self:
+            case Provedor.GOOGLE:
+                return "Google"
+
 
 class Precisao(StrEnum):
     # a ordem de declaração é o nível: do menos ao mais preciso
@@ -19,6 +25,18 @@ class Precisao(StrEnum):
     @property
     def nivel(self) -> int:
         return list(Precisao).index(self)
+
+    @property
+    def rotulo(self) -> str:
+        match self:
+            case Precisao.APROXIMADA:
+                return "Aproximada"
+            case Precisao.LOGRADOURO:
+                return "Centro da via"
+            case Precisao.INTERPOLADA:
+                return "Interpolada na via"
+            case Precisao.IMOVEL:
+                return "No imóvel"
 
 
 class EnderecoExternoAttributes(BaseModel):

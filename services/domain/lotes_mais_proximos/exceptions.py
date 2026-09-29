@@ -2,6 +2,10 @@ class NenhumLoteProximoError(Exception):
     """Nenhum lote do codlog informado dentro do raio consultado."""
 
 
+class NenhumLoteNoRaioError(Exception):
+    """Nenhum lote da camada dentro do raio consultado."""
+
+
 class DesenhoInvalidoError(Exception):
     """O polígono não é uma geometria válida — o laço que se cruza, por exemplo."""
 

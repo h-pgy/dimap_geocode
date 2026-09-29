@@ -130,6 +130,57 @@ def test_mais_proximo_sem_lote_responde_aviso_com_raio(
 
 
 # ---------------------------------------------------------------------------
+# Lote mais próximo do ponto externo (SPEC geocodificacao_externa/003)
+# ---------------------------------------------------------------------------
+
+_POST_DO_PONTO: dict[str, str] = {
+    "lon": "-46.6565",
+    "lat": "-23.5631",
+    "origem": "Av. Paulista, 300 - Bela Vista, São Paulo - SP, Brasil",
+}
+
+
+def test_mais_proximo_do_ponto_anonimo_devolve_ponto_lote_e_gaveta_do_lote(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lote = _feat(_PROPS_LOTE, _quadrado(333000.0, 7395000.0, 50.0))
+    _instalar_fetcher_fake(monkeypatch, [_page([lote])])
+
+    resposta = client.post(reverse("lotes_mais_proximos:mais_proximo_do_ponto"), _POST_DO_PONTO)
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    tipos = [f["geometry"]["type"] for f in _payload(soup)["geometria"]["features"]]
+    assert tipos == ["Point", "Polygon"]
+    gaveta = soup.find(id="gaveta-entidade")
+    assert isinstance(gaveta, Tag)
+    assert gaveta.has_attr("hx-swap-oob")
+    assert "Distância do endereço" in gaveta.get_text()
+    assert _POST_DO_PONTO["origem"] in gaveta.get_text()
+
+
+def test_mais_proximo_do_ponto_sem_lote_responde_aviso_com_raio(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_fetcher_fake(monkeypatch, [_page([])])
+
+    resposta = client.post(reverse("lotes_mais_proximos:mais_proximo_do_ponto"), _POST_DO_PONTO)
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    aviso = soup.select_one('[role="alert"]')
+    assert aviso is not None
+    assert "a 50 metros do ponto de busca" in aviso.get_text()
+    assert "logradouro" not in aviso.get_text()
+    toggle = soup.find("input", id="gaveta-endereco-externo-toggle")
+    assert isinstance(toggle, Tag)
+    assert toggle.has_attr("hx-swap-oob")
+    assert not toggle.has_attr("checked")
+
+
+# ---------------------------------------------------------------------------
 # Lotes do desenho (SPEC localizacao_lote/003): builders
 # ---------------------------------------------------------------------------
 
