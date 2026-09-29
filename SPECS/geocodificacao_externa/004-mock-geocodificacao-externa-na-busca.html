@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC geocodificacao_externa/004 — Geocodificação externa na busca (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet para o mapa vivo da home (skill `mock`) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* andaime do mock: moldura que faz as vezes da casca da home */
+      .quadro-tela {
+        @apply relative h-[36rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+      .quadro-tela-baixo { @apply h-[26rem]; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+  <!-- Defs da gravação: o partial da própria aplicação. -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- Fundo: o mapa vivo da home, de mapping/_mapa_fullscreen.html. -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC geocodificacao_externa/004 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Geocodificação externa na busca</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          A opção de geocodificação externa como última seção das sugestões, e o aviso que acompanha o
+          resultado externo quando ele chega pelo Enter depois de a base oficial falhar.
+        </p>
+      </header>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .suggestion-item externo — geocodificacao_externa/partials/_sugestao_externa.html -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">item de sugestão externa · .suggestion-item + glifo do globo + badge de geometria</p>
+          <div class="card-well p-3 flex flex-col gap-3 max-w-2xl">
+            <!-- estado: repouso -->
+            <ul class="flex flex-col gap-0.5">
+              <li class="suggestion-item items-center gap-4" data-sugestao-externa>
+                <svg class="icon-glow w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-globo"/></svg>
+                <span class="font-medium truncate">rua augusta, 100</span>
+                <span class="ml-auto flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-base-content/60">via Google</span>
+                  <span class="badge badge-ponto badge-sm">Endereço</span>
+                </span>
+              </li>
+            </ul>
+            <!-- estado: acionada (o pulso do clique, .htmx-request) -->
+            <ul class="flex flex-col gap-0.5">
+              <li class="suggestion-item htmx-request items-center gap-4">
+                <svg class="icon-glow w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-globo"/></svg>
+                <span class="font-medium truncate">rua augusta, 100</span>
+                <span class="ml-auto flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-base-content/60">via Google</span>
+                  <span class="badge badge-ponto badge-sm">Endereço</span>
+                </span>
+              </li>
+            </ul>
+            <!-- estado: texto longo, como digitado -->
+            <ul class="flex flex-col gap-0.5">
+              <li class="suggestion-item items-center gap-4">
+                <svg class="icon-glow w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-globo"/></svg>
+                <span class="font-medium truncate">av. brigadeiro faria lima, 3477 - itaim bibi, são paulo - sp, 04538-133</span>
+                <span class="ml-auto flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-base-content/60">via Google</span>
+                  <span class="badge badge-ponto badge-sm">Endereço</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- aviso de fallback — o alert do mapping/_aviso.html, dentro da gaveta -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">aviso de fallback · alert-warning soft com o glifo do globo, no topo da gaveta</p>
+          <div class="grid lg:grid-cols-3 gap-4">
+            <!-- estado: número fora da faixa -->
+            <div class="flex flex-col gap-2">
+              <span class="text-xs text-base-content/60">número fora da faixa</span>
+              <div role="status" class="alert alert-warning alert-soft items-start text-sm" data-aviso-fallback="sem-numeracao"></div>
+            </div>
+            <!-- estado: sem segmento -->
+            <div class="flex flex-col gap-2">
+              <span class="text-xs text-base-content/60">sem segmento</span>
+              <div role="status" class="alert alert-warning alert-soft items-start text-sm" data-aviso-fallback="sem-segmento"></div>
+            </div>
+            <!-- estado: logradouro fora da base -->
+            <div class="flex flex-col gap-2">
+              <span class="text-xs text-base-content/60">logradouro fora da base</span>
+              <div role="status" class="alert alert-warning alert-soft items-start text-sm" data-aviso-fallback="fora-da-base"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="flex flex-col gap-6">
+        <h2 class="section-title">4 · Organismos</h2>
+
+        <!-- painel de sugestões (search/partials/_sugestoes.html, intocado) com a seção externa por último -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- estado: logado · base oficial resolve e a opção externa vem por último -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">logado · a opção externa por último</span>
+            <div data-sugestoes="logado"></div>
+          </div>
+          <!-- estado: logado · logradouro fora da base, só a opção externa -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">logado · logradouro fora da base, só a opção externa</span>
+            <div data-sugestoes="so-externa"></div>
+          </div>
+          <!-- estado: sem login ou sem provedor configurado · sem a opção -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">sem login ou sem provedor · sem a opção</span>
+            <div data-sugestoes="anonimo"></div>
+          </div>
+        </div>
+
+        <!-- gaveta do endereço externo (SPEC 003) com o aviso de fallback -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- estado: veio do Enter, com o aviso -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">veio do Enter · com o aviso</span>
+            <div class="quadro-tela" data-gaveta="externo" data-toggle="org-externo-enter" data-aberta data-fallback="sem-numeracao"></div>
+          </div>
+          <!-- estado: veio do clique, sem aviso — a gaveta da SPEC 003, igual -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">veio do clique · sem aviso (SPEC 003)</span>
+            <div class="quadro-tela" data-gaveta="externo" data-toggle="org-externo-clique" data-aberta></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- estado: ao vivo — o encadeamento inteiro -->
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-1">
+            <span class="text-overline drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · digite, clique na opção externa ou simule o Enter</span>
+            <!-- andaime do mock: faz as vezes dos swaps do HTMX -->
+            <div class="flex flex-wrap gap-2">
+              <button type="button" id="andaime-digitar" class="btn btn-onsen btn-sm">Digitar</button>
+              <button type="button" id="andaime-enter-fallback" class="btn btn-ghost btn-glass btn-sm">Enter · fora da faixa</button>
+              <button type="button" id="andaime-enter-falha-dupla" class="btn btn-ghost btn-glass btn-sm">Enter · externo também falha</button>
+              <button type="button" id="andaime-enter-anonimo" class="btn btn-ghost btn-glass btn-sm">Enter · sem login</button>
+              <button type="button" id="andaime-limpar" class="btn btn-ghost btn-glass btn-sm">Limpar</button>
+            </div>
+          </div>
+
+          <!-- página: core/home.html -->
+          <div class="quadro-tela tela-home" id="quadro-vivo">
+            <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+            <div id="mapa-tela" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+            <!-- fica na página: a UI flutuante da busca; #sugestoes-busca e #resultado-busca são os alvos -->
+            <div data-busca></div>
+            <!-- página: <div id="gaveta-entidade"></div> — alvo do OOB (innerHTML) -->
+            <div id="gaveta-entidade"></div>
+          </div>
+        </div>
+
+        <!-- estados da tela, lado a lado -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- estado: sugestões com a opção externa por último -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">digitando · a opção externa por último</span>
+            <div class="quadro-tela tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="vazio"></div>
+              <!-- partial: search/partials/_sugestoes.html — resposta de search:rotear_busca em #sugestoes-busca -->
+              <!-- partial: geocodificacao_externa/partials/_sugestao_externa.html — html da última SecaoResultado; hx-post em geocodificacao_externa:selecionar -->
+              <div data-busca data-sugestoes-tela="logado"></div>
+              <!-- /partial -->
+              <!-- /partial -->
+            </div>
+          </div>
+
+          <!-- estado: Enter com fallback — ponto externo e a gaveta com o aviso -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">Enter · base oficial falhou, resultado externo com aviso</span>
+            <div class="quadro-tela tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="ponto"></div>
+              <!-- partial: geocodificacao_externa/partials/_resultado_externo.html — resposta de search:comitar em #resultado-busca -->
+              <!-- partial: geocodificacao_externa/partials/_gaveta_endereco_externo.html — por OOB em #gaveta-entidade; recebe aviso_fallback -->
+              <div data-gaveta="externo" data-toggle="tela-enter-fallback" data-aberta data-fallback="sem-numeracao"></div>
+              <!-- /partial -->
+              <!-- /partial -->
+            </div>
+          </div>
+
+          <!-- estado de falta: Enter em que o externo também falha — os dois motivos -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">Enter · externo também falha, os dois motivos</span>
+            <div class="quadro-tela quadro-tela-baixo tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="vazio"></div>
+              <!-- partial: mapping/_aviso.html — resposta de search:comitar em #resultado-busca -->
+              <div data-busca data-aviso="falha-dupla"></div>
+              <!-- /partial -->
+            </div>
+          </div>
+
+          <!-- estado de falta: Enter sem login ou sem provedor — só o motivo da base oficial -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">Enter · sem login ou sem provedor, só o motivo oficial</span>
+            <div class="quadro-tela quadro-tela-baixo tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="vazio"></div>
+              <!-- partial: mapping/_aviso.html — resposta de search:comitar em #resultado-busca -->
+              <div data-busca data-aviso="sem-numeracao"></div>
+              <!-- /partial -->
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Glifos desta tela. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <!-- JÁ EXISTE: o globo do provedor externo (SPEC 003) -->
+      <g id="glifo-globo">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/>
+      </g>
+      <!-- JÁ EXISTE: o do botão da gaveta do endereço externo -->
+      <g id="glifo-lote-proximo">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- A busca da home, como está em core/home.html. -->
+  <template id="molde-busca">
+    <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">
+      <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+        <div class="relative w-full flex items-center">
+          <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="search" value="rua augusta, 100" class="input input-glass pl-11" />
+        </div>
+      </div>
+      <div class="pointer-events-auto w-11/12 max-w-2xl mt-3" data-sugestoes-busca></div>
+      <div class="pointer-events-auto w-11/12 max-w-2xl mt-3" data-resultado-busca></div>
+    </div>
+  </template>
+
+  <!-- As seções oficiais de "rua augusta, 100", como os partials de hoje as renderizam. -->
+  <template id="secao-endereco-lote">
+    <ul class="flex flex-col gap-0.5">
+      <li class="suggestion-item items-baseline gap-4">
+        <span class="font-medium">R AUGUSTA <span class="text-code text-sm">(codlog: 01934-8)</span>, 100</span>
+        <span class="text-code text-sm shrink-0">010.012.0034-1</span>
+        <span class="ml-auto flex items-center gap-2 shrink-0"><span class="badge badge-poligono badge-sm">F</span></span>
+      </li>
+    </ul>
+  </template>
+  <template id="secao-endereco-nome">
+    <ul class="flex flex-col gap-0.5">
+      <li class="suggestion-item items-baseline gap-4">
+        <span class="text-code text-sm w-16 shrink-0">01934</span>
+        <span class="font-medium">R AUGUSTA, 100</span>
+        <span class="ml-auto flex items-center gap-2 shrink-0"><span class="badge badge-ponto badge-sm">Endereço</span></span>
+      </li>
+    </ul>
+  </template>
+  <!-- geocodificacao_externa/partials/_sugestao_externa.html -->
+  <template id="secao-externa">
+    <ul class="flex flex-col gap-0.5">
+      <li class="suggestion-item items-center gap-4" data-sugestao-externa>
+        <svg class="icon-glow w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-globo"/></svg>
+        <span class="font-medium truncate" data-texto>rua augusta, 100</span>
+        <span class="ml-auto flex items-center gap-2 shrink-0">
+          <span class="text-xs text-base-content/60">via Google</span>
+          <span class="badge badge-ponto badge-sm">Endereço</span>
+        </span>
+      </li>
+    </ul>
+  </template>
+
+  <!-- O miolo do aviso de fallback. -->
+  <template id="miolo-aviso-fallback">
+    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-globo"/></svg>
+    <span data-mensagem></span>
+  </template>
+
+  <!-- Conteúdo da gaveta do endereço externo (SPEC 003), com o lugar do aviso de fallback. -->
+  <template id="conteudo-externo">
+    <input type="checkbox" class="gaveta-lateral-toggle">
+    <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+      <header class="gaveta-lateral-cabecalho">
+        <p class="text-overline text-madeira-600">Entidade localizada</p>
+        <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Endereço externo</h2>
+        <p class="text-sm font-medium mt-2">R. Augusta, 100 - Consolação, São Paulo - SP, 01304-000, Brasil</p>
+        <span class="badge badge-info badge-soft badge-sm font-bold mt-3" title="Precisão declarada pelo provedor">Interpolada na via</span>
+      </header>
+
+      <div class="gaveta-lateral-corpo" data-scroll-etched>
+        <div class="gaveta-lateral-rolador" data-rolador>
+          <div class="gaveta-lateral-conteudo">
+            <!-- aviso de fallback: só quando veio do Enter -->
+            <div role="status" class="alert alert-warning alert-soft items-start text-sm" data-lugar-aviso hidden></div>
+
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-globo"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Geocodificado por</p>
+                <p class="font-bold leading-tight">Google</p>
+                <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+              </div>
+            </div>
+
+            <form class="flex flex-col gap-2 pt-1">
+              <button type="submit" class="btn btn-onsen w-full">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-lote-proximo"/></svg>
+                Buscar lote mais próximo
+              </button>
+              <p class="text-xs text-base-content/60 text-center">Procura em qualquer logradouro, a até 50 m do ponto.</p>
+            </form>
+          </div>
+        </div>
+        <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+      </div>
+    </div>
+    <label class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+      <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    </label>
+  </template>
+
+  <script type="module">
+    // andaime do mock: erro de carga aparece na tela, não só no console.
+    function denunciar(mensagem) {
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        '<pre class="fixed top-0 inset-x-0 z-50 m-0 p-3 text-xs bg-error text-error-content whitespace-pre-wrap">' + mensagem + "</pre>",
+      );
+    }
+    window.addEventListener("error", (evento) => denunciar("erro: " + evento.message));
+    window.addEventListener("unhandledrejection", (evento) => denunciar("falhou: " + evento.reason));
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    // No produto a config desce do servidor; o mock não tem Django por trás do Live Server.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5535, -46.6545];
+    const PONTO = [-23.5535, -46.6545];
+    const COR_PONTO = "#00B4D8";
+
+    // As mensagens da SPEC §6 e as de hoje, na boca dos partials reais.
+    const MOTIVOS = {
+      "sem-numeracao": "O número informado está fora da faixa de numeração cadastrada para este logradouro.",
+      "sem-segmento": "Não foi possível localizar o logradouro para geocodificar este endereço.",
+      "fora-da-base": "O logradouro não foi encontrado na base oficial.",
+    };
+    const MSG_FALLBACK = (motivo) => motivo + " O resultado veio do serviço externo (Google), fora da base oficial.";
+    const AVISOS = {
+      "falha-dupla": MOTIVOS["sem-segmento"] + " O serviço externo não localizou este endereço com precisão suficiente.",
+      "sem-numeracao": MOTIVOS["sem-numeracao"],
+    };
+    const SECOES = {
+      logado: [
+        ["Endereço cadastrado (lote)", "secao-endereco-lote"],
+        ["Endereço (por nome)", "secao-endereco-nome"],
+        ["Geocodificação externa", "secao-externa"],
+      ],
+      "so-externa": [["Geocodificação externa", "secao-externa"]],
+      anonimo: [
+        ["Endereço cadastrado (lote)", "secao-endereco-lote"],
+        ["Endereço (por nome)", "secao-endereco-nome"],
+      ],
+    };
+
+    async function partial(caminho) {
+      const r = await fetch(caminho);
+      if (!r.ok) throw new Error(r.status + " em " + caminho + " — sirva a RAIZ do projeto");
+      return r.text();
+    }
+    const semTags = (texto) => texto.replace(TAG_DE_TEMPLATE, "").trim();
+
+    const [filtros, fundo, avisoBruto] = await Promise.all([
+      partial("/templates/partials/_filtros_gravacao.html"),
+      partial("/templates/mapping/_mapa_fullscreen.html"),
+      partial("/templates/mapping/_aviso.html"),
+    ]);
+    document.getElementById("defs-aplicacao").innerHTML = semTags(filtros);
+    document.getElementById("fundo-home").innerHTML = semTags(fundo);
+
+    // O aviso é o mapping/_aviso.html da aplicação: só a placa, sem o OOB que fecha as sugestões.
+    function aviso(chave) {
+      const molde = document.createElement("template");
+      molde.innerHTML = semTags(avisoBruto.replace("{{ mensagem }}", AVISOS[chave]));
+      return molde.content.querySelector("[role=alert]").cloneNode(true);
+    }
+
+    function preencherAvisoFallback(alvo, chave) {
+      alvo.replaceChildren(document.getElementById("miolo-aviso-fallback").content.cloneNode(true));
+      alvo.querySelector("[data-mensagem]").textContent = MSG_FALLBACK(MOTIVOS[chave]);
+      alvo.hidden = false;
+    }
+
+    // O search/partials/_sugestoes.html da aplicação, com as seções de cada estado.
+    function sugestoes(estado) {
+      const painel = document.createElement("div");
+      painel.className = "glass-panel suggestion-panel";
+      SECOES[estado].forEach(([titulo, idMolde], indice) => {
+        const secao = document.createElement("section");
+        secao.className = "min-h-0 flex flex-col";
+        secao.innerHTML = '<h3 class="text-overline px-2 mb-1 shrink-0"></h3><div class="suggestion-section-scroll"></div>';
+        secao.querySelector("h3").textContent = titulo;
+        const rolador = secao.querySelector(".suggestion-section-scroll");
+        if (indice === 0) rolador.id = "sugestao-top";
+        rolador.appendChild(document.getElementById(idMolde).content.cloneNode(true));
+        painel.appendChild(secao);
+      });
+      return painel;
+    }
+
+    function busca(alvo) {
+      alvo.replaceWith(document.getElementById("molde-busca").content.cloneNode(true));
+    }
+
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers,
+        version: WMS.version,
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+
+    function ponto(mapa) {
+      return L.circleMarker(PONTO, {
+        radius: 8, color: COR_PONTO, weight: 3, fillColor: COR_PONTO, fillOpacity: 0.6,
+      }).addTo(mapa);
+    }
+
+    function gaveta(idToggle, aberta, fallback) {
+      const casca = document.createElement("div");
+      casca.className = "gaveta-lateral";
+      casca.appendChild(document.getElementById("conteudo-externo").content.cloneNode(true));
+      const toggle = casca.querySelector(".gaveta-lateral-toggle");
+      toggle.id = idToggle;
+      toggle.checked = aberta;
+      casca.querySelector(".paleta-gaveta").htmlFor = toggle.id;
+      if (fallback) preencherAvisoFallback(casca.querySelector("[data-lugar-aviso]"), fallback);
+      return casca;
+    }
+
+    // Moléculas e organismos estáticos.
+    document.querySelectorAll("[data-aviso-fallback]").forEach((alvo) => preencherAvisoFallback(alvo, alvo.dataset.avisoFallback));
+    document.querySelectorAll("[data-sugestoes]").forEach((alvo) => alvo.appendChild(sugestoes(alvo.dataset.sugestoes)));
+
+    // Estados da tela: busca com sugestões ou aviso, gavetas e mapas de cada quadro.
+    document.querySelectorAll("[data-busca][data-sugestoes-tela]").forEach((alvo) => {
+      const estado = alvo.dataset.sugestoesTela;
+      const quadro = alvo.parentElement;
+      busca(alvo);
+      quadro.querySelector("[data-sugestoes-busca]").appendChild(sugestoes(estado));
+    });
+    document.querySelectorAll("[data-busca][data-aviso]").forEach((alvo) => {
+      const chave = alvo.dataset.aviso;
+      const quadro = alvo.parentElement;
+      busca(alvo);
+      quadro.querySelector("[data-resultado-busca]").appendChild(aviso(chave));
+    });
+    document.querySelectorAll("[data-gaveta]").forEach((alvo) => {
+      alvo.appendChild(gaveta(alvo.dataset.toggle, alvo.hasAttribute("data-aberta"), alvo.dataset.fallback));
+    });
+
+    base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15));
+
+    document.querySelectorAll("[data-mapa]").forEach((alvo, indice) => {
+      alvo.id = "mapa-estado-" + indice;
+      const mapa = base(L.map(alvo.id, {
+        zoomControl: false, minZoom: 13, maxZoom: 19,
+        dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+      }).setView(CENTRO, alvo.dataset.mapa === "vazio" ? 16 : 18));
+      if (alvo.dataset.mapa === "vazio") return;
+      if (alvo.parentElement.querySelector("[data-gaveta]")) mapa.panBy([-180, 0], { animate: false });
+      ponto(mapa);
+    });
+
+    const { montarBarrasGravadas } = await import("/static/src/js/ui/scroll_etched.js");
+    montarBarrasGravadas();
+
+    // andaime do mock: o que os swaps do HTMX fariam na tela ao vivo.
+    const quadroVivo = document.getElementById("quadro-vivo");
+    busca(quadroVivo.querySelector("[data-busca]"));
+    const mapaTela = base(L.map("mapa-tela", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 16));
+    const alvoGaveta = document.getElementById("gaveta-entidade");
+    const alvoSugestoes = quadroVivo.querySelector("[data-sugestoes-busca]");
+    const alvoResultado = quadroVivo.querySelector("[data-resultado-busca]");
+    let camadaPonto = null;
+
+    function limpar() {
+      alvoGaveta.replaceChildren();
+      alvoSugestoes.replaceChildren();
+      alvoResultado.replaceChildren();
+      if (camadaPonto) { camadaPonto.remove(); camadaPonto = null; }
+      mapaTela.setView(CENTRO, 16);
+    }
+
+    function resultadoExterno(fallback) {
+      limpar();
+      camadaPonto = ponto(mapaTela);
+      // o _mapa.html vai para #resultado-busca: não vazio, a busca compacta como no produto
+      alvoResultado.innerHTML = "<span hidden></span>";
+      alvoGaveta.replaceChildren(gaveta("tela-viva", true, fallback));
+      montarBarrasGravadas();
+      const recuo = alvoGaveta.firstElementChild.offsetWidth + 80;
+      mapaTela.fitBounds(L.latLngBounds([PONTO, PONTO]), { maxZoom: 18, paddingTopLeft: [recuo, 120], paddingBottomRight: [80, 80] });
+    }
+
+    function avisoNaBusca(chave) {
+      limpar();
+      alvoResultado.replaceChildren(aviso(chave));
+    }
+
+    document.getElementById("andaime-digitar").addEventListener("click", () => {
+      limpar();
+      alvoSugestoes.replaceChildren(sugestoes("logado"));
+    });
+    document.getElementById("andaime-enter-fallback").addEventListener("click", () => resultadoExterno("sem-numeracao"));
+    document.getElementById("andaime-enter-falha-dupla").addEventListener("click", () => avisoNaBusca("falha-dupla"));
+    document.getElementById("andaime-enter-anonimo").addEventListener("click", () => avisoNaBusca("sem-numeracao"));
+    document.getElementById("andaime-limpar").addEventListener("click", limpar);
+
+    // A opção externa é o gatilho real: no produto é o hx-post em geocodificacao_externa:selecionar.
+    alvoSugestoes.addEventListener("click", (evento) => {
+      const item = evento.target.closest("[data-sugestao-externa]");
+      if (!item) return;
+      item.classList.add("htmx-request");
+      setTimeout(() => resultadoExterno(null), 400);
+    });
+  </script>
+</body>
+</html>

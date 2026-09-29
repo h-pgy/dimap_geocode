@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 from pydantic import BaseModel
 
 from apps.mapping.context import contexto_aviso, contexto_mapa
+from apps.search.tentativas import FalhaBaseOficial
 from services.domain.geocodificador_externo import (
     ConsultaGeocodificacao,
     EnderecoExternoFeature,
@@ -29,6 +30,7 @@ TEMPLATE_RESULTADO_EXTERNO = "geocodificacao_externa/partials/_resultado_externo
 
 MSG_INDISPONIVEL = "O serviço externo de geocodificação está indisponível no momento."
 MSG_SEM_RESULTADO = "O serviço externo não localizou este endereço com precisão suficiente."
+MSG_FALLBACK = "{motivo} O resultado veio do serviço externo ({provedor}), fora da base oficial."
 
 
 class SelecaoGeocodificacaoExterna(BaseModel):
@@ -44,6 +46,7 @@ def geocodificar_externo(
     request: HttpRequest,
     geocodificador: GeocodificadorExterno,
     texto: str,
+    falha: FalhaBaseOficial | None = None,
 ) -> HttpResponse:
     entrada = GeocodificacaoExternaInput(
         consulta=ConsultaGeocodificacao(texto=texto),
@@ -52,10 +55,24 @@ def geocodificar_externo(
     try:
         endereco = geocodificador(entrada)
     except ProvedorIndisponivelError:
-        return render(request, TEMPLATE_AVISO, contexto_aviso(MSG_INDISPONIVEL))
+        return _aviso(request, MSG_INDISPONIVEL, falha)
     except SemResultadoAceitoError:
-        return render(request, TEMPLATE_AVISO, contexto_aviso(MSG_SEM_RESULTADO))
-    return render(request, TEMPLATE_RESULTADO_EXTERNO, _contexto_externo(endereco))
+        return _aviso(request, MSG_SEM_RESULTADO, falha)
+    contexto = _contexto_externo(endereco) | {"aviso_fallback": _aviso_fallback(falha, endereco)}
+    return render(request, TEMPLATE_RESULTADO_EXTERNO, contexto)
+
+
+def _aviso(request: HttpRequest, mensagem: str, falha: FalhaBaseOficial | None) -> HttpResponse:
+    # no Enter, o aviso diz primeiro o que a base oficial não encontrou
+    texto = mensagem if falha is None else f"{falha.motivo} {mensagem}"
+    return render(request, TEMPLATE_AVISO, contexto_aviso(texto))
+
+
+def _aviso_fallback(falha: FalhaBaseOficial | None, endereco: EnderecoExternoFeature) -> str | None:
+    if falha is None:
+        return None  # veio do clique: a pessoa escolheu o externo
+    provedor = endereco.attributes.provedor.rotulo
+    return MSG_FALLBACK.format(motivo=falha.motivo, provedor=provedor)
 
 
 def _contexto_externo(endereco: EnderecoExternoFeature) -> dict[str, Any]:

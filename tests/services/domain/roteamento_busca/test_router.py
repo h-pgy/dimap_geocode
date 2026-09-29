@@ -409,7 +409,11 @@ class TestEndereco:
 
     def test_tipo_enum(self) -> None:
         r = rotear("avenida paulista, 3")
-        assert r.tipos == [TipoEntrada.ENDERECO_LOTE, TipoEntrada.ENDERECO]
+        assert r.tipos == [
+            TipoEntrada.ENDERECO_LOTE,
+            TipoEntrada.ENDERECO,
+            TipoEntrada.GEOCODIFICACAO_EXTERNA,
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +484,11 @@ class TestEnderecoLoteRoteador:
     def test_endereco_lote_precede_endereco(self) -> None:
         # ENDERECO_LOTE sempre à frente de ENDERECO na ordenação por precedência
         r = rotear("avenida paulista, 100")
-        assert r.tipos == [TipoEntrada.ENDERECO_LOTE, TipoEntrada.ENDERECO]
+        assert r.tipos == [
+            TipoEntrada.ENDERECO_LOTE,
+            TipoEntrada.ENDERECO,
+            TipoEntrada.GEOCODIFICACAO_EXTERNA,
+        ]
 
     def test_endereco_por_codlog_gera_endereco_lote(self) -> None:
         r = rotear("12345 100")

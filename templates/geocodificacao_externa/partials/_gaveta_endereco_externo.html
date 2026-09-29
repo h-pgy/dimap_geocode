@@ -13,6 +13,12 @@
     <div class="gaveta-lateral-corpo" data-scroll-etched>
       <div class="gaveta-lateral-rolador" data-rolador>
         <div class="gaveta-lateral-conteudo">
+          {% if aviso_fallback %}
+            <div role="status" class="alert alert-warning alert-soft items-start text-sm">
+              <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+              <span>{{ aviso_fallback }}</span>
+            </div>
+          {% endif %}
           <div class="card-well p-4 flex gap-4 items-center">
             <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>

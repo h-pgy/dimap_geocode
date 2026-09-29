@@ -3273,6 +3273,44 @@
           </div>
           <p class="text-xs text-base-content/60 mt-2">Composição de <span class="text-code">.card-well</span> + <span class="text-code">.icon-bubble</span> + overline, com o glifo do globo. O nome do provedor vem do domínio; a peça não conhece nenhum.</p>
         </div>
+
+        <div>
+          <span class="text-overline">Item de sugestão externa (SPEC geocodificacao_externa/004) <span class="font-normal text-base-content/50">— a última seção das sugestões de endereço por nome</span></span>
+          <div class="card-well p-3 flex flex-col gap-3 max-w-2xl mt-3">
+            <ul class="flex flex-col gap-0.5">
+              <li class="suggestion-item items-center gap-4">
+                <svg class="icon-glow w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+                <span class="font-medium truncate">rua augusta, 100</span>
+                <span class="ml-auto flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-base-content/60">via Google</span>
+                  <span class="badge badge-ponto badge-sm">Endereço</span>
+                </span>
+              </li>
+            </ul>
+            <ul class="flex flex-col gap-0.5">
+              <li class="suggestion-item htmx-request items-center gap-4">
+                <svg class="icon-glow w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+                <span class="font-medium truncate">av. brigadeiro faria lima, 3477 - itaim bibi, são paulo - sp, 04538-133</span>
+                <span class="ml-auto flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-base-content/60">via Google</span>
+                  <span class="badge badge-ponto badge-sm">Endereço</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2"><span class="text-code">.suggestion-item</span> com o globo em <span class="text-code">.icon-glow</span>, o texto como digitado (truncado) e o provedor antes do <span class="text-code">.badge-ponto</span>. O segundo item mostra o texto longo no estado de confirmação (<span class="text-code">.htmx-request</span>).</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Aviso de fallback (SPEC geocodificacao_externa/004) <span class="font-normal text-base-content/50">— topo da gaveta do endereço externo, quando ele veio pelo Enter</span></span>
+          <div class="max-w-md mt-3">
+            <div role="status" class="alert alert-warning alert-soft items-start text-sm">
+              <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+              <span>O número informado está fora da faixa de numeração cadastrada para este logradouro. O resultado veio do serviço externo (Google), fora da base oficial.</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O <span class="text-code">.alert-warning .alert-soft</span> do aviso de hoje, com o glifo do globo no lugar do triângulo e <span class="text-code">role="status"</span>: acompanha um resultado, não o substitui.</p>
+        </div>
       </div>
     </section>
 

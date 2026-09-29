@@ -2,8 +2,8 @@
 spec: geocodificacao_externa/004
 versao: v1
 atualizado_em: 2026-09-27
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
 ---

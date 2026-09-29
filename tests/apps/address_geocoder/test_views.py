@@ -3,11 +3,26 @@ endereço (SPEC localizacao_lote/002) — supersede o comportamento da SPEC loca
 tirava a gaveta de cena (§2 da SPEC 002: "abre a gaveta lateral do endereço")."""
 
 import pytest
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
 import apps.address_geocoder.views as views
-from services.domain.address_geocod import EnderecoAttributes, EnderecoFeature
+import apps.geocodificacao_externa.views as externo_views
+from apps.unidades.models import CorUnidade, Unidade
+from apps.user_admin.models import Perfil
+from services.domain.address_geocod import (
+    EnderecoAttributes,
+    EnderecoFeature,
+    NumeracaoNaoEncontradaError,
+)
+from services.domain.geocodificador_externo import (
+    ConsultaGeocodificacao,
+    EnderecoExternoFeature,
+    GeocodificadorExterno,
+    PoliticaGeocodificacao,
+    Provedor,
+    ProvedorGeocodificacao,
+)
 from services.domain.geometry import PointGeometry
 
 # ---------------------------------------------------------------------------
@@ -83,3 +98,58 @@ def test_endereco_por_nome_aproximado_mostra_grau_de_certeza(
 
     assert "badge-info" in conteudo
     assert "87%" in conteudo
+
+
+# ---------------------------------------------------------------------------
+# Clique numa sugestão oficial que falha: aviso, sem cair no externo
+# ---------------------------------------------------------------------------
+
+
+class _ProvedorDuble(ProvedorGeocodificacao):
+    provedor = Provedor.GOOGLE
+
+    def __init__(self) -> None:
+        super().__init__(PoliticaGeocodificacao())
+        self.chamadas = 0
+
+    def __call__(self, consulta: ConsultaGeocodificacao) -> list[EnderecoExternoFeature]:
+        self.chamadas += 1
+        return []
+
+
+class _AddressGeocoderForaDaFaixa:
+    def __init__(self, *_args: object) -> None:
+        pass
+
+    def __call__(self, _entrada: object) -> EnderecoFeature:
+        raise NumeracaoNaoEncontradaError()
+
+
+def _perfil() -> Perfil:
+    return Perfil(
+        rf="890001",
+        nome="Servidor",
+        sobrenome="Clique",
+        unidade=Unidade(nome="DIMAP-1", cor=CorUnidade.AGUA_700),
+    )
+
+
+def test_clique_em_sugestao_oficial_que_falha_mantem_o_aviso(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(views, "AddressGeocoder", _AddressGeocoderForaDaFaixa)
+    provedor = _ProvedorDuble()
+    monkeypatch.setattr(
+        externo_views,
+        "build_geocodificador_externo",
+        lambda _settings: GeocodificadorExterno(provedor),
+    )
+    request = RequestFactory().post(
+        reverse("address_geocoder:selecionar"), {"codlog": "019348", "numero": "9999"}
+    )
+    request.user = _perfil()
+
+    conteudo = views.selecionar(request).content.decode()
+
+    assert views.MSG_SEM_NUMERACAO in conteudo
+    assert provedor.chamadas == 0

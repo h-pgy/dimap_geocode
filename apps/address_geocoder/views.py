@@ -6,6 +6,7 @@ from django.views.decorators.http import require_POST
 
 from apps.mapping.context import contexto_aviso, contexto_mapa
 from apps.search.secoes import SecaoResultado
+from apps.search.tentativas import FalhaBaseOficial
 from services.domain.address_geocod import (
     AddressGeocodInput,
     AddressGeocoder,
@@ -78,13 +79,9 @@ def _properties(f: EnderecoFeature) -> GeoJsonProperties:
     )
 
 
-def geocodificar_endereco(
-    request: HttpRequest, codlog: str, numero: object, score: float | None = None
-) -> HttpResponse:
-    """Geocodifica endereço (codlog 6 dígitos + número) → ponto e abre a gaveta do endereço
-    (SPEC localizacao_lote/002). Reutilizável pela view e pela busca comitada. `numero` chega como
-    str (POST) ou int (candidato) — o Pydantic coage. `score` é só apresentação (grau de certeza
-    do fuzzy match, quando houver) — nenhuma regra do domínio o lê."""
+def resolver_endereco(codlog: str, numero: object) -> EnderecoFeature | FalhaBaseOficial:
+    """Interpola o endereço (codlog 6 dígitos + número) na base oficial. `numero` chega como str
+    (POST) ou int (candidato) — o Pydantic coage."""
     entrada = AddressGeocodInput.model_validate({
         "codlog": codlog,
         "numero": numero,                            # Pydantic coage "123" → 123 (Field(gt=0))
@@ -94,11 +91,20 @@ def geocodificar_endereco(
     })
     geocoder = AddressGeocoder(LogradouroGeocoder(build_fetcher(settings)))
     try:
-        feature = geocoder(entrada)
+        return geocoder(entrada)
     except SegmentoNaoEncontradoError:
-        return render(request, "mapping/_aviso.html", contexto_aviso(MSG_SEM_SEGMENTO))
+        return FalhaBaseOficial(motivo=MSG_SEM_SEGMENTO)
     except NumeracaoNaoEncontradaError:
-        return render(request, "mapping/_aviso.html", contexto_aviso(MSG_SEM_NUMERACAO))
+        return FalhaBaseOficial(motivo=MSG_SEM_NUMERACAO)
+
+
+def renderizar_endereco(
+    request: HttpRequest,
+    feature: EnderecoFeature,
+    score: float | None = None,
+) -> HttpResponse:
+    """Desenha o ponto e abre a gaveta do endereço (SPEC localizacao_lote/002). `score` é só
+    apresentação (grau de certeza do fuzzy match, quando houver) — nenhuma regra do domínio o lê."""
     geojson = to_geojson_feature_collection([feature], _properties)
     contexto = contexto_mapa(geojson, MAP_COR_PONTO) | {
         "endereco": feature.attributes,
@@ -107,6 +113,19 @@ def geocodificar_endereco(
         "raio_m": LOTE_MAIS_PROXIMO_RAIO_M,
     }
     return render(request, "address_geocoder/partials/_resultado_endereco.html", contexto)
+
+
+def geocodificar_endereco(
+    request: HttpRequest,
+    codlog: str,
+    numero: object,
+    score: float | None = None,
+) -> HttpResponse:
+    resolvido = resolver_endereco(codlog, numero)
+    if isinstance(resolvido, FalhaBaseOficial):
+        # o clique numa sugestão oficial é escolha explícita: a falha vira aviso, sem fallback
+        return render(request, "mapping/_aviso.html", contexto_aviso(resolvido.motivo))
+    return renderizar_endereco(request, resolvido, score)
 
 
 @require_POST
