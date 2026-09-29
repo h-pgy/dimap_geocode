@@ -1,11 +1,12 @@
 ---
 spec: geocodificacao_externa/002
-versao: v1
-atualizado_em: 2026-09-27
+versao: v2
+atualizado_em: 2026-09-28
 testes_tdd: false
 implementado: false
 changelog:
   - v1: versão inicial
+  - v2: provedor Google traduz a v4 do Geocoding e o endereço externo perde `parcial`
 ---
 
 # SPEC geocodificacao_externa/002 — Geocodificador externo agnóstico de provedor
@@ -69,7 +70,6 @@ class EnderecoExternoAttributes(BaseModel):
     cep: str | None = None
     provedor: Provedor
     precisao: Precisao
-    parcial: bool = False          # o provedor casou só parte do texto buscado
 
 
 EnderecoExternoFeature = GeoFeature[PointGeometry, EnderecoExternoAttributes]
@@ -111,7 +111,7 @@ class ProvedorGeocodificacao(ABC):
 - Conferir o município pela geometria, em vez do nome — sem dono ainda.
 
 ## 5 · Peças de referência a compor
-- `@services/integrations/geocodificador_externo` → `ClienteGoogle`, `build_cliente_google`, o espelho e `GoogleGeocodingError` (SPEC 001).
+- `@services/integrations/geocodificador_externo` → `google.Cliente`, `google.build_cliente`, o espelho e `ClienteGeocodificacaoError` (SPEC 001).
 - `@services/domain/geometry` → `GeoFeature`, `PointGeometry`, `reprojetar`: o envelope e a reprojeção centralizada.
 - `@services/utils/normalization` → `normalize_text`: comparação do município e da UF.
 - `@services/domain/documento_oficial/config.py` → `_definidos`: só o que o ambiente definiu sobrepõe
@@ -191,11 +191,15 @@ class GeocodificadorExterno:
 política → requisição do Google, resposta do Google → endereço externo.
 
 ```python
-PRECISAO_POR_LOCATION_TYPE: dict[LocationTypeGoogle, Precisao] = {
+# o erro é comum a todos os provedores; o Google entra como namespace
+from services.integrations.geocodificador_externo import ClienteGeocodificacaoError, google
+
+PRECISAO_POR_GRANULARITY: dict[google.Granularity, Precisao] = {
     "ROOFTOP": Precisao.IMOVEL,
     "RANGE_INTERPOLATED": Precisao.INTERPOLADA,
     "GEOMETRIC_CENTER": Precisao.LOGRADOURO,
     "APPROXIMATE": Precisao.APROXIMADA,
+    "GRANULARITY_UNSPECIFIED": Precisao.APROXIMADA,  # sem granularidade declarada, a menor certeza
 }
 
 # tipos de componente do Google por atributo; vence o primeiro tipo presente no resultado
@@ -206,13 +210,13 @@ TIPOS_MUNICIPIO = ("administrative_area_level_2", "locality")
 TIPOS_UF = ("administrative_area_level_1",)
 TIPOS_CEP = ("postal_code",)
 
-ClienteGoogleLike = Callable[[GoogleGeocodeRequest], GoogleGeocodeResponse]
+ClienteLike = Callable[[google.GeocodeRequest], google.GeocodeResponse]
 
 
 class ProvedorGoogle(ProvedorGeocodificacao):
     provedor = Provedor.GOOGLE
 
-    def __init__(self, politica: PoliticaGeocodificacao, cliente: ClienteGoogleLike) -> None:
+    def __init__(self, politica: PoliticaGeocodificacao, cliente: ClienteLike) -> None:
         super().__init__(politica)
         self._cliente = cliente
 
@@ -224,27 +228,31 @@ class ProvedorGoogle(ProvedorGeocodificacao):
         resposta = self._consultar(requisicao)
         return [self._resultado_para_endereco(r) for r in resposta.results]
 
-    def _montar_requisicao(self, consulta: ConsultaGeocodificacao) -> GoogleGeocodeRequest:
+    def _montar_requisicao(self, consulta: ConsultaGeocodificacao) -> google.GeocodeRequest:
+        # a v4 não filtra por componente: o recorte da política vai no endereço estruturado
         p = self.politica
-        return GoogleGeocodeRequest(
-            address=consulta.texto,
-            components={"country": p.pais, "administrative_area": p.uf, "locality": p.municipio},
-            language=p.idioma,
-            region=p.pais.lower(),  # ccTLD
+        return google.GeocodeRequest(
+            address=google.PostalAddress(
+                address_lines=[consulta.texto],
+                locality=p.municipio,
+                administrative_area=p.uf,
+                region_code=p.pais,
+            ),
+            language_code=p.idioma,
+            region_code=p.pais.lower(),  # ccTLD
         )
 
-    def _consultar(self, requisicao: GoogleGeocodeRequest) -> GoogleGeocodeResponse:
+    def _consultar(self, requisicao: google.GeocodeRequest) -> google.GeocodeResponse:
         try:
             return self._cliente(requisicao)
-        except GoogleGeocodingError as exc:
-            # a mensagem já sai sanitizada da integração (SPEC 001)
+        except ClienteGeocodificacaoError as exc:
             raise ProvedorIndisponivelError(str(exc)) from exc
 
-    def _resultado_para_endereco(self, r: GoogleGeocodeResult) -> EnderecoExternoFeature:
+    def _resultado_para_endereco(self, r: google.GeocodeResult) -> EnderecoExternoFeature:
         return EnderecoExternoFeature(
             geometry=PointGeometry(
                 type="Point",
-                coordinates=[r.geometry.location.lng, r.geometry.location.lat],
+                coordinates=[r.location.longitude, r.location.latitude],
             ),
             attributes=EnderecoExternoAttributes(
                 endereco_formatado=r.formatted_address,
@@ -255,22 +263,21 @@ class ProvedorGoogle(ProvedorGeocodificacao):
                 uf=self._componente(r, TIPOS_UF, curto=True),  # "SP", não "São Paulo"
                 cep=self._componente(r, TIPOS_CEP),
                 provedor=self.provedor,
-                precisao=PRECISAO_POR_LOCATION_TYPE[r.geometry.location_type],
-                parcial=r.partial_match,
+                precisao=PRECISAO_POR_GRANULARITY[r.granularity],
             ),
-            crs=CRS_GOOGLE,
+            crs=google.CRS,
         )
 
     def _componente(
         self,
-        r: GoogleGeocodeResult,
+        r: google.GeocodeResult,
         tipos: tuple[str, ...],
         curto: bool = False,
     ) -> str | None:
         for tipo in tipos:
             for componente in r.address_components:
                 if tipo in componente.types:
-                    return componente.short_name if curto else componente.long_name
+                    return componente.short_text if curto else componente.long_text
         return None
 ```
 
@@ -289,7 +296,7 @@ def definidos[M: BaseModel](modelo: type[M], valores: Mapping[str, object]) -> M
 PROVEDOR_PADRAO = Provedor.GOOGLE
 
 
-class GeocodificacaoSettingsLike(GoogleSettingsLike, Protocol):
+class GeocodificacaoSettingsLike(google.SettingsLike, Protocol):
     GEOCODIFICACAO_EXTERNA_PROVEDOR: str | None
     GEOCODIFICACAO_EXTERNA_IDIOMA: str | None
     GEOCODIFICACAO_EXTERNA_PAIS: str | None
@@ -315,7 +322,7 @@ def _provedor_google(
     source: GeocodificacaoSettingsLike,
     politica: PoliticaGeocodificacao,
 ) -> ProvedorGeocodificacao | None:
-    cliente = build_cliente_google(source)
+    cliente = google.build_cliente(source)
     return None if cliente is None else ProvedorGoogle(politica, cliente)
 
 
@@ -362,9 +369,9 @@ def build_geocodificador_externo(source: GeocodificacaoSettingsLike) -> Geocodif
 ```
 
 ## 7 · Caveats
-O município e a UF do resultado são conferidos no domínio, pelo texto normalizado. Pela documentação
-do Google, os componentes `locality` e `administrative_area` só enviesam a busca e não a restringem, e
-o projeto não tem o polígono do município para conferir pela geometria. O custo é que um provedor que
+O município e a UF do resultado são conferidos no domínio, pelo texto normalizado. A v4 do Google não
+filtra por componente (o endereço estruturado e o `regionCode` só enviesam a busca), e o projeto não
+tem o polígono do município para conferir pela geometria. O custo é que um provedor que
 grafe o município de outro jeito tem resultado bom descartado, e que resultados fora do recorte gastam
 cota antes de serem descartados.
 
@@ -382,14 +389,16 @@ a importá-lo de lá. A mesma regra ("só o definido sobrepõe o default") ganha
 política. O custo é mexer num módulo já entregue, sem mudança de comportamento.
 
 ## 8 · Testes (TDD)
-- `test_parser_google_mapeia_location_type_para_precisao` — parametrizado: `ROOFTOP` → imóvel,
-  `RANGE_INTERPOLATED` → interpolada, `GEOMETRIC_CENTER` → logradouro, `APPROXIMATE` → aproximada.
+- `test_parser_google_mapeia_granularity_para_precisao` — parametrizado: `ROOFTOP` → imóvel,
+  `RANGE_INTERPOLATED` → interpolada, `GEOMETRIC_CENTER` → logradouro, `APPROXIMATE` e
+  `GRANULARITY_UNSPECIFIED` → aproximada.
 - `test_parser_google_extrai_componentes_e_declara_o_crs_do_provedor` — um resultado com `route`,
   `street_number`, `sublocality_level_1`, `administrative_area_level_2`, `administrative_area_level_1`
-  e `postal_code` vira endereço externo com UF curta (`SP`), `parcial` do `partial_match` e `crs` 4326.
-- `test_provedor_google_traduz_a_politica_na_requisicao` — o cliente dublê recebe `components` com
-  país, UF e município da política, `language` e `region`.
-- `test_falha_do_cliente_google_vira_provedor_indisponivel` — `GoogleStatusError` do cliente dublê
+  e `postal_code` vira endereço externo com UF curta (`SP`) e `crs` 4326.
+- `test_provedor_google_traduz_a_politica_na_requisicao` — o cliente dublê recebe o texto em
+  `address_lines` e o município, a UF e o país da política no endereço estruturado, com
+  `language_code` e `region_code`.
+- `test_falha_do_cliente_google_vira_provedor_indisponivel` — `TransporteError` do cliente dublê
   sai como `ProvedorIndisponivelError`.
 - `test_geocodificador_descarta_resultado_fora_da_politica` — com um provedor dublê que implementa a
   porta, parametrizado: precisão *logradouro*, município de outra cidade, UF de outro estado e

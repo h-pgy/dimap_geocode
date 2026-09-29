@@ -2,6 +2,7 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
+import requests
 
 from services.utils.http import HttpFetcher, HttpFetchError, HttpRetryPolicy
 
@@ -59,3 +60,12 @@ def test_http_fetcher_repete_em_503_e_levanta_erro_proprio_ao_esgotar() -> None:
     _, kwargs = session.get.call_args
     assert kwargs["stream"] is True
     assert kwargs["timeout"] == politica.request_timeout_seconds
+
+
+def test_http_fetcher_traduz_erro_do_requests_sem_repetir() -> None:
+    session = _session(requests.exceptions.TooManyRedirects("Exceeded 30 redirects."))
+
+    with pytest.raises(HttpFetchError):
+        HttpFetcher(_politica(max_retries=3), session=session)(URL)
+
+    assert session.get.call_count == 1, "redirect em excesso é definitivo: repetir não ajuda"

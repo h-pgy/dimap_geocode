@@ -1,12 +1,13 @@
 ---
 spec: geocodificacao_externa/003
-versao: v1
-atualizado_em: 2026-09-27
+versao: v2
+atualizado_em: 2026-09-28
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
+  - v2: gaveta do endereço externo sem o aviso de correspondência parcial
 ---
 
 # SPEC geocodificacao_externa/003 — Endereço externo no mapa, na gaveta e no lote mais próximo
@@ -18,8 +19,7 @@ declarados e chegar ao lote mais próximo dele.
 
 ## 2 · Condições de pronto
 - [ ] Geocodificar um endereço pelo provedor externo desenha o **ponto** e abre a **gaveta do endereço
-      externo**: o endereço como o provedor o escreve, o **provedor**, a **precisão** e, quando houver,
-      o aviso de **correspondência parcial**.
+      externo**: o endereço como o provedor o escreve, o **provedor** e a **precisão**.
 - [ ] A geocodificação externa **exige login**: sem ele, a rota leva ao login e o provedor não é
       chamado.
 - [ ] A gaveta traz **"Buscar lote mais próximo"**.

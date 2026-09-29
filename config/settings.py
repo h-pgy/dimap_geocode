@@ -297,6 +297,8 @@ class _Settings(BaseSettings):
     )
     assinatura_id_chave: str = Field(default="k1", alias="ASSINATURA_ID_CHAVE")
 
+    google_geocoding_token: str = Field(default="", alias="GOOGLE_GEOCODING_TOKEN")
+
     @field_validator("documento_unidade", "documento_endereco", mode="before")
     @classmethod
     def _parse_linhas_institucionais(cls, v: Any) -> tuple[str, ...] | None:
@@ -465,6 +467,9 @@ DOCUMENTO_ENTRELINHA_MARCA_MM = _env.documento_entrelinha_marca_mm
 # traceback — o mesmo tipo que SelarInput/ConferirInput exigem.
 ASSINATURA_SEGREDO = SecretStr(_env.assinatura_segredo)
 ASSINATURA_ID_CHAVE = _env.assinatura_id_chave
+
+# SecretStr para o token não vazar em log nem traceback; vazio desliga a geocodificação externa.
+GOOGLE_GEOCODING_TOKEN = SecretStr(_env.google_geocoding_token)
 
 
 # Application definition
