@@ -1,10 +1,12 @@
-"""Testes de apps/acoes_lote/views.py (SPEC certidao_lancamento/001):
+"""Testes de apps/acoes_lote/views.py (SPECs certidao_lancamento/001 e 002):
 o router de ações do lote localizado — enforcement de SQL e ID válidos na borda,
-e restrição de oferta das ações do lote por competência de perfil.
+e restrição de oferta das ações do lote por competência de perfil —, e o do conjunto de lotes
+da gaveta inferior, que recebe a chave do conjunto.
 """
 
 from itertools import count
 
+from bs4 import BeautifulSoup
 from django.test import Client
 from django.urls import reverse
 import pytest
@@ -80,6 +82,10 @@ def _url_router() -> str:
     return reverse("acoes_lote:acoes")
 
 
+def _url_router_conjunto() -> str:
+    return reverse("acoes_lote:acoes_conjunto")
+
+
 # ---------------------------------------------------------------------------
 # Testes do router de ações do lote (SPEC 001 §8)
 # ---------------------------------------------------------------------------
@@ -120,6 +126,7 @@ def test_poco_de_acoes_lote_so_para_quem_tem_concessao_e_sql_valido(client: Clie
     assert f"id={id_poligono}" in corpo
     assert f"sql={sql_valido}" in corpo
     assert 'hx-target="#poco-modal"' in corpo
+    assert corpo.count('id="poco-acoes-lote"') == 1
 
     # Mesmo com concessão, SQL ausente ou fora do padrão SSS.QQQ.LLLL-D devolve o poço vazio, sem 500
     casos_invalidos: tuple[dict[str, str], ...] = (
@@ -134,5 +141,51 @@ def test_poco_de_acoes_lote_so_para_quem_tem_concessao_e_sql_valido(client: Clie
     )
     for params_invalidos in casos_invalidos:
         resposta = client.get(_url_router(), params_invalidos)
+        assert resposta.status_code == 200
+        assert resposta.content.strip() == b""
+
+
+# ---------------------------------------------------------------------------
+# Testes do router de ações do conjunto (SPEC 002 §8)
+# ---------------------------------------------------------------------------
+
+
+@banco
+@pytest.mark.django_db
+def test_poco_de_acoes_da_gaveta_inferior_so_para_quem_tem_concessao(client: Client) -> None:
+    unidade = _unidade("LOTE-CONJUNTO")
+    user_sem_concessao = _perfil(unidade, rf="880020", nome="Sem Concessao")
+    user_com_concessao = _perfil(unidade, rf="880021", nome="Com Concessao")
+    _conceder(_atribuir(unidade, _acao(SLUG_ACAO)), user_com_concessao.cargo_base)
+    chave = "8f92c0de"
+    params = {"chave": chave}
+
+    # Anônimo e autenticado sem concessão: a coluna não existe
+    resposta_anonimo = client.get(_url_router_conjunto(), params)
+    assert resposta_anonimo.status_code == 200
+    assert resposta_anonimo.content.strip() == b""
+
+    client.force_login(user_sem_concessao)
+    resposta_sem = client.get(_url_router_conjunto(), params)
+    assert resposta_sem.status_code == 200
+    assert resposta_sem.content.strip() == b""
+
+    # Com concessão: a coluna de ações, com o botão que leva a chave do conjunto ao modal
+    client.force_login(user_com_concessao)
+    resposta_com = client.get(_url_router_conjunto(), params)
+    assert resposta_com.status_code == 200
+    soup = BeautifulSoup(resposta_com.content.decode(), "html.parser")
+    coluna = soup.select_one("section#poco-acoes-conjunto.gaveta-coluna.gaveta-coluna-acoes")
+    assert coluna is not None
+    botoes = coluna.select(".poco-acoes button")
+    assert [botao.get_text(strip=True) for botao in botoes] == ["Certidão de lançamento"]
+    assert botoes[0]["hx-get"] == f"{reverse('certidao_lancamento:modal_conjunto')}?id={chave}"
+    assert botoes[0]["hx-target"] == "#poco-modal"
+    # A gaveta do lote abre por cima desta: o id do poço dela não pode se repetir aqui
+    assert soup.select_one("#poco-acoes-lote") is None
+
+    # Mesmo com concessão, sem a chave a resposta é vazia, sem 500
+    for params_invalidos in ({}, {"chave": ""}, {"chave": "   "}):
+        resposta = client.get(_url_router_conjunto(), params_invalidos)
         assert resposta.status_code == 200
         assert resposta.content.strip() == b""

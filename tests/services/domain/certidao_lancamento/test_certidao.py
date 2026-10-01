@@ -1,6 +1,7 @@
-"""Testes de services/domain/certidao_lancamento/certidao (SPEC certidao_lancamento/001): a
+"""Testes de services/domain/certidao_lancamento/certidao (SPECs certidao_lancamento/001 e 002): a
 composição da declaração de existência de lançamento (dados relacionados, despacho do tipo escolhido,
-ressalva e observações, planta opcional, rodapé com instante da consulta e amostra de artefato).
+ressalva e observações, planta opcional, rodapé com instante da consulta e amostra de artefato), de
+um lote e de um conjunto de lotes.
 """
 
 from collections.abc import Callable
@@ -18,9 +19,12 @@ from services.domain.certidao_lancamento.certidao import (
     CertidaoLancamento,
     MontarCertidaoLancamento,
     MontarCertidaoLancamentoInput,
+    corpo_do_despacho_conjunto,
 )
 from services.domain.certidao_lancamento.models import (
     CertidaoLancamentoInput,
+    ConjuntoDesenhado,
+    LoteUnico,
     PedidoCertidao,
     SentidoDespacho,
     TipoDespacho,
@@ -33,6 +37,8 @@ from services.domain.documento_oficial import (
     SeloConfig,
     SeloDeFecho,
     Subtitulo,
+    Tabela,
+    Titulo,
     montar_tema,
 )
 from services.domain.documento_oficial.models import TemaConfig
@@ -122,15 +128,27 @@ def _tipo_do_sentido(sentido: SentidoDespacho) -> TipoDespacho:
     return next(tipo for tipo in TipoDespacho if tipo.sentido is sentido)
 
 
+def _conjunto_desenhado() -> ConjuntoDesenhado:
+    return ConjuntoDesenhado(
+        lotes=(
+            _imovel(lote="0048", digito="5", numero_porta="100", complemento="SALA 12"),
+            _imovel(id_poligono="1002", lote="0049", digito="3", numero_porta="102"),
+            _imovel(id_poligono="1003", lote="0050", digito="1", numero_porta="104"),
+        ),
+        area_desenho_m2=1250.4,
+    )
+
+
 def _certidao_input(
     pedido: PedidoCertidao | None = None,
     imovel: LoteAttributes | None = None,
     planta: PlantaLocalizacao | None = None,
+    objeto: LoteUnico | ConjuntoDesenhado | None = None,
 ) -> CertidaoLancamentoInput:
     return CertidaoLancamentoInput(
         envelope=_envelope(),
         pedido=pedido or _pedido(),
-        imovel=imovel or _imovel(),
+        objeto=objeto or LoteUnico(imovel=imovel or _imovel()),
         planta=planta,
         consultado_em=datetime(2026, 9, 22, 14, 30, tzinfo=ZoneInfo("America/Sao_Paulo")),
         base_url="https://geocoder.dimap.pmsp/",
@@ -153,6 +171,16 @@ def _textos(conteudo: ConteudoDocumento) -> list[str]:
 
 def _indice_do_despacho(textos: list[str]) -> int:
     return next(i for i, texto in enumerate(textos) if texto.startswith("Solicitação "))
+
+
+def _subtitulos(conteudo: ConteudoDocumento) -> list[str]:
+    return [bloco.texto for bloco in conteudo.blocos if isinstance(bloco, Subtitulo)]
+
+
+def _despacho_do_conjunto(tipo: TipoDespacho) -> str:
+    pedido = _pedido(sentido=tipo.sentido, tipo_despacho=tipo)
+    textos = _textos(_conteudo(_certidao_input(pedido=pedido, objeto=_conjunto_desenhado())))
+    return textos[_indice_do_despacho(textos)]
 
 
 PNG_1X1 = (
@@ -191,6 +219,9 @@ _LOTES_VIZINHOS = (
     _quadra(333_054.0, 7_394_010.0, 14.0, 30.0),
     _quadra(333_022.0, 7_393_966.0, 46.0, 30.0),
 )
+# O terreno desenhado sobre os três lotes da frente da quadra, com a sobra de quem traça à mão.
+_LOTES_DO_CONJUNTO = (_LOTES_VIZINHOS[0], _LOTE_CERTIFICADO, _LOTES_VIZINHOS[1])
+_DESENHO_DO_CONJUNTO = _quadra(333_020.0, 7_394_007.0, 50.0, 36.0)
 
 
 def _ortofoto_sintetica(req: WmsMapRequest) -> WmsImage:
@@ -358,6 +389,155 @@ def test_planta_segue_o_pedido_e_nota_com_instante_da_consulta() -> None:
     assert "de forma automatizada" in texto
     assert "22/09/2026" in texto
     assert "14:30" in texto
+
+
+# ---------------------------------------------------------------------------
+# Certidão do conjunto de lotes (SPEC 002 §8)
+# ---------------------------------------------------------------------------
+
+ROL_DO_CONJUNTO = "005.003.0048-5, 005.003.0049-3 e 005.003.0050-1"
+
+
+def test_montar_certidao_do_conjunto_lista_todos_os_sqls_e_a_area() -> None:
+    conteudo = _conteudo(_certidao_input(objeto=_conjunto_desenhado()))
+
+    # Uma linha por lote, com SQL, endereço e complemento
+    tabelas = [bloco for bloco in conteudo.blocos if isinstance(bloco, Tabela)]
+    assert len(tabelas) == 1
+    assert tabelas[0].cabecalho == ("Contribuinte", "Endereço", "Complemento")
+    assert tabelas[0].linhas == (
+        ("005.003.0048-5", "AV PAULISTA, 100", "SALA 12"),
+        ("005.003.0049-3", "AV PAULISTA, 102", "—"),
+        ("005.003.0050-1", "AV PAULISTA, 104", "—"),
+    )
+
+    # A área do desenho entra no parágrafo, e a identificação de um imóvel só não aparece
+    textos = _textos(conteudo)
+    assert any("1.250 m²" in texto for texto in textos)
+    assert not any(texto.startswith("Identificação do imóvel") for texto in textos)
+    assert "Nome do interessado: Maria Salgado" in textos
+    assert "Processo SEI nº: 6017.2026/0012345-6" in textos
+
+    # O despacho sai no plural; "em maior área" e "parcial" citam o rol de contribuintes
+    assert _despacho_do_conjunto(TipoDespacho.POSSUI_LANCAMENTO) == (
+        "Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que os "
+        "imóveis relacionados acima possuem lançamento do Imposto Predial e Territorial Urbano – IPTU – "
+        "pelos respectivos contribuintes."
+    )
+    assert _despacho_do_conjunto(TipoDespacho.LANCAMENTO_EM_MAIOR_AREA).endswith(
+        f"IPTU, em maior área, pelos contribuintes números {ROL_DO_CONJUNTO}."
+    )
+    assert _despacho_do_conjunto(TipoDespacho.LANCAMENTO_PARCIAL).endswith(
+        f"lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelos contribuintes números "
+        f"{ROL_DO_CONJUNTO}."
+    )
+    assert "não foi possível a localização dos imóveis" in _despacho_do_conjunto(
+        TipoDespacho.IMOVEL_NAO_LOCALIZADO
+    )
+
+    # Sem o mapa no pedido, a declaração sai sem a planta
+    assert not any(isinstance(bloco, ImagemRaster) for bloco in conteudo.blocos)
+    assert _subtitulos(conteudo) == ["Dados relacionados à declaração", "Despacho"]
+
+    # Com o mapa, a seção fala dos imóveis, no plural
+    com_mapa = _conteudo(
+        _certidao_input(
+            pedido=_pedido(incluir_planta=True),
+            objeto=_conjunto_desenhado(),
+            planta=_planta(),
+        )
+    )
+    assert any(isinstance(bloco, ImagemRaster) for bloco in com_mapa.blocos)
+    assert _subtitulos(com_mapa)[-1] == "Localização dos Imóveis"
+
+
+def test_corpo_do_conjunto_enumera_o_rol_em_portugues() -> None:
+    tipo = TipoDespacho.LANCAMENTO_EM_MAIOR_AREA
+
+    assert corpo_do_despacho_conjunto(tipo, ("A",)).endswith("contribuintes números A.")
+    assert corpo_do_despacho_conjunto(tipo, ("A", "B")).endswith("contribuintes números A e B.")
+    assert corpo_do_despacho_conjunto(tipo, ("A", "B", "C")).endswith(
+        "contribuintes números A, B e C."
+    )
+
+
+def test_certidao_de_um_lote_mantem_o_texto() -> None:
+    objeto = LoteUnico(imovel=_imovel(complemento="SALA 12"))
+
+    conteudo = _conteudo(
+        _certidao_input(
+            pedido=_pedido(incluir_planta=True),
+            objeto=objeto,
+            planta=_planta(),
+        )
+    )
+
+    # A mesma sequência de blocos da SPEC 001: sem o parágrafo da área nem a tabela do conjunto
+    assert [type(bloco) for bloco in conteudo.blocos] == [
+        Titulo,
+        Subtitulo,
+        Paragrafo,
+        Paragrafo,
+        Paragrafo,
+        Paragrafo,
+        Subtitulo,
+        Paragrafo,
+        Paragrafo,
+        Subtitulo,
+        ImagemRaster,
+        Paragrafo,
+        SeloDeFecho,
+    ]
+    assert _subtitulos(conteudo) == [
+        "Dados relacionados à declaração",
+        "Despacho",
+        "Localização do Imóvel",
+    ]
+    textos = _textos(conteudo)
+    assert textos[0] == (
+        "Identificação do imóvel: AV PAULISTA (codlog: 12345-0), número 100, complemento SALA 12."
+    )
+    assert textos[_indice_do_despacho(textos)] == (
+        "Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que o imóvel "
+        "possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número "
+        "005.003.0048-5."
+    )
+
+
+@artefato
+def test_amostra_certidao_do_conjunto(
+    publicar_artefato: Callable[[str, bytes], Path],
+) -> None:
+    gerar_planta = GerarPlantaLocalizacao(ortofoto=_ortofoto_sintetica)
+    planta = gerar_planta(
+        PlantaLocalizacaoInput(
+            camadas=(
+                CamadaPlanta(geometrias=_LOTES_DO_CONJUNTO, estilo=EstiloGeometria.CONTEXTO),
+                CamadaPlanta(geometrias=(_DESENHO_DO_CONJUNTO,), estilo=EstiloGeometria.DESTAQUE),
+            ),
+            config=PlantaConfig(camada_ortofoto="geoportal:ORTO_RGB", crs=31983),
+        )
+    )
+    em_maior_area = _certidao_input(
+        pedido=_pedido(
+            interessado="Maria Salgado de Almeida",
+            cpf_cnpj="123.456.789-09",
+            tipo_despacho=TipoDespacho.LANCAMENTO_EM_MAIOR_AREA,
+            incluir_ressalva=True,
+            incluir_planta=True,
+        ),
+        objeto=_conjunto_desenhado(),
+        planta=planta,
+    )
+    renderizar_certidao = _tipo_certidao()
+
+    caminho = publicar_artefato(
+        "certidao_lancamento_conjunto_em_maior_area.pdf",
+        renderizar_certidao(em_maior_area).pdf,
+    )
+
+    assert caminho.exists()
+    assert caminho.stat().st_size > 0
 
 
 @artefato

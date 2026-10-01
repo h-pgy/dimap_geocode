@@ -300,23 +300,32 @@
         </header>
 
         <!-- os lotes que restaram na tabela: a lista que a certidão vai atestar -->
-        <div class="card-well pb-2 table-onsen-poco flex flex-col" data-scroll-etched>
-          <div class="table-onsen-wrap max-h-40" data-rolador>
-            <table class="table table-onsen table-onsen-compacta">
-              <thead data-cabecalho>
-                <tr>
-                  <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
-                  <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td class="text-code whitespace-nowrap">012.345.6789-0</td><td>RUA AUGUSTA, 100 — APTO 12</td></tr>
-                <tr><td class="text-code whitespace-nowrap">012.345.6790-3</td><td>RUA AUGUSTA, 102 — LOJA 1</td></tr>
-                <tr><td class="text-code whitespace-nowrap">012.345.6791-1</td><td>RUA AUGUSTA, 104</td></tr>
-              </tbody>
-            </table>
+        <div class="flex flex-col gap-2">
+          <label for="lista-lotes-form" class="btn-etched btn-etched-sm btn-etched-swell etched self-start">Ver lista de lotes</label>
+          <!-- .painel-onsen: a lista de lotes, recolhida -->
+          <div class="painel-onsen">
+            <input type="checkbox" id="lista-lotes-form" class="painel-onsen-toggle">
+            <div class="painel-onsen-corpo">
+              <div class="card-well pb-2 table-onsen-poco flex flex-col" data-scroll-etched>
+                <div class="table-onsen-wrap max-h-40" data-rolador>
+                  <table class="table table-onsen table-onsen-compacta">
+                    <thead data-cabecalho>
+                      <tr>
+                        <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                        <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6789-0</td><td>RUA AUGUSTA, 100 — APTO 12</td></tr>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6790-3</td><td>RUA AUGUSTA, 102 — LOJA 1</td></tr>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6791-1</td><td>RUA AUGUSTA, 104</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
           </div>
-          <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
         </div>
 
         <form class="flex flex-col gap-4" data-chave-condicional>
@@ -453,23 +462,32 @@
         </div>
         <!-- /partial -->
 
-        <div class="card-well pb-2 table-onsen-poco flex flex-col" data-scroll-etched>
-          <div class="table-onsen-wrap max-h-40" data-rolador>
-            <table class="table table-onsen table-onsen-compacta">
-              <thead data-cabecalho>
-                <tr>
-                  <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
-                  <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td class="text-code whitespace-nowrap">012.345.6789-0</td><td>RUA AUGUSTA, 100 — APTO 12</td></tr>
-                <tr><td class="text-code whitespace-nowrap">012.345.6790-3</td><td>RUA AUGUSTA, 102 — LOJA 1</td></tr>
-                <tr><td class="text-code whitespace-nowrap">012.345.6791-1</td><td>RUA AUGUSTA, 104</td></tr>
-              </tbody>
-            </table>
+        <div class="flex flex-col gap-2">
+          <label for="lista-lotes-recusa" class="btn-etched btn-etched-sm btn-etched-swell etched self-start">Ver lista de lotes</label>
+          <!-- .painel-onsen: a lista de lotes, recolhida -->
+          <div class="painel-onsen">
+            <input type="checkbox" id="lista-lotes-recusa" class="painel-onsen-toggle">
+            <div class="painel-onsen-corpo">
+              <div class="card-well pb-2 table-onsen-poco flex flex-col" data-scroll-etched>
+                <div class="table-onsen-wrap max-h-40" data-rolador>
+                  <table class="table table-onsen table-onsen-compacta">
+                    <thead data-cabecalho>
+                      <tr>
+                        <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                        <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6789-0</td><td>RUA AUGUSTA, 100 — APTO 12</td></tr>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6790-3</td><td>RUA AUGUSTA, 102 — LOJA 1</td></tr>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6791-1</td><td>RUA AUGUSTA, 104</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
           </div>
-          <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
         </div>
 
         <form class="flex flex-col gap-4" data-chave-condicional>

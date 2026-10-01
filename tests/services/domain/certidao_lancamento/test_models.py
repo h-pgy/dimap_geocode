@@ -1,6 +1,6 @@
-"""Testes de services/domain/certidao_lancamento/models.py (SPEC certidao_lancamento/001):
+"""Testes de services/domain/certidao_lancamento/models.py (SPECs certidao_lancamento/001 e 002):
 validação do pedido (processo SEI, interessado, CPF/CNPJ e o despacho do auditor) e restrições de
-admissibilidade do lote para emissão da certidão (recusa de lote sem lançamento ou condominial).
+admissibilidade de cada imóvel do objeto da certidão (recusa de lote sem lançamento ou condominial).
 """
 
 from datetime import datetime, timezone
@@ -10,6 +10,8 @@ import pytest
 
 from services.domain.certidao_lancamento.models import (
     CertidaoLancamentoInput,
+    ConjuntoDesenhado,
+    LoteUnico,
     PedidoCertidao,
     SentidoDespacho,
     TipoDespacho,
@@ -144,6 +146,7 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
     pedido = _pedido()
     envelope = _envelope()
     agora = datetime.now(timezone.utc)
+    recusa = "Lotes sem lançamento ativo ou condominiais:"
 
     # Lote municipal (sem lançamento ativo)
     lote_municipal = _imovel(digito=None, situacao="ATIVO")
@@ -152,12 +155,12 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
         CertidaoLancamentoInput(
             envelope=envelope,
             pedido=pedido,
-            imovel=lote_municipal,
+            objeto=LoteUnico(imovel=lote_municipal),
             planta=None,
             consultado_em=agora,
             base_url="https://geocoder.dimap.pmsp/",
         )
-    assert "O lote não possui lançamento ativo no cadastro." in str(exc_info_municipal.value)
+    assert recusa in str(exc_info_municipal.value)
 
     # Lote inativo (situação cancelada)
     lote_inativo = _imovel(digito="5", situacao="CANCELADO")
@@ -166,12 +169,12 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
         CertidaoLancamentoInput(
             envelope=envelope,
             pedido=pedido,
-            imovel=lote_inativo,
+            objeto=LoteUnico(imovel=lote_inativo),
             planta=None,
             consultado_em=agora,
             base_url="https://geocoder.dimap.pmsp/",
         )
-    assert "O lote não possui lançamento ativo no cadastro." in str(exc_info_inativo.value)
+    assert recusa in str(exc_info_inativo.value)
 
     # Lote-mãe de condomínio
     lote_condominial = _imovel(condominio="01")
@@ -180,24 +183,54 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
         CertidaoLancamentoInput(
             envelope=envelope,
             pedido=pedido,
-            imovel=lote_condominial,
+            objeto=LoteUnico(imovel=lote_condominial),
             planta=None,
             consultado_em=agora,
             base_url="https://geocoder.dimap.pmsp/",
         )
-    assert "Lote condominial: a certidão ainda não é emitida pelo sistema." in str(exc_info_cond.value)
+    assert recusa in str(exc_info_cond.value)
 
     # Lote válido, ativo e não condominial constrói normalmente
     lote_valido = _imovel(condominio="00", situacao="ATIVO", digito="5")
     input_valido = CertidaoLancamentoInput(
         envelope=envelope,
         pedido=pedido,
-        imovel=lote_valido,
+        objeto=LoteUnico(imovel=lote_valido),
         planta=None,
         consultado_em=agora,
         base_url="https://geocoder.dimap.pmsp/",
     )
-    assert input_valido.imovel.sql == "005.003.0048-5"
+    assert [imovel.sql for imovel in input_valido.objeto.imoveis] == ["005.003.0048-5"]
+
+    # No conjunto a regra vale para cada lote: um impeditivo recusa a certidão inteira, e é nomeado
+    outro_valido = _imovel(id_poligono="1002", lote="0049", digito="3")
+    condominial_do_conjunto = _imovel(id_poligono="1003", lote="0050", digito="1", condominio="01")
+    with pytest.raises(ValidationError) as exc_info_conjunto:
+        CertidaoLancamentoInput(
+            envelope=envelope,
+            pedido=pedido,
+            objeto=ConjuntoDesenhado(
+                lotes=(lote_valido, outro_valido, condominial_do_conjunto),
+                area_desenho_m2=1250.0,
+            ),
+            planta=None,
+            consultado_em=agora,
+            base_url="https://geocoder.dimap.pmsp/",
+        )
+    assert f"{recusa} 005.003.0050-1." in str(exc_info_conjunto.value)
+
+    conjunto_valido = CertidaoLancamentoInput(
+        envelope=envelope,
+        pedido=pedido,
+        objeto=ConjuntoDesenhado(lotes=(lote_valido, outro_valido), area_desenho_m2=1250.0),
+        planta=None,
+        consultado_em=agora,
+        base_url="https://geocoder.dimap.pmsp/",
+    )
+    assert [imovel.sql for imovel in conjunto_valido.objeto.imoveis] == [
+        "005.003.0048-5",
+        "005.003.0049-3",
+    ]
 
 
 def test_certidao_input_recusa_planta_de_outro_tipo() -> None:
@@ -207,7 +240,7 @@ def test_certidao_input_recusa_planta_de_outro_tipo() -> None:
         CertidaoLancamentoInput(
             envelope=_envelope(),
             pedido=pedido,
-            imovel=_imovel(),
+            objeto=LoteUnico(imovel=_imovel()),
             planta="isto não é uma planta",  # type: ignore[arg-type]
             consultado_em=datetime.now(timezone.utc),
             base_url="https://geocoder.dimap.pmsp/",

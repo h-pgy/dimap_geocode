@@ -173,6 +173,14 @@ class _Settings(BaseSettings):
     lotes_desenho_area_maxima_m2: float = Field(
         default=250_000.0, alias="LOTES_DESENHO_AREA_MAXIMA_M2"
     )
+    # Fração da área do lote que precisa cair dentro do desenho para ele contar como contido, na
+    # sugestão do tipo de despacho da certidão do conjunto (SPEC certidao_lancamento/002).
+    lote_fracao_minima_contida: float = Field(
+        default=0.99,
+        gt=0,
+        le=1,
+        alias="LOTE_FRACAO_MINIMA_CONTIDA",
+    )
 
     wms_url: str = Field(
         default="https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
@@ -361,6 +369,7 @@ WFS_RETRY_WAIT_MAX_SECONDS = _env.wfs_retry_wait_max_seconds
 LOTE_MAIS_PROXIMO_RAIO_M = _env.lote_mais_proximo_raio_m
 LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M = _env.lote_mais_proximo_do_ponto_raio_m
 LOTES_DESENHO_AREA_MAXIMA_M2 = _env.lotes_desenho_area_maxima_m2
+LOTE_FRACAO_MINIMA_CONTIDA = _env.lote_fracao_minima_contida
 
 # WMS (GeoSampa → Leaflet tile layer). Config lida aqui e injetada no contexto do
 # app mapping; o JS nunca hardcoda URL, versão ou nomes de camadas (§11).

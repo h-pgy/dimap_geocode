@@ -63,13 +63,15 @@ status 422. A view nunca vê a exceção.
 ## Por que o HTMX precisa de configuração especial
 
 HTMX 2.x não faz swap em respostas não-2xx por padrão. A configuração abaixo (já em `base.html`)
-habilita o swap apenas para 422, mantendo o comportamento padrão para os demais erros:
+habilita o swap para 422 e para 409 (recusa por conflito que chega com a explicação no corpo — SPEC
+certidao_lancamento/002), mantendo o comportamento padrão para os demais erros:
 
 ```javascript
 htmx.config.responseHandling = [
   {code: "204", swap: false},
   {code: "[23]..", swap: true},
   {code: "422", swap: true},   // ← ValidationError do Pydantic
+  {code: "409", swap: true},   // ← recusa por conflito, com partial explicativo
   {code: "[45]..", swap: false, error: true},
 ];
 ```

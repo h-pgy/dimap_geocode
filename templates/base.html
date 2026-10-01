@@ -22,12 +22,14 @@
     <link rel="stylesheet" href="{% static 'output.css' %}" />
     <script src="https://unpkg.com/htmx.org@2"></script>
     <script>
-      // 422 (ValidationError do Pydantic) deve fazer swap normalmente.
+      // 422 (ValidationError do Pydantic) deve fazer swap normalmente; 409 também, porque a recusa
+      // por conflito (o conjunto mudou depois que o modal abriu) chega com a explicação no corpo.
       // Os demais 4xx/5xx mantêm o comportamento padrão (sem swap).
       htmx.config.responseHandling = [
         {code: "204", swap: false},
         {code: "[23]..", swap: true},
         {code: "422", swap: true},
+        {code: "409", swap: true},
         {code: "[45]..", swap: false, error: true},
       ];
     </script>

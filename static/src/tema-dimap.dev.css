@@ -2468,6 +2468,14 @@ html[data-theme="dimap"] {
   .poco-acoes__icone { @apply w-4 h-4 shrink-0 flex items-center justify-center; }
   .poco-acoes__icone > svg { @apply w-full h-full; }
 
+  /* ============ MOLÉCULA · COLUNA DE AÇÕES DA GAVETA (SPEC certidao_lancamento/002) ============== */
+  /* .gaveta-coluna-acoes — composta com .gaveta-coluna: a coluna estreita do poço de ações, centrada
+     na altura da gaveta; é o poço que rola, não a coluna */
+  .gaveta-coluna-acoes { @apply justify-center overflow-hidden; }
+  @media (width >= 48rem) {
+    .gaveta-coluna-acoes { @apply flex-none w-72; }
+  }
+
   /* ==================== MOLÉCULA · OPÇÃO DE TEXTO (SPEC certidao_lancamento/001) ================== */
   /* .opcao-texto — um texto oficial escolhível, composto com .card-well no HTML; o rádio é sr-only
      e a escolha acende a água, como todo estado de seleção do sistema */

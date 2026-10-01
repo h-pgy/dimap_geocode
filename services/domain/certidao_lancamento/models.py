@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Self
+from typing import Annotated, Literal, Self
 
 from pydantic import (
     AwareDatetime,
@@ -101,6 +101,42 @@ class PedidoCertidao(BaseModel):
         return self
 
 
+class ObjetoCertidao(BaseModel):
+    """O que a certidão atesta. Abstrato: a certidão sempre fala de um subtipo."""
+
+    model_config = ConfigDict(frozen=True)
+
+    @property
+    def imoveis(self) -> tuple[LoteAttributes, ...]:
+        raise NotImplementedError
+
+
+class LoteUnico(ObjetoCertidao):
+    tipo: Literal["lote_unico"] = "lote_unico"
+    imovel: LoteAttributes
+
+    @property
+    def imoveis(self) -> tuple[LoteAttributes, ...]:
+        return (self.imovel,)
+
+
+class ConjuntoDesenhado(ObjetoCertidao):
+    """Os lotes de um terreno desenhado, já revisados. Desenho e área vão para o papel."""
+
+    tipo: Literal["conjunto_desenhado"] = "conjunto_desenhado"
+    lotes: tuple[LoteAttributes, ...] = Field(min_length=1)
+    area_desenho_m2: float = Field(gt=0)
+
+    @property
+    def imoveis(self) -> tuple[LoteAttributes, ...]:
+        return self.lotes
+
+
+def _rotulo(imovel: LoteAttributes) -> str:
+    # Lote sem contribuinte não tem SQL: o setor-quadra-lote ainda o localiza na tabela.
+    return imovel.sql or f"{imovel.setor}.{imovel.quadra}.{imovel.lote}"
+
+
 class CertidaoLancamentoInput(BaseModel):
     """Tudo já apurado: o domínio do documento não vai ao WFS nem ao banco."""
 
@@ -108,18 +144,22 @@ class CertidaoLancamentoInput(BaseModel):
 
     envelope: EnvelopeAto
     pedido: PedidoCertidao
-    imovel: LoteAttributes
+    objeto: Annotated[LoteUnico | ConjuntoDesenhado, Field(discriminator="tipo")]
     planta: PlantaLocalizacao | None
-    # O instante da leitura do lote no GeoSampa: é ele, e não o da assinatura, que o rodapé declara.
+    # O instante da leitura dos lotes no GeoSampa: é ele, e não o da assinatura, que o rodapé declara.
     consultado_em: AwareDatetime
     base_url: str
 
     @model_validator(mode="after")
-    def _imovel_certificavel(self) -> Self:
-        if self.imovel.is_condominio:
-            raise ValueError("Lote condominial: a certidão ainda não é emitida pelo sistema.")
-        if not self.imovel.possui_lancamento:
-            raise ValueError("O lote não possui lançamento ativo no cadastro.")
+    def _imoveis_certificaveis(self) -> Self:
+        impeditivos = [
+            imovel
+            for imovel in self.objeto.imoveis
+            if imovel.is_condominio or not imovel.possui_lancamento
+        ]
+        if impeditivos:
+            rotulos = ", ".join(_rotulo(imovel) for imovel in impeditivos)
+            raise ValueError(f"Lotes sem lançamento ativo ou condominiais: {rotulos}.")
         return self
 
     @model_validator(mode="after")

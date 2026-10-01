@@ -1,4 +1,10 @@
-from .conjunto import EsvaziarConjunto, RemocaoDoConjuntoInput, RemoverDoConjunto
+from .conjunto import (
+    EsvaziarConjunto,
+    ReleituraDoConjuntoInput,
+    RelerConjunto,
+    RemocaoDoConjuntoInput,
+    RemoverDoConjunto,
+)
 from .do_desenho import (
     BuscarLotesDoDesenho,
     ConferenciaDesenhoInput,
@@ -42,6 +48,8 @@ __all__ = [
     "LotesDoDesenhoInput",
     "NenhumLoteNoRaioError",
     "NenhumLoteProximoError",
+    "ReleituraDoConjuntoInput",
+    "RelerConjunto",
     "RemocaoDoConjuntoInput",
     "RemoverDoConjunto",
 ]

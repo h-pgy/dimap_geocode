@@ -33,6 +33,29 @@ CORPO_DO_DESPACHO: dict[TipoDespacho, str] = {
         "Decreto nº 53.623/2012."
     ),
 }
+# "Em maior área" e "parcial" citam o rol: o despacho diz por quais contribuintes o imóvel é lançado.
+CORPO_DO_DESPACHO_CONJUNTO: dict[TipoDespacho, str] = {
+    TipoDespacho.POSSUI_LANCAMENTO: (
+        "os imóveis relacionados acima possuem lançamento do Imposto Predial e Territorial Urbano – IPTU – "
+        "pelos respectivos contribuintes."
+    ),
+    TipoDespacho.LANCAMENTO_EM_MAIOR_AREA: (
+        "o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU, em maior área, pelos "
+        "contribuintes números {rol}."
+    ),
+    TipoDespacho.LANCAMENTO_PARCIAL: (
+        "o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelos "
+        "contribuintes números {rol}."
+    ),
+    TipoDespacho.IMOVEL_NAO_LOCALIZADO: (
+        "não foi possível a localização dos imóveis, já que as informações constantes no processo não são "
+        "suficientes para a sua identificação inequívoca."
+    ),
+    # Não fala do imóvel: serve aos dois objetos.
+    TipoDespacho.PEDIDO_DE_ACESSO_A_INFORMACAO: CORPO_DO_DESPACHO[
+        TipoDespacho.PEDIDO_DE_ACESSO_A_INFORMACAO
+    ],
+}
 RESSALVA_PADRAO = (
     "Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o "
     "presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo "
@@ -44,3 +67,6 @@ VALIDADE = (
     "nº 07, de 29 de Outubro de 2018."
 )
 LARGURA_PLANTA_MM = 150.0
+LARGURA_COLUNA_CONTRIBUINTE_MM = 38.0
+LARGURA_COLUNA_COMPLEMENTO_MM = 40.0
+SEM_COMPLEMENTO = "—"

@@ -6,3 +6,12 @@ ACOES_LOTE = ContratoAcoesLote(
         AcaoDeLote(acao=ACAO_EMITIR_CERTIDAO_LANCAMENTO, url_name="certidao_lancamento:modal"),
     )
 )
+# A mesma ação, outra rota: a competência é uma só.
+ACOES_CONJUNTO = ContratoAcoesLote(
+    itens=(
+        AcaoDeLote(
+            acao=ACAO_EMITIR_CERTIDAO_LANCAMENTO,
+            url_name="certidao_lancamento:modal_conjunto",
+        ),
+    )
+)

@@ -2,4 +2,8 @@
 {% block titulo %}Lotes intersectados{% endblock %}
 {% block resumo %}{% include "lotes_mais_proximos/partials/_resumo_conjunto.html" %}{% endblock %}
 {% block controles %}{% include "lotes_mais_proximos/partials/_controles_conjunto.html" %}{% endblock %}
-{% block corpo %}{% include "lotes_mais_proximos/partials/_tabela_conjunto.html" %}{% endblock %}
+{% block corpo %}
+  {% include "lotes_mais_proximos/partials/_tabela_conjunto.html" %}
+  {# Fora da #tabela-conjunto: a lixeira não repede o poço a cada remoção. Sem ação liberada a rota responde vazio. #}
+  <div hx-get="{% url 'acoes_lote:acoes_conjunto' %}?chave={{ chave }}" hx-trigger="load" hx-swap="outerHTML"></div>
+{% endblock %}

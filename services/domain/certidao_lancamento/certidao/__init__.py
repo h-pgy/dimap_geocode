@@ -3,6 +3,7 @@ from .certidao_builder import (
     MontarCertidaoLancamentoInput,
     abertura_do_despacho,
     corpo_do_despacho,
+    corpo_do_despacho_conjunto,
     ressalva_padrao,
 )
 from .certidao_lancamento import CertidaoLancamento
@@ -13,5 +14,6 @@ __all__ = [
     "MontarCertidaoLancamentoInput",
     "abertura_do_despacho",
     "corpo_do_despacho",
+    "corpo_do_despacho_conjunto",
     "ressalva_padrao",
 ]

@@ -3365,6 +3365,54 @@
           <p class="text-xs text-base-content/60 mt-2">O título e a lista de botões. Sob teto de altura a lista rola e dissolve nas bordas; sem ação liberada o poço não é desenhado.</p>
         </div>
 
+        <!-- Coluna de ações da gaveta (SPEC certidao_lancamento/002) -->
+        <div>
+          <span class="text-overline"><span class="text-code">.gaveta-coluna-acoes</span> <span class="font-normal text-base-content/50">— a coluna estreita do poço de ações, composta com .gaveta-coluna</span></span>
+          <div class="grid lg:grid-cols-2 gap-6 mt-3 items-start">
+            <div class="flex flex-col gap-2">
+              <p class="text-[10px] font-mono text-base-content/60">uma ação</p>
+              <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col">
+                <div class="gaveta-corpo">
+                  <section class="gaveta-coluna">
+                    <div class="card-well h-full flex items-center justify-center text-xs text-base-content/50">tabela do conjunto</div>
+                  </section>
+                  <section class="gaveta-coluna gaveta-coluna-acoes">
+                    <div class="card-well poco-acoes">
+                      <p class="text-overline poco-acoes__titulo">Ações</p>
+                      <div class="poco-acoes__lista">
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Certidão de lançamento</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2">
+              <p class="text-[10px] font-mono text-base-content/60">muitas ações</p>
+              <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col">
+                <div class="gaveta-corpo">
+                  <section class="gaveta-coluna">
+                    <div class="card-well h-full flex items-center justify-center text-xs text-base-content/50">tabela do conjunto</div>
+                  </section>
+                  <section class="gaveta-coluna gaveta-coluna-acoes">
+                    <div class="card-well poco-acoes">
+                      <p class="text-overline poco-acoes__titulo">Ações</p>
+                      <div class="poco-acoes__lista">
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Certidão de lançamento</button>
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 2</button>
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 3</button>
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 4</button>
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 5</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Em tela ampla a coluna tem largura fixa e o poço assenta no meio da altura; com muitas ações o poço cresce até a coluna e passa a rolar. Sem ação liberada a coluna não existe, e a tabela fica com a largura toda.</p>
+        </div>
+
         <!-- Opção de texto (SPEC certidao_lancamento/001) -->
         <div>
           <span class="text-overline"><span class="text-code">.opcao-texto</span> <span class="font-normal text-base-content/50">— um texto oficial escolhível, composto com .card-well</span></span>

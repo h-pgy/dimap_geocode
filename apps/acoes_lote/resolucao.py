@@ -1,6 +1,8 @@
-from .declaradas import ACOES_LOTE
-from .estrutura import AcaoDeLote
+from .estrutura import AcaoDeLote, ContratoAcoesLote
 
 
-def acoes_liberadas(slugs: frozenset[str]) -> tuple[AcaoDeLote, ...]:
-    return tuple(item for item in ACOES_LOTE.itens if item.acao.acao.slug in slugs)
+def acoes_liberadas(
+    contrato: ContratoAcoesLote,
+    slugs: frozenset[str],
+) -> tuple[AcaoDeLote, ...]:
+    return tuple(item for item in contrato.itens if item.acao.acao.slug in slugs)

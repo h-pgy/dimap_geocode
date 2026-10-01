@@ -2,7 +2,7 @@
 spec: certidao_lancamento/002
 versao: v6
 atualizado_em: 2026-09-30
-testes_tdd: false
+testes_tdd: true
 implementado: false
 markers_obrigatorios: [banco, artefato]
 changelog:

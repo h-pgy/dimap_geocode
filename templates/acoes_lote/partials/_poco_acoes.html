@@ -1,11 +1,12 @@
 {% load icones %}
 {% if itens %}
-  <div class="card-well poco-acoes" id="poco-acoes-lote">
+  {# O id é de quem inclui: o poço do lote e o do conjunto ficam abertos na mesma página. #}
+  <div class="card-well poco-acoes" {% if id_poco %}id="{{ id_poco }}"{% endif %}>
     <p class="text-overline poco-acoes__titulo">Ações</p>
     <div class="poco-acoes__lista">
       {% for item in itens %}
         <button type="button" class="btn btn-onsen btn-sm"
-                hx-get="{% url item.url_name %}?id={{ id_entidade }}&sql={{ sql }}"
+                hx-get="{% url item.url_name %}?{{ parametros }}"
                 hx-target="#poco-modal">
           <span class="poco-acoes__icone">{% icone_acao item.acao.acao.slug "pequeno" %}</span>
           {{ item.acao.acao.nome_curto }}
