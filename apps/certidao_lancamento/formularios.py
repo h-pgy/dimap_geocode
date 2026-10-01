@@ -26,6 +26,30 @@ FORMULARIO_CERTIDAO = Formulario(
                 ),
             },
         ),
+        CampoDeFormulario(
+            controle="cpf_cnpj",
+            rotulo="CPF/CNPJ",
+            regras={
+                "string_pattern_mismatch": RegraDeErro(
+                    mensagem="O CPF deve ter 11 dígitos e o CNPJ, 14. Deixe em branco se não constar do processo."
+                ),
+            },
+        ),
+        CampoDeFormulario(
+            controle="tipo_despacho",
+            rotulo="Tipo de despacho",
+            regras={"enum": RegraDeErro(mensagem="Escolha um dos textos de despacho.")},
+        ),
+        CampoDeFormulario(
+            controle="sentido",
+            rotulo="Despacho",
+            regras={
+                "enum": RegraDeErro(
+                    mensagem="Escolha se o despacho defere ou indefere."
+                )
+            },
+        ),
+        CampoDeFormulario(controle="observacoes", rotulo="Observações"),
     ),
 )
 

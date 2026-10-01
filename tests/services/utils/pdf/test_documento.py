@@ -13,7 +13,7 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph
 from services.utils.pdf.documento import DocumentoPdfInput, gerar_pdf
 from services.utils.pdf.documento_marcado import MarcacaoDocumento
 from services.utils.pdf.folha import Folha
-from services.utils.pdf.forma import VetorNomeado
+from services.utils.pdf.forma import VetorNomeado, VetorReferenciado
 from services.utils.pdf.marcacao import Marca, Marcacao
 from services.utils.pdf.models import A4, EstiloTexto, Faixa, Orientacao, Posicao
 from services.utils.pdf.vetor import carregar_vetor
@@ -126,6 +126,29 @@ def test_marca_de_fundo_fica_atras_do_corpo(tmp_path: Path) -> None:
     assert indice_fundo != -1
     assert indice_corpo != -1
     assert indice_fundo < indice_corpo
+
+
+def test_marca_de_fundo_preserva_os_vetores_do_corpo(tmp_path: Path) -> None:
+    caminho = _svg(tmp_path)
+    fundo = _MarcaVetor(
+        Posicao.FUNDO,
+        altura_mm=0.0,
+        caminho=caminho,
+        nome="fundo_teste",
+    )
+    desenho = carregar_vetor(caminho, largura_mm=20.0)
+    simbolo = VetorNomeado(desenho=desenho, nome="simbolo_do_corpo")
+    pdf = _pdf(
+        (_paragrafo("Texto do corpo"), VetorReferenciado(simbolo)),
+        MarcacaoDocumento(principal=_marcacao(fundo)),
+    )
+
+    recursos = cast(DictionaryObject, PdfReader(BytesIO(pdf)).pages[0]["/Resources"])
+    xobjects = recursos.get("/XObject", {})
+    # Form chamado no conteúdo e fora dos recursos da página não é desenhado, e o texto
+    # extraído não acusa a falta.
+    assert any(nome.endswith("simbolo_do_corpo") for nome in xobjects)
+    assert any(nome.endswith("fundo_teste") for nome in xobjects)
 
 
 # ---------------------------------------------------------------------------

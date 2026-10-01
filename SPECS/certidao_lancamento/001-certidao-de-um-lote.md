@@ -1,9 +1,9 @@
 ---
 spec: certidao_lancamento/001
-versao: v6
-atualizado_em: 2026-09-23
+versao: v7
+atualizado_em: 2026-09-30
 testes_tdd: true
-implementado: true
+implementado: false
 markers_obrigatorios: [banco, artefato]
 changelog:
   - v1: versão inicial
@@ -12,42 +12,53 @@ changelog:
   - v4: inscrição da ação no catálogo central de competências (registro.py)
   - v5: router renomeado para acoes_lote com enforcement de SQL válido na borda
   - v6: "[bugfix] endereço do lote no modal, recusa de formulário inteira, emissão como desfecho e nota do rodapé em duas linhas"
+  - v7: despacho por tipo, deferido ou indeferido, com CPF/CNPJ, ressalva padrão e observações no pedido, e o poço de ações vira a molécula `.poco-acoes`
 ---
 
 # SPEC certidao_lancamento/001 — Certidão de Existência de Lançamento de um lote
 
 ## 1 · User story
-O auditor fiscal com a concessão emite, pela gaveta do lote localizado, a Certidão de Existência de
-Lançamento daquele lote para o interessado de um processo SEI, para obter um PDF selado que atesta o
-lançamento do IPTU e mostra onde o imóvel fica.
+O auditor fiscal com a concessão emite, pela gaveta do lote localizado, a declaração de existência de
+lançamento daquele lote com o despacho da sua análise, para o interessado de um processo SEI, para
+obter um PDF selado que responde ao processo e mostra onde o imóvel fica.
 
 ## 2 · Condições de pronto
 - [x] A gaveta do lote traz o poço **"Ações"** com o botão **"Emitir certidão de lançamento"** só para
       quem tem a concessão e apenas quando o lote possui **SQL válido**; sem nenhuma ação liberada ou em
       lote sem SQL (ex.: municipal), o poço **não aparece**.
-- [x] O botão abre um modal que pede o **número do processo SEI** e o **nome do interessado**.
-- [x] O campo do processo SEI possui **máscara progressiva** (`data-mascara="0000.0000/0000000-0"` via
-      `@static/src/js/ui/campo_mascarado.js`), permitindo que a pessoa digite apenas números e a formatação
-      `NNNN.AAAA/NNNNNNN-D` seja aplicada automaticamente em tempo real.
-- [x] Processo fora do formato `NNNN.AAAA/NNNNNNN-D`, ou interessado em branco, volta ao modal com o
-      campo destacado e a mensagem em português.
+- [x] O botão abre um modal que pede o **processo SEI**, o **nome do interessado**, o **CPF/CNPJ**
+      (opcional), se o despacho **defere ou indefere** e, entre os textos desse sentido — cada um à
+      vista como sai no PDF —, o **tipo de despacho**, além das **observações**; abre com **deferido**,
+      **"possui lançamento"** e a **ressalva padrão** marcados.
+- [x] Processo SEI e CPF/CNPJ têm **máscara progressiva**: a pessoa digita só números, e o CPF/CNPJ
+      escolhe o formato pela quantidade de dígitos.
+- [x] Processo fora do formato `NNNN.AAAA/NNNNNNN-D`, interessado em branco ou CPF/CNPJ incompleto
+      volta ao modal com a mensagem em português, o campo destacado e o resto do que a pessoa marcou
+      preservado — sentido, texto, ressalva e mapa.
+- [x] Texto de despacho de outro sentido que não o da chave — o que ficou marcado depois de a pessoa
+      trocá-la — volta ao modal com a recusa na tarja, e nada é emitido.
 - [x] Lote **sem lançamento ativo**, **condominial** ou que **não existe mais** no GeoSampa abre o
       modal com o aviso de que a certidão não pode ser emitida pelo sistema, sem formulário — e a
       emissão recusa pelo mesmo critério.
 - [x] Na emissão, o lote é **lido de novo no GeoSampa** pelo identificador do polígono — nenhum dado
       do imóvel vem do navegador.
-- [x] A certidão traz o requerimento (interessado e processo), a identificação do imóvel, o despacho
-      que declara o lançamento pelo SQL, a **planta de localização** do lote e o fecho selado.
+- [x] A declaração traz os **dados relacionados** (imóvel, interessado com o CPF/CNPJ quando
+      informado, processo e data), o **despacho do tipo escolhido** — aberto por "deferida" ou
+      "indeferida" conforme o tipo, e só o deferimento cita o SQL —, a ressalva e as observações, o
+      **prazo de validade** e o fecho selado.
+- [x] A **planta de localização** sai só com **"acrescentar mapa"** marcado — marcado por padrão no
+      deferimento, desmarcado no indeferimento, de volta ao padrão a cada troca de sentido e
+      invertível pelo auditor. Sem o mapa, a ortofoto nem é consultada, e ortofoto indisponível só
+      recusa a emissão que pediu o mapa.
 - [x] O rodapé de toda página declara que a certidão foi emitida de forma automatizada e **quando os
       dados cadastrais foram consultados**.
 - [x] A certidão emitida entra no **acervo**, confere pelo código e a segunda via devolve os mesmos
       bytes; o modal troca o formulário pelo botão de download.
+- [x] A ficha pública da conferência mostra o **despacho** — sentido e tipo —, e nunca o interessado
+      nem o CPF/CNPJ.
 - [x] A emissão fica **registrada** no Registro de Ações, com o código da certidão como alvo.
-- [x] O design do poço de ações, do modal, do aviso e da confirmação foi aprovado no mock. O ícone da
-      ação mora em caminho único e centralizado (`static/src/acoes/certidao_lancamento/emitir/icones/pequeno.svg`),
-      satisfazendo o system check `competencias.E003`; os templates da aplicação consomem o ícone
-      exclusivamente de forma centralizada (via templatetag `{% load icones %}{% icone_acao ... "pequeno" %}`),
-      sem jamais recriar ou duplicar o SVG inline nos templates HTML.
+- [ ] O design do poço de ações, do modal, do aviso e da confirmação foi aprovado no mock, e as peças
+      novas foram portadas para o tema e o styleguide antes de qualquer template da aplicação usá-las.
 
 ## 3 · Domínio
 A certidão é ato administrativo sobre um [LoteAttributes](../localizacao_lote/001-dados-do-lote-na-gaveta.md#3--domínio)
@@ -61,19 +72,100 @@ As ações sobre o lote ganham aqui o **router de ações do lote** (`apps/acoes
 código diz quais ações o lote oferece, a rota faz o enforcement de receber um número de SQL formalmente
 válido (`SSS.QQQ.LLLL-D`), e a gaveta recebe só as liberadas ao perfil.
 
+O tipo de despacho é um julgamento do auditor sobre o processo, não um fato do cadastro: o sistema
+não o deduz do lote. Cada tipo tem um sentido, deferido ou indeferido, fixado no próprio tipo.
+
 **`services/domain/certidao_lancamento/models.py`**
 
 ```python
 PADRAO_PROCESSO_SEI = r"^\d{4}\.\d{4}/\d{7}-\d$"
+PADRAO_CPF_CNPJ = r"^(\d{3}\.\d{3}\.\d{3}-\d{2}|\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})$"
+
+
+class SentidoDespacho(StrEnum):
+    """Se o pedido foi atendido. É o que a ficha pública do documento declara."""
+
+    DEFERIDO = "deferido"
+    INDEFERIDO = "indeferido"
+
+    @property
+    def rotulo(self) -> str:
+        match self:
+            case SentidoDespacho.DEFERIDO:
+                return "Deferido"
+            case SentidoDespacho.INDEFERIDO:
+                return "Indeferido"
+
+
+class TipoDespacho(StrEnum):
+    """Os despachos do modelo da DIMAP. Vários tipos têm o mesmo sentido: o tipo diz o texto, o
+    sentido diz se a solicitação foi atendida."""
+
+    POSSUI_LANCAMENTO = "possui_lancamento"
+    LANCAMENTO_EM_MAIOR_AREA = "lancamento_em_maior_area"
+    LANCAMENTO_PARCIAL = "lancamento_parcial"
+    IMOVEL_NAO_LOCALIZADO = "imovel_nao_localizado"
+    PEDIDO_DE_ACESSO_A_INFORMACAO = "pedido_de_acesso_a_informacao"
+
+    # O de-para mora no próprio tipo, num `match` exaustivo: tipo novo sem `case` é erro do mypy
+    # ("Missing return statement"), antes de qualquer teste rodar.
+    @property
+    def sentido(self) -> SentidoDespacho:
+        match self:
+            case (
+                TipoDespacho.POSSUI_LANCAMENTO
+                | TipoDespacho.LANCAMENTO_EM_MAIOR_AREA
+                | TipoDespacho.LANCAMENTO_PARCIAL
+            ):
+                return SentidoDespacho.DEFERIDO
+            case TipoDespacho.IMOVEL_NAO_LOCALIZADO | TipoDespacho.PEDIDO_DE_ACESSO_A_INFORMACAO:
+                return SentidoDespacho.INDEFERIDO
+
+    @property
+    def descricao(self) -> str:
+        match self:
+            case TipoDespacho.POSSUI_LANCAMENTO:
+                return "possui lançamento"
+            case TipoDespacho.LANCAMENTO_EM_MAIOR_AREA:
+                return "lançamento em maior área"
+            case TipoDespacho.LANCAMENTO_PARCIAL:
+                return "lançamento parcial"
+            case TipoDespacho.IMOVEL_NAO_LOCALIZADO:
+                return "imóvel não localizado"
+            case TipoDespacho.PEDIDO_DE_ACESSO_A_INFORMACAO:
+                return "equivale a pedido de acesso à informação"
+
+    @property
+    def rotulo(self) -> str:
+        # O que a ficha pública declara: "Deferido · possui lançamento".
+        return f"{self.sentido.rotulo} · {self.descricao}"
 
 
 class PedidoCertidao(BaseModel):
-    """O que o modal colhe: quem pede e em qual processo. É o que instrui a certidão junto com o lote."""
+    """O que o modal colhe: quem pede, em qual processo e o despacho do auditor."""
 
     model_config = ConfigDict(frozen=True, str_strip_whitespace=True)
 
     processo: str = Field(pattern=PADRAO_PROCESSO_SEI)
     interessado: str = Field(min_length=3, max_length=200)
+    cpf_cnpj: str | None = Field(default=None, pattern=PADRAO_CPF_CNPJ)   # NOVO
+    sentido: SentidoDespacho                                               # NOVO — o que a chave declarou
+    tipo_despacho: TipoDespacho                                            # NOVO — o texto escolhido
+    incluir_ressalva: bool = False                                         # NOVO
+    incluir_planta: bool = False                                           # NOVO — o auditor decide
+    observacoes: str = Field(default="", max_length=2000)                  # NOVO
+
+    @field_validator("cpf_cnpj", mode="before")
+    @classmethod
+    def _vazio_eh_ausente(cls, valor: object) -> object:
+        return None if valor == "" else valor
+
+    @model_validator(mode="after")
+    def _texto_eh_do_sentido(self) -> Self:
+        # A chave e o texto chegam separados: trocar a chave deixa marcado o texto do outro sentido.
+        if self.tipo_despacho.sentido is not self.sentido:
+            raise ValueError(f"Escolha um dos textos de despacho {self.sentido.rotulo.lower()}.")
+        return self
 
 
 class CertidaoLancamentoInput(BaseModel):
@@ -84,7 +176,7 @@ class CertidaoLancamentoInput(BaseModel):
     envelope: EnvelopeAto
     pedido: PedidoCertidao
     imovel: LoteAttributes
-    planta: PlantaLocalizacao
+    planta: PlantaLocalizacao | None      # ALTERADO nesta SPEC: só quando o pedido a inclui
     # O instante da leitura do lote no GeoSampa: é ele, e não o da assinatura, que o rodapé declara.
     consultado_em: AwareDatetime
     base_url: str
@@ -95,6 +187,15 @@ class CertidaoLancamentoInput(BaseModel):
             raise ValueError("Lote condominial: a certidão ainda não é emitida pelo sistema.")
         if not self.imovel.possui_lancamento:
             raise ValueError("O lote não possui lançamento ativo no cadastro.")
+        return self
+
+    @model_validator(mode="after")
+    def _planta_segue_o_pedido(self) -> Self:
+        # NOVO nesta SPEC: o sentido só sugere; quem decide se há mapa é o auditor, pelo pedido.
+        if self.pedido.incluir_planta and self.planta is None:
+            raise ValueError("O pedido inclui o mapa, e a planta de localização não veio.")
+        if not self.pedido.incluir_planta and self.planta is not None:
+            raise ValueError("O pedido não inclui o mapa.")
         return self
 ```
 
@@ -128,20 +229,22 @@ class ContratoAcoesLote(BaseModel):
 - Certidão de conjunto de lotes — SPEC [certidao_lancamento/002](002-certidao-do-conjunto.md).
 - Lote condominial — sem dono ainda (provável caso particular da certidão "a menor").
 - Certidão negativa (inexistência de lançamento) — sem dono; emitida manualmente pelo técnico.
-- Conferência do dígito verificador do processo SEI — sem dono ainda; só o formato é conferido.
+- Conferência do dígito verificador do processo SEI e do CPF/CNPJ — sem dono ainda; só o formato é
+  conferido.
+- Tipos "em maior área" e "parcial" apurados pela geometria — SPEC
+  [certidao_lancamento/003](003-certidao-a-maior-e-a-menor.md), para o conjunto desenhado.
 - Card da ação no painel — não entra: a ação só existe sobre um lote localizado.
 
 ## 5 · Peças de referência a compor
 - `@apps/competencias/emissao_certidao.py` → `emitir_certidao_atos`: sequência envelope → render → selo → acervo.
 - `@services/domain/certidao_atos_administrativos/certidao.py` → `MontarCertidaoAtos`/`CertidaoAtos`: o molde do tipo selado.
-- `@apps/competencias/protecao.py` → `acao_protegida`, `registrar_ato`.
-- `@apps/competencias/registro.py` → `_construir_registro`: ponto único de inscrição no catálogo de ações do sistema.
-- `@apps/competencias/resolucao.py` → `slugs_liberados`: o conjunto que o router filtra.
+- `@apps/competencias` → `acao_protegida`, `registrar_ato` (`protecao.py`), `_construir_registro` (`registro.py`), `slugs_liberados` (`resolucao.py`).
 - `@services/utils/erros_formulario` → `Formulario`, `LeitorDeFormulario`: o modal com realce.
 - `@services/domain/lote_geocod` → `LotePorIdentificador`, `LoteAttributes`, `LoteFeature`.
 - `@templates/lote_geocoder/partials/_gaveta_lote.html` → a gaveta lateral montada por `MontarGavetaLote` (SPEC localizacao_lote/001): ponto de injeção condicional do poço de ações de lote via HTMX quando há SQL.
 - `@templates/core/home.html` → `#poco-modal`: poço dos modais de ações do lote.
-- `@static/src/js/ui/campo_mascarado.js` → máscara progressiva no input (`[data-mascara="0000.0000/0000000-0"]`).
+- `@templates/partials/_tarja_recusa.html` → a recusa do formulário (crítica) e o aviso do lote não certificável (pendente).
+- `.chave-onsen` (SPEC autorizacao/008) → a chave deferido/indeferido; `.checkbox-onsen`: a ressalva e o mapa.
 - `@services/domain/planta_localizacao` → `GerarPlantaLocalizacao` (SPEC documentos_oficiais/011).
 - Skills: `acao-administrativa`, `documento-oficial`, `erros-de-formulario`, `painel`, `mock`, `escrever-testes`.
 
@@ -149,17 +252,68 @@ class ContratoAcoesLote(BaseModel):
 
 > Comentários didáticos: **não são portados** para o código (§7.2 do CLAUDE.md).
 
-**`services/domain/certidao_lancamento/certidao.py`** — o único lugar em que esta certidão é redigida.
+**`services/domain/certidao_lancamento/certidao/`** — o submódulo da certidão: o texto do modelo, quem o
+monta em blocos e o tipo que junta conteúdo, papel e selo, cada um no seu arquivo.
+
+**`certidao/constants.py`** — o único lugar em que esta certidão é redigida.
 
 ```python
-TITULO = "Certidão de Existência de Lançamento"
-DESPACHO = "Solicitação deferida."
-FUNDAMENTO = (
-    "Com base nas informações consultadas de forma automatizada junto à base de dados oficial do "
-    "Município de São Paulo, declara-se que o imóvel acima identificado possui lançamento do Imposto "
-    "Predial e Territorial Urbano (IPTU) pelo contribuinte número {sql}."
+# O texto é o modelo de declaração da DIMAP, transcrito: nenhuma frase é redigida pelo sistema.
+TITULO = (
+    "Declaração de Existência/Inexistência de Lançamento Fiscal e Inscrição no Cadastro "
+    "Imobiliário Fiscal – IPTU"
+)
+# A abertura sai do sentido, e o corpo, do tipo: "DEFERIDA" não se escreve em cada texto.
+ABERTURA_DO_DESPACHO: dict[SentidoDespacho, str] = {
+    SentidoDespacho.DEFERIDO: "Solicitação DEFERIDA.",
+    SentidoDespacho.INDEFERIDO: "Solicitação INDEFERIDA.",
+}
+BASE_DESPACHO = "Com base nas informações presentes no processo, declara-se que"
+CORPO_DO_DESPACHO: dict[TipoDespacho, str] = {
+    TipoDespacho.POSSUI_LANCAMENTO: (
+        "o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte "
+        "número {sql}."
+    ),
+    TipoDespacho.LANCAMENTO_EM_MAIOR_AREA: (
+        "o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU, em maior área, pelo "
+        "contribuinte número {sql}."
+    ),
+    TipoDespacho.LANCAMENTO_PARCIAL: (
+        "o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelo "
+        "contribuinte número {sql}."
+    ),
+    TipoDespacho.IMOVEL_NAO_LOCALIZADO: (
+        "não foi possível a localização do imóvel, já que as informações constantes no processo não são "
+        "suficientes para a sua identificação inequívoca."
+    ),
+    TipoDespacho.PEDIDO_DE_ACESSO_A_INFORMACAO: (
+        "não é possível atender ao pedido, pois equivale a Pedido de Acesso à Informação, nos termos do "
+        "Decreto nº 53.623/2012."
+    ),
+}
+RESSALVA_PADRAO = (
+    "Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o "
+    "presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo "
+    "ou documento equivalente, bem como sua regularidade."
+)
+VALIDADE = (
+    "As informações prestadas nos termos deste despacho serão válidas por 90 (noventa) dias, a contar "
+    "da data de intimação do solicitante, conforme definido no artigo 3º da Ordem Interna SF/SUREM "
+    "nº 07, de 29 de Outubro de 2018."
 )
 LARGURA_PLANTA_MM = 150.0
+```
+
+**`certidao/certidao_builder.py`** — o texto do despacho e a montagem dos blocos.
+
+```python
+def corpo_do_despacho(tipo: TipoDespacho, sql: str | None) -> str:
+    # Um lugar só: o PDF e a prévia do modal leem o mesmo texto.
+    return CORPO_DO_DESPACHO[tipo].format(sql=sql)
+
+
+def abertura_do_despacho(sentido: SentidoDespacho) -> str:
+    return f"{ABERTURA_DO_DESPACHO[sentido]} {BASE_DESPACHO}"
 
 
 class MontarCertidaoLancamentoInput(BaseModel):
@@ -185,31 +339,55 @@ class MontarCertidaoLancamento:
         certidao = pedido.certidao
         return (
             Titulo(texto=TITULO),
-            Subtitulo(texto="Requerimento"),
-            Paragrafo(texto=self._requerimento(certidao.pedido)),
-            Subtitulo(texto="Identificação do Imóvel"),
-            Paragrafo(texto=self._identificacao(certidao.imovel)),
+            Subtitulo(texto="Dados relacionados à declaração"),
+            *self._dados_relacionados(certidao),
             Subtitulo(texto="Despacho"),
-            Paragrafo(texto=DESPACHO),
-            Paragrafo(texto=FUNDAMENTO.format(sql=certidao.imovel.sql)),
-            Subtitulo(texto="Localização do Imóvel"),
-            ImagemRaster(conteudo=certidao.planta.png, largura_mm=LARGURA_PLANTA_MM),
+            *self._despacho(certidao.pedido, certidao.imovel),
+            *self._localizacao(certidao.planta),
             Paragrafo(texto=f"São Paulo, {por_extenso(certidao.envelope.emitido_em)}."),
             SeloDeFecho(selo=pedido.selo, quadro=pedido.quadro),
         )
 
+    def _dados_relacionados(self, certidao: CertidaoLancamentoInput) -> tuple[Paragrafo, ...]:
+        pedido = certidao.pedido
+        # CPF/CNPJ é opcional: sem ele, o interessado sai só pelo nome, sem parêntese vazio.
+        documento = f" (CPF/CNPJ: {pedido.cpf_cnpj})" if pedido.cpf_cnpj else ""
+        return (
+            Paragrafo(texto=f"Identificação do imóvel: {self._identificacao(certidao.imovel)}"),
+            Paragrafo(texto=f"Nome do interessado: {pedido.interessado}{documento}"),
+            Paragrafo(texto=f"Processo SEI nº: {pedido.processo}"),
+            Paragrafo(texto=f"Data da declaração: {certidao.envelope.emitido_em:%d/%m/%Y}"),
+        )
+
+    def _despacho(self, pedido: PedidoCertidao, imovel: LoteAttributes) -> tuple[Paragrafo, ...]:
+        # A ordem é a do modelo: o despacho, a ressalva, as observações do auditor e, por último, a validade.
+        tipo = pedido.tipo_despacho
+        corpo = corpo_do_despacho(tipo, imovel.sql)
+        return (
+            Paragrafo(texto=f"{abertura_do_despacho(tipo.sentido)} {corpo}"),
+            *((Paragrafo(texto=RESSALVA_PADRAO),) if pedido.incluir_ressalva else ()),
+            *((Paragrafo(texto=pedido.observacoes),) if pedido.observacoes else ()),
+            Paragrafo(texto=VALIDADE),
+        )
+
+    def _localizacao(self, planta: PlantaLocalizacao | None) -> tuple[Bloco, ...]:
+        # Sem planta, some a seção inteira: subtítulo solto sobre nada seria pior que a ausência.
+        if planta is None:
+            return ()
+        return (
+            Subtitulo(texto="Localização do Imóvel"),
+            ImagemRaster(conteudo=planta.png, largura_mm=LARGURA_PLANTA_MM),
+        )
+
     def _identificacao(self, imovel: LoteAttributes) -> str:
         codlog_txt = f" (codlog: {imovel.codlog[:5]}-{imovel.codlog[5:]})" if imovel.codlog else ""
-        texto = (
-            f"O imóvel objeto desta certidão está localizado no endereço {imovel.nome_logradouro}{codlog_txt}, "
-            f"número {imovel.numero_porta}"
-        )
+        texto = f"{imovel.nome_logradouro}{codlog_txt}, número {imovel.numero_porta}"
         return f"{texto}, complemento {imovel.complemento}." if imovel.complemento else f"{texto}."
+```
 
-    def _requerimento(self, pedido: PedidoCertidao) -> str:
-        return f"Interessado: {pedido.interessado}. Processo SEI nº {pedido.processo}."
+**`certidao/certidao_lancamento.py`** — o tipo do documento.
 
-
+```python
 class CertidaoLancamento:
     """O tipo: conteúdo + papel selado com nota de rodapé + tema. Quem emite só preenche o DTO."""
 
@@ -249,6 +427,30 @@ class CertidaoLancamento:
             f"Dados cadastrais consultados no GeoSampa em {momento:%d/%m/%Y} às {momento:%H:%M}",
         )
 ```
+
+**`certidao/__init__.py`** — só reexporta o que alguém de fora usa.
+
+```python
+from .certidao_builder import (
+    MontarCertidaoLancamento,       # testes do texto da declaração
+    MontarCertidaoLancamentoInput,
+    abertura_do_despacho,           # prévia dos textos no modal (views)
+    corpo_do_despacho,
+)
+from .certidao_lancamento import CertidaoLancamento   # a emissão
+
+__all__ = [
+    "CertidaoLancamento",
+    "MontarCertidaoLancamento",
+    "MontarCertidaoLancamentoInput",
+    "abertura_do_despacho",
+    "corpo_do_despacho",
+]
+```
+
+`services/domain/certidao_lancamento/__init__.py` segue importando de `.certidao`, que agora é o
+pacote: nenhum consumidor muda de caminho. As constantes não saem do pacote — quem precisa do texto
+pede às duas funções.
 
 **`services/domain/documento_oficial/marcacoes_concretas/fazenda_dimap_selado_com_nota.py`** —
 papel novo ao lado; `fazenda_dimap_selado` não muda.
@@ -412,89 +614,248 @@ E no `{% block scripts %}`:
 <script type="module" src="{% static 'js/ui/campo_mascarado.js' %}"></script>
 ```
 
-**`templates/acoes_lote/partials/_poco_acoes.html`** — sem item liberado, nada é desenhado; ícone centralizado via `icone_acao`.
+**`templates/acoes_lote/partials/_poco_acoes.html`** — sem item liberado, nada é desenhado; a pele é
+a molécula `.poco-acoes` do mock, e o ícone vem centralizado via `icone_acao`.
 
 ```html
 {% load icones %}
 {% if itens %}
-  <div class="card-well p-4 flex flex-col gap-2">
-    <p class="text-overline">Ações</p>
-    {% for item in itens %}
-      <button type="button" class="btn btn-onsen btn-sm gap-2"
-              hx-get="{% url item.url_name %}?id={{ id_entidade }}&sql={{ sql }}"
-              hx-target="#poco-modal">
-        <span class="w-4 h-4 shrink-0 flex items-center justify-center">
-          {% icone_acao item.acao.acao.slug "pequeno" %}
-        </span>
-        {{ item.acao.acao.nome_curto }}
-      </button>
-    {% endfor %}
+  <div class="card-well poco-acoes" id="poco-acoes-lote">
+    <p class="text-overline poco-acoes__titulo">Ações</p>
+    <div class="poco-acoes__lista">
+      {% for item in itens %}
+        <button type="button" class="btn btn-onsen btn-sm"
+                hx-get="{% url item.url_name %}?id={{ id_entidade }}&sql={{ sql }}"
+                hx-target="#poco-modal">
+          <span class="poco-acoes__icone">{% icone_acao item.acao.acao.slug "pequeno" %}</span>
+          {{ item.acao.acao.nome_curto }}
+        </button>
+      {% endfor %}
+    </div>
   </div>
 {% endif %}
 ```
 
-**`templates/certidao_lancamento/_modal.html`** — modal de emissão com máscara progressiva, ícone
-centralizado e a tarja de recusa do projeto.
+**`templates/certidao_lancamento/_modal.html`** — modal de emissão: cabeçalho, tarja de recusa e o
+formulário. O aviso do lote não certificável segue o mesmo cabeçalho, com a tarja pendente e sem
+formulário.
 
 ```html
-{% load icones %}
-<div class="modal modal-open modal-glass" role="dialog">
-  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
-    <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
-      <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
-        <span class="w-6 h-6 flex items-center justify-center">
-          {% icone_acao "certidao_lancamento.emitir" "pequeno" %}
-        </span>
-      </span>
-      <div class="min-w-0">
-        <p class="text-overline">Certidão de Existência de Lançamento</p>
-        <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL {{ lote.feature.attributes.sql }}</p>
-        <p class="text-xs text-base-content/70 truncate">{{ lote.feature.attributes.endereco_completo }}</p>
-      </div>
-    </header>
+{% include "partials/_tarja_recusa.html" with erros=recusa.mensagens titulo="Não foi possível emitir a certidão" %}
 
-    {% if lote.pode_certificar %}
-      {% include "partials/_tarja_recusa.html" with erros=recusa.mensagens titulo="Não foi possível emitir a certidão" %}
+{# O form inteiro é o escopo da chave: ela mostra os textos do sentido e repõe o padrão do mapa. #}
+<form hx-post="{% url 'certidao_lancamento:emitir' %}" hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-4" data-chave-condicional>
+  <input type="hidden" name="id" value="{{ lote.feature.attributes.id_poligono }}">
 
-      <form hx-post="{% url 'certidao_lancamento:emitir' %}" hx-target="#poco-modal" hx-swap="outerHTML" class="flex flex-col gap-4">
-        <input type="hidden" name="id" value="{{ lote.feature.attributes.id_poligono }}">
-
-        <div class="flex flex-col gap-1">
-          <label class="text-overline text-xs">Processo SEI</label>
-          <input type="text"
-                 name="processo"
-                 value="{{ valores.processo }}"
-                 data-mascara="0000.0000/0000000-0"
-                 placeholder="0000.0000/0000000-0"
-                 class="input input-glass input-sm w-full font-mono {{ recusa.realce.processo }}"
-                 autofocus>
-          <span class="form-field-hint">Formato obrigatório: NNNN.AAAA/NNNNNNN-D (máscara automática ao digitar)</span>
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <label class="text-overline text-xs">Nome do interessado</label>
-          <input type="text"
-                 name="interessado"
-                 value="{{ valores.interessado }}"
-                 placeholder="Nome completo ou razão social"
-                 class="input input-glass input-sm w-full {{ recusa.realce.interessado }}">
-          <span class="form-field-hint">Consta no requerimento da certidão oficial.</span>
-        </div>
-
-        <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
-          <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Cancelar</button>
-          <button type="submit" class="btn btn-onsen btn-sm">Emitir certidão</button>
-        </div>
-      </form>
-    {% else %}
-      {% include "partials/_tarja_recusa.html" with erros=motivos_recusa_lote titulo="Certidão indisponível para este lote" %}
-      <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
-        <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</button>
-      </div>
-    {% endif %}
+  <div class="grid sm:grid-cols-2 gap-3">
+    <div class="flex flex-col gap-1">
+      <label class="text-overline text-xs">Processo SEI</label>
+      <input type="text" name="processo" value="{{ valores.processo }}"
+             data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0"
+             class="input input-glass input-sm w-full font-mono {{ recusa.realce.processo }}" autofocus>
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-overline text-xs">CPF/CNPJ <span class="normal-case text-base-content/50">· opcional</span></label>
+      {# NOVO: dois gabaritos; o campo_mascarado escolhe pela quantidade de dígitos. #}
+      <input type="text" name="cpf_cnpj" value="{{ valores.cpf_cnpj }}"
+             data-mascara="000.000.000-00|00.000.000/0000-00" placeholder="CPF ou CNPJ"
+             class="input input-glass input-sm w-full font-mono {{ recusa.realce.cpf_cnpj }}">
+    </div>
   </div>
-  <label class="modal-backdrop" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</label>
-</div>
+
+  <div class="flex flex-col gap-1">
+    <label class="text-overline text-xs">Nome do interessado</label>
+    <input type="text" name="interessado" value="{{ valores.interessado }}" placeholder="Nome completo ou razão social"
+           class="input input-glass input-sm w-full {{ recusa.realce.interessado }}">
+  </div>
+
+  {# A chave decide qual grupo de textos aparece (chave_condicional.js); o texto do outro grupo que #}
+  {# ficar marcado é recusado pelo domínio, não escondido no cliente.                               #}
+  <div class="flex flex-col gap-2">
+    <span class="text-overline text-xs">Despacho</span>
+    <div class="card-well chave-onsen self-start">
+      <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+      {% for grupo in grupos_despacho %}
+        <label class="chave-onsen-opcao">
+          <input type="radio" name="sentido" value="{{ grupo.sentido }}" class="sr-only" {% if grupo.sentido == valores.sentido %}checked{% endif %}>
+          <span class="chave-onsen-rotulo etched etched-deeper">{{ grupo.sentido.rotulo }}</span>
+        </label>
+      {% endfor %}
+    </div>
+    {% for grupo in grupos_despacho %}
+      <fieldset class="flex flex-col gap-2" data-mostra-se="{{ grupo.sentido }}" {% if grupo.sentido != valores.sentido %}hidden{% endif %}>
+        <legend class="form-field-hint mb-2">{{ grupo.abertura }}…</legend>
+        {% for opcao in grupo.opcoes %}
+          <label class="card-well opcao-texto">
+            <input type="radio" name="tipo_despacho" value="{{ opcao.valor }}" class="sr-only" {% if opcao.valor == valores.tipo_despacho %}checked{% endif %}>
+            <span class="text-overline opcao-texto__titulo">{{ opcao.rotulo }}</span>
+            <span class="opcao-texto__corpo">…{{ opcao.texto }}</span>
+          </label>
+        {% endfor %}
+      </fieldset>
+    {% endfor %}
+  </div>
+
+  <div class="grid sm:grid-cols-2 gap-3">
+    <label class="flex items-center gap-2 cursor-pointer select-none">
+      <input type="checkbox" name="incluir_ressalva" class="checkbox-onsen" {% if valores.incluir_ressalva %}checked{% endif %}>
+      <span class="text-sm">Incluir a ressalva padrão</span>
+    </label>
+    {# NOVO: [data-padrao-se] — a chave repõe o padrão a cada troca; o auditor inverte depois. #}
+    <label class="flex items-center gap-2 cursor-pointer select-none">
+      <input type="checkbox" name="incluir_planta" class="checkbox-onsen" data-padrao-se="deferido" {% if valores.incluir_planta %}checked{% endif %}>
+      <span class="text-sm">Acrescentar mapa com a localização do lote</span>
+    </label>
+  </div>
+  <div class="flex flex-col gap-2">
+    <label class="text-overline text-xs">Observações <span class="normal-case text-base-content/50">· opcional</span></label>
+    <textarea name="observacoes" rows="3" class="textarea textarea-glass textarea-sm w-full">{{ valores.observacoes }}</textarea>
+  </div>
+
+  <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+    <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Cancelar</button>
+    <button type="submit" class="btn btn-onsen btn-sm">Emitir certidão</button>
+  </div>
+</form>
+```
+
+**`apps/certidao_lancamento/views.py`** — o contexto do modal entrega ao template as opções do seletor
+e os valores dos campos: os iniciais na abertura, o próprio POST na recusa 422.
+
+```python
+VALORES_INICIAIS: dict[str, Any] = {
+    "sentido": SentidoDespacho.DEFERIDO,
+    "tipo_despacho": TipoDespacho.POSSUI_LANCAMENTO,
+    "incluir_ressalva": True,
+    "incluir_planta": True,
+}
+
+
+class OpcaoTipoDespacho(BaseModel):
+    """Um cartão da lista: o valor que o formulário envia, o nome do tipo e o texto como sai no PDF."""
+
+    model_config = ConfigDict(frozen=True)
+
+    valor: TipoDespacho
+    rotulo: str
+    texto: str
+
+
+class GrupoDeSentido(BaseModel):
+    """Os textos de um sentido, sob a abertura que todos eles compartilham."""
+
+    model_config = ConfigDict(frozen=True)
+
+    sentido: SentidoDespacho
+    abertura: str
+    opcoes: tuple[OpcaoTipoDespacho, ...]
+
+
+def grupos_de_despacho(
+    tipos: Iterable[TipoDespacho],
+    corpo: Callable[[TipoDespacho], str],
+) -> tuple[GrupoDeSentido, ...]:
+    # O recorte e o texto descem como dado: o conjunto (SPEC 002) passa os tipos dele e o corpo no plural.
+    oferecidos = tuple(tipos)
+    return tuple(
+        GrupoDeSentido(
+            sentido=sentido,
+            abertura=abertura_do_despacho(sentido),
+            opcoes=tuple(
+                OpcaoTipoDespacho(valor=tipo, rotulo=tipo.descricao, texto=corpo(tipo))
+                for tipo in oferecidos
+                if tipo.sentido is sentido
+            ),
+        )
+        for sentido in SentidoDespacho
+    )
+
+
+def contexto_modal(
+    lote: LoteLido | None,
+    valores: Mapping[str, Any] | None = None,
+    recusa: RecusaDeFormulario | None = None,
+) -> dict[str, Any]:
+    return {
+        "lote": lote,
+        # `is None`, e não `or`: o POST de uma recusa pode vir vazio, e vazio não é "abrir de novo".
+        # Na recusa, checkbox desmarcado não vem no POST — e é por isso que ele volta desmarcado.
+        "valores": VALORES_INICIAIS if valores is None else valores,
+        "recusa": recusa,
+        "motivos_recusa_lote": motivos_recusa_lote(lote),
+        # NOVO: a prévia dos textos já traz o SQL do lote, como sai no PDF.
+        "grupos_despacho": grupos_de_despacho(TipoDespacho, partial(corpo_do_despacho, sql=lote.feature.attributes.sql if lote else None)),
+    }
+```
+
+`_modal_recusado` não muda: segue repassando `request.POST` como `valores`, e o template compara
+`valores.sentido` e `valores.tipo_despacho` para marcar a chave e o cartão escolhidos.
+
+**`apps/certidao_lancamento/formularios.py`** — os campos novos no formulário com realce.
+
+```python
+CampoDeFormulario(
+    controle="cpf_cnpj",
+    rotulo="CPF/CNPJ",
+    regras={
+        "string_pattern_mismatch": RegraDeErro(
+            mensagem="O CPF deve ter 11 dígitos e o CNPJ, 14. Deixe em branco se não constar do processo."
+        ),
+    },
+),
+CampoDeFormulario(
+    controle="tipo_despacho",
+    rotulo="Tipo de despacho",
+    regras={"enum": RegraDeErro(mensagem="Escolha um dos textos de despacho.")},
+),
+CampoDeFormulario(
+    controle="sentido",
+    rotulo="Despacho",
+    regras={"enum": RegraDeErro(mensagem="Escolha se o despacho defere ou indefere.")},
+),
+# A mensagem do `_texto_eh_do_sentido` não tem controle: sai como recusa geral, na tarja.
+```
+
+**`static/src/js/ui/chave_condicional.js`** — controle com `[data-padrao-se]` volta ao padrão do lado
+escolhido a cada troca da chave; nada muda na carga, para a recusa 422 devolver o que o auditor marcou.
+
+```js
+// A chave é o primeiro grupo de rádios do escopo — o mesmo que aplicar() lê.
+function ehDaChave(escopo, radio) {
+  return escopo.querySelector('input[type="radio"]').name === radio.name;
+}
+
+function reporPadroes(escopo, valor) {
+  escopo.querySelectorAll('input[type="checkbox"][data-padrao-se]').forEach((campo) => {
+    campo.checked = campo.dataset.padraoSe === valor;
+  });
+}
+
+document.addEventListener("change", (evento) => {
+  if (!(evento.target instanceof HTMLInputElement) || evento.target.type !== "radio") return;
+  const escopo = evento.target.closest("[data-chave-condicional]");
+  if (!escopo) return;
+  aplicar(escopo);
+  // ALTERADO: só a troca da chave repõe o padrão; escolher um texto não mexe no mapa.
+  if (ehDaChave(escopo, evento.target)) reporPadroes(escopo, evento.target.value);
+});
+```
+
+**`static/src/js/ui/campo_mascarado.js`** — gabaritos alternativos separados por `|`; o gabarito único
+continua valendo como antes.
+
+```js
+// O primeiro gabarito que comporta os dígitos; passando de todos, o último acende o excesso.
+function escolherGabarito(digitos, gabaritos) {
+  return gabaritos.find((gabarito) => contarDigitos(gabarito) >= digitos.length) ?? gabaritos.at(-1);
+}
+
+function aplicar(campo) {
+  const digitos = campo.value.replace(/\D/g, "");
+  const gabarito = escolherGabarito(digitos, campo.dataset.mascara.split("|"));
+  const limite = contarDigitos(gabarito);
+  // ... segue igual: formata, reposiciona o cursor, acende o excesso e marca digitosCompletos.
+}
 ```
 
 **`apps/certidao_lancamento/emissao.py`** — orquestração; único ponto que lê settings.
@@ -509,7 +870,8 @@ class LoteLido(BaseModel):
 
 def ler_lote(id_poligono: str) -> LoteLido | None:
     # None = o polígono não existe mais na camada; o modal mostra o aviso em vez do formulário.
-    feature = LotePorIdentificador(build_fetcher(settings))(LotePorIdentificadorInput(
+    buscar_lote = LotePorIdentificador(build_fetcher(settings))
+    feature = buscar_lote(LotePorIdentificadorInput(
         id_poligono=id_poligono,
         layer_name=WFS_LAYER_LOTE_CIDADAO,
         output_crs=MAP_INTERPOLATION_CRS,
@@ -536,14 +898,24 @@ def emitir_certidao_lancamento(
         alvo=AlvoDoAto(tipo="lote", identificador=imovel.sql or ""),
         emitido_em=timezone.localtime(),
         # O interessado é pessoa: fica no PDF, que só circula com quem o recebeu, e fora da ficha pública.
-        campos_publicos=("contribuinte", "processo"),
-        extras={"contribuinte": imovel.sql, "processo": pedido.processo},
+        # ALTERADO nesta SPEC: a ficha pública diz o sentido do despacho e o tipo dele.
+        campos_publicos=("contribuinte", "processo", "despacho"),
+        extras={
+            "contribuinte": imovel.sql,
+            "processo": pedido.processo,
+            "despacho": pedido.tipo_despacho.rotulo,   # "Indeferido · imóvel não localizado"
+        },
     )
-    planta = GerarPlantaLocalizacao(build_wms_fetcher(settings))(PlantaLocalizacaoInput(
-        camadas=(CamadaPlanta(geometrias=(lote.feature.geometry,), estilo=EstiloGeometria.DESTAQUE),),
-        config=planta_config(),
-    ))
-    renderizado = _tipo_certidao()(CertidaoLancamentoInput(
+    # ALTERADO nesta SPEC: sem o mapa no pedido, nada de WMS — nem a ortofoto indisponível recusa o ato.
+    planta = None
+    if pedido.incluir_planta:
+        gerar_planta = GerarPlantaLocalizacao(build_wms_fetcher(settings))
+        planta = gerar_planta(PlantaLocalizacaoInput(
+            camadas=(CamadaPlanta(geometrias=(lote.feature.geometry,), estilo=EstiloGeometria.DESTAQUE),),
+            config=planta_config(),
+        ))
+    renderizar_certidao = _tipo_certidao()
+    renderizado = renderizar_certidao(CertidaoLancamentoInput(
         envelope=envelope,
         pedido=pedido,
         imovel=imovel,
@@ -593,12 +965,14 @@ certidão atesta o que o GeoSampa respondeu naquele momento, e os parquets locai
 emissão. O custo é que a data não diz desde quando o próprio GeoSampa foi atualizado pela fonte
 dele.
 
-O interessado fica fora de `campos_publicos`. É dado de pessoa, e a ficha de conferência abre para
-quem tiver o código. O custo é que quem confere pelo código vê o SQL e o processo, mas não a quem a
-certidão foi emitida.
+O interessado e o CPF/CNPJ ficam fora de `campos_publicos`, e o despacho entra. Os dois primeiros são
+dados de pessoa, e a ficha de conferência abre para quem tiver o código; o despacho diz se o ato
+atendeu ao pedido. O custo é que quem confere pelo código vê o SQL, o processo e o despacho, mas não a
+quem a certidão foi emitida.
 
-Só o **formato** do processo SEI é conferido, não o dígito verificador. O algoritmo do dígito não
-está documentado no projeto. O custo é aceitar número bem formado que não existe.
+Só o **formato** do processo SEI e do CPF/CNPJ é conferido, não o dígito verificador. O algoritmo do
+dígito do SEI não está documentado no projeto, e o do CPF/CNPJ fica junto dele para as duas regras
+entrarem de uma vez. O custo é aceitar número bem formado que não existe.
 
 A nota do rodapé é quebrada **à mão**, uma string por linha, porque o motor de marcação não mede a
 faixa e a linha longa atravessa o quadro do selo. O custo é que nada revalida a quebra: alongar o
@@ -609,31 +983,68 @@ mesmo quando ela sai da caixa, então só rasterizando (`pdftoppm`) se enxerga.
 do modal. A regra "só se certifica lançamento que existe" não pode depender da tela. O custo é a
 mesma condição escrita no template do modal e no validador.
 
+O tipo de despacho é escolhido pelo auditor, inclusive "em maior área" e "parcial", enquanto a SPEC 003
+deriva do desenho a modalidade "a maior"/"a menor" do conjunto. No lote único não há desenho de que
+derivar nada, e o que decide é a leitura do processo. O custo é a mesma noção existir escolhida aqui
+e apurada lá, e a 003 precisa dizer qual das duas vence quando o conjunto chegar ao despacho.
+
+Os indeferimentos saem sobre o lote localizado, com a identificação dele nos dados relacionados e, por
+padrão, sem a planta. A ação só existe sobre um lote, e o mapa é decisão do auditor: o sentido só
+define o padrão. O custo é a declaração de "imóvel não localizado" ainda nomear o lote que a pessoa
+abriu na gaveta.
+
+O pedido guarda o sentido que a chave declarou, embora ele seja derivável do tipo pelo de-para. É o
+que permite recusar o texto do outro sentido que ficou marcado depois de a pessoa trocar a chave, em
+vez de emitir um deferimento que ela não quis. O custo é o mesmo dado chegar duas vezes e o domínio
+precisar conferir que elas batem.
+
+A ressalva padrão e a validade são texto fixo no domínio, e a pessoa só escolhe se a ressalva entra.
+É o modelo da DIMAP, e texto oficial editável no navegador deixaria de ser modelo. O custo é que mudar
+a redação exige deploy.
+
 ## 8 · Testes (TDD)
 
 **Comportamento**
-- `test_pedido_recusa_processo_fora_do_formato_sei` — `6017.2026/123-4` e texto livre falham; o
-  formato completo passa.
+- `test_pedido_recusa_campos_fora_do_formato_ou_texto_de_outro_sentido` — `6017.2026/123-4` e texto
+  livre falham; CPF/CNPJ com dígitos faltando falha; CPF/CNPJ vazio vira `None`; sentido indeferido com
+  tipo deferido falha; o pedido coerente passa.
 - `test_certidao_input_recusa_lote_sem_lancamento_ou_condominial` — lote municipal e lote-mãe de
   condomínio falham na construção.
-- `test_montar_certidao_declara_requerimento_identificacao_e_despacho` — os blocos trazem interessado,
-  processo, endereço com codlog-DV e o SQL no despacho.
-- `test_certidao_traz_planta_e_nota_com_instante_da_consulta` — há um `ImagemRaster` e a nota do rodapé
-  cita data e hora de `consultado_em`.
-- `test_poco_de_acoes_lote_so_para_quem_tem_concessao_e_sql_valido` — anônimo e autenticado sem concessão
-  recebem o poço vazio; com concessão e SQL válido, o botão aponta para o modal com o id e o sql *(marker `banco`)*.
-- `test_router_acoes_lote_recusa_sql_invalido_ou_ausente` — parâmetros sem SQL ou com formato divergente
-  do padrão `SSS.QQQ.LLLL-D` devolvem poço vazio sem erro 500 *(marker `banco`)*.
+- `test_montar_certidao_declara_dados_e_despacho_do_tipo` — os dados trazem imóvel com codlog-DV,
+  interessado com o CPF/CNPJ só quando informado, processo e data; percorrendo **todos** os
+  `TipoDespacho`, o despacho abre por "DEFERIDA"/"INDEFERIDA" conforme o sentido do tipo, e só os
+  deferidos citam o SQL.
+- `test_despacho_poe_ressalva_e_observacoes_antes_da_validade` — com a ressalva marcada e observações,
+  os parágrafos saem na ordem despacho → ressalva → observações → validade; desmarcada, a ressalva
+  não sai.
+- `test_planta_segue_o_pedido_e_nota_com_instante_da_consulta` — com `incluir_planta` a seção de
+  localização traz o `ImagemRaster`, sem ele a seção some — nos dois sentidos —, o
+  `CertidaoLancamentoInput` recusa planta que o pedido não inclui e pedido de mapa sem planta, e a nota
+  do rodapé cita data e hora de `consultado_em`.
+- `test_grupos_de_despacho_separam_os_textos_por_sentido` — cada grupo traz só os tipos do seu sentido,
+  com a abertura dele e o corpo já com o SQL, e o recorte de tipos passado de fora é respeitado.
+- `test_poco_de_acoes_lote_so_para_quem_tem_concessao_e_sql_valido` — anônimo, autenticado sem
+  concessão e SQL ausente ou fora do padrão `SSS.QQQ.LLLL-D` recebem o poço vazio sem erro 500; com
+  concessão e SQL válido, o botão aponta para o modal com o id e o sql *(marker `banco`)*.
 - `test_modal_de_lote_sem_lancamento_ou_inexistente_mostra_aviso_sem_formulario` — lote municipal e
-  fetcher vazio abrem o aviso *(marker `banco`)*.
-- `test_emissao_rele_lote_pelo_identificador` — o imóvel certificado é o que o fetcher fake devolve
-  para o `id` do POST; campos de endereço mandados no POST são ignorados
-  *(marker `banco`)*.
-- `test_emissao_guarda_via_no_acervo_e_devolve_download` — `DocumentoEmitido` gravado, segunda via com
-  os mesmos bytes, resposta com o link *(marker `banco`)*.
-- `test_formulario_invalido_volta_ao_modal_com_realce` — 422 com `campo-realce-erro` no processo
-  *(marker `banco`)*.
-- `test_amostra_certidao_de_lancamento` — PDF com planta fictícia para conferência *(marker `artefato`)*.
+  fetcher vazio abrem o aviso; lote certificável abre o formulário com a chave em deferido, o primeiro
+  texto, o mapa e a ressalva marcados *(marker `banco`)*.
+- `test_formulario_invalido_volta_ao_modal_com_realce_e_valores` — 422 com `campo-realce-erro` no
+  processo e no CPF/CNPJ, os valores digitados de volta, a chave em indeferido com o texto escolhido e o
+  mapa desmarcado preservados *(marker `banco`)*.
+- `test_texto_de_outro_sentido_volta_com_a_tarja_sem_emitir` — sentido indeferido com texto deferido
+  devolve 422 com a mensagem na tarja e nenhum `DocumentoEmitido` *(marker `banco`)*.
+- `test_emissao_rele_lote_e_guarda_via_no_acervo` — o imóvel certificado é o que o fetcher fake
+  devolve para o `id` do POST, campos de endereço mandados no POST são ignorados, o
+  `DocumentoEmitido` é gravado com o `despacho` entre os públicos e sem interessado nem CPF/CNPJ, e a
+  segunda via tem os mesmos bytes *(marker `banco`)*.
+- `test_mapa_segue_o_pedido_na_emissao` — deferimento sem mapa emite sem chamar o WMS fake;
+  indeferimento com o mapa forçado chama e a planta sai; ortofoto indisponível recusa só o pedido com
+  mapa, e o sem mapa emite *(marker `banco`)*.
+- `test_conferencia_mostra_o_despacho_na_ficha` — a página de conferência pelo código mostra
+  "Indeferido · imóvel não localizado" e não mostra o interessado *(marker `banco`)*.
+- `test_amostra_certidao_de_lancamento` — PDFs de amostra de um deferimento com planta e de um
+  indeferimento sem ela, para conferência *(marker `artefato`)*.
 
 **Segurança da ação** (skill `acao-administrativa`, fora do teto; todos com marker `banco`)
 - `test_anonimo_no_modal_vai_ao_login_sem_linha` — #1.

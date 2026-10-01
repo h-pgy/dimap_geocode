@@ -1,27 +1,35 @@
 """Testes de apps/certidao_lancamento/views.py (SPEC certidao_lancamento/001):
-modal de emissão, validação de admissibilidade do lote, orquestração de emissão com releitura
-no WFS pelo identificador, guarda no acervo, realce de erro no formulário e a bateria completa
-de segurança da ação administrativa (skill `acao-administrativa`).
+modal de emissão e as opções de despacho, validação de admissibilidade do lote, orquestração de
+emissão com releitura no WFS pelo identificador, mapa opcional, guarda no acervo, ficha pública,
+realce de erro no formulário e a bateria completa de segurança da ação administrativa (skill
+`acao-administrativa`).
 """
 
 from datetime import timedelta
+from functools import partial
 from io import BytesIO
 from itertools import count
+import json
+import re
 
 from PIL import Image as PILImage
 from django.conf import settings as django_settings
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
+from pypdf import PdfReader
 import pytest
 
 from apps.cargos.models import CargoBase
+from apps.certidao_lancamento.views import grupos_de_despacho
 from apps.competencias.models import Acao, AtribuicaoUnidade, Concessao, ExecucaoAcao
 from apps.documentos.models import DocumentoEmitido
 from apps.unidades.models import TipoUnidade, Unidade
 from apps.user_admin.exercicio import registrar_impedimento
 from apps.user_admin.models import Perfil, TipoImpedimento
 from apps.user_admin.schemas import NovoImpedimento
+from services.domain.certidao_lancamento.certidao import corpo_do_despacho
+from services.domain.certidao_lancamento.models import SentidoDespacho, TipoDespacho
 from services.domain.geometry import GeoFeature, PolygonGeometry
 from services.domain.lote_geocod.models import LoteAttributes, LoteFeature
 from apps.certidao_lancamento.emissao import LoteLido
@@ -91,6 +99,13 @@ def _conceder(atribuicao: AtribuicaoUnidade, cargo_base: CargoBase) -> Concessao
     return Concessao.objects.create(atribuicao=atribuicao, cargo_base=cargo_base)
 
 
+def _perfil_com_concessao(sigla: str, rf: str) -> Perfil:
+    unidade = _unidade(sigla)
+    perfil = _perfil(unidade, rf=rf)
+    _conceder(_atribuir(unidade, _acao(SLUG_ACAO)), perfil.cargo_base)
+    return perfil
+
+
 def _lote_attributes(**overrides: object) -> LoteAttributes:
     defaults: dict[str, object] = {
         "id_poligono": "1001",
@@ -120,11 +135,13 @@ def _lote_lido(attributes: LoteAttributes | None = None) -> LoteLido:
     return LoteLido(feature=_lote_feature(attrs), consultado_em=timezone.localtime())
 
 
-def _ortofoto_disponivel(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A emissão só entrega certidão com planta real: o WMS entra pelo fetcher falso."""
+def _ortofoto_disponivel(monkeypatch: pytest.MonkeyPatch) -> list[object]:
+    """O WMS entra pelo fetcher falso; o que ele recebeu volta na lista, para provar quando NÃO é chamado."""
+    chamadas: list[object] = []
 
     def _fetcher(_settings: object) -> object:
         def _buscar(req: object) -> WmsImage:
+            chamadas.append(req)
             lado = getattr(req, "width", 200)
             imagem = PILImage.new("RGB", (lado, lado), (120, 140, 120))
             buffer = BytesIO()
@@ -141,16 +158,53 @@ def _ortofoto_disponivel(monkeypatch: pytest.MonkeyPatch) -> None:
         return _buscar
 
     monkeypatch.setattr("apps.certidao_lancamento.emissao.build_wms_fetcher", _fetcher)
+    return chamadas
 
 
-def _ortofoto_indisponivel(monkeypatch: pytest.MonkeyPatch) -> None:
+def _ortofoto_indisponivel(monkeypatch: pytest.MonkeyPatch) -> list[object]:
+    chamadas: list[object] = []
+
     def _fetcher(_settings: object) -> object:
-        def _buscar(_req: object) -> WmsImage:
+        def _buscar(req: object) -> WmsImage:
+            chamadas.append(req)
             raise WmsHttpError("GeoSampa fora do ar")
 
         return _buscar
 
     monkeypatch.setattr("apps.certidao_lancamento.emissao.build_wms_fetcher", _fetcher)
+    return chamadas
+
+
+def _post_pedido(**overrides: str) -> dict[str, str]:
+    """O que o navegador envia com o formulário aberto como está: deferido, sem mapa nem ressalva
+    (checkbox desmarcado não vai no POST)."""
+    defaults = {
+        "id": "1001",
+        "processo": "6017.2026/0012345-6",
+        "interessado": "Marina Salgado",
+        "sentido": "deferido",
+        "tipo_despacho": "possui_lancamento",
+    }
+    return defaults | overrides
+
+
+def _tag_input(corpo: str, nome: str, valor: str | None = None) -> str:
+    for tag in re.findall(r"<input\b[^>]*>", corpo):
+        if f'name="{nome}"' not in tag:
+            continue
+        if valor is not None and f'value="{valor}"' not in tag:
+            continue
+        return tag
+    raise AssertionError(f"input name={nome!r} value={valor!r} ausente do HTML")
+
+
+def _marcado(corpo: str, nome: str, valor: str | None = None) -> bool:
+    return re.search(r"\bchecked\b", _tag_input(corpo, nome, valor)) is not None
+
+
+def _texto_do_pdf(pdf: bytes) -> str:
+    paginas = PdfReader(BytesIO(pdf)).pages
+    return " ".join(" ".join(pagina.extract_text().split()) for pagina in paginas)
 
 
 def _url_modal() -> str:
@@ -209,130 +263,274 @@ def test_modal_de_lote_sem_lancamento_ou_inexistente_mostra_aviso_sem_formulario
     corpo_valido = resp_valido.content.decode()
     assert "<form" in corpo_valido
     assert 'data-mascara="0000.0000/0000000-0"' in corpo_valido
-    assert 'name="processo"' in corpo_valido
-    assert 'name="interessado"' in corpo_valido
+    assert 'data-mascara="000.000.000-00|00.000.000/0000-00"' in corpo_valido
+    for campo in ("processo", "interessado", "cpf_cnpj", "observacoes"):
+        assert f'name="{campo}"' in corpo_valido
+
+    # Abre com deferido, "possui lançamento", a ressalva e o mapa marcados
+    assert _marcado(corpo_valido, "sentido", "deferido")
+    assert not _marcado(corpo_valido, "sentido", "indeferido")
+    assert _marcado(corpo_valido, "tipo_despacho", "possui_lancamento")
+    assert not _marcado(corpo_valido, "tipo_despacho", "lancamento_parcial")
+    assert _marcado(corpo_valido, "incluir_ressalva")
+    assert _marcado(corpo_valido, "incluir_planta")
+
+    # Cada texto à vista como sai no PDF: a abertura do sentido e o corpo já com o SQL do lote
+    assert "Solicitação DEFERIDA. Com base nas informações presentes no processo" in corpo_valido
+    assert "Solicitação INDEFERIDA. Com base nas informações presentes no processo" in corpo_valido
+    assert "pelo contribuinte número 005.003.0048-5" in corpo_valido
 
 
 @banco
 @pytest.mark.django_db
-def test_emissao_rele_lote_pelo_identificador(
+def test_emissao_rele_lote_e_guarda_via_no_acervo(
     client: Client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    unidade = _unidade("CLAN-RELE")
-    servidor = _perfil(unidade, rf="890020")
-    acao = _acao(SLUG_ACAO)
-    atribuicao = _atribuir(unidade, acao)
-    _conceder(atribuicao, servidor.cargo_base)
-    client.force_login(servidor)
-
-    # Imóvel oficial retornado pelo WFS
+    client.force_login(_perfil_com_concessao("CLAN-RELE", rf="890020"))
     _ortofoto_disponivel(monkeypatch)
+
+    # O fetcher fake responde por id: só o 1001 existe, e é o imóvel oficial
     lote_oficial = _lote_lido(
         _lote_attributes(
             id_poligono="1001",
-            setor="005",
-            quadra="003",
-            lote="0048",
-            digito="5",
             nome_logradouro="AV PAULISTA OFICIAL",
             numero_porta="100",
         )
     )
-    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote_oficial)
+    monkeypatch.setattr(
+        "apps.certidao_lancamento.views.ler_lote",
+        lambda id_poligono: lote_oficial if id_poligono == "1001" else None,
+    )
 
     # POST com campos adulterados pelo cliente no navegador
     resposta = client.post(
         _url_emitir(),
-        {
-            "id": "1001",
-            "processo": "6017.2026/0012345-6",
-            "interessado": "Empresa Interessada",
-            "sql": "999.999.9999-9",  # adulterado
-            "nome_logradouro": "RUA FALSA",  # adulterado
-            "numero_porta": "666",  # adulterado
-        },
-    )
-
-    assert resposta.status_code == 200
-    doc = DocumentoEmitido.objects.latest("emitido_em")
-    conferencia = conferir_selo(
-        ConferirInput(pdf=bytes(doc.arquivo), segredo=django_settings.ASSINATURA_SEGREDO)
-    )
-    assert conferencia.estado == EstadoSelo.INTEGRO
-    assert conferencia.envelope is not None
-    # O SQL certificado vem do lote oficial relido no GeoSampa, e não do POST
-    assert conferencia.envelope["alvo"]["identificador"] == "005.003.0048-5"
-    assert conferencia.envelope["contribuinte"] == "005.003.0048-5"
-
-
-@banco
-@pytest.mark.django_db
-def test_emissao_guarda_via_no_acervo_e_devolve_download(
-    client: Client, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    unidade = _unidade("CLAN-ACERVO")
-    servidor = _perfil(unidade, rf="890030")
-    acao = _acao(SLUG_ACAO)
-    atribuicao = _atribuir(unidade, acao)
-    _conceder(atribuicao, servidor.cargo_base)
-    client.force_login(servidor)
-
-    _ortofoto_disponivel(monkeypatch)
-    lote_valido = _lote_lido(_lote_attributes(id_poligono="1001"))
-    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote_valido)
-
-    resposta = client.post(
-        _url_emitir(),
-        {
-            "id": "1001",
-            "processo": "6017.2026/0012345-6",
-            "interessado": "Marina Salgado",
-        },
+        _post_pedido(
+            cpf_cnpj="123.456.789-09",
+            sql="999.999.9999-9",  # adulterado
+            nome_logradouro="RUA FALSA",  # adulterado
+            numero_porta="666",  # adulterado
+        ),
     )
 
     assert resposta.status_code == 200
     doc = DocumentoEmitido.objects.latest("emitido_em")
     bytes_emitidos = bytes(doc.arquivo)
+    conferencia = conferir_selo(
+        ConferirInput(pdf=bytes_emitidos, segredo=django_settings.ASSINATURA_SEGREDO)
+    )
+    assert conferencia.estado == EstadoSelo.INTEGRO
+    assert conferencia.envelope is not None
+    # O SQL e o endereço certificados vêm do lote oficial relido no GeoSampa, e não do POST
+    assert conferencia.envelope["alvo"]["identificador"] == "005.003.0048-5"
+    assert conferencia.envelope["contribuinte"] == "005.003.0048-5"
+    texto = _texto_do_pdf(bytes_emitidos)
+    assert "AV PAULISTA OFICIAL" in texto
+    assert "RUA FALSA" not in texto
 
-    # Segunda via devolve exatamente os mesmos bytes
+    # O despacho é público; o interessado e o CPF/CNPJ ficam só no PDF
+    assert "despacho" in doc.campos_publicos
+    assert "interessado" not in doc.campos_publicos
+    assert "cpf_cnpj" not in doc.campos_publicos
+    assert conferencia.envelope["despacho"] == "Deferido · possui lançamento"
+    envelope_guardado = json.dumps(doc.envelope, ensure_ascii=False)
+    assert "Marina Salgado" not in envelope_guardado
+    assert "123.456.789-09" not in envelope_guardado
+    assert "Marina Salgado" in texto
+    assert "123.456.789-09" in texto
+
+    # Segunda via devolve exatamente os mesmos bytes, e a resposta oferece o download
     url_segunda_via = reverse("documentos:segunda_via", kwargs={"codigo": doc.codigo})
     resp_segunda_via = client.get(url_segunda_via)
     assert resp_segunda_via.status_code == 200
     assert resp_segunda_via.content == bytes_emitidos
-
-    # Resposta contém o botão de download apontando para a certidão
     assert doc.codigo in resposta.content.decode()
 
 
 @banco
 @pytest.mark.django_db
-def test_formulario_invalido_volta_ao_modal_com_realce(
+def test_mapa_segue_o_pedido_na_emissao(
     client: Client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    unidade = _unidade("CLAN-INVALIDO")
-    servidor = _perfil(unidade, rf="890040")
-    acao = _acao(SLUG_ACAO)
-    atribuicao = _atribuir(unidade, acao)
-    _conceder(atribuicao, servidor.cargo_base)
-    client.force_login(servidor)
+    client.force_login(_perfil_com_concessao("CLAN-MAPA", rf="890025"))
+    lote = _lote_lido(_lote_attributes(id_poligono="1001"))
+    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote)
+    chamadas = _ortofoto_disponivel(monkeypatch)
 
-    lote_valido = _lote_lido(_lote_attributes(id_poligono="1001"))
-    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote_valido)
+    # Deferimento sem o mapa marcado: emite sem consultar a ortofoto
+    resposta = client.post(_url_emitir(), _post_pedido())
+    assert resposta.status_code == 200
+    assert chamadas == []
+    sem_mapa = _texto_do_pdf(bytes(DocumentoEmitido.objects.latest("emitido_em").arquivo))
+    assert "Localização do Imóvel" not in sem_mapa
 
-    # Processo com formato fora do padrão SEI
+    # Indeferimento com o mapa forçado pelo auditor: a planta é gerada e sai no documento
     resposta = client.post(
         _url_emitir(),
-        {
-            "id": "1001",
-            "processo": "processo-invalido",
-            "interessado": "Empresa Teste",
-        },
+        _post_pedido(
+            sentido="indeferido",
+            tipo_despacho="imovel_nao_localizado",
+            incluir_planta="on",
+        ),
+    )
+    assert resposta.status_code == 200
+    assert chamadas != []
+    com_mapa = _texto_do_pdf(bytes(DocumentoEmitido.objects.latest("emitido_em").arquivo))
+    assert "Localização do Imóvel" in com_mapa
+
+    # Ortofoto indisponível: recusa só o pedido que pediu o mapa
+    _ortofoto_indisponivel(monkeypatch)
+    emitidos = DocumentoEmitido.objects.count()
+
+    recusado = client.post(_url_emitir(), _post_pedido(incluir_planta="on"))
+    assert recusado.status_code == 422
+    assert "imagem de localiza" in recusado.content.decode()
+    assert DocumentoEmitido.objects.count() == emitidos
+
+    emitido = client.post(_url_emitir(), _post_pedido())
+    assert emitido.status_code == 200
+    assert DocumentoEmitido.objects.count() == emitidos + 1
+
+
+@banco
+@pytest.mark.django_db
+def test_conferencia_mostra_o_despacho_na_ficha(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client.force_login(_perfil_com_concessao("CLAN-FICHA", rf="890026"))
+    _ortofoto_disponivel(monkeypatch)
+    lote = _lote_lido(_lote_attributes(id_poligono="1001"))
+    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote)
+
+    resposta = client.post(
+        _url_emitir(),
+        _post_pedido(
+            sentido="indeferido",
+            tipo_despacho="imovel_nao_localizado",
+            cpf_cnpj="123.456.789-09",
+        ),
+    )
+    assert resposta.status_code == 200
+    doc = DocumentoEmitido.objects.latest("emitido_em")
+
+    # A conferência é aberta: quem a faz não tem login
+    ficha = Client().get(reverse("documentos:conferir", kwargs={"codigo": doc.codigo}))
+
+    assert ficha.status_code == 200
+    corpo = ficha.content.decode()
+    assert "Indeferido · imóvel não localizado" in corpo
+    assert "Marina Salgado" not in corpo
+    assert "123.456.789-09" not in corpo
+
+
+@banco
+@pytest.mark.django_db
+def test_formulario_invalido_volta_ao_modal_com_realce_e_valores(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client.force_login(_perfil_com_concessao("CLAN-INVALIDO", rf="890040"))
+    lote = _lote_lido(_lote_attributes(id_poligono="1001"))
+    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote)
+
+    # Processo e CPF/CNPJ inválidos; o resto, escolhido pelo auditor: indeferido, sem mapa nem ressalva
+    resposta = client.post(
+        _url_emitir(),
+        _post_pedido(
+            processo="processo-invalido",
+            cpf_cnpj="123.456",
+            interessado="Empresa Teste",
+            sentido="indeferido",
+            tipo_despacho="pedido_de_acesso_a_informacao",
+            observacoes="Observação digitada pelo auditor.",
+        ),
     )
 
     assert resposta.status_code == 422
     corpo = resposta.content.decode()
-    assert "campo-realce-erro" in corpo
     assert "<form" in corpo
+    assert corpo.count("campo-realce-erro") == 2
+    assert "formato padr" in corpo
+    assert "O CPF deve ter 11 dígitos e o CNPJ, 14" in corpo
+
+    # O que a pessoa digitou e marcou volta como estava
+    assert 'value="processo-invalido"' in corpo
+    assert 'value="123.456"' in corpo
+    assert 'value="Empresa Teste"' in corpo
+    assert "Observação digitada pelo auditor." in corpo
+    assert _marcado(corpo, "sentido", "indeferido")
+    assert not _marcado(corpo, "sentido", "deferido")
+    assert _marcado(corpo, "tipo_despacho", "pedido_de_acesso_a_informacao")
+    assert not _marcado(corpo, "incluir_planta")
+    assert not _marcado(corpo, "incluir_ressalva")
+    # Os textos do sentido escolhido seguem à vista
+    fieldset_indeferido = re.search(r'<fieldset[^>]*data-mostra-se="indeferido"[^>]*>', corpo)
+    assert fieldset_indeferido is not None
+    assert "hidden" not in fieldset_indeferido.group(0)
+
+
+@banco
+@pytest.mark.django_db
+def test_texto_de_outro_sentido_volta_com_a_tarja_sem_emitir(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client.force_login(_perfil_com_concessao("CLAN-OUTRO-SENTIDO", rf="890045"))
+    _ortofoto_disponivel(monkeypatch)
+    lote = _lote_lido(_lote_attributes(id_poligono="1001"))
+    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote)
+    emitidos = DocumentoEmitido.objects.count()
+
+    # A chave foi trocada para indeferido, mas o texto deferido ficou marcado
+    resposta = client.post(
+        _url_emitir(),
+        _post_pedido(sentido="indeferido", tipo_despacho="possui_lancamento"),
+    )
+
+    assert resposta.status_code == 422
+    corpo = resposta.content.decode()
+    assert "Não foi possível emitir a certidão" in corpo
+    assert "Escolha um dos textos de despacho indeferido." in corpo
+    assert "campo-realce-erro" not in corpo
+    assert DocumentoEmitido.objects.count() == emitidos
+
+
+# ---------------------------------------------------------------------------
+# Opções de despacho do modal (SPEC 001 §8)
+# ---------------------------------------------------------------------------
+
+
+def test_grupos_de_despacho_separam_os_textos_por_sentido() -> None:
+    sql = "005.003.0048-5"
+
+    grupos = grupos_de_despacho(TipoDespacho, partial(corpo_do_despacho, sql=sql))
+
+    assert [grupo.sentido for grupo in grupos] == [SentidoDespacho.DEFERIDO, SentidoDespacho.INDEFERIDO]
+    deferido, indeferido = grupos
+    assert deferido.abertura == "Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que"
+    assert indeferido.abertura == "Solicitação INDEFERIDA. Com base nas informações presentes no processo, declara-se que"
+    # Cada grupo traz só os tipos do seu sentido, com o rótulo do tipo e o corpo já com o SQL
+    assert [opcao.valor for opcao in deferido.opcoes] == [
+        TipoDespacho.POSSUI_LANCAMENTO,
+        TipoDespacho.LANCAMENTO_EM_MAIOR_AREA,
+        TipoDespacho.LANCAMENTO_PARCIAL,
+    ]
+    assert [opcao.valor for opcao in indeferido.opcoes] == [
+        TipoDespacho.IMOVEL_NAO_LOCALIZADO,
+        TipoDespacho.PEDIDO_DE_ACESSO_A_INFORMACAO,
+    ]
+    assert deferido.opcoes[0].rotulo == "possui lançamento"
+    assert all(sql in opcao.texto for opcao in deferido.opcoes)
+    assert not any(sql in opcao.texto for opcao in indeferido.opcoes)
+
+    # O recorte de tipos e o corpo descem como dado: o que não foi oferecido não aparece
+    recorte = grupos_de_despacho(
+        (TipoDespacho.LANCAMENTO_PARCIAL, TipoDespacho.IMOVEL_NAO_LOCALIZADO),
+        lambda tipo: f"corpo de {tipo.value}",
+    )
+    assert [[opcao.valor for opcao in grupo.opcoes] for grupo in recorte] == [
+        [TipoDespacho.LANCAMENTO_PARCIAL],
+        [TipoDespacho.IMOVEL_NAO_LOCALIZADO],
+    ]
+    assert recorte[0].opcoes[0].texto == "corpo de lancamento_parcial"
 
 
 # ---------------------------------------------------------------------------
@@ -374,7 +572,7 @@ def test_formulario_com_dois_campos_invalidos_realca_os_dois(
 
     resposta = client.post(
         _url_emitir(),
-        {"id": "1001", "processo": "nao-e-processo", "interessado": ""},
+        _post_pedido(processo="nao-e-processo", interessado=""),
     )
 
     assert resposta.status_code == 422
@@ -383,32 +581,6 @@ def test_formulario_com_dois_campos_invalidos_realca_os_dois(
     assert corpo.count("campo-realce-erro") == 2
     assert "formato padr" in corpo
     assert "Informe o nome completo" in corpo
-
-
-@banco
-@pytest.mark.django_db
-def test_emissao_recusa_quando_ortofoto_indisponivel(
-    client: Client, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    unidade = _unidade("CLAN-SEM-ORTO")
-    servidor = _perfil(unidade, rf="890120")
-    _conceder(_atribuir(unidade, _acao(SLUG_ACAO)), servidor.cargo_base)
-    client.force_login(servidor)
-
-    _ortofoto_indisponivel(monkeypatch)
-    lote = _lote_lido(_lote_attributes(id_poligono="1001"))
-    monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote)
-
-    antes = DocumentoEmitido.objects.count()
-    resposta = client.post(
-        _url_emitir(),
-        {"id": "1001", "processo": "6017.2026/0012345-6", "interessado": "Marina Salgado"},
-    )
-
-    assert resposta.status_code == 422
-    assert "imagem de localiza" in resposta.content.decode()
-    # Certidao sem planta real nao existe: nada entra no acervo.
-    assert DocumentoEmitido.objects.count() == antes
 
 
 # ---------------------------------------------------------------------------
@@ -533,14 +705,7 @@ def test_emissao_grava_autor_cargo_unidade_operacao_e_alvo(
     monkeypatch.setattr("apps.certidao_lancamento.views.ler_lote", lambda _id: lote_valido)
 
     client.force_login(servidor)
-    resposta = client.post(
-        _url_emitir(),
-        {
-            "id": "1001",
-            "processo": "6017.2026/0012345-6",
-            "interessado": "Empresa Alvo",
-        },
-    )
+    resposta = client.post(_url_emitir(), _post_pedido(interessado="Empresa Alvo"))
     assert resposta.status_code == 200
 
     doc = DocumentoEmitido.objects.latest("emitido_em")

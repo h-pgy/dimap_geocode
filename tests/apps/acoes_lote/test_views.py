@@ -121,18 +121,7 @@ def test_poco_de_acoes_lote_so_para_quem_tem_concessao_e_sql_valido(client: Clie
     assert f"sql={sql_valido}" in corpo
     assert 'hx-target="#poco-modal"' in corpo
 
-
-@banco
-@pytest.mark.django_db
-def test_router_acoes_lote_recusa_sql_invalido_ou_ausente(client: Client) -> None:
-    unidade = _unidade("LOTE-RECUSA")
-    user = _perfil(unidade, rf="880020", nome="Autorizado")
-    acao = _acao(SLUG_ACAO)
-    atribuicao = _atribuir(unidade, acao)
-    _conceder(atribuicao, user.cargo_base)
-
-    client.force_login(user)
-
+    # Mesmo com concessão, SQL ausente ou fora do padrão SSS.QQQ.LLLL-D devolve o poço vazio, sem 500
     casos_invalidos: tuple[dict[str, str], ...] = (
         {"id": "1001"},  # sem SQL
         {"sql": "", "id": "1001"},  # SQL vazio
@@ -143,7 +132,7 @@ def test_router_acoes_lote_recusa_sql_invalido_ou_ausente(client: Client) -> Non
         {"sql": "005.003.0048-5", "id": "abc"},  # id não numérico
         {},  # sem parâmetros
     )
-    for params in casos_invalidos:
-        resposta = client.get(_url_router(), params)
+    for params_invalidos in casos_invalidos:
+        resposta = client.get(_url_router(), params_invalidos)
         assert resposta.status_code == 200
         assert resposta.content.strip() == b""

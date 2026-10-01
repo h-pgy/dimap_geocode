@@ -1,7 +1,7 @@
 ---
 spec: documentos_oficiais/001
-versao: v4
-atualizado_em: 2026-09-07
+versao: v5
+atualizado_em: 2026-09-30
 testes_tdd: true
 implementado: true
 changelog:
@@ -11,6 +11,7 @@ changelog:
     esmaecer, vetor, documento) e os 11 testes do §8, seguindo os snippets do §6 à risca
   - v4: a `Marcacao` ganha `margem_vertical_mm` — a borda do papel que nem as marcas ocupam, sem a
     qual o rodapé saía na aresta da folha e não imprimia
+  - v5: "[bugfix] marca de fundo apagava dos recursos da página os vetores que o corpo usa nela"
 ---
 
 # SPEC documentos_oficiais/001 — Motor de PDF: folha em milímetros, marcação composta e bytes

@@ -9,7 +9,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <!-- Leaflet para o mapa vivo da home (skill `mock`) -->
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação, nunca recriados. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <!-- Leaflet só para a tela montada, que é a home. -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -32,128 +38,58 @@
         "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
   </script>
 
-  <!-- Peças desta SPEC e fallback de tokens. Inerte, concatenado pelo loader acima. -->
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
   <script type="text/css" id="tokens-spec">
     @layer components {
-      /* andaime do mock: moldura que faz as vezes da casca da home */
+      /* ÁTOMO · .textarea-glass — a receita do .input-glass e do .select-glass, no textarea */
+      .textarea-glass {
+        @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/45 focus:border-agua-500 focus:outline-none;
+        box-shadow: var(--sombra-poco);
+      }
+      .textarea-glass:focus {
+        box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+      }
+
+      /* MOLÉCULA · .poco-acoes — composta com .card-well no HTML */
+      .poco-acoes { @apply px-4 pt-2.5 pb-3 flex flex-col gap-1 w-full min-h-0 max-h-full; }
+      .poco-acoes__titulo { @apply shrink-0 leading-none; }
+      .poco-acoes__lista {
+        @apply flex flex-col gap-2.5 p-1 min-h-0 overflow-y-auto overscroll-contain;
+        mask-image: linear-gradient(to bottom, transparent, black 8px, black calc(100% - 8px), transparent);
+      }
+      .poco-acoes__lista > .btn { @apply justify-start gap-2; }
+      .poco-acoes__icone { @apply w-4 h-4 shrink-0 flex items-center justify-center; }
+      .poco-acoes__icone > svg { @apply w-full h-full; }
+
+      /* MOLÉCULA · .opcao-texto — um texto oficial escolhível, composto com .card-well no HTML; o rádio é
+         sr-only e a escolha acende a água, como todo estado de seleção do sistema */
+      .opcao-texto { @apply flex flex-col gap-1 px-3.5 py-3 cursor-pointer transition-all duration-300; }
+      .opcao-texto:hover { @apply bg-white/45; }
+      .opcao-texto:has(input:checked) {
+        @apply border-agua-500/60;
+        box-shadow: var(--sombra-poco), 0 0 0 1px rgba(0, 150, 199, 0.35), 0 0 18px rgba(72, 202, 228, 0.35);
+      }
+      .opcao-texto:has(input:focus-visible) {
+        box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+      }
+      .opcao-texto__titulo { @apply transition-colors duration-300; }
+      .opcao-texto:has(input:checked) .opcao-texto__titulo { @apply text-agua-700; }
+      .opcao-texto__corpo { @apply text-[13px] leading-snug text-base-content/80; }
+
+      /* andaime do mock: a moldura que faz as vezes da janela da home */
       .quadro-tela {
         @apply relative h-[42rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
         contain: layout;
-      }
-
-      /* Campo de seleção de vidro (.select-onsen, SPEC user_admin/011) */
-      .select-onsen { @apply w-full; }
-      .select-onsen-trigger { @apply flex! w-full items-center justify-between text-left font-normal; }
-      .select-onsen-panel {
-        @apply fixed m-0 p-2 overflow-hidden rounded-2xl backdrop-blur-[20px] bg-transparent bg-gradient-to-br from-white/85 via-white/75 to-white/65 border border-white/70 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_40px_rgba(7,58,84,0.3),0_0_28px_rgba(72,202,228,0.28)];
-        inset: auto;
-      }
-      .select-onsen-panel:popover-open { @apply flex flex-col gap-2; }
-      .select-onsen-busca { @apply h-9 text-sm shrink-0; }
-      .select-onsen-list  { @apply flex flex-col gap-1 min-h-0 max-h-60 overflow-y-auto overscroll-contain; }
-      .select-onsen-option {
-        @apply flex items-center gap-2 w-full text-left px-3 py-2 rounded-xl text-sm cursor-pointer transition-all duration-200 text-base-content;
-      }
-      .select-onsen-option::before {
-        @apply w-4 shrink-0 text-center text-agua-700 font-bold opacity-0;
-        content: "✓";
-      }
-      .select-onsen-option[aria-selected="true"] { @apply font-medium text-agua-800; }
-      .select-onsen-option[aria-selected="true"]::before { @apply opacity-100; }
-      .select-onsen-option[data-ativo="true"] {
-        @apply bg-agua-400/45 text-rocha-950 outline-none shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
-      }
-      .select-onsen-vazio { @apply px-3 py-2 text-xs text-base-content/60; }
-
-      /* .checkbox-onsen — o checkbox do sistema (SPEC documentos_oficiais/009) */
-      .checkbox-onsen {
-        @apply relative w-5 h-5 shrink-0 appearance-none cursor-pointer rounded-md
-               bg-white/30 border border-white/45 transition-all duration-300;
-        box-shadow: var(--sombra-poco-fina);
-      }
-      .checkbox-onsen:hover {
-        @apply bg-white/45;
-      }
-      .checkbox-onsen:checked {
-        @apply bg-agua-600/90 border-agua-500/60;
-      }
-      .checkbox-onsen:checked::after {
-        content: "";
-        @apply absolute w-2.5 h-1.5 border-b-2 border-l-2;
-        border-color: rgba(13, 27, 42, 0.75);
-        top: 45%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(-45deg);
-        filter: url(#etched-onsen);
-      }
-      .checkbox-onsen:focus-visible {
-        @apply outline-none border-agua-500;
-        box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
       }
     }
   </script>
 </head>
 
-<body class="min-h-screen text-base-content">
-  <!-- Defs da gravação: partial da própria aplicação -->
-  <div id="defs-aplicacao"></div>
-
-  <!-- Glifos de SVG para o mock: selo oficial, download, alerta e o glifo novo da ação -->
-  <svg width="0" height="0" class="absolute" aria-hidden="true">
-    <defs>
-      <!-- NOVO nesta SPEC: centralizado em static/src/acoes/certidao_lancamento/emitir/icones/pequeno.svg -->
-      <!-- Documento oficial com a casinha no canto superior esquerdo -->
-      <g id="glifo-certidao-lancamento">
-        <!-- Documento oficial fornecido com caneta -->
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M10.9436 1.25H13.0564C14.8942 1.24998 16.3498 1.24997 17.489 1.40314C18.6614 1.56076 19.6104 1.89288 20.3588 2.64124C20.6516 2.93414 20.6516 3.40901 20.3588 3.7019C20.0659 3.9948 19.591 3.9948 19.2981 3.7019C18.8749 3.27869 18.2952 3.02502 17.2892 2.88976C16.2615 2.75159 14.9068 2.75 13 2.75H11C9.09318 2.75 7.73851 2.75159 6.71085 2.88976C5.70476 3.02502 5.12511 3.27869 4.7019 3.7019C4.27869 4.12511 4.02502 4.70476 3.88976 5.71085C3.75159 6.73851 3.75 8.09318 3.75 10V14C3.75 15.9068 3.75159 17.2615 3.88976 18.2892C4.02502 19.2952 4.27869 19.8749 4.7019 20.2981C5.12511 20.7213 5.70476 20.975 6.71085 21.1102C7.73851 21.2484 9.09318 21.25 11 21.25H13C14.9068 21.25 16.2615 21.2484 17.2892 21.1102C18.2952 20.975 18.8749 20.7213 19.2981 20.2981C19.994 19.6022 20.2048 18.5208 20.2414 15.9892C20.2474 15.575 20.588 15.2441 21.0022 15.2501C21.4163 15.2561 21.7472 15.5967 21.7412 16.0108C21.7061 18.4383 21.549 20.1685 20.3588 21.3588C19.6104 22.1071 18.6614 22.4392 17.489 22.5969C16.3498 22.75 14.8942 22.75 13.0564 22.75H10.9436C9.10583 22.75 7.65019 22.75 6.51098 22.5969C5.33856 22.4392 4.38961 22.1071 3.64124 21.3588C2.89288 20.6104 2.56076 19.6614 2.40314 18.489C2.24997 17.3498 2.24998 15.8942 2.25 14.0564V9.94358C2.24998 8.10582 2.24997 6.65019 2.40314 5.51098C2.56076 4.33856 2.89288 3.38961 3.64124 2.64124C4.38961 1.89288 5.33856 1.56076 6.51098 1.40314C7.65019 1.24997 9.10582 1.24998 10.9436 1.25ZM18.1131 7.04556C19.1739 5.98481 20.8937 5.98481 21.9544 7.04556C23.0152 8.1063 23.0152 9.82611 21.9544 10.8869L17.1991 15.6422C16.9404 15.901 16.7654 16.076 16.5693 16.2289C16.3387 16.4088 16.0892 16.563 15.8252 16.6889C15.6007 16.7958 15.3659 16.8741 15.0187 16.9897L12.9351 17.6843C12.4751 17.8376 11.9679 17.7179 11.625 17.375C11.2821 17.0321 11.1624 16.5249 11.3157 16.0649L11.9963 14.0232C12.001 14.0091 12.0056 13.9951 12.0102 13.9813C12.1259 13.6342 12.2042 13.3993 12.3111 13.1748C12.437 12.9108 12.5912 12.6613 12.7711 12.4307C12.924 12.2346 13.099 12.0596 13.3578 11.8009C13.3681 11.7906 13.3785 11.7802 13.3891 11.7696L18.1131 7.04556ZM20.8938 8.10622C20.4188 7.63126 19.6488 7.63126 19.1738 8.10622L18.992 8.288C19.0019 8.32149 19.0132 8.3571 19.0262 8.39452C19.1202 8.66565 19.2988 9.02427 19.6372 9.36276C19.9757 9.70125 20.3343 9.87975 20.6055 9.97382C20.6429 9.9868 20.6785 9.99812 20.712 10.008L20.8938 9.8262C21.3687 9.35124 21.3687 8.58118 20.8938 8.10622ZM19.5664 11.1536C19.2485 10.9866 18.9053 10.7521 18.5766 10.4234C18.2479 10.0947 18.0134 9.75146 17.8464 9.43357L14.4497 12.8303C14.1487 13.1314 14.043 13.2388 13.9538 13.3532C13.841 13.4979 13.7442 13.6545 13.6652 13.8202C13.6028 13.9511 13.5539 14.0936 13.4193 14.4976L13.019 15.6985L13.3015 15.981L14.5024 15.5807C14.9064 15.4461 15.0489 15.3972 15.1798 15.3348C15.3455 15.2558 15.5021 15.159 15.6468 15.0462C15.7612 14.957 15.8686 14.8513 16.1697 14.5503L19.5664 11.1536ZM7.25 9C7.25 8.58579 7.58579 8.25 8 8.25H14.5C14.9142 8.25 15.25 8.58579 15.25 9C15.25 9.41421 14.9142 9.75 14.5 9.75H8C7.58579 9.75 7.25 9.41421 7.25 9ZM7.25 13C7.25 12.5858 7.58579 12.25 8 12.25H10.5C10.9142 12.25 11.25 12.5858 11.25 13C11.25 13.4142 10.9142 13.75 10.5 13.75H8C7.58579 13.75 7.25 13.4142 7.25 13ZM7.25 17C7.25 16.5858 7.58579 16.25 8 16.25H9.5C9.91421 16.25 10.25 16.5858 10.25 17C10.25 17.4142 9.91421 17.75 9.5 17.75H8C7.58579 17.75 7.25 17.4142 7.25 17Z" fill="currentColor"/>
-        <!-- Casinha no canto superior esquerdo -->
-        <path d="M1.2 5L4.5 2.2L7.8 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M2.2 4.8V8.8H6.8V4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M3.8 8.8V6.6H5.2V8.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>
-      <!-- JÁ EXISTE: glifo de selo / certidão selada -->
-      <g id="glifo-selo">
-        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="m8.7 12 2.4 2.4 4.2-4.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>
-      <!-- JÁ EXISTE: glifo de download -->
-      <g id="glifo-baixar">
-        <path d="M12 4v12m0 0 4-4m-4 4-4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>
-      <!-- JÁ EXISTE: glifo de alerta / aviso -->
-      <g id="glifo-alerta">
-        <path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>
-      <!-- NOVO: glifo de adição / atalho -->
-      <g id="glifo-mais">
-        <path d="M12 5v14m-7-7h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </g>
-      <!-- Filtro da gravação no gelo (SPEC user_admin/013, documentos_oficiais/009) -->
-      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
-        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
-        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
-        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
-        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
-        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
-
-        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
-        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
-        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
-        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
-        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
-
-        <feMerge>
-          <feMergeNode in="SourceGraphic"/>
-          <feMergeNode in="sombraInterna"/>
-          <feMergeNode in="luzInterna"/>
-        </feMerge>
-      </filter>
-    </defs>
-  </svg>
-
-  <!-- Fundo: o mapa da home -->
-  <div id="fundo-home" class="fixed inset-0 z-0 opacity-40 pointer-events-none"></div>
+<body class="min-h-screen">
+  <!-- Sprites e filtros da aplicação (_filtros_gravacao, _glifos_documento) e o ícone centralizado da
+       ação, buscados pelo andaime no fim do arquivo. -->
+  <div id="pecas-aplicacao" class="absolute w-0 h-0 overflow-hidden" aria-hidden="true"></div>
 
   <div class="relative z-10">
     <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
@@ -161,479 +97,185 @@
       <header class="glass-panel p-8 sm:p-10">
         <p class="text-overline text-madeira-600">SPEC certidao_lancamento/001 · mock de validação</p>
         <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Certidão de lançamento de um lote</h1>
-        <p class="text-sm text-base-content/75 mt-3 max-w-3xl">
-          A ação <span class="text-code">certidao_lancamento.emitir</span> oferecida na gaveta lateral do lote localizado pelo router de ações de entidade.
-          O mock aprova o glifo da ação, o poço de ações na gaveta lateral, as quatro faces do modal (formulário limpo, erro 422, recusa com aviso e confirmação selada) e a experiência ao vivo sobre o mapa.
-        </p>
       </header>
 
-      <!-- ==================================================================== -->
-      <!-- 2 · ÁTOMOS                                                            -->
-      <!-- ==================================================================== -->
+      <!-- 2 · ÁTOMOS -->
       <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
-        <div>
-          <h2 class="section-title">2 · Átomos</h2>
-          <p class="text-xs text-base-content/70">O glifo da ação e os campos do formulário nos seus estados visuais.</p>
-        </div>
+        <h2 class="section-title">2 · Átomos</h2>
 
-        <!-- Glifo da ação -->
+        <!-- glifo da ação: o SVG centralizado da ação -->
         <div class="flex flex-col gap-3">
-          <p class="text-overline">Glifo da ação · certidao_lancamento.emitir (variante pequeno: 24×24 · casinha com documento oficial ao lado)</p>
+          <p class="text-overline">Glifo · certidao_lancamento.emitir</p>
           <div class="card-well p-5 flex flex-wrap items-center gap-8">
             <div class="flex flex-col items-center gap-2">
-              <div class="w-8 h-8 flex items-center justify-center text-rocha-900">
-                <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
-              </div>
+              <svg class="w-6 h-6 text-rocha-900"><use href="#glifo-certidao-lancamento"/></svg>
               <span class="text-overline">repouso</span>
             </div>
-
             <div class="flex flex-col items-center gap-2">
-              <div class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700">
+              <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700">
                 <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
-              </div>
+              </span>
               <span class="text-overline">.icon-bubble</span>
             </div>
-
-            <div class="flex flex-col items-center gap-2">
-              <div class="icon-bubble w-11 h-11 bg-madeira-600/15 border-madeira-600/30 text-madeira-700">
-                <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
-              </div>
-              <span class="text-overline">variante madeira</span>
-            </div>
           </div>
         </div>
 
-        <!-- Campos de entrada -->
+        <!-- .textarea-glass -->
         <div class="flex flex-col gap-3">
-          <p class="text-overline">Campos de formulário · .input-glass com estados e máscaras</p>
+          <p class="text-overline">.textarea-glass</p>
           <div class="grid sm:grid-cols-3 gap-4">
+            <!-- vazio -->
             <div class="card-well p-4 flex flex-col gap-1.5">
-              <div class="flex items-center justify-between">
-                <span class="text-overline">Processo SEI (máscara)</span>
-                <span class="badge badge-xs badge-ghost font-mono">interativo</span>
-              </div>
-              <input type="text" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0">
-              <span class="form-field-hint text-[11px]">Máscara automática: NNNN.AAAA/NNNNNNN-D</span>
+              <span class="text-overline">vazio</span>
+              <textarea rows="3" class="textarea textarea-glass textarea-sm" placeholder="Observações do auditor"></textarea>
             </div>
+            <!-- preenchido -->
             <div class="card-well p-4 flex flex-col gap-1.5">
-              <div class="flex items-center justify-between">
-                <span class="text-overline">CPF / CNPJ (dinâmico)</span>
-                <span class="badge badge-xs badge-ghost font-mono">interativo</span>
-              </div>
-              <input type="text" class="input input-glass input-sm w-full font-mono" data-mascara-cpf-cnpj placeholder="CPF ou CNPJ">
-              <span class="form-field-hint text-[11px]">Detecta CPF (11 dígitos) ou CNPJ (14 dígitos)</span>
+              <span class="text-overline">preenchido</span>
+              <textarea rows="3" class="textarea textarea-glass textarea-sm">Vistoria realizada no processo 6017.2024/0034961-0.</textarea>
             </div>
+            <!-- realce de erro -->
             <div class="card-well p-4 flex flex-col gap-1.5">
-              <span class="text-overline text-error">.campo-realce-erro</span>
-              <input type="text" class="input input-glass input-sm w-full campo-realce-erro font-mono" value="6017.2026/123-4">
-              <span class="form-field-hint text-[11px] text-error">Incompleto / recusa 422</span>
+              <span class="text-overline">.campo-realce-erro</span>
+              <textarea rows="3" class="textarea textarea-glass textarea-sm campo-realce-erro">Texto acima do limite…</textarea>
             </div>
           </div>
         </div>
 
-        <!-- Átomo .checkbox-onsen do Design System (SPEC documentos_oficiais/009) -->
-        <div class="card-well p-4 flex flex-col gap-2">
-          <span class="text-overline">Átomo .checkbox-onsen (SPEC documentos_oficiais/009)</span>
-          <div class="flex items-center gap-6">
-            <label class="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" class="checkbox-onsen">
-              <span class="text-xs text-base-content/70">Repouso</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" class="checkbox-onsen" checked>
-              <span class="text-xs text-base-content/85 font-medium">Marcado</span>
-            </label>
-          </div>
-          <span class="form-field-hint text-[11px]">Desenha sobre o input puro: poço fino em repouso, ciano cheio quando marcado com check entalhado #etched-onsen.</span>
-        </div>
-
-        <!-- Seletor de Conclusão e Observações -->
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div class="card-well p-4 flex flex-col gap-2">
-            <span class="text-overline">Conclusão da Análise · .select-onsen</span>
-            <select class="select select-glass select-sm w-full text-xs" data-select-onsen>
-              <option value="1" selected>Deferida · 1. Possui lançamento pelo contribuinte nº 245.199.0009-1</option>
-              <option value="2">Deferida · 2. Possui lançamento em maior área (SQL 245.199.0009-1)</option>
-              <option value="3">Deferida · 3. Possui lançamento parcial (SQL 245.199.0009-1)</option>
-              <option value="5">Indeferida · 5. Imóvel não localizado (informações insuficientes)</option>
-              <option value="6">Indeferida · 6. Equivale a Pedido de Acesso à Informação (Dec. 53.623/2012)</option>
-            </select>
-            <span class="form-field-hint text-[11px]">Molecula de vidro com popover e teclado.</span>
-          </div>
-
-          <div class="card-well p-4 flex flex-col gap-1.5">
-            <div class="flex items-center justify-between">
-              <span class="text-overline">Observações</span>
-              <label class="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" class="checkbox-onsen check-ressalva-padrao" checked>
-                <span class="text-xs text-base-content/85">Inserir ressalva padrão</span>
-              </label>
+        <!-- [data-mascara] com gabaritos alternativos -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">[data-mascara] com gabaritos alternativos · CPF/CNPJ</p>
+          <div class="grid sm:grid-cols-3 gap-4">
+            <!-- interativo -->
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">digite só números</span>
+              <input type="text" class="input input-glass input-sm font-mono" data-mascara="000.000.000-00|00.000.000/0000-00" placeholder="CPF ou CNPJ">
             </div>
-            <textarea rows="2" class="textarea textarea-glass textarea-sm w-full text-xs" placeholder="Observações do auditor sobre a análise factual ou documentação...">Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.</textarea>
-            <span class="form-field-hint text-[11px]">Texto livre opcional incluído antes do fecho de validade.</span>
+            <!-- CNPJ completo -->
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">CNPJ completo</span>
+              <input type="text" class="input input-glass input-sm font-mono" data-mascara="000.000.000-00|00.000.000/0000-00" value="12345678000190">
+            </div>
+            <!-- excesso -->
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">excesso acende</span>
+              <input type="text" class="input input-glass input-sm font-mono" data-mascara="000.000.000-00|00.000.000/0000-00" value="123456780001901">
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- ==================================================================== -->
-      <!-- 3 · MOLÉCULAS                                                         -->
-      <!-- ==================================================================== -->
+      <!-- 3 · MOLÉCULAS -->
       <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
-        <div>
-          <h2 class="section-title">3 · Moléculas</h2>
-          <p class="text-xs text-base-content/70">O poço de ações na gaveta lateral e o cabeçalho de identificação do imóvel no modal.</p>
-        </div>
+        <h2 class="section-title">3 · Moléculas</h2>
 
-        <div class="grid lg:grid-cols-2 gap-6">
-          <!-- Poço com ação liberada -->
+        <!-- .poco-acoes -->
+        <div class="grid lg:grid-cols-2 gap-6 items-start">
+          <!-- uma ação -->
           <div class="flex flex-col gap-2">
-            <p class="text-overline">templates/acoes_lote/partials/_poco_acoes.html (autorizado)</p>
-            <div class="card-well px-4 pt-2.5 pb-3 flex flex-col gap-1 w-full">
-              <p class="text-overline shrink-0 leading-none">Ações</p>
-              <div class="flex flex-col gap-2.5 px-1 py-1 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent)]">
-                <button type="button" class="btn btn-onsen btn-sm gap-2 justify-start btn-acao-certidao">
-                  <span class="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
-                    <svg viewBox="0 0 24 24"><use href="#glifo-certidao-lancamento"/></svg>
-                  </span>
+            <p class="text-overline">.poco-acoes · uma ação</p>
+            <div class="card-well poco-acoes">
+              <p class="text-overline poco-acoes__titulo">Ações</p>
+              <div class="poco-acoes__lista">
+                <button type="button" class="btn btn-onsen btn-sm">
+                  <span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>
                   Certidão de lançamento
                 </button>
               </div>
             </div>
-            <span class="form-field-hint">Renderizado na gaveta lateral quando o servidor possui competência concedida.</span>
           </div>
 
-          <!-- Poço sem ação liberada (anônimo / sem competência) -->
+          <!-- várias ações sob teto: a lista rola e dissolve nas bordas (a moldura h-44 é andaime) -->
           <div class="flex flex-col gap-2">
-            <p class="text-overline">_poco_acoes.html (anônimo ou sem concessão)</p>
-            <div class="card-well p-6 flex flex-col items-center justify-center text-center gap-1 min-h-[5rem] border-dashed border-rocha-950/15">
-              <span class="text-xs italic text-base-content/50">Nenhuma ação liberada para este perfil.</span>
-              <span class="text-xs text-base-content/40">O poço sai vazio (:empty) e fica oculto na gaveta.</span>
-            </div>
-            <span class="form-field-hint">A busca nunca expõe botões de ações restritas a quem não pode executá-las.</span>
-          </div>
-        </div>
-
-        <!-- Identificação do Imóvel no Modal -->
-        <div class="flex flex-col gap-2">
-          <p class="text-overline">Identificação do Lote no cabeçalho do Modal</p>
-          <div class="card-well p-4 flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <span class="icon-bubble w-10 h-10 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
-                <svg class="w-5 h-5"><use href="#glifo-certidao-lancamento"/></svg>
-              </span>
-              <div>
-                <p class="text-overline mb-0.5">Imóvel certificado</p>
-                <p class="font-bold text-sm text-rocha-950">RUA AUGUSTA, 100 — APTO 12</p>
+            <p class="text-overline">.poco-acoes · várias ações sob teto</p>
+            <div class="h-44 flex flex-col">
+              <div class="card-well poco-acoes">
+                <p class="text-overline poco-acoes__titulo">Ações</p>
+                <div class="poco-acoes__lista">
+                  <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Certidão de lançamento</button>
+                  <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Ação de exemplo 2</button>
+                  <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Ação de exemplo 3</button>
+                  <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Ação de exemplo 4</button>
+                  <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Ação de exemplo 5</button>
+                </div>
               </div>
             </div>
-            <div class="flex items-center gap-3">
-              <span class="text-code text-xs font-semibold">SQL 012.345.6789-0</span>
-              <span class="badge badge-success badge-soft badge-sm font-bold">Lançamento ativo</span>
-            </div>
           </div>
+          <!-- sem ação liberada: o partial sai vazio e nada é desenhado -->
+        </div>
+
+        <!-- .opcao-texto -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">.opcao-texto · repouso × escolhido</p>
+          <form class="grid sm:grid-cols-2 gap-4">
+            <!-- repouso -->
+            <label class="card-well opcao-texto">
+              <input type="radio" name="demo-opcao-texto" value="a" class="sr-only">
+              <span class="text-overline opcao-texto__titulo">lançamento parcial</span>
+              <span class="opcao-texto__corpo">…o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelo contribuinte número 012.345.6789-0.</span>
+            </label>
+            <!-- escolhido -->
+            <label class="card-well opcao-texto">
+              <input type="radio" name="demo-opcao-texto" value="b" class="sr-only" checked>
+              <span class="text-overline opcao-texto__titulo">possui lançamento</span>
+              <span class="opcao-texto__corpo">…o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número 012.345.6789-0.</span>
+            </label>
+          </form>
         </div>
       </section>
 
-      <!-- ==================================================================== -->
-      <!-- 4 · ORGANISMOS                                                        -->
-      <!-- ==================================================================== -->
+      <!-- 4 · ORGANISMOS — as faces do modal, clonadas dos <template> do fim do arquivo -->
       <section id="organismos" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
-        <div>
-          <h2 class="section-title">4 · Organismos</h2>
-          <p class="text-xs text-base-content/70">
-            As quatro faces do modal da certidão em <span class="text-code">#poco-modal</span>.
-            A caixa permanece com o mesmo tamanho e materiais; apenas o miolo troca de acordo com o estado do fluxo.
-          </p>
-        </div>
+        <h2 class="section-title">4 · Organismos</h2>
 
         <div class="grid lg:grid-cols-2 gap-8 items-start">
-          <!-- 4·A: Formulário inicial -->
+          <!-- formulário (GET 200) -->
           <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <span class="text-overline text-agua-800">4·A · Formulário inicial de emissão</span>
-              <span class="badge badge-neutral badge-soft badge-xs">GET 200</span>
-            </div>
-
-            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
-              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
-                <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
-                  <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
-                </span>
-                <div class="min-w-0">
-                  <p class="text-overline">Certidão de Existência de Lançamento</p>
-                  <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL 012.345.6789-0</p>
-                  <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12</p>
-                </div>
-              </header>
-
-              <form class="flex flex-col gap-3.5">
-                <div class="grid sm:grid-cols-2 gap-3">
-                  <div class="flex flex-col gap-1">
-                    <label class="text-overline text-xs">Processo SEI</label>
-                    <input type="text" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0" value="6017.2024/0034961-0">
-                    <span class="form-field-hint">Obrigatório: NNNN.AAAA/NNNNNNN-D</span>
-                  </div>
-                  <div class="flex flex-col gap-1">
-                    <div class="flex items-center justify-between">
-                      <label class="text-overline text-xs">CPF / CNPJ</label>
-                      <span class="text-[10px] text-base-content/50">Opcional</span>
-                    </div>
-                    <input type="text" class="input input-glass input-sm w-full font-mono" data-mascara-cpf-cnpj placeholder="CPF ou CNPJ" value="123.456.789-00">
-                    <span class="form-field-hint">Consta no requerimento oficial</span>
-                  </div>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                  <label class="text-overline text-xs">Nome do interessado</label>
-                  <input type="text" class="input input-glass input-sm w-full" placeholder="Nome completo ou razão social" value="ELIAS FERREIRA NOVAIS">
-                  <span class="form-field-hint">Consta nos dados relacionados à declaração.</span>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                  <label class="text-overline text-xs">Conclusão da Análise (Despacho)</label>
-                  <select name="conclusao" class="select select-glass select-sm w-full text-xs" data-select-onsen>
-                    <option value="1" selected>Deferida · 1. Possui lançamento pelo contribuinte nº 012.345.6789-0</option>
-                    <option value="2">Deferida · 2. Possui lançamento em maior área (SQL 012.345.6789-0)</option>
-                    <option value="3">Deferida · 3. Possui lançamento parcial (SQL 012.345.6789-0)</option>
-                    <option value="5">Indeferida · 5. Imóvel não localizado (informações insuficientes)</option>
-                    <option value="6">Indeferida · 6. Equivale a Pedido de Acesso à Informação (Dec. 53.623/2012)</option>
-                  </select>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                  <div class="flex items-center justify-between">
-                    <label class="text-overline text-xs">Observações do auditor</label>
-                    <label class="flex items-center gap-2 cursor-pointer select-none">
-                      <input type="checkbox" class="checkbox-onsen check-ressalva-padrao" checked>
-                      <span class="text-xs text-base-content/85">Inserir ressalva padrão</span>
-                    </label>
-                  </div>
-                  <textarea rows="2" class="textarea textarea-glass textarea-sm w-full text-xs" placeholder="Observações do auditor sobre a análise factual ou documentação...">Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.</textarea>
-                </div>
-
-                <div class="modal-action mt-1 pt-3 border-t border-rocha-950/10">
-                  <button type="button" class="btn btn-glass btn-sm">Cancelar</button>
-                  <button type="button" class="btn btn-onsen btn-sm">Emitir certidão</button>
-                </div>
-              </form>
-            </div>
+            <p class="text-overline">formulário · GET 200</p>
+            <div data-face="tmpl-modal-form"></div>
           </div>
-
-          <!-- 4·B: Erro de validação 422 -->
+          <!-- recusa do formulário (POST 422) -->
           <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <span class="text-overline text-error">4·B · Recusa de formulário com realce</span>
-              <span class="badge badge-error badge-soft badge-xs">POST 422</span>
-            </div>
-
-            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
-              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
-                <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
-                  <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
-                </span>
-                <div class="min-w-0">
-                  <p class="text-overline">Certidão de Existência de Lançamento</p>
-                  <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL 012.345.6789-0</p>
-                  <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12</p>
-                </div>
-              </header>
-
-              <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
-                <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
-                <span>O número do processo SEI não está no formato padrão (NNNN.AAAA/NNNNNNN-D).</span>
-              </div>
-
-              <form class="flex flex-col gap-3.5">
-                <div class="grid sm:grid-cols-2 gap-3">
-                  <div class="flex flex-col gap-1">
-                    <label class="text-overline text-xs text-error">Processo SEI</label>
-                    <input type="text" class="input input-glass input-sm w-full campo-realce-erro font-mono" data-mascara="0000.0000/0000000-0" value="6017.2026/123-4">
-                    <span class="text-xs text-error">Formato inválido. Exemplo: 6017.2024/0034961-0</span>
-                  </div>
-                  <div class="flex flex-col gap-1">
-                    <div class="flex items-center justify-between">
-                      <label class="text-overline text-xs">CPF / CNPJ</label>
-                      <span class="text-[10px] text-base-content/50">Opcional</span>
-                    </div>
-                    <input type="text" class="input input-glass input-sm w-full font-mono" data-mascara-cpf-cnpj value="123.456.789-00">
-                  </div>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                  <label class="text-overline text-xs">Nome do interessado</label>
-                  <input type="text" class="input input-glass input-sm w-full" value="ELIAS FERREIRA NOVAIS">
-                </div>
-
-                <div class="flex flex-col gap-1">
-                  <label class="text-overline text-xs">Conclusão da Análise (Despacho)</label>
-                  <select name="conclusao" class="select select-glass select-sm w-full text-xs" data-select-onsen>
-                    <option value="1" selected>Deferida · 1. Possui lançamento pelo contribuinte nº 012.345.6789-0</option>
-                  </select>
-                </div>
-
-                <div class="modal-action mt-1 pt-3 border-t border-rocha-950/10">
-                  <button type="button" class="btn btn-glass btn-sm">Cancelar</button>
-                  <button type="button" class="btn btn-onsen btn-sm">Emitir certidão</button>
-                </div>
-              </form>
-            </div>
+            <p class="text-overline">recusa do formulário · POST 422</p>
+            <div data-face="tmpl-modal-recusa"></div>
           </div>
-
-          <!-- 4·C: Lote não certificável (Aviso sem formulário) -->
+          <!-- estado de falta: lote não certificável -->
           <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <span class="text-overline text-warning-content">4·C · Lote sem lançamento ou condominial</span>
-              <span class="badge badge-warning badge-soft badge-xs">Aviso</span>
-            </div>
-
-            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
-              <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
-                <span class="icon-bubble w-11 h-11 bg-warning/15 border-warning/30 text-warning-content shrink-0">
-                  <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
-                </span>
-                <div class="min-w-0">
-                  <p class="text-overline">Certidão de Existência de Lançamento</p>
-                  <p class="text-base font-bold text-rocha-950 leading-tight">Impossível emitir pelo sistema</p>
-                </div>
-              </header>
-
-              <div class="card-well p-4 flex flex-col gap-2.5">
-                <div class="flex items-center gap-2">
-                  <span class="badge badge-neutral badge-soft badge-sm">Sem lançamento ativo</span>
-                  <span class="text-code text-xs">Lote 012.345.0001</span>
-                </div>
-                <p class="text-sm text-base-content/85">
-                  Este lote não possui lançamento ativo no cadastro imobiliário oficial do Município (situação diferente de <strong>ATIVO</strong> ou ausência de número de contribuinte com dígito).
-                </p>
-                <p class="text-xs text-base-content/65">
-                  Apenas imóveis com lançamento cadastrado podem obter a certidão automatizada. Para casos especiais, consulte o expediente manual da unidade.
-                </p>
-              </div>
-
-              <div class="modal-action pt-2">
-                <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto">Fechar</button>
-              </div>
-            </div>
+            <p class="text-overline">lote não certificável · GET 200 sem formulário</p>
+            <div data-face="tmpl-modal-aviso"></div>
           </div>
-
-          <!-- 4·D: Confirmação com Certidão Emitida -->
+          <!-- emitida -->
           <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <span class="text-overline text-success">4·D · Certidão emitida com sucesso</span>
-              <span class="badge badge-success badge-soft badge-xs">Sucesso</span>
-            </div>
-
-            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-full shadow-2xl" style="opacity:1; transform:none;">
-              <div class="card-well flex flex-col items-center text-center gap-3 p-6">
-                <span class="icon-bubble w-14 h-14 bg-success/15 border-success/30 text-success">
-                  <svg class="w-7 h-7"><use href="#glifo-selo"/></svg>
-                </span>
-                <div>
-                  <span class="text-overline text-success font-bold">Certidão selada e emitida</span>
-                  <h3 class="text-lg font-bold text-rocha-950 mt-0.5">Documento registrado no acervo</h3>
-                </div>
-                <div class="flex flex-col items-center gap-1 bg-white/40 border border-rocha-950/10 rounded-lg px-4 py-2 w-full">
-                  <span class="text-overline text-xs">Código de autenticidade</span>
-                  <span class="text-code text-base font-bold tracking-wider text-rocha-950">2026-CL-8F92-A1B4</span>
-                </div>
-                <p class="text-xs text-base-content/70">
-                  Emitida de forma automatizada com consulta oficial ao GeoSampa em 22/09/2026 às 09:45.
-                </p>
-              </div>
-
-              <a href="001-amostra-certidao.pdf" target="_blank" download="certidao_lancamento_2026-CL-8F92-A1B4.pdf" class="btn btn-onsen gap-2 w-full justify-center">
-                <svg class="w-4 h-4"><use href="#glifo-baixar"/></svg>
-                Baixar Certidão (PDF de Amostra)
-              </a>
-
-              <details class="collapse collapse-arrow bg-white/50 border border-rocha-950/10 rounded-lg text-left text-xs">
-                <summary class="collapse-title font-semibold text-rocha-900 py-2.5 px-3 min-h-0 text-xs flex items-center justify-between">
-                  <span>Prévia textual dos dados da certidão</span>
-                </summary>
-                <div class="collapse-content px-3 pb-3 text-rocha-800 space-y-2 text-[11px] leading-relaxed border-t border-rocha-950/5 pt-2">
-                  <div class="p-2.5 bg-rocha-50 rounded border border-rocha-950/10 font-mono whitespace-pre-wrap select-all">PREFEITURA DO MUNICÍPIO DE SÃO PAULO
-SECRETARIA MUNICIPAL DA FAZENDA
-SUBSECRETARIA DA RECEITA MUNICIPAL — DEPARTAMENTO DE CADASTRO
-DIVISÃO DO MAPA DE VALORES — DIMAP
-
-DECLARAÇÃO DE EXISTÊNCIA/INEXISTÊNCIA DE LANÇAMENTO FISCAL E INSCRIÇÃO NO CADASTRO IMOBILIÁRIO FISCAL - IPTU
-
-DADOS RELACIONADOS À DECLARAÇÃO
-IDENTIFICAÇÃO DO IMÓVEL: RUA AUGUSTA 100, CONSOLAÇÃO – CEP 01305-000, SÃO PAULO-SP
-NOME DO INTERESSADO: ELIAS FERREIRA NOVAIS (CPF/CNPJ: 123.456.789-00)
-PROCESSO SEI Nº: 6017.2024/0034961-0
-DATA DA DECLARAÇÃO: 22/09/2026
-
-DESPACHO
-Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número 012.345.6789-0.
-
-Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.
-
-As informações prestadas nos termos deste despacho serão válidas por 90 (noventa) dias, a contar da data de intimação do solicitante, conforme definido no artigo 3º da Ordem Interna SF/SUREM nº 07, de 29 de Outubro de 2018.
-
-LOCALIZAÇÃO DO IMÓVEL (PLANTA CADASTRAL)
---------------------------------------------------------------------------------
-[PLANTA DE LOCALIZAÇÃO DO LOTE — WMS GEOSAMPA / MDC CADASTRAL (150 mm)]
-Geometria do Lote destacada no Sistema de Coordenadas Métricas Oficiais (SIRGAS 2000 / UTM 23S)
---------------------------------------------------------------------------------
-
-São Paulo, 22 de setembro de 2026.
-
-AUTENTICIDADE E ASSINATURA ELETRÔNICA DO ATO
-Código de Autenticidade: 2026-CL-8F92-A1B4
-Ato Administrativo: certidao_lancamento.emitir (Alvo: SQL 012.345.6789-0)
-Emitido por: Auditor-Fiscal Tributário Municipal (RF 835.916-4)
-Conferência Pública: https://geocoder.dimap.pmsp.gov.br/documentos/conferir?codigo=2026-CL-8F92-A1B4
-
-Certidão emitida de forma automatizada. Dados cadastrais consultados no GeoSampa em 22/09/2026 às 09:45.
-DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo</div>
-                </div>
-              </details>
-
-              <div class="modal-action mt-0 pt-1">
-                <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto">Fechar</button>
-              </div>
-            </div>
+            <p class="text-overline">certidão emitida · POST 200</p>
+            <div data-face="tmpl-modal-emitida"></div>
           </div>
         </div>
       </section>
 
-      <!-- ==================================================================== -->
-      <!-- 5 · TELA MONTADA (HOME VIVA COM GAVETA E MODAL)                       -->
-      <!-- ==================================================================== -->
+      <!-- 5 · TELA MONTADA -->
       <section id="tela" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
-        <div>
-          <h2 class="section-title">5 · Tela montada — Fluxo Interativo</h2>
-          <p class="text-xs text-base-content/70">
-            A gaveta lateral do lote localizado e o modal aberto em <span class="text-code">#poco-modal</span> sobre a home.
-            Utilize a barra de controle abaixo para acionar a abertura e experimentar cada face do fluxo em tempo real.
-          </p>
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- andaime: troca a face do modal e o perfil -->
+        <div class="card-well p-3 flex flex-wrap items-center gap-2">
+          <span class="text-overline mr-2">Andaime</span>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-form">Formulário</button>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-recusa">Recusa 422</button>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-aviso">Lote não certificável</button>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-emitida">Emitida</button>
+          <button type="button" class="btn btn-glass btn-sm" id="alternar-concessao">Perfil sem concessão</button>
         </div>
 
-        <!-- Barra de andaime do mock -->
-        <div class="card-well p-3 flex flex-wrap items-center justify-between gap-3 bg-white/40">
-          <div class="flex items-center gap-2">
-            <span class="text-overline">Andaime do Mock:</span>
-            <span class="text-xs text-base-content/70">Simular estado no modal:</span>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" id="btn-estado-form" class="btn btn-sm btn-glass">1. Formulário Limpo</button>
-            <button type="button" id="btn-estado-erro" class="btn btn-sm btn-glass">2. Erro (422)</button>
-            <button type="button" id="btn-estado-aviso" class="btn btn-sm btn-glass">3. Aviso (Lote Não Certificável)</button>
-            <button type="button" id="btn-estado-sucesso" class="btn btn-sm btn-onsen">4. Sucesso (PDF Emitido)</button>
-            <button type="button" id="btn-fechar-modal" class="btn btn-sm btn-glass text-error">✕ Fechar</button>
-          </div>
-        </div>
+        <!-- página: core/home.html -->
+        <div class="quadro-tela tela-home">
+          <!-- fica na página: mapping/_mapa_fullscreen.html, montado do partial real pelo andaime -->
+          <div id="canvas-home" class="absolute inset-0"></div>
 
-        <!-- Moldura da Home -->
-        <div class="quadro-tela relative">
-          <!-- Mapa Leaflet da tela montada -->
-          <div id="mapa-tela" class="absolute inset-0 z-0"></div>
-
-          <!-- Gaveta Lateral do Lote (SPEC localizacao_lote/001) -->
-          <div id="gaveta-entidade" class="absolute top-0 bottom-0 left-0 z-10">
+          <!-- fica na página: <div id="gaveta-entidade"></div> — alvo da busca -->
+          <div id="gaveta-entidade">
+            <!-- partial: lote_geocoder/partials/_gaveta_lote.html -->
             <div class="gaveta-lateral" data-gaveta="lote-3198301">
-              <input type="checkbox" id="gaveta-lote-toggle-montada" class="gaveta-lateral-toggle" checked>
+              <input type="checkbox" id="gaveta-lote-toggle" class="gaveta-lateral-toggle" checked>
 
               <div class="gaveta-lateral-painel glass-drawer-panel-denso">
                 <header class="gaveta-lateral-cabecalho">
@@ -643,84 +285,56 @@ DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo<
                   <span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>
                 </header>
 
-                <div class="gaveta-lateral-corpo" style="overflow-y: auto;">
-                  <div class="gaveta-lateral-conteudo flex flex-col gap-3 p-4">
-                    <!-- Endereço -->
-                    <div class="card-well p-4 flex flex-col gap-3">
-                      <div class="flex gap-4 items-center">
-                        <div class="icon-bubble w-10 h-10 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <div class="gaveta-lateral-corpo" data-scroll-etched>
+                  <div class="gaveta-lateral-rolador" data-rolador>
+                    <div class="gaveta-lateral-conteudo">
+                      <div class="card-well p-4 flex gap-4 items-center">
+                        <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         </div>
                         <div class="min-w-0">
                           <p class="text-overline mb-0.5">Endereço cadastrado</p>
-                          <p class="font-bold leading-tight text-sm">RUA AUGUSTA, 100 — APTO 12</p>
+                          <p class="font-bold leading-tight">RUA AUGUSTA, 100</p>
+                          <p class="text-xs text-base-content/70">Consolação · APTO 12</p>
                         </div>
                       </div>
-                      <div class="h-px w-full bg-rocha-950/10"></div>
-                      <div class="flex items-baseline justify-between gap-4">
-                        <p class="text-overline">Codlog</p>
-                        <p class="text-code text-xs">01234-5</p>
-                      </div>
-                    </div>
 
-                    <!-- Confronto de áreas -->
-                    <div class="card-well p-4 flex flex-col gap-2">
-                      <p class="text-overline">Área de terreno</p>
-                      <div class="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <p class="text-overline text-[10px]">Cadastro</p>
-                          <p class="font-bold tabular-nums">450 m²</p>
-                        </div>
-                        <div>
-                          <p class="text-overline text-[10px]">Polígono</p>
-                          <p class="font-bold tabular-nums">452 m²</p>
+                      <!-- partial: acoes_lote/partials/_poco_acoes.html — hx-get no load da gaveta, troca o placeholder (outerHTML) -->
+                      <div class="card-well poco-acoes" id="poco-acoes-lote">
+                        <p class="text-overline poco-acoes__titulo">Ações</p>
+                        <div class="poco-acoes__lista">
+                          <button type="button" class="btn btn-onsen btn-sm" data-abrir="tmpl-modal-form">
+                            <span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>
+                            Certidão de lançamento
+                          </button>
                         </div>
                       </div>
+                      <!-- /partial -->
                     </div>
-
-                    <!-- O POÇO DE AÇÕES INJETADO NA GAVETA DO LOTE -->
-                    <!-- partial: templates/acoes_lote/partials/_poco_acoes.html -->
-                    <div class="card-well px-4 pt-2.5 pb-3 flex flex-col gap-1 w-full" id="poco-acoes-lote-lateral">
-                      <p class="text-overline shrink-0 leading-none">Ações</p>
-                      <div class="flex flex-col gap-2.5 px-1 py-1 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent)]">
-                        <button type="button" id="btn-disparar-modal" class="btn btn-onsen btn-sm gap-2 justify-start btn-acao-certidao"
-                                title="Emite a certidão de lançamento para este lote">
-                          <span class="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
-                            <svg viewBox="0 0 24 24"><use href="#glifo-certidao-lancamento"/></svg>
-                          </span>
-                          Certidão de lançamento
-                        </button>
-                      </div>
-                    </div>
-                    <!-- /partial -->
                   </div>
+                  <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
                 </div>
               </div>
 
-              <label for="gaveta-lote-toggle-montada" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+              <label for="gaveta-lote-toggle" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
                 <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
               </label>
             </div>
+            <!-- /partial -->
           </div>
 
-          <!-- O POÇO DE MODAL DA HOME (SPEC criacao_usuarios/007, design/007) -->
-          <!-- templates/core/home.html: <div id="poco-modal" class="poco-modal"></div> -->
-          <div id="poco-modal-montado" class="poco-modal absolute inset-0 z-30 pointer-events-none flex items-center justify-center p-4">
-            <!-- Modal ao vivo (injetado por HTMX) -->
-            <div id="modal-container-vivo" class="hidden pointer-events-auto transition-all duration-200">
-              <!-- Conteúdo alternado via JS no mock -->
-            </div>
-          </div>
+          <!-- fica na página: <div id="poco-modal" class="poco-modal"></div> — alvo do hx-get do botão da ação -->
+          <div id="poco-modal" class="poco-modal"></div>
         </div>
       </section>
 
     </main>
   </div>
 
-  <!-- Templates para o poço de modal da tela montada -->
+  <!-- partial: certidao_lancamento/_modal.html — formulário (GET 200) -->
   <template id="tmpl-modal-form">
     <div class="modal modal-open modal-glass" role="dialog">
-      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
         <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
           <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
             <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
@@ -728,68 +342,115 @@ DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo<
           <div class="min-w-0">
             <p class="text-overline">Certidão de Existência de Lançamento</p>
             <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL 012.345.6789-0</p>
-            <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12</p>
+            <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12, CONSOLAÇÃO</p>
           </div>
         </header>
 
-        <form class="flex flex-col gap-3.5">
+        <form class="flex flex-col gap-4" data-chave-condicional>
           <div class="grid sm:grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
               <label class="text-overline text-xs">Processo SEI</label>
-              <input type="text" id="campo-processo-sei" name="processo" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0" value="6017.2024/0034961-0" autofocus>
-              <span class="form-field-hint">Obrigatório: NNNN.AAAA/NNNNNNN-D</span>
+              <input type="text" name="processo" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0">
             </div>
             <div class="flex flex-col gap-1">
-              <div class="flex items-center justify-between">
-                <label class="text-overline text-xs">CPF / CNPJ</label>
-                <span class="text-[10px] text-base-content/50">Opcional</span>
-              </div>
-              <input type="text" id="campo-cpf-cnpj" name="cpf_cnpj" class="input input-glass input-sm w-full font-mono" data-mascara-cpf-cnpj placeholder="CPF ou CNPJ" value="123.456.789-00">
-              <span class="form-field-hint">Consta no requerimento</span>
+              <label class="text-overline text-xs">CPF/CNPJ <span class="normal-case text-base-content/50">· opcional</span></label>
+              <input type="text" name="cpf_cnpj" class="input input-glass input-sm w-full font-mono" data-mascara="000.000.000-00|00.000.000/0000-00" placeholder="CPF ou CNPJ">
             </div>
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="text-overline text-xs">Nome do interessado</label>
-            <input type="text" id="campo-interessado" name="interessado" class="input input-glass input-sm w-full" placeholder="Nome completo ou razão social" value="ELIAS FERREIRA NOVAIS">
-            <span class="form-field-hint">Consta nos dados relacionados à declaração.</span>
+            <input type="text" name="interessado" class="input input-glass input-sm w-full" placeholder="Nome completo ou razão social">
           </div>
 
-          <div class="flex flex-col gap-1">
-            <label class="text-overline text-xs">Conclusão da Análise (Despacho)</label>
-            <select id="campo-conclusao" name="conclusao" class="select select-glass select-sm w-full text-xs" data-select-onsen>
-              <option value="1" selected>Deferida · 1. Possui lançamento pelo contribuinte nº 012.345.6789-0</option>
-              <option value="2">Deferida · 2. Possui lançamento em maior área (SQL 012.345.6789-0)</option>
-              <option value="3">Deferida · 3. Possui lançamento parcial (SQL 012.345.6789-0)</option>
-              <option value="5">Indeferida · 5. Imóvel não localizado (informações insuficientes)</option>
-              <option value="6">Indeferida · 6. Equivale a Pedido de Acesso à Informação (Dec. 53.623/2012)</option>
-            </select>
-          </div>
-
-          <div class="flex flex-col gap-1">
-            <div class="flex items-center justify-between">
-              <label class="text-overline text-xs">Observações do auditor</label>
-              <label class="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" class="checkbox-onsen check-ressalva-padrao" checked>
-                <span class="text-xs text-base-content/85">Inserir ressalva padrão</span>
+          <!-- .chave-onsen: o sentido mostra só os textos dele; o escopo da chave é o form inteiro -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-xs">Despacho</span>
+            <div class="card-well chave-onsen self-start">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="sentido" value="deferido" class="sr-only" checked>
+                <span class="chave-onsen-rotulo etched etched-deeper">Deferido</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="sentido" value="indeferido" class="sr-only">
+                <span class="chave-onsen-rotulo etched etched-deeper">Indeferido</span>
               </label>
             </div>
-            <textarea id="campo-observacoes" name="observacoes" rows="2" class="textarea textarea-glass textarea-sm w-full text-xs" placeholder="Observações do auditor sobre a análise factual ou documentação...">Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.</textarea>
+            <fieldset class="flex flex-col gap-2" data-mostra-se="deferido">
+              <legend class="form-field-hint mb-2">Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que…</legend>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="possui_lancamento" class="sr-only" checked>
+                <span class="text-overline opcao-texto__titulo">possui lançamento</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número 012.345.6789-0.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="lancamento_em_maior_area" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">lançamento em maior área</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU, em maior área, pelo contribuinte número 012.345.6789-0.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="lancamento_parcial" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">lançamento parcial</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelo contribuinte número 012.345.6789-0.</span>
+              </label>
+            </fieldset>
+            <fieldset class="flex flex-col gap-2" data-mostra-se="indeferido" hidden>
+              <legend class="form-field-hint mb-2">Solicitação INDEFERIDA. Com base nas informações presentes no processo, declara-se que…</legend>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="imovel_nao_localizado" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">imóvel não localizado</span>
+                <span class="opcao-texto__corpo">…não foi possível a localização do imóvel, já que as informações constantes no processo não são suficientes para a sua identificação inequívoca.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="pedido_de_acesso_a_informacao" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">equivale a pedido de acesso à informação</span>
+                <span class="opcao-texto__corpo">…não é possível atender ao pedido, pois equivale a Pedido de Acesso à Informação, nos termos do Decreto nº 53.623/2012.</span>
+              </label>
+            </fieldset>
           </div>
 
-          <div class="modal-action mt-1 pt-3 border-t border-rocha-950/10">
-            <button type="button" class="btn btn-glass btn-sm fechar-modal-btn">Cancelar</button>
-            <button type="button" id="simular-submeter" class="btn btn-onsen btn-sm">Emitir certidão</button>
+          <div class="flex flex-col gap-2">
+            <!-- duas colunas: a ressalva e o mapa; [data-padrao-se] volta ao padrão a cada troca da chave -->
+            <div class="grid sm:grid-cols-2 gap-3 items-start">
+              <div class="flex flex-col items-start gap-1">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" name="incluir_ressalva" class="checkbox-onsen" checked>
+                  <span class="text-sm">Incluir a ressalva padrão</span>
+                </label>
+                <!-- .btn-etched-sm: gatilho da sanfona, sob o rótulo e alinhado ao texto dele (ml-6 + px-1 = checkbox + gap) -->
+                <label for="ressalva-texto-form" class="btn-etched btn-etched-sm btn-etched-swell etched ml-6">Ver o texto</label>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" name="incluir_planta" class="checkbox-onsen" data-padrao-se="deferido" checked>
+                <span class="text-sm">Acrescentar mapa com a localização do lote</span>
+              </label>
+            </div>
+            <!-- .painel-onsen: a ressalva, recolhida -->
+            <div class="painel-onsen">
+              <input type="checkbox" id="ressalva-texto-form" class="painel-onsen-toggle">
+              <div class="painel-onsen-corpo">
+                <p class="card-well p-3 text-[13px] text-base-content/80">Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.</p>
+              </div>
+            </div>
+            <label class="text-overline text-xs">Observações <span class="normal-case text-base-content/50">· opcional</span></label>
+            <textarea name="observacoes" rows="3" class="textarea textarea-glass textarea-sm w-full" placeholder="Entram no despacho depois da ressalva"></textarea>
+          </div>
+
+          <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+            <button type="button" class="btn btn-glass btn-sm" data-fechar>Cancelar</button>
+            <button type="button" class="btn btn-onsen btn-sm" data-emitir>Emitir certidão</button>
           </div>
         </form>
       </div>
-      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
     </div>
   </template>
 
-  <template id="tmpl-modal-erro">
+  <!-- partial: certidao_lancamento/_modal.html — recusa do formulário (POST 422) -->
+  <template id="tmpl-modal-recusa">
     <div class="modal modal-open modal-glass" role="dialog">
-      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
         <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
           <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
             <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
@@ -797,28 +458,32 @@ DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo<
           <div class="min-w-0">
             <p class="text-overline">Certidão de Existência de Lançamento</p>
             <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL 012.345.6789-0</p>
-            <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12</p>
+            <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 100 — APTO 12, CONSOLAÇÃO</p>
           </div>
         </header>
 
-        <div role="alert" class="alert alert-error alert-soft text-xs flex items-start gap-2 p-3">
-          <svg class="w-4 h-4 shrink-0 mt-0.5"><use href="#glifo-alerta"/></svg>
-          <span>O número do processo SEI não está no formato padrão (NNNN.AAAA/NNNNNNN-D).</span>
+        <!-- partial: partials/_tarja_recusa.html — tom crítico -->
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+          <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+          <div>
+            <p class="text-[13px] font-semibold text-base-content/90">Não foi possível emitir a certidão</p>
+            <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+              <li>O número do processo SEI não está no formato padrão (NNNN.AAAA/NNNNNNN-D).</li>
+              <li>O CPF deve ter 11 dígitos e o CNPJ, 14. Deixe em branco se não constar do processo.</li>
+            </ul>
+          </div>
         </div>
+        <!-- /partial -->
 
-        <form class="flex flex-col gap-3.5">
+        <form class="flex flex-col gap-4" data-chave-condicional>
           <div class="grid sm:grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
-              <label class="text-overline text-xs text-error">Processo SEI</label>
-              <input type="text" id="campo-processo-sei-erro" name="processo" class="input input-glass input-sm w-full campo-realce-erro font-mono" data-mascara="0000.0000/0000000-0" value="6017.2026/123-4">
-              <span class="text-xs text-error">Formato inválido. Exemplo: 6017.2024/0034961-0</span>
+              <label class="text-overline text-xs">Processo SEI</label>
+              <input type="text" name="processo" class="input input-glass input-sm w-full font-mono campo-realce-erro" data-mascara="0000.0000/0000000-0" value="6017.2026/123-4">
             </div>
             <div class="flex flex-col gap-1">
-              <div class="flex items-center justify-between">
-                <label class="text-overline text-xs">CPF / CNPJ</label>
-                <span class="text-[10px] text-base-content/50">Opcional</span>
-              </div>
-              <input type="text" name="cpf_cnpj" class="input input-glass input-sm w-full font-mono" data-mascara-cpf-cnpj value="123.456.789-00">
+              <label class="text-overline text-xs">CPF/CNPJ <span class="normal-case text-base-content/50">· opcional</span></label>
+              <input type="text" name="cpf_cnpj" class="input input-glass input-sm w-full font-mono campo-realce-erro" data-mascara="000.000.000-00|00.000.000/0000-00" value="123.456.789">
             </div>
           </div>
 
@@ -827,78 +492,132 @@ DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo<
             <input type="text" name="interessado" class="input input-glass input-sm w-full" value="ELIAS FERREIRA NOVAIS">
           </div>
 
-          <div class="flex flex-col gap-1">
-            <label class="text-overline text-xs">Conclusão da Análise (Despacho)</label>
-            <select name="conclusao" class="select select-glass select-sm w-full text-xs" data-select-onsen>
-              <option value="1" selected>Deferida · 1. Possui lançamento pelo contribuinte nº 012.345.6789-0</option>
-              <option value="2">Deferida · 2. Possui lançamento em maior área (SQL 012.345.6789-0)</option>
-              <option value="3">Deferida · 3. Possui lançamento parcial (SQL 012.345.6789-0)</option>
-              <option value="5">Indeferida · 5. Imóvel não localizado (informações insuficientes)</option>
-              <option value="6">Indeferida · 6. Equivale a Pedido de Acesso à Informação (Dec. 53.623/2012)</option>
-            </select>
-          </div>
-
-          <div class="flex flex-col gap-1">
-            <div class="flex items-center justify-between">
-              <label class="text-overline text-xs">Observações do auditor</label>
-              <label class="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" class="checkbox-onsen check-ressalva-padrao" checked>
-                <span class="text-xs text-base-content/85">Inserir ressalva padrão</span>
+          <!-- .chave-onsen: o sentido mostra só os textos dele; o escopo da chave é o form inteiro -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-xs">Despacho</span>
+            <div class="card-well chave-onsen self-start">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="sentido" value="deferido" class="sr-only" checked>
+                <span class="chave-onsen-rotulo etched etched-deeper">Deferido</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="sentido" value="indeferido" class="sr-only">
+                <span class="chave-onsen-rotulo etched etched-deeper">Indeferido</span>
               </label>
             </div>
-            <textarea name="observacoes" rows="2" class="textarea textarea-glass textarea-sm w-full text-xs" placeholder="Observações do auditor sobre a análise factual ou documentação...">Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.</textarea>
+            <fieldset class="flex flex-col gap-2" data-mostra-se="deferido">
+              <legend class="form-field-hint mb-2">Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que…</legend>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="possui_lancamento" class="sr-only" checked>
+                <span class="text-overline opcao-texto__titulo">possui lançamento</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número 012.345.6789-0.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="lancamento_em_maior_area" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">lançamento em maior área</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU, em maior área, pelo contribuinte número 012.345.6789-0.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="lancamento_parcial" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">lançamento parcial</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelo contribuinte número 012.345.6789-0.</span>
+              </label>
+            </fieldset>
+            <fieldset class="flex flex-col gap-2" data-mostra-se="indeferido" hidden>
+              <legend class="form-field-hint mb-2">Solicitação INDEFERIDA. Com base nas informações presentes no processo, declara-se que…</legend>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="imovel_nao_localizado" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">imóvel não localizado</span>
+                <span class="opcao-texto__corpo">…não foi possível a localização do imóvel, já que as informações constantes no processo não são suficientes para a sua identificação inequívoca.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="pedido_de_acesso_a_informacao" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">equivale a pedido de acesso à informação</span>
+                <span class="opcao-texto__corpo">…não é possível atender ao pedido, pois equivale a Pedido de Acesso à Informação, nos termos do Decreto nº 53.623/2012.</span>
+              </label>
+            </fieldset>
           </div>
 
-          <div class="modal-action mt-1 pt-3 border-t border-rocha-950/10">
-            <button type="button" class="btn btn-glass btn-sm fechar-modal-btn">Cancelar</button>
-            <button type="button" id="simular-submeter-erro" class="btn btn-onsen btn-sm">Emitir certidão</button>
+          <div class="flex flex-col gap-2">
+            <!-- duas colunas: a ressalva e o mapa; [data-padrao-se] volta ao padrão a cada troca da chave -->
+            <div class="grid sm:grid-cols-2 gap-3 items-start">
+              <div class="flex flex-col items-start gap-1">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" name="incluir_ressalva" class="checkbox-onsen" checked>
+                  <span class="text-sm">Incluir a ressalva padrão</span>
+                </label>
+                <!-- .btn-etched-sm: gatilho da sanfona, sob o rótulo e alinhado ao texto dele (ml-6 + px-1 = checkbox + gap) -->
+                <label for="ressalva-texto-recusa" class="btn-etched btn-etched-sm btn-etched-swell etched ml-6">Ver o texto</label>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" name="incluir_planta" class="checkbox-onsen" data-padrao-se="deferido" checked>
+                <span class="text-sm">Acrescentar mapa com a localização do lote</span>
+              </label>
+            </div>
+            <!-- .painel-onsen: a ressalva, recolhida -->
+            <div class="painel-onsen">
+              <input type="checkbox" id="ressalva-texto-recusa" class="painel-onsen-toggle">
+              <div class="painel-onsen-corpo">
+                <p class="card-well p-3 text-[13px] text-base-content/80">Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.</p>
+              </div>
+            </div>
+            <label class="text-overline text-xs">Observações <span class="normal-case text-base-content/50">· opcional</span></label>
+            <textarea name="observacoes" rows="3" class="textarea textarea-glass textarea-sm w-full" placeholder="Entram no despacho depois da ressalva"></textarea>
+          </div>
+
+          <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+            <button type="button" class="btn btn-glass btn-sm" data-fechar>Cancelar</button>
+            <button type="button" class="btn btn-onsen btn-sm" data-emitir>Emitir certidão</button>
           </div>
         </form>
       </div>
-      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
     </div>
   </template>
 
+  <!-- partial: certidao_lancamento/_modal.html — lote não certificável (sem formulário) -->
   <template id="tmpl-modal-aviso">
     <div class="modal modal-open modal-glass" role="dialog">
-      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
         <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
-          <span class="icon-bubble w-11 h-11 bg-warning/15 border-warning/30 text-warning-content shrink-0">
-            <svg class="w-6 h-6"><use href="#glifo-alerta"/></svg>
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
           </span>
           <div class="min-w-0">
             <p class="text-overline">Certidão de Existência de Lançamento</p>
-            <p class="text-base font-bold text-rocha-950 leading-tight">Impossível emitir pelo sistema</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight truncate">SQL 012.345.0001-2</p>
+            <p class="text-xs text-base-content/70 truncate">RUA AUGUSTA, 98, CONSOLAÇÃO</p>
           </div>
         </header>
 
-        <div class="card-well p-4 flex flex-col gap-2.5">
-          <div class="flex items-center gap-2">
-            <span class="badge badge-neutral badge-soft badge-sm">Sem lançamento ativo</span>
-            <span class="text-code text-xs">Lote 012.345.0001</span>
+        <!-- partial: partials/_tarja_recusa.html — tom pendente -->
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+          <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+          <div>
+            <p class="text-[13px] font-semibold text-base-content/90">Certidão indisponível para este lote</p>
+            <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+              <li>O lote não possui lançamento ativo no cadastro.</li>
+            </ul>
           </div>
-          <p class="text-sm text-base-content/85">
-            Este lote não possui lançamento ativo no cadastro imobiliário oficial do Município (situação diferente de <strong>ATIVO</strong> ou ausência de número de contribuinte com dígito).
-          </p>
-          <p class="text-xs text-base-content/65">
-            Apenas imóveis com lançamento cadastrado podem obter a certidão automatizada. Para casos especiais, consulte o expediente manual da unidade.
-          </p>
         </div>
+        <!-- /partial -->
 
-        <div class="modal-action pt-2">
-          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto fechar-modal-btn">Fechar</button>
+        <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+          <button type="button" class="btn btn-glass btn-sm" data-fechar>Fechar</button>
         </div>
       </div>
-      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
     </div>
   </template>
 
-  <template id="tmpl-modal-sucesso">
+  <!-- partial: certidao_lancamento/_certidao_emitida.html — POST 200 -->
+  <template id="tmpl-modal-emitida">
     <div class="modal modal-open modal-glass" role="dialog">
-      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
         <div class="card-well flex flex-col items-center text-center gap-3 p-6">
           <span class="icon-bubble w-14 h-14 bg-success/15 border-success/30 text-success">
-            <svg class="w-7 h-7"><use href="#glifo-selo"/></svg>
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
           </span>
           <div>
             <span class="text-overline text-success font-bold">Certidão selada e emitida</span>
@@ -908,331 +627,32 @@ DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo<
             <span class="text-overline text-xs">Código de autenticidade</span>
             <span class="text-code text-base font-bold tracking-wider text-rocha-950">2026-CL-8F92-A1B4</span>
           </div>
-          <p class="text-xs text-base-content/70">
-            Emitida de forma automatizada com consulta oficial ao GeoSampa em 22/09/2026 às 09:45.
-          </p>
+          <p class="text-xs text-base-content/70">Emitida de forma automatizada com consulta oficial ao GeoSampa.</p>
         </div>
 
-        <a href="001-amostra-certidao.pdf" target="_blank" download="certidao_lancamento_2026-CL-8F92-A1B4.pdf" class="btn btn-onsen gap-2 w-full justify-center">
-          <svg class="w-4 h-4"><use href="#glifo-baixar"/></svg>
-          Baixar Certidão (PDF de Amostra)
+        <a href="001-amostra-certidao.pdf" target="_blank" class="btn btn-onsen gap-2 w-full justify-center">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-baixar"/></svg>
+          Baixar certidão
         </a>
 
-        <details class="collapse collapse-arrow bg-white/50 border border-rocha-950/10 rounded-lg text-left text-xs" open>
-          <summary class="collapse-title font-semibold text-rocha-900 py-2.5 px-3 min-h-0 text-xs flex items-center justify-between">
-            <span>Prévia textual dos dados da certidão</span>
-          </summary>
-          <div class="collapse-content px-3 pb-3 text-rocha-800 space-y-2 text-[11px] leading-relaxed border-t border-rocha-950/5 pt-2">
-            <div id="previa-certidao-texto-vivo" class="p-2.5 bg-rocha-50 rounded border border-rocha-950/10 font-mono whitespace-pre-wrap select-all">PREFEITURA DO MUNICÍPIO DE SÃO PAULO
-SECRETARIA MUNICIPAL DA FAZENDA
-SUBSECRETARIA DA RECEITA MUNICIPAL — DEPARTAMENTO DE CADASTRO
-DIVISÃO DO MAPA DE VALORES — DIMAP
-
-DECLARAÇÃO DE EXISTÊNCIA/INEXISTÊNCIA DE LANÇAMENTO FISCAL E INSCRIÇÃO NO CADASTRO IMOBILIÁRIO FISCAL - IPTU
-
-DADOS RELACIONADOS À DECLARAÇÃO
-IDENTIFICAÇÃO DO IMÓVEL: RUA AUGUSTA 100, CONSOLAÇÃO – CEP 01305-000, SÃO PAULO-SP
-NOME DO INTERESSADO: ELIAS FERREIRA NOVAIS (CPF/CNPJ: 123.456.789-00)
-PROCESSO SEI Nº: 6017.2024/0034961-0
-DATA DA DECLARAÇÃO: 22/09/2026
-
-DESPACHO
-Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número 012.345.6789-0.
-
-Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.
-
-As informações prestadas nos termos deste despacho serão válidas por 90 (noventa) dias, a contar da data de intimação do solicitante, conforme definido no artigo 3º da Ordem Interna SF/SUREM nº 07, de 29 de Outubro de 2018.
-
-LOCALIZAÇÃO DO IMÓVEL (PLANTA CADASTRAL)
---------------------------------------------------------------------------------
-[PLANTA DE LOCALIZAÇÃO DO LOTE — WMS GEOSAMPA / MDC CADASTRAL (150 mm)]
-Geometria do Lote destacada no Sistema de Coordenadas Métricas Oficiais (SIRGAS 2000 / UTM 23S)
---------------------------------------------------------------------------------
-
-São Paulo, 22 de setembro de 2026.
-
-AUTENTICIDADE E ASSINATURA ELETRÔNICA DO ATO
-Código de Autenticidade: 2026-CL-8F92-A1B4
-Ato Administrativo: certidao_lancamento.emitir (Alvo: SQL 012.345.6789-0)
-Emitido por: Auditor-Fiscal Tributário Municipal (RF 835.916-4)
-Conferência Pública: https://geocoder.dimap.pmsp.gov.br/documentos/conferir?codigo=2026-CL-8F92-A1B4
-
-Certidão emitida de forma automatizada. Dados cadastrais consultados no GeoSampa em 22/09/2026 às 09:45.
-DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo</div>
-          </div>
-        </details>
-
         <div class="modal-action mt-0 pt-1">
-          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto fechar-modal-btn">Fechar</button>
+          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto" data-fechar>Fechar</button>
         </div>
       </div>
-      <label class="modal-backdrop fechar-modal-btn">Fechar</label>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
     </div>
   </template>
 
-  <!-- Script de montagem e interações do mock -->
-  <script type="module">
-    // Campo de seleção de vidro (.select-onsen, SPEC user_admin/011)
-    let sequenciaSelect = 0;
-    const MINIMO_PARA_FILTRO = 6;
-    const FOLGA_PX = 8;
-    const ALTURA_CONFORTAVEL_PX = 220;
-    const PASSO_DA_SETA = { ArrowDown: 1, ArrowUp: -1 };
-
-    function normalizarTexto(texto) {
-      return (texto || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-    }
-
-    function aprimorarSelect(select) {
-      if (select.dataset.selectAprimorado) return;
-      select.dataset.selectAprimorado = "true";
-
-      const casca = document.createElement("div");
-      casca.className = "select-onsen";
-      select.parentNode.insertBefore(casca, select);
-      casca.appendChild(select);
-      select.hidden = true;
-
-      const trigger = document.createElement("button");
-      trigger.type = "button";
-      trigger.className = "select select-glass select-onsen-trigger";
-      for (const cls of ["select-xs", "select-sm", "select-md", "select-lg", "text-xs", "text-sm", "w-full"]) {
-        if (select.classList.contains(cls)) trigger.classList.add(cls);
-      }
-      trigger.setAttribute("aria-haspopup", "listbox");
-      trigger.setAttribute("aria-expanded", "false");
-
-      const rotulo = document.createElement("span");
-      rotulo.className = "truncate";
-      const selecionada = select.options[select.selectedIndex];
-      rotulo.textContent = selecionada?.textContent ?? "";
-      trigger.appendChild(rotulo);
-      casca.appendChild(trigger);
-
-      const identificador = `select-onsen-${++sequenciaSelect}`;
-      const painel = document.createElement("div");
-      painel.className = "select-onsen-panel";
-      painel.id = `${identificador}-painel`;
-      painel.popover = "auto";
-
-      const busca = document.createElement("input");
-      busca.type = "search";
-      busca.className = "input input-glass select-onsen-busca";
-      busca.placeholder = "Filtrar…";
-      if (select.options.length >= MINIMO_PARA_FILTRO) painel.appendChild(busca);
-
-      const lista = document.createElement("div");
-      lista.className = "select-onsen-list";
-      lista.setAttribute("role", "listbox");
-
-      const vazio = document.createElement("p");
-      vazio.className = "select-onsen-vazio";
-      vazio.textContent = "Nada encontrado.";
-      vazio.hidden = true;
-
-      const itens = Array.from(select.options).map((opcao, indice) => {
-        const item = document.createElement("button");
-        item.type = "button";
-        item.className = "select-onsen-option";
-        item.id = `${identificador}-opcao-${indice}`;
-        item.setAttribute("role", "option");
-        item.setAttribute("aria-selected", String(indice === select.selectedIndex));
-        item.tabIndex = -1;
-        item.dataset.indice = String(indice);
-        item.textContent = opcao.textContent;
-        lista.appendChild(item);
-        return item;
-      });
-
-      painel.appendChild(lista);
-      painel.appendChild(vazio);
-      casca.appendChild(painel);
-
-      let ativo = null;
-      function focado() { return busca.isConnected ? busca : trigger; }
-      function visiveis() { return itens.filter((item) => !item.hidden); }
-
-      function realcar(item) {
-        ativo?.removeAttribute("data-ativo");
-        ativo = item ?? null;
-        if (!ativo) {
-          focado().removeAttribute("aria-activedescendant");
-          return;
-        }
-        ativo.setAttribute("data-ativo", "true");
-        ativo.scrollIntoView({ block: "nearest" });
-        focado().setAttribute("aria-activedescendant", ativo.id);
-      }
-
-      function andar(passo) {
-        const candidatos = visiveis();
-        if (candidatos.length === 0) return;
-        const atual = candidatos.indexOf(ativo);
-        if (atual === -1) {
-          realcar(passo > 0 ? candidatos[0] : candidatos[candidatos.length - 1]);
-          return;
-        }
-        realcar(candidatos[(atual + passo + candidatos.length) % candidatos.length]);
-      }
-
-      function filtrar(termo) {
-        const alvo = normalizarTexto(termo);
-        itens.forEach((item) => {
-          const txt = normalizarTexto(item.textContent);
-          item.hidden = !txt.includes(alvo);
-        });
-        const candidatos = visiveis();
-        vazio.hidden = candidatos.length > 0;
-        realcar(candidatos.includes(ativo) ? ativo : candidatos[0]);
-      }
-
-      function posicionar() {
-        const caixa = trigger.getBoundingClientRect();
-        const abaixo = window.innerHeight - caixa.bottom - FOLGA_PX;
-        const acima = caixa.top - FOLGA_PX;
-        const paraCima = abaixo < ALTURA_CONFORTAVEL_PX && acima > abaixo;
-        painel.style.left = `${caixa.left}px`;
-        painel.style.width = `${caixa.width}px`;
-        painel.style.maxHeight = `${paraCima ? acima : abaixo}px`;
-        painel.style.top = paraCima ? "" : `${caixa.bottom + FOLGA_PX}px`;
-        painel.style.bottom = paraCima ? `${window.innerHeight - caixa.top + FOLGA_PX}px` : "";
-      }
-
-      function escolher(item) {
-        const indice = Number(item.dataset.indice);
-        select.selectedIndex = indice;
-        rotulo.textContent = select.options[indice].textContent;
-        itens.forEach((candidato, i) => candidato.setAttribute("aria-selected", String(i === indice)));
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-        painel.hidePopover();
-        trigger.focus();
-      }
-
-      trigger.popoverTargetElement = painel;
-      painel.addEventListener("beforetoggle", (evento) => {
-        const abrindo = evento.newState === "open";
-        trigger.setAttribute("aria-expanded", String(abrindo));
-        if (!abrindo) {
-          realcar(null);
-          window.removeEventListener("scroll", posicionar, true);
-          window.removeEventListener("resize", posicionar);
-          return;
-        }
-        busca.value = "";
-        filtrar("");
-        posicionar();
-        window.addEventListener("scroll", posicionar, true);
-        window.addEventListener("resize", posicionar);
-      });
-
-      painel.addEventListener("toggle", (evento) => {
-        if (evento.newState !== "open") return;
-        realcar(itens[select.selectedIndex] ?? visiveis()[0]);
-        if (busca.isConnected) busca.focus();
-      });
-
-      busca.addEventListener("input", () => filtrar(busca.value));
-
-      casca.addEventListener("keydown", (evento) => {
-        if (!painel.matches(":popover-open")) {
-          if (!Object.hasOwn(PASSO_DA_SETA, evento.key)) return;
-          evento.preventDefault();
-          painel.showPopover();
-          return;
-        }
-        if (Object.hasOwn(PASSO_DA_SETA, evento.key)) {
-          evento.preventDefault();
-          andar(PASSO_DA_SETA[evento.key]);
-          return;
-        }
-        if (evento.key === "Home" || evento.key === "End") {
-          evento.preventDefault();
-          const candidatos = visiveis();
-          realcar(evento.key === "Home" ? candidatos[0] : candidatos[candidatos.length - 1]);
-          return;
-        }
-        if (evento.key !== "Enter") return;
-        evento.preventDefault();
-        if (ativo) escolher(ativo);
-      });
-
-      lista.addEventListener("pointermove", (evento) => {
-        const item = evento.target.closest(".select-onsen-option");
-        if (item) realcar(item);
-      });
-      lista.addEventListener("click", (evento) => {
-        const item = evento.target.closest(".select-onsen-option");
-        if (item) escolher(item);
-      });
-    }
-
-    function aprimorarSelects(raiz = document) {
-      raiz.querySelectorAll("select[data-select-onsen]:not([hidden])").forEach(aprimorarSelect);
-    }
-
-    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
-
-    // Carrega defs e filtros oficiais se servido pelo Live Server
-    fetch("/templates/partials/_filtros_gravacao.html")
-      .then((r) => r.text())
-      .then((svg) => document.getElementById("defs-aplicacao").innerHTML = svg.replace(TAG_DE_TEMPLATE, "").trim())
-      .catch(() => {});
-
-    // Coordenadas centrais e lote de amostra (Jardins / Bela Vista)
-    const CENTRO = [-23.5614, -46.6559];
-    const LOTE_POLIGONO = {
-      type: "Feature",
-      properties: {},
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-46.6567, -23.5608], [-46.6551, -23.5608],
-          [-46.6551, -23.5620], [-46.6567, -23.5620], [-46.6567, -23.5608],
-        ]],
-      },
-    };
-
-    function inicializarMapa(idElemento) {
-      const el = document.getElementById(idElemento);
-      if (!el) return null;
-      const mapa = L.map(idElemento, { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 16);
-      
-      // Camada base WMS GeoSampa ou OpenStreetMap como fallback
-      L.tileLayer.wms("https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows", {
-        layers: "geoportal:MapaBase_Politico",
-        version: "1.3.0",
-        format: "image/png",
-        transparent: false,
-        attribution: "GeoSampa — PMSP",
-      }).addTo(mapa);
-
-      // Polígono do lote em tom Sakura (SPEC design/003)
-      L.geoJSON(LOTE_POLIGONO, {
-        style: {
-          color: "#D84F7F",
-          weight: 3,
-          opacity: 1,
-          fillColor: "#D84F7F",
-          fillOpacity: 0.35,
-        },
-      }).addTo(mapa);
-
-      return mapa;
-    }
-
-    inicializarMapa("fundo-home");
-    const mapaTela = inicializarMapa("mapa-tela");
-
-    // =========================================================================
-    // Máscara progressiva de input (padrão static/src/js/ui/campo_mascarado.js)
-    // =========================================================================
+  <!-- NOVO nesta SPEC: static/src/js/ui/campo_mascarado.js com gabaritos alternativos separados por "|".
+       Faz as vezes do módulo até o porte; o gabarito único segue como antes. -->
+  <script type="module" id="campo-mascarado-proposto">
     const SLOT_DE_DIGITO = "0";
 
     function contarDigitos(texto) {
-      return (texto || "").replace(/\D/g, "").length;
+      return texto.replace(/\D/g, "").length;
     }
 
-    function formatarMascara(digitos, gabarito) {
+    function formatar(digitos, gabarito) {
       let saida = "";
       let lidos = 0;
       for (const marca of gabarito) {
@@ -1258,15 +678,18 @@ DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo<
       return texto.length;
     }
 
-    function aplicarMascara(campo) {
-      const gabarito = campo.dataset.mascara;
-      if (!gabarito) return;
-      const limite = contarDigitos(gabarito);
+    function escolherGabarito(digitos, gabaritos) {
+      return gabaritos.find((gabarito) => contarDigitos(gabarito) >= digitos.length) ?? gabaritos.at(-1);
+    }
+
+    function aplicar(campo) {
       const cursor = campo.selectionStart ?? campo.value.length;
       const digitosAEsquerda = contarDigitos(campo.value.slice(0, cursor));
       const digitos = campo.value.replace(/\D/g, "");
+      const gabarito = escolherGabarito(digitos, campo.dataset.mascara.split("|"));
+      const limite = contarDigitos(gabarito);
 
-      campo.value = formatarMascara(digitos, gabarito);
+      campo.value = formatar(digitos, gabarito);
       if (document.activeElement === campo) {
         const posicao = posicaoAposDigitos(campo.value, digitosAEsquerda);
         campo.setSelectionRange(posicao, posicao);
@@ -1278,186 +701,160 @@ DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo<
       campo.dataset.digitosCompletos = digitos.length === limite ? "sim" : "nao";
     }
 
-    function aplicarMascaraCpfCnpj(campo) {
-      const digitos = campo.value.replace(/\D/g, "").slice(0, 14);
-      const gabarito = digitos.length <= 11 ? "000.000.000-00" : "00.000.000/0000-00";
-      campo.value = formatarMascara(digitos, gabarito);
-    }
-
-    const TEXTO_RESSALVA_PADRAO = "Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.";
-
-    function montarMascaras(raiz) {
+    function montar(raiz) {
       raiz.querySelectorAll("[data-mascara]").forEach((campo) => {
-        campo.addEventListener("input", () => aplicarMascara(campo));
-        if (campo.value) aplicarMascara(campo);
-      });
-
-      raiz.querySelectorAll("[data-mascara-cpf-cnpj]").forEach((campo) => {
-        campo.addEventListener("input", () => aplicarMascaraCpfCnpj(campo));
-        if (campo.value) aplicarMascaraCpfCnpj(campo);
-      });
-
-      raiz.querySelectorAll(".check-ressalva-padrao").forEach((check) => {
-        check.addEventListener("change", () => {
-          const form = check.closest("form") || check.closest(".card-well") || document;
-          const textarea = form.querySelector("textarea[name='observacoes']") || form.querySelector("textarea");
-          if (!textarea) return;
-          if (check.checked) {
-            if (!textarea.value.includes(TEXTO_RESSALVA_PADRAO)) {
-              textarea.value = textarea.value.trim() ? textarea.value.trim() + "\n\n" + TEXTO_RESSALVA_PADRAO : TEXTO_RESSALVA_PADRAO;
-            }
-          } else {
-            textarea.value = textarea.value.replace(TEXTO_RESSALVA_PADRAO, "").trim();
-          }
-        });
+        campo.addEventListener("input", () => aplicar(campo));
+        if (campo.value) aplicar(campo);
       });
     }
 
-    // Inicializa campos com máscara e selects onsen já existentes na página (seções 2 e 4)
-    montarMascaras(document);
-    aprimorarSelects();
+    document.addEventListener("DOMContentLoaded", () => montar(document));
+    document.body.addEventListener("htmx:load", (evento) => montar(evento.detail.elt));
+  </script>
 
-    // Lógica do Modal interativo na tela montada
-    const containerVivo = document.getElementById("modal-container-vivo");
-    let dadosSubmetidos = null;
-
-    function construirTextoCertidao(dados) {
-      const processo = dados.processo || "6017.2024/0034961-0";
-      const interessado = dados.interessado || "ELIAS FERREIRA NOVAIS";
-      const cpfCnpjTxt = dados.cpf_cnpj ? ` (CPF/CNPJ: ${dados.cpf_cnpj})` : "";
-      const sql = "012.345.6789-0";
-
-      let despachoTxt = "";
-      if (dados.conclusao === "1") {
-        despachoTxt = `Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número ${sql}.`;
-      } else if (dados.conclusao === "2") {
-        despachoTxt = `Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU, em maior área, pelo contribuinte número ${sql}.`;
-      } else if (dados.conclusao === "3") {
-        despachoTxt = `Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelo contribuinte número ${sql}.`;
-      } else if (dados.conclusao === "5") {
-        despachoTxt = `Solicitação INDEFERIDA. Com base nas informações presentes no processo, declara-se que não foi possível a localização do imóvel, já que as informações constantes no processo não são suficientes para a sua identificação inequívoca.`;
-      } else if (dados.conclusao === "6") {
-        despachoTxt = `Solicitação INDEFERIDA. Com base nas informações presentes no processo, declara-se que não é possível atender ao pedido, pois equivale a Pedido de Acesso à Informação, nos termos do Decreto nº 53.623/2012.`;
-      } else {
-        despachoTxt = `Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número ${sql}.`;
-      }
-
-      const observacoesBloco = dados.observacoes ? `\n\n${dados.observacoes}` : "";
-
-      return `PREFEITURA DO MUNICÍPIO DE SÃO PAULO
-SECRETARIA MUNICIPAL DA FAZENDA
-SUBSECRETARIA DA RECEITA MUNICIPAL — DEPARTAMENTO DE CADASTRO
-DIVISÃO DO MAPA DE VALORES — DIMAP
-
-DECLARAÇÃO DE EXISTÊNCIA/INEXISTÊNCIA DE LANÇAMENTO FISCAL E INSCRIÇÃO NO CADASTRO IMOBILIÁRIO FISCAL - IPTU
-
-DADOS RELACIONADOS À DECLARAÇÃO
-IDENTIFICAÇÃO DO IMÓVEL: RUA AUGUSTA 100, CONSOLAÇÃO – CEP 01305-000, SÃO PAULO-SP
-NOME DO INTERESSADO: ${interessado}${cpfCnpjTxt}
-PROCESSO SEI Nº: ${processo}
-DATA DA DECLARAÇÃO: 22/09/2026
-
-DESPACHO
-${despachoTxt}${observacoesBloco}
-
-As informações prestadas nos termos deste despacho serão válidas por 90 (noventa) dias, a contar da data de intimação do solicitante, conforme definido no artigo 3º da Ordem Interna SF/SUREM nº 07, de 29 de Outubro de 2018.
-
-LOCALIZAÇÃO DO IMÓVEL (PLANTA CADASTRAL)
---------------------------------------------------------------------------------
-[PLANTA DE LOCALIZAÇÃO DO LOTE — WMS GEOSAMPA / MDC CADASTRAL (150 mm)]
-Geometria do Lote destacada no Sistema de Coordenadas Métricas Oficiais (SIRGAS 2000 / UTM 23S)
---------------------------------------------------------------------------------
-
-São Paulo, 22 de setembro de 2026.
-
-AUTENTICIDADE E ASSINATURA ELETRÔNICA DO ATO
-Código de Autenticidade: 2026-CL-8F92-A1B4
-Ato Administrativo: certidao_lancamento.emitir (Alvo: SQL ${sql})
-Emitido por: Auditor-Fiscal Tributário Municipal (RF 835.916-4)
-Conferência Pública: https://geocoder.dimap.pmsp.gov.br/documentos/conferir?codigo=2026-CL-8F92-A1B4
-
-Certidão emitida de forma automatizada. Dados cadastrais consultados no GeoSampa em 22/09/2026 às 09:45.
-DIMAP GeoCoder — Secretaria Municipal da Fazenda — Prefeitura de São Paulo`;
-    }
-
-    function renderizarNoPoco(templateId, dados = null) {
-      const tmpl = document.getElementById(templateId);
-      if (!tmpl) return;
-      containerVivo.innerHTML = "";
-      containerVivo.appendChild(tmpl.content.cloneNode(true));
-      containerVivo.classList.remove("hidden");
-
-      // Monta as máscaras, botões e selects onsen no formulário recém-injetado
-      montarMascaras(containerVivo);
-      aprimorarSelects(containerVivo);
-
-      // Se for o sucesso e tiver dados dinâmicos, atualiza a prévia de texto
-      if (templateId === "tmpl-modal-sucesso" && dados) {
-        const blocoTexto = containerVivo.querySelector("#previa-certidao-texto-vivo");
-        if (blocoTexto) {
-          blocoTexto.textContent = construirTextoCertidao(dados);
-        }
-      }
-
-      // Foca o primeiro campo com autofocus ou campo de processo
-      const foco = containerVivo.querySelector("[autofocus]") || containerVivo.querySelector("input[name='processo']");
-      if (foco) setTimeout(() => foco.focus(), 50);
-
-      // Liga os botões de fechar
-      containerVivo.querySelectorAll(".fechar-modal-btn").forEach((btn) => {
-        btn.addEventListener("click", fecharModal);
+  <!-- NOVO nesta SPEC: static/src/js/ui/chave_condicional.js com [data-padrao-se] — a troca da chave repõe
+       o padrão do checkbox (marcado no lado dele, desmarcado no outro). Faz as vezes do módulo até o porte. -->
+  <script type="module" id="chave-condicional-proposta">
+    // Campos condicionais pela chave de duas posições (SPEC autorizacao/008): estado visual de um
+    // controle, autorizado pelo usuário — a alternativa em CSS puro (`.chave-onsen` + `has()` sobre
+    // seletor de atributo aninhado) esbarrou em limite do @tailwindcss/browser (CDN de dev), que
+    // truncava a variante e deixava os dois campos sempre visíveis. Nenhuma regra de negócio aqui: o
+    // valor concedido segue vindo só do <select> que fica visível, e é ele quem o formulário envia.
+    
+    function aplicar(escopo) {
+      const selecionado = escopo.querySelector('input[type="radio"]:checked');
+      if (!selecionado) return;
+      escopo.querySelectorAll("[data-mostra-se]").forEach((campo) => {
+        campo.hidden = campo.dataset.mostraSe !== selecionado.value;
       });
-
-      // Validação interativa ao submeter a certidão
-      const ligarSubmissao = (seletor) => {
-        const btn = containerVivo.querySelector(seletor);
-        if (!btn) return;
-        btn.addEventListener("click", () => {
-          const campoProcesso = containerVivo.querySelector("input[name='processo']");
-          const campoInteressado = containerVivo.querySelector("input[name='interessado']");
-          const campoCpfCnpj = containerVivo.querySelector("input[name='cpf_cnpj']");
-          const campoConclusao = containerVivo.querySelector("select[name='conclusao']");
-          const campoObservacoes = containerVivo.querySelector("textarea[name='observacoes']");
-
-          const digitos = (campoProcesso?.value || "").replace(/\D/g, "");
-          const processoValido = digitos.length === 16;
-          const interessadoValido = Boolean(campoInteressado?.value.trim());
-
-          if (processoValido && interessadoValido) {
-            dadosSubmetidos = {
-              processo: campoProcesso?.value || "",
-              interessado: campoInteressado?.value || "",
-              cpf_cnpj: campoCpfCnpj?.value || "",
-              conclusao: campoConclusao?.value || "1",
-              observacoes: campoObservacoes?.value?.trim() || "",
-            };
-            renderizarNoPoco("tmpl-modal-sucesso", dadosSubmetidos);
-          } else {
-            renderizarNoPoco("tmpl-modal-erro");
-          }
-        });
-      };
-
-      ligarSubmissao("#simular-submeter");
-      ligarSubmissao("#simular-submeter-erro");
     }
-
-    function fecharModal() {
-      containerVivo.classList.add("hidden");
-      containerVivo.innerHTML = "";
+    
+    export function aplicarChavesCondicionais() {
+      document.querySelectorAll("[data-chave-condicional]").forEach(aplicar);
     }
-
-    // Botões da barra de andaime
-    document.getElementById("btn-estado-form").addEventListener("click", () => renderizarNoPoco("tmpl-modal-form"));
-    document.getElementById("btn-estado-erro").addEventListener("click", () => renderizarNoPoco("tmpl-modal-erro"));
-    document.getElementById("btn-estado-aviso").addEventListener("click", () => renderizarNoPoco("tmpl-modal-aviso"));
-    document.getElementById("btn-estado-sucesso").addEventListener("click", () => renderizarNoPoco("tmpl-modal-sucesso", dadosSubmetidos || {}));
-    document.getElementById("btn-fechar-modal").addEventListener("click", fecharModal);
-
-    // Botão dentro da gaveta lateral montada
-    document.getElementById("btn-disparar-modal").addEventListener("click", () => {
-      renderizarNoPoco("tmpl-modal-form");
+    
+    // DOMContentLoaded para a carga inicial, htmx:afterSwap para o modal reaberto por hx-get — o
+    // mesmo par de gatilhos de select_onsen.js.
+    document.addEventListener("DOMContentLoaded", aplicarChavesCondicionais);
+    document.addEventListener("htmx:afterSwap", aplicarChavesCondicionais);
+    
+    // Delegação: um ouvinte só cobre qualquer chave condicional presente na página.
+    // A chave é o primeiro grupo de rádios do escopo — o mesmo que aplicar() lê.
+    function ehDaChave(escopo, radio) {
+      return escopo.querySelector('input[type="radio"]').name === radio.name;
+    }
+    
+    // Só na troca da chave, nunca na carga: a recusa 422 devolve o que o auditor marcou.
+    function reporPadroes(escopo, valor) {
+      escopo.querySelectorAll('input[type="checkbox"][data-padrao-se]').forEach((campo) => {
+        campo.checked = campo.dataset.padraoSe === valor;
+      });
+    }
+    
+    document.addEventListener("change", (evento) => {
+      if (!(evento.target instanceof HTMLInputElement) || evento.target.type !== "radio") return;
+      const escopo = evento.target.closest("[data-chave-condicional]");
+      if (!escopo) return;
+      aplicar(escopo);
+      if (ehDaChave(escopo, evento.target)) reporPadroes(escopo, evento.target.value);
     });
+  </script>
+
+  <!-- andaime do mock: busca as peças da aplicação, clona as faces do modal, faz as vezes do HTMX -->
+  <script type="module">
+    import { montarBarrasGravadas } from "/static/src/js/ui/scroll_etched.js";
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    const PARTIAIS = [
+      "/templates/partials/_filtros_gravacao.html",
+      "/templates/documentos/partials/_glifos_documento.html",
+    ];
+    const ICONE_DA_ACAO = "/static/src/acoes/certidao_lancamento/emitir/icones/pequeno.svg";
+    const CANVAS_HOME = "/templates/mapping/_mapa_fullscreen.html";
+    const WMS_GEOSAMPA = "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows";
+    const CENTRO = [-23.5614, -46.6559];
+    const TINTA_POLIGONO = "#D84F7F"; // sakura-500
+    const LOTE = {
+      type: "Polygon",
+      coordinates: [[
+        [-46.6567, -23.5608], [-46.6551, -23.5608],
+        [-46.6551, -23.5620], [-46.6567, -23.5620], [-46.6567, -23.5608],
+      ]],
+    };
+
+    async function buscar(caminho) {
+      const resposta = await fetch(caminho);
+      if (!resposta.ok) throw new Error(`${caminho} → ${resposta.status}`);
+      return (await resposta.text()).replace(TAG_DE_TEMPLATE, "").trim();
+    }
+
+    async function montarPecas() {
+      const pecas = document.getElementById("pecas-aplicacao");
+      for (const caminho of PARTIAIS) pecas.insertAdjacentHTML("beforeend", await buscar(caminho));
+      const icone = new DOMParser().parseFromString(await buscar(ICONE_DA_ACAO), "image/svg+xml").documentElement;
+      pecas.insertAdjacentHTML(
+        "beforeend",
+        `<svg><symbol id="glifo-certidao-lancamento" viewBox="${icone.getAttribute("viewBox")}">${icone.innerHTML}</symbol></svg>`,
+      );
+    }
+
+    async function montarCanvasHome() {
+      document.getElementById("canvas-home").innerHTML = await buscar(CANVAS_HOME);
+      const mapa = L.map("map", { zoomControl: false, attributionControl: false }).setView(CENTRO, 17);
+      L.tileLayer.wms(WMS_GEOSAMPA, {
+        layers: "geoportal:MapaBase_Politico",
+        version: "1.3.0",
+        format: "image/png",
+      }).addTo(mapa);
+      L.geoJSON(LOTE, {
+        style: { color: TINTA_POLIGONO, weight: 3, fillColor: TINTA_POLIGONO, fillOpacity: 0.35 },
+      }).addTo(mapa);
+    }
+
+    function clonarFaces() {
+      document.querySelectorAll("[data-face]").forEach((alvo) => {
+        const caixa = document.getElementById(alvo.dataset.face).content.querySelector(".modal-box").cloneNode(true);
+        caixa.classList.remove("modal-box", "w-11/12", "max-w-lg");
+        // A face exposta convive com o modal vivo: o id ganha sufixo para o label achar a própria sanfona.
+        caixa.querySelectorAll("[id]").forEach((el) => { el.id = `${el.id}-face`; });
+        caixa.querySelectorAll("label[for]").forEach((el) => { el.htmlFor = `${el.htmlFor}-face`; });
+        alvo.appendChild(caixa);
+      });
+    }
+
+    const pocoModal = document.getElementById("poco-modal");
+
+    function abrir(face) {
+      pocoModal.replaceChildren(document.getElementById(face).content.cloneNode(true));
+      document.body.dispatchEvent(new CustomEvent("htmx:load", { detail: { elt: pocoModal } }));
+      document.dispatchEvent(new CustomEvent("htmx:afterSwap"));
+    }
+
+    function emitir() {
+      const processo = pocoModal.querySelector("[name=processo]");
+      const cpfCnpj = pocoModal.querySelector("[name=cpf_cnpj]");
+      const interessado = pocoModal.querySelector("[name=interessado]");
+      const cpfCnpjValido = !cpfCnpj.value || cpfCnpj.dataset.digitosCompletos === "sim";
+      const valido = processo.dataset.digitosCompletos === "sim" && cpfCnpjValido && interessado.value.trim().length >= 3;
+      abrir(valido ? "tmpl-modal-emitida" : "tmpl-modal-recusa");
+    }
+
+    document.addEventListener("click", (evento) => {
+      const abridor = evento.target.closest("[data-abrir]");
+      if (abridor && !abridor.closest("[data-face]")) abrir(abridor.dataset.abrir);
+      if (evento.target.closest("#poco-modal [data-fechar]")) pocoModal.replaceChildren();
+      if (evento.target.closest("#poco-modal [data-emitir]")) emitir();
+    });
+
+    document.getElementById("alternar-concessao").addEventListener("click", (evento) => {
+      const poco = document.getElementById("poco-acoes-lote");
+      poco.hidden = !poco.hidden;
+      evento.currentTarget.textContent = poco.hidden ? "Perfil com concessão" : "Perfil sem concessão";
+    });
+
+    clonarFaces();
+    montarPecas().catch((erro) => console.error(erro));
+    montarCanvasHome().then(montarBarrasGravadas).catch((erro) => console.error(erro));
   </script>
 </body>
 </html>

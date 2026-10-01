@@ -33,6 +33,7 @@ from services.domain.planta_localizacao import (
     EstiloGeometria,
     GerarPlantaLocalizacao,
     PlantaConfig,
+    PlantaLocalizacao,
     PlantaLocalizacaoInput,
 )
 from services.integrations.wfs import build_fetcher
@@ -68,7 +69,8 @@ class LoteLido(BaseModel):
 def ler_lote(id_poligono: str) -> LoteLido | None:
     if not id_poligono:
         return None
-    feature = LotePorIdentificador(build_fetcher(settings))(
+    buscar_lote = LotePorIdentificador(build_fetcher(settings))
+    feature = buscar_lote(
         LotePorIdentificadorInput(
             id_poligono=id_poligono,
             layer_name=WFS_LAYER_LOTE_CIDADAO,
@@ -96,6 +98,24 @@ def planta_config() -> PlantaConfig:
     )
 
 
+def _planta(pedido: PedidoCertidao, lote: LoteLido) -> PlantaLocalizacao | None:
+    # Sem o mapa no pedido a ortofoto nem é consultada, e o WMS fora do ar não recusa o ato.
+    if not pedido.incluir_planta:
+        return None
+    gerar_planta = GerarPlantaLocalizacao(build_wms_fetcher(settings))
+    return gerar_planta(
+        PlantaLocalizacaoInput(
+            camadas=(
+                CamadaPlanta(
+                    geometrias=(lote.feature.geometry,),
+                    estilo=EstiloGeometria.DESTAQUE,
+                ),
+            ),
+            config=planta_config(),
+        )
+    )
+
+
 def _tipo_certidao() -> CertidaoLancamento:
     tema = montar_tema(build_tema_config(settings))
     config = build_marcacao_config(settings)
@@ -117,25 +137,21 @@ def emitir_certidao_lancamento(
         autor=autor_do_ato(autor),
         alvo=AlvoDoAto(tipo="lote", identificador=imovel.sql or ""),
         emitido_em=timezone.localtime(),
-        campos_publicos=("contribuinte", "processo"),
-        extras={"contribuinte": imovel.sql, "processo": pedido.processo},
+        # O interessado e o CPF/CNPJ são dados de pessoa: ficam só no PDF, fora da ficha pública.
+        campos_publicos=("contribuinte", "processo", "despacho"),
+        extras={
+            "contribuinte": imovel.sql,
+            "processo": pedido.processo,
+            "despacho": pedido.tipo_despacho.rotulo,
+        },
     )
     try:
-        planta = GerarPlantaLocalizacao(build_wms_fetcher(settings))(
-            PlantaLocalizacaoInput(
-                camadas=(
-                    CamadaPlanta(
-                        geometrias=(lote.feature.geometry,),
-                        estilo=EstiloGeometria.DESTAQUE,
-                    ),
-                ),
-                config=planta_config(),
-            )
-        )
+        planta = _planta(pedido, lote)
     except WmsError:
         # A view não conhece WMS; ela lê o desfecho, como nas demais telas de formulário.
         return DesfechoEmissao(recusa=RecusaDeFormulario(gerais=(MOTIVO_SEM_ORTOFOTO,)))
-    renderizado = _tipo_certidao()(
+    renderizar_certidao = _tipo_certidao()
+    renderizado = renderizar_certidao(
         CertidaoLancamentoInput(
             envelope=envelope,
             pedido=pedido,

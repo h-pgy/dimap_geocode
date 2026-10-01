@@ -1,6 +1,6 @@
 """Testes de services/domain/certidao_lancamento/models.py (SPEC certidao_lancamento/001):
-validação do pedido (processo SEI e interessado) e restrições de admissibilidade do lote
-para emissão da certidão (recusa de lote sem lançamento ou condominial).
+validação do pedido (processo SEI, interessado, CPF/CNPJ e o despacho do auditor) e restrições de
+admissibilidade do lote para emissão da certidão (recusa de lote sem lançamento ou condominial).
 """
 
 from datetime import datetime, timezone
@@ -11,6 +11,8 @@ import pytest
 from services.domain.certidao_lancamento.models import (
     CertidaoLancamentoInput,
     PedidoCertidao,
+    SentidoDespacho,
+    TipoDespacho,
 )
 from services.domain.documento_selado import AlvoDoAto, AutorDoAto, EnvelopeAto
 from services.domain.lote_geocod.models import LoteAttributes
@@ -63,6 +65,16 @@ def _imovel(**overrides: object) -> LoteAttributes:
     return LoteAttributes(**(defaults | overrides))  # type: ignore[arg-type]
 
 
+def _pedido(**overrides: object) -> PedidoCertidao:
+    defaults: dict[str, object] = {
+        "processo": "6017.2026/0012345-6",
+        "interessado": "João da Silva",
+        "sentido": SentidoDespacho.DEFERIDO,
+        "tipo_despacho": TipoDespacho.POSSUI_LANCAMENTO,
+    }
+    return PedidoCertidao(**(defaults | overrides))  # type: ignore[arg-type]
+
+
 def _planta() -> PlantaLocalizacao:
     enquadramento = BoundingBox(
         minx=0.0,
@@ -79,37 +91,48 @@ def _planta() -> PlantaLocalizacao:
 # ---------------------------------------------------------------------------
 
 
-def test_pedido_recusa_processo_fora_do_formato_sei() -> None:
-    # Formato completo aceito
-    pedido = PedidoCertidao(
-        processo="6017.2026/0012345-6",
-        interessado="Secretaria Municipal da Fazenda",
-    )
+def test_pedido_recusa_campos_fora_do_formato_ou_texto_de_outro_sentido() -> None:
+    pedido = _pedido(processo="6017.2026/0012345-6", interessado="Secretaria Municipal da Fazenda")
     assert pedido.processo == "6017.2026/0012345-6"
     assert pedido.interessado == "Secretaria Municipal da Fazenda"
 
-    # Formatos incorretos de processo SEI
-    with pytest.raises(ValidationError):
-        PedidoCertidao(processo="6017.2026/123-4", interessado="Secretaria Municipal da Fazenda")
+    # Processo SEI fora do formato
+    for processo in ("6017.2026/123-4", "processo sei livre", "6017.2026/00123456", "6017-2026/0012345-6"):
+        with pytest.raises(ValidationError):
+            _pedido(processo=processo)
 
-    with pytest.raises(ValidationError):
-        PedidoCertidao(processo="processo sei livre", interessado="Secretaria Municipal da Fazenda")
+    # Interessado em branco ou curto demais
+    for interessado in ("", "ab", "   "):
+        with pytest.raises(ValidationError):
+            _pedido(interessado=interessado)
 
-    with pytest.raises(ValidationError):
-        PedidoCertidao(processo="6017.2026/00123456", interessado="Secretaria Municipal da Fazenda")
+    # CPF/CNPJ: formatado passa; dígitos faltando falha; vazio é ausente
+    assert _pedido(cpf_cnpj="123.456.789-09").cpf_cnpj == "123.456.789-09"
+    assert _pedido(cpf_cnpj="12.345.678/0001-90").cpf_cnpj == "12.345.678/0001-90"
+    assert _pedido(cpf_cnpj="").cpf_cnpj is None
+    assert _pedido().cpf_cnpj is None
+    for cpf_cnpj in ("123.456.789-0", "12.345.678/0001-9", "12345678909", "123.456"):
+        with pytest.raises(ValidationError):
+            _pedido(cpf_cnpj=cpf_cnpj)
 
+    # O texto escolhido precisa ser do sentido que a chave declarou
+    with pytest.raises(ValidationError) as exc_info:
+        _pedido(
+            sentido=SentidoDespacho.INDEFERIDO,
+            tipo_despacho=TipoDespacho.POSSUI_LANCAMENTO,
+        )
+    assert "Escolha um dos textos de despacho indeferido." in str(exc_info.value)
     with pytest.raises(ValidationError):
-        PedidoCertidao(processo="6017-2026/0012345-6", interessado="Secretaria Municipal da Fazenda")
+        _pedido(
+            sentido=SentidoDespacho.DEFERIDO,
+            tipo_despacho=TipoDespacho.IMOVEL_NAO_LOCALIZADO,
+        )
 
-    # Interessado inválido (em branco ou curto demais)
-    with pytest.raises(ValidationError):
-        PedidoCertidao(processo="6017.2026/0012345-6", interessado="")
-
-    with pytest.raises(ValidationError):
-        PedidoCertidao(processo="6017.2026/0012345-6", interessado="ab")
-
-    with pytest.raises(ValidationError):
-        PedidoCertidao(processo="6017.2026/0012345-6", interessado="   ")
+    coerente = _pedido(
+        sentido=SentidoDespacho.INDEFERIDO,
+        tipo_despacho=TipoDespacho.IMOVEL_NAO_LOCALIZADO,
+    )
+    assert coerente.tipo_despacho.sentido is coerente.sentido
 
 
 # ---------------------------------------------------------------------------
@@ -118,10 +141,9 @@ def test_pedido_recusa_processo_fora_do_formato_sei() -> None:
 
 
 def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
-    pedido = PedidoCertidao(processo="6017.2026/0012345-6", interessado="João da Silva")
+    pedido = _pedido()
     envelope = _envelope()
     agora = datetime.now(timezone.utc)
-    planta = _planta()
 
     # Lote municipal (sem lançamento ativo)
     lote_municipal = _imovel(digito=None, situacao="ATIVO")
@@ -131,7 +153,7 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
             envelope=envelope,
             pedido=pedido,
             imovel=lote_municipal,
-            planta=planta,
+            planta=None,
             consultado_em=agora,
             base_url="https://geocoder.dimap.pmsp/",
         )
@@ -145,7 +167,7 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
             envelope=envelope,
             pedido=pedido,
             imovel=lote_inativo,
-            planta=planta,
+            planta=None,
             consultado_em=agora,
             base_url="https://geocoder.dimap.pmsp/",
         )
@@ -159,7 +181,7 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
             envelope=envelope,
             pedido=pedido,
             imovel=lote_condominial,
-            planta=planta,
+            planta=None,
             consultado_em=agora,
             base_url="https://geocoder.dimap.pmsp/",
         )
@@ -171,7 +193,7 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
         envelope=envelope,
         pedido=pedido,
         imovel=lote_valido,
-        planta=planta,
+        planta=None,
         consultado_em=agora,
         base_url="https://geocoder.dimap.pmsp/",
     )
@@ -179,7 +201,7 @@ def test_certidao_input_recusa_lote_sem_lancamento_ou_condominial() -> None:
 
 
 def test_certidao_input_recusa_planta_de_outro_tipo() -> None:
-    pedido = PedidoCertidao(processo="6017.2026/0012345-6", interessado="João da Silva")
+    pedido = _pedido(incluir_planta=True)
 
     with pytest.raises(ValidationError):
         CertidaoLancamentoInput(

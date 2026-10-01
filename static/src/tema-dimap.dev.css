@@ -438,6 +438,16 @@ html[data-theme="dimap"] {
     box-shadow: var(--sombra-poco);
   }
 
+  /* ÁTOMO · .textarea-glass (SPEC certidao_lancamento/001) — a receita do .input-glass e do
+     .select-glass, no textarea */
+  .textarea-glass {
+    @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/45 focus:border-agua-500 focus:outline-none;
+    box-shadow: var(--sombra-poco);
+  }
+  .textarea-glass:focus {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+
   /* Controle em realce (SPEC criacao_usuarios/004): o halo semântico no CONTROLE, não no campo
      inteiro — rótulo fora do realce mantém a linha alinhada com os vizinhos da grade. Mesma
      receita do .input-glass:focus, com a cor do estado no lugar do ciano. */
@@ -2445,6 +2455,34 @@ html[data-theme="dimap"] {
   .card-opcao:active {
     @apply scale-[0.98];
   }
+
+  /* ==================== MOLÉCULA · POÇO DE AÇÕES (SPEC certidao_lancamento/001) =================== */
+  /* .poco-acoes — composta com .card-well no HTML */
+  .poco-acoes { @apply px-4 pt-2.5 pb-3 flex flex-col gap-1 w-full min-h-0 max-h-full; }
+  .poco-acoes__titulo { @apply shrink-0 leading-none; }
+  .poco-acoes__lista {
+    @apply flex flex-col gap-2.5 p-1 min-h-0 overflow-y-auto overscroll-contain;
+    mask-image: linear-gradient(to bottom, transparent, black 8px, black calc(100% - 8px), transparent);
+  }
+  .poco-acoes__lista > .btn { @apply justify-start gap-2; }
+  .poco-acoes__icone { @apply w-4 h-4 shrink-0 flex items-center justify-center; }
+  .poco-acoes__icone > svg { @apply w-full h-full; }
+
+  /* ==================== MOLÉCULA · OPÇÃO DE TEXTO (SPEC certidao_lancamento/001) ================== */
+  /* .opcao-texto — um texto oficial escolhível, composto com .card-well no HTML; o rádio é sr-only
+     e a escolha acende a água, como todo estado de seleção do sistema */
+  .opcao-texto { @apply flex flex-col gap-1 px-3.5 py-3 cursor-pointer transition-all duration-300; }
+  .opcao-texto:hover { @apply bg-white/45; }
+  .opcao-texto:has(input:checked) {
+    @apply border-agua-500/60;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(0, 150, 199, 0.35), 0 0 18px rgba(72, 202, 228, 0.35);
+  }
+  .opcao-texto:has(input:focus-visible) {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+  .opcao-texto__titulo { @apply transition-colors duration-300; }
+  .opcao-texto:has(input:checked) .opcao-texto__titulo { @apply text-agua-700; }
+  .opcao-texto__corpo { @apply text-[13px] leading-snug text-base-content/80; }
 
   /* ==================== MOLÉCULAS · CONTROLES DE MAPA (SPEC design/016) ==================== */
   /* Pílula no canto inferior esquerdo do mapa, simétrica ao atalho de documentos à direita. */

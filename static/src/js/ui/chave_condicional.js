@@ -21,9 +21,25 @@ export function aplicarChavesCondicionais() {
 document.addEventListener("DOMContentLoaded", aplicarChavesCondicionais);
 document.addEventListener("htmx:afterSwap", aplicarChavesCondicionais);
 
+// A chave é o primeiro grupo de rádios do escopo — o mesmo que aplicar() lê.
+function ehDaChave(escopo, radio) {
+  return escopo.querySelector('input[type="radio"]').name === radio.name;
+}
+
+// Controle com [data-padrao-se] volta ao padrão do lado escolhido a cada troca da chave; nada muda
+// na carga, para a recusa 422 devolver o que a pessoa marcou.
+function reporPadroes(escopo, valor) {
+  escopo.querySelectorAll('input[type="checkbox"][data-padrao-se]').forEach((campo) => {
+    campo.checked = campo.dataset.padraoSe === valor;
+  });
+}
+
 // Delegação: um ouvinte só cobre qualquer chave condicional presente na página.
 document.addEventListener("change", (evento) => {
   if (!(evento.target instanceof HTMLInputElement) || evento.target.type !== "radio") return;
   const escopo = evento.target.closest("[data-chave-condicional]");
-  if (escopo) aplicar(escopo);
+  if (!escopo) return;
+  aplicar(escopo);
+  // Só a troca da chave repõe o padrão: escolher um texto não mexe no mapa.
+  if (ehDaChave(escopo, evento.target)) reporPadroes(escopo, evento.target.value);
 });

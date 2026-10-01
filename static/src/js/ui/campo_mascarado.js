@@ -1,6 +1,7 @@
 // Opt-in por [data-mascara], no padrão dos demais módulos de UI (SPEC autenticacao/001). O
 // gabarito diz onde entram os separadores e, pela contagem dos seus slots, quantos dígitos o
-// campo tem; [data-mascara-alvo] aponta o campo oculto que leva ao servidor só os dígitos.
+// campo tem; vários gabaritos separados por "|" (CPF|CNPJ) deixam a quantidade de dígitos escolher
+// o formato. [data-mascara-alvo] aponta o campo oculto que leva ao servidor só os dígitos.
 const SLOT_DE_DIGITO = "0";
 
 function contarDigitos(texto) {
@@ -37,12 +38,17 @@ function posicaoAposDigitos(texto, quantidade) {
   return texto.length;
 }
 
+// O primeiro gabarito que comporta os dígitos; passando de todos, o último acende o excesso.
+function escolherGabarito(digitos, gabaritos) {
+  return gabaritos.find((gabarito) => contarDigitos(gabarito) >= digitos.length) ?? gabaritos.at(-1);
+}
+
 function aplicar(campo) {
-  const gabarito = campo.dataset.mascara;
-  const limite = contarDigitos(gabarito);
   const cursor = campo.selectionStart ?? campo.value.length;
   const digitosAEsquerda = contarDigitos(campo.value.slice(0, cursor));
   const digitos = campo.value.replace(/\D/g, "");
+  const gabarito = escolherGabarito(digitos, campo.dataset.mascara.split("|"));
+  const limite = contarDigitos(gabarito);
 
   campo.value = formatar(digitos, gabarito);
   if (document.activeElement === campo) {

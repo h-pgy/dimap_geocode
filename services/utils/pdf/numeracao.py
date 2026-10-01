@@ -11,6 +11,8 @@ class CanvasMarcado(Canvas):
     """Guarda cada página em vez de emiti-la, e só no `save` — com o total na mão — decide qual
     marcação vale em cada uma e a pinta."""
 
+    _code: list[Any]
+
     def __init__(
         self,
         *args: object,
@@ -40,11 +42,9 @@ class CanvasMarcado(Canvas):
     def _pintar(self, numero: int, total: int) -> None:
         marcacao = self._marcacao.para(numero, total)
         folha = Folha(self, self._tamanho, pagina=numero, total=total)
-        corpo: list[Any] = self._code
-        # O fundo tem de ficar SOB o corpo. Como o corpo já desenhou, esvazia-se o código da
-        # página, pinta-se o fundo e devolve-se o corpo por cima — a ordem no content stream é a
-        # ordem de empilhamento do PDF. Sem isto a marca de fundo cobriria o que o documento diz.
-        self._code: list[Any] = []
+        fim_do_corpo = len(self._code)
         marcacao.pintar_fundo(folha)
-        self._code = self._code + corpo
+        # O fundo fica SOB o corpo, e quem empilha é a ordem no content stream: pinta-se depois e
+        # gira-se o código. Esvaziar `_code` antes faz o reportlab zerar os forms que o corpo usa.
+        self._code = self._code[fim_do_corpo:] + self._code[:fim_do_corpo]
         marcacao.pintar_bordas(folha)

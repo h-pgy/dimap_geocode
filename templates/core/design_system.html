@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{% load static %}
+{% load static icones %}
 <html lang="pt-BR" data-theme="dimap">
 <head>
   <meta charset="UTF-8">
@@ -759,6 +759,24 @@
             <input type="file" class="file-input file-input-glass" aria-label="Arquivo" />
           </div>
           <p class="form-field-hint mt-2">Este select é o <strong>átomo</strong> (a pele do controle) e abre a lista do sistema operacional. Em formulário, use a molécula <span class="text-code">.select-onsen</span> da seção 3: mesma pele no gatilho, lista dentro do design system.</p>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Textarea (vidro) (SPEC certidao_lancamento/001) — <span class="text-code">.textarea-glass</span>, mesma receita do .input-glass</p>
+          <div class="grid sm:grid-cols-3 gap-4">
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">vazio</span>
+              <textarea rows="3" class="textarea textarea-glass textarea-sm" placeholder="Observações do auditor"></textarea>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">preenchido</span>
+              <textarea rows="3" class="textarea textarea-glass textarea-sm">Vistoria realizada no processo 6017.2024/0034961-0.</textarea>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">.campo-realce-erro</span>
+              <textarea rows="3" class="textarea textarea-glass textarea-sm campo-realce-erro">Texto acima do limite…</textarea>
+            </div>
+          </div>
         </div>
 
         <div>
@@ -3310,6 +3328,59 @@
             </div>
           </div>
           <p class="text-xs text-base-content/60 mt-2">O <span class="text-code">.alert-warning .alert-soft</span> do aviso de hoje, com o glifo do globo no lugar do triângulo e <span class="text-code">role="status"</span>: acompanha um resultado, não o substitui.</p>
+        </div>
+
+        <!-- Poço de ações (SPEC certidao_lancamento/001) -->
+        <div>
+          <span class="text-overline"><span class="text-code">.poco-acoes</span> <span class="font-normal text-base-content/50">— o poço "Ações" da gaveta, composto com .card-well</span></span>
+          <div class="grid sm:grid-cols-2 gap-4 mt-3 items-start">
+            <div class="flex flex-col gap-2">
+              <p class="text-[10px] font-mono text-base-content/60">uma ação</p>
+              <div class="card-well poco-acoes">
+                <p class="text-overline poco-acoes__titulo">Ações</p>
+                <div class="poco-acoes__lista">
+                  <button type="button" class="btn btn-onsen btn-sm">
+                    <span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>
+                    Certidão de lançamento
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2">
+              <p class="text-[10px] font-mono text-base-content/60">várias ações sob teto</p>
+              <div class="h-44 flex flex-col">
+                <div class="card-well poco-acoes">
+                  <p class="text-overline poco-acoes__titulo">Ações</p>
+                  <div class="poco-acoes__lista">
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Certidão de lançamento</button>
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 2</button>
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 3</button>
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 4</button>
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 5</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O título e a lista de botões. Sob teto de altura a lista rola e dissolve nas bordas; sem ação liberada o poço não é desenhado.</p>
+        </div>
+
+        <!-- Opção de texto (SPEC certidao_lancamento/001) -->
+        <div>
+          <span class="text-overline"><span class="text-code">.opcao-texto</span> <span class="font-normal text-base-content/50">— um texto oficial escolhível, composto com .card-well</span></span>
+          <form class="grid sm:grid-cols-2 gap-4 mt-3">
+            <label class="card-well opcao-texto">
+              <input type="radio" name="demo-opcao-texto" value="a" class="sr-only">
+              <span class="text-overline opcao-texto__titulo">lançamento parcial</span>
+              <span class="opcao-texto__corpo">…o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelo contribuinte número 012.345.6789-0.</span>
+            </label>
+            <label class="card-well opcao-texto">
+              <input type="radio" name="demo-opcao-texto" value="b" class="sr-only" checked>
+              <span class="text-overline opcao-texto__titulo">possui lançamento</span>
+              <span class="opcao-texto__corpo">…o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número 012.345.6789-0.</span>
+            </label>
+          </form>
+          <p class="text-xs text-base-content/60 mt-2">Repouso × escolhido. O rádio é <span class="text-code">sr-only</span> e a escolha acende a água, como todo estado de seleção do sistema.</p>
         </div>
       </div>
     </section>

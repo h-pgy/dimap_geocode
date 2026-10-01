@@ -1,26 +1,16 @@
-from .certidao import (
-    CertidaoLancamento,
+from .certidao_builder import (
     MontarCertidaoLancamento,
     MontarCertidaoLancamentoInput,
     abertura_do_despacho,
     corpo_do_despacho,
     ressalva_padrao,
 )
-from .models import (
-    CertidaoLancamentoInput,
-    PedidoCertidao,
-    SentidoDespacho,
-    TipoDespacho,
-)
+from .certidao_lancamento import CertidaoLancamento
 
 __all__ = [
     "CertidaoLancamento",
-    "CertidaoLancamentoInput",
     "MontarCertidaoLancamento",
     "MontarCertidaoLancamentoInput",
-    "PedidoCertidao",
-    "SentidoDespacho",
-    "TipoDespacho",
     "abertura_do_despacho",
     "corpo_do_despacho",
     "ressalva_padrao",

@@ -1,6 +1,6 @@
-"""Testes de services/domain/certidao_lancamento/certidao.py (SPEC certidao_lancamento/001):
-a composição da Certidão de Existência de Lançamento (título, requerimento, identificação do imóvel,
-despacho com fundamentação e SQL, planta raster, rodapé com instante da consulta e amostra de artefato).
+"""Testes de services/domain/certidao_lancamento/certidao (SPEC certidao_lancamento/001): a
+composição da declaração de existência de lançamento (dados relacionados, despacho do tipo escolhido,
+ressalva e observações, planta opcional, rodapé com instante da consulta e amostra de artefato).
 """
 
 from collections.abc import Callable
@@ -10,6 +10,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from PIL import Image as PILImage, ImageDraw
+from pydantic import ValidationError
 from pypdf import PdfReader
 import pytest
 
@@ -21,8 +22,11 @@ from services.domain.certidao_lancamento.certidao import (
 from services.domain.certidao_lancamento.models import (
     CertidaoLancamentoInput,
     PedidoCertidao,
+    SentidoDespacho,
+    TipoDespacho,
 )
 from services.domain.documento_oficial import (
+    ConteudoDocumento,
     ImagemRaster,
     MarcacaoConfig,
     Paragrafo,
@@ -102,6 +106,53 @@ def _imovel(**overrides: object) -> LoteAttributes:
 
 def _selo(envelope: EnvelopeAto, base_url: str = "https://geocoder.dimap.pmsp/") -> SeloImpresso:
     return montar_selo_impresso(SeloImpressoInput(envelope=envelope, base_url=base_url))
+
+
+def _pedido(**overrides: object) -> PedidoCertidao:
+    defaults: dict[str, object] = {
+        "processo": "6017.2026/0012345-6",
+        "interessado": "Maria Salgado",
+        "sentido": SentidoDespacho.DEFERIDO,
+        "tipo_despacho": TipoDespacho.POSSUI_LANCAMENTO,
+    }
+    return PedidoCertidao(**(defaults | overrides))  # type: ignore[arg-type]
+
+
+def _tipo_do_sentido(sentido: SentidoDespacho) -> TipoDespacho:
+    return next(tipo for tipo in TipoDespacho if tipo.sentido is sentido)
+
+
+def _certidao_input(
+    pedido: PedidoCertidao | None = None,
+    imovel: LoteAttributes | None = None,
+    planta: PlantaLocalizacao | None = None,
+) -> CertidaoLancamentoInput:
+    return CertidaoLancamentoInput(
+        envelope=_envelope(),
+        pedido=pedido or _pedido(),
+        imovel=imovel or _imovel(),
+        planta=planta,
+        consultado_em=datetime(2026, 9, 22, 14, 30, tzinfo=ZoneInfo("America/Sao_Paulo")),
+        base_url="https://geocoder.dimap.pmsp/",
+    )
+
+
+def _conteudo(certidao: CertidaoLancamentoInput) -> ConteudoDocumento:
+    return MontarCertidaoLancamento()(
+        MontarCertidaoLancamentoInput(
+            certidao=certidao,
+            selo=_selo(certidao.envelope),
+            quadro=SeloConfig().fecho,
+        )
+    )
+
+
+def _textos(conteudo: ConteudoDocumento) -> list[str]:
+    return [bloco.texto for bloco in conteudo.blocos if isinstance(bloco, Paragrafo)]
+
+
+def _indice_do_despacho(textos: list[str]) -> int:
+    return next(i for i, texto in enumerate(textos) if texto.startswith("Solicitação "))
 
 
 PNG_1X1 = (
@@ -184,108 +235,125 @@ def _tipo_certidao() -> CertidaoLancamento:
 # ---------------------------------------------------------------------------
 
 
-def test_montar_certidao_declara_requerimento_identificacao_e_despacho() -> None:
-    envelope = _envelope()
-    pedido = PedidoCertidao(processo="6017.2026/0012345-6", interessado="Maria Salgado")
-    imovel = _imovel(
-        nome_logradouro="AV PAULISTA",
-        numero_porta="100",
-        codlog="123450",
-        complemento="SALA 12",
-    )
-    momento_consulta = datetime(2026, 9, 22, 14, 30, tzinfo=ZoneInfo("America/Sao_Paulo"))
-    certidao_input = CertidaoLancamentoInput(
-        envelope=envelope,
-        pedido=pedido,
-        imovel=imovel,
-        planta=_planta(),
-        consultado_em=momento_consulta,
-        base_url="https://geocoder.dimap.pmsp/",
-    )
-    selo = _selo(envelope)
-    quadro = SeloConfig().fecho
-
-    montador = MontarCertidaoLancamento()
-    conteudo = montador(MontarCertidaoLancamentoInput(
-        certidao=certidao_input,
-        selo=selo,
-        quadro=quadro,
-    ))
-
-    assert conteudo.titulo == "Certidão de Existência de Lançamento"
-    assert conteudo.nome_arquivo == f"certidao_lancamento_{envelope.codigo}.pdf"
-
-    # Requerimento
-    paragrafos = [b.texto for b in conteudo.blocos if isinstance(b, Paragrafo)]
-    assert any("Interessado: Maria Salgado. Processo SEI nº 6017.2026/0012345-6." in t for t in paragrafos)
-
-    # Identificação do imóvel com codlog e complemento
-    assert any("AV PAULISTA (codlog: 12345-0), número 100, complemento SALA 12." in t for t in paragrafos)
-
-    # Despacho e fundamentação com SQL
-    assert any("Solicitação deferida." in t for t in paragrafos)
-    assert any(
-        "declara-se que o imóvel acima identificado possui lançamento do Imposto Predial e Territorial Urbano (IPTU) pelo contribuinte número 005.003.0048-5."
-        in t
-        for t in paragrafos
+def test_montar_certidao_declara_dados_e_despacho_do_tipo() -> None:
+    certidao = _certidao_input(
+        pedido=_pedido(interessado="Maria Salgado", cpf_cnpj="123.456.789-09"),
+        imovel=_imovel(
+            nome_logradouro="AV PAULISTA",
+            numero_porta="100",
+            codlog="123450",
+            complemento="SALA 12",
+        ),
     )
 
-    # Subtítulos da estrutura
+    conteudo = _conteudo(certidao)
+
+    assert conteudo.titulo == (
+        "Declaração de Existência/Inexistência de Lançamento Fiscal e Inscrição no Cadastro "
+        "Imobiliário Fiscal – IPTU"
+    )
+    assert conteudo.nome_arquivo == f"certidao_lancamento_{certidao.envelope.codigo}.pdf"
     subtitulos = [b.texto for b in conteudo.blocos if isinstance(b, Subtitulo)]
-    assert "Requerimento" in subtitulos
-    assert "Identificação do Imóvel" in subtitulos
-    assert "Despacho" in subtitulos
-    assert "Localização do Imóvel" in subtitulos
-
-    # Selo de fecho
+    assert subtitulos[:2] == ["Dados relacionados à declaração", "Despacho"]
     assert any(isinstance(b, SeloDeFecho) for b in conteudo.blocos)
 
+    # Dados relacionados: imóvel com codlog-DV, interessado com o CPF/CNPJ, processo e data
+    textos = _textos(conteudo)
+    assert "Identificação do imóvel: AV PAULISTA (codlog: 12345-0), número 100, complemento SALA 12." in textos
+    assert "Nome do interessado: Maria Salgado (CPF/CNPJ: 123.456.789-09)" in textos
+    assert "Processo SEI nº: 6017.2026/0012345-6" in textos
+    assert "Data da declaração: 22/09/2026" in textos
 
-def test_certidao_traz_planta_raster_na_largura_pedida() -> None:
-    envelope = _envelope()
-    pedido = PedidoCertidao(processo="6017.2026/0012345-6", interessado="Maria Salgado")
-    imovel = _imovel()
+    # Sem CPF/CNPJ, o interessado sai só pelo nome, sem parêntese vazio
+    sem_documento = _textos(_conteudo(_certidao_input()))
+    assert "Nome do interessado: Maria Salgado" in sem_documento
+
+    # O texto do modelo, transcrito, para um tipo de cada sentido
+    deferido = _textos(_conteudo(_certidao_input()))
+    assert deferido[_indice_do_despacho(deferido)] == (
+        "Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que o imóvel "
+        "possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número "
+        "005.003.0048-5."
+    )
+    indeferido = _textos(
+        _conteudo(
+            _certidao_input(
+                pedido=_pedido(
+                    sentido=SentidoDespacho.INDEFERIDO,
+                    tipo_despacho=TipoDespacho.IMOVEL_NAO_LOCALIZADO,
+                )
+            )
+        )
+    )
+    assert indeferido[_indice_do_despacho(indeferido)] == (
+        "Solicitação INDEFERIDA. Com base nas informações presentes no processo, declara-se que não foi "
+        "possível a localização do imóvel, já que as informações constantes no processo não são "
+        "suficientes para a sua identificação inequívoca."
+    )
+
+    # Todos os tipos: a abertura sai do sentido, e só o deferimento cita o SQL
+    for tipo in TipoDespacho:
+        textos_do_tipo = _textos(
+            _conteudo(_certidao_input(pedido=_pedido(sentido=tipo.sentido, tipo_despacho=tipo)))
+        )
+        despacho = textos_do_tipo[_indice_do_despacho(textos_do_tipo)]
+        abertura = "DEFERIDA" if tipo.sentido is SentidoDespacho.DEFERIDO else "INDEFERIDA"
+        assert despacho.startswith(f"Solicitação {abertura}. Com base nas informações presentes no processo, declara-se que")
+        assert ("005.003.0048-5" in despacho) is (tipo.sentido is SentidoDespacho.DEFERIDO)
+
+
+def test_despacho_poe_ressalva_e_observacoes_antes_da_validade() -> None:
+    completo = _textos(
+        _conteudo(
+            _certidao_input(
+                pedido=_pedido(incluir_ressalva=True, observacoes="Vistoria anexada ao processo.")
+            )
+        )
+    )
+
+    despacho = _indice_do_despacho(completo)
+    assert completo[despacho + 1].startswith("Ressalta-se que a análise tem como base somente a situação factual")
+    assert completo[despacho + 2] == "Vistoria anexada ao processo."
+    assert completo[despacho + 3].startswith(
+        "As informações prestadas nos termos deste despacho serão válidas por 90 (noventa) dias"
+    )
+
+    # Ressalva desmarcada e sem observações: a validade segue direto o despacho
+    enxuto = _textos(_conteudo(_certidao_input(pedido=_pedido(incluir_ressalva=False))))
+    assert not any(texto.startswith("Ressalta-se") for texto in enxuto)
+    assert enxuto[_indice_do_despacho(enxuto) + 1].startswith("As informações prestadas nos termos")
+
+
+def test_planta_segue_o_pedido_e_nota_com_instante_da_consulta() -> None:
     planta_png = b"\x89PNG\r\n\x1a\nfake-planta"
-    planta = _planta(png=planta_png)
-    momento_consulta = datetime(2026, 9, 22, 14, 30, tzinfo=ZoneInfo("America/Sao_Paulo"))
 
-    certidao_input = CertidaoLancamentoInput(
-        envelope=envelope,
-        pedido=pedido,
-        imovel=imovel,
-        planta=planta,
-        consultado_em=momento_consulta,
-        base_url="https://geocoder.dimap.pmsp/",
-    )
+    for sentido in SentidoDespacho:
+        pedido = {"sentido": sentido, "tipo_despacho": _tipo_do_sentido(sentido)}
 
-    montador = MontarCertidaoLancamento()
-    conteudo = montador(MontarCertidaoLancamentoInput(
-        certidao=certidao_input,
-        selo=_selo(envelope),
-        quadro=SeloConfig().fecho,
-    ))
+        com_mapa = _conteudo(
+            _certidao_input(
+                pedido=_pedido(**pedido, incluir_planta=True),
+                planta=_planta(png=planta_png),
+            )
+        )
+        raster = next(b for b in com_mapa.blocos if isinstance(b, ImagemRaster))
+        assert raster.largura_mm == 150.0
+        assert raster.conteudo == planta_png
+        assert "Localização do Imóvel" in [b.texto for b in com_mapa.blocos if isinstance(b, Subtitulo)]
 
-    raster = next(b for b in conteudo.blocos if isinstance(b, ImagemRaster))
-    assert raster.largura_mm == 150.0
-    assert raster.conteudo == planta_png
+        # Sem o mapa, a seção some inteira: nem imagem, nem subtítulo solto
+        sem_mapa = _conteudo(_certidao_input(pedido=_pedido(**pedido, incluir_planta=False)))
+        assert not any(isinstance(b, ImagemRaster) for b in sem_mapa.blocos)
+        assert "Localização do Imóvel" not in [b.texto for b in sem_mapa.blocos if isinstance(b, Subtitulo)]
 
+    # O pedido manda: planta que ele não inclui e mapa sem planta são recusados
+    with pytest.raises(ValidationError):
+        _certidao_input(pedido=_pedido(incluir_planta=False), planta=_planta())
+    with pytest.raises(ValidationError):
+        _certidao_input(pedido=_pedido(incluir_planta=True), planta=None)
 
-def test_rodape_declara_emissao_automatizada_e_instante_da_consulta() -> None:
-    envelope = _envelope()
-    certidao_input = CertidaoLancamentoInput(
-        envelope=envelope,
-        pedido=PedidoCertidao(
-            processo="6017.2026/0012345-6",
-            interessado="Maria Salgado",
-        ),
-        imovel=_imovel(),
-        planta=_planta(),
-        consultado_em=datetime(2026, 9, 22, 14, 30, tzinfo=ZoneInfo("America/Sao_Paulo")),
-        base_url="https://geocoder.dimap.pmsp/",
-    )
-
-    renderizado = _tipo_certidao()(certidao_input)
-
+    # A nota do rodapé declara a emissão automatizada e o instante da leitura do lote
+    renderizado = _tipo_certidao()(_certidao_input())
     texto = PdfReader(BytesIO(renderizado.pdf)).pages[0].extract_text()
     assert "de forma automatizada" in texto
     assert "22/09/2026" in texto
@@ -307,25 +375,41 @@ def test_amostra_certidao_de_lancamento(
             config=PlantaConfig(camada_ortofoto="geoportal:ORTO_RGB", crs=31983),
         )
     )
-    certidao_input = CertidaoLancamentoInput(
-        envelope=_envelope(),
-        pedido=PedidoCertidao(
-            processo="6017.2026/0012345-6",
+    imovel = _imovel(
+        nome_logradouro="AV PAULISTA",
+        numero_porta="100",
+        codlog="123450",
+        complemento="APTO 42",
+    )
+    deferimento = _certidao_input(
+        pedido=_pedido(
             interessado="Maria Salgado de Almeida",
+            cpf_cnpj="123.456.789-09",
+            incluir_ressalva=True,
+            incluir_planta=True,
+            observacoes="Vistoria realizada no processo 6017.2026/0012345-6.",
         ),
-        imovel=_imovel(
-            nome_logradouro="AV PAULISTA",
-            numero_porta="100",
-            codlog="123450",
-            complemento="APTO 42",
-        ),
+        imovel=imovel,
         planta=planta,
-        consultado_em=datetime(2026, 9, 22, 14, 30, tzinfo=ZoneInfo("America/Sao_Paulo")),
-        base_url="https://geocoder.dimap.pmsp/",
+    )
+    indeferimento = _certidao_input(
+        pedido=_pedido(
+            interessado="Maria Salgado de Almeida",
+            sentido=SentidoDespacho.INDEFERIDO,
+            tipo_despacho=TipoDespacho.IMOVEL_NAO_LOCALIZADO,
+        ),
+        imovel=imovel,
     )
 
-    renderizado = _tipo_certidao()(certidao_input)
-    caminho = publicar_artefato("certidao_lancamento_amostra.pdf", renderizado.pdf)
+    deferida = publicar_artefato(
+        "certidao_lancamento_deferimento_com_planta.pdf",
+        _tipo_certidao()(deferimento).pdf,
+    )
+    indeferida = publicar_artefato(
+        "certidao_lancamento_indeferimento_sem_planta.pdf",
+        _tipo_certidao()(indeferimento).pdf,
+    )
 
-    assert caminho.exists()
-    assert caminho.stat().st_size > 0
+    for caminho in (deferida, indeferida):
+        assert caminho.exists()
+        assert caminho.stat().st_size > 0
