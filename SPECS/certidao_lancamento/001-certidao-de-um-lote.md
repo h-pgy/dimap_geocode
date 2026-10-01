@@ -1,6 +1,6 @@
 ---
 spec: certidao_lancamento/001
-versao: v7
+versao: v8
 atualizado_em: 2026-09-30
 testes_tdd: true
 implementado: false
@@ -13,6 +13,7 @@ changelog:
   - v5: router renomeado para acoes_lote com enforcement de SQL válido na borda
   - v6: "[bugfix] endereço do lote no modal, recusa de formulário inteira, emissão como desfecho e nota do rodapé em duas linhas"
   - v7: despacho por tipo, deferido ou indeferido, com CPF/CNPJ, ressalva padrão e observações no pedido, e o poço de ações vira a molécula `.poco-acoes`
+  - v8: os tipos em maior área e parcial apurados pela geometria passam a ser da SPEC 002
 ---
 
 # SPEC certidao_lancamento/001 — Certidão de Existência de Lançamento de um lote
@@ -231,8 +232,8 @@ class ContratoAcoesLote(BaseModel):
 - Certidão negativa (inexistência de lançamento) — sem dono; emitida manualmente pelo técnico.
 - Conferência do dígito verificador do processo SEI e do CPF/CNPJ — sem dono ainda; só o formato é
   conferido.
-- Tipos "em maior área" e "parcial" apurados pela geometria — SPEC
-  [certidao_lancamento/003](003-certidao-a-maior-e-a-menor.md), para o conjunto desenhado.
+- Tipos "em maior área" e "parcial" sugeridos pela geometria — SPEC
+  [certidao_lancamento/002](002-certidao-do-conjunto.md), para o conjunto desenhado.
 - Card da ação no painel — não entra: a ação só existe sobre um lote localizado.
 
 ## 5 · Peças de referência a compor
@@ -983,10 +984,10 @@ mesmo quando ela sai da caixa, então só rasterizando (`pdftoppm`) se enxerga.
 do modal. A regra "só se certifica lançamento que existe" não pode depender da tela. O custo é a
 mesma condição escrita no template do modal e no validador.
 
-O tipo de despacho é escolhido pelo auditor, inclusive "em maior área" e "parcial", enquanto a SPEC 003
-deriva do desenho a modalidade "a maior"/"a menor" do conjunto. No lote único não há desenho de que
-derivar nada, e o que decide é a leitura do processo. O custo é a mesma noção existir escolhida aqui
-e apurada lá, e a 003 precisa dizer qual das duas vence quando o conjunto chegar ao despacho.
+O tipo de despacho é escolhido pelo auditor, inclusive "em maior área" e "parcial", sem apuração alguma
+da geometria. No lote único não há desenho de que derivar nada, e o que decide é a leitura do processo.
+O custo é a mesma noção nascer escolhida aqui e sugerida pela geometria no conjunto (SPEC 002), onde a
+escolha do auditor também prevalece.
 
 Os indeferimentos saem sobre o lote localizado, com a identificação dele nos dados relacionados e, por
 padrão, sem a planta. A ação só existe sobre um lote, e o mapa é decisão do auditor: o sentido só

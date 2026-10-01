@@ -1,6 +1,6 @@
 ---
 spec: certidao_lancamento/002
-versao: v5
+versao: v6
 atualizado_em: 2026-09-30
 testes_tdd: false
 implementado: false
@@ -11,6 +11,7 @@ changelog:
   - v3: o conjunto vem da sessão e é relido no GeoSampa só na emissão, e a ação passa à gaveta inferior dos lotes intersectados
   - v4: padronização da molécula oficial de poço de ações reduzido no frontend (.card-well com respiro px-4 pt-2.5 pb-3, leading-none no título, gap-2.5 entre ações e máscara de dissolução/blur na rolagem), unificada entre a gaveta inferior e a gaveta lateral
   - v5: o poço do conjunto entra por contrato próprio no router `acoes_lote` com a molécula `.poco-acoes`, o pedido é o da SPEC 001 e o tipo de despacho vem pré-selecionado pela geometria do desenho
+  - v6: o limiar da sugestão de tipo de despacho é declarado aqui, e o percentual por lote sai do fora de escopo
 ---
 
 # SPEC certidao_lancamento/002 — Certidão de Existência de Lançamento de um conjunto de lotes
@@ -148,8 +149,6 @@ class SugerirTipoDespacho:
 **Mock:** [002-mock-certidao-do-conjunto.html](002-mock-certidao-do-conjunto.html) — leia a skill `mock`.
 
 ## 4 · Fora de escopo
-- Percentual de cada lote na gaveta e na certidão, e a modalidade no título e no envelope — SPEC
-  [certidao_lancamento/003](003-certidao-a-maior-e-a-menor.md).
 - Lote condominial dentro do conjunto — sem dono ainda.
 - Limite de quantidade de lotes numa certidão além da área máxima do desenho — sem dono ainda.
 
@@ -392,17 +391,37 @@ def emitir_conjunto(request: HttpRequest) -> HttpResponse:
     return render(request, TEMPLATE_CERTIDAO_EMITIDA, {"codigo": documento.codigo})
 ```
 
+**`config/settings.py`** — NOVO nesta SPEC: o limiar da sugestão, ao lado de
+`LOTES_DESENHO_AREA_MAXIMA_M2`, com a linha comentada correspondente no `.env.example`.
+
+```python
+    lote_fracao_minima_contida: float = Field(
+        default=0.99,
+        gt=0,
+        le=1,
+        alias="LOTE_FRACAO_MINIMA_CONTIDA",
+    )
+
+LOTE_FRACAO_MINIMA_CONTIDA = _env.lote_fracao_minima_contida
+```
+
 **`apps/certidao_lancamento/views.py`** — o contexto do conjunto traz os textos no plural, com o rol, e
 abre com o tipo que a geometria sugere; o resto dos campos é o da SPEC 001.
 
 ```python
+# O limiar entra pela orquestração, como os CRS: o domínio o recebe no DTO.
+LOTE_FRACAO_MINIMA_CONTIDA: float = settings.LOTE_FRACAO_MINIMA_CONTIDA
+MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS   # 31983: o métrico que o projeto já usa
+MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
+
+
 def valores_iniciais_do_conjunto(conjunto: ConjuntoDeLotes) -> dict[str, Any]:
-    geometrias = geometrias_metricas(conjunto, MAP_OUTPUT_CRS, CRS_METRICO)
+    geometrias = geometrias_metricas(conjunto, MAP_OUTPUT_CRS, MAP_INTERPOLATION_CRS)
     sugerir_tipo = SugerirTipoDespacho()
     sugerido = sugerir_tipo(SugestaoDespachoInput(
         desenho=geometrias.desenho,
         lotes=geometrias.lotes,
-        fracao_minima_contida=LOTE_FRACAO_MINIMA_CONTIDA,   # settings; 0.99 por padrão — o mesmo da gaveta (SPEC 003)
+        fracao_minima_contida=LOTE_FRACAO_MINIMA_CONTIDA,
     ))
     return {**VALORES_INICIAIS, "tipo_despacho": sugerido}
 
@@ -551,8 +570,7 @@ O custo é que mexer no texto de um subtipo exige rodar o teste do outro.
 O tipo que o modal traz marcado sai da geometria com folga: o lote conta como contido com a fração
 configurada da área dentro do desenho, 0,99 por padrão. O `contains` puro jogaria em "parcial" todo
 desenho feito rente à divisa, e a sugestão é só o ponto de partida do auditor. O custo é um lote com até
-1% fora do desenho ser sugerido como "em maior área", e a SPEC 003 ter de usar essa mesma apuração
-quando derivar a modalidade, em vez de uma segunda regra.
+1% fora do desenho ser sugerido como "em maior área".
 
 O conjunto ganha contrato e rota próprios no router de `apps/acoes_lote`, em vez de a rota do lote
 aceitar um tipo. A rota do lote faz o enforcement do SQL, que o conjunto não tem, e misturar os dois

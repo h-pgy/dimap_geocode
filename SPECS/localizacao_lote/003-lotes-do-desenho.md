@@ -1,7 +1,7 @@
 ---
 spec: localizacao_lote/003
-versao: v6
-atualizado_em: 2026-09-18
+versao: v7
+atualizado_em: 2026-09-30
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [integration]
@@ -12,6 +12,7 @@ changelog:
   - v4: a ação aparece só com um polígono selecionado, opera sobre ele e leva ao contexto do resultado — tabela embaixo, gaveta do lote ao lado
   - v5: o desenho que originou o resultado não responde ao clique enquanto o contexto de ação dura, e o resultado nasce fora da bancada
   - v6: a alça recolhe a gaveta inferior, que volta pela paleta, e só o ✕ a fecha; com ela presente, a bancada não encaixa no rodapé
+  - v7: o percentual de cada lote sai do fora de escopo, e a relação do desenho com cada lote passa a ser da SPEC certidao_lancamento/002
 ---
 
 # SPEC localizacao_lote/003 — Lotes que cruzam um desenho
@@ -150,8 +151,8 @@ class ItemPoco(BaseModel):
 ## 4 · Fora de escopo
 - Tirar lotes do conjunto — SPEC [localizacao_lote/004](004-revisao-do-conjunto.md).
 - Refazer a busca sozinha quando o polígono é **editado, arrastado ou apagado** depois dela — sem dono ainda.
-- Percentual de cada lote contido no desenho e a modalidade "a maior" × "a menor" — SPEC
-  [certidao_lancamento/003](../certidao_lancamento/003-certidao-a-maior-e-a-menor.md).
+- Dizer se o desenho contém cada lote ou só o intersecta — SPEC
+  [certidao_lancamento/002](../certidao_lancamento/002-certidao-do-conjunto.md), na sugestão do tipo de despacho.
 - Primeiro ato administrativo sobre desenho (amostragem de ofertas, por exemplo) e consultas dos poços de ponto e de linha — sem dono ainda.
 
 ## 5 · Peças de referência a compor
