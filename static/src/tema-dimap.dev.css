@@ -3057,9 +3057,10 @@ html[data-theme="dimap"] {
     @apply mt-0 opacity-100 visible;
     grid-template-rows: 1fr;
   }
-  /* Sem padding, senão a trilha não chega a zero; o clip-margin deixa a sombra da placa vazar. */
+  /* Sem padding, senão a trilha não chega a zero; o clip-margin deixa a sombra da placa vazar.
+     min-w-0: sem ele a coluna da grade cresce com o rótulo, e o truncate do .item-menu não corta. */
   .poco-desenhos__acoes-recorte {
-    @apply min-h-0 overflow-clip;
+    @apply min-h-0 min-w-0 overflow-clip;
     overflow-clip-margin: 1.5rem;
   }
 
