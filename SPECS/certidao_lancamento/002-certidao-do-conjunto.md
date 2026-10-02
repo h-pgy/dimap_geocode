@@ -3,7 +3,7 @@ spec: certidao_lancamento/002
 versao: v6
 atualizado_em: 2026-09-30
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco, artefato]
 changelog:
   - v1: versão inicial
@@ -23,33 +23,33 @@ imóvel que ocupa vários lotes, para obter um PDF selado que atesta o lançamen
 o terreno sobre eles.
 
 ## 2 · Condições de pronto
-- [ ] A gaveta inferior dos lotes intersectados traz o poço **"Ações"** ao lado da tabela só para quem
+- [x] A gaveta inferior dos lotes intersectados traz o poço **"Ações"** ao lado da tabela só para quem
       tem a concessão; sem ação liberada, o poço não aparece e a tabela ocupa a largura toda.
-- [ ] O modal do conjunto lista os lotes que restaram na tabela e pede o mesmo pedido da SPEC
+- [x] O modal do conjunto lista os lotes que restaram na tabela e pede o mesmo pedido da SPEC
       [001](001-certidao-de-um-lote.md), com as mesmas recusas, **sem consultar o GeoServer**.
-- [ ] O modal abre com **deferido** e, pré-selecionado, **"em maior área"** quando o desenho contém os
+- [x] O modal abre com **deferido** e, pré-selecionado, **"em maior área"** quando o desenho contém os
       lotes que restaram — cada um com a fração mínima configurada dentro dele — ou **"parcial"**
       quando só os intersecta; o auditor pode trocar para qualquer texto, inclusive "possui lançamento".
-- [ ] Na recusa 422, o modal do conjunto volta com o que o auditor marcou: o tipo que ele escolheu
+- [x] Na recusa 422, o modal do conjunto volta com o que o auditor marcou: o tipo que ele escolheu
       prevalece sobre a sugestão da geometria, que não é refeita.
-- [ ] Conjunto **vazio**, ou com algum lote **sem lançamento ativo** ou **condominial**, abre o modal
+- [x] Conjunto **vazio**, ou com algum lote **sem lançamento ativo** ou **condominial**, abre o modal
       com o aviso — listando os lotes impeditivos, quando houver —, sem formulário, para que sejam
       tirados na tabela antes; o lote que perdeu o lançamento entre o modal e a emissão devolve esse
       mesmo aviso, e nada é emitido.
-- [ ] Na emissão, os lotes do conjunto guardado são **relidos no GeoSampa**, e a certidão atesta os
+- [x] Na emissão, os lotes do conjunto guardado são **relidos no GeoSampa**, e a certidão atesta os
       dados dessa leitura; lote que apareceu no desenho depois da consulta não entra.
-- [ ] Se o conjunto relido na emissão **difere** do que o modal mostrou — lote tirado na tabela depois,
+- [x] Se o conjunto relido na emissão **difere** do que o modal mostrou — lote tirado na tabela depois,
       lote que saiu da camada, id forjado no POST ou resultado substituído por outra consulta —, a
       emissão é recusada com a explicação, e nada é emitido.
-- [ ] A declaração traz os dados relacionados, a área do desenho, a **tabela** com SQL, endereço e
+- [x] A declaração traz os dados relacionados, a área do desenho, a **tabela** com SQL, endereço e
       complemento de cada lote, o despacho do tipo escolhido no plural — "em maior área" e "parcial"
       citando o rol de contribuintes na enumeração do português ("A, B e C").
-- [ ] Com **"acrescentar mapa"** marcado — padrão como na SPEC 001 —, a declaração traz a planta com a
+- [x] Com **"acrescentar mapa"** marcado — padrão como na SPEC 001 —, a declaração traz a planta com a
       ortofoto, os lotes e o **desenho em destaque por cima**; sem ele, a ortofoto nem é consultada.
-- [ ] A certidão de **um** lote continua saindo com o texto da SPEC 001.
-- [ ] A emissão entra no acervo e fica **registrada** com operação própria, distinguível da emissão de
+- [x] A certidão de **um** lote continua saindo com o texto da SPEC 001.
+- [x] A emissão entra no acervo e fica **registrada** com operação própria, distinguível da emissão de
       um lote, e a ficha pública mostra os contribuintes, o processo e o despacho.
-- [ ] O design da coluna de ações na gaveta inferior, do modal do conjunto e dos avisos foi aprovado
+- [x] O design da coluna de ações na gaveta inferior, do modal do conjunto e dos avisos foi aprovado
       no mock e as peças novas portadas para o tema e o styleguide antes de qualquer template da
       aplicação usá-las.
 

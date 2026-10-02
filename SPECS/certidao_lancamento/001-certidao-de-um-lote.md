@@ -3,7 +3,7 @@ spec: certidao_lancamento/001
 versao: v8
 atualizado_em: 2026-09-30
 testes_tdd: true
-implementado: false
+implementado: true
 markers_obrigatorios: [banco, artefato]
 changelog:
   - v1: versão inicial
@@ -58,7 +58,7 @@ obter um PDF selado que responde ao processo e mostra onde o imóvel fica.
 - [x] A ficha pública da conferência mostra o **despacho** — sentido e tipo —, e nunca o interessado
       nem o CPF/CNPJ.
 - [x] A emissão fica **registrada** no Registro de Ações, com o código da certidão como alvo.
-- [ ] O design do poço de ações, do modal, do aviso e da confirmação foi aprovado no mock, e as peças
+- [x] O design do poço de ações, do modal, do aviso e da confirmação foi aprovado no mock, e as peças
       novas foram portadas para o tema e o styleguide antes de qualquer template da aplicação usá-las.
 
 ## 3 · Domínio
