@@ -410,6 +410,8 @@ MAP_OUTPUT_CRS = 4326
 MAP_INTERPOLATION_CRS = 31983
 # CRS geográfico em que a posição de um ponto é exibida: SIRGAS 2000, o referencial oficial do Brasil.
 MAP_GEOGRAPHIC_CRS = 4674
+# CRS em que o Google lê o `viewpoint` do link de Street View (Maps URLs).
+STREET_VIEW_CRS = 4326
 MAP_CENTRO_DEFAULT: list[float] = [-23.55, -46.63]
 # 14 preenche a viewport com a ortofoto sem mostrar os limites do município (em 12/13 sobra "vazio").
 MAP_ZOOM_DEFAULT = 14
@@ -541,6 +543,7 @@ INSTALLED_APPS = [
     "apps.lote_geocoder",
     "apps.lotes_mais_proximos",
     "apps.geocodificacao_externa",
+    "apps.street_view",
     "apps.amostrador_ofertas",
     "apps.documentos",
     "apps.acoes_lote",

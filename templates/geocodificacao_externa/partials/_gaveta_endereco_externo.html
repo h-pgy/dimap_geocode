@@ -30,21 +30,24 @@
             </div>
           </div>
 
-          <form
-            class="flex flex-col gap-2 pt-1"
-            hx-post="{% url 'lotes_mais_proximos:mais_proximo_do_ponto' %}"
-            hx-target="#resultado-busca"
-            hx-swap="innerHTML"
-          >
-            <input type="hidden" name="lon" value="{{ ponto.coordinates.0|unlocalize }}">
-            <input type="hidden" name="lat" value="{{ ponto.coordinates.1|unlocalize }}">
-            <input type="hidden" name="origem" value="{{ endereco.endereco_formatado }}">
-            <button type="submit" class="btn btn-onsen w-full">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/></svg>
-              Buscar lote mais próximo
-            </button>
-            <p class="text-xs text-base-content/60 text-center">Procura em qualquer logradouro, a até {{ raio_m|floatformat:0 }} m do ponto.</p>
-          </form>
+          <div class="card-well poco-acoes">
+            <p class="text-overline poco-acoes__titulo">Ações</p>
+            <form
+              class="poco-acoes__lista"
+              hx-post="{% url 'lotes_mais_proximos:mais_proximo_do_ponto' %}"
+              hx-target="#resultado-busca"
+              hx-swap="innerHTML"
+            >
+              <input type="hidden" name="lon" value="{{ ponto.coordinates.0|unlocalize }}">
+              <input type="hidden" name="lat" value="{{ ponto.coordinates.1|unlocalize }}">
+              <input type="hidden" name="origem" value="{{ endereco.endereco_formatado }}">
+              <button type="submit" class="btn btn-onsen btn-sm" title="Procura em qualquer logradouro, a até {{ raio_m|floatformat:0 }} m do ponto.">
+                <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/></svg></span>
+                Lote mais próximo
+              </button>
+              {% include "street_view/partials/_item_street_view.html" with toggle="gaveta-endereco-externo-toggle" %}
+            </form>
+          </div>
         </div>
       </div>
       <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>

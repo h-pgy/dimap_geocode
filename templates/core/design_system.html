@@ -26,6 +26,7 @@
   {% include "mapping/_mapa_admin.html" %}
   {% include "mapping/_glifos_mapa.html" %}
   {% include "mapping/_glifos_desenho.html" %}
+  {% include "street_view/partials/_glifos_street_view.html" %}
 
 
   <!-- Glifos de exemplo (SPEC autorizacao/006). Na aplicação cada um é um arquivo em
@@ -1152,6 +1153,35 @@
             </div>
           </div>
           <p class="text-xs text-base-content/60">O SVG entra <strong>inline</strong> e herda <span class="text-code">currentColor</span>: sem <span class="text-code">color</span> declarado no átomo, quem tinge é a pele empilhada (<span class="text-code">.icon-glow</span>, <span class="text-code">.icon-etched</span>) ou o contexto. Arquivo ausente cai no fallback genérico — nunca um buraco no menu.</p>
+        </div>
+
+        <!-- Glifo do Street View e item do poço que abre janela (SPEC street_view/001) -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">glifo do street view</p>
+          <div class="card-well p-5 flex flex-wrap items-end gap-8">
+            <div class="flex flex-col items-start gap-2">
+              <span class="poco-acoes__icone text-rocha-950"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+              <span class="text-[11px] text-base-content/60">16px · no poço</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <svg class="w-6 h-6 text-rocha-950" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+              <span class="text-[11px] text-base-content/60">24px</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+              </div>
+              <span class="text-[11px] text-base-content/60">na bolha</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <a class="btn btn-onsen btn-sm gap-2" href="{% url 'street_view:abrir' %}?lon=-46.6571&amp;lat=-23.5621" target="_blank" rel="noopener noreferrer" title="Abre o Google Street View em outra janela">
+                <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+                Visão da rua
+              </a>
+              <span class="text-[11px] text-base-content/60">item do poço · link que abre janela</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">A câmera sobre o anel do chão, em <span class="text-code">templates/street_view/partials/_glifos_street_view.html</span>. O item do poço é um <span class="text-code">&lt;a&gt;</span> com a pele do <span class="text-code">.btn-onsen</span>: na home, o <span class="text-code">[data-janela-popup]</span> faz o <span class="text-code">janela_popup.js</span> abri-lo em janela à parte; sem o script, <span class="text-code">target="_blank"</span> abre o mesmo destino em nova aba.</p>
         </div>
 
         <!-- Átomo da aura (SPEC user_admin/022) -->

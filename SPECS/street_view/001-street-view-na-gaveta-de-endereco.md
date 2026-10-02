@@ -1,11 +1,12 @@
 ---
 spec: street_view/001
-versao: v1
+versao: v2
 atualizado_em: 2026-10-02
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
+  - v2: alinhada ao mock aprovado — o controle é o item "Visão da rua" do poço de ações, que passa a abrigar também o lote mais próximo
 ---
 
 # SPEC street_view/001 — Street View em janela à parte, a partir da gaveta de endereço
@@ -15,8 +16,9 @@ O servidor logado na plataforma abre o Street View do Google numa janela à part
 endereço localizado pela busca, para ver a rua e a fachada sem perder o mapa e a gaveta.
 
 ## 2 · Condições de pronto
-- [ ] Logado, a **gaveta do endereço** traz o controle **"Abrir Street View"**.
-- [ ] Logado, a **gaveta do endereço externo** traz o mesmo controle.
+- [ ] Logado, a **gaveta do endereço** traz, no **poço de ações**, o item **"Visão da rua"**.
+- [ ] Logado, a **gaveta do endereço externo** traz o mesmo item.
+- [ ] Nas duas gavetas, o **lote mais próximo** é item do mesmo poço, no lugar do botão largo.
 - [ ] Sem login, a gaveta do endereço **não traz** o controle.
 - [ ] Acionar o controle abre, numa **janela separada do navegador**, o Google Maps no panorama mais
       próximo do **ponto do endereço**; o mapa e a gaveta da plataforma ficam como estavam.
@@ -132,7 +134,7 @@ STREET_VIEW_CRS: int = settings.STREET_VIEW_CRS
 TEMPLATE_AVISO_POPUP_BLOQUEADO = "street_view/partials/_aviso_popup_bloqueado.html"
 
 MSG_POPUP_BLOQUEADO = (
-    "O navegador bloqueou a janela do Street View. "
+    "O navegador bloqueou a janela da Visão da rua. "
     "Libere os pop-ups para este site e tente de novo."
 )
 
@@ -180,7 +182,7 @@ cena e levaria o aviso junto; por isso o mesmo response recolhe a gaveta.
 {% include "mapping/_recolher_gaveta_oob.html" with toggle=toggle %}
 ```
 
-**`templates/street_view/partials/_controle_street_view.html`** — as classes do controle saem do mock.
+**`templates/street_view/partials/_item_street_view.html`** — o item do poço; as classes saem do mock.
 
 ```html
 {% load l10n %}
@@ -191,16 +193,23 @@ cena e levaria o aviso junto; por isso o mesmo response recolhe a gaveta.
     rel="noopener noreferrer"
     data-janela-popup
     data-aviso-bloqueio="{% url 'street_view:popup_bloqueado' %}?toggle={{ toggle }}"
-  >Abrir Street View</a>
+  >Visão da rua</a>
 {% endif %}
 ```
 
 **`templates/address_geocoder/partials/_gaveta_endereco.html`** e
 **`templates/geocodificacao_externa/partials/_gaveta_endereco_externo.html`** — cada gaveta já tem
-`ponto` no contexto e diz o id do próprio toggle.
+`ponto` no contexto e diz o id do próprio toggle. O formulário do lote mais próximo vira a lista do
+poço, e o item do Street View entra nela.
 
 ```html
-{% include "street_view/partials/_controle_street_view.html" with toggle="gaveta-endereco-toggle" %}
+<div class="card-well poco-acoes">
+  <p class="text-overline poco-acoes__titulo">Ações</p>
+  <form class="poco-acoes__lista" hx-post="…" hx-target="#resultado-busca" hx-swap="innerHTML">
+    <!-- campos ocultos e o botão "Lote mais próximo", como já eram -->
+    {% include "street_view/partials/_item_street_view.html" with toggle="gaveta-endereco-toggle" %}
+  </form>
+</div>
 ```
 
 **`static/src/js/ui/janela_popup.js`** — carregado pela `core/home.html`.

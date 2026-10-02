@@ -124,6 +124,21 @@ def test_geocodificar_externo_desenha_ponto_e_abre_gaveta() -> None:
     assert campos == {"lon": "-46.6571", "lat": "-23.5621", "origem": ENDERECO_FORMATADO}
 
 
+def test_gaveta_do_endereco_externo_traz_o_controle_do_street_view() -> None:
+    geocodificador = GeocodificadorExterno(ProvedorDuble([_endereco_externo()]))
+
+    resposta = views.geocodificar_externo(_post_logado({}), geocodificador, "al santos, 1293")
+    gaveta = _soup(resposta.content).find(id="gaveta-entidade")
+
+    assert isinstance(gaveta, Tag)
+    controle = gaveta.select_one("a[data-janela-popup]")
+    assert controle is not None
+    assert controle["href"] == reverse("street_view:abrir") + "?lon=-46.6571&lat=-23.5621"
+    assert controle["target"] == "_blank"
+    url_aviso = reverse("street_view:popup_bloqueado") + "?toggle=gaveta-endereco-externo-toggle"
+    assert controle["data-aviso-bloqueio"] == url_aviso
+
+
 # ---------------------------------------------------------------------------
 # Falha do provedor: o aviso diz qual, e nada é desenhado
 # ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@ endereço (SPEC localizacao_lote/002) — supersede o comportamento da SPEC loca
 tirava a gaveta de cena (§2 da SPEC 002: "abre a gaveta lateral do endereço")."""
 
 import pytest
+from bs4 import BeautifulSoup, Tag
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
@@ -153,3 +154,46 @@ def test_clique_em_sugestao_oficial_que_falha_mantem_o_aviso(
 
     assert views.MSG_SEM_NUMERACAO in conteudo
     assert provedor.chamadas == 0
+
+
+# ---------------------------------------------------------------------------
+# Street View na gaveta do endereço: só para quem está logado
+# ---------------------------------------------------------------------------
+
+
+def _controle_street_view(conteudo: str) -> Tag | None:
+    gaveta = BeautifulSoup(conteudo, "html.parser").find(id="gaveta-entidade")
+    assert isinstance(gaveta, Tag)
+    return gaveta.select_one("a[data-janela-popup]")
+
+
+def test_gaveta_do_endereco_logado_traz_o_controle_do_street_view(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_geocoder_fake(monkeypatch)
+    request = RequestFactory().post(
+        reverse("address_geocoder:selecionar"), {"codlog": "123456", "numero": "100"}
+    )
+    request.user = _perfil()
+
+    conteudo = views.selecionar(request).content.decode()
+
+    controle = _controle_street_view(conteudo)
+    assert controle is not None
+    assert controle["href"] == reverse("street_view:abrir") + "?lon=-46.6&lat=-23.5"
+    assert controle["target"] == "_blank"
+    url_aviso = reverse("street_view:popup_bloqueado") + "?toggle=gaveta-endereco-toggle"
+    assert controle["data-aviso-bloqueio"] == url_aviso
+
+
+def test_gaveta_do_endereco_anonimo_nao_traz_o_controle(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_geocoder_fake(monkeypatch)
+
+    resposta = client.post(
+        reverse("address_geocoder:selecionar"), {"codlog": "123456", "numero": "100"}
+    )
+
+    assert _controle_street_view(resposta.content.decode()) is None
