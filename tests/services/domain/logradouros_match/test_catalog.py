@@ -18,18 +18,38 @@ _TIPOS_DATA = {
 
 # codlog vem com 6 dígitos (5 + dígito verificador); o catálogo descarta o DV e expõe só os 5
 # primeiros. Por isso os primeiros 5 dígitos precisam ser distintos entre as linhas.
-_NOMES_DATA = {
+_NOMES_DATA: dict[str, list[object]] = {
     "codlog": ["000017", "000025", "000033", "000041", "000050"],
     "cd_tipo_logradouro": ["AV", "AV", "R", "R", "AL"],
+    "cd_titulo_logradouro": [None, None, None, None, None],
+    "tx_preposicao_logradouro": [None, None, None, None, None],
     "nm_logradouro": ["PAULISTA", "BRASIL", "PAULISTA", "DIREITA", "SANTOS"],
 }
 
+# PRT fica fora do dicionário de títulos: a linha dela não tem extenso.
+_NOMES_COM_TITULO: dict[str, list[object]] = {
+    "codlog": ["121657", "500017"],
+    "cd_tipo_logradouro": ["AV", "R"],
+    "cd_titulo_logradouro": ["BRIG", "PRT"],
+    "tx_preposicao_logradouro": [None, None],
+    "nm_logradouro": ["LUIS ANTONIO", "SOUZA"],
+}
 
-def _catalog_com_dados_sinteticos() -> LogradouroCatalog:
+_TITULOS_DATA: dict[str, list[object]] = {
+    "cd_titulo_logradouro": ["BRIG", "CON"],
+    "nome_titulo": ["BRIGADEIRO", "CONEGO"],
+}
+
+
+def _catalog_com_dados_sinteticos(
+    nomes: dict[str, list[object]] = _NOMES_DATA,
+) -> LogradouroCatalog:
     def fake_read(filename: str) -> dict[str, list[object]]:
+        if "titulos" in filename:
+            return {k: list(v) for k, v in _TITULOS_DATA.items()}
         if "tipos" in filename:
             return {k: list(v) for k, v in _TIPOS_DATA.items()}  # type: ignore[arg-type]
-        return {k: list(v) for k, v in _NOMES_DATA.items()}  # type: ignore[arg-type]
+        return {k: list(v) for k, v in nomes.items()}
 
     with patch("services.domain.logradouros_match.catalog.read_parquet_from_data", side_effect=fake_read):
         c = LogradouroCatalog()
@@ -109,29 +129,37 @@ def test_todas_as_linhas_retorna_logradouro_rows() -> None:
 
 
 # ---------------------------------------------------------------------------
-# linhas_por_nome — recupera homônimos
+# linhas_por_texto — recupera homônimos
 # ---------------------------------------------------------------------------
 
 
-def test_linhas_por_nome_com_filtro_de_tipo() -> None:
+def test_linhas_por_texto_com_filtro_de_tipo() -> None:
     c = _catalog_com_dados_sinteticos()
     # PAULISTA existe em AV (codlog 00001) e R (codlog 00003); filtro em AV retorna só 00001
-    linhas = c.linhas_por_nome("PAULISTA", "AV")
+    linhas = c.linhas_por_texto("PAULISTA", "AV")
     assert len(linhas) == 1
     assert linhas[0].codlog == "00001"
 
 
-def test_linhas_por_nome_sem_filtro_retorna_homonimos() -> None:
+def test_linhas_por_texto_sem_filtro_retorna_homonimos() -> None:
     c = _catalog_com_dados_sinteticos()
     # sem filtro de tipo, PAULISTA aparece nos dois tipos
-    linhas = c.linhas_por_nome("PAULISTA", None)
+    linhas = c.linhas_por_texto("PAULISTA", None)
     codlogs = {r.codlog for r in linhas}
     assert codlogs == {"00001", "00003"}
 
 
-def test_linhas_por_nome_retorna_vazio_quando_nao_encontra() -> None:
+def test_linhas_por_texto_retorna_vazio_quando_nao_encontra() -> None:
     c = _catalog_com_dados_sinteticos()
-    assert c.linhas_por_nome("INEXISTENTE", None) == []
+    assert c.linhas_por_texto("INEXISTENTE", None) == []
+
+
+def test_catalogo_acha_a_linha_pelo_titulo_por_extenso() -> None:
+    c = _catalog_com_dados_sinteticos(_NOMES_COM_TITULO)
+
+    for texto in ("LUIS ANTONIO", "BRIG LUIS ANTONIO", "BRIGADEIRO LUIS ANTONIO"):
+        assert [r.codlog for r in c.linhas_por_texto(texto, None)] == ["12165"]
+    assert c.textos_de_busca("R") == ["SOUZA", "PRT SOUZA"]
 
 
 # ---------------------------------------------------------------------------
@@ -144,9 +172,11 @@ def test_rows_cached_nao_recarrega_dentro_do_ttl() -> None:
 
     def fake_read(filename: str) -> dict[str, list[object]]:
         chamadas.append(filename)
+        if "titulos" in filename:
+            return {k: list(v) for k, v in _TITULOS_DATA.items()}
         if "tipos" in filename:
             return {k: list(v) for k, v in _TIPOS_DATA.items()}  # type: ignore[arg-type]
-        return {k: list(v) for k, v in _NOMES_DATA.items()}  # type: ignore[arg-type]
+        return {k: list(v) for k, v in _NOMES_DATA.items()}
 
     with patch("services.domain.logradouros_match.catalog.read_parquet_from_data", side_effect=fake_read):
         c = LogradouroCatalog()

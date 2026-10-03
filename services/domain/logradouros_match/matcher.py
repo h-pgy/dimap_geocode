@@ -4,6 +4,8 @@ from .catalog import LogradouroCatalog
 from .models import LogradouroMatchOutput, LogradouroMatchQuery, LogradouroMatchResult
 
 DEFAULT_NAME_SCORE_THRESHOLD = 80.0
+# Uma linha ocupa até três textos no ranking: pedir o triplo garante `limite` linhas distintas.
+TEXTOS_POR_LINHA = 3
 
 
 class LogradouroMatcher:
@@ -42,19 +44,31 @@ class LogradouroMatcher:
         return self._catalog.codigo_da_variacao(melhor.original_string) if melhor else None
 
     def _match_nome(
-        self, nome_token: str, codigo: str | None, limite: int
+        self,
+        nome_token: str,
+        codigo: str | None,
+        limite: int,
     ) -> tuple[FuzzyMatchResult, bool]:
-        choices = [r.nm_logradouro for r in self._catalog.linhas_do_tipo(codigo)] if codigo else []
+        choices = self._catalog.textos_de_busca(codigo) if codigo else []
         if not choices:
             return self._match_nome_global(nome_token, limite), codigo is not None
-        resultado = fuzzy_match(nome_token, choices, limit=limite, algorithm="jaro_winkler")
+        resultado = fuzzy_match(
+            nome_token,
+            choices,
+            limit=limite * TEXTOS_POR_LINHA,
+            algorithm="levenshtein",
+        )
         if resultado.best_match is None or resultado.best_match.similarity_score < self._threshold:
             return self._match_nome_global(nome_token, limite), codigo is not None
         return resultado, False
 
     def _match_nome_global(self, nome_token: str, limite: int) -> FuzzyMatchResult:
-        todos = [r.nm_logradouro for r in self._catalog.todas_as_linhas()]
-        return fuzzy_match(nome_token, todos, limit=limite, algorithm="jaro_winkler")
+        return fuzzy_match(
+            nome_token,
+            self._catalog.textos_de_busca(None),
+            limit=limite * TEXTOS_POR_LINHA,
+            algorithm="levenshtein",
+        )
 
     def _build_result(
         self,
@@ -65,21 +79,11 @@ class LogradouroMatcher:
     ) -> LogradouroMatchResult:
         melhor = match_nome.best_match
         filtro = None if ignorou else codigo
-        rows = self._catalog.linhas_por_nome(melhor.original_string, filtro) if melhor else []
-        logradouros = [
-            LogradouroMatchOutput(
-                codlog=row.codlog,
-                dv=row.dv,
-                tipo_codigo=row.tipo_logradouro,
-                nome_logradouro=row.nm_logradouro,
-            )
-            for row in rows
-        ]
+        rows = self._catalog.linhas_por_texto(melhor.original_string, filtro) if melhor else []
+        logradouros = [LogradouroMatchOutput.da_linha(row) for row in rows]
         return LogradouroMatchResult(
             match_tipo=match_tipo,
             match_nome=match_nome,
             logradouros=logradouros,
             ignorou_filtro_tipo=ignorou,
         )
-
-

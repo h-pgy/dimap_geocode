@@ -14,6 +14,8 @@ class NomesLogradourosConfig(BaseModel):
 class LogradouroNome(BaseModel):
     codlog: str
     tipo_logradouro: str
+    titulo: str | None = None
+    preposicao: str | None = None
     nm_logradouro: str
 
 

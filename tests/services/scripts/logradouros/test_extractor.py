@@ -46,6 +46,19 @@ def test_skips_rows_without_codlog_and_converts_nulls_to_empty_strings() -> None
     assert rows[0].tipo_logradouro == "" and rows[0].nm_logradouro == ""
 
 
+def test_extracao_de_nomes_traz_titulo_e_preposicao() -> None:
+    pages = [_page([{
+        "codlog": "121657",
+        "cd_tipo_logradouro": "AV",
+        "cd_titulo_logradouro": "BRIG",
+        "tx_preposicao_logradouro": " ",
+        "nm_logradouro": "LUIS ANTONIO",
+    }])]
+    rows = NomesLogradourosExtractor(lambda req: iter(pages))(_req())
+    assert rows[0].titulo == "BRIG"
+    assert rows[0].preposicao is None
+
+
 def test_ignores_geometry_when_present() -> None:
     pages = [_page([{
         "codlog": "168610",

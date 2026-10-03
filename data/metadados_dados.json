@@ -12,12 +12,13 @@
   "nomes_logradouros.parquet": {
     "arquivo": "nomes_logradouros.parquet",
     "status": "sucesso",
-    "last_run": "03-08-2026 12:27:24",
-    "manual": false,
+    "last_run": "03-10-2026 00:20:40",
+    "manual": true,
     "erro": null,
     "traceback": null,
-    "last_successful_run": "03-08-2026 12:27:24",
-    "registros": 50690
+    "last_successful_run": "03-10-2026 00:20:40",
+    "registros": 50710,
+    "detalhes": null
   },
   "enderecos_fiscais.parquet": {
     "arquivo": "enderecos_fiscais.parquet",
@@ -157,5 +158,16 @@
         "2026": 91041
       }
     }
+  },
+  "titulos_logradouro_cache.parquet": {
+    "arquivo": "titulos_logradouro_cache.parquet",
+    "status": "sucesso",
+    "last_run": "03-10-2026 00:20:43",
+    "manual": true,
+    "erro": null,
+    "traceback": null,
+    "last_successful_run": "03-10-2026 00:20:43",
+    "registros": 160,
+    "detalhes": null
   }
 }

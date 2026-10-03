@@ -5,21 +5,22 @@
 {% endif %}
 <ul class="flex flex-col gap-0.5">
   {% for item in resultado.itens %}
-    <li class="suggestion-item items-baseline gap-4"
-        hx-post="{% url 'logradouro_geocoder:geocodificar' %}"
-        hx-vals='{"codlog": "{{ item.logradouro.codlog }}{{ item.logradouro.dv }}"}'
-        hx-target="#resultado-busca"
-        hx-swap="innerHTML"
-    >
-      <span class="text-code text-sm w-16 shrink-0">{{ item.logradouro.codlog }}</span>
-      {# tipo_codigo já é a sigla (AV, R, AL); só prefixa quando não for vazio #}
-      <span class="font-medium">{% if item.logradouro.tipo_codigo|stringformat:'s'|cut:' ' %}{{ item.logradouro.tipo_codigo }} {% endif %}{{ item.logradouro.nome_logradouro }}</span>
-      <span class="ml-auto flex items-center gap-2 shrink-0">
-        {% if item.score is not None %}
-          <span class="badge badge-info badge-soft badge-sm" title="Grau de certeza">≈ {{ item.score|floatformat:0 }}%</span>
-        {% endif %}
-        <span class="badge badge-linha badge-sm">Logradouro</span>
-      </span>
-    </li>
+    {% with logradouro=item.logradouro.logradouro %}
+      <li class="suggestion-item items-baseline gap-4"
+          hx-post="{% url 'logradouro_geocoder:geocodificar' %}"
+          hx-vals='{"codlog": "{{ item.logradouro.codlog }}{{ item.logradouro.dv }}"}'
+          hx-target="#resultado-busca"
+          hx-swap="innerHTML"
+      >
+        <span class="text-code text-sm w-16 shrink-0">{{ item.logradouro.codlog }}</span>
+        <span class="font-medium">{{ logradouro.nome_completo }}</span>
+        <span class="ml-auto flex items-center gap-2 shrink-0">
+          {% if item.score is not None %}
+            <span class="badge badge-info badge-soft badge-sm" title="Grau de certeza">≈ {{ item.score|floatformat:0 }}%</span>
+          {% endif %}
+          <span class="badge badge-linha badge-sm">Logradouro</span>
+        </span>
+      </li>
+    {% endwith %}
   {% endfor %}
 </ul>

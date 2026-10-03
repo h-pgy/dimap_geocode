@@ -1,6 +1,6 @@
 import pytest
 
-from services.domain.logradouros_match import ResolucaoLogradouroQuery
+from services.domain.logradouros_match import ResolucaoLogradouroQuery, ResolucaoLogradouroResult
 from services.domain.logradouros_match.catalog import LogradouroCatalog
 from services.domain.logradouros_match.literal_matcher import LiteralLogradouroMatcher
 from services.domain.logradouros_match.matcher import LogradouroMatcher
@@ -33,14 +33,18 @@ class FakeCatalog(LogradouroCatalog):
     def todas_as_linhas(self) -> list[LogradouroRow]:
         return list(self._rows_data)
 
-    def linhas_por_nome(self, nome: str, codigo: str | None) -> list[LogradouroRow]:
+    def textos_de_busca(self, codigo: str | None) -> list[str]:
         universo = self.linhas_do_tipo(codigo) if codigo else self._rows_data
-        return [r for r in universo if r.nm_logradouro == nome]
+        return list(dict.fromkeys(texto for r in universo for texto in r.textos_de_busca))
+
+    def linhas_por_texto(self, texto: str, codigo: str | None) -> list[LogradouroRow]:
+        universo = self.linhas_do_tipo(codigo) if codigo else self._rows_data
+        return [r for r in universo if texto in r.textos_de_busca]
 
 
 def _catalog_padrao() -> FakeCatalog:
     rows = [
-        # "PALISTA" ~ jaro_winkler ~97% de "PAULISTA" — erro de digitação plausível
+        # "PALISTA" ~ levenshtein ~93% de "PAULISTA" — erro de digitação plausível
         LogradouroRow(codlog="000001", dv="0", tipo_logradouro="AV", nm_logradouro="PAULISTA"),
         LogradouroRow(codlog="000002", dv="0", tipo_logradouro="AV", nm_logradouro="BRASIL"),
         LogradouroRow(codlog="000003", dv="0", tipo_logradouro="R", nm_logradouro="DIREITA"),
@@ -53,8 +57,50 @@ def _catalog_padrao() -> FakeCatalog:
     return FakeCatalog(rows=rows, variacoes=variacoes)
 
 
-def _resolver(threshold: float = 80.0) -> LogradouroResolver:
-    catalog = _catalog_padrao()
+def _luis_antonio() -> LogradouroRow:
+    return LogradouroRow(
+        codlog="12165",
+        dv="7",
+        tipo_logradouro="AV",
+        titulo="BRIG",
+        titulo_por_extenso="BRIGADEIRO",
+        nm_logradouro="LUIS ANTONIO",
+    )
+
+
+def _catalog_com_titulos() -> FakeCatalog:
+    rows = [
+        _luis_antonio(),
+        LogradouroRow(
+            codlog="05245",
+            dv="0",
+            tipo_logradouro="R",
+            preposicao="DA",
+            nm_logradouro="CONSOLACAO",
+        ),
+        LogradouroRow(
+            codlog="05328",
+            dv="7",
+            tipo_logradouro="R",
+            preposicao="DA",
+            nm_logradouro="COROA",
+        ),
+        # homônimos: AURORA com dois codlogs dentro do mesmo tipo R
+        LogradouroRow(codlog="00004", dv="0", tipo_logradouro="R", nm_logradouro="AURORA"),
+        LogradouroRow(codlog="00007", dv="0", tipo_logradouro="R", nm_logradouro="AURORA"),
+    ]
+    variacoes = {
+        "AVENIDA": "AV",
+        "RUA": "R",
+    }
+    return FakeCatalog(rows=rows, variacoes=variacoes)
+
+
+def _resolver(
+    threshold: float = 80.0,
+    catalog: FakeCatalog | None = None,
+) -> LogradouroResolver:
+    catalog = catalog or _catalog_padrao()
     return LogradouroResolver(
         literal=LiteralLogradouroMatcher(catalog=catalog),
         fuzzy=LogradouroMatcher(catalog=catalog),
@@ -190,6 +236,49 @@ def test_fuzzy_respeita_limite() -> None:
         ResolucaoLogradouroQuery(nome="palista", tipo="avenida", limite=1, modo="commit")
     )
     assert len(result.itens) == 1
+
+
+# ---------------------------------------------------------------------------
+# Nome completo: título abreviado, por extenso ou sem ele
+# ---------------------------------------------------------------------------
+
+
+def _nomes_completos(result: ResolucaoLogradouroResult) -> list[str]:
+    return [item.logradouro.logradouro.nome_completo for item in result.itens]
+
+
+@pytest.mark.parametrize(
+    "nome",
+    ["luis antonio", "brig luis antonio", "brigadeiro luis antonio", "brigadero luiz antonio"],
+)
+def test_resolver_acha_pelo_nome_curto_e_pelo_completo(nome: str) -> None:
+    resolver = _resolver(catalog=_catalog_com_titulos())
+
+    result = resolver(ResolucaoLogradouroQuery(nome=nome, tipo="avenida", modo="sugestao"))
+
+    assert _nomes_completos(result)[0] == "AV BRIG LUIS ANTONIO"
+
+
+def test_busca_aproximada_nao_sugere_pelo_comeco_parecido() -> None:
+    resolver = _resolver(catalog=_catalog_com_titulos())
+
+    result = resolver(ResolucaoLogradouroQuery(nome="da consolasao", tipo="rua", modo="sugestao"))
+
+    assert _nomes_completos(result) == ["R DA CONSOLACAO"]
+
+
+def test_busca_aproximada_lista_cada_logradouro_uma_vez() -> None:
+    resolver = _resolver(catalog=_catalog_com_titulos())
+
+    # casa com a denominação e com ela por extenso: a mesma linha chega por dois textos
+    luis_antonio = resolver(
+        ResolucaoLogradouroQuery(nome="brigadero luiz antonio", tipo="avenida", modo="sugestao")
+    )
+    aurora = resolver(ResolucaoLogradouroQuery(nome="arora", tipo="rua", modo="sugestao"))
+
+    assert luis_antonio.usou_fuzzy is True
+    assert _nomes_completos(luis_antonio) == ["AV BRIG LUIS ANTONIO"]
+    assert [item.logradouro.codlog for item in aurora.itens] == ["00004", "00007"]
 
 
 # ---------------------------------------------------------------------------

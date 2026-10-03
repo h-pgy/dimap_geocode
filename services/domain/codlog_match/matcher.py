@@ -4,6 +4,11 @@ from .catalog import CodlogCatalog
 from .models import CodlogMatchInput, CodlogMatchOutput
 
 
+def _opcional(valor: str | float | None) -> str | None:
+    # O DataFrame troca a ausência por NaN; `str()` a transformaria em "nan".
+    return None if pd.isna(valor) else str(valor)
+
+
 class CodlogMatcher:
     def __init__(self, catalog: CodlogCatalog | None = None) -> None:
         self._catalog = catalog or CodlogCatalog()
@@ -29,6 +34,8 @@ class CodlogMatcher:
                     codlog=str(linha["codlog"])[:5],
                     dv=str(linha["codlog"])[5],
                     tipo_logradouro=str(linha["cd_tipo_logradouro"]),
+                    titulo=_opcional(linha["cd_titulo_logradouro"]),
+                    preposicao=_opcional(linha["tx_preposicao_logradouro"]),
                     nome_logradouro=str(linha["nm_logradouro"]),
                 )
             )

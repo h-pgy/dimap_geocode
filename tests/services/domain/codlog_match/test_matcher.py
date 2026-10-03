@@ -12,6 +12,8 @@ from services.domain.codlog_match.catalog import CodlogCatalog
 _DADOS_FAKE: dict[str, list[object]] = {
     "codlog": ["000011", "000029", "000103", "001005", "999999"],
     "cd_tipo_logradouro": ["AV", "RUA", "AV", "PC", "RUA"],
+    "cd_titulo_logradouro": [None, None, "BRIG", None, None],
+    "tx_preposicao_logradouro": [None, None, None, None, None],
     "nm_logradouro": ["PAULISTA", "DIREITA", "FARIA LIMA", "DA SE", "XV DE NOVEMBRO"],
 }
 
@@ -106,9 +108,12 @@ def test_campos_tipo_e_nome_mapeados(matcher: CodlogMatcher) -> None:
     assert resultado[0].nome_logradouro == "PAULISTA"
 
 
-def test_nome_completo_concatena_tipo_e_nome(matcher: CodlogMatcher) -> None:
-    resultado = matcher(CodlogMatchInput(input_codlog="00001"))
-    assert resultado[0].nome_completo == "AV PAULISTA"
+def test_nome_completo_junta_tipo_titulo_e_nome(matcher: CodlogMatcher) -> None:
+    # o DataFrame troca o título ausente por NaN: a saída tem que devolvê-lo como ausente
+    paulista = matcher(CodlogMatchInput(input_codlog="00001"))[0]
+    faria_lima = matcher(CodlogMatchInput(input_codlog="00010"))[0]
+    assert paulista.logradouro.nome_completo == "AV PAULISTA"
+    assert faria_lima.logradouro.nome_completo == "AV BRIG FARIA LIMA"
 
 
 # ---------------------------------------------------------------------------

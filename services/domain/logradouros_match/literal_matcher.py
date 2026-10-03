@@ -38,23 +38,18 @@ class LiteralLogradouroMatcher:
         universo = (
             self._catalog.linhas_do_tipo(codigo) if codigo else self._catalog.todas_as_linhas()
         )
-        prefixo = [row for row in universo if row.nm_logradouro.startswith(nome)]
+        prefixo = [
+            row for row in universo
+            if any(texto.startswith(nome) for texto in row.textos_de_busca)
+        ]
         if prefixo:
             return prefixo
-        return [row for row in universo if nome in row.nm_logradouro]
+        return [row for row in universo if any(nome in texto for texto in row.textos_de_busca)]
 
     def _build(
         self, rows: list[LogradouroRow], limite: int, ignorou: bool
     ) -> LiteralLogradouroResult:
-        logradouros = [
-            LogradouroMatchOutput(
-                codlog=row.codlog,
-                dv=row.dv,
-                tipo_codigo=row.tipo_logradouro,
-                nome_logradouro=row.nm_logradouro,
-            )
-            for row in rows[:limite]
-        ]
+        logradouros = [LogradouroMatchOutput.da_linha(row) for row in rows[:limite]]
         return LiteralLogradouroResult(
             logradouros=logradouros,
             ignorou_filtro_tipo=ignorou,

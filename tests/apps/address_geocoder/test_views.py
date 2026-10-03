@@ -4,6 +4,7 @@ tirava a gaveta de cena (§2 da SPEC 002: "abre a gaveta lateral do endereço").
 
 import json
 
+import pandas as pd
 import pytest
 from bs4 import BeautifulSoup, Tag
 from django.test import Client, RequestFactory
@@ -11,6 +12,7 @@ from django.urls import reverse
 
 import apps.address_geocoder.views as views
 import apps.geocodificacao_externa.views as externo_views
+from apps.search.secoes import SecaoResultado
 from apps.unidades.models import CorUnidade, Unidade
 from apps.user_admin.models import Perfil
 from services.domain.address_geocod import (
@@ -26,8 +28,26 @@ from services.domain.geocodificador_externo import (
     Provedor,
     ProvedorGeocodificacao,
 )
+from services.domain.codlog_match import CodlogMatcher
+from services.domain.codlog_match.catalog import CodlogCatalog
 from services.domain.geometry import PointGeometry
 from services.domain.logradouro import Logradouro
+from services.domain.logradouros_match.catalog import (
+    NOMES_LOGRADOUROS_FILE,
+    TIPOS_CACHE_FILE,
+    TITULOS_CACHE_FILE,
+    LogradouroCatalog,
+)
+from services.domain.logradouros_match.literal_matcher import LiteralLogradouroMatcher
+from services.domain.logradouros_match.matcher import LogradouroMatcher
+from services.domain.logradouros_match.resolver import LogradouroResolver
+from services.domain.roteamento_busca import (
+    CodlogParse,
+    EnderecoCodlogParse,
+    EnderecoParse,
+    LogradouroParse,
+)
+from services.utils.io import write_parquet_to_data
 
 # ---------------------------------------------------------------------------
 # Builders
@@ -238,3 +258,79 @@ def test_gaveta_do_endereco_anonimo_nao_traz_o_controle(
     )
 
     assert _controle_street_view(resposta.content.decode()) is None
+
+
+# ---------------------------------------------------------------------------
+# Sugestões de endereço: o nome completo do logradouro, o mesmo da gaveta
+# ---------------------------------------------------------------------------
+
+LUIS_ANTONIO = "AV BRIG LUIS ANTONIO"
+
+_NOMES: dict[str, list[object]] = {
+    "codlog": ["121657"],
+    "cd_tipo_logradouro": ["AV"],
+    "cd_titulo_logradouro": ["BRIG"],
+    "tx_preposicao_logradouro": [None],
+    "nm_logradouro": ["LUIS ANTONIO"],
+}
+
+
+class FakeCodlogCatalog(CodlogCatalog):
+    """Subclasse escapa do singleton (o bypass do __new__ é só para a classe base)."""
+
+    def __init__(self, dados: dict[str, list[object]]) -> None:
+        self._dados = dados
+
+    @property
+    def logradouros(self) -> pd.DataFrame:
+        df = pd.DataFrame(self._dados)
+        df["_codlog5"] = df["codlog"].str[:5]
+        return df
+
+
+def _instalar_catalogos(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Parquets no diretório temporário (fixture _isolar_diretorio_de_dados do conftest), lidos
+    # pelo catálogo de verdade — nasce frio pelo reset do singleton no conftest.
+    write_parquet_to_data(_NOMES, NOMES_LOGRADOUROS_FILE)
+    write_parquet_to_data({"nome_tipo": ["AV"], "cd_tipo_logradouro": ["AV"]}, TIPOS_CACHE_FILE)
+    write_parquet_to_data(
+        {"cd_titulo_logradouro": ["BRIG"], "nome_titulo": ["BRIGADEIRO"]},
+        TITULOS_CACHE_FILE,
+    )
+    catalogo = LogradouroCatalog()
+    resolver = LogradouroResolver(
+        literal=LiteralLogradouroMatcher(catalog=catalogo),
+        fuzzy=LogradouroMatcher(catalog=catalogo),
+        catalog=catalogo,
+    )
+    monkeypatch.setattr(views, "match_codlog", CodlogMatcher(catalog=FakeCodlogCatalog(_NOMES)))
+    monkeypatch.setattr(views, "resolver_logradouro", resolver)
+
+
+def _nome_na_sugestao(secao: SecaoResultado | None) -> str:
+    assert secao is not None
+    nome = BeautifulSoup(secao.html, "html.parser").select_one("li.suggestion-item .font-medium")
+    assert nome is not None
+    return nome.get_text(strip=True)
+
+
+def test_sugestoes_mostram_o_nome_completo_do_logradouro(monkeypatch: pytest.MonkeyPatch) -> None:
+    _instalar_catalogos(monkeypatch)
+
+    por_codlog = views.secao_endereco_codlog(
+        EnderecoCodlogParse(
+            codlog=CodlogParse(codlog="12165", digito_verificador="7"),
+            numero=100,
+            numero_bruto="100",
+        )
+    )
+    por_nome = views.secao_endereco(
+        EnderecoParse(
+            logradouro=LogradouroParse(tipo_logradouro="av", nome="luis antonio"),
+            numero=100,
+            numero_bruto="100",
+        )
+    )
+
+    assert _nome_na_sugestao(por_codlog) == f"{LUIS_ANTONIO}, 100"
+    assert _nome_na_sugestao(por_nome) == f"{LUIS_ANTONIO}, 100"
