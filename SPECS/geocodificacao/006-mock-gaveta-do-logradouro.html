@@ -239,7 +239,7 @@
     // logradouro_geocoder/partials/_popup_segmento.html
     function popupSegmento(codlog) {
       return (
-        '<span class="font-bold text-madeira-700">' + GAVETAS[codlog].nome + "</span><br>" +
+        '<span class="font-bold text-madeira-700">' + GAVETAS[codlog].nomeCompleto + "</span><br>" +
         '<span class="text-code text-xs">codlog ' + codlog + "</span>"
       );
     }
@@ -250,7 +250,7 @@
         LOGRADOUROS[codlog].segmentos.map((segmento) =>
           L.polyline(segmento, TRACO_RESULTADO)
             .bindPopup(popupSegmento(codlog))
-            .bindTooltip(GAVETAS[codlog].nome, { direction: "top", sticky: true }),
+            .bindTooltip(GAVETAS[codlog].nomeCompleto, { direction: "top", sticky: true }),
         ),
       );
     }
