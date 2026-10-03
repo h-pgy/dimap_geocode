@@ -1,7 +1,7 @@
 ---
 spec: localizacao_lote/002
-versao: v6
-atualizado_em: 2026-09-17
+versao: v7
+atualizado_em: 2026-10-02
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [integration]
@@ -14,6 +14,7 @@ changelog:
   - v6: "[admin] implementado — testes TDD escritos e verdes; `WFS_LOTE_CIDADAO_CAMPO_GEOMETRIA`
     nova (default `ge_poligono`); `reprojetar` corrigido para srid via atributo (§7 Caveats);
     supersede o teste de gaveta da SPEC 001 no resultado de endereço"
+  - v7: o raio passa a ser `MAIS_PROXIMO_RAIO_LIMITE_M`, único para toda consulta de "mais próximo" (SPEC geocodificacao/005)
 ---
 
 # SPEC localizacao_lote/002 — Lote mais próximo do endereço interpolado

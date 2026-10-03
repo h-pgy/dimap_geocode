@@ -30,7 +30,7 @@ MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 WFS_LAYER_LOGRADOUROS: str = settings.WFS_LAYER_LOGRADOUROS
 MAP_COR_PONTO: str = settings.MAP_COR_PONTO
-LOTE_MAIS_PROXIMO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_RAIO_M
+MAIS_PROXIMO_RAIO_LIMITE_M: float = settings.MAIS_PROXIMO_RAIO_LIMITE_M
 
 MSG_SEM_SEGMENTO = "Não foi possível localizar o logradouro para geocodificar este endereço."
 MSG_SEM_NUMERACAO = "O número informado está fora da faixa de numeração cadastrada para este logradouro."
@@ -110,7 +110,7 @@ def renderizar_endereco(
         "endereco": feature.attributes,
         "ponto": feature.geometry,
         "score": score,
-        "raio_m": LOTE_MAIS_PROXIMO_RAIO_M,
+        "raio_m": MAIS_PROXIMO_RAIO_LIMITE_M,
     }
     return render(request, "address_geocoder/partials/_resultado_endereco.html", contexto)
 

@@ -14,6 +14,10 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 JS_INIT = REPO_ROOT / "static" / "src" / "js" / "mapa" / "init.js"
 
 PONTO_GEOJSON = {"type": "Point", "coordinates": [-46.6559, -23.5614]}
+LINHA_GEOJSON = {
+    "type": "LineString",
+    "coordinates": [[-46.6560, -23.5620], [-46.6550, -23.5610]],
+}
 POLIGONO_GEOJSON = {
     "type": "Polygon",
     "coordinates": [[
@@ -108,7 +112,7 @@ def test_linha_carrega_o_id_da_camada() -> None:
 def test_gaveta_anonima_traz_lotes_intersectados_no_poco_de_poligonos() -> None:
     resposta = _postar_desenhos(
         [
-            {"id_bancada": "1", "geometria": PONTO_GEOJSON},
+            {"id_bancada": "1", "geometria": LINHA_GEOJSON},
             {"id_bancada": "2", "geometria": POLIGONO_GEOJSON},
         ],
         selecionado="2",
@@ -123,9 +127,32 @@ def test_gaveta_anonima_traz_lotes_intersectados_no_poco_de_poligonos() -> None:
     assert botao["hx-include"] == ".linha-desenho__marca:checked"
     assert "Lotes intersectados" in botao.get_text()
 
-    ancora_ponto = soup.select_one("#acoes-desenho-ponto")
-    assert ancora_ponto is not None
-    assert ancora_ponto.contents == []
+    ancora_linha = soup.select_one("#acoes-desenho-linha")
+    assert ancora_linha is not None
+    assert ancora_linha.contents == []
+
+
+def test_gaveta_anonima_traz_logradouro_mais_proximo_no_poco_de_pontos() -> None:
+    resposta = _postar_desenhos(
+        [
+            {"id_bancada": "1", "geometria": PONTO_GEOJSON},
+            {"id_bancada": "2", "geometria": LINHA_GEOJSON},
+        ],
+        selecionado="1",
+    )
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    recorte = soup.select_one("#acoes-desenho-ponto .poco-desenhos__acoes-recorte")
+    assert recorte is not None
+    botao = recorte.find("button", attrs={"hx-post": reverse("logradouro_mais_proximo:do_ponto")})
+    assert botao is not None
+    assert botao["hx-include"] == ".linha-desenho__marca:checked"
+    assert "Logradouro mais próximo" in botao.get_text()
+
+    ancora_linha = soup.select_one("#acoes-desenho-linha")
+    assert ancora_linha is not None
+    assert ancora_linha.contents == []
 
 
 def test_colecao_vazia_nao_devolve_gaveta() -> None:

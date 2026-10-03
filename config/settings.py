@@ -154,20 +154,17 @@ class _Settings(BaseSettings):
     wfs_lote_cidadao_campo_geometria: str = Field(
         default="ge_poligono", alias="WFS_LOTE_CIDADAO_CAMPO_GEOMETRIA"
     )
+    wfs_logradouros_campo_geometria: str = Field(
+        default="ge_linha", alias="WFS_LOGRADOUROS_CAMPO_GEOMETRIA"
+    )
     wfs_verbose: bool = Field(default=True, alias="WFS_VERBOSE")
     wfs_request_timeout_seconds: float = Field(default=30.0, alias="WFS_REQUEST_TIMEOUT_SECONDS")
     wfs_max_retries: int = Field(default=3, alias="WFS_MAX_RETRIES")
     wfs_retry_wait_min_seconds: float = Field(default=1.0, alias="WFS_RETRY_WAIT_MIN_SECONDS")
     wfs_retry_wait_max_seconds: float = Field(default=5.0, alias="WFS_RETRY_WAIT_MAX_SECONDS")
 
-    # Raio de busca do lote mais próximo do endereço interpolado (SPEC localizacao_lote/002) — corte
-    # operacional, calibra-se no ambiente conforme o tamanho típico das quadras.
-    lote_mais_proximo_raio_m: float = Field(default=50.0, alias="LOTE_MAIS_PROXIMO_RAIO_M")
-    # Raio do lote mais próximo do ponto externo (SPEC geocodificacao_externa/003): sem logradouro, é o
-    # único recorte e se calibra à parte do raio da busca oficial.
-    lote_mais_proximo_do_ponto_raio_m: float = Field(
-        default=50.0, alias="LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M"
-    )
+    # Um raio só para toda consulta de "mais próximo" (SPEC geocodificacao/005): calibrar uma move as outras.
+    mais_proximo_raio_limite_m: float = Field(default=50.0, alias="MAIS_PROXIMO_RAIO_LIMITE_M")
     # Teto da área do desenho na busca de lotes intersectados (SPEC localizacao_lote/003): sem ele um
     # desenho sobre um bairro devolveria dezenas de milhares de lotes.
     lotes_desenho_area_maxima_m2: float = Field(
@@ -361,6 +358,7 @@ WFS_VERSION = _env.wfs_version
 WFS_LAYER_LOGRADOUROS = _env.wfs_layer_logradouros
 WFS_LAYER_LOTE_CIDADAO = _env.wfs_layer_lote_cidadao
 WFS_LOTE_CIDADAO_CAMPO_GEOMETRIA = _env.wfs_lote_cidadao_campo_geometria
+WFS_LOGRADOUROS_CAMPO_GEOMETRIA = _env.wfs_logradouros_campo_geometria
 # Liga o log da requisição WFS (URL + params) em todos os geocoders — diagnóstico
 # do GeoSampa. O WfsFetcher imprime cada GET quando verbose; build_fetcher lê daqui.
 WFS_VERBOSE = _env.wfs_verbose
@@ -369,8 +367,7 @@ WFS_MAX_RETRIES = _env.wfs_max_retries
 WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds
 WFS_RETRY_WAIT_MAX_SECONDS = _env.wfs_retry_wait_max_seconds
 
-LOTE_MAIS_PROXIMO_RAIO_M = _env.lote_mais_proximo_raio_m
-LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M = _env.lote_mais_proximo_do_ponto_raio_m
+MAIS_PROXIMO_RAIO_LIMITE_M = _env.mais_proximo_raio_limite_m
 LOTES_DESENHO_AREA_MAXIMA_M2 = _env.lotes_desenho_area_maxima_m2
 LOTE_FRACAO_MINIMA_CONTIDA = _env.lote_fracao_minima_contida
 
@@ -549,6 +546,7 @@ INSTALLED_APPS = [
     "apps.logradouro_geocoder",
     "apps.lote_geocoder",
     "apps.lotes_mais_proximos",
+    "apps.logradouro_mais_proximo",
     "apps.geocodificacao_externa",
     "apps.street_view",
     "apps.amostrador_ofertas",

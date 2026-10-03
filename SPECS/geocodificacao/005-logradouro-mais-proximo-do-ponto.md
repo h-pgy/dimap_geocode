@@ -1,12 +1,13 @@
 ---
 spec: geocodificacao/005
-versao: v1
+versao: v2
 atualizado_em: 2026-10-02
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
+  - v2: a SPEC do endereço mais próximo do ponto passa a ser a geocodificacao/007
 ---
 
 # SPEC geocodificacao/005 — Logradouro mais próximo de um ponto desenhado
@@ -52,7 +53,7 @@ class SegmentoProximo(BaseModel):
 — leia a skill `mock`.
 
 ## 4 · Fora de escopo
-- O número do endereço naquele segmento — SPEC [geocodificacao/006](006-endereco-mais-proximo-do-ponto.md).
+- O número do endereço naquele segmento — SPEC [geocodificacao/007](007-endereco-mais-proximo-do-ponto.md).
 - Mostrar a distância entre o ponto desenhado e o logradouro — sem dono ainda.
 - Gaveta lateral do logradouro, com os dados dele — sem dono ainda.
 - Logradouro mais próximo a partir de linha ou de polígono — sem dono ainda.
@@ -94,7 +95,7 @@ def feature_para_segmento(feature: WfsFeature, output_crs: int) -> SegmentoLogra
     ...   # ALTERADO: o corpo de LogradouroGeocoder._feature_para_segmento, sem mudança de regra
 ```
 
-**`services/domain/logradouro_geocod/no_raio.py`** — a peça que a SPEC 006 reaproveita: ela devolve
+**`services/domain/logradouro_geocod/no_raio.py`** — a peça que a SPEC 007 reaproveita: ela devolve
 todos os segmentos do raio, em ordem, e cada consumidor escolhe o seu.
 
 ```python
@@ -126,7 +127,7 @@ class SegmentosNoRaio:
     def _montar_request(self, ponto: GEOSGeometry, entrada: SegmentosNoRaioInput) -> WfsFeatureRequest:
         return WfsFeatureRequest(
             nome_camada=entrada.layer_name,
-            # Os segmentos saem no CRS métrico: é nele que a distância é medida, e a SPEC 006 interpola.
+            # Os segmentos saem no CRS métrico: é nele que a distância é medida, e a SPEC 007 interpola.
             srs_name=f"EPSG:{entrada.crs_metrico}",
             cql_filter=CqlFilter(
                 predicates=[
@@ -227,7 +228,7 @@ def do_ponto(request: HttpRequest) -> HttpResponse:
 
 ## 7 · Caveats
 A consulta por raio mora em `logradouro_geocod`, e não num submódulo próprio da ação (§6.3 do
-CLAUDE.md). Ela é uma segunda pergunta à mesma camada de segmentos, e a SPEC 006 a compõe a partir de
+CLAUDE.md). Ela é uma segunda pergunta à mesma camada de segmentos, e a SPEC 007 a compõe a partir de
 `address_geocod`, que já depende desse submódulo. O custo é o submódulo passar a ter duas portas de
 entrada, por codlog e por raio.
 
@@ -275,5 +276,5 @@ túnel que passa sob ele, a 15 m, e não a Av. Paulista, que está mais longe.
 - `test_do_ponto_recusa_sem_logradouro_e_nao_ponto` — POST sem segmento no raio devolve o aviso com o
   raio e o toggle da gaveta dos desenhos desmarcado, sem payload de mapa; POST com `desenho` de
   polígono é recusado pela validação, sem consultar o WFS.
-- `test_logradouro_mais_proximo_no_geosampa` — ponto na calçada do MASP devolve como mais próximo um
-  segmento do codlog 156566 (Av. Paulista) *(marker `integration`)*.
+- `test_logradouro_mais_proximo_no_geosampa` — ponto na pista da Av. Paulista em frente ao MASP devolve
+  como mais próximo um segmento do codlog 156566 (Av. Paulista) *(marker `integration`)*.

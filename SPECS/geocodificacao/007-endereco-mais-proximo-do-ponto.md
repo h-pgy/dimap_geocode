@@ -1,5 +1,5 @@
 ---
-spec: geocodificacao/006
+spec: geocodificacao/007
 versao: v1
 atualizado_em: 2026-10-02
 testes_tdd: false
@@ -9,7 +9,7 @@ changelog:
   - v1: versão inicial
 ---
 
-# SPEC geocodificacao/006 — Endereço mais próximo de um ponto desenhado
+# SPEC geocodificacao/007 — Endereço mais próximo de um ponto desenhado
 
 ## 1 · User story
 Quem usa o mapa marca um ponto desenhado e pede o endereço mais próximo dele, no contexto de um local
@@ -60,7 +60,7 @@ PARIDADE_POR_LADO = {
 }
 ```
 
-**Mock:** [006-mock-endereco-mais-proximo-do-ponto.html](006-mock-endereco-mais-proximo-do-ponto.html)
+**Mock:** [007-mock-endereco-mais-proximo-do-ponto.html](007-mock-endereco-mais-proximo-do-ponto.html)
 — leia a skill `mock`.
 
 ## 4 · Fora de escopo

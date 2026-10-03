@@ -29,6 +29,46 @@ def _as_int(value: object) -> int | None:
     return int(value)  # type: ignore[call-overload]
 
 
+def _montar_attributes(
+    props: dict[str, object],
+    id_segmento: str,
+    codlog: str,
+    cd_tipo: str,
+    nome: str,
+) -> SegmentoLogradouroAttributes:
+    return SegmentoLogradouroAttributes(
+        id_segmento=id_segmento,
+        codlog=codlog,
+        tipo_logradouro=cd_tipo,
+        nome_logradouro=nome,
+        titulo=_as_str(props.get("cd_titulo_logradouro")),
+        preposicao=_as_str(props.get("tx_preposicao_logradouro")),
+        numero_inicial_par=_as_int(props.get("cd_numero_inicial_par")),
+        numero_final_par=_as_int(props.get("cd_numero_final_par")),
+        numero_inicial_impar=_as_int(props.get("cd_numero_inicial_impar")),
+        numero_final_impar=_as_int(props.get("cd_numero_final_impar")),
+    )
+
+
+def feature_para_segmento(feature: WfsFeature, output_crs: int) -> SegmentoLogradouroFeature | None:
+    props = feature.properties
+    id_segmento = _as_str(props.get("cd_identificador"))
+    codlog = _as_str(props.get("codlog"))
+    cd_tipo = _as_str(props.get("cd_tipo_logradouro"))
+    nome = _as_str(props.get("nm_logradouro"))
+    if not (feature.geometry and id_segmento and codlog and cd_tipo and nome):
+        return None
+    try:
+        geometry = LineGeometry.model_validate(feature.geometry.model_dump())
+    except Exception:
+        return None
+    return SegmentoLogradouroFeature(
+        geometry=geometry,
+        attributes=_montar_attributes(props, id_segmento, codlog, cd_tipo, nome),
+        crs=output_crs,
+    )
+
+
 class LogradouroGeocoder:
     def __init__(self, fetcher: WfsBatches) -> None:
         self.fetcher = fetcher
@@ -41,7 +81,7 @@ class LogradouroGeocoder:
         segmentos: list[SegmentoLogradouroFeature] = []
         for page in self.fetcher(request):
             for feature in page.features:
-                segmento = self._feature_para_segmento(feature, entrada.output_crs)
+                segmento = feature_para_segmento(feature, entrada.output_crs)
                 if segmento is not None:
                     segmentos.append(segmento)
         return segmentos
@@ -52,45 +92,4 @@ class LogradouroGeocoder:
             cql_filter=utils.cql_eq("codlog", entrada.codlog),
             srs_name=f"EPSG:{entrada.output_crs}",
             count=PAGE_SIZE,
-        )
-
-    def _feature_para_segmento(
-        self, feature: WfsFeature, output_crs: int
-    ) -> SegmentoLogradouroFeature | None:
-        props = feature.properties
-        id_segmento = _as_str(props.get("cd_identificador"))
-        codlog = _as_str(props.get("codlog"))
-        cd_tipo = _as_str(props.get("cd_tipo_logradouro"))
-        nome = _as_str(props.get("nm_logradouro"))
-        if not (feature.geometry and id_segmento and codlog and cd_tipo and nome):
-            return None
-        try:
-            geometry = LineGeometry.model_validate(feature.geometry.model_dump())
-        except Exception:
-            return None
-        return SegmentoLogradouroFeature(
-            geometry=geometry,
-            attributes=self._montar_attributes(props, id_segmento, codlog, cd_tipo, nome),
-            crs=output_crs,
-        )
-
-    def _montar_attributes(
-        self,
-        props: dict[str, object],
-        id_segmento: str,
-        codlog: str,
-        cd_tipo: str,
-        nome: str,
-    ) -> SegmentoLogradouroAttributes:
-        return SegmentoLogradouroAttributes(
-            id_segmento=id_segmento,
-            codlog=codlog,
-            tipo_logradouro=cd_tipo,
-            nome_logradouro=nome,
-            titulo=_as_str(props.get("cd_titulo_logradouro")),
-            preposicao=_as_str(props.get("tx_preposicao_logradouro")),
-            numero_inicial_par=_as_int(props.get("cd_numero_inicial_par")),
-            numero_final_par=_as_int(props.get("cd_numero_final_par")),
-            numero_inicial_impar=_as_int(props.get("cd_numero_inicial_impar")),
-            numero_final_impar=_as_int(props.get("cd_numero_final_impar")),
         )

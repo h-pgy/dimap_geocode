@@ -59,8 +59,7 @@ MAP_COR_POLIGONO: str = settings.MAP_COR_POLIGONO
 MAP_COR_POLIGONO_CONDOMINIO: str = settings.MAP_COR_POLIGONO_CONDOMINIO
 MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
-LOTE_MAIS_PROXIMO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_RAIO_M
-LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M
+MAIS_PROXIMO_RAIO_LIMITE_M: float = settings.MAIS_PROXIMO_RAIO_LIMITE_M
 LOTES_DESENHO_AREA_MAXIMA_M2: float = settings.LOTES_DESENHO_AREA_MAXIMA_M2
 WFS_LAYER_LOTE_CIDADAO: str = settings.WFS_LAYER_LOTE_CIDADAO
 
@@ -161,7 +160,7 @@ def mais_proximo(request: HttpRequest) -> HttpResponse:
     entrada = LoteMaisProximoInput(
         ponto=PointGeometry(type="Point", coordinates=[consulta.lon, consulta.lat]),
         codlog=consulta.codlog,
-        raio_m=LOTE_MAIS_PROXIMO_RAIO_M,
+        raio_m=MAIS_PROXIMO_RAIO_LIMITE_M,
         camada=camada_lotes(),
     )
     try:
@@ -170,7 +169,7 @@ def mais_proximo(request: HttpRequest) -> HttpResponse:
         return render(
             request,
             "mapping/_aviso.html",
-            contexto_aviso(MSG_SEM_LOTE_PROXIMO.format(raio_m=LOTE_MAIS_PROXIMO_RAIO_M)),
+            contexto_aviso(MSG_SEM_LOTE_PROXIMO.format(raio_m=MAIS_PROXIMO_RAIO_LIMITE_M)),
         )
     return render(
         request,
@@ -185,13 +184,13 @@ def mais_proximo_do_ponto(request: HttpRequest) -> HttpResponse:
     consulta = ConsultaLoteMaisProximoDoPonto.model_validate(request.POST.dict())
     entrada = LoteMaisProximoDoPontoInput(
         ponto=PointGeometry(type="Point", coordinates=[consulta.lon, consulta.lat]),
-        raio_m=LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M,
+        raio_m=MAIS_PROXIMO_RAIO_LIMITE_M,
         camada=camada_lotes(),
     )
     try:
         proximo = LoteMaisProximoDoPonto(build_fetcher(settings))(entrada)
     except NenhumLoteNoRaioError:
-        mensagem = MSG_SEM_LOTE_NO_RAIO.format(raio_m=LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M)
+        mensagem = MSG_SEM_LOTE_NO_RAIO.format(raio_m=MAIS_PROXIMO_RAIO_LIMITE_M)
         return render(request, TEMPLATE_AVISO_SEM_LOTE_DO_PONTO, contexto_aviso(mensagem))
     return render(
         request,

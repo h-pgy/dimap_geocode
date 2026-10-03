@@ -23,7 +23,7 @@ from services.domain.geometry.models import GeoJsonProperties
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 MAP_COR_PONTO: str = settings.MAP_COR_PONTO
-LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M: float = settings.LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M
+MAIS_PROXIMO_RAIO_LIMITE_M: float = settings.MAIS_PROXIMO_RAIO_LIMITE_M
 
 TEMPLATE_AVISO = "mapping/_aviso.html"
 TEMPLATE_RESULTADO_EXTERNO = "geocodificacao_externa/partials/_resultado_externo.html"
@@ -91,7 +91,7 @@ def _contexto_externo(endereco: EnderecoExternoFeature) -> dict[str, Any]:
         "ponto": endereco.geometry,
         "provedor": a.provedor.rotulo,
         "precisao": a.precisao.rotulo,
-        "raio_m": LOTE_MAIS_PROXIMO_DO_PONTO_RAIO_M,
+        "raio_m": MAIS_PROXIMO_RAIO_LIMITE_M,
     }
 
 
