@@ -132,7 +132,7 @@ def test_gaveta_anonima_traz_lotes_intersectados_no_poco_de_poligonos() -> None:
     assert ancora_linha.contents == []
 
 
-def test_gaveta_anonima_traz_logradouro_mais_proximo_no_poco_de_pontos() -> None:
+def test_gaveta_anonima_traz_as_duas_consultas_no_poco_de_pontos() -> None:
     resposta = _postar_desenhos(
         [
             {"id_bancada": "1", "geometria": PONTO_GEOJSON},
@@ -145,10 +145,14 @@ def test_gaveta_anonima_traz_logradouro_mais_proximo_no_poco_de_pontos() -> None
 
     recorte = soup.select_one("#acoes-desenho-ponto .poco-desenhos__acoes-recorte")
     assert recorte is not None
-    botao = recorte.find("button", attrs={"hx-post": reverse("logradouro_mais_proximo:do_ponto")})
-    assert botao is not None
-    assert botao["hx-include"] == ".linha-desenho__marca:checked"
-    assert "Logradouro mais próximo" in botao.get_text()
+    botoes = recorte.find_all("button")
+    assert [botao["hx-post"] for botao in botoes] == [
+        reverse("logradouro_mais_proximo:do_ponto"),
+        reverse("endereco_mais_proximo:do_ponto"),
+    ]
+    assert all(botao["hx-include"] == ".linha-desenho__marca:checked" for botao in botoes)
+    assert "Logradouro mais próximo" in botoes[0].get_text()
+    assert "Endereço mais próximo" in botoes[1].get_text()
 
     ancora_linha = soup.select_one("#acoes-desenho-linha")
     assert ancora_linha is not None

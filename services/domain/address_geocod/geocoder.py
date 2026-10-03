@@ -11,13 +11,34 @@ from services.domain.logradouro_geocod import (
 from .exceptions import NumeracaoNaoEncontradaError, SegmentoNaoEncontradoError
 from .interpolacao import InterpoladorSegmento
 from .models import AddressGeocodInput, EnderecoAttributes, EnderecoFeature
-from .numeracao import Paridade, intervalo_numeracao, limite_final, limite_inicial
+from .numeracao import Paridade, limite_final, limite_inicial, tem_numeracao
 from .orientacao import SolverOrientacaoSegmento
 
 # Contrato da dependência injetada: resolve um codlog em seus segmentos (o LogradouroGeocoder
 # satisfaz esta assinatura). Tipar pelo Callable — como fazem LogradouroGeocoder/LoteGeocoder
 # com seu fetcher — mantém a composição desacoplada e testável por injeção (§3.3, §10.4).
 SegmentosDeCodlog = Callable[[LogradouroGeocodInput], list[SegmentoLogradouroFeature]]
+
+
+def montar_endereco(
+    ponto: Point,
+    segmento: SegmentoLogradouroFeature,
+    numero: int,
+    paridade: Paridade,
+    output_crs: int,
+) -> EnderecoFeature:
+    a = segmento.attributes
+    return EnderecoFeature(
+        geometry=PointGeometry(type="Point", coordinates=[ponto.x, ponto.y]),
+        attributes=EnderecoAttributes(
+            logradouro=a.logradouro,
+            numero=numero,
+            id_segmento=a.id_segmento,
+            numeracao_inicial=limite_inicial(a, paridade),
+            numeracao_final=limite_final(a, paridade),
+        ),
+        crs=output_crs,
+    )
 
 
 class AddressGeocoder:
@@ -38,7 +59,7 @@ class AddressGeocoder:
         ponto = self._interpolar(
             linha, escolhido, entrada.numero, paridade, entrada.output_crs
         )
-        return self._montar_feature(ponto, escolhido, entrada, paridade)
+        return montar_endereco(ponto, escolhido, entrada.numero, paridade, entrada.output_crs)
 
     def _definir_paridade(self, numero: int) -> Paridade:
         return Paridade.PAR if numero % 2 == 0 else Paridade.IMPAR
@@ -59,11 +80,7 @@ class AddressGeocoder:
     def _filtrar_com_numeracao(
         self, segmentos: list[SegmentoLogradouroFeature], paridade: Paridade
     ) -> list[SegmentoLogradouroFeature]:
-        # mantém só os segmentos com numeração para a paridade buscada (ambos os lados não nulos)
-        return [
-            s for s in segmentos
-            if all(v is not None for v in intervalo_numeracao(s.attributes, paridade))
-        ]
+        return [s for s in segmentos if tem_numeracao(s.attributes, paridade)]
 
     def _segmento_do_numero(
         self, candidatos: list[SegmentoLogradouroFeature], numero: int, paridade: Paridade
@@ -75,23 +92,3 @@ class AddressGeocoder:
         if not contem:
             raise NumeracaoNaoEncontradaError(numero)
         return contem[0]   # mais de um: usa o primeiro (§critérios)
-
-    def _montar_feature(
-        self,
-        ponto: Point,
-        escolhido: SegmentoLogradouroFeature,
-        entrada: AddressGeocodInput,
-        paridade: Paridade,
-    ) -> EnderecoFeature:
-        a = escolhido.attributes
-        return EnderecoFeature(
-            geometry=PointGeometry(type="Point", coordinates=[ponto.x, ponto.y]),
-            attributes=EnderecoAttributes(
-                logradouro=a.logradouro,
-                numero=entrada.numero,
-                id_segmento=a.id_segmento,
-                numeracao_inicial=limite_inicial(a, paridade),
-                numeracao_final=limite_final(a, paridade),
-            ),
-            crs=entrada.output_crs,
-        )

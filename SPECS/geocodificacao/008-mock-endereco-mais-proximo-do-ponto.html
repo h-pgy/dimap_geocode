@@ -434,10 +434,10 @@
     const VALOR = /\{\{\s*([\w.]+)[^}]*\}\}/g;
     function gavetaEndereco(endereco, idToggle) {
       const valores = {
-        "endereco.nome_completo": endereco.nomeCompleto,
+        "endereco.logradouro.nome_completo": endereco.nomeCompleto,
         "endereco.numero": endereco.numero,
-        "endereco.nome_logradouro": endereco.nome,
-        "endereco.codlog": endereco.codlog,
+        "endereco.logradouro.nome_logradouro": endereco.nome,
+        "endereco.logradouro.codlog": endereco.codlog,
         "endereco.numeracao_inicial": endereco.faixa[0],
         "endereco.numeracao_final": endereco.faixa[1],
         "ponto.coordinates.0": endereco.latlng[1],

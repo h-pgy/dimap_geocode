@@ -547,6 +547,7 @@ INSTALLED_APPS = [
     "apps.lote_geocoder",
     "apps.lotes_mais_proximos",
     "apps.logradouro_mais_proximo",
+    "apps.endereco_mais_proximo",
     "apps.geocodificacao_externa",
     "apps.street_view",
     "apps.amostrador_ofertas",

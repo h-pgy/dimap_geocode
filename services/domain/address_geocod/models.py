@@ -1,7 +1,25 @@
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
 
 from services.domain.geometry import GeoFeature, PointGeometry
 from services.domain.logradouro import Logradouro
+
+from .numeracao import Paridade
+
+
+class Lado(StrEnum):
+    """De que lado do eixo o ponto está, para quem segue o segmento no sentido em que a numeração cresce."""
+
+    DIREITA = "direita"
+    ESQUERDA = "esquerda"
+
+
+# A convenção de numeração do município: é ela que traduz lado em paridade.
+PARIDADE_POR_LADO = {
+    Lado.DIREITA: Paridade.PAR,
+    Lado.ESQUERDA: Paridade.IMPAR,
+}
 
 
 class AddressGeocodInput(BaseModel):

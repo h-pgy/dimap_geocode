@@ -1,13 +1,15 @@
 ---
 spec: geocodificacao/008
-versao: v2
-atualizado_em: 2026-10-02
-testes_tdd: false
-implementado: false
+versao: v4
+atualizado_em: 2026-10-03
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
   - v2: renumerada de 007 para 008 — o nome completo nas sugestões vem antes e passa a ser a 007.
+  - v3: a faixa `0–0` conta como lado sem numeração, também na geocodificação da busca, e o `EnderecoAttributes` vigente passa a ser o da SPEC 006.
+  - v4: o teste de integração marca o ponto na pista par da Av. Paulista em frente ao MASP, e não na calçada.
 ---
 
 # SPEC geocodificacao/008 — Endereço mais próximo de um ponto desenhado
@@ -39,7 +41,7 @@ que conhece só pela posição no mapa, para chegar ao endereço oficial e às a
 
 ## 3 · Domínio
 O resultado é o [EnderecoFeature](003-address-geocod-ponto.md) da geocodificação, com os
-[EnderecoAttributes](../localizacao_lote/002-lote-mais-proximo-do-endereco.md#3--domínio) vigentes; a
+[EnderecoAttributes](006-gaveta-do-logradouro.md#3--domínio) vigentes; a
 pergunta desta SPEC a ele é a inversa da busca: "que endereço é este ponto?". Os candidatos são os
 [SegmentoProximo](005-logradouro-mais-proximo-do-ponto.md#3--domínio) da SPEC 005, a quem se pergunta
 "qual é o mais perto que tem numeração?".
@@ -87,12 +89,14 @@ PARIDADE_POR_LADO = {
 > Comentários didáticos: **não são portados** para o código (§7.2 do CLAUDE.md).
 
 **`services/domain/address_geocod/numeracao.py`** — o predicado que o `AddressGeocoder` escreve inline
-ganha nome, e os dois callables o usam.
+ganha nome, com a faixa `0–0` contada como lado vazio, e os dois callables o usam.
 
 ```python
 def tem_numeracao(attrs: SegmentoLogradouroAttributes, paridade: Paridade) -> bool:
-    intervalo = intervalo_numeracao(attrs, paridade)
-    return all(limite is not None for limite in intervalo)
+    inicial, final = intervalo_numeracao(attrs, paridade)
+    # A camada marca o lado vazio com None ou com 0–0. A faixa par que começa em zero (0–42) é
+    # numeração de verdade: o que denuncia o lado vazio é o final zero.
+    return inicial is not None and final is not None and final > 0
 ```
 
 **`services/domain/address_geocod/geocoder.py`** — a montagem da feature sai do método e vira função de
@@ -329,6 +333,11 @@ orienta o segmento pode estar fora do raio. O custo é o dobro de rede por cliqu
 Segmento sem numeração não concorre. Dele não se monta endereço. O custo é um ponto marcado numa viela
 sem numeração devolver o endereço da rua ao lado, sem dizer que havia logradouro mais perto.
 
+A faixa `0–0` conta como lado sem numeração no predicado que esta consulta e a geocodificação da busca
+compartilham. A camada marca o lado vazio com `None` e, em 533 lados, com `0–0`, e só o final zero o
+separa da faixa par que começa em zero. O custo é a geocodificação da busca mudar junto: o segmento
+`0–0` deixa de entrar entre os vizinhos que orientam o segmento escolhido.
+
 Segmento com um lado só numerado devolve a paridade dele, sem olhar o lado do ponto. Nas avenidas de
 pistas separadas, cada pista é um segmento com a faixa de um lado, e o segmento do outro lado concorre
 pela distância. O custo é o ponto marcado no canteiro central, ou mais perto da pista oposta, sair com
@@ -344,7 +353,8 @@ endereço no túnel que passa sob ele, e não na Av. Paulista.
 
 ## 8 · Testes (TDD)
 - `test_escolhe_o_numerado_mais_perto` — entre três segmentos no raio, o endereço sai do mais próximo
-  que tem numeração, e não do sem numeração que está mais perto.
+  que tem numeração, e não dos dois sem numeração que estão mais perto: um com as faixas em `None` e
+  outro com as faixas em `0–0`.
 - `test_numero_acompanha_a_posicao_no_segmento` — ponto a 30% do comprimento de um segmento com
   faixa par 100–200 devolve 130, com a faixa 100–200; a 30,6% devolve 130, e não 131; no início de uma
   faixa par 0–42 devolve 2, não 0.
@@ -352,10 +362,10 @@ endereço no túnel que passa sob ele, e não na Av. Paulista.
   sentido crescente devolve número par e a faixa par, e o mesmo ponto espelhado devolve ímpar e a
   faixa ímpar; repetido com o segmento apontando para o sul e para o oeste, a resposta não muda.
 - `test_segmento_contra_a_numeracao_e_invertido_antes_do_lado` — segmento cuja geometria vem do número
-  maior para o menor, com vizinho que o denuncia: número e paridade saem como se a geometria viesse
-  no sentido certo.
+  maior para o menor, com vizinho que o denuncia e um segmento `0–0` do mesmo codlog: número e
+  paridade saem como se a geometria viesse no sentido certo.
 - `test_segmento_de_um_lado_so_devolve_a_paridade_dele` — segmento só com faixa ímpar e ponto à
-  direita devolve número ímpar.
+  direita devolve número ímpar, com o lado par vazio em `None` e em `0–0`.
 - `test_ida_e_volta_com_a_geocodificacao` — o endereço devolvido, entregue ao `AddressGeocoder` com os
   mesmos segmentos, cai no mesmo ponto.
 - `test_sem_segmento_numerado_no_raio_levanta_erro_proprio` — sem segmentos, ou só com segmentos sem
@@ -368,5 +378,5 @@ endereço no túnel que passa sob ele, e não na Av. Paulista.
   logradouro, codlog, número e faixa do lado. POST sem segmento numerado no raio devolve o aviso com o
   raio e o toggle da gaveta dos desenhos desmarcado, sem payload de mapa; POST com `desenho` de
   polígono é recusado pela validação, sem consultar o WFS.
-- `test_endereco_mais_proximo_no_geosampa` — ponto na calçada do MASP devolve Av. Paulista, codlog
-  156566, com número par entre 1576 e 1590 *(marker `integration`)*.
+- `test_endereco_mais_proximo_no_geosampa` — ponto sobre a pista par da Av. Paulista em frente ao MASP
+  devolve Av. Paulista, codlog 156566, com número par entre 1576 e 1590 *(marker `integration`)*.

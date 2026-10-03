@@ -19,6 +19,7 @@ urlpatterns: list[URLResolver | URLPattern] = [
     path("logradouro/", include("apps.logradouro_matcher.urls")),
     path("logradouro/", include("apps.logradouro_geocoder.urls")),
     path("logradouro-mais-proximo/", include("apps.logradouro_mais_proximo.urls")),
+    path("endereco-mais-proximo/", include("apps.endereco_mais_proximo.urls")),
     path("lote/", include("apps.lote_matcher.urls")),
     path("lote/", include("apps.lote_geocoder.urls")),
     path("lote/", include("apps.lotes_mais_proximos.urls")),
