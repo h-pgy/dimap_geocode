@@ -1,0 +1,73 @@
+<div class="gaveta-lateral" data-gaveta="logradouro-{{ gaveta.logradouro.codlog }}">
+  <input type="checkbox" id="gaveta-logradouro-toggle" class="gaveta-lateral-toggle" checked>
+
+  <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+    <header class="gaveta-lateral-cabecalho">
+      <p class="text-overline text-madeira-600">Entidade localizada</p>
+      <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Logradouro</h2>
+      <p class="text-sm font-medium mt-2">{{ gaveta.logradouro.nome_completo }}</p>
+    </header>
+
+    <div class="gaveta-lateral-corpo" data-scroll-etched>
+      <div class="gaveta-lateral-rolador" data-rolador>
+        <div class="gaveta-lateral-conteudo">
+          <div class="card-well p-4 flex flex-col gap-3">
+            <div class="flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Nome</p>
+                <p class="font-bold leading-tight">{{ gaveta.logradouro.denominacao }}</p>
+              </div>
+            </div>
+            <div class="h-px w-full bg-rocha-950/10"></div>
+            <div class="flex items-baseline justify-between gap-4">
+              <p class="text-overline">Codlog</p>
+              <p class="text-code text-sm">{{ gaveta.logradouro.codlog }}</p>
+            </div>
+            <div class="h-px w-full bg-rocha-950/10"></div>
+            <div class="flex items-baseline justify-between gap-4">
+              <p class="text-overline">Tipo</p>
+              <p class="text-code text-sm">{{ gaveta.logradouro.tipo_logradouro }}</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Extensão</p>
+              <p class="text-xl font-bold tabular-nums">{{ gaveta.extensao_km|floatformat:1 }} <span class="text-sm font-normal text-base-content/60">km</span></p>
+            </div>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Segmentos</p>
+              <p class="text-xl font-bold tabular-nums">{{ gaveta.quantidade_segmentos }}</p>
+            </div>
+          </div>
+
+          <div class="card-well p-4 flex flex-col gap-3">
+            <p class="text-overline">Numeração do logradouro</p>
+            {% if gaveta.numeracao %}
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Menor</p>
+                  <p class="text-xl font-bold tabular-nums">{{ gaveta.numeracao.menor|floatformat:"0g" }}</p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Maior</p>
+                  <p class="text-xl font-bold tabular-nums">{{ gaveta.numeracao.maior|floatformat:"0g" }}</p>
+                </div>
+              </div>
+            {% else %}
+              <p class="valor-ausente">sem numeração</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+    </div>
+  </div>
+
+  <label for="gaveta-logradouro-toggle" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+    <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+  </label>
+</div>

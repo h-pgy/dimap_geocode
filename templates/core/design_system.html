@@ -4321,6 +4321,81 @@
 
         <p class="text-xs text-base-content/60">Abrir e fechar é <span class="text-code">checkbox</span> nativo, com os campos <strong>dentro</strong> da casca e lidos como filhos imediatos — <span class="text-code">.gaveta-lateral:has(&gt; .gaveta-lateral-toggle:checked)</span>: assim duas gavetas convivem no mesmo documento sem que marcar uma abra a outra, e a peça não depende de classe nenhuma no ancestral. A segunda gaveta é <strong>irmã</strong> do painel, com <span class="text-code">z</span> abaixo dele; fechada, ela cabe inteira atrás — o <span class="text-code">translateX</span> é exatamente <span class="text-code">(largura − recuo)</span>. O estado de falta usa a <span class="text-code">.gaveta-vazia</span> da gaveta inferior. Na home a casca recebe <span class="text-code">.tela-home</span>, que é por onde o CSS recolhe a barra de busca quando a gaveta abre.</p>
       </div>
+      <!-- Gaveta do logradouro (SPEC geocodificacao/006) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">gaveta do logradouro <span class="font-normal text-base-content/60">— logradouro_geocoder/partials/_gaveta_logradouro.html, num quadro</span></p>
+        <p class="text-sm text-base-content/80">Abre na busca por logradouro e no "Logradouro mais próximo" de um ponto desenhado. É composição da <span class="text-code">.gaveta-lateral</span>: o cartão de identidade, as medidas apuradas no conjunto dos segmentos e a numeração do logradouro inteiro. Sem segmento numerado, a numeração é a <span class="text-code">.valor-ausente</span>.</p>
+        <div class="relative h-[34rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)] [contain:layout]">
+          <div class="gaveta-lateral" data-gaveta="logradouro-styleguide">
+            <input type="checkbox" id="gaveta-logradouro-styleguide" class="gaveta-lateral-toggle" checked />
+            <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+              <header class="gaveta-lateral-cabecalho">
+                <p class="text-overline text-madeira-600">Entidade localizada</p>
+                <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Logradouro</h2>
+                <p class="text-sm font-medium mt-2">AV PAULISTA</p>
+              </header>
+              <div class="gaveta-lateral-corpo" data-scroll-etched>
+                <div class="gaveta-lateral-rolador" data-rolador>
+                  <div class="gaveta-lateral-conteudo">
+                    <div class="card-well p-4 flex flex-col gap-3">
+                      <div class="flex gap-4 items-center">
+                        <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                        </div>
+                        <div class="min-w-0">
+                          <p class="text-overline mb-0.5">Nome</p>
+                          <p class="font-bold leading-tight">PAULISTA</p>
+                        </div>
+                      </div>
+                      <div class="h-px w-full bg-rocha-950/10"></div>
+                      <div class="flex items-baseline justify-between gap-4">
+                        <p class="text-overline">Codlog</p>
+                        <p class="text-code text-sm">156566</p>
+                      </div>
+                      <div class="h-px w-full bg-rocha-950/10"></div>
+                      <div class="flex items-baseline justify-between gap-4">
+                        <p class="text-overline">Tipo</p>
+                        <p class="text-code text-sm">AV</p>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Extensão</p>
+                        <p class="text-xl font-bold tabular-nums">5,4 <span class="text-sm font-normal text-base-content/60">km</span></p>
+                      </div>
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Segmentos</p>
+                        <p class="text-xl font-bold tabular-nums">53</p>
+                      </div>
+                    </div>
+                    <div class="card-well p-4 flex flex-col gap-3">
+                      <p class="text-overline">Numeração do logradouro</p>
+                      <div class="grid grid-cols-2 gap-4">
+                        <div>
+                          <p class="text-overline mb-1">Menor</p>
+                          <p class="text-xl font-bold tabular-nums">1</p>
+                        </div>
+                        <div>
+                          <p class="text-overline mb-1">Maior</p>
+                          <p class="text-xl font-bold tabular-nums">2.747</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="card-well p-4 flex flex-col gap-3">
+                      <p class="text-overline">Numeração do logradouro <span class="font-normal text-base-content/60">— estado de falta</span></p>
+                      <p class="valor-ausente">sem numeração</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+            <label for="gaveta-logradouro-styleguide" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </label>
+          </div>
+        </div>
+      </div>
       <!-- Gaveta inferior rasa com a lateral acima (SPEC localizacao_lote/003) -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">.gaveta-inferior-rasa <span class="font-normal text-base-content/60">— com a gaveta lateral parada acima dela, num quadro</span></p>

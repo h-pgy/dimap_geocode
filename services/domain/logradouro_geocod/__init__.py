@@ -1,3 +1,9 @@
+from .gaveta import (
+    FaixaNumeracao,
+    GavetaLogradouro,
+    GavetaLogradouroInput,
+    MontarGavetaLogradouro,
+)
 from .geocoder import LogradouroGeocoder, feature_para_segmento
 from .models import (
     LogradouroGeocodInput,
@@ -9,8 +15,12 @@ from .models import (
 from .no_raio import SegmentosNoRaio
 
 __all__ = [
+    "FaixaNumeracao",
+    "GavetaLogradouro",
+    "GavetaLogradouroInput",
     "LogradouroGeocoder",
     "LogradouroGeocodInput",
+    "MontarGavetaLogradouro",
     "SegmentoLogradouroAttributes",
     "SegmentoLogradouroFeature",
     "SegmentoProximo",

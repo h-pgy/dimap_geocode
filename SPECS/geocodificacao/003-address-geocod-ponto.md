@@ -1,7 +1,7 @@
 ---
 spec: geocodificacao/003
-versao: v6
-atualizado_em: 2026-07-02
+versao: v7
+atualizado_em: 2026-10-02
 implementado: true
 changelog:
   - v1: versão inicial
@@ -10,6 +10,7 @@ changelog:
   - v4: `Paridade` + `intervalo_numeracao` saem de `models.py` (que fica só com DTOs) para um módulo local `numeracao.py`, espelhando o padrão de `address_match/numero.py` e `geometry/coordinates.py`
   - v5: interpolação sai do geocoder para `interpolacao.py` — classe callable `InterpoladorSegmento` (com `_definir_proporcao` como método privado), composta pelo AddressGeocoder como par do `SolverOrientacaoSegmento`
   - v6: patch pós-implementação (ver Patch 001) — corrige heurística de orientação, trata via de segmento único, lê o CRS da própria feature e tipa a dependência injetada como Callable
+  - v7: `EnderecoAttributes` passa a carregar a entidade `Logradouro` no lugar dos campos soltos e do `nome_completo` (SPEC geocodificacao/006)
 ---
 
 # SPEC geocodificacao/003 — Geocodificação de endereço (codlog + número → ponto)

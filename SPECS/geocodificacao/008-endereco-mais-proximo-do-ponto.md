@@ -1,15 +1,16 @@
 ---
-spec: geocodificacao/007
-versao: v1
+spec: geocodificacao/008
+versao: v2
 atualizado_em: 2026-10-02
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
+  - v2: renumerada de 007 para 008 — o nome completo nas sugestões vem antes e passa a ser a 007.
 ---
 
-# SPEC geocodificacao/007 — Endereço mais próximo de um ponto desenhado
+# SPEC geocodificacao/008 — Endereço mais próximo de um ponto desenhado
 
 ## 1 · User story
 Quem usa o mapa marca um ponto desenhado e pede o endereço mais próximo dele, no contexto de um local
@@ -60,7 +61,7 @@ PARIDADE_POR_LADO = {
 }
 ```
 
-**Mock:** [007-mock-endereco-mais-proximo-do-ponto.html](007-mock-endereco-mais-proximo-do-ponto.html)
+**Mock:** [008-mock-endereco-mais-proximo-do-ponto.html](008-mock-endereco-mais-proximo-do-ponto.html)
 — leia a skill `mock`.
 
 ## 4 · Fora de escopo

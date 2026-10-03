@@ -128,7 +128,7 @@ def test_do_ponto_devolve_a_linha_do_logradouro_mais_proximo(
     gaveta = soup.find(id="gaveta-entidade")
     assert isinstance(gaveta, Tag)
     assert gaveta.has_attr("hx-swap-oob")
-    assert gaveta.contents == []
+    assert gaveta.select_one(f'[data-gaveta="logradouro-{CODLOG_PERTO}"]') is not None
 
     assert len(capturado) == 2
     cql_do_codlog = capturado[1].cql_filter.to_cql()  # type: ignore[union-attr]

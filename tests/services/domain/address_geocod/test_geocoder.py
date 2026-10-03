@@ -299,12 +299,12 @@ def test_attributes_carregam_proveniencia() -> None:
         _entrada(75, interpolation_crs=31983, output_crs=31983)
     )
     a = resultado.attributes
-    assert a.codlog == CODLOG
-    assert a.nome_logradouro == "PAULISTA"
-    assert a.tipo_logradouro == "AV"
+    assert a.logradouro.codlog == CODLOG
+    assert a.logradouro.nome_logradouro == "PAULISTA"
+    assert a.logradouro.tipo_logradouro == "AV"
     assert a.numero == 75
     assert a.id_segmento == "SEG2"
-    assert a.titulo == "DR"
+    assert a.logradouro.titulo == "DR"
 
 
 # ---------------------------------------------------------------------------
@@ -363,7 +363,7 @@ class TestIntegracaoGeoSampa:
     def test_paulista_300_proveniencia(self) -> None:
         resultado = self._build_geocoder()(self._paulista_300())
         a = resultado.attributes
-        assert a.codlog == "156566"
+        assert a.logradouro.codlog == "156566"
         assert a.numero == 300
         assert a.id_segmento           # segmento de origem preenchido
-        assert a.nome_logradouro       # nome do logradouro preenchido
+        assert a.logradouro.nome_logradouro       # nome do logradouro preenchido

@@ -1,6 +1,6 @@
 ---
 spec: geocodificacao/005
-versao: v2
+versao: v4
 atualizado_em: 2026-10-02
 testes_tdd: true
 implementado: true
@@ -8,6 +8,8 @@ markers_obrigatorios: [integration]
 changelog:
   - v1: versão inicial
   - v2: a SPEC do endereço mais próximo do ponto passa a ser a geocodificacao/007
+  - v3: a resposta passa a abrir a gaveta do logradouro em vez de esvaziar a gaveta lateral (SPEC geocodificacao/006)
+  - v4: o endereço mais próximo do ponto é renumerado para geocodificacao/008
 ---
 
 # SPEC geocodificacao/005 — Logradouro mais próximo de um ponto desenhado

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from services.domain.geometry import GeoFeature, PointGeometry
+from services.domain.logradouro import Logradouro
 
 
 class AddressGeocodInput(BaseModel):
@@ -13,21 +14,12 @@ class AddressGeocodInput(BaseModel):
 
 class EnderecoAttributes(BaseModel):
     """Proveniência do ponto geocodificado (camada `attributes` da feature)."""
-    codlog: str
-    nome_logradouro: str
-    tipo_logradouro: str
+    logradouro: Logradouro
     numero: int
     id_segmento: str            # segmento que originou a interpolação
     # faixa do lado (par/ímpar) do segmento escolhido, no dia da geocodificação
     numeracao_inicial: int
     numeracao_final: int
-    titulo: str | None = None
-
-    @property
-    def nome_completo(self) -> str:
-        """tipo + título (se houver) + nome — ex.: 'AV DR PAULISTA', 'R DIREITA'."""
-        partes = [self.tipo_logradouro, self.titulo, self.nome_logradouro]
-        return " ".join(p for p in partes if p)
 
 
 EnderecoFeature = GeoFeature[PointGeometry, EnderecoAttributes]

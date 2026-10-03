@@ -87,14 +87,11 @@ class AddressGeocoder:
         return EnderecoFeature(
             geometry=PointGeometry(type="Point", coordinates=[ponto.x, ponto.y]),
             attributes=EnderecoAttributes(
-                codlog=a.codlog,
-                nome_logradouro=a.nome_logradouro,
-                tipo_logradouro=a.tipo_logradouro,
+                logradouro=a.logradouro,
                 numero=entrada.numero,
                 id_segmento=a.id_segmento,
                 numeracao_inicial=limite_inicial(a, paridade),
                 numeracao_final=limite_final(a, paridade),
-                titulo=a.titulo,
             ),
             crs=entrada.output_crs,
         )

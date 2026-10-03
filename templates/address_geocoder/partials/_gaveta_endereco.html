@@ -6,7 +6,7 @@
     <header class="gaveta-lateral-cabecalho">
       <p class="text-overline text-madeira-600">Entidade localizada</p>
       <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Endereço</h2>
-      <p class="text-sm font-medium mt-2">{{ endereco.nome_completo }}, {{ endereco.numero }}</p>
+      <p class="text-sm font-medium mt-2">{{ endereco.logradouro.nome_completo }}, {{ endereco.numero }}</p>
       {% if score is not None %}
         <span class="badge badge-info badge-soft badge-sm font-bold mt-3" title="Grau de certeza">≈ {{ score|floatformat:0 }}%</span>
       {% endif %}
@@ -22,13 +22,13 @@
               </div>
               <div class="min-w-0">
                 <p class="text-overline mb-0.5">Logradouro</p>
-                <p class="font-bold leading-tight">{{ endereco.nome_logradouro }}</p>
+                <p class="font-bold leading-tight">{{ endereco.logradouro.nome_logradouro }}</p>
               </div>
             </div>
             <div class="h-px w-full bg-rocha-950/10"></div>
             <div class="flex items-baseline justify-between gap-4">
               <p class="text-overline">Codlog</p>
-              <p class="text-code text-sm">{{ endereco.codlog }}</p>
+              <p class="text-code text-sm">{{ endereco.logradouro.codlog }}</p>
             </div>
           </div>
 
@@ -53,8 +53,8 @@
             >
               <input type="hidden" name="lon" value="{{ ponto.coordinates.0|unlocalize }}">
               <input type="hidden" name="lat" value="{{ ponto.coordinates.1|unlocalize }}">
-              <input type="hidden" name="codlog" value="{{ endereco.codlog }}">
-              <input type="hidden" name="origem" value="{{ endereco.nome_completo }}, {{ endereco.numero }}">
+              <input type="hidden" name="codlog" value="{{ endereco.logradouro.codlog }}">
+              <input type="hidden" name="origem" value="{{ endereco.logradouro.nome_completo }}, {{ endereco.numero }}">
               <button type="submit" class="btn btn-onsen btn-sm" title="Procura no mesmo logradouro, a até {{ raio_m|floatformat:0 }} m do ponto.">
                 <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/></svg></span>
                 Lote mais próximo

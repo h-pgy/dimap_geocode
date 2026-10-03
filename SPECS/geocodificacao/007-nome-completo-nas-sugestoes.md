@@ -1,14 +1,15 @@
 ---
-spec: geocodificacao/008
-versao: v1
+spec: geocodificacao/007
+versao: v2
 atualizado_em: 2026-10-02
 testes_tdd: false
 implementado: false
 changelog:
   - v1: versão inicial
+  - v2: renumerada de 008 para 007 — vem antes do endereço mais próximo do ponto, que passa a ser a 008.
 ---
 
-# SPEC geocodificacao/008 — Nome completo do logradouro nas sugestões
+# SPEC geocodificacao/007 — Nome completo do logradouro nas sugestões
 
 ## 1 · User story
 Quem usa a busca escolhe um logradouro ou um endereço no contexto da lista de sugestões que aparece a

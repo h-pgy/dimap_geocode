@@ -2,6 +2,8 @@
 endereço (SPEC localizacao_lote/002) — supersede o comportamento da SPEC localizacao_lote/001, que
 tirava a gaveta de cena (§2 da SPEC 002: "abre a gaveta lateral do endereço")."""
 
+import json
+
 import pytest
 from bs4 import BeautifulSoup, Tag
 from django.test import Client, RequestFactory
@@ -25,19 +27,31 @@ from services.domain.geocodificador_externo import (
     ProvedorGeocodificacao,
 )
 from services.domain.geometry import PointGeometry
+from services.domain.logradouro import Logradouro
 
 # ---------------------------------------------------------------------------
 # Builders
 # ---------------------------------------------------------------------------
 
 
-def _feature_endereco() -> EnderecoFeature:
+def _logradouro(
+    titulo: str | None = None,
+    preposicao: str | None = None,
+) -> Logradouro:
+    return Logradouro(
+        codlog="123456",
+        tipo_logradouro="AV",
+        titulo=titulo,
+        preposicao=preposicao,
+        nome_logradouro="PAULISTA",
+    )
+
+
+def _feature_endereco(logradouro: Logradouro | None = None) -> EnderecoFeature:
     return EnderecoFeature(
         geometry=PointGeometry(type="Point", coordinates=[-46.6, -23.5]),
         attributes=EnderecoAttributes(
-            codlog="123456",
-            nome_logradouro="PAULISTA",
-            tipo_logradouro="AV",
+            logradouro=logradouro or _logradouro(),
             numero=100,
             id_segmento="SEG1",
             numeracao_inicial=52,
@@ -83,6 +97,33 @@ def test_endereco_interpolado_abre_gaveta_com_faixa_e_botao(
     assert "52" in conteudo and "298" in conteudo  # faixa de numeração do segmento
     assert reverse("lotes_mais_proximos:mais_proximo") in conteudo
     assert "badge-info" not in conteudo  # sem score (endereço por codlog): sem grau de certeza
+
+
+def test_gaveta_do_endereco_mostra_o_nome_completo_do_logradouro(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    endereco = _feature_endereco(_logradouro(titulo="DR", preposicao="DE"))
+
+    class _GeocoderComTituloEPreposicao(_FakeAddressGeocoder):
+        def __call__(self, _entrada: object) -> EnderecoFeature:
+            return endereco
+
+    monkeypatch.setattr(views, "AddressGeocoder", _GeocoderComTituloEPreposicao)
+
+    resposta = client.post(
+        reverse("address_geocoder:selecionar"), {"codlog": "123456", "numero": "100"}
+    )
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    cabecalho = soup.select_one("#gaveta-entidade .gaveta-lateral-cabecalho")
+    assert cabecalho is not None
+    assert "AV DR DE PAULISTA, 100" in cabecalho.get_text()
+    script = soup.find("script", id="mapa-payload")
+    assert isinstance(script, Tag)
+    feature = json.loads(script.get_text())["geometria"]["features"][0]
+    assert "AV DR DE PAULISTA, 100" in feature["properties"]["popup_html"]
+    assert feature["properties"]["rotulo"] == "AV DR DE PAULISTA, 100"
 
 
 def test_endereco_por_nome_aproximado_mostra_grau_de_certeza(

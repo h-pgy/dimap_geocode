@@ -74,7 +74,7 @@ def _properties(f: EnderecoFeature) -> GeoJsonProperties:
         popup_html=render_to_string(
             "address_geocoder/partials/_popup_endereco.html", {"a": a}
         ),
-        rotulo=f"{a.nome_completo}, {a.numero}",
+        rotulo=f"{a.logradouro.nome_completo}, {a.numero}",
         cor=None,
     )
 

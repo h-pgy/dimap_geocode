@@ -32,6 +32,7 @@ from services.domain.geocodificador_externo import (
     ProvedorGeocodificacao,
 )
 from services.domain.geometry import PointGeometry
+from services.domain.logradouro import Logradouro
 from services.domain.logradouros_match import (
     LogradouroMatchOutput,
     ResolucaoLogradouroItem,
@@ -80,9 +81,11 @@ def _endereco_oficial() -> EnderecoFeature:
     return EnderecoFeature(
         geometry=PointGeometry(type="Point", coordinates=[-46.6, -23.5]),
         attributes=EnderecoAttributes(
-            codlog="019348",
-            nome_logradouro="AUGUSTA",
-            tipo_logradouro="R",
+            logradouro=Logradouro(
+                codlog="019348",
+                tipo_logradouro="R",
+                nome_logradouro="AUGUSTA",
+            ),
             numero=100,
             id_segmento="SEG1",
             numeracao_inicial=2,
