@@ -5,6 +5,17 @@ description: Padrão de management commands e do pipeline de dados do DIMAP GeoC
 
 # Management commands — comando fino, lógica no script
 
+## Sumário
+
+- A regra (inegociável, CLAUDE.md §6.4)
+- O padrão
+- O contrato `ScriptRunner` (SPEC ingestao_dados/006)
+- Anatomia do script (`services/scripts/<nome>/`)
+  - Registro de metadados (SPEC ingestao_dados/007)
+- Depois de rodar (§6.4: cargas → variações → cache)
+- Testes (§9)
+- Erros comuns
+
 ## A regra (inegociável, CLAUDE.md §6.4)
 
 O comando é a **fronteira entre o Django e o domínio**, e faz só o que essa fronteira exige:

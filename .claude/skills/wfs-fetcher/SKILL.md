@@ -5,6 +5,19 @@ description: Como usar o integrador WFS (services/integrations/wfs) do DIMAP Geo
 
 # WFS Fetcher — `services.integrations.wfs`
 
+## Sumário
+
+- Regras de fronteira (não violar)
+- O que é exportado
+- Uso básico
+- Filtros CQL (parte sensível — vira query crua)
+- Resiliência (timeout + retries)
+- Orquestração: lendo o settings (management command / view)
+- Composição em scripts/domínio (padrão recomendado)
+- Saída: `WfsFeatureCollection`
+- Notas de teste
+- Borda de versão WFS
+
 Cliente WFS reutilizável, tipado e **agnóstico de Django**. Pagina automaticamente as features
 de qualquer camada de um GeoServer (GeoSampa hoje, MDSF depois) e devolve um
 `WfsFeatureCollection` Pydantic por página.

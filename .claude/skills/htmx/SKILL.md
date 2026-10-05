@@ -5,6 +5,16 @@ description: Documentation for the htmx JavaScript library (attributes, events, 
 
 # htmx Reference
 
+## Contents
+
+- Reference Index
+  - General
+  - Attributes
+  - Examples
+  - Extensions
+  - Headers
+- Usage Notes
+
 Use the index below to open the most specific page for the user's question.
 Search the local `references/` folder with `rg` when unsure which page contains the answer.
 

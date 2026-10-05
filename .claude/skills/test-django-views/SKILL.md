@@ -5,6 +5,15 @@ description: Pipeline para smoke test manual de views Django/HTMX do DIMAP GeoCo
 
 # Smoke test de views Django — `django.test.Client` via `manage.py shell -c`
 
+## Sumário
+
+- Quando usar
+- Pipeline recomendado: `django.test.Client`, sem subir servidor
+  - Cobrindo vários cenários numa única chamada
+- Limitações do `Client()`
+- O smoke test escreve no banco de DESENVOLVIMENTO — sempre em transação desfeita
+- O que não fazer
+
 ## Quando usar
 
 Depois de implementar/alterar uma view. O projeto é **TDD** (política de testes do CLAUDE.md): a

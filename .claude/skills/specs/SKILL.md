@@ -5,6 +5,32 @@ description: "Escrever SPECs de desenvolvimento para o projeto DIMAP GeoCoder. U
 
 # Skill: Escrever SPECs — DIMAP GeoCoder
 
+## Sumário
+
+- O princípio: o artefato aprova, a prosa não
+- Organização da pasta `SPECS/`
+  - A ordem numérica é a ordem de implementação
+- Interface exige mock — e o mock tem skill própria
+  - A modelagem é aprovada ANTES do mock — nunca os dois de uma vez
+- Versionamento
+  - O `changelog` é uma frase, só o "quê"
+  - O mock é protótipo: sem versão, sem changelog
+  - Flags de estado
+  - Markers obrigatórios
+- Especificações das seções
+  - 1 · User story — *para quem, e por quê?*
+  - 2 · Condições de pronto — *como sei que acabou?*
+  - 3 · Domínio — *como o domínio está sendo modelado?*
+  - 4 · Fora de escopo — *onde eu paro?*
+  - 5 · Peças de referência a compor — *o que eu não devo reescrever?*
+  - 6 · Snippets — *como a regra de negócio fica em código?*
+  - 7 · Caveats — *o que estou aceitando pagar?*
+  - 8 · Testes (TDD) — *o que demonstra que o domínio foi implementado?*
+- Estilo da prosa
+- Template do arquivo de SPEC
+- Como usar uma SPEC (instruções para o implementador)
+- Checklist antes de entregar a SPEC
+
 Guia para redigir arquivos de SPEC do projeto, do front-matter ao template. Toda iteração de
 desenvolvimento é guiada por uma SPEC — nenhum código é escrito sem ela.
 

@@ -5,6 +5,22 @@ description: Como criar uma ação administrativa no DIMAP GeoCoder — o contra
 
 # Ação administrativa — contrato, registro, rota protegida e rastro
 
+## Sumário
+
+- 1 · O que é ação — e o que não é
+- 2 · Antes de escrever: o que perguntar ao usuário
+- 3 · Os seis passos
+  - 3.1 Declarar o contrato
+  - 3.2 Inscrever no registro
+  - 3.3 Desenhar os ícones
+  - 3.4 A rota, protegida
+  - 3.5 A view
+  - 3.6 Projetar no banco
+- 4 · Alcance — até onde a ação incide
+- 5 · Painel e botão — o router filtra, a rota decide
+- 6 · Checagens de segurança nos testes TDD
+- 7 · Erros comuns
+
 Ação é **ato administrativo**: recebe uma entidade (territorial ou de cadastro) como input, exige
 autenticação, é autorizada por competência (cargo × unidade) e tem a execução **registrada**. O épico
 `SPECS/autorizacao/` entregou toda a maquinaria; esta skill é como se pendura uma ação nova nela.

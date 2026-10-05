@@ -5,6 +5,15 @@ description: Como erros de validação Pydantic são tratados no DIMAP GeoCoder.
 
 # Erros de Validação Pydantic — padrão do projeto
 
+## Sumário
+
+- Como funciona
+- O que já existe (não reimplementar)
+- Como uma view usa o padrão
+- O que o partial exibe
+- Por que o HTMX precisa de configuração especial
+- O que NÃO fazer
+
 > **Exceção:** formulário cujo alvo HTMX é o próprio `<form>` (`outerHTML`) **não** usa este
 > middleware — o partial genérico trocaria o alvo inteiro por uma lista de erros em inglês, sem
 > campo nenhum para corrigir. Use a skill `erros-de-formulario` nesse caso.

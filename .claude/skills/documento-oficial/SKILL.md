@@ -5,6 +5,18 @@ description: Como escrever um documento oficial do DIMAP GeoCoder — o callable
 
 # Documento oficial — blocos, papel timbrado e tema
 
+## Sumário
+
+- 1 · O vocabulário de blocos
+- 2 · A tabela
+- 3 · Escrever um documento novo: um callable por tipo de documento
+- 4 · Escolher (ou criar) o papel timbrado
+- 5 · Onde cada valor mora
+- 6 · A marca d'água: nunca clareie em tempo de emissão
+- 7 · Conferir visualmente
+- 8 · QR de verificação: bloco no corpo, marca no rodapé
+- 9 · O que NÃO fazer
+
 `services/domain/documento_oficial/` gera PDF de ato administrativo: título, timbre da Secretaria,
 marca d'água, numeração de página. Esta skill é o **como**; o **o quê** está na SPEC
 [documentos_oficiais/003](../../../SPECS/documentos_oficiais/003-documento-oficial-timbrado.md), que

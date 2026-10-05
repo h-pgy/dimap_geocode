@@ -5,6 +5,16 @@ description: Como um formulário HTMX do DIMAP GeoCoder devolve erro de validaç
 
 # Erros de formulário — `services.utils.erros_formulario`
 
+## Sumário
+
+- Quando usar esta skill, e não `pydantic-validation-errors`
+- O que já existe (não reimplementar)
+- 1 · Declarar o catálogo
+- 2 · Ler o formulário pelo leitor, nunca construir o DTO direto na view
+- 3 · Recusa vinda do model do Django (`ValidationError` de `full_clean`/`save`)
+- 4 · Aplicar o realce no template
+- O que NÃO fazer
+
 ## Quando usar esta skill, e não `pydantic-validation-errors`
 
 O `PydanticValidationMiddleware` (skill `pydantic-validation-errors`) resolve o caso genérico:

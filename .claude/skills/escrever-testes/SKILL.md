@@ -5,6 +5,35 @@ description: "Padrões, convenções de estilo e infraestrutura da suíte de tes
 
 # Padrões da suíte de testes — `pytest` e TDD
 
+## Sumário
+
+- 1. Quando usar e relação com `test-django-views`
+- 2. Regras inegociáveis de estilo e estrutura
+  - 2.1 Funções soltas no nível do módulo como padrão soberano
+  - 2.2 Espelhamento módulo a módulo
+  - 2.3 Priorizar builders simples; fixtures apenas quando indispensáveis
+  - 2.4 Nomenclatura de builders pelo tipo construído
+  - 2.5 Seções por comentários delimitadores
+- 3. Camadas de execução e markers
+  - 3.1 Testes unitários rápidos (sem marker)
+  - 3.2 Marker `integration`
+  - 3.3 Marker `banco` e `@pytest.mark.django_db`
+  - 3.5 Marker `artefato` — o teste cujo produto é um arquivo
+  - 3.6 Rodar a suíte inteira: a flag `--all`
+  - 3.7 Abrir os artefatos na tela: a flag `--open`
+  - 3.4 Extensibilidade de markers
+- 4. Infraestrutura, `tests/conftest.py` global e isolamento de persistência
+  - 4.1 Isolamento estrito de disco e banco (sem efeitos colaterais)
+  - 4.2 Fixtures globais existentes
+  - 4.3 Proibição no `conftest.py` global
+  - 4.4 Fakes de Catálogos (Bypass de Singleton)
+- 5. Exemplos canônicos de implementação
+  - 5.1 Teste unitário de domínio com builder local
+  - 5.2 Teste com persistência (`banco`) e builder com overrides
+  - 5.3 Seção de integração com dados reais (ao final do módulo)
+- 6. Peças de referência no repositório
+- 7. O que NÃO fazer (Anti-patterns)
+
 Convenções de estilo, infraestrutura, organização de diretórios e camadas de execução
 dos testes automatizados do DIMAP GeoCoder.
 

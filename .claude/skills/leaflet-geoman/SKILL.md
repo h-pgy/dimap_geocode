@@ -5,6 +5,18 @@ description: Use essa skill sempre que precisar utilizar ferramentas de desenho 
 
 # Leaflet-Geoman — desenho e edição de geometrias
 
+## Sumário
+
+- Só a versão FREE
+- Referências — abra só o arquivo que a tarefa pede
+  - Lacunas conhecidas das referências
+- Regras do projeto aplicadas ao Geoman (CLAUDE.md §3.1, §3.4, §7.2)
+- CRS: desenha em 4326, guarda/calcula em 31983
+- Padrão: desenhar e enviar ao backend
+- Armadilhas
+- Snapping
+- Checklist
+
 Plugin de desenho sobre o Leaflet 1.9 do projeto. Tudo que o usuário **cria ou altera** no mapa
 passa por aqui; o que o servidor **manda renderizar** é a skill `leaflet-map`.
 

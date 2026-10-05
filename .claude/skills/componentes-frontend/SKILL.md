@@ -5,6 +5,26 @@ description: Design system "Onsen de Inverno" e padronização dos componentes d
 
 # Design System "Onsen de Inverno" — DIMAP GeoCoder
 
+## Sumário
+
+- 1. O Conceito: água límpida sob luz fria de inverno
+- 2. Atomic Design — o método para criar componentes
+  - 2.1 Tokens (a camada de design)
+  - 2.2 Átomos (elementos mínimos)
+  - 2.3 Moléculas (combinações pequenas)
+  - 2.4 Organismos (seções de domínio)
+  - 2.5 Checklist para qualquer componente novo
+- 3. Paleta
+  - 3.1 Escalas
+  - 3.2 Papéis do tema daisyUI (tema `dimap`, claro)
+  - 3.3 Cores por geometria (default das camadas do mapa)
+- 4. Tipografia
+- 5. Materiais de vidro (o gelo fosco)
+- 6. O mapa como canvas (água límpida)
+- 7. Coreografia, micro-interações e HTMX
+- 8. Setup técnico (Tailwind 4 + daisyUI 5)
+- 9. Arquivos de referência (ordem de consulta)
+
 Esta skill define o design system do projeto e **como construir componentes com Atomic Design**.
 Ela não lista o que existe — quem lista é a aplicação.
 

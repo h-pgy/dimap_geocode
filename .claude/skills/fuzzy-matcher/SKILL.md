@@ -5,6 +5,16 @@ description: Como usar o módulo de fuzzy matching do DIMAP GeoCoder (services.u
 
 # Fuzzy Matcher — `services.utils.fuzzy_matcher`
 
+## Sumário
+
+- Regra inegociável
+- O que é exportado
+- Assinatura
+- Estrutura de retorno
+- Uso
+- Algoritmos disponíveis
+- Rastreabilidade
+
 ## Regra inegociável
 
 **Nunca chame `rapidfuzz` diretamente nem escreva lógica de matching.** O módulo já encapsula o

@@ -5,6 +5,29 @@ description: Como construir algo que opera sobre um desenho da bancada no DIMAP 
 
 # Ação sobre desenho — registro, seleção, resposta e gavetas
 
+## Sumário
+
+- 1 · Duas naturezas: consulta ou ato
+- 2 · Antes de escrever: o que perguntar ao usuário
+- 3 · Os passos
+  - 3.1 Declarar no app da ação
+  - 3.2 Inscrever no registro de desenho
+  - 3.3 O router — não se mexe
+  - 3.4 A rota: pinçar o desenho selecionado
+  - 3.5 O domínio
+- 4 · A resposta: a base de resultado de ação
+- 5 · As gavetas juntas: a coreografia
+  - 5.1 A máquina de estados
+  - 5.2 Lateral acima da inferior
+  - 5.2.1 A bancada fora do rodapé
+  - 5.3 A troca da gaveta lateral
+  - 5.4 O contexto de ação
+  - 5.5 A volta à bancada
+- 6 · O mapa com resultado
+- 7 · O que a ação nova escreve, e o que ela não toca
+- 8 · Testes TDD que o padrão pede
+- 9 · Erros comuns
+
 O desenho da bancada (SPEC `design/020`) é uma entidade territorial como as outras: pode ser o input
 de uma consulta ou de um ato administrativo. O padrão nasceu na SPEC
 [`localizacao_lote/003`](../../../SPECS/localizacao_lote/003-lotes-do-desenho.md) (v6), com a
