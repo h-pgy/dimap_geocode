@@ -4,7 +4,13 @@ controles a tela tem e como cada recusa se diz para quem preencheu. Criar e edit
 catálogo — os controles são os mesmos, só o DTO lido muda.
 """
 
-from apps.unidades.schemas import AtoDeUnidade, EdicaoUnidade, NovaUnidade
+from apps.unidades.schemas import (
+    AtoDeUnidade,
+    EdicaoTipoUnidade,
+    EdicaoUnidade,
+    NovaUnidade,
+    NovoTipoUnidade,
+)
 from services.utils.erros_formulario import (
     CampoDeFormulario,
     ErroBruto,
@@ -61,4 +67,50 @@ def recusa_do_veredito(motivo: str) -> RecusaDeFormulario:
     catálogo não o reescreve, só o põe no controle certo."""
     return traduzir_recusa(
         (ErroBruto(controle="unidade", tipo="veredito", mensagem=motivo),)
+    )
+
+
+# Catálogo próprio do tipo de unidade (SPEC user_admin/031). Nomes com `tipo`: `traduzir_recusa` e
+# `recusa_do_veredito` pertencem a `FORMULARIO_UNIDADE` — reusá-los levaria a recusa do tipo ao
+# controle `unidade`.
+FORMULARIO_TIPO_UNIDADE = Formulario(
+    campos=(
+        CampoDeFormulario(controle="nome", rotulo="Nome"),
+        # A trava de estrutura recai sobre o nível: é o controle que a tela destaca.
+        CampoDeFormulario(
+            controle="nivel",
+            rotulo="Nível",
+            regras={
+                "trava_estrutura": RegraDeErro(mensagem="{motivo}", tom=TomDeRealce.ALERTA),
+                # O nível é digitado, e não escolhido: a frase padrão do tipo fala em "lista".
+                "int_parsing": RegraDeErro(mensagem="Informe o nível como um número inteiro."),
+            },
+        ),
+        CampoDeFormulario(controle="pode_ser_raiz", rotulo="Pode ser raiz"),
+        CampoDeFormulario(controle="exige_alta_administracao", rotulo="Alta administração"),
+        CampoDeFormulario(controle="nivel_minimo_titular", rotulo="Nível mínimo do titular"),
+        CampoDeFormulario(controle="tipos_filhos_vedados", rotulo="Tipos filhos vedados"),
+        # O alvo do modal de extinguir/reativar.
+        CampoDeFormulario(
+            controle="tipo",
+            rotulo="Tipo de unidade",
+            regras={"veredito": RegraDeErro(mensagem="{motivo}", tom=TomDeRealce.ERRO)},
+        ),
+    )
+)
+
+ler_novo_tipo_unidade = LeitorDeFormulario(NovoTipoUnidade, FORMULARIO_TIPO_UNIDADE)
+ler_edicao_tipo_unidade = LeitorDeFormulario(EdicaoTipoUnidade, FORMULARIO_TIPO_UNIDADE)
+traduzir_recusa_tipo = TradutorDeRecusa(FORMULARIO_TIPO_UNIDADE)
+
+
+def recusa_de_estrutura(motivo: str) -> RecusaDeFormulario:
+    return traduzir_recusa_tipo(
+        (ErroBruto(controle="nivel", tipo="trava_estrutura", mensagem=motivo),)
+    )
+
+
+def recusa_do_veredito_tipo(motivo: str) -> RecusaDeFormulario:
+    return traduzir_recusa_tipo(
+        (ErroBruto(controle="tipo", tipo="veredito", mensagem=motivo),)
     )

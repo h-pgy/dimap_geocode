@@ -1,0 +1,53 @@
+{# Modal de criar tipo de unidade (SPEC user_admin/031) — alvo do hx-get da barra e do card do       #}
+{# painel. O ícone do título vem do arquivo da ação, e não de um sprite: o painel não carrega os     #}
+{# glifos da listagem.                                                                               #}
+{% load icones %}
+{% icone_acao "unidades.criar_tipo_unidade" "pequeno" as icone %}
+{% url 'unidades:modal_criar_tipo_unidade' as url_do_modal %}
+<input type="checkbox" id="modal-criar-tipo-unidade" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+    <form hx-post="{% url 'unidades:gravar_criacao_tipo_unidade' %}" hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5">{{ icone }}</span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Cadastrar tipo de unidade</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">O tipo passa a definir subordinação e requisitos para novas unidades.</p>
+        </div>
+      </div>
+
+      {% include "partials/_tarja_recusa.html" with titulo="Tipo de unidade não cadastrado" %}
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Identificação e Nível</p>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <label class="form-field sm:col-span-2">
+            <span class="text-overline">Nome do tipo</span>
+            <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome }}" placeholder="Ex.: Divisão Especial" />
+          </label>
+          <label class="form-field">
+            <span class="text-overline">Nível (1 a 9)</span>
+            <input type="number" name="nivel" min="1" max="9" class="input input-glass {{ realce.nivel }}" value="{{ valores.nivel }}" />
+          </label>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer mt-1">
+          <input type="checkbox" name="pode_ser_raiz" class="checkbox checkbox-sm checkbox-primary {{ realce.pode_ser_raiz }}"{% if valores.pode_ser_raiz %} checked{% endif %} />
+          <span class="text-[13px] text-base-content/80">Pode ser unidade raiz (encabeçar organograma)</span>
+        </label>
+      </div>
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        <p class="text-overline">Requisitos do Titular</p>
+        {% include "unidades/partials/_requisito_titular_tipo.html" %}
+      </div>
+
+      {% include "unidades/partials/_tipos_filhos_vedados.html" %}
+
+      <div class="modal-action">
+        <label for="modal-criar-tipo-unidade" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">Cadastrar tipo</button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-criar-tipo-unidade">Fechar</label>
+</div>

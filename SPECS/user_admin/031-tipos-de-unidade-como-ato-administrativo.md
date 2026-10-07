@@ -1,9 +1,9 @@
 ---
 spec: user_admin/031
 versao: v1
-atualizado_em: 2026-09-22
-testes_tdd: false
-implementado: false
+atualizado_em: 2026-10-07
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
@@ -61,7 +61,7 @@ class TipoUnidade(models.Model):
 
 `TipoUnidade.objects` **continua devolvendo os extintos**, no mesmo molde de `CargoComissao`: quem filtra é a seleção de tipos permitidos no cadastro de unidades (§6).
 
-**`services/domain/tipos_unidade/models.py`** — o domínio não conhece o ORM; do tipo só precisa disto.
+**`services/domain/tipos_unidade/models.py`** — o domínio não conhece o ORM; do tipo só precisa da identidade, e de cada ato só do que a regra dele avalia.
 
 ```python
 class IdentidadeTipoUnidade(BaseModel):
@@ -69,10 +69,6 @@ class IdentidadeTipoUnidade(BaseModel):
 
     tipo_id: int
     nome: str
-    nivel: int
-    pode_ser_raiz: bool
-    exige_alta_administracao: bool
-    nivel_minimo_titular: int | None = None
 
 
 class PreviaDaEdicaoTipoUnidade(BaseModel):
@@ -105,11 +101,46 @@ class PreviaDaReativacaoTipoUnidade(BaseModel):
 
     tipo: IdentidadeTipoUnidade
     ja_vigente: bool = False
+
+
+class Veredito(BaseModel):
+    # Do próprio submódulo: `tipos_unidade` não importa o veredito de `cargos`, `extincao_unidade`
+    # nem `exoneracao`.
+    model_config = ConfigDict(frozen=True)
+
+    pode: bool
+    motivo: str = ""
+```
+
+**`services/domain/listagem_gestao/models/unidades.py`** — a linha da tabela de unidades passa a dizer se o tipo dela está extinto.
+
+```python
+class LinhaUnidade(BaseModel):
+    pk: int
+    sigla: str
+    nome: str
+    tipo: str
+    # ALTERADO nesta SPEC: campo novo — `tipo` segue string, que é o que a coluna ordena e filtra.
+    tipo_extinto: bool = False
+    exige_alta_administracao: bool
+    cor_hex: str
+    titular_pk: int | None = None
+    titular_nome: str | None = None
+    pai_pk: int | None = None
+    pai_sigla: str | None = None
+    extinta: bool = False
+
+    @property
+    def titular(self) -> str:
+        return self.titular_nome or ""
+
+    @property
+    def pai(self) -> str:
+        return self.pai_sigla or ""
 ```
 
 Consumido de SPECs anteriores, sem recópia:
 
-- [`Veredito`](029-cargos-em-comissao-como-ato-administrativo.md#3--domínio) — esta SPEC pergunta se o veredito com `pode` e `motivo` serve aos atos de extinção e reativação de tipo: serve, o tipo é idêntico.
 - [`Acao` e `AcaoImplementada`](../autorizacao/001-catalogo-de-acoes-em-codigo.md) e a [proteção de rota com registro](../autorizacao/004-protecao-de-rota-e-registro-de-execucao.md) — esta SPEC pergunta como os quatro atos sem alcance e exclusivos de superusuário se inscrevem e se registram.
 - [`ContratoPainel`, `Aba`, `Grupo`, `ItemAcao`, `ItemLivre`](../painel/001-painel-de-acoes-por-abas.md) — esta SPEC pergunta como o grupo novo entra na aba `ABA_ESTRUTURA`.
 - [`Unidade.clean`](003-hierarquia-unidades.md) — esta SPEC pergunta o que acontece com a hierarquia das unidades quando o tipo entra em extinção: nada, as unidades seguem avaliadas normalmente.
@@ -123,13 +154,14 @@ Consumido de SPECs anteriores, sem recópia:
 
 ## 5 · Peças de referência a compor
 - `@apps/unidades/models/unidade.py` → `TipoUnidade`: o model do catálogo, constraints e validações de subordinação.
-- `@apps/cargos/extincao.py` → `extinguir_cargo`/`reativar_cargo`: molde de extinção com data e veredito.
-- `@services/domain/cargos` → `Veredito`: veredito booleano com motivo.
-- `@templates/unidades/partials/_tabela_unidades.html`, `_barra_acoes_unidades.html` → tabela-onsen com coluna do lápis, lixeira, toggle e barra de ações.
+- `@apps/cargos/cadastro.py`, `extincao.py` → `editar_cargo`, `extinguir_cargo`/`reativar_cargo`: forma do ato com trava conferida no servidor, prévia, veredito e desfecho.
+- `@apps/cargos/views.py` → `gravar_extincao_cargo`: o molde HTTP das quatro gravações.
+- `@services/domain/cargos` → avaliadores e prévias: mesma forma, outro domínio.
+- `@templates/cargos/partials/` → `_tabela_cargos.html`, `_corpo_cargos.html`, `_corpo_cargos_oob.html`, `_barra_acoes_cargos.html`, `_rotulo_cargo.html` e os quatro modais: tabela-onsen com lápis, lixeira, toggle, swap fora de banda e a marca do extinto.
+- `@apps/unidades/direcao.py` → `rotulo_do_minimo`: o requisito de titular dito em padrão de cargo.
 - `@static/src/js/ui/filtro_linha_extinta.js` → filtro client-side do toggle de extintos.
-- `@apps/competencias/utils.py` → `instanciar_acao`.
-- `@apps/competencias/protecao.py` → `acao_protegida`, `registrar_ato`.
-- Skills: `acao-administrativa`, `painel`, `componentes-frontend`, `mock`, `ontologia`, `escrever-testes`.
+- `@apps/competencias/utils.py`, `protecao.py` → `instanciar_acao`, `acao_protegida`, `registrar_ato`.
+- Skills: `acao-administrativa`, `painel`, `erros-de-formulario`, `componentes-frontend`, `mock`, `ontologia`, `escrever-testes`.
 
 ## 6 · Snippets
 
@@ -217,6 +249,12 @@ class AvaliadorReativacaoTipoUnidade:
         if previa.ja_vigente:
             return Veredito(pode=False, motivo="Este tipo de unidade não está extinto.")
         return Veredito(pode=True)
+
+
+# A classe é o passo, o nome minúsculo é a porta — reexportados pelo `__init__.py` do submódulo.
+avaliar_edicao_tipo = AvaliadorEdicaoTipoUnidade()
+avaliar_extincao_tipo = AvaliadorExtincaoTipoUnidade()
+avaliar_reativacao_tipo = AvaliadorReativacaoTipoUnidade()
 ```
 
 **`apps/unidades/consulta.py`**
@@ -231,15 +269,128 @@ def tipos_unidade_disponiveis(tipo_atual_id: int | None = None) -> QuerySet[Tipo
 
 
 def unidades_ativas_do_tipo(tipo: TipoUnidade) -> int:
-    """Unidades no organograma vinculadas ao tipo — extinguir uma unidade não a desvincula do tipo."""
-    return tipo.unidades.filter(extinta_em__isnull=True).count()
+    # `tipo.unidades` já sai pelo `UnidadeVigenteManager`: unidade extinta não conta nem trava.
+    return tipo.unidades.count()
+```
+
+**`apps/unidades/context.py`** — o ponto único que monta o select de tipo do cadastro e da edição de unidade.
+
+```python
+# ALTERADO nesta SPEC: ganha `tipo_atual`. As telas de criação chamam sem ele; a página da unidade,
+# o modal de edição e a edição recusada passam `unidade.tipo_id`.
+def _catalogos_de_unidade(
+    ids_permitidos: Collection[int] | None = None,
+    tipo_atual: int | None = None,
+) -> dict[str, Any]:
+    return catalogo_de_unidades(ids_permitidos) | {
+        "tipos_unidade": tipos_unidade_disponiveis(tipo_atual),
+    }
+```
+
+**`apps/unidades/schemas.py`** — os DTOs dos dois atos que gravam o formulário.
+
+```python
+NomeDeTipo = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+# O select some da tela quando o requisito é alta administração; o que chega então é "".
+NivelMinimoOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
+
+
+class NovoTipoUnidade(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    nome: NomeDeTipo
+    nivel: int
+    pode_ser_raiz: bool = False
+    exige_alta_administracao: bool = False
+    nivel_minimo_titular: NivelMinimoOpcional = None
+    # Sem `_ids`: `controle_do_campo` só corta `_id`, e o nome precisa bater com o `name` dos
+    # checkboxes para a recusa achar o controle.
+    tipos_filhos_vedados: tuple[int, ...] = ()
+
+
+class EdicaoTipoUnidade(BaseModel):
+    """Mesmos campos de `NovoTipoUnidade`, com o id do tipo editado."""
+
+    model_config = ConfigDict(frozen=True)
+
+    tipo_id: int
+    nome: NomeDeTipo
+    nivel: int
+    pode_ser_raiz: bool = False
+    exige_alta_administracao: bool = False
+    nivel_minimo_titular: NivelMinimoOpcional = None
+    tipos_filhos_vedados: tuple[int, ...] = ()
+```
+
+**`apps/unidades/formularios.py`** — catálogo próprio, ao lado de `FORMULARIO_UNIDADE`.
+
+```python
+# Nomes com `tipo`: `traduzir_recusa` e `recusa_do_veredito` já existem neste módulo e pertencem a
+# `FORMULARIO_UNIDADE` — reusá-los levaria a recusa do tipo ao controle `unidade`.
+FORMULARIO_TIPO_UNIDADE = Formulario(
+    campos=(
+        CampoDeFormulario(controle="nome", rotulo="Nome"),
+        # A trava de estrutura recai sobre o nível: é o controle que a tela destaca.
+        CampoDeFormulario(
+            controle="nivel",
+            rotulo="Nível",
+            regras={"trava_estrutura": RegraDeErro(mensagem="{motivo}", tom=TomDeRealce.ALERTA)},
+        ),
+        CampoDeFormulario(controle="pode_ser_raiz", rotulo="Pode ser raiz"),
+        CampoDeFormulario(controle="exige_alta_administracao", rotulo="Alta administração"),
+        CampoDeFormulario(controle="nivel_minimo_titular", rotulo="Nível mínimo do titular"),
+        CampoDeFormulario(controle="tipos_filhos_vedados", rotulo="Tipos filhos vedados"),
+        # O alvo do modal de extinguir/reativar.
+        CampoDeFormulario(
+            controle="tipo",
+            rotulo="Tipo de unidade",
+            regras={"veredito": RegraDeErro(mensagem="{motivo}", tom=TomDeRealce.ERRO)},
+        ),
+    )
+)
+
+ler_novo_tipo_unidade = LeitorDeFormulario(NovoTipoUnidade, FORMULARIO_TIPO_UNIDADE)
+ler_edicao_tipo_unidade = LeitorDeFormulario(EdicaoTipoUnidade, FORMULARIO_TIPO_UNIDADE)
+traduzir_recusa_tipo = TradutorDeRecusa(FORMULARIO_TIPO_UNIDADE)
+
+
+def recusa_de_estrutura(motivo: str) -> RecusaDeFormulario:
+    return traduzir_recusa_tipo(
+        (ErroBruto(controle="nivel", tipo="trava_estrutura", mensagem=motivo),)
+    )
+
+
+def recusa_do_veredito_tipo(motivo: str) -> RecusaDeFormulario:
+    return traduzir_recusa_tipo(
+        (ErroBruto(controle="tipo", tipo="veredito", mensagem=motivo),)
+    )
+```
+
+**`apps/unidades/views.py`** — o que a view entrega ao leitor.
+
+```python
+def _valores_do_tipo(request: HttpRequest) -> dict[str, Any]:
+    return {
+        "nome": request.POST.get("nome", ""),
+        "nivel": request.POST.get("nivel", ""),
+        # ... os demais escalares, um por controle, no molde de `_valores_da_unidade`.
+        # `getlist`: cada tipo vedado é um checkbox com o mesmo `name`, e `get` devolveria só o
+        # último marcado.
+        "tipos_filhos_vedados": request.POST.getlist("tipos_filhos_vedados"),
+    }
 ```
 
 **`apps/unidades/cadastro_tipo.py`** — as travas conferidas no backend.
 
 ```python
+@dataclass(frozen=True)
+class DesfechoTipoUnidade:
+    tipo: TipoUnidade | None
+    recusa: RecusaDeFormulario = RecusaDeFormulario()
+
+
 def editar_tipo_unidade(tipo: TipoUnidade, valores: Mapping[str, Any]) -> DesfechoTipoUnidade:
-    leitura = ler_tipo_unidade(valores)
+    leitura = ler_edicao_tipo_unidade(valores)
     if leitura.dto is None:
         return DesfechoTipoUnidade(tipo=None, recusa=leitura.recusa or RecusaDeFormulario())
     travas = avaliar_edicao_tipo(
@@ -261,10 +412,26 @@ def editar_tipo_unidade(tipo: TipoUnidade, valores: Mapping[str, Any]) -> Desfec
             tipo.full_clean()
             tipo.save()
             if not travas.estrutura_travada:
-                tipo.tipos_filhos_vedados.set(leitura.dto.tipos_filhos_vedados_ids)
+                tipo.tipos_filhos_vedados.set(leitura.dto.tipos_filhos_vedados)
     except ValidationError as recusa:
-        return DesfechoTipoUnidade(tipo=None, recusa=traduzir_recusa(de_validation_error(recusa)))
+        return DesfechoTipoUnidade(tipo=None, recusa=traduzir_recusa_tipo(de_validation_error(recusa)))
     return DesfechoTipoUnidade(tipo=tipo)
+
+
+def _identidade(tipo: TipoUnidade) -> IdentidadeTipoUnidade:
+    return IdentidadeTipoUnidade(tipo_id=tipo.pk, nome=tipo.nome)
+
+
+def _estrutura_mudou(tipo: TipoUnidade, edicao: EdicaoTipoUnidade) -> bool:
+    vedados = set(tipo.tipos_filhos_vedados.values_list("pk", flat=True))
+    return (
+        tipo.nivel != edicao.nivel
+        or tipo.pode_ser_raiz != edicao.pode_ser_raiz
+        or tipo.exige_alta_administracao != edicao.exige_alta_administracao
+        or tipo.nivel_minimo_titular != edicao.nivel_minimo_titular
+        # Conjunto, e não lista: a ordem dos checkboxes não é a do banco.
+        or vedados != set(edicao.tipos_filhos_vedados)
+    )
 ```
 
 **`apps/unidades/extincao_tipo.py`**
@@ -273,7 +440,7 @@ def editar_tipo_unidade(tipo: TipoUnidade, valores: Mapping[str, Any]) -> Desfec
 def extinguir_tipo_unidade(tipo: TipoUnidade, hoje: date) -> DesfechoTipoUnidade:
     veredito = avaliar_extincao_tipo(previa_da_extincao_tipo(tipo))
     if not veredito.pode:
-        return DesfechoTipoUnidade(tipo=None, recusa=recusa_do_veredito(veredito.motivo))
+        return DesfechoTipoUnidade(tipo=None, recusa=recusa_do_veredito_tipo(veredito.motivo))
     tipo.extinto_em = hoje
     tipo.save(update_fields=["extinto_em"])
     return DesfechoTipoUnidade(tipo=tipo)
@@ -335,23 +502,23 @@ ABA_ESTRUTURA = Aba(
 
 ## 7 · Caveats
 
-A trava de estrutura do tipo vive em `services/` e na view, não no banco. As propriedades estruturais de tipo com unidades só são travadas no fluxo do ato administrativo. O banco não consegue verificar através da FK reversa se existem unidades ativas sem acoplar a constraint do model de tipo ao de unidade. Um comando SQL direto pode alterar nível ou restrições de um tipo em uso sem que o banco rejeite.
+**A trava de estrutura do tipo vive em `services/` e na view, não no banco.** As propriedades estruturais de tipo com unidades só são travadas no fluxo do ato administrativo. O banco não consegue verificar através da FK reversa se existem unidades ativas sem acoplar a constraint do model de tipo ao de unidade. Um comando SQL direto pode alterar nível ou restrições de um tipo em uso sem que o banco rejeite.
 
-Extinguir tipo de unidade não altera unidades existentes. A extinção do tipo data o registro e impede seu uso em novas unidades, mantendo intocadas as unidades já criadas. A administração pública extingue tipologias organizacionais sem extinguir de imediato as unidades preexistentes que ainda operam sob ela. O organograma pode manter unidades ativas de tipo extinto até que sofram reforma administrativa própria.
+**Extinguir tipo de unidade não altera unidades existentes.** A extinção do tipo data o registro e impede seu uso em novas unidades, mantendo intocadas as unidades já criadas. A administração pública extingue tipologias organizacionais sem extinguir de imediato as unidades preexistentes que ainda operam sob ela. O organograma pode manter unidades ativas de tipo extinto até que sofram reforma administrativa própria.
 
-`TipoUnidade.objects` continua trazendo os extintos. O gerente padrão do model não filtra tipos extintos, deixando o corte para a consulta de tipos disponíveis. Telas de detalhe, listagens e seletores de unidades existentes precisam renderizar e identificar o tipo mesmo após sua extinção. Qualquer nova funcionalidade que precise apenas de tipos vigentes deve lembrar de chamar o filtro específico.
+**`TipoUnidade.objects` continua trazendo os extintos.** O gerente padrão do model não filtra tipos extintos, deixando o corte para a consulta de tipos disponíveis. Telas de detalhe, listagens e seletores de unidades existentes precisam renderizar e identificar o tipo mesmo após sua extinção. Qualquer nova funcionalidade que precise apenas de tipos vigentes deve lembrar de chamar o filtro específico.
 
-Renomear pela tela briga com a seed. A edição de nome do tipo de unidade é permitida pela interface administrativa. `seed_unidades` utiliza o nome como chave natural para idempotência da carga inicial. Rodar a seed novamente após renomear um tipo pela tela recriará o tipo com o nome original da seed.
+**Renomear pela tela briga com a seed.** A edição de nome do tipo de unidade é permitida pela interface administrativa. `seed_unidades` usa o nome como chave natural, só cria o que falta e roda em toda subida do container (`docker/run_seeds.sh`). O tipo renomeado pela tela é recriado com o nome original no deploy seguinte.
 
-Quatro ações exclusivas de superusuário para um catálogo só. O catálogo de tipos de unidade é mantido por quatro ações administrativas distintas. Cada ato precisa registrar operação, card e ícone próprios no histórico de execuções. São quatro cards no painel e quatro conjuntos de ícones para ações que não oferecem granularidade de permissão entre si.
+**Quatro ações exclusivas de superusuário para um catálogo só.** O catálogo de tipos de unidade é mantido por quatro ações administrativas distintas. Cada ato precisa registrar operação, card e ícone próprios no histórico de execuções. São quatro cards no painel e quatro conjuntos de ícones para ações que não oferecem granularidade de permissão entre si.
 
-Aba Estrutura Administrativa exibe a lista a qualquer servidor autenticado. A lista de tipos de unidade entra como item livre no novo grupo da aba. Consultar os tipos de unidade existentes é informação pública e de leitura aberta dentro da organização. Usuários sem perfil de administração visualizam a aba com apenas a listagem liberada no grupo.
+**Aba Estrutura Administrativa exibe a lista a qualquer servidor autenticado.** A lista de tipos de unidade entra como item livre no novo grupo da aba. Consultar os tipos de unidade existentes é informação pública e de leitura aberta dentro da organização. Usuários sem perfil de administração visualizam a aba com apenas a listagem liberada no grupo.
 
-Campo travado sem input oculto apaga o valor no envio. Campos desabilitados por travas de negócio são acompanhados de campos ocultos correspondentes no formulário. Controles desabilitados no navegador não são submetidos no payload do formulário. O template precisa duplicar o envio dos valores atuais para evitar que o validador interprete ausência como alteração não autorizada.
+**Campo travado sem input oculto apaga o valor no envio.** Campos desabilitados por travas de negócio são acompanhados de campos ocultos correspondentes no formulário — um por tipo filho vedado, que é multivalorado. Controles desabilitados no navegador não são submetidos no payload do formulário. O template precisa duplicar o envio dos valores atuais para evitar que o validador interprete ausência como alteração não autorizada.
 
-Toggle de tipos extintos opera exclusivamente no cliente. A exibição de tipos extintos na tabela é controlada inteiramente por script no navegador. Enviar o estado do toggle ao servidor provocaria perda do filtro durante swaps fora de banda disparados pelos modais de ação. Todas as linhas, vigentes e extintas, são sempre trafegadas no HTML inicial e no corpo atualizado.
+**Toggle de tipos extintos opera exclusivamente no cliente.** A exibição de tipos extintos na tabela é controlada inteiramente por script no navegador. Enviar o estado do toggle ao servidor provocaria perda do filtro durante swaps fora de banda disparados pelos modais de ação. Todas as linhas, vigentes e extintas, são sempre trafegadas no HTML inicial e no corpo atualizado.
 
-Corpo da tabela em swap fora de banda exige envelope de template. A resposta fora de banda do corpo da tabela vem envelopada pela tag template. O navegador descarta elementos de tabela avulsos quando o alvo principal da resposta não é uma tabela. O template de swap fora de banda precisa existir separadamente do fragmento usado nas ordenações diretas.
+**Corpo da tabela em swap fora de banda exige envelope de template.** A resposta fora de banda do corpo da tabela vem envelopada pela tag template. O navegador descarta elementos de tabela avulsos quando o alvo principal da resposta não é uma tabela. O template de swap fora de banda precisa existir separadamente do fragmento usado nas ordenações diretas.
 
 ## 8 · Testes (TDD)
 
@@ -361,7 +528,7 @@ Corpo da tabela em swap fora de banda exige envelope de template. A resposta for
 - `test_tipo_extinto_segue_ofertado_a_unidade_que_ja_o_possui` — `tipos_unidade_disponiveis(tipo_atual_id=...)` devolve o extinto da própria unidade. *(marker `banco`)*
 - `test_reativar_devolve_o_tipo_ao_cadastro_de_unidades` — `extinto_em` volta a ser nulo e o tipo reaparece na oferta. *(marker `banco`)*
 - `test_unidades_de_tipo_extinto_seguem_na_hierarquia_e_exercem_competencia` — unidade cujo tipo foi extinto mantém subordinadas, titular e competências ativas. *(marker `banco`)*
-- `test_edicao_recusa_nivel_raiz_e_titular_de_tipo_com_unidades` — POST que altera nível, permissão de raiz, alta administração ou nível mínimo titular de tipo com unidades é recusado. *(marker `banco`)*
+- `test_edicao_recusa_nivel_raiz_e_titular_de_tipo_com_unidades` — POST que altera nível, permissão de raiz, alta administração, nível mínimo titular ou os tipos filhos vedados de tipo com unidades é recusado. *(marker `banco`)*
 - `test_edicao_altera_nome_de_tipo_com_unidades_e_extinto` — alterar o nome de tipo com unidades ativas ou extinto é aceito. *(marker `banco`)*
 - `test_edicao_livre_quando_nenhuma_unidade_utiliza_o_tipo` — sem unidades vinculadas, todas as propriedades estruturais podem mudar. *(marker `banco`)*
 - `test_veredito_recusa_ato_repetido` — extinguir tipo já extinto e reativar tipo vigente são recusados com motivo; domínio puro, sem banco.

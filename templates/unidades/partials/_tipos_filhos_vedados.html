@@ -1,0 +1,44 @@
+{# Seletor de tipos filhos vedados (SPEC user_admin/031): cada vedado é um chip com o próprio campo  #}
+{# oculto, e é a lista deles que o formulário posta. Escolher no select e remover um chip redesenham #}
+{# o bloco NO SERVIDOR — hx-get na própria rota do modal (`url_do_modal`), com o hx-select pinçando  #}
+{# só este bloco. GET, e não POST: nada é gravado aqui, e POST em rota de ação vira linha no         #}
+{# histórico. O X é SVG inline, e não `#glifo-x`: o modal também abre pelo painel, que não carrega   #}
+{# sprite algum.                                                                                     #}
+<div class="card-well p-5 flex flex-col gap-3"
+     data-vedados
+     hx-target="this"
+     hx-select="[data-vedados]"
+     hx-swap="outerHTML"
+     hx-include="this"
+     {% if tipo %}hx-vals='{"tipo": "{{ tipo.pk }}"}'{% endif %}>
+  <p class="text-overline">Tipos filhos vedados</p>
+  <p class="form-field-hint">Tipos que as unidades deste tipo não admitem como subordinadas diretas.</p>
+  <div class="flex flex-wrap items-center gap-2">
+    {% for vedado in vedados %}
+      <span class="chip-concessao">
+        {% include "unidades/partials/_rotulo_tipo_unidade.html" with tipo=vedado %}
+        <input type="hidden" name="tipos_filhos_vedados" value="{{ vedado.pk }}" />
+        <button type="button"
+                class="chip-concessao-remover"
+                aria-label="Deixar de vedar {{ vedado.nome }}"
+                hx-get="{{ url_do_modal }}"
+                hx-vals='{"desvedar": "{{ vedado.pk }}"}'>
+          <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></span>
+        </button>
+      </span>
+    {% empty %}
+      <p class="form-field-hint">Nenhum tipo vedado.</p>
+    {% endfor %}
+  </div>
+  {% if candidatos_a_vedar %}
+    <label class="form-field max-w-xs">
+      <span class="text-overline">Vedar outro tipo</span>
+      <select name="vedar" class="select select-glass {{ realce.tipos_filhos_vedados }}" data-select-onsen hx-get="{{ url_do_modal }}">
+        <option value="">Escolha um tipo…</option>
+        {% for candidato in candidatos_a_vedar %}
+          <option value="{{ candidato.pk }}"{% if candidato.extinto %} data-extinto="true" title="Tipo de unidade extinto"{% endif %}>{{ candidato.nome }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  {% endif %}
+</div>

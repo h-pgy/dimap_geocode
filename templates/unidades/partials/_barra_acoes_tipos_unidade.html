@@ -1,0 +1,32 @@
+{# Barra de ações da listagem de tipos de unidade (SPEC user_admin/031): "Novo tipo" só para quem   #}
+{# administra o sistema — os demais ficam com o toggle e o limpar. `perms` é UX (esconder o botão    #}
+{# não é a barreira); a barreira de verdade é a rota, via `acao_protegida`.                          #}
+{% load icones %}
+<div class="barra-acoes glass-panel">
+  <div class="barra-acoes-gestos">
+    {% if perms.unidades.criar_tipo_unidade %}
+      {% icone_acao "unidades.criar_tipo_unidade" "pequeno" as icone_criar %}
+      <button type="button"
+              class="btn btn-onsen btn-sm gap-1.5"
+              hx-get="{% url 'unidades:modal_criar_tipo_unidade' %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms">
+        <span class="icone-acao icone-acao-pequeno">{{ icone_criar }}</span>
+        Novo tipo
+      </button>
+    {% endif %}
+  </div>
+  <div class="barra-acoes-gestos">
+    <label class="barra-acoes-chave">
+      {# 100% client-side (SPEC, Caveats): o servidor manda TODOS os tipos, marcados com             #}
+      {# .linha-extinta, e é `filtro_linha_extinta.js` quem esconde/revela — sem round-trip nenhum.  #}
+      <input type="checkbox"
+             id="toggle-tipos-extintos"
+             class="toggle-onsen"
+             data-filtro-extintos="#tabela-tipos"
+             aria-label="Mostrar tipos extintos" />
+      <span class="text-overline">Mostrar tipos extintos</span>
+    </label>
+    <button type="button" class="btn-etched etched" data-limpar-filtros="#tabela-tipos">✕ limpar filtros</button>
+  </div>
+</div>

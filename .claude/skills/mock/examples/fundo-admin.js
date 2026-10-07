@@ -37,6 +37,10 @@ const CHAVES_ORTOFOTO = [
 ];
 
 const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+// O piso de rocha, a ortofoto e a água são todos z-0: quem pinta por cima é quem vem depois no DOM.
+// A marca guarda o lugar do include antes de as tags caírem — fora dele o piso cobre a foto.
+const INCLUDE_CASCA = /\{%\s*include\s+"mapping\/_fundo_ortofoto\.html"\s*%\}/;
+const MARCA_CASCA = "<!--fundo-ortofoto-->";
 
 function avisar(mensagem) {
   (document.body || document.documentElement).insertAdjacentHTML(
@@ -45,10 +49,25 @@ function avisar(mensagem) {
   );
 }
 
-async function buscarPartial(caminho) {
+async function buscarCru(caminho) {
   const resposta = await fetch(caminho);
   if (!resposta.ok) throw new Error(`${caminho} → ${resposta.status}`);
-  return (await resposta.text()).replace(TAG_DE_TEMPLATE, "").trim();
+  return resposta.text();
+}
+
+async function buscarPartial(caminho) {
+  return (await buscarCru(caminho)).replace(TAG_DE_TEMPLATE, "").trim();
+}
+
+async function buscarMolde() {
+  const molde = (await buscarCru(PARTIAL_FUNDO))
+    .replace(INCLUDE_CASCA, MARCA_CASCA)
+    .replace(TAG_DE_TEMPLATE, "")
+    .trim();
+  if (!molde.includes(MARCA_CASCA)) {
+    throw new Error(`${PARTIAL_FUNDO} não inclui mais _fundo_ortofoto.html`);
+  }
+  return molde;
 }
 
 // A casca é `{% include %}` e mais nada — sem Django, o fetch cru devolve um recipiente vazio, e a
@@ -69,16 +88,17 @@ export async function montarFundoAdmin() {
   try {
     const chave = CHAVES_ORTOFOTO[Math.floor(Math.random() * CHAVES_ORTOFOTO.length)];
     const [molde, glifos, casca, camada, controle] = await Promise.all([
-      buscarPartial(PARTIAL_FUNDO),
+      buscarMolde(),
       buscarPartial(PARTIAL_GLIFOS),
       buscarPartial(PARTIAL_CASCA),
       buscarPartial(PARTIAL_CAMADA),
       buscarPartial(PARTIAL_CONTROLE),
     ]);
     const canvasPintado = montarCanvas(casca, camada, chave);
-    // Ordem espelha _mapa_admin.html: glifos (invisível) → canvas (z-0) → lente (z-1, no molde
-    // já sem o include) → controle (z-20).
-    document.body.insertAdjacentHTML("afterbegin", glifos + canvasPintado + molde + controle);
+    // Ordem espelha _mapa_admin.html: glifos (invisível) → molde, com a ortofoto no lugar do
+    // include (piso → foto → água → lente) → controle (z-20).
+    const fundo = molde.replace(MARCA_CASCA, canvasPintado);
+    document.body.insertAdjacentHTML("afterbegin", glifos + fundo + controle);
     await import(MODULO_CONTROLE);
   } catch (erro) {
     avisar(`fundo administrativo não montou (${erro.message}) — sirva a RAIZ do projeto.`);

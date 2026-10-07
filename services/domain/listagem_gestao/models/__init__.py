@@ -11,6 +11,7 @@ from .execucoes import (
     LinhaExecucao,
 )
 from .servidores import ColunaServidor, ConsultaServidores, LinhaServidor
+from .tipos_unidade import ColunaTipoUnidade, ConsultaTiposUnidade, LinhaTipoUnidade
 from .unidades import ColunaUnidade, ConsultaUnidades, LinhaUnidade
 
 __all__ = [
@@ -31,6 +32,9 @@ __all__ = [
     "ColunaUnidade",
     "LinhaUnidade",
     "ConsultaUnidades",
+    "ColunaTipoUnidade",
+    "LinhaTipoUnidade",
+    "ConsultaTiposUnidade",
     "JANELA_PADRAO_DIAS",
     "TAMANHO_PAGINA",
     "SEM_CARGO_COMISSAO",

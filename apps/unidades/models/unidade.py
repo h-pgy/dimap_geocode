@@ -80,6 +80,8 @@ class TipoUnidade(models.Model):
             MaxValueValidator(NIVEL_MAXIMO),
         ],
     )
+    # A data do ato que o retirou da criação de unidades (SPEC user_admin/031). Nula é tipo vigente.
+    extinto_em = models.DateField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Tipo de unidade"
@@ -105,6 +107,10 @@ class TipoUnidade(models.Model):
 
     def __str__(self) -> str:
         return self.nome
+
+    @property
+    def extinto(self) -> bool:
+        return self.extinto_em is not None
 
     def clean(self) -> None:
         if self.exige_alta_administracao and self.nivel_minimo_titular is not None:

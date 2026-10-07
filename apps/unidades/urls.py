@@ -44,4 +44,32 @@ urlpatterns = [
     path("titularidade/face/", views.face_titularidade, name="face_titularidade"),
     path("titularidade/gravar/", views.gravar_definir_titular, name="gravar_definir_titular"),
     path("titularidade/destituir/", views.gravar_destituir_titular, name="gravar_destituir_titular"),
+    # O catálogo de tipos de unidade (SPEC user_admin/031): mesmo molde de rotas do de cargos — uma
+    # porta para abrir cada modal e uma por operação para gravar, com o tipo no caminho.
+    path("tipos/", views.listar_tipos_unidade, name="listar_tipos_unidade"),
+    path("tipos/corpo/", views.corpo_tipos_unidade, name="corpo_tipos_unidade"),
+    path("tipos/novo/", views.modal_criar_tipo_unidade, name="modal_criar_tipo_unidade"),
+    path(
+        "tipos/novo/gravar/",
+        views.gravar_criacao_tipo_unidade,
+        name="gravar_criacao_tipo_unidade",
+    ),
+    path("tipos/editar/", views.modal_editar_tipo_unidade, name="modal_editar_tipo_unidade"),
+    path(
+        "tipos/<int:tipo>/editar/gravar/",
+        views.gravar_edicao_tipo_unidade,
+        name="gravar_edicao_tipo_unidade",
+    ),
+    path("tipos/extinguir/", views.modal_extinguir_tipo_unidade, name="modal_extinguir_tipo_unidade"),
+    path(
+        "tipos/<int:tipo>/extinguir/gravar/",
+        views.gravar_extincao_tipo_unidade,
+        name="gravar_extincao_tipo_unidade",
+    ),
+    path("tipos/reativar/", views.modal_reativar_tipo_unidade, name="modal_reativar_tipo_unidade"),
+    path(
+        "tipos/<int:tipo>/reativar/gravar/",
+        views.gravar_reativacao_tipo_unidade,
+        name="gravar_reativacao_tipo_unidade",
+    ),
 ]

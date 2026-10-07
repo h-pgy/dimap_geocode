@@ -1,0 +1,3 @@
+{# O rótulo de sempre. Extinto NÃO ganha texto nenhum: é o MESMO nome, em tom de warning, e o aviso #}
+{# vive no tooltip (SPEC user_admin/031).                                                           #}
+<span class="rotulo-tipo-unidade{% if tipo.extinto %} rotulo-tipo-unidade-extinto{% endif %}"{% if tipo.extinto %} title="Tipo de unidade extinto"{% endif %}>{{ tipo.nome }}</span>

@@ -4129,6 +4129,73 @@
             <span class="text-overline">.table-onsen-larga + .scroll-etched-h</span>
             <p class="text-xs text-base-content/60 mb-1">Segundo eixo do poço de tabela (<span class="text-code">.table-onsen-poco</span>): a barra deitada gêmea da vertical, com a coluna dela subtraída da calha das duas — só quando a tabela é larga o bastante para rolar na horizontal (ver a tela montada em <span class="text-code">competencias/registro_acoes_list.html</span>).</p>
           </div>
+          <div class="card-well p-4 flex flex-col gap-3 sm:col-span-2">
+            <span class="text-overline">.rotulo-tipo-unidade + .rotulo-tipo-unidade-extinto (SPEC user_admin/031)</span>
+            <div class="flex flex-wrap items-center gap-8">
+              <span class="rotulo-tipo-unidade text-[15px]">Divisão</span>
+              <span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto text-[15px]" title="Tipo de unidade extinto">Seção</span>
+              <p class="linha-pessoa-meta">Tipo da unidade: <span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto" title="Tipo de unidade extinto">Seção</span></p>
+              <span class="badge badge-linha badge-sm"><span class="rotulo-tipo-unidade">Divisão</span></span>
+              <span class="badge badge-linha badge-sm"><span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto" title="Tipo de unidade extinto">Seção</span></span>
+            </div>
+            <p class="text-xs text-base-content/60">A base não pinta: o rótulo herda a tinta de onde está (célula, meta, badge, título de modal). O extinto é o <strong>mesmo nome</strong>, em tom de warning, com o pontilhado que anuncia o tooltip "Tipo de unidade extinto" — nunca um texto a mais. Markup único em <span class="text-code">unidades/partials/_rotulo_tipo_unidade.html</span>.</p>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-3 sm:col-span-2">
+            <span class="text-overline">.table-onsen-rotulo-longo (SPEC user_admin/031)</span>
+            <div class="card-well pb-4 table-onsen-poco" data-scroll-etched>
+              <div class="table-onsen-wrap" data-rolador>
+                <table class="table table-onsen table-onsen-rotulo-longo">
+                  <thead data-cabecalho>
+                    <tr>
+                      <th>
+                        <div class="th-onsen">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Nível</span>
+                            <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por nível">▲</button>
+                        </div>
+                      </th>
+                      <th>
+                        <div class="th-onsen">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Requisito do titular</span>
+                            <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por requisito do titular">▲</button>
+                        </div>
+                      </th>
+                      <th>
+                        <div class="th-onsen">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Tipos filhos vedados</span>
+                            <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por tipos filhos vedados">▲</button>
+                        </div>
+                      </th>
+                      <th class="w-28"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Unidades</span></div></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>3</td>
+                      <td>Mínimo CDA-IV</td>
+                      <td>Divisão, Departamento</td>
+                      <td class="text-right">14</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="scroll-etched" data-barra aria-hidden="true">
+                <div class="scroll-etched-thumb" data-polegar></div>
+              </div>
+              <div class="scroll-etched-h" data-barra-h aria-hidden="true">
+                <div class="scroll-etched-h-thumb" data-polegar-h></div>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">Modificador da <span class="text-code">.table-onsen</span> para cabeçalho de rótulo comprido: o rótulo quebra em até duas linhas e todas as colunas reservam essa altura, para os campos de filtro ficarem na mesma linha. O piso de largura (56rem) entrega o eixo horizontal ao poço — compõe com <span class="text-code">.scroll-etched-h</span>.</p>
+          </div>
         </div>
       </div>
 

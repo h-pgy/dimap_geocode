@@ -18,6 +18,8 @@ class LinhaUnidade(BaseModel):
     sigla: str
     nome: str
     tipo: str
+    # SPEC user_admin/031: `tipo` segue string, que é o que a coluna ordena e filtra.
+    tipo_extinto: bool = False
     exige_alta_administracao: bool
     cor_hex: str
     titular_pk: int | None = None

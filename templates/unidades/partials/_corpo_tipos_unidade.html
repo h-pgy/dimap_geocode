@@ -1,0 +1,66 @@
+{# Corpo da tabela de tipos de unidade (SPEC user_admin/031) — alvo exclusivo de swap do HTMX, e     #}
+{# alvo do hx-swap-oob dos quatro atos: eles fecham o modal e trazem a linha atualizada por aqui.    #}
+<tbody id="corpo-tipos"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% for linha in linhas %}
+    <tr{% if linha.extinto %} class="linha-extinta"{% endif %}>
+      <td><p class="td-nome-unidade">{% include "unidades/partials/_rotulo_tipo_unidade.html" with tipo=linha %}</p></td>
+      <td><span class="badge badge-sm badge-soft {% if linha.extinto %}badge-warning{% else %}badge-primary{% endif %} font-bold">{{ linha.nivel }}</span></td>
+      <td>
+        {% if linha.pode_ser_raiz %}
+          <span class="badge badge-sm badge-soft badge-accent font-medium">{{ linha.raiz }}</span>
+        {% else %}
+          <span class="text-xs text-base-content/50">{{ linha.raiz }}</span>
+        {% endif %}
+      </td>
+      <td><span class="badge badge-sm badge-soft {% if linha.extinto or linha.exige_alta_administracao %}badge-warning{% else %}badge-info{% endif %} font-medium">{{ linha.titular }}</span></td>
+      {% if linha.vedados %}
+        <td class="text-xs text-base-content/70">{{ linha.vedados }}</td>
+      {% else %}
+        <td class="text-xs text-base-content/40">—</td>
+      {% endif %}
+      <td class="text-right{% if not linha.unidades %} text-base-content/40{% endif %}">{{ linha.unidades }}</td>
+      {% if perms.unidades.editar_tipo_unidade %}
+        <td class="text-right">
+          <button type="button"
+                  class="btn btn-ghost btn-glass btn-xs btn-circle"
+                  title="Editar {{ linha.nome }}"
+                  hx-get="{% url 'unidades:modal_editar_tipo_unidade' %}?tipo={{ linha.pk }}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms">
+            <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lapis"/></svg>
+          </button>
+        </td>
+      {% endif %}
+      {% if perms.unidades.extinguir_tipo_unidade or perms.unidades.reativar_tipo_unidade %}
+        <td class="text-right">
+          {% if not linha.extinto and perms.unidades.extinguir_tipo_unidade %}
+            <button type="button"
+                    class="btn btn-ghost btn-glass btn-xs btn-circle"
+                    title="Extinguir {{ linha.nome }}"
+                    hx-get="{% url 'unidades:modal_extinguir_tipo_unidade' %}?tipo={{ linha.pk }}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms">
+              <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-lixeira"/></svg>
+            </button>
+          {% elif linha.extinto and perms.unidades.reativar_tipo_unidade %}
+            <button type="button"
+                    class="btn btn-ghost btn-glass btn-xs btn-circle"
+                    title="Reativar {{ linha.nome }}"
+                    hx-get="{% url 'unidades:modal_reativar_tipo_unidade' %}?tipo={{ linha.pk }}"
+                    hx-target="#poco-modal"
+                    hx-swap="innerHTML settle:150ms">
+              <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-reativar"/></svg>
+            </button>
+          {% endif %}
+        </td>
+      {% endif %}
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="8" class="table-onsen-vazio">
+        <span class="etched text-3xl block mb-2">⌕</span>
+        Nenhum tipo corresponde aos filtros.
+      </td>
+    </tr>
+  {% endfor %}
+</tbody>

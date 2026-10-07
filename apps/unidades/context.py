@@ -13,7 +13,7 @@ from typing import Any
 from django.utils import timezone
 
 from apps.core.tabela import colunas_da_tabela, marca_descendente
-from apps.unidades.consulta import posicao_de
+from apps.unidades.consulta import posicao_de, tipos_unidade_disponiveis
 from apps.unidades.direcao import (
     alarme_sem_direcao,
     alarme_sem_titular,
@@ -21,7 +21,7 @@ from apps.unidades.direcao import (
     rotulo_do_minimo,
 )
 from apps.unidades.extincao import previa_da_extincao, previa_da_reativacao
-from apps.unidades.models import CorUnidade, TipoUnidade, Unidade
+from apps.unidades.models import CorUnidade, Unidade
 from apps.unidades.paleta import hex_da_cor, tons_da_paleta
 from apps.unidades.titularidade import candidatos_a_titular
 from apps.user_admin.apresentacao import imagem_do_perfil, selo_do_exercicio
@@ -152,7 +152,7 @@ def contexto_secao_direcao(
 def contexto_unidade(unidade: Unidade) -> dict[str, Any]:
     """Uma passagem só: quem a tela carrega para desenhar é quem ela usa para decidir."""
     return (
-        _catalogos_de_unidade()
+        _catalogos_de_unidade(tipo_atual=unidade.tipo_id)
         | contexto_organograma(unidade)
         | contexto_secao_direcao(unidade)
         | {
@@ -276,7 +276,7 @@ def contexto_modal_unidade(unidade: Unidade) -> dict[str, Any]:
     da transferência pode ficar fora dele de propósito (SPEC, §7) — recortar o select impediria a
     própria transferência que o ato existe para permitir."""
     return (
-        _catalogos_de_unidade()
+        _catalogos_de_unidade(tipo_atual=unidade.tipo_id)
         | contexto_da_paleta(unidade.cor)
         | {
             "unidade": unidade,
@@ -296,7 +296,7 @@ def contexto_edicao_recusada(
     exige_confirmacao: bool = False,
 ) -> dict[str, Any]:
     return (
-        _catalogos_de_unidade()
+        _catalogos_de_unidade(tipo_atual=unidade.tipo_id)
         | contexto_da_paleta(str(valores.get("cor", "")))
         | {
             "unidade": unidade,
@@ -390,6 +390,7 @@ def _linha_da_unidade(unidade: Unidade) -> LinhaUnidade:
         sigla=unidade.sigla,
         nome=unidade.nome,
         tipo=unidade.tipo.nome,
+        tipo_extinto=unidade.tipo.extinto,
         exige_alta_administracao=unidade.tipo.exige_alta_administracao,
         cor_hex=hex_da_cor(unidade.cor),
         titular_pk=titular.pk if titular else None,
@@ -419,10 +420,14 @@ def _ramo(
     }
 
 
-def _catalogos_de_unidade(ids_permitidos: Collection[int] | None = None) -> dict[str, Any]:
-    # Nível decrescente: a lista de tipos desce da mais abrangente para a mais específica.
+def _catalogos_de_unidade(
+    ids_permitidos: Collection[int] | None = None,
+    tipo_atual: int | None = None,
+) -> dict[str, Any]:
+    # As telas de criação chamam sem `tipo_atual`; as de unidade existente passam o tipo dela, que
+    # segue ofertado mesmo extinto (SPEC user_admin/031).
     return catalogo_de_unidades(ids_permitidos) | {
-        "tipos_unidade": TipoUnidade.objects.order_by("-nivel", "nome"),
+        "tipos_unidade": tipos_unidade_disponiveis(tipo_atual),
     }
 
 

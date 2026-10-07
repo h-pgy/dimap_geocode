@@ -1,0 +1,49 @@
+{# Tabela do catálogo de tipos de unidade (SPEC user_admin/031): a bandeja em vidro de sempre, com   #}
+{# o cabeçalho de rótulo longo e o segundo eixo do poço. As duas colunas de gesto só existem para    #}
+{# quem administra o sistema — para os demais a tabela é leitura.                                    #}
+<div class="card-well pb-4 table-onsen-poco" data-scroll-etched>
+  <div class="table-onsen-wrap" data-rolador id="rolador-tipos">
+    <table id="tabela-tipos"
+           class="table table-onsen table-onsen-rotulo-longo"
+           data-tabela-onsen
+           hx-get="{% url 'unidades:corpo_tipos_unidade' %}"
+           hx-trigger="input delay:300ms, ordenacao"
+           hx-target="#corpo-tipos"
+           hx-swap="outerHTML"
+           hx-include="find thead">
+      <thead data-cabecalho>
+        <tr>
+          {% for coluna in colunas %}
+            <th>
+              <div class="th-onsen" data-coluna="{{ coluna.slug }}"{% if coluna.ordem %} aria-sort="{{ coluna.ordem }}"{% endif %}>
+                <label class="th-onsen-campo">
+                  <span class="text-overline">{{ coluna.rotulo }}</span>
+                  <input class="th-onsen-input" name="{{ coluna.slug }}" value="{{ coluna.termo }}" placeholder="filtrar…" autocomplete="off">
+                </label>
+                <button type="button" class="sort-etched etched" aria-label="Ordenar por {{ coluna.rotulo|lower }}">▲</button>
+              </div>
+              {% if forloop.first %}
+                <input type="hidden" name="ordenar_por" value="{{ ordenar_por }}" data-ordenar-por>
+                <input type="hidden" name="descendente" value="{{ descendente }}" data-descendente>
+              {% endif %}
+            </th>
+          {% endfor %}
+          <th class="w-28"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Unidades</span></div></th>
+          {% if perms.unidades.editar_tipo_unidade %}
+            <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
+          {% endif %}
+          {% if perms.unidades.extinguir_tipo_unidade or perms.unidades.reativar_tipo_unidade %}
+            <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
+          {% endif %}
+        </tr>
+      </thead>
+      {% include "unidades/partials/_corpo_tipos_unidade.html" %}
+    </table>
+  </div>
+  <div class="scroll-etched" data-barra aria-hidden="true">
+    <div class="scroll-etched-thumb" data-polegar></div>
+  </div>
+  <div class="scroll-etched-h" data-barra-h aria-hidden="true">
+    <div class="scroll-etched-h-thumb" data-polegar-h></div>
+  </div>
+</div>

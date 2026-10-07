@@ -1,0 +1,58 @@
+{# Modal de extinguir tipo de unidade (SPEC user_admin/031) — alvo do hx-get da lixeira (já com o    #}
+{# tipo escolhido) e do card do painel (sem tipo: mostra o select antes). Ícone do título e glifo de #}
+{# alerta inline: o modal também abre pelo painel, que não carrega sprite algum.                     #}
+{% load icones %}
+{% icone_acao "unidades.extinguir_tipo_unidade" "pequeno" as icone %}
+<input type="checkbox" id="modal-extinguir-tipo-unidade" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-2xl p-6 sm:p-8">
+    <form {% if tipo %}hx-post="{% url 'unidades:gravar_extincao_tipo_unidade' tipo.pk %}"{% endif %} hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-5">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-error mt-0.5">{{ icone }}</span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Extinguir tipo de unidade</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">O tipo sai das opções de criação de novas unidades.</p>
+        </div>
+      </div>
+
+      {% include "partials/_tarja_recusa.html" with titulo="Ato não realizado" %}
+
+      <div class="card-well p-5 flex flex-col gap-3">
+        <p class="text-overline">Tipo a extinguir</p>
+        {% if tipo %}
+          <p class="text-lg font-bold text-madeira-700">{% include "unidades/partials/_rotulo_tipo_unidade.html" %} · Nível {{ tipo.nivel }}</p>
+          <p class="text-xs text-base-content/70">Requisito: {{ requisito }}{% if vedados %} · Não admite filhas do tipo {{ vedados }}{% endif %}</p>
+        {% else %}
+          <select class="select select-glass {{ realce.tipo }}"
+                  data-select-onsen
+                  hx-get="{% url 'unidades:modal_extinguir_tipo_unidade' %}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms"
+                  name="tipo">
+            <option value="" selected>— escolha o tipo —</option>
+            {% for outro in tipos %}
+              <option value="{{ outro.pk }}">{{ outro.nome }}</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+      </div>
+
+      {% if previa.unidades_ativas %}
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-3">
+          <svg class="w-6 h-6 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3l9-15.5z"/><path d="M12 10v4.5"/><path d="M12 17.2v.1"/></svg>
+          <p class="text-[13px] text-base-content/80">
+            {% if previa.unidades_ativas == 1 %}A <strong>1 unidade ativa</strong> deste tipo continuará{% else %}As <strong>{{ previa.unidades_ativas }} unidades ativas</strong> deste tipo continuarão{% endif %} funcionando normalmente no organograma com seus titulares e competências. O tipo apenas <strong>deixará de ser oferecido</strong> na criação de novas unidades.
+          </p>
+        </div>
+      {% endif %}
+
+      <div class="modal-action">
+        <label for="modal-extinguir-tipo-unidade" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-sm btn-error btn-soft"{% if not tipo %} disabled{% endif %}>
+          Extinguir{% if tipo %} {{ tipo.nome }}{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-extinguir-tipo-unidade">Fechar</label>
+</div>

@@ -1,16 +1,18 @@
 """
 Páginas de unidade: o formulário de cadastro (SPEC user_admin/012), a página própria
 (SPEC user_admin/016), o organograma (SPEC user_admin/018), a listagem com organograma integrado
-(SPEC user_admin/021) e os três atos que mantêm o organograma (SPEC user_admin/020) — criar, editar
-e criar raiz.
+(SPEC user_admin/021), os três atos que mantêm o organograma (SPEC user_admin/020) — criar, editar
+e criar raiz — e o catálogo de tipos de unidade com os quatro atos que o mantêm (SPEC
+user_admin/031).
 
 As rotas de LEITURA seguem ABERTAS (exceção declarada nas SPECs 016, 018 e 021, §3.5); as de
 ESCRITA e as duas de abertura de formulário de ato (`criar_unidade`, `criar_unidade_raiz`,
 `editar_unidade`) são protegidas.
 """
 
-from typing import cast
+from typing import Any, cast
 
+from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -23,13 +25,17 @@ from apps.competencias.consulta import (
 )
 from apps.core.tabela import consulta_da_listagem
 from apps.competencias.protecao import acao_protegida, pode_executar, registrar_ato
-from apps.unidades import extincao
+from apps.unidades import cadastro_tipo, extincao, extincao_tipo
 from apps.unidades.acoes_declaradas import (
+    ACAO_CRIAR_TIPO_UNIDADE,
     ACAO_CRIAR_UNIDADE,
     ACAO_CRIAR_UNIDADE_RAIZ,
     ACAO_DEFINIR_TITULAR,
+    ACAO_EDITAR_TIPO_UNIDADE,
     ACAO_EDITAR_UNIDADE,
+    ACAO_EXTINGUIR_TIPO_UNIDADE,
     ACAO_EXTINGUIR_UNIDADE,
+    ACAO_REATIVAR_TIPO_UNIDADE,
 )
 from apps.user_admin.acoes_declaradas import ACAO_DESIGNAR_SUBSTITUTO
 from apps.unidades.cadastro import alterar_unidade, cadastrar_unidade
@@ -48,11 +54,24 @@ from apps.unidades.context import (
     contexto_unidade,
     contexto_unidade_selecionada,
 )
-from apps.unidades.models import Unidade, cargo_titulariza
-from apps.unidades.schemas import ConsultaDeUnidades, SelecaoUnidadePai
+from apps.unidades.context_tipo import (
+    contexto_corpo_tipos,
+    contexto_criacao_tipo_recusada,
+    contexto_edicao_tipo_recusada,
+    contexto_escolher_tipo_a_editar,
+    contexto_extincao_tipo_recusada,
+    contexto_listagem_tipos,
+    contexto_modal_criar_tipo,
+    contexto_modal_editar_tipo,
+    contexto_modal_extinguir_tipo,
+    contexto_modal_reativar_tipo,
+    contexto_reativacao_tipo_recusada,
+)
+from apps.unidades.models import TipoUnidade, Unidade, cargo_titulariza
+from apps.unidades.schemas import ConsultaDeUnidades, RascunhoTipoUnidade, SelecaoUnidadePai
 from apps.unidades.titularidade import definir_titular, destituir_titular
 from apps.user_admin.models import Perfil
-from services.domain.listagem_gestao import ColunaUnidade
+from services.domain.listagem_gestao import ColunaTipoUnidade, ColunaUnidade
 
 TEMPLATE_UNIDADE = "unidades/unidade_form.html"
 TEMPLATE_UNIDADE_FORM = "unidades/partials/_formulario_unidade.html"
@@ -72,6 +91,16 @@ TEMPLATE_REATIVACAO_CONCLUIDA = "unidades/partials/_reativacao_concluida.html"
 TEMPLATE_MODAL_TITULARIDADE = "unidades/partials/_modal_definir_titular_standalone.html"
 TEMPLATE_FACE_TITULARIDADE = "unidades/partials/_face_titularidade.html"
 TEMPLATE_TITULARIDADE_CONCLUIDA = "unidades/partials/_titularidade_concluida.html"
+
+TEMPLATE_LISTAGEM_TIPOS = "unidades/tipos_unidade_list.html"
+TEMPLATE_CORPO_TIPOS = "unidades/partials/_corpo_tipos_unidade.html"
+# O swap fora de banda dos quatro atos usa este envelope, não o de cima: <tbody> não fica de pé
+# sozinho fora de uma <table>, e o alvo do POST (#poco-modal) não tem tabela ao redor (Caveats).
+TEMPLATE_CORPO_TIPOS_OOB = "unidades/partials/_corpo_tipos_unidade_oob.html"
+TEMPLATE_MODAL_CRIAR_TIPO = "unidades/partials/_modal_criar_tipo_unidade.html"
+TEMPLATE_MODAL_EDITAR_TIPO = "unidades/partials/_modal_editar_tipo_unidade.html"
+TEMPLATE_MODAL_EXTINGUIR_TIPO = "unidades/partials/_modal_extinguir_tipo_unidade.html"
+TEMPLATE_MODAL_REATIVAR_TIPO = "unidades/partials/_modal_reativar_tipo_unidade.html"
 
 
 
@@ -498,3 +527,176 @@ def gravar_destituir_titular(request: HttpRequest) -> HttpResponse:
     )
 
 
+# ---------------------------------------------------------------------------
+# Tipos de unidade (SPEC user_admin/031): a listagem é leitura de todo servidor autenticado; os
+# quatro atos são exclusivos do administrador do sistema, sem alcance — o catálogo é global.
+# ---------------------------------------------------------------------------
+
+
+@login_required
+def listar_tipos_unidade(request: HttpRequest) -> HttpResponse:
+    """Os gestos de ato ficam a cargo do template (`perms.unidades.*`), que os oferece só a quem
+    administra o sistema — a barreira de verdade segue nas rotas de ato."""
+    consulta = consulta_da_listagem(request.GET.dict(), ColunaTipoUnidade)
+    return render(request, TEMPLATE_LISTAGEM_TIPOS, contexto_listagem_tipos(consulta))
+
+
+@login_required
+def corpo_tipos_unidade(request: HttpRequest) -> HttpResponse:
+    """Alvo do swap do HTMX: só o <tbody>, disparado pelos filtros e pela ordenação do cabeçalho —
+    nunca pelo toggle "Mostrar tipos extintos", que não fala com o servidor (Caveats)."""
+    consulta = consulta_da_listagem(request.GET.dict(), ColunaTipoUnidade)
+    return render(request, TEMPLATE_CORPO_TIPOS, contexto_corpo_tipos(consulta))
+
+
+@acao_protegida(ACAO_CRIAR_TIPO_UNIDADE)
+def modal_criar_tipo_unidade(request: HttpRequest) -> HttpResponse:
+    return render(
+        request, TEMPLATE_MODAL_CRIAR_TIPO, contexto_modal_criar_tipo(_rascunho_do_tipo(request))
+    )
+
+
+@acao_protegida(ACAO_CRIAR_TIPO_UNIDADE)
+@require_POST
+def gravar_criacao_tipo_unidade(request: HttpRequest) -> HttpResponse:
+    valores = _valores_do_tipo(request)
+    desfecho = cadastro_tipo.criar_tipo_unidade(valores)
+    if desfecho.tipo is None:
+        return render(
+            request,
+            TEMPLATE_MODAL_CRIAR_TIPO,
+            contexto_criacao_tipo_recusada(valores, desfecho.recusa),
+            status=422,
+        )
+    registrar_ato(
+        request, operacao="criar", alvo_tipo="tipo_unidade", alvo_identificador=desfecho.tipo.nome
+    )
+    return _resposta_tipo_concluida(request)
+
+
+@acao_protegida(ACAO_EDITAR_TIPO_UNIDADE)
+def modal_editar_tipo_unidade(request: HttpRequest) -> HttpResponse:
+    tipo = _tipo_do_get(request)
+    if tipo is None:
+        return render(request, TEMPLATE_MODAL_EDITAR_TIPO, contexto_escolher_tipo_a_editar())
+    return render(
+        request,
+        TEMPLATE_MODAL_EDITAR_TIPO,
+        contexto_modal_editar_tipo(tipo, _rascunho_do_tipo(request)),
+    )
+
+
+@acao_protegida(ACAO_EDITAR_TIPO_UNIDADE)
+@require_POST
+def gravar_edicao_tipo_unidade(request: HttpRequest, tipo: int) -> HttpResponse:
+    alvo = get_object_or_404(TipoUnidade, pk=tipo)
+    valores = _valores_do_tipo(request) | {"tipo_id": tipo}
+    desfecho = cadastro_tipo.editar_tipo_unidade(alvo, valores)
+    if desfecho.tipo is None:
+        # Relido do banco: `editar_tipo_unidade` já alterou a instância em memória, e
+        # reaproveitá-la mostraria no lado lido o valor que ainda não vale.
+        return render(
+            request,
+            TEMPLATE_MODAL_EDITAR_TIPO,
+            contexto_edicao_tipo_recusada(_tipo(tipo), valores, desfecho.recusa),
+            status=422,
+        )
+    # O nome DEPOIS do ato: numa edição que renomeia, é o nome novo que fica no rastro.
+    registrar_ato(
+        request, operacao="editar", alvo_tipo="tipo_unidade", alvo_identificador=desfecho.tipo.nome
+    )
+    return _resposta_tipo_concluida(request)
+
+
+@acao_protegida(ACAO_EXTINGUIR_TIPO_UNIDADE)
+def modal_extinguir_tipo_unidade(request: HttpRequest) -> HttpResponse:
+    return render(
+        request, TEMPLATE_MODAL_EXTINGUIR_TIPO, contexto_modal_extinguir_tipo(_tipo_do_get(request))
+    )
+
+
+@acao_protegida(ACAO_EXTINGUIR_TIPO_UNIDADE)
+@require_POST
+def gravar_extincao_tipo_unidade(request: HttpRequest, tipo: int) -> HttpResponse:
+    alvo = get_object_or_404(TipoUnidade, pk=tipo)
+    desfecho = extincao_tipo.extinguir_tipo_unidade(alvo, timezone.localdate())
+    if desfecho.tipo is None:
+        return render(
+            request,
+            TEMPLATE_MODAL_EXTINGUIR_TIPO,
+            contexto_extincao_tipo_recusada(alvo, desfecho.recusa),
+            status=422,
+        )
+    registrar_ato(
+        request,
+        operacao="extinguir",
+        alvo_tipo="tipo_unidade",
+        alvo_identificador=desfecho.tipo.nome,
+    )
+    return _resposta_tipo_concluida(request)
+
+
+@acao_protegida(ACAO_REATIVAR_TIPO_UNIDADE)
+def modal_reativar_tipo_unidade(request: HttpRequest) -> HttpResponse:
+    return render(
+        request, TEMPLATE_MODAL_REATIVAR_TIPO, contexto_modal_reativar_tipo(_tipo_do_get(request))
+    )
+
+
+@acao_protegida(ACAO_REATIVAR_TIPO_UNIDADE)
+@require_POST
+def gravar_reativacao_tipo_unidade(request: HttpRequest, tipo: int) -> HttpResponse:
+    alvo = get_object_or_404(TipoUnidade, pk=tipo)
+    desfecho = extincao_tipo.reativar_tipo_unidade(alvo)
+    if desfecho.tipo is None:
+        return render(
+            request,
+            TEMPLATE_MODAL_REATIVAR_TIPO,
+            contexto_reativacao_tipo_recusada(alvo, desfecho.recusa),
+            status=422,
+        )
+    registrar_ato(
+        request,
+        operacao="reativar",
+        alvo_tipo="tipo_unidade",
+        alvo_identificador=desfecho.tipo.nome,
+    )
+    return _resposta_tipo_concluida(request)
+
+
+def _resposta_tipo_concluida(request: HttpRequest) -> HttpResponse:
+    """O poço do modal responde vazio — é isso que fecha o modal —, e a tabela entra pelo
+    hx-swap-oob no lugar dela, com todos os tipos: o toggle reaplica o filtro sozinho assim que o
+    swap termina (Caveats)."""
+    consulta = consulta_da_listagem({}, ColunaTipoUnidade)
+    return render(request, TEMPLATE_CORPO_TIPOS_OOB, contexto_corpo_tipos(consulta, oob=True))
+
+
+def _tipo_do_get(request: HttpRequest) -> TipoUnidade | None:
+    id_bruto = request.GET.get("tipo", "")
+    return TipoUnidade.objects.filter(pk=id_bruto).first() if id_bruto.isdigit() else None
+
+
+def _tipo(pk: int) -> TipoUnidade:
+    return get_object_or_404(TipoUnidade, pk=pk)
+
+
+def _rascunho_do_tipo(request: HttpRequest) -> RascunhoTipoUnidade:
+    # `getlist`: cada tipo vedado é um campo com o mesmo `name`, e `dict()` guardaria só o último.
+    return RascunhoTipoUnidade.model_validate(
+        request.GET.dict() | {"tipos_filhos_vedados": request.GET.getlist("tipos_filhos_vedados")}
+    )
+
+
+def _valores_do_tipo(request: HttpRequest) -> dict[str, Any]:
+    return {
+        "nome": request.POST.get("nome", ""),
+        "nivel": request.POST.get("nivel", ""),
+        # Checkbox desmarcado não posta a chave: quem diz "sim" é o `on` presente.
+        "pode_ser_raiz": request.POST.get("pode_ser_raiz") == "on",
+        "exige_alta_administracao": request.POST.get("exige_alta_administracao") == "on",
+        "nivel_minimo_titular": request.POST.get("nivel_minimo_titular", ""),
+        # `getlist`: cada tipo vedado é um campo com o mesmo `name`, e `get` devolveria só o
+        # último.
+        "tipos_filhos_vedados": request.POST.getlist("tipos_filhos_vedados"),
+    }

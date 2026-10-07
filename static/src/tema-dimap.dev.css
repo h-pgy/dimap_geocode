@@ -1042,6 +1042,14 @@ html[data-theme="dimap"] {
     @apply text-warning underline decoration-dotted decoration-warning/45 underline-offset-4;
   }
 
+  /* Rótulo do tipo de unidade (SPEC user_admin/031): mesma forma do rótulo de cargo, sob nome
+     próprio — a base não pinta, e o extinto é o MESMO nome em tom de warning, com o pontilhado
+     que anuncia o tooltip. */
+  .rotulo-tipo-unidade { @apply text-inherit; }
+  .rotulo-tipo-unidade-extinto {
+    @apply text-warning underline decoration-dotted decoration-warning/45 underline-offset-4;
+  }
+
   /* Link destacado de tabela com micro-zoom de afordância no hover (SPEC user_admin/019) */
   .link-tabela-onsen {
     @apply inline-flex items-center gap-1 font-medium text-madeira-700 transition-all duration-200 origin-left;
@@ -2047,6 +2055,12 @@ html[data-theme="dimap"] {
      .table-onsen é w-full e as células quebram. O modificador é de cada tabela, não do
      componente — tabela curta não deve nascer rolando. */
   .table-onsen-larga { @apply min-w-[74rem]; }
+  /* Tabela de rótulo longo (SPEC user_admin/031): cabeçalho que quebra em até duas linhas, com
+     todas as colunas reservando a mesma altura de rótulo — sem isso o campo de filtro desce só nas
+     colunas de nome comprido. O piso de largura é o que entrega o eixo horizontal ao poço. */
+  .table-onsen-rotulo-longo { @apply min-w-[56rem]; }
+  .table-onsen-rotulo-longo .th-onsen { @apply whitespace-normal; }
+  .table-onsen-rotulo-longo .th-onsen .text-overline { @apply min-h-[2lh]; }
 
   /* ==================== MOLÉCULA · BARRA GRAVADA HORIZONTAL (SPEC painel/002) ==================== */
   /* A gêmea da .scroll-etched deitada: o rolador esconde as duas barras nativas

@@ -31,6 +31,11 @@ PaiOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
 FocoOpcional = Annotated[int | None, BeforeValidator(_pk_ou_nulo)]
 NomeDeUnidade = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 SiglaDeUnidade = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
+NomeDeTipo = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+# O select some da tela quando o requisito é alta administração; o que chega então é "".
+NivelMinimoOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
+# O select de "vedar outro tipo" manda "" enquanto ninguém escolhe.
+TipoOpcional = Annotated[int | None, BeforeValidator(_vazio_para_nulo)]
 
 
 class SelecaoUnidadePai(BaseModel):
@@ -90,3 +95,44 @@ class EdicaoUnidade(BaseModel):
     # Opcional só para a raiz que JÁ é raiz poder ser editada — o formulário dela não teria o que
     # mandar. Tornar raiz uma unidade que tem superior é recusado pelo ato, não pelo DTO.
     pai_id: PaiOpcional = None
+
+
+class NovoTipoUnidade(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    nome: NomeDeTipo
+    nivel: int
+    pode_ser_raiz: bool = False
+    exige_alta_administracao: bool = False
+    nivel_minimo_titular: NivelMinimoOpcional = None
+    # Sem `_ids`: `controle_do_campo` só corta `_id`, e o nome precisa bater com o `name` dos
+    # campos da tela para a recusa achar o controle.
+    tipos_filhos_vedados: tuple[int, ...] = ()
+
+
+class EdicaoTipoUnidade(BaseModel):
+    """Mesmos campos de `NovoTipoUnidade`, com o id do tipo editado."""
+
+    model_config = ConfigDict(frozen=True)
+
+    tipo_id: int
+    nome: NomeDeTipo
+    nivel: int
+    pode_ser_raiz: bool = False
+    exige_alta_administracao: bool = False
+    nivel_minimo_titular: NivelMinimoOpcional = None
+    tipos_filhos_vedados: tuple[int, ...] = ()
+
+
+class RascunhoTipoUnidade(BaseModel):
+    """O que os dois blocos do modal mandam ao pedir o próprio redesenho, antes de qualquer
+    gravação: o requisito de titular (o select de nível some sob alta administração) e o seletor de
+    tipos filhos vedados (um chip a mais ou a menos). Campo ausente é bloco que não pediu nada."""
+
+    model_config = ConfigDict(frozen=True)
+
+    exige_alta_administracao: bool | None = None
+    nivel_minimo_titular: NivelMinimoOpcional = None
+    tipos_filhos_vedados: tuple[int, ...] = ()
+    vedar: TipoOpcional = None
+    desvedar: TipoOpcional = None

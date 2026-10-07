@@ -31,9 +31,13 @@ def rotulo_do_minimo(tipo: TipoUnidade) -> str:
     # O organograma fala em padrão de cargo, não em número de nível.
     if tipo.exige_alta_administracao:
         return ROTULO_ALTA_ADMINISTRACAO
+    return padrao_do_nivel(tipo.nivel_minimo_titular)
+
+
+def padrao_do_nivel(nivel: int | None) -> str:
     cargo = CargoComissao.objects.filter(
         e_chefia=True,
-        nivel=tipo.nivel_minimo_titular,
+        nivel=nivel,
     ).first()
     return cargo.padrao if cargo else ""
 
