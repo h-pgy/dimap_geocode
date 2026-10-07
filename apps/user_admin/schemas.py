@@ -159,6 +159,8 @@ class NovoSuperusuario(BaseModel):
     cargo_base_sigla: str
     cargo_comissao_nome: str
     e_titular: bool = False
+    # True = a senha gravada vale só para o primeiro acesso (SPEC user_admin/032).
+    senha_provisoria: bool = False
 
 
 class NovaSubstituicao(BaseModel):

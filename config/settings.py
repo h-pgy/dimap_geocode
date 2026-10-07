@@ -254,6 +254,9 @@ class _Settings(BaseSettings):
     # banco não conhece esta regra — só a rota de cadastro por tela.
     enforce_prefeitura_email: bool = Field(default=True, alias="ENFORCE_PREFEITURA_EMAIL")
 
+    admin_rf: str = Field(default="0000000", alias="ADMIN_RF")
+    admin_email: str = Field(default="hpougy@sf.prefeitura.sp.gov.br", alias="ADMIN_EMAIL")
+
     # Reenvio de credencial de primeiro acesso (SPEC autenticacao/004).
     janela_reenvio_segundos: int = Field(default=120, alias="JANELA_REENVIO_SEGUNDOS")
     prazo_mesma_senha_segundos: int = Field(default=300, alias="PRAZO_MESMA_SENHA_SEGUNDOS")
@@ -458,6 +461,10 @@ EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS = _env.email_smtp_retry_wait_max_seconds
 
 # Cadastro de servidor (apps.user_admin.cadastro) — desligue só em ambiente de teste.
 ENFORCE_PREFEITURA_EMAIL = _env.enforce_prefeitura_email
+
+# Admin inicial do sistema (apps.user_admin.seeds.admin); e-mail vazio = seed não cria.
+ADMIN_RF = _env.admin_rf
+ADMIN_EMAIL = _env.admin_email
 
 # Reenvio de credencial (apps.autenticacao.janela_envio e apps.autenticacao.reenvio).
 JANELA_REENVIO_SEGUNDOS = _env.janela_reenvio_segundos
