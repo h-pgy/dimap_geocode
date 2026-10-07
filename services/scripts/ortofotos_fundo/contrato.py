@@ -22,3 +22,6 @@ class OrtofotoConfig(BaseModel):
 class OrtofotoResultado(BaseModel):
     geradas: list[str]
     puladas: list[str]
+    # Pontos que seguem sem PNG porque o GeoSampa não respondeu.
+    pendentes: list[str] = []
+    indisponibilidade: str | None = None

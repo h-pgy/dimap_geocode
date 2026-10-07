@@ -1,6 +1,11 @@
 import requests
 
-from .exceptions import WmsHttpError, WmsResponseNotImageError, WmsTimeoutError
+from .exceptions import (
+    WmsConnectionError,
+    WmsHttpError,
+    WmsResponseNotImageError,
+    WmsTimeoutError,
+)
 from .models import WmsConnectionConfig, WmsImage, WmsMapRequest
 
 IMAGE_PREFIX = "image/"
@@ -44,6 +49,9 @@ class WmsFetcher:
             raise WmsTimeoutError(
                 f"WMS não respondeu em {self.config.request_timeout_seconds}s ({base_url})"
             ) from exc
+        # Depois do Timeout: ConnectTimeout herda dos dois e segue sendo timeout.
+        except requests.ConnectionError as exc:
+            raise WmsConnectionError(f"WMS inacessível ({base_url})") from exc
         if self.verbose:
             print(f"[WmsFetcher] {resp.url}")
         try:

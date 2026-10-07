@@ -5,6 +5,8 @@ import requests
 from unittest.mock import Mock, patch
 
 from services.integrations.wms.exceptions import (
+    WmsConnectionError,
+    WmsError,
     WmsHttpError,
     WmsResponseNotImageError,
     WmsTimeoutError,
@@ -156,6 +158,14 @@ def test_timeout_vira_excecao_da_integration(config: WmsConnectionConfig) -> Non
     with patch("requests.get", side_effect=requests.Timeout("estourou")):
         with pytest.raises(WmsTimeoutError):
             WmsFetcher(config)(pedido)
+
+
+def test_falha_de_conexao_vira_excecao_da_integration(config: WmsConnectionConfig) -> None:
+    pedido = WmsMapRequest(layer="geoportal:ORTO_RGB_2020", bbox=BBOX)
+    with patch("requests.get", side_effect=requests.ConnectionError("recusada")):
+        with pytest.raises(WmsConnectionError) as exc:
+            WmsFetcher(config)(pedido)
+    assert isinstance(exc.value, WmsError)
 
 
 def test_get_recebe_o_timeout_configurado(config: WmsConnectionConfig) -> None:

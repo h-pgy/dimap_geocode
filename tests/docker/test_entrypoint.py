@@ -85,3 +85,34 @@ def test_entrypoint_pula_run_seeds_quando_auto_seed_desativado(
         "run_seeds.sh NÃO deveria ter sido executado quando DJANGO_AUTO_SEED=0"
     )
     assert "==> Executando seeds..." not in resultado.stdout
+
+
+# ---------------------------------------------------------------------------
+# Geração das ortofotos de fundo na subida
+# ---------------------------------------------------------------------------
+
+
+def test_entrypoint_gera_ortofotos_antes_do_processo_final(tmp_path: Path) -> None:
+    _, _, env = _configurar_ambiente_de_teste(tmp_path)
+    env["DJANGO_AUTO_MIGRATE"] = "0"
+    comandos_log = tmp_path / "comandos.log"
+    processo_final = tmp_path / "processo_final.log"
+    python_fake = tmp_path / "bin" / "python"
+    python_fake.write_text(
+        f'#!/bin/sh\necho "$2" >> "{comandos_log}"\n'
+        'if [ "$2" = "gerar_ortofotos_fundo" ]; then exit 1; fi\n',
+        encoding="utf-8",
+    )
+
+    resultado = subprocess.run(
+        ["sh", str(ENTRYPOINT_PATH), "touch", str(processo_final)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert comandos_log.read_text(encoding="utf-8").split() == ["gerar_ortofotos_fundo"]
+    assert resultado.returncode != 0
+    assert not processo_final.exists()
