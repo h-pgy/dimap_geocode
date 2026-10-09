@@ -16,7 +16,8 @@ cidade e resolve ali mesmo o processo de trabalho que depende dele.
   timbrado, com planta de localização, QR code e selo de integridade — e qualquer pessoa confere a
   autenticidade dela, sem login.
 - **Também a partir de um desenho.** Marque um polígono no mapa e o sistema lista os lotes que ele
-  cruza, prontos para uma certidão do conjunto.
+  cruza, prontos para uma certidão do conjunto; marque um ponto e ele aponta o logradouro ou o
+  endereço oficial mais próximo.
 - **Cada ato com competência e registro.** As ações só aparecem para quem pode praticá-las, conforme
   cargo e unidade, e toda execução fica registrada: quem, com qual perfil, sobre o quê e quando.
 - **Feita para crescer.** Cada processo da DIMAP entra como uma ação nova, sem mexer na busca.
@@ -264,6 +265,9 @@ Uma única barra de pesquisa, com sugestões a cada tecla e tolerância a erro d
 | Número de contribuinte | lote no cadastro do IPTU | polígono |
 | Endereço que coincide com um endereço fiscal | o imóvel cadastrado no IPTU | polígono |
 
+- Sugestões e resultados trazem o **nome completo** do logradouro — tipo, título, preposição e nome
+  (`AV BRIG LUIS ANTONIO`) —, e a busca o encontra com o título abreviado ou por extenso
+  (`av brig faria lima`, `avenida brigadeiro faria lima`).
 - Sugestões de contribuinte indicam quais lotes são condominiais e o código do condomínio de cada um.
 - **Geocodificação externa** como alternativa quando as bases oficiais não resolvem o endereço.
 
@@ -272,12 +276,16 @@ Uma única barra de pesquisa, com sugestões a cada tecla e tolerância a erro d
 - Mapa Leaflet sobre as bases do GeoSampa (mapa base e ortofoto), com estilo próprio para cada tipo
   de geometria.
 - **Bancada de desenho:** o usuário desenha ponto, linha ou polígono no mapa e usa o desenho como
-  entrada de consultas — por exemplo, listar os **lotes intersectados** por um polígono e revisar o
-  conjunto antes de agir sobre ele.
+  entrada de consultas abertas, sem login. De um **ponto** saem o **logradouro mais próximo** — a
+  linha inteira, com a gaveta dele — e o **endereço mais próximo**, com o número daquela posição e
+  do lado da rua em que o ponto está, dentro de um raio configurável. De um **polígono**, os **lotes
+  intersectados**, com revisão do conjunto antes de agir sobre ele.
 
 ### Informações da entidade
 
 - Dados cadastrais do lote na gaveta.
+- Dados do logradouro na gaveta: nome completo, codlog, tipo, extensão em km, quantidade de
+  segmentos e a faixa de numeração do logradouro inteiro.
 - Lote mais próximo de um endereço geocodificado.
 - Street View do endereço localizado, em janela à parte (para o servidor autenticado).
 
@@ -311,5 +319,8 @@ Uma única barra de pesquisa, com sugestões a cada tecla e tolerância a erro d
   lotes) e das guias de ITBI pagas.
 - Geração de variações de escrita dos tipos de logradouro, para a busca reconhecer abreviações e
   erros comuns de grafia ("Av", "Avda", "Avnida").
+- Dicionário de títulos de logradouro (`BRIG` → Brigadeiro), mantido à mão em
+  `data/traducao_codigos_titulos_logradouro.json` e levado ao catálogo a cada carga, para a busca
+  reconhecer o título abreviado ou por extenso; a carga avisa as siglas que ele não traduz.
 - Pipeline com escrita atômica e metadados de cada carga, executável sob demanda ou por daemon
   diário.
