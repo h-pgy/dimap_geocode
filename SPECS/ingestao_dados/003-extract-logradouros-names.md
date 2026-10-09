@@ -3,6 +3,7 @@
 ## spec: ingestao-dados/003
 versao: v2
 atualizado_em: 2026-06-18
+implementado: true
 changelog:
 v1: versão inicial
 v2: remoção de valores nulos no modelo e adequação do uso de partials nas funções de IO.

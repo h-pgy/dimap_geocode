@@ -2,6 +2,8 @@
 spec: roteamento-busca/004
 versao: v3
 atualizado_em: 2026-06-26
+implementado: false
+substituida_por: roteamento-busca/005
 changelog:
   - v1: versão inicial
   - v2: centraliza tratamento de ValidationError via middleware Django (projeto inteiro)

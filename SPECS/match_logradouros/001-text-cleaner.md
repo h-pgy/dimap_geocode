@@ -2,6 +2,7 @@
 spec: match-logradouros/001
 versao: v1
 atualizado_em: 2026-06-21
+implementado: true
 changelog: v1 - inicial
 ---
 

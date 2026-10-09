@@ -2,6 +2,7 @@
 spec: roteamento-busca/003
 versao: v1
 atualizado_em: 2026-06-26
+implementado: true
 changelog:
   - v1: versão inicial
 ---

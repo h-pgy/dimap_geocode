@@ -2,6 +2,7 @@
 spec: match-logradouros/002
 versao: v2
 atualizado_em: 2026-06-21
+implementado: true
 changelog: |
   v3 - codigo do script reorganizado para melhorar legibilidade e reuso
   v2 - adiciona utils de I/O para JSON (services/utils/io/json.py) e config

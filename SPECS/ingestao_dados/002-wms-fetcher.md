@@ -2,6 +2,7 @@
 spec: ingestao-dados/002
 versao: v3
 atualizado_em: 2026-10-07
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: a conexão declara timeout e o estouro vira WmsTimeoutError

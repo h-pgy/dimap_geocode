@@ -2,6 +2,7 @@
 spec: roteamento-busca/002
 versao: v5
 atualizado_em: 2026-06-28
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: refatora ContribuinteMatcher para separação de responsabilidades no __call__

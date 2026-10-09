@@ -3,6 +3,7 @@
 spec: ingestao-dados/004
 versao: v7
 atualizado_em: 2026-06-19
+implementado: true
 changelog:
 
 * v1: versão inicial
