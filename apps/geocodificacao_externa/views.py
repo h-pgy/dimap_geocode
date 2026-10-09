@@ -4,15 +4,18 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from pydantic import BaseModel
 
+from apps.geocodificacao_externa.cache import CacheEmBanco
 from apps.mapping.context import contexto_aviso, contexto_mapa
 from apps.search.tentativas import FalhaBaseOficial
 from services.domain.geocodificador_externo import (
     ConsultaGeocodificacao,
     EnderecoExternoFeature,
     GeocodificacaoExternaInput,
+    GeocodificacaoExternaOutput,
     GeocodificadorExterno,
     ProvedorIndisponivelError,
     SemResultadoAceitoError,
@@ -39,7 +42,7 @@ class SelecaoGeocodificacaoExterna(BaseModel):
 
 def geocodificador_externo() -> GeocodificadorExterno | None:
     # None = provedor não configurado (sem token no ambiente).
-    return build_geocodificador_externo(settings)
+    return build_geocodificador_externo(settings, CacheEmBanco())
 
 
 def geocodificar_externo(
@@ -51,14 +54,16 @@ def geocodificar_externo(
     entrada = GeocodificacaoExternaInput(
         consulta=ConsultaGeocodificacao(texto=texto),
         output_crs=MAP_OUTPUT_CRS,
+        agora=timezone.now(),
     )
     try:
-        endereco = geocodificador(entrada)
+        saida = geocodificador(entrada)
     except ProvedorIndisponivelError:
         return _aviso(request, MSG_INDISPONIVEL, falha, tom="error")
     except SemResultadoAceitoError:
         return _aviso(request, MSG_SEM_RESULTADO, falha, tom="warning")
-    contexto = _contexto_externo(endereco) | {"aviso_fallback": _aviso_fallback(falha, endereco)}
+    aviso = _aviso_fallback(falha, saida.geocodificacao.endereco)
+    contexto = _contexto_externo(saida) | {"aviso_fallback": aviso}
     return render(request, TEMPLATE_RESULTADO_EXTERNO, contexto)
 
 
@@ -80,7 +85,8 @@ def _aviso_fallback(falha: FalhaBaseOficial | None, endereco: EnderecoExternoFea
     return MSG_FALLBACK.format(motivo=falha.motivo, provedor=provedor)
 
 
-def _contexto_externo(endereco: EnderecoExternoFeature) -> dict[str, Any]:
+def _contexto_externo(saida: GeocodificacaoExternaOutput) -> dict[str, Any]:
+    endereco = saida.geocodificacao.endereco
     geojson = to_geojson_feature_collection(
         [endereco],
         lambda f: GeoJsonProperties(rotulo=f.attributes.endereco_formatado),
@@ -92,6 +98,8 @@ def _contexto_externo(endereco: EnderecoExternoFeature) -> dict[str, Any]:
         "provedor": a.provedor.rotulo,
         "precisao": a.precisao.rotulo,
         "raio_m": MAIS_PROXIMO_RAIO_LIMITE_M,
+        "consultado_em": saida.geocodificacao.consultado_em,
+        "cacheada": saida.cacheada,
     }
 
 

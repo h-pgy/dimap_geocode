@@ -22,6 +22,7 @@ def _settings(**definidos: object) -> SimpleNamespace:
         "GEOCODIFICACAO_EXTERNA_UF": None,
         "GEOCODIFICACAO_EXTERNA_MUNICIPIO": None,
         "GEOCODIFICACAO_EXTERNA_PRECISAO_MINIMA": None,
+        "GEOCODIFICACAO_EXTERNA_VALIDADE_DIAS": None,
     }
     return SimpleNamespace(**(calados | definidos))
 

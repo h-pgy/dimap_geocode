@@ -1,8 +1,12 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from services.domain.geometry import GeoFeature, PointGeometry
+from services.utils.normalization import normalize_text
+
+# o índice único da chave tem teto de tamanho no banco: o tipo recusa antes
+TAMANHO_MAX_CONSULTA = 500
 
 
 class Provedor(StrEnum):
@@ -56,6 +60,24 @@ class EnderecoExternoAttributes(BaseModel):
 EnderecoExternoFeature = GeoFeature[PointGeometry, EnderecoExternoAttributes]
 
 
+class ConsultaGeocodificacao(BaseModel):
+    texto: str = Field(min_length=1, max_length=TAMANHO_MAX_CONSULTA)
+
+    @property
+    def chave(self) -> str:
+        """Duas consultas com a mesma chave são a mesma consulta."""
+        return normalize_text(self.texto)
+
+
+class GeocodificacaoExterna(BaseModel):
+    """O vínculo entre o que a pessoa digitou e o endereço que um provedor encontrou para aquilo."""
+
+    consulta: ConsultaGeocodificacao
+    endereco: EnderecoExternoFeature
+    # quando o provedor foi chamado: servir do cache não o muda
+    consultado_em: AwareDatetime
+
+
 class PoliticaGeocodificacao(BaseModel):
     """O recorte de toda consulta externa: cada provedor o traduz na sua requisição."""
 
@@ -66,7 +88,4 @@ class PoliticaGeocodificacao(BaseModel):
     uf: str = "SP"
     municipio: str = "São Paulo"
     precisao_minima: Precisao = Precisao.INTERPOLADA
-
-
-class ConsultaGeocodificacao(BaseModel):
-    texto: str = Field(min_length=1)
+    validade_dias: int = Field(default=30, gt=0)

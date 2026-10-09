@@ -1,5 +1,7 @@
 import json
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 from bs4 import BeautifulSoup, Tag
@@ -7,6 +9,7 @@ from django.conf import settings
 from django.http import HttpRequest
 from django.test import Client, RequestFactory
 from django.urls import reverse
+from pydantic import ValidationError
 
 import apps.geocodificacao_externa.views as views
 from apps.unidades.models import CorUnidade, Unidade
@@ -15,6 +18,7 @@ from services.domain.geocodificador_externo import (
     ConsultaGeocodificacao,
     EnderecoExternoAttributes,
     EnderecoExternoFeature,
+    GeocodificacaoExterna,
     GeocodificadorExterno,
     PoliticaGeocodificacao,
     Precisao,
@@ -29,6 +33,11 @@ from services.domain.geometry import PointGeometry
 # ---------------------------------------------------------------------------
 
 ENDERECO_FORMATADO = "Alameda Santos, 1293 - Jardim Paulista, São Paulo - SP, 01419-002, Brasil"
+TEXTO = "al santos, 1293"
+
+FUSO = ZoneInfo(settings.TIME_ZONE)
+AGORA = datetime(2026, 10, 9, 10, 15, tzinfo=FUSO)
+CONSULTA_ANTIGA = datetime(2026, 10, 2, 14, 32, tzinfo=FUSO)
 
 
 class ProvedorDuble(ProvedorGeocodificacao):
@@ -53,6 +62,19 @@ class ProvedorDuble(ProvedorGeocodificacao):
         return self._enderecos
 
 
+class CacheDuble:
+    """Em memória, uma por chave: satisfaz o CacheGeocodificacaoLike."""
+
+    def __init__(self, guardadas: list[GeocodificacaoExterna] | None = None) -> None:
+        self.guardadas = {g.consulta.chave: g for g in guardadas or []}
+
+    def buscar(self, consulta: ConsultaGeocodificacao) -> GeocodificacaoExterna | None:
+        return self.guardadas.get(consulta.chave)
+
+    def guardar(self, geocodificacao: GeocodificacaoExterna) -> None:
+        self.guardadas[geocodificacao.consulta.chave] = geocodificacao
+
+
 def _endereco_externo(precisao: Precisao = Precisao.IMOVEL) -> EnderecoExternoFeature:
     return EnderecoExternoFeature(
         geometry=PointGeometry(type="Point", coordinates=[-46.6571, -23.5621]),
@@ -64,6 +86,14 @@ def _endereco_externo(precisao: Precisao = Precisao.IMOVEL) -> EnderecoExternoFe
             precisao=precisao,
         ),
         crs=4326,
+    )
+
+
+def _geocodificacao(consultado_em: datetime) -> GeocodificacaoExterna:
+    return GeocodificacaoExterna(
+        consulta=ConsultaGeocodificacao(texto=TEXTO),
+        endereco=_endereco_externo(),
+        consultado_em=consultado_em,
     )
 
 
@@ -140,6 +170,41 @@ def test_gaveta_do_endereco_externo_traz_o_controle_do_street_view() -> None:
 
 
 # ---------------------------------------------------------------------------
+# A gaveta declara quem encontrou, quando, e se veio do cache
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("guardadas", "momento", "cacheado", "chamadas"),
+    [
+        ([_geocodificacao(consultado_em=CONSULTA_ANTIGA)], "02/10/2026 14:32", True, 0),
+        ([], "09/10/2026 10:15", False, 1),
+    ],
+    ids=["cacheado", "recem-consultado"],
+)
+def test_gaveta_declara_provedor_momento_e_selo_de_cacheado(
+    monkeypatch: pytest.MonkeyPatch,
+    guardadas: list[GeocodificacaoExterna],
+    momento: str,
+    cacheado: bool,
+    chamadas: int,
+) -> None:
+    monkeypatch.setattr(views.timezone, "now", lambda: AGORA)
+    provedor = ProvedorDuble([_endereco_externo()])
+    geocodificador = GeocodificadorExterno(provedor, CacheDuble(guardadas))
+
+    resposta = views.geocodificar_externo(_post_logado({}), geocodificador, TEXTO)
+    gaveta = _soup(resposta.content).find(id="gaveta-entidade")
+
+    assert isinstance(gaveta, Tag)
+    texto = gaveta.get_text()
+    assert "Google" in texto
+    assert momento in texto
+    assert ("Cacheado" in texto) is cacheado
+    assert provedor.chamadas == chamadas
+
+
+# ---------------------------------------------------------------------------
 # Falha do provedor: o aviso diz qual, e nada é desenhado
 # ---------------------------------------------------------------------------
 
@@ -170,6 +235,21 @@ def test_geocodificar_externo_com_falha_responde_aviso_que_diz_qual(
 
 
 # ---------------------------------------------------------------------------
+# Texto acima do teto: nem chega ao provedor
+# ---------------------------------------------------------------------------
+
+
+def test_texto_acima_do_teto_eh_recusado_sem_chamar_o_provedor() -> None:
+    provedor = ProvedorDuble([_endereco_externo()])
+    geocodificador = GeocodificadorExterno(provedor)
+
+    with pytest.raises(ValidationError):
+        views.geocodificar_externo(_post_logado({}), geocodificador, "a" * 501)
+
+    assert provedor.chamadas == 0
+
+
+# ---------------------------------------------------------------------------
 # A rota: login e configuração
 # ---------------------------------------------------------------------------
 
@@ -182,7 +262,7 @@ def test_selecionar_anonimo_vai_para_o_login_sem_chamar_o_provedor(
     monkeypatch.setattr(
         views,
         "build_geocodificador_externo",
-        lambda _settings: GeocodificadorExterno(provedor),
+        lambda _settings, _cache: GeocodificadorExterno(provedor),
     )
 
     resposta = client.post(reverse("geocodificacao_externa:selecionar"), {"texto": "al santos, 1293"})
@@ -195,7 +275,7 @@ def test_selecionar_anonimo_vai_para_o_login_sem_chamar_o_provedor(
 def test_selecionar_sem_configuracao_responde_indisponivel(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(views, "build_geocodificador_externo", lambda _settings: None)
+    monkeypatch.setattr(views, "build_geocodificador_externo", lambda _settings, _cache: None)
 
     resposta = views.selecionar(_post_logado({"texto": "al santos, 1293"}))
     soup = _soup(resposta.content)

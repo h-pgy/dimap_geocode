@@ -7,7 +7,12 @@
       <p class="text-overline text-madeira-600">Entidade localizada</p>
       <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Endereço externo</h2>
       <p class="text-sm font-medium mt-2">{{ endereco.endereco_formatado }}</p>
-      <span class="badge {% if endereco.precisao == 'imovel' %}badge-success{% elif endereco.precisao == 'interpolada' %}badge-info{% else %}badge-warning{% endif %} badge-soft badge-sm font-bold mt-3" title="Precisão declarada pelo provedor">{{ precisao }}</span>
+      <div class="flex flex-wrap items-center gap-2 mt-3">
+        <span class="badge {% if endereco.precisao == 'imovel' %}badge-success{% elif endereco.precisao == 'interpolada' %}badge-info{% else %}badge-warning{% endif %} badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">{{ precisao }}</span>
+        {% if cacheada %}
+          <span class="badge badge-neutral badge-soft badge-sm font-bold" title="Resultado guardado de uma consulta anterior: o provedor não foi chamado agora">Cacheado</span>
+        {% endif %}
+      </div>
     </header>
 
     <div class="gaveta-lateral-corpo" data-scroll-etched>
@@ -19,14 +24,21 @@
               <span>{{ aviso_fallback }}</span>
             </div>
           {% endif %}
-          <div class="card-well p-4 flex gap-4 items-center">
-            <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+          <div class="card-well p-4 flex flex-col gap-3">
+            <div class="flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Geocodificado por</p>
+                <p class="font-bold leading-tight">{{ provedor }}</p>
+                <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+              </div>
             </div>
-            <div class="min-w-0">
-              <p class="text-overline mb-0.5">Geocodificado por</p>
-              <p class="font-bold leading-tight">{{ provedor }}</p>
-              <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+            <div class="h-px w-full bg-rocha-950/10"></div>
+            <div class="flex items-baseline justify-between gap-4">
+              <p class="text-overline">Consultado em</p>
+              <p class="text-sm font-medium tabular-nums">{{ consultado_em|date:"d/m/Y H:i" }}</p>
             </div>
           </div>
 

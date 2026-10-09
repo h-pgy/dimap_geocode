@@ -145,7 +145,11 @@ def _instalar_provedor(
 ) -> ProvedorDuble:
     provedor = ProvedorDuble(enderecos)
     geocodificador = GeocodificadorExterno(provedor) if configurado else None
-    monkeypatch.setattr(externo_views, "build_geocodificador_externo", lambda _settings: geocodificador)
+    monkeypatch.setattr(
+        externo_views,
+        "build_geocodificador_externo",
+        lambda _settings, _cache: geocodificador,
+    )
     return provedor
 
 

@@ -3323,6 +3323,80 @@
         </div>
 
         <div>
+          <span class="text-overline">Selos do cabeçalho (SPEC geocodificacao_externa/005) <span class="font-normal text-base-content/50">— a precisão e, ao lado dela, o cacheado</span></span>
+          <div class="card-well p-5 flex flex-wrap items-start gap-8 mt-3">
+            <div class="flex flex-col items-start gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge badge-success badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">No imóvel</span>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">recém-consultado</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge badge-success badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">No imóvel</span>
+                <span class="badge badge-neutral badge-soft badge-sm font-bold" title="Resultado guardado de uma consulta anterior: o provedor não foi chamado agora">Cacheado</span>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">cacheado · no imóvel</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge badge-info badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Interpolada na via</span>
+                <span class="badge badge-neutral badge-soft badge-sm font-bold" title="Resultado guardado de uma consulta anterior: o provedor não foi chamado agora">Cacheado</span>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">cacheado · interpolada</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O badge de precisão ganha um vizinho: o <span class="text-code">.badge-neutral.badge-soft</span> "Cacheado", que só aparece quando o resultado veio do cache. Nenhuma classe nova — a linha é <span class="text-code">flex flex-wrap gap-2</span>.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Card do provedor com o momento da consulta (SPEC geocodificacao_externa/005) <span class="font-normal text-base-content/50">— quem geocodificou, e quando</span></span>
+          <div class="grid md:grid-cols-2 gap-4 max-w-3xl mt-3">
+            <div class="flex flex-col gap-2">
+              <div class="card-well p-4 flex flex-col gap-3">
+                <div class="flex gap-4 items-center">
+                  <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline mb-0.5">Geocodificado por</p>
+                    <p class="font-bold leading-tight">Google</p>
+                    <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+                  </div>
+                </div>
+                <div class="h-px w-full bg-rocha-950/10"></div>
+                <div class="flex items-baseline justify-between gap-4">
+                  <p class="text-overline">Consultado em</p>
+                  <p class="text-sm font-medium tabular-nums">09/10/2026 10:15</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">recém-consultado · o momento de agora</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="card-well p-4 flex flex-col gap-3">
+                <div class="flex gap-4 items-center">
+                  <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline mb-0.5">Geocodificado por</p>
+                    <p class="font-bold leading-tight">Google</p>
+                    <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+                  </div>
+                </div>
+                <div class="h-px w-full bg-rocha-950/10"></div>
+                <div class="flex items-baseline justify-between gap-4">
+                  <p class="text-overline">Consultado em</p>
+                  <p class="text-sm font-medium tabular-nums">02/10/2026 14:32</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">cacheado · o provedor e o momento da consulta original</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O card do provedor acima, em coluna, mais a linha de rótulo e valor da gaveta do lote sob um fio <span class="text-code">bg-rocha-950/10</span>. No resultado cacheado, provedor e momento são os da consulta original.</p>
+        </div>
+
+        <div>
           <span class="text-overline">Item de sugestão externa (SPEC geocodificacao_externa/004) <span class="font-normal text-base-content/50">— a última seção das sugestões de endereço por nome</span></span>
           <div class="card-well p-3 flex flex-col gap-3 max-w-2xl mt-3">
             <ul class="flex flex-col gap-0.5">

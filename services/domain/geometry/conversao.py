@@ -9,3 +9,10 @@ def para_geos(geometria: PointGeometry | LineGeometry | PolygonGeometry, srid: i
     geos = GEOSGeometry(json.dumps(geometria.model_dump()))
     geos.srid = srid
     return geos
+
+
+def de_geos[G: (PointGeometry, LineGeometry, PolygonGeometry)](
+    geos: GEOSGeometry,
+    tipo: type[G],
+) -> G:
+    return tipo.model_validate_json(geos.geojson)

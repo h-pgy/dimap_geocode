@@ -101,3 +101,12 @@ class ProvedorGoogle(ProvedorGeocodificacao):
                 if tipo in componente.types:
                     return componente.short_text if curto else componente.long_text
         return None
+
+
+def build_provedor_google(
+    source: google.SettingsLike,
+    politica: PoliticaGeocodificacao,
+) -> ProvedorGoogle | None:
+    # None = sem token no ambiente
+    cliente = google.build_cliente(source)
+    return None if cliente is None else ProvedorGoogle(politica, cliente)

@@ -1,5 +1,5 @@
 {% include "mapping/_mapa.html" %}
 {# A gaveta inteira chega por OOB, como a do endereço interpolado. #}
 <div id="gaveta-entidade" hx-swap-oob="innerHTML">
-  {% include "geocodificacao_externa/partials/_gaveta_endereco_externo.html" with endereco=endereco ponto=ponto provedor=provedor precisao=precisao raio_m=raio_m aviso_fallback=aviso_fallback %}
+  {% include "geocodificacao_externa/partials/_gaveta_endereco_externo.html" with endereco=endereco ponto=ponto provedor=provedor precisao=precisao raio_m=raio_m aviso_fallback=aviso_fallback consultado_em=consultado_em cacheada=cacheada %}
 </div>

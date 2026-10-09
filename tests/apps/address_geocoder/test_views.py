@@ -204,7 +204,7 @@ def test_clique_em_sugestao_oficial_que_falha_mantem_o_aviso(
     monkeypatch.setattr(
         externo_views,
         "build_geocodificador_externo",
-        lambda _settings: GeocodificadorExterno(provedor),
+        lambda _settings, _cache: GeocodificadorExterno(provedor),
     )
     request = RequestFactory().post(
         reverse("address_geocoder:selecionar"), {"codlog": "019348", "numero": "9999"}

@@ -1,32 +1,27 @@
-from collections.abc import Callable
 from typing import Protocol
 
-from services.integrations.geocodificador_externo import google
 from services.utils.ambiente import definidos
 
+from .cache import CacheGeocodificacaoLike
 from .exceptions import ProvedorDesconhecidoError
 from .geocodificador import GeocodificadorExterno
 from .models import PoliticaGeocodificacao, Provedor
-from .porta import ProvedorGeocodificacao
-from .provedores import ProvedorGoogle
-
-PROVEDOR_PADRAO = Provedor.GOOGLE
+from .provedores import CONSTRUTORES, PROVEDOR_PADRAO, ProvedoresSettingsLike
+from .validador import ValidadorGeocodificacao
 
 
-class GeocodificacaoSettingsLike(google.SettingsLike, Protocol):
+class GeocodificacaoSettingsLike(Protocol):
     GEOCODIFICACAO_EXTERNA_PROVEDOR: str | None
     GEOCODIFICACAO_EXTERNA_IDIOMA: str | None
     GEOCODIFICACAO_EXTERNA_PAIS: str | None
     GEOCODIFICACAO_EXTERNA_UF: str | None
     GEOCODIFICACAO_EXTERNA_MUNICIPIO: str | None
     GEOCODIFICACAO_EXTERNA_PRECISAO_MINIMA: str | None
+    GEOCODIFICACAO_EXTERNA_VALIDADE_DIAS: int | None
 
 
-# devolve None quando o provedor não está configurado (sem token)
-ConstrutorProvedor = Callable[
-    [GeocodificacaoSettingsLike, PoliticaGeocodificacao],
-    ProvedorGeocodificacao | None,
-]
+class ComposicaoSettingsLike(GeocodificacaoSettingsLike, ProvedoresSettingsLike, Protocol):
+    """O ambiente de quem compõe: o geral mais o que os provedores inscritos leem, sem nomeá-los."""
 
 
 def build_politica(source: GeocodificacaoSettingsLike) -> PoliticaGeocodificacao:
@@ -38,21 +33,9 @@ def build_politica(source: GeocodificacaoSettingsLike) -> PoliticaGeocodificacao
             "uf": source.GEOCODIFICACAO_EXTERNA_UF,
             "municipio": source.GEOCODIFICACAO_EXTERNA_MUNICIPIO,
             "precisao_minima": source.GEOCODIFICACAO_EXTERNA_PRECISAO_MINIMA,
+            "validade_dias": source.GEOCODIFICACAO_EXTERNA_VALIDADE_DIAS,
         },
     )
-
-
-def _provedor_google(
-    source: GeocodificacaoSettingsLike,
-    politica: PoliticaGeocodificacao,
-) -> ProvedorGeocodificacao | None:
-    cliente = google.build_cliente(source)
-    return None if cliente is None else ProvedorGoogle(politica, cliente)
-
-
-CONSTRUTORES: dict[Provedor, ConstrutorProvedor] = {
-    Provedor.GOOGLE: _provedor_google,
-}
 
 
 def escolher_provedor(source: GeocodificacaoSettingsLike) -> Provedor:
@@ -69,9 +52,14 @@ def escolher_provedor(source: GeocodificacaoSettingsLike) -> Provedor:
 
 
 def build_geocodificador_externo(
-    source: GeocodificacaoSettingsLike,
+    source: ComposicaoSettingsLike,
+    cache: CacheGeocodificacaoLike | None = None,
 ) -> GeocodificadorExterno | None:
     # None = provedor escolhido sem configuração; quem consome decide o que oferecer sem ele
     construir = CONSTRUTORES[escolher_provedor(source)]
-    provedor = construir(source, build_politica(source))
-    return None if provedor is None else GeocodificadorExterno(provedor)
+    politica = build_politica(source)
+    provedor = construir(source, politica)
+    if provedor is None:
+        return None
+    # a mesma política para quem consulta e para quem valida
+    return GeocodificadorExterno(provedor, cache, ValidadorGeocodificacao(politica))

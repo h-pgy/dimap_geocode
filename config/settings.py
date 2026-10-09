@@ -327,6 +327,9 @@ class _Settings(BaseSettings):
     geocodificacao_externa_precisao_minima: str | None = Field(
         default=None, alias="GEOCODIFICACAO_EXTERNA_PRECISAO_MINIMA"
     )
+    geocodificacao_externa_validade_dias: int | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_VALIDADE_DIAS"
+    )
 
     @field_validator("documento_unidade", "documento_endereco", mode="before")
     @classmethod
@@ -516,6 +519,7 @@ GEOCODIFICACAO_EXTERNA_PAIS = _env.geocodificacao_externa_pais
 GEOCODIFICACAO_EXTERNA_UF = _env.geocodificacao_externa_uf
 GEOCODIFICACAO_EXTERNA_MUNICIPIO = _env.geocodificacao_externa_municipio
 GEOCODIFICACAO_EXTERNA_PRECISAO_MINIMA = _env.geocodificacao_externa_precisao_minima
+GEOCODIFICACAO_EXTERNA_VALIDADE_DIAS = _env.geocodificacao_externa_validade_dias
 
 
 # Application definition
