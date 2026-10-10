@@ -1,0 +1,60 @@
+{% load l10n %}
+{# O toggle vem marcado junto da placa: é o swap que abre a gaveta, sem JS. #}
+<input type="checkbox" id="gaveta-street-view" class="gaveta-toggle" checked>
+<aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa gaveta-inferior-puxavel gaveta-inferior-panorama" role="dialog" aria-labelledby="gaveta-street-view-titulo">
+  {# Filho imediato da placa, lido por :has(> ...): recolher não fecha nem encerra o Street View. #}
+  <input type="checkbox" id="gaveta-street-view-recolhida" class="gaveta-inferior-recolher">
+  <label for="gaveta-street-view-recolhida" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span><span class="etched-line"></span></label>
+  <label for="gaveta-street-view-recolhida" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+    <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+  </label>
+  <header class="gaveta-cabecalho items-center">
+    <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+      <h2 id="gaveta-street-view-titulo" class="text-xl font-bold tracking-tight leading-none text-madeira-700">Visão da rua</h2>
+      <p class="text-sm text-base-content/70">Ande pela imagem, arraste o pino ou dê duplo clique no mapa.</p>
+    </div>
+    <div class="flex items-center gap-4">
+      {% if chave %}
+        {# Fecha pela mesma rota do ✕; nasce desabilitado, e o street_view.js o libera com a imagem. #}
+        <button type="button" class="btn btn-onsen btn-sm gap-2" title="Marca no mapa o ponto em que a câmera está"
+                data-selecionar-posicao disabled
+                hx-post="{{ limpeza_ao_fechar.url }}"
+                hx-target="#gaveta-inferior-conteudo" hx-swap="innerHTML swap:500ms">
+          <span class="poco-acoes__icone"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></span>
+          Selecionar esta posição
+        </button>
+      {% endif %}
+      {% include "mapping/_fechar_gaveta.html" %}
+    </div>
+  </header>
+  <div class="gaveta-corpo">
+    <section class="gaveta-coluna">
+      {% if chave %}
+        <div class="gaveta-figura palco-panorama" data-street-view
+             data-chave="{{ chave }}"
+             data-lat="{{ pedido.alvo.coordinates.1|unlocalize }}"
+             data-lon="{{ pedido.alvo.coordinates.0|unlocalize }}"
+             data-raio="{{ pedido.raio_m|unlocalize }}">
+          <div class="palco-panorama__tela" data-tela></div>
+          <div class="palco-panorama__espera" data-espera><span class="loading loading-spinner loading-lg"></span></div>
+          <div class="palco-panorama__aviso glass-panel-thick" data-falta="sem_imagem_no_destino" hidden>
+            <div role="alert" class="alert alert-warning alert-soft">
+              <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-8.02 13.89A1.5 1.5 0 003.57 20h16.86a1.5 1.5 0 001.3-2.25L13.71 3.86a1.5 1.5 0 00-2.6 0z"/></svg>
+              <span>{{ faltas.sem_imagem_no_destino }}</span>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+      <div class="gaveta-vazia" data-falta="sem_imagem" hidden>
+        <svg class="w-8 h-8 etched" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+        <p>{{ faltas.sem_imagem }}</p>
+      </div>
+      {# Sem chave não há palco: a gaveta já abre nesta falta. #}
+      <div class="gaveta-vazia" data-falta="indisponivel"{% if chave %} hidden{% endif %}>
+        <svg class="w-8 h-8 etched" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+        <p>{{ faltas.indisponivel }}</p>
+      </div>
+    </section>
+  </div>
+</aside>
+{% include "mapping/_contexto_acao_oob.html" %}

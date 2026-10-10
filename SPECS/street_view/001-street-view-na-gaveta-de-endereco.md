@@ -1,12 +1,13 @@
 ---
 spec: street_view/001
-versao: v2
-atualizado_em: 2026-10-02
+versao: v3
+atualizado_em: 2026-10-10
 testes_tdd: true
 implementado: true
 changelog:
   - v1: versão inicial
   - v2: alinhada ao mock aprovado — o controle é o item "Visão da rua" do poço de ações, que passa a abrigar também o lote mais próximo
+  - v3: a SPEC street_view/002 troca a janela à parte pelo panorama na gaveta inferior; saem o link, o redirect, o aviso de pop-up e o janela_popup.js
 ---
 
 # SPEC street_view/001 — Street View em janela à parte, a partir da gaveta de endereço

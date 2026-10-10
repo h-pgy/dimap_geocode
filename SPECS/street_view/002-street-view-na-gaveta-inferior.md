@@ -1,12 +1,14 @@
 ---
 spec: street_view/002
-versao: v2
+versao: v4
 atualizado_em: 2026-10-09
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: a gaveta do panorama passa a ser puxável
+  - v3: duplo clique no mapa leva o pino
+  - v4: comentário do STREET_VIEW_RAIO_M é portado para o settings
 ---
 
 # SPEC street_view/002 — Street View na gaveta inferior, com o pino que anda no mapa
@@ -25,8 +27,9 @@ escolher.
 - [ ] **Andar no panorama move o pino**, e o mapa se desloca para mantê-lo fora da área coberta pelas
       gavetas; **puxar a gaveta** pela alça dá mais ou menos altura ao panorama, e o pino segue fora
       da área coberta.
-- [ ] **Arrastar o pino** e soltá-lo leva o panorama à imagem mais próxima do lugar; sem imagem dentro
-      do raio, o pino volta para onde estava e a gaveta avisa.
+- [ ] **Arrastar o pino** e soltá-lo, ou dar **duplo clique** num lugar do mapa, leva o panorama à
+      imagem mais próxima dali; sem imagem dentro do raio, o pino volta para onde estava e a gaveta
+      avisa. Sem o pino no mapa, o duplo clique segue aproximando o mapa.
 - [ ] Sem imagem perto do endereço, com o Google fora do ar ou sem chave configurada, a gaveta mostra o
       **estado de falta escrito**, sem pino, e o ponto do endereço fica como estava.
 - [ ] Enquanto o Street View está aberto, a busca, o Voltar e as ações que trocam a cena **não
@@ -79,12 +82,13 @@ class PedidoPanorama(BaseModel):
 - `@static/src/js/ui/trava_cena.js` → `data-troca-cena`: o que não responde enquanto a marca existe.
 - `@static/src/tema-dimap.dev.css` → `.gaveta-vazia`: o estado de falta escrito.
 - `@templates/mapping/_glifos_desenho.html` → `#glifo-ponto`: o desenho do pino.
-- `@static/src/js/mapa/desenho/ferramentas.js` → `iconePonto`; `@static/src/js/mapa/desenho/sincronia.js` → `pedirGavetaDesenhos`: o ponto desenhado e a gaveta que o lista.
+- `@static/src/js/mapa/desenho/ferramentas.js` → `iconePonto`, `ferramentaAtiva`; `@static/src/js/mapa/desenho/sincronia.js` → `pedirGavetaDesenhos`: o ponto desenhado, a ferramenta de desenho na mão e a gaveta que lista os desenhos.
 - Skills: `mock`, `componentes-frontend`, `acao-sobre-desenho` (§5), `leaflet-map`, `leaflet-geoman`, `htmx`, `escrever-testes`, `test-django-views`.
 
 ## 6 · Snippets
 
-> Comentários didáticos: **não são portados** para o código (§7.2 do CLAUDE.md).
+> Comentários didáticos: **não são portados** para o código (§7.2 do CLAUDE.md) — salvo o do
+> `STREET_VIEW_RAIO_M`, que vai como está.
 
 **`services/domain/street_view/models.py`** — o [PedidoPanorama](#3--domínio) e o DTO da operação.
 
@@ -106,11 +110,14 @@ class MontarPedidoPanorama:
         return PedidoPanorama(alvo=alvo, raio_m=entrada.raio_m)
 ```
 
-**`config/settings.py`**
+**`config/settings.py`** — o comentário do `STREET_VIEW_RAIO_M` é **portado como está**
+([Caveats](#7--caveats)).
 
 ```python
 STREET_VIEW_CRS = 4326
-# o raio padrão do próprio Google: mais que isso, a imagem já é de outra quadra
+# Raio, em metros, em que o Google procura a imagem de rua mais próxima do ponto pedido: o endereço,
+# ao abrir, ou o lugar aonde o pino foi levado. Sem imagem dentro dele, a gaveta mostra a falta.
+# 50 é o padrão do próprio Google: mais que isso, a imagem já é de outra quadra.
 STREET_VIEW_RAIO_M = 50.0
 # chave de NAVEGADOR da Maps JavaScript API; vazia desliga o panorama. Não é o GOOGLE_GEOCODING_TOKEN
 GOOGLE_MAPS_BROWSER_KEY = SecretStr(_env.google_maps_browser_key)
@@ -251,7 +258,7 @@ respondem.
 
 **`static/src/js/mapa/street_view.js`** — iniciado pelo `init.js`, que entrega o mapa e o par
 `ocultarResultado` / `devolverResultado` (tira a camada de resultado do mapa sem destruí-la, e a põe
-de volta).
+de volta), e que registra o `levarPino` no `dblclick` do mapa uma vez só.
 
 ```javascript
 const ESTADO = { panorama: null, servico: null, pino: null, emTela: null, selecionada: false };
@@ -278,6 +285,8 @@ async function abrir(palco) {
   ocultarResultado();
   ESTADO.pino = criarPino(achado.location.latLng, raio);
   ESTADO.panorama.addListener("position_changed", acompanhar);
+  // com o pino no mapa o duplo clique deixa de ser do zoom: na falta, ele segue aproximando
+  mapa.doubleClickZoom.disable();
 }
 
 // Andou no panorama → o pino anda, e o mapa o mantém fora da área coberta pelas gavetas.
@@ -308,6 +317,18 @@ async function soltar(raio) {
   ESTADO.panorama.setPano(achado.location.pano);
 }
 
+// Duplo clique no mapa → o pino vai ao lugar clicado e segue o caminho de quem foi arrastado e
+// solto ali: a imagem mais próxima no raio, ou a volta com o aviso.
+function levarPino(evento) {
+  // sem pino não há Street View aberto, e o duplo clique é do zoom
+  if (ESTADO.pino === null) return;
+  // com ferramenta na mão os dois cliques já são do traço
+  if (mapa.pm.globalDrawModeEnabled() || ferramentaAtiva(mapa)) return;
+  const raio = Number(ESTADO.emTela.dataset.raio);
+  ESTADO.pino.setLatLng(evento.latlng);
+  soltar(raio);
+}
+
 // O clique em [data-selecionar-posicao] só levanta a marca; quem fecha é a rota, pelo hx-post.
 function marcarSelecao() {
   ESTADO.selecionada = true;
@@ -319,6 +340,8 @@ function encerrar() {
   if (ESTADO.pino !== null) {
     const posicao = ESTADO.pino.getLatLng();
     mapa.removeLayer(ESTADO.pino);
+    // o duplo clique volta a ser do zoom
+    mapa.doubleClickZoom.enable();
     if (ESTADO.selecionada) {
       const ponto = L.marker(posicao, { icon: iconePonto("normal") }).addTo(mapa);
       mapa.fire("pm:create", { shape: "Marker", layer: ponto, selecionado: String(L.Util.stamp(ponto)) });
@@ -391,6 +414,16 @@ As rotas exigem só login, sem contrato de ação, perfil nem registro de execu�
 conteúdo é público do Google e não há competência a conceder (§3.5). O custo é não haver rastro de quem
 abriu o quê, e promover isso a ação concedida pedir contrato, ícones e card no painel.
 
+O comentário do `STREET_VIEW_RAIO_M` vai para o `settings.py` dizendo o que a constante é, e não só o
+porquê do valor (§7.2). O nome não diz raio de quê nem em torno de quê, e o usuário pediu a exceção
+para reconhecer a constante depois. O custo é um comentário descritivo de três linhas, que passa a
+mentir se o raio ganhar outro uso.
+
+O duplo clique que leva o pino não cala os dois cliques que o compõem. Calá-los pediria mexer no
+clique-fora das gavetas e na seleção de desenhos, que são de outras SPECs. O custo é que levar o pino
+pelo duplo clique recolhe a gaveta lateral, como qualquer clique no mapa, e que sobre um desenho ele
+ainda o seleciona.
+
 Selecionar a posição são duas idas ao servidor: a rota `fechar` esvazia a gaveta e apaga a marca, e a
 bancada pede a gaveta dos desenhos em seguida. Uma rota só obrigaria o `street_view` a montar a gaveta dos
 desenhos, que é do `mapping` — descartado. O custo é um instante em que a gaveta do endereço ainda está
@@ -398,9 +431,9 @@ na lateral com o ponto já desenhado no mapa, e uma rota `fechar` que não sabe 
 selecionada ou descartada.
 
 ## 8 · Testes (TDD)
-O panorama, o pino que anda, o arrasto, a falta de imagem e a transformação em ponto desenhado
-e o descarte pelo ✕ acontecem no navegador e são conferidos pelo usuário; os testes fixam o que o servidor entrega e a
-quem.
+O panorama, o pino que anda, o arrasto, o duplo clique, a falta de imagem, a transformação em ponto
+desenhado e o descarte pelo ✕ acontecem no navegador e são conferidos pelo usuário; os testes fixam o
+que o servidor entrega e a quem.
 
 **Domínio** — `tests/services/domain/street_view/test_pedido.py`
 - `test_pedido_reprojeta_alvo_de_crs_metrico` — um ponto dado em 31983 vira `alvo` em graus, a menos de

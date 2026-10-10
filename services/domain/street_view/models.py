@@ -3,11 +3,13 @@ from pydantic import BaseModel
 from services.domain.geometry import PointGeometry
 
 
-class LinkStreetViewInput(BaseModel):
+class PedidoPanoramaInput(BaseModel):
     ponto: PointGeometry
     crs_ponto: int
     crs_street_view: int
+    raio_m: float
 
 
-class LinkStreetView(BaseModel):
-    url: str
+class PedidoPanorama(BaseModel):
+    alvo: PointGeometry
+    raio_m: float

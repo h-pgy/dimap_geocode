@@ -9,6 +9,7 @@ import { inicializarEnvio } from "./desenho/envio.js";
 import { inicializarSelecao } from "./desenho/selecao.js";
 import { inicializarSincronia } from "./desenho/sincronia.js";
 import { inicializarInteracaoResultado, interagirComResultado } from "./interacao_resultado.js";
+import { inicializarStreetView, levarPino } from "./street_view.js";
 import { inicializarTravaCena } from "../ui/trava_cena.js";
 import { inicializarTrocaGaveta } from "../ui/troca_gaveta.js";
 
@@ -18,6 +19,16 @@ let camadaResultado = null;
 function lerJson(id) {
   const el = document.getElementById(id);
   return el ? JSON.parse(el.textContent) : null;
+}
+
+// O Street View tira o ponto do endereço de cena enquanto o pino o substitui (SPEC street_view/002):
+// a camada sai do mapa sem ser destruída, e o ✕ da gaveta a põe de volta.
+function ocultarResultado() {
+  if (camadaResultado) mapa.removeLayer(camadaResultado);
+}
+
+function devolverResultado() {
+  if (camadaResultado) camadaResultado.addTo(mapa);
 }
 
 function montarMapaBase() {
@@ -35,6 +46,8 @@ function montarMapaBase() {
   inicializarInteracaoResultado();
   inicializarTrocaGaveta();
   inicializarTravaCena();
+  inicializarStreetView(mapa, { ocultar: ocultarResultado, devolver: devolverResultado });
+  mapa.on("dblclick", levarPino);
 }
 
 // htmx:afterSwap dispara a cada swap (garantido) — nele buscamos o payload por id no DOM. O

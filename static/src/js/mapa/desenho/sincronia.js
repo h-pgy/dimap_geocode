@@ -32,7 +32,10 @@ export function inicializarSincronia(mapa, container) {
   urlDesenhos = container.dataset.urlDesenhos;
   const enviar = () => pedirGavetaDesenhos(marcado());
 
-  ["pm:create", "pm:remove", "pm:cut"].forEach((evento) => mapa.on(evento, enviar));
+  // O ponto que o Street View deixa já chega dizendo que é o selecionado (SPEC street_view/002);
+  // no traço feito à mão a seleção não vem, e vale a que já estava marcada.
+  mapa.on("pm:create", (evento) => pedirGavetaDesenhos(evento.selecionado ?? marcado()));
+  ["pm:remove", "pm:cut"].forEach((evento) => mapa.on(evento, enviar));
   // Durante a modificação a geometria ainda muda: a medida se refaz quando o modo se fecha.
   ["pm:globaleditmodetoggled", "pm:globaldragmodetoggled", "pm:globalrotatemodetoggled"].forEach(
     (evento) => mapa.on(evento, (dado) => { if (!dado.enabled) enviar(); }),

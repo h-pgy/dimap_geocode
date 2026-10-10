@@ -6,5 +6,5 @@ app_name = "street_view"
 
 urlpatterns = [
     path("abrir/", views.abrir, name="abrir"),
-    path("popup-bloqueado/", views.popup_bloqueado, name="popup_bloqueado"),
+    path("fechar/", views.fechar, name="fechar"),
 ]

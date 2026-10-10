@@ -223,13 +223,13 @@ def test_clique_em_sugestao_oficial_que_falha_mantem_o_aviso(
 # ---------------------------------------------------------------------------
 
 
-def _controle_street_view(conteudo: str) -> Tag | None:
+def _item_street_view(conteudo: str) -> Tag | None:
     gaveta = BeautifulSoup(conteudo, "html.parser").find(id="gaveta-entidade")
     assert isinstance(gaveta, Tag)
-    return gaveta.select_one("a[data-janela-popup]")
+    return gaveta.select_one(f'[hx-get="{reverse("street_view:abrir")}"]')
 
 
-def test_gaveta_do_endereco_logado_traz_o_controle_do_street_view(
+def test_gaveta_do_endereco_logado_traz_o_item_do_street_view(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _instalar_geocoder_fake(monkeypatch)
@@ -242,15 +242,19 @@ def test_gaveta_do_endereco_logado_traz_o_controle_do_street_view(
 
     conteudo = views.selecionar(request).content.decode()
 
-    controle = _controle_street_view(conteudo)
-    assert controle is not None
-    assert controle["href"] == reverse("street_view:abrir") + "?lon=-46.6&lat=-23.5"
-    assert controle["target"] == "_blank"
-    url_aviso = reverse("street_view:popup_bloqueado") + "?toggle=gaveta-endereco-toggle"
-    assert controle["data-aviso-bloqueio"] == url_aviso
+    item = _item_street_view(conteudo)
+    assert item is not None
+    assert item.name == "button"
+    assert "Visão da rua" in item.get_text()
+    vals = json.loads(str(item["hx-vals"]))
+    assert {nome: float(valor) for nome, valor in vals.items()} == {"lon": -46.6, "lat": -23.5}
+    assert item["hx-target"] == "#gaveta-inferior-conteudo"
+    lista = item.find_parent(class_="poco-acoes__lista")
+    assert isinstance(lista, Tag)
+    assert lista.has_attr("data-troca-cena")
 
 
-def test_gaveta_do_endereco_anonimo_nao_traz_o_controle(
+def test_gaveta_do_endereco_anonimo_nao_traz_o_item(
     client: Client,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -259,8 +263,10 @@ def test_gaveta_do_endereco_anonimo_nao_traz_o_controle(
     resposta = client.post(
         reverse("address_geocoder:selecionar"), {"codlog": "123456", "numero": "100"}
     )
+    conteudo = resposta.content.decode()
 
-    assert _controle_street_view(resposta.content.decode()) is None
+    assert _item_street_view(conteudo) is None
+    assert "Visão da rua" not in conteudo
 
 
 # ---------------------------------------------------------------------------

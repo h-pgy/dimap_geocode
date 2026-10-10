@@ -1,8 +1,8 @@
-from .link import MontarLinkStreetView
-from .models import LinkStreetView, LinkStreetViewInput
+from .models import PedidoPanorama, PedidoPanoramaInput
+from .pedido import MontarPedidoPanorama
 
 __all__ = [
-    "LinkStreetView",
-    "LinkStreetViewInput",
-    "MontarLinkStreetView",
+    "MontarPedidoPanorama",
+    "PedidoPanorama",
+    "PedidoPanoramaInput",
 ]

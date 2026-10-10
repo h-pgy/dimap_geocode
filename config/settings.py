@@ -311,6 +311,7 @@ class _Settings(BaseSettings):
     assinatura_id_chave: str = Field(default="k1", alias="ASSINATURA_ID_CHAVE")
 
     google_geocoding_token: str = Field(default="", alias="GOOGLE_GEOCODING_TOKEN")
+    google_maps_browser_key: str = Field(default="", alias="GOOGLE_MAPS_BROWSER_KEY")
     geocodificacao_externa_provedor: str | None = Field(
         default=None, alias="GEOCODIFICACAO_EXTERNA_PROVEDOR"
     )
@@ -413,8 +414,12 @@ MAP_OUTPUT_CRS = 4326
 MAP_INTERPOLATION_CRS = 31983
 # CRS geográfico em que a posição de um ponto é exibida: SIRGAS 2000, o referencial oficial do Brasil.
 MAP_GEOGRAPHIC_CRS = 4674
-# CRS em que o Google lê o `viewpoint` do link de Street View (Maps URLs).
+# CRS em que o Google lê as coordenadas do panorama de Street View (Maps JavaScript API).
 STREET_VIEW_CRS = 4326
+# Raio, em metros, em que o Google procura a imagem de rua mais próxima do ponto pedido: o endereço,
+# ao abrir, ou o lugar aonde o pino foi levado. Sem imagem dentro dele, a gaveta mostra a falta.
+# 50 é o padrão do próprio Google: mais que isso, a imagem já é de outra quadra.
+STREET_VIEW_RAIO_M = 50.0
 MAP_CENTRO_DEFAULT: list[float] = [-23.55, -46.63]
 # 14 preenche a viewport com a ortofoto sem mostrar os limites do município (em 12/13 sobra "vazio").
 MAP_ZOOM_DEFAULT = 14
@@ -510,6 +515,8 @@ ASSINATURA_ID_CHAVE = _env.assinatura_id_chave
 
 # SecretStr para o token não vazar em log nem traceback; vazio desliga a geocodificação externa.
 GOOGLE_GEOCODING_TOKEN = SecretStr(_env.google_geocoding_token)
+# Chave de NAVEGADOR da Maps JavaScript API; vazia desliga o panorama. Não é o GOOGLE_GEOCODING_TOKEN.
+GOOGLE_MAPS_BROWSER_KEY = SecretStr(_env.google_maps_browser_key)
 
 # Geocodificação externa (services.domain.geocodificador_externo). Todos opcionais: o padrão
 # mora na PoliticaGeocodificacao e no PROVEDOR_PADRAO do domínio.

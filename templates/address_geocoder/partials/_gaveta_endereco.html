@@ -47,6 +47,7 @@
             <p class="text-overline poco-acoes__titulo">Ações</p>
             <form
               class="poco-acoes__lista"
+              data-troca-cena
               hx-post="{% url 'lotes_mais_proximos:mais_proximo' %}"
               hx-target="#resultado-busca"
               hx-swap="innerHTML"
@@ -59,7 +60,7 @@
                 <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/></svg></span>
                 Lote mais próximo
               </button>
-              {% include "street_view/partials/_item_street_view.html" with toggle="gaveta-endereco-toggle" %}
+              {% include "street_view/partials/_item_street_view.html" %}
             </form>
           </div>
         </div>

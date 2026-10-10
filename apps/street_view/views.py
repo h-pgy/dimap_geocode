@@ -1,23 +1,27 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET
-from pydantic import BaseModel, Field
+from django.shortcuts import render
+from django.urls import reverse
+from django.views.decorators.http import require_GET, require_POST
+from pydantic import BaseModel, SecretStr
 
-from apps.mapping.context import contexto_aviso
+from apps.mapping.models import Limpeza
 from services.domain.geometry import PointGeometry
-from services.domain.street_view import LinkStreetViewInput, MontarLinkStreetView
+from services.domain.street_view import MontarPedidoPanorama, PedidoPanoramaInput
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 STREET_VIEW_CRS: int = settings.STREET_VIEW_CRS
+STREET_VIEW_RAIO_M: float = settings.STREET_VIEW_RAIO_M
+GOOGLE_MAPS_BROWSER_KEY: SecretStr = settings.GOOGLE_MAPS_BROWSER_KEY
 
-TEMPLATE_AVISO_POPUP_BLOQUEADO = "street_view/partials/_aviso_popup_bloqueado.html"
+SLUG_CONTEXTO = "street-view"
+TEMPLATE_GAVETA = "street_view/partials/_gaveta_panorama.html"
+TEMPLATE_ENCERRAMENTO = "street_view/partials/_encerramento.html"
 
-MSG_POPUP_BLOQUEADO = (
-    "O navegador bloqueou a janela da Visão da rua. "
-    "Libere os pop-ups para este site e tente de novo."
-)
+MSG_SEM_IMAGEM = "O Google não tem imagem de rua a até {raio} m deste ponto."
+MSG_SEM_IMAGEM_NO_DESTINO = "Não há imagem de rua a até {raio} m de onde o pino foi solto."
+MSG_INDISPONIVEL = "A Visão da rua está indisponível no momento."
 
 
 class ConsultaStreetView(BaseModel):
@@ -25,28 +29,40 @@ class ConsultaStreetView(BaseModel):
     lat: float
 
 
-class AvisoPopupBloqueado(BaseModel):
-    # A forma barra qualquer coisa que não seja id: a rota desmarca o toggle que o cliente nomear.
-    toggle: str = Field(pattern=r"^[a-z][a-z0-9-]*$")
+def _faltas(raio_m: float) -> dict[str, str]:
+    raio = f"{raio_m:.0f}"
+    return {
+        "sem_imagem": MSG_SEM_IMAGEM.format(raio=raio),
+        "sem_imagem_no_destino": MSG_SEM_IMAGEM_NO_DESTINO.format(raio=raio),
+        "indisponivel": MSG_INDISPONIVEL,
+    }
 
 
 @login_required  # basta estar autenticado: sem contrato de ação
 @require_GET
 def abrir(request: HttpRequest) -> HttpResponse:
     consulta = ConsultaStreetView.model_validate(request.GET.dict())
-    entrada = LinkStreetViewInput(
+    entrada = PedidoPanoramaInput(
         ponto=PointGeometry(type="Point", coordinates=[consulta.lon, consulta.lat]),
         crs_ponto=MAP_OUTPUT_CRS,
         crs_street_view=STREET_VIEW_CRS,
+        raio_m=STREET_VIEW_RAIO_M,
     )
-    montar_link = MontarLinkStreetView()
-    link = montar_link(entrada)
-    return redirect(link.url)
+    montar_pedido = MontarPedidoPanorama()
+    pedido = montar_pedido(entrada)
+    contexto = {
+        "pedido": pedido,
+        "chave": GOOGLE_MAPS_BROWSER_KEY.get_secret_value(),
+        "faltas": _faltas(pedido.raio_m),
+        "acao": SLUG_CONTEXTO,
+        # O contexto não nasceu de um desenho: nenhum fica inerte ao clique.
+        "desenho": "",
+        "limpeza_ao_fechar": Limpeza(url=reverse("street_view:fechar"), aviso=None),
+    }
+    return render(request, TEMPLATE_GAVETA, contexto)
 
 
 @login_required
-@require_GET
-def popup_bloqueado(request: HttpRequest) -> HttpResponse:
-    aviso = AvisoPopupBloqueado.model_validate(request.GET.dict())
-    contexto = contexto_aviso(MSG_POPUP_BLOQUEADO, tom="error") | {"toggle": aviso.toggle}
-    return render(request, TEMPLATE_AVISO_POPUP_BLOQUEADO, contexto)
+@require_POST
+def fechar(request: HttpRequest) -> HttpResponse:
+    return render(request, TEMPLATE_ENCERRAMENTO)

@@ -206,6 +206,7 @@ Toda configuração vem do `.env`. As chaves principais (a lista completa, com c
 | `ENFORCE_PREFEITURA_EMAIL` | restringe o cadastro de servidor aos domínios institucionais | `1` |
 | `ASSINATURA_SEGREDO` | segredo do selo de integridade dos documentos emitidos | valor de desenvolvimento |
 | `GOOGLE_GEOCODING_TOKEN` | chave da geocodificação externa; vazio desliga | vazio |
+| `GOOGLE_MAPS_BROWSER_KEY` | chave de navegador da Maps JavaScript API, para o Street View na gaveta; vazio desliga | vazio |
 | `DTIME_ATUALIZACAO_ARQUIVOS` | horário diário do daemon de atualização | `03:00` |
 
 ### Primeiro acesso
@@ -287,7 +288,7 @@ Uma única barra de pesquisa, com sugestões a cada tecla e tolerância a erro d
 - Dados do logradouro na gaveta: nome completo, codlog, tipo, extensão em km, quantidade de
   segmentos e a faixa de numeração do logradouro inteiro.
 - Lote mais próximo de um endereço geocodificado.
-- Street View do endereço localizado, em janela à parte (para o servidor autenticado).
+- Street View do endereço localizado, na gaveta inferior, com o pino que anda no mapa e vira ponto desenhado (para o servidor autenticado).
 
 ### Atos administrativos e documentos
 

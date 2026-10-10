@@ -273,7 +273,7 @@
         <!-- estado: ao vivo -->
         <div class="flex flex-col gap-2">
           <div class="flex flex-wrap items-center justify-between gap-3 px-1">
-            <span class="text-overline drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · abra a Visão da rua pelo poço, ande, arraste o pino, puxe a gaveta pela alça; selecione a posição ou feche pelo ✕</span>
+            <span class="text-overline drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · abra a Visão da rua pelo poço, ande, arraste o pino, dê duplo clique no mapa, puxe a gaveta pela alça; selecione a posição ou feche pelo ✕</span>
             <!-- andaime do mock: faz as vezes dos swaps do HTMX e da cobertura do Google -->
             <div class="glass-panel px-3 py-2 flex flex-wrap items-center gap-3">
               <button type="button" id="andaime-endereco" class="btn btn-onsen btn-sm">Localizar endereço</button>
@@ -482,7 +482,7 @@
           <header class="gaveta-cabecalho items-center">
             <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
               <h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Visão da rua</h2>
-              <p class="text-sm text-base-content/70">Ande pela imagem ou arraste o pino no mapa.</p>
+              <p class="text-sm text-base-content/70">Ande pela imagem, arraste o pino ou dê duplo clique no mapa.</p>
             </div>
             <div class="flex items-center gap-4">
               <!-- os dois fecham pelo hx-post de street_view:fechar; só este deixa o ponto desenhado -->
@@ -812,6 +812,15 @@
       ESTADO.motor.irPara(achado);
     }
 
+    // No produto, com ferramenta de desenho na mão o duplo clique não leva o pino.
+    function levarPino(evento) {
+      if (ESTADO.pino === null) return;
+      const palcoEmTela = alvoInferior.querySelector("[data-street-view]");
+      const raio = Number(palcoEmTela.dataset.raio);
+      ESTADO.pino.setLatLng(evento.latlng);
+      soltar(palcoEmTela, raio);
+    }
+
     function criarPino(palcoEmTela, posicao, raio) {
       const pino = L.marker(posicao, { icon: iconePino(), draggable: true, zIndexOffset: 1000 }).addTo(mapa);
       const desenho = () => pino.getElement().querySelector(".pino-panorama");
@@ -843,6 +852,7 @@
       ocultarResultado();
       ESTADO.pino = criarPino(palcoEmTela, achado.posicao, raio);
       motor.aoAndar(acompanhar);
+      mapa.doubleClickZoom.disable();
       acompanhar();
     }
 
@@ -852,6 +862,7 @@
       if (ESTADO.pino === null) return null;
       const posicao = ESTADO.pino.getLatLng();
       mapa.removeLayer(ESTADO.pino);
+      mapa.doubleClickZoom.enable();
       ESTADO.pino = null;
       ESTADO.motor = null;
       if (!selecionada) {
@@ -862,6 +873,9 @@
       desenhados.push(L.marker(posicao, { icon: iconePonto("selecionado") }).addTo(mapa));
       return posicao;
     }
+
+    // No produto é o init.js que registra, uma vez só.
+    mapa.on("dblclick", levarPino);
     // ---- fim do script do produto ----
 
     // ---- static/src/js/ui/puxar_gaveta.js — o script da SPEC design/022, como o mock dela o traz ----
@@ -940,6 +954,7 @@
     }
     function limpar() {
       if (ESTADO.pino) mapa.removeLayer(ESTADO.pino);
+      mapa.doubleClickZoom.enable();
       ESTADO.pino = null;
       ESTADO.motor = null;
       desenhados.forEach((ponto) => ponto.remove());

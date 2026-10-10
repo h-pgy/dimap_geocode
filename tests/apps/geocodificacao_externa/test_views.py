@@ -158,19 +158,26 @@ def test_geocodificar_externo_desenha_ponto_e_abre_gaveta() -> None:
     assert campos == {"lon": "-46.6571", "lat": "-23.5621", "origem": ENDERECO_FORMATADO}
 
 
-def test_gaveta_do_endereco_externo_traz_o_controle_do_street_view() -> None:
+def test_gaveta_do_endereco_externo_traz_o_item_do_street_view() -> None:
     geocodificador = GeocodificadorExterno(ProvedorDuble([_endereco_externo()]))
 
     resposta = views.geocodificar_externo(_post_logado({}), geocodificador, "al santos, 1293")
     gaveta = _soup(resposta.content).find(id="gaveta-entidade")
 
     assert isinstance(gaveta, Tag)
-    controle = gaveta.select_one("a[data-janela-popup]")
-    assert controle is not None
-    assert controle["href"] == reverse("street_view:abrir") + "?lon=-46.6571&lat=-23.5621"
-    assert controle["target"] == "_blank"
-    url_aviso = reverse("street_view:popup_bloqueado") + "?toggle=gaveta-endereco-externo-toggle"
-    assert controle["data-aviso-bloqueio"] == url_aviso
+    item = gaveta.select_one(f'[hx-get="{reverse("street_view:abrir")}"]')
+    assert item is not None
+    assert item.name == "button"
+    assert "Visão da rua" in item.get_text()
+    vals = json.loads(str(item["hx-vals"]))
+    assert {nome: float(valor) for nome, valor in vals.items()} == {
+        "lon": -46.6571,
+        "lat": -23.5621,
+    }
+    assert item["hx-target"] == "#gaveta-inferior-conteudo"
+    lista = item.find_parent(class_="poco-acoes__lista")
+    assert isinstance(lista, Tag)
+    assert lista.has_attr("data-troca-cena")
 
 
 # ---------------------------------------------------------------------------

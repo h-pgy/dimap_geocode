@@ -83,6 +83,9 @@ html[data-theme="dimap"] {
   --gaveta-puxavel-piso: 12rem;
   --gaveta-puxavel-teto: 75dvh;
   --gaveta-puxavel-partida: var(--gaveta-rasa-altura);
+  /* Gaveta do panorama (SPEC street_view/002): a altura da gaveta inferior quando ela hospeda o
+     Street View. */
+  --gaveta-panorama-altura: 45dvh;
 }
 
 @theme {
@@ -3193,6 +3196,33 @@ html[data-theme="dimap"] {
   @media (width < 48rem) {
     .gaveta-inferior-puxavel > .gaveta-alca .etched-line + .etched-line { @apply hidden; }
   }
+
+  /* VARIANTE · .gaveta-inferior-panorama (SPEC street_view/002) — composta no HTML com a
+     .gaveta-inferior-rasa, de quem herda a alça, a paleta, o recolher e a saída, e com a
+     .gaveta-inferior-puxavel, a quem diz em que altura nasce. A gaveta lateral para acima dela pela
+     regra que já existe. */
+  .tela-home:has(.gaveta-inferior-panorama) { --gaveta-puxavel-partida: var(--gaveta-panorama-altura); }
+
+  /* MOLÉCULA · .palco-panorama (SPEC street_view/002) — o assento do panorama, composto no HTML com
+     a .gaveta-figura. __tela é onde a imagem entra; __espera e __aviso ficam por cima dela. */
+  .palco-panorama { @apply relative flex-1 min-h-0 w-full; }
+  .palco-panorama__tela { @apply absolute inset-0; }
+  .palco-panorama__espera { @apply absolute inset-0 z-10 grid place-items-center text-agua-600; }
+  .palco-panorama__aviso {
+    @apply absolute top-3 left-1/2 -translate-x-1/2 z-10 w-max max-w-[calc(100%-1.5rem)] p-1.5 rounded-2xl;
+  }
+
+  /* ÁTOMO · .pino-panorama (SPEC street_view/002) — o pino do mapa enquanto o Street View está
+     aberto, na tinta do ponto. Vai dentro do divIcon do Leaflet: quem posiciona é o marcador, quem
+     incha é o SVG. */
+  .pino-panorama {
+    @apply block w-9 h-9 text-agua-500 cursor-grab origin-bottom transition-transform duration-200;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.9)) drop-shadow(0 2px 3px rgba(7, 58, 84, 0.45));
+  }
+  .pino-panorama:hover { @apply scale-110; }
+  .pino-panorama.pino-panorama--arrastando { @apply scale-125 cursor-grabbing; }
+  .pino-panorama__corpo { @apply fill-current stroke-white; }
+  .pino-panorama__olho { @apply fill-white; }
 
   /* ÁTOMO · .realce-resultado / .realce-resultado-forte (SPEC localizacao_lote/003) — o halo da
      feature de resultado de ação realçada no mapa, na tinta de rocha dos resultados. Vai no <path>
