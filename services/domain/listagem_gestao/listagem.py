@@ -6,6 +6,7 @@ from services.domain.listagem_gestao.models import (
     ColunaExecucao,
     ColunaServidor,
     ColunaT,
+    ColunaTipoUnidade,
     ColunaUnidade,
     ConsultaListagem,
     FiltroColuna,
@@ -14,6 +15,7 @@ from services.domain.listagem_gestao.models import (
     LinhaExecucao,
     LinhaServidor,
     LinhaT,
+    LinhaTipoUnidade,
     LinhaUnidade,
 )
 from services.utils.normalization import normalize_text
@@ -68,12 +70,14 @@ class ListadorTabela(Generic[LinhaT, ColunaT]):
 
 ListarServidores = ListadorTabela[LinhaServidor, ColunaServidor]
 ListarUnidades = ListadorTabela[LinhaUnidade, ColunaUnidade]
+ListarTiposUnidade = ListadorTabela[LinhaTipoUnidade, ColunaTipoUnidade]
 ListarCargos = ListadorTabela[LinhaCargo, ColunaCargo]
 ListarCargosBase = ListadorTabela[LinhaCargoBase, ColunaCargoBase]
 ListarExecucoes = ListadorTabela[LinhaExecucao, ColunaExecucao]
 
 listar_servidores = ListarServidores()
 listar_unidades = ListarUnidades()
+listar_tipos_unidade = ListarTiposUnidade()
 listar_cargos = ListarCargos()
 listar_cargos_base = ListarCargosBase()
 listar_execucoes = ListarExecucoes()

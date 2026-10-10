@@ -5,6 +5,15 @@ description: Como erros de validação Pydantic são tratados no DIMAP GeoCoder.
 
 # Erros de Validação Pydantic — padrão do projeto
 
+## Sumário
+
+- Como funciona
+- O que já existe (não reimplementar)
+- Como uma view usa o padrão
+- O que o partial exibe
+- Por que o HTMX precisa de configuração especial
+- O que NÃO fazer
+
 > **Exceção:** formulário cujo alvo HTMX é o próprio `<form>` (`outerHTML`) **não** usa este
 > middleware — o partial genérico trocaria o alvo inteiro por uma lista de erros em inglês, sem
 > campo nenhum para corrigir. Use a skill `erros-de-formulario` nesse caso.
@@ -63,13 +72,15 @@ status 422. A view nunca vê a exceção.
 ## Por que o HTMX precisa de configuração especial
 
 HTMX 2.x não faz swap em respostas não-2xx por padrão. A configuração abaixo (já em `base.html`)
-habilita o swap apenas para 422, mantendo o comportamento padrão para os demais erros:
+habilita o swap para 422 e para 409 (recusa por conflito que chega com a explicação no corpo — SPEC
+certidao_lancamento/002), mantendo o comportamento padrão para os demais erros:
 
 ```javascript
 htmx.config.responseHandling = [
   {code: "204", swap: false},
   {code: "[23]..", swap: true},
   {code: "422", swap: true},   // ← ValidationError do Pydantic
+  {code: "409", swap: true},   // ← recusa por conflito, com partial explicativo
   {code: "[45]..", swap: false, error: true},
 ];
 ```

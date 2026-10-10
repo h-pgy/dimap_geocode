@@ -1,0 +1,24 @@
+{# Aviso de toda limpeza. Ao fechar a gaveta ele não se fecha ao confirmar: some junto dela, no fade do swap. #}
+<dialog id="{{ id }}" class="modal modal-glass {% if fecha_gaveta %}gaveta-inferior-aviso-fechar{% endif %}" closedby="any">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+    <div>
+      <p class="text-overline">{{ rotulo|default:"Fechar" }}</p>
+      <p class="text-[18px] font-bold text-rocha-950">{{ limpeza.aviso.pergunta }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <span class="badge badge-poligono badge-sm">{{ limpeza.aviso.contagem }}</span>
+    </div>
+    <div class="modal-action">
+      <button type="button" class="btn btn-glass btn-sm" commandfor="{{ id }}" command="close">Cancelar</button>
+      {% if fecha_gaveta %}
+        <button type="button" class="btn btn-onsen btn-sm" hx-disabled-elt="this"
+                hx-post="{{ limpeza.url }}" hx-vals='{{ limpeza.hx_vals }}'
+                hx-target="#gaveta-inferior-conteudo" hx-swap="innerHTML swap:500ms">Tirar todos e fechar</button>
+      {% else %}
+        <button type="button" class="btn btn-onsen btn-sm" commandfor="{{ id }}" command="close"
+                hx-post="{{ limpeza.url }}" hx-vals='{{ limpeza.hx_vals }}'
+                hx-target="#resultado-busca" hx-swap="innerHTML">Tirar todos</button>
+      {% endif %}
+    </div>
+  </div>
+</dialog>

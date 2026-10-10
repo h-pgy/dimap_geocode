@@ -1,0 +1,101 @@
+from pathlib import Path
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from services.domain.documento_selado import SeloImpresso
+from services.utils.pdf import Coluna
+
+from .selo import QuadroSeloConfig
+
+
+class BlocoDocumento(BaseModel):
+    """Base dos blocos: o que todos compartilham é a posição no corpo, não atributo."""
+
+    model_config = ConfigDict(frozen=True)
+
+
+class BlocoTextual(BlocoDocumento):
+    """A exceção: título, subtítulo e parágrafo são UMA linha de texto, e o que os separa é só qual
+    estilo do tema os escreve. É esta base que o escritor genérico do §6 recebe."""
+
+    texto: str
+
+
+class Titulo(BlocoTextual):
+    tipo: Literal["titulo"] = "titulo"
+
+
+class Subtitulo(BlocoTextual):
+    tipo: Literal["subtitulo"] = "subtitulo"
+    # Nível é escala do mesmo bloco, não bloco próprio: o que muda é o corpo da fonte. Três níveis
+    # bastam para a hierarquia de um ato administrativo, e o `Literal` recusa o quarto.
+    nivel: Literal[1, 2, 3] = 1
+
+
+class Paragrafo(BlocoTextual):
+    tipo: Literal["paragrafo"] = "paragrafo"
+    # Recuo é variação do mesmo bloco, não bloco próprio: o que muda é a margem, não a natureza do
+    # que se lê. Transcrição e citação em documento oficial saem assim.
+    recuado: bool = False
+
+
+class Lista(BlocoDocumento):
+    """Um bloco por lista, não por item: a numeração é a posição do item, e nada precisa contar."""
+
+    tipo: Literal["lista"] = "lista"
+    ordenada: bool = False
+    itens: tuple[str, ...] = Field(min_length=1)
+
+
+class Tabela(BlocoDocumento):
+    """A coluna é declarada como TIPO — fixa em milímetros ou fluida por peso — e só vira medida na
+    página. `ColunaFixa` e `ColunaFluida` são o vocabulário da SPEC 002."""
+
+    tipo: Literal["tabela"] = "tabela"
+    colunas: tuple[Coluna, ...] = Field(min_length=1)
+    linhas: tuple[tuple[str, ...], ...] = Field(min_length=1)
+    # `None` é a tabela sem cabeçalho, não um cabeçalho vazio: presença é dado, não bandeira.
+    cabecalho: tuple[str, ...] | None = None
+
+
+class Imagem(BlocoDocumento):
+    tipo: Literal["imagem"] = "imagem"
+    # Caminho já resolvido: o domínio não sabe onde ficam os estáticos do projeto.
+    caminho: Path
+    # Sem default: quanto a imagem ocupa é decisão do documento, não do tema.
+    largura_mm: float
+
+
+class ImagemRaster(BlocoDocumento):
+    """Imagem que só existe como pixel — a planta. Os bytes vêm prontos: o bloco não busca nada."""
+
+    tipo: Literal["imagem_raster"] = "imagem_raster"
+    conteudo: bytes = Field(min_length=1)
+    largura_mm: float = Field(gt=0)
+
+
+class QrCode(BlocoDocumento):
+    """O bloco guarda o que o símbolo DIZ, nunca a imagem dele: o QR é derivado do conteúdo, e
+    guardá-lo pronto seria o mesmo dado em dois lugares."""
+
+    tipo: Literal["qr_code"] = "qr_code"
+    conteudo: str = Field(min_length=1)
+    # Sem default, como na `Imagem`: quanto o símbolo ocupa é decisão do documento, não do tema.
+    largura_mm: float
+
+
+class SeloDeFecho(BlocoDocumento):
+    """O quadro que encerra o documento. Guarda o selo redigido e a medida do quadro, nunca o
+    desenho: o símbolo é derivado do endereço, como no bloco `QrCode`."""
+
+    tipo: Literal["selo_de_fecho"] = "selo_de_fecho"
+    selo: SeloImpresso
+    # Sem default, como a largura da `Imagem`: quanto o quadro ocupa é decisão de quem emite.
+    quadro: QuadroSeloConfig
+
+
+Bloco = Annotated[
+    Titulo | Subtitulo | Paragrafo | Lista | Tabela | Imagem | ImagemRaster | QrCode | SeloDeFecho,
+    Field(discriminator="tipo"),
+]

@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/016 — Controles de mapa Onsen (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet 1.9.4 para a tela montada da Home -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. Utilities e tokens compostos no HTML. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== 2 · ÁTOMOS ==================== */
+      /* .pilula-mapa__btn-camadas — botão disparador da torrezinha */
+      .pilula-mapa__btn-camadas {
+        @apply w-9 h-9 rounded-full flex items-center justify-center text-madeira-700 transition-all duration-200 cursor-pointer;
+      }
+      .pilula-mapa__btn-camadas:hover {
+        @apply bg-white/60;
+        box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
+      }
+      .pilula-mapa__btn-camadas:active {
+        @apply scale-95;
+      }
+      .pilula-mapa__btn-camadas[aria-expanded="true"],
+      .pilula-mapa__btn-camadas.is-active-demo {
+        @apply bg-white/70 text-agua-800;
+        box-shadow: 0 0 14px rgba(72, 202, 228, 0.5);
+      }
+
+      /* .pilula-mapa__btn-zoom — botões de zoom (-) e (+) afundados no poço */
+      .pilula-mapa__btn-zoom {
+        @apply w-7 h-7 rounded-full flex items-center justify-center font-bold text-madeira-700 transition-all duration-200 cursor-pointer;
+      }
+      .pilula-mapa__btn-zoom:hover:not(:disabled),
+      .pilula-mapa__btn-zoom.is-hover-demo {
+        @apply bg-white/70;
+      }
+      .pilula-mapa__btn-zoom:active:not(:disabled),
+      .pilula-mapa__btn-zoom.is-active-demo {
+        @apply scale-90;
+      }
+      .pilula-mapa__btn-zoom:disabled,
+      .pilula-mapa__btn-zoom.is-disabled-demo {
+        @apply opacity-30 pointer-events-none cursor-not-allowed;
+      }
+      .pilula-mapa__btn-zoom svg {
+        @apply transition-all duration-200 origin-center;
+      }
+      /* .pilula-mapa__btn-zoom--swell — feedback tátil de rolagem do mouse:
+         sem círculo em volta (sem bg-white e sem box-shadow no botão).
+         O swell e o destaque em ciano acontecem exclusivamente no próprio glifo (+ ou -)! */
+      .pilula-mapa__btn-zoom--swell svg {
+        @apply scale-[1.38] text-agua-600;
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.95)) drop-shadow(0 0 10px rgba(0, 150, 199, 0.6));
+      }
+
+      /* ==================== 3 · MOLÉCULAS ==================== */
+      /* .pilula-mapa — o container pílula no canto inferior esquerdo do mapa */
+      .pilula-mapa {
+        @apply flex items-center gap-1.5 p-1 rounded-full backdrop-blur-[10px] bg-white/40 border border-white/60 text-base-content transition-all duration-300;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 2px 8px rgba(7, 58, 84, 0.38);
+      }
+
+      /* .pilula-mapa__zoom — o poço rebaixado que acomoda os botões de zoom */
+      .pilula-mapa__zoom {
+        @apply flex items-center gap-0.5 px-1 py-0.5 rounded-full;
+      }
+
+      /* .torre-camadas — o submenu vertical que ascende sobre a esquerda da pílula */
+      .torre-camadas {
+        @apply flex flex-col gap-1 p-1 rounded-2xl backdrop-blur-[18px] bg-gradient-to-br from-white/65 via-white/50 to-white/40 border border-white/60 transition-all duration-300 ease-out origin-bottom-left;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 24px rgba(7, 58, 84, 0.3), 0 0 20px rgba(72, 202, 228, 0.2);
+      }
+      .torre-camadas--fechada {
+        @apply opacity-0 translate-y-3 scale-95 pointer-events-none;
+      }
+      .torre-camadas--aberta {
+        @apply opacity-100 translate-y-0 scale-100 pointer-events-auto;
+      }
+
+      /* .torre-camadas__item — item compacto que expande em poço no hover */
+      .torre-camadas__item {
+        @apply flex items-center gap-2 p-1 rounded-xl text-madeira-700 transition-all duration-200 cursor-pointer border border-transparent whitespace-nowrap;
+      }
+      .torre-camadas__glifo {
+        @apply w-7 h-7 flex items-center justify-center shrink-0 rounded-lg text-agua-700 transition-colors;
+      }
+      .torre-camadas__rotulo {
+        @apply text-xs pr-1.5 opacity-0 max-w-0 overflow-hidden transition-all duration-300 ease-out whitespace-nowrap;
+      }
+
+      /* Quando a torre fica 'gorda' (hover ou foco na torre inteira):
+         TODOS os rótulos se abrem juntos para o usuário comparar as opções! */
+      .torre-camadas:hover .torre-camadas__rotulo,
+      .torre-camadas:focus-within .torre-camadas__rotulo,
+      .torre-camadas.is-expanded-demo .torre-camadas__rotulo {
+        @apply opacity-100 max-w-xs;
+      }
+
+      /* Rótulo de camada: padrão em tom Rocha secundário */
+      .torre-camadas__rotulo {
+        @apply text-rocha-700 font-medium;
+        filter: none;
+      }
+
+      /* Estado ativo em repouso (quando nenhum item da torre está sob o cursor):
+         a camada ativa exibe anel seletor ciano, iluminação e rótulo Madeira */
+      .torre-camadas__item--ativo {
+        @apply ring-1 ring-agua-500/70 bg-white/20;
+      }
+      .torre-camadas__item--ativo .torre-camadas__glifo {
+        @apply text-agua-700;
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+      }
+      .torre-camadas__item--ativo .torre-camadas__rotulo {
+        @apply text-madeira-700 font-bold;
+        filter: none;
+      }
+
+      /* Hover/Foco sobre qualquer item da torre (cima->baixo ou baixo->cima):
+         Escavação em poço rebaixado (.card-well) + seletor ciano luminoso + rótulo Madeira */
+      .torre-camadas__item:hover,
+      .torre-camadas__item:focus-visible,
+      .torre-camadas__item.is-hover-demo {
+        @apply rounded-xl bg-white/35 border-white/50 ring-1 ring-agua-500/70;
+        box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+      }
+      .torre-camadas__item:hover .torre-camadas__glifo,
+      .torre-camadas__item:focus-visible .torre-camadas__glifo,
+      .torre-camadas__item.is-hover-demo .torre-camadas__glifo {
+        @apply text-agua-600;
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+      }
+      .torre-camadas__item:hover .torre-camadas__rotulo,
+      .torre-camadas__item:focus-visible .torre-camadas__rotulo,
+      .torre-camadas__item.is-hover-demo .torre-camadas__rotulo {
+        @apply text-madeira-700 font-bold;
+        filter: none;
+      }
+
+      /* Quando a torre tem algum item sob o cursor:
+         O item ativo que NÃO estiver sob o cursor cede temporariamente o seletor ciano
+         e volta ao tom Rocha secundário, permitindo que o seletor migre com total
+         simetria em qualquer direção (cima->baixo ou baixo->cima) */
+      .torre-camadas:has(.torre-camadas__item:hover) .torre-camadas__item--ativo:not(:hover),
+      .torre-camadas:has(.torre-camadas__item:focus-visible) .torre-camadas__item--ativo:not(:focus-visible),
+      .torre-camadas:has(.is-hover-demo) .torre-camadas__item--ativo:not(.is-hover-demo),
+      .torre-camadas.has-item-hover .torre-camadas__item--ativo:not(:hover) {
+        @apply ring-0 bg-transparent;
+        box-shadow: none !important;
+      }
+      .torre-camadas:has(.torre-camadas__item:hover) .torre-camadas__item--ativo:not(:hover) .torre-camadas__glifo,
+      .torre-camadas:has(.torre-camadas__item:focus-visible) .torre-camadas__item--ativo:not(:focus-visible) .torre-camadas__glifo,
+      .torre-camadas:has(.is-hover-demo) .torre-camadas__item--ativo:not(.is-hover-demo) .torre-camadas__glifo,
+      .torre-camadas.has-item-hover .torre-camadas__item--ativo:not(:hover) .torre-camadas__glifo {
+        filter: none;
+      }
+      .torre-camadas:has(.torre-camadas__item:hover) .torre-camadas__item--ativo:not(:hover) .torre-camadas__rotulo,
+      .torre-camadas:has(.torre-camadas__item:focus-visible) .torre-camadas__item--ativo:not(:focus-visible) .torre-camadas__rotulo,
+      .torre-camadas:has(.is-hover-demo) .torre-camadas__item--ativo:not(.is-hover-demo) .torre-camadas__rotulo,
+      .torre-camadas.has-item-hover .torre-camadas__item--ativo:not(:hover) .torre-camadas__rotulo {
+        @apply text-rocha-700 font-medium;
+        filter: none;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-base-100 via-base-200 to-base-300 text-base-content selection:bg-agua-500/30">
+  <!-- Glifos SVG para os controles do mapa (SPEC design/016) -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <!-- Camadas estacadas -->
+      <g id="glifo-camadas">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Mapa base vetorial -->
+      <g id="glifo-mapa-base">
+        <path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M9 3v15M15 6v15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Satélite / Ortofoto -->
+      <g id="glifo-satelite">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M3.6 9h16.8M3.6 15h16.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <ellipse cx="12" cy="12" rx="4.5" ry="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      </g>
+      <!-- Menos (zoom out) -->
+      <g id="glifo-menos">
+        <path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </g>
+      <!-- Mais (zoom in) -->
+      <g id="glifo-mais">
+        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </g>
+      <!-- Selo de documento para simetria com o canto direito -->
+      <g id="glifo-selo">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Filtro de gravação no gelo (etched) -->
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+      <!-- Gravação escura mais intensa de todas (SPEC painel/002): duas bandas 100% opacas -->
+      <filter id="etched-onsen-dark" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.6" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="1" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+
+        <feOffset in="SourceAlpha" dx="0" dy="-1.5" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.9" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="1" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-7xl mx-auto px-4 py-8 flex flex-col gap-12">
+    <!-- Cabeçalho do Mock -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rocha-900/10 pb-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="badge badge-sm font-mono bg-agua-500/20 text-agua-800 border-agua-600/30">SPEC design/016</span>
+          <span class="text-xs uppercase tracking-widest text-rocha-700 font-bold">Onsen de Inverno</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-bold font-serif text-madeira-700 mt-1">
+          Controles de Mapa (Pílula de Zoom e Torre de Camadas)
+        </h1>
+        <p class="text-sm text-rocha-700 mt-1 max-w-2xl">
+          Substituição dos controles nativos do Leaflet por componentes táteis de vidro fosco: pílula com poço de zoom rebaixado e torrezinha retrátil de camadas com expansão horizontal no hover.
+        </p>
+      </div>
+
+      <nav class="flex flex-wrap gap-2 text-xs">
+        <a href="#atomos" class="btn btn-xs btn-ghost border border-white/60 bg-white/40">2 · Átomos</a>
+        <a href="#moleculas" class="btn btn-xs btn-ghost border border-white/60 bg-white/40">3 · Moléculas</a>
+        <a href="#organismos" class="btn btn-xs btn-ghost border border-white/60 bg-white/40">4 · Organismos</a>
+        <a href="#tela" class="btn btn-xs btn-onsen shadow-sm">5 · Tela Montada</a>
+      </nav>
+    </header>
+
+    <!-- 2 · ÁTOMOS -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <div class="flex items-center justify-between border-b border-rocha-900/10 pb-2">
+        <h2 class="text-lg font-bold text-madeira-700">2 · Átomos</h2>
+        <span class="text-xs text-rocha-700">Componentes mínimos elementares</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Glifos SVG -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3">
+          <span class="text-overline">Glifos do Mapa</span>
+          <div class="flex items-center gap-4 bg-white/30 p-3 rounded-xl card-well">
+            <div class="flex flex-col items-center gap-1">
+              <svg class="w-6 h-6 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-camadas"/></svg>
+              <span class="text-[10px] text-rocha-700">camadas</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <svg class="w-6 h-6 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-mapa-base"/></svg>
+              <span class="text-[10px] text-rocha-700">mapa</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <svg class="w-6 h-6 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-satelite"/></svg>
+              <span class="text-[10px] text-rocha-700">satélite</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <svg class="w-5 h-5 text-madeira-700" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg>
+              <span class="text-[10px] text-rocha-700">menos</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <svg class="w-5 h-5 text-madeira-700" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+              <span class="text-[10px] text-rocha-700">mais</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botão Disparador de Camadas -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3">
+          <span class="text-overline">.pilula-mapa__btn-camadas</span>
+          <div class="flex items-center gap-4 bg-white/30 p-3 rounded-xl card-well">
+            <div class="flex flex-col items-center gap-1.5">
+              <!-- repouso -->
+              <button class="pilula-mapa__btn-camadas border border-white/40">
+                <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-camadas"/></svg>
+              </button>
+              <span class="text-[10px] text-rocha-700">repouso</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <!-- hover -->
+              <button class="pilula-mapa__btn-camadas border border-white/40 bg-white/60 shadow-[0_0_12px_rgba(72,202,228,0.35)]">
+                <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-camadas"/></svg>
+              </button>
+              <span class="text-[10px] text-rocha-700">hover</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <!-- ativo -->
+              <button class="pilula-mapa__btn-camadas border border-white/40 is-active-demo" aria-expanded="true">
+                <svg class="w-5 h-5 text-agua-800" viewBox="0 0 24 24"><use href="#glifo-camadas"/></svg>
+              </button>
+              <span class="text-[10px] text-rocha-700">aberto</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botão de Zoom -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3">
+          <span class="text-overline">.pilula-mapa__btn-zoom</span>
+          <div class="flex items-center gap-3 bg-white/30 p-3 rounded-xl card-well">
+            <div class="flex flex-col items-center gap-1.5">
+              <!-- repouso -->
+              <button class="pilula-mapa__btn-zoom">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg>
+              </button>
+              <span class="text-[10px] text-rocha-700">repouso</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <!-- hover -->
+              <button class="pilula-mapa__btn-zoom is-hover-demo">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+              </button>
+              <span class="text-[10px] text-rocha-700">hover</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <!-- ativo -->
+              <button class="pilula-mapa__btn-zoom is-active-demo bg-white/80 scale-90">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+              </button>
+              <span class="text-[10px] text-rocha-700">pressionado</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <!-- disabled -->
+              <button class="pilula-mapa__btn-zoom is-disabled-demo" disabled>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg>
+              </button>
+              <span class="text-[10px] text-rocha-700">limite</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <!-- swell (rolagem do mouse) -->
+              <button class="pilula-mapa__btn-zoom pilula-mapa__btn-zoom--swell">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+              </button>
+              <span class="text-[10px] text-rocha-700">swell (rolagem)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · MOLÉCULAS -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <div class="flex items-center justify-between border-b border-rocha-900/10 pb-2">
+        <h2 class="text-lg font-bold text-madeira-700">3 · Moléculas</h2>
+        <span class="text-xs text-rocha-700">Composições táteis de vidro e poços</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Poço de Zoom -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3">
+          <span class="text-overline">Poço de Zoom (.card-well)</span>
+          <div class="flex flex-col gap-3 bg-white/20 p-4 rounded-xl">
+            <!-- normal -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-rocha-700">Intermediário</span>
+              <div class="pilula-mapa__zoom card-well">
+                <button class="pilula-mapa__btn-zoom" title="Menos"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg></button>
+                <button class="pilula-mapa__btn-zoom" title="Mais"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></button>
+              </div>
+            </div>
+            <!-- limite min -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-rocha-700">No piso (minZoom)</span>
+              <div class="pilula-mapa__zoom card-well">
+                <button class="pilula-mapa__btn-zoom" disabled title="Mínimo"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg></button>
+                <button class="pilula-mapa__btn-zoom" title="Mais"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></button>
+              </div>
+            </div>
+            <!-- limite max -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-rocha-700">No teto (maxZoom)</span>
+              <div class="pilula-mapa__zoom card-well">
+                <button class="pilula-mapa__btn-zoom" title="Menos"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg></button>
+                <button class="pilula-mapa__btn-zoom" disabled title="Máximo"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Itens da Torrezinha -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3">
+          <span class="text-overline">Torre Expandida ("Gorda") e Hierarquia de Rótulos</span>
+          <div class="flex flex-col gap-3 bg-white/20 p-4 rounded-xl">
+            <!-- repouso compacto -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-rocha-700">Torre compacta</span>
+              <div class="torre-camadas p-1 w-fit">
+                <div class="torre-camadas__item torre-camadas__item--ativo">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-satelite"/></svg></span>
+                  <span class="torre-camadas__rotulo">Ortofoto</span>
+                </div>
+                <div class="torre-camadas__item">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-mapa-base"/></svg></span>
+                  <span class="torre-camadas__rotulo">Mapa base</span>
+                </div>
+              </div>
+            </div>
+            <!-- torre expandida: todos os nomes aparecem, ativa em Madeira e inativa em Rocha secundário -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-rocha-700">Torre "gorda" (ativa vs Rocha secundário)</span>
+              <div class="torre-camadas is-expanded-demo p-1 w-fit">
+                <div class="torre-camadas__item torre-camadas__item--ativo">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-satelite"/></svg></span>
+                  <span class="torre-camadas__rotulo">Ortofoto</span>
+                </div>
+                <div class="torre-camadas__item">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-mapa-base"/></svg></span>
+                  <span class="torre-camadas__rotulo">Mapa base</span>
+                </div>
+              </div>
+            </div>
+            <!-- hover na inativa: acende poço rebaixado para escolha e migra o seletor ciano -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-rocha-700">Hover na inativa (seletor e poço migram)</span>
+              <div class="torre-camadas is-expanded-demo p-1 w-fit">
+                <div class="torre-camadas__item torre-camadas__item--ativo">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-satelite"/></svg></span>
+                  <span class="torre-camadas__rotulo">Ortofoto</span>
+                </div>
+                <div class="torre-camadas__item is-hover-demo">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-mapa-base"/></svg></span>
+                  <span class="torre-camadas__rotulo">Mapa base</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pílula Completa em Repouso -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3">
+          <span class="text-overline">Pílula Completa (.pilula-mapa)</span>
+          <div class="flex flex-col items-center justify-center p-6 bg-white/20 rounded-xl min-h-[140px]">
+            <div class="pilula-mapa">
+              <button class="pilula-mapa__btn-camadas" title="Camadas">
+                <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-camadas"/></svg>
+              </button>
+              <div class="pilula-mapa__zoom card-well">
+                <button class="pilula-mapa__btn-zoom" title="Afastar"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg></button>
+                <button class="pilula-mapa__btn-zoom" title="Aproximar"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · ORGANISMOS -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <div class="flex items-center justify-between border-b border-rocha-900/10 pb-2">
+        <h2 class="text-lg font-bold text-madeira-700">4 · Organismos</h2>
+        <span class="text-xs text-rocha-700">Widget isolado com interatividade declarativa</span>
+      </div>
+
+      <div class="glass-panel p-8 rounded-3xl flex flex-col gap-6 relative overflow-hidden">
+        <div class="flex flex-col gap-1">
+          <h3 class="text-base font-bold text-madeira-700">Conjunto Flutuante (#controles-mapa)</h3>
+          <p class="text-xs text-rocha-700">
+            Teste isolado: clique no botão de camadas para abrir a torre, teste o hover para ver o poço bem rebaixado expandir a torre na horizontal, e clique no zoom ou role a bola do mouse sobre a caixa para sentir o feedback tátil de brilho com swell.
+          </p>
+        </div>
+
+        <div id="demo-area" class="relative h-64 w-full rounded-2xl bg-gradient-to-tr from-agua-100 via-white/40 to-base-200 border border-white/60 p-6 flex items-end">
+          <!-- Widget Interativo Demonstrativo -->
+          <div id="demo-controles-mapa" class="relative inline-block">
+            <!-- Torrezinha demonstrativa -->
+            <div id="demo-torre" class="torre-camadas torre-camadas--fechada absolute bottom-full left-0 mb-2">
+              <button type="button" class="torre-camadas__item torre-camadas__item--ativo demo-layer-item" data-layer="Ortofoto">
+                <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-satelite"/></svg></span>
+                <span class="torre-camadas__rotulo">Ortofoto</span>
+              </button>
+              <button type="button" class="torre-camadas__item demo-layer-item" data-layer="Mapa base">
+                <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-mapa-base"/></svg></span>
+                <span class="torre-camadas__rotulo">Mapa base</span>
+              </button>
+            </div>
+
+            <!-- Pílula demonstrativa -->
+            <div class="pilula-mapa">
+              <button type="button" id="demo-btn-camadas" class="pilula-mapa__btn-camadas" aria-expanded="false">
+                <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-camadas"/></svg>
+              </button>
+              <div class="pilula-mapa__zoom card-well">
+                <button type="button" id="demo-zoom-out" class="pilula-mapa__btn-zoom"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg></button>
+                <button type="button" id="demo-zoom-in" class="pilula-mapa__btn-zoom"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ml-auto text-right text-xs text-rocha-700 flex flex-col gap-1">
+            <span>Camada ativa: <strong id="demo-layer-active" class="text-agua-800">Ortofoto</strong></span>
+            <span>Nível de zoom: <strong id="demo-zoom-level" class="text-madeira-700">14</strong> (mín 13, máx 18)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · TELA MONTADA -->
+    <section id="tela" class="flex flex-col gap-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-rocha-900/10 pb-2 gap-2">
+        <div>
+          <h2 class="text-lg font-bold text-madeira-700">5 · Tela Montada — Home com Mapa Leaflet Vivo</h2>
+          <span class="text-xs text-rocha-700">Condição real de uso: Leaflet fullscreen sem controles legados + pílula simétrica com torre</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="btn btn-xs btn-glass moldura-fixa-trigger cursor-pointer">
+            <input type="checkbox" id="toggle-modal-teste" class="modal-toggle hidden" />
+            <span>Simular abertura de modal (.moldura-fixa)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Anotação de template conforme a skill mock -->
+      <!-- página: templates/core/home.html -->
+      <div class="relative w-full h-[78vh] rounded-3xl overflow-hidden border border-white/60 shadow-2xl">
+        <!-- Canvas do Leaflet no fundo -->
+        <!-- fica na página: canvas do mapa e lente Onsen -->
+        <div id="map" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+        <div class="absolute inset-0 z-[1] pointer-events-none mix-blend-multiply bg-[#bfeaf5]/60"></div>
+        <div class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,119,182,0.25)_100%)]"></div>
+        <div class="absolute inset-0 z-[1] pointer-events-none backdrop-blur-[1.5px] [mask-image:radial-gradient(ellipse_at_center,transparent_45%,black_95%)]"></div>
+        <div class="absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+        <!-- Topo: Monograma, Barra de busca e Avatar da home -->
+        <div class="moldura-fixa fixed-top absolute top-6 left-4 lg:left-6 z-20 glass-panel rounded-full! w-11 h-11 flex items-center justify-center font-bold text-madeira-700 text-lg">
+          D
+        </div>
+
+        <div class="absolute top-6 left-1/2 -translate-x-1/2 z-10 w-11/12 max-w-xl pointer-events-auto moldura-fixa">
+          <div class="glass-panel rounded-2xl p-2 flex items-center gap-3 shadow-lg">
+            <svg class="w-5 h-5 text-rocha-700/70 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text" placeholder="Rua Direita, São Paulo..." class="input input-glass h-9 rounded-xl grow text-sm" />
+          </div>
+        </div>
+
+        <div class="moldura-fixa absolute top-6 right-4 lg:right-6 z-20 glass-panel rounded-full! p-1 flex items-center">
+          <div class="w-9 h-9 rounded-full bg-rocha-800 text-rocha-100 flex items-center justify-center font-mono text-xs font-bold">
+            MS
+          </div>
+        </div>
+
+        <!-- Canto Inferior Direito: Atalho de Validação de Documentos existente no sistema -->
+        <!-- partial: templates/documentos/partials/_atalho_validar.html -->
+        <div class="btn btn-glass atalho-mapa moldura-fixa absolute bottom-6 right-4 lg:right-6 z-20 flex items-center gap-2 cursor-pointer text-madeira-700">
+          <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+          <span class="text-xs font-medium text-madeira-700">Validar documento</span>
+        </div>
+        <!-- /partial -->
+
+        <!-- Canto Inferior Esquerdo: NOVA PÍLULA DE CONTROLES DO ONSEN -->
+        <!-- partial: templates/mapping/_controles_mapa.html -->
+        <div id="controles-mapa" class="pilula-mapa moldura-fixa absolute bottom-6 left-4 lg:left-6 z-20" role="region" aria-label="Controles do mapa">
+          <!-- Torrezinha de camadas: sobe verticalmente a partir da esquerda da pílula -->
+          <div id="torre-camadas" class="torre-camadas torre-camadas--fechada absolute bottom-full left-0 mb-2.5" role="menu" aria-label="Camadas base disponíveis">
+            <!-- Camada Ortofoto (declarada em settings.WMS_BASES) -->
+            <button
+              type="button"
+              class="torre-camadas__item torre-camadas__item--ativo live-layer-item"
+              data-camada-nome="Ortofoto"
+              role="menuitemradio"
+              aria-checked="true"
+              title="Ortofoto aérea GeoSampa"
+            >
+              <span class="torre-camadas__glifo">
+                <svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-satelite"/></svg>
+              </span>
+              <span class="torre-camadas__rotulo">Ortofoto</span>
+            </button>
+
+            <!-- Camada Mapa base (declarada em settings.WMS_BASES) -->
+            <button
+              type="button"
+              class="torre-camadas__item live-layer-item"
+              data-camada-nome="Mapa base"
+              role="menuitemradio"
+              aria-checked="false"
+              title="Cartografia vetorial"
+            >
+              <span class="torre-camadas__glifo">
+                <svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-mapa-base"/></svg>
+              </span>
+              <span class="torre-camadas__rotulo">Mapa base</span>
+            </button>
+          </div>
+
+          <!-- Botão disparador do submenu de camadas estacadas -->
+          <button
+            type="button"
+            id="btn-alternar-camadas"
+            class="pilula-mapa__btn-camadas"
+            aria-expanded="false"
+            aria-haspopup="true"
+            aria-controls="torre-camadas"
+            title="Alternar camadas do mapa"
+          >
+            <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24">
+              <use href="#glifo-camadas"/>
+            </svg>
+          </button>
+
+          <!-- Poço rebaixado com controle de aproximação (-) e (+) -->
+          <div class="pilula-mapa__zoom card-well" role="group" aria-label="Controle de aproximação">
+            <button
+              type="button"
+              id="btn-mapa-zoom-out"
+              class="pilula-mapa__btn-zoom"
+              title="Afastar mapa (Zoom out)"
+              aria-label="Afastar mapa"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg>
+            </button>
+            <button
+              type="button"
+              id="btn-mapa-zoom-in"
+              class="pilula-mapa__btn-zoom"
+              title="Aproximar mapa (Zoom in)"
+              aria-label="Aproximar mapa"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+            </button>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <!-- Modal de Teste para Demonstrar .moldura-fixa -->
+        <div id="modal-simulacao" class="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-[14px] opacity-0 pointer-events-none transition-all duration-300">
+          <div class="glass-panel max-w-md w-full p-6 rounded-3xl flex flex-col gap-4 shadow-2xl border border-white/80">
+            <h4 class="text-base font-bold text-madeira-700">Modal Aberto</h4>
+            <p class="text-xs text-rocha-700">
+              Observe que a pílula de controles no canto inferior esquerdo e o atalho de validação no canto inferior direito se recolheram suavemente (<code class="font-mono">.moldura-fixa</code>), evitando concorrência de atenção.
+            </p>
+            <button type="button" id="btn-fechar-modal" class="btn btn-sm btn-onsen self-end">Fechar modal</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Orquestração JavaScript de Integração com o Leaflet -->
+  <script>
+    // 1. Inicialização do Leaflet sem controles legados
+    const CENTRO_SP = [-23.5505, -46.6333];
+    const MIN_ZOOM = 13;
+    const MAX_ZOOM = 19;
+
+    const mapa = L.map("map", {
+      minZoom: MIN_ZOOM,
+      maxZoom: MAX_ZOOM,
+      zoomControl: false,          // Controles de zoom do Leaflet inibidos
+      attributionControl: false,   // Atribuição limpa sob a UI
+      zoomAnimationThreshold: MAX_ZOOM - MIN_ZOOM,
+    }).setView(CENTRO_SP, 14);
+
+    // Camadas base oficiais do GeoSampa (declaradas em settings.WMS_BASES)
+    const baseLayers = {
+      "Ortofoto": L.tileLayer.wms("https://raster.geosampa.prefeitura.sp.gov.br/geoserver/wms", {
+        layers: "geoportal:ORTO_RGB_2020",
+        version: "1.3.0",
+        format: "image/png",
+        transparent: false,
+        maxZoom: MAX_ZOOM,
+        maxNativeZoom: 18,
+      }),
+      "Mapa base": L.tileLayer.wms("https://geosampa.prefeitura.sp.gov.br/geoserver/wms", {
+        layers: "geoportal:mapa_base_cinza_mvt",
+        version: "1.3.0",
+        format: "image/png",
+        transparent: false,
+        maxZoom: MAX_ZOOM,
+      }),
+    };
+
+    // A primeira base (Ortofoto) começa visível por padrão
+    baseLayers["Ortofoto"].addTo(mapa);
+
+    // 2. Orquestração da Pílula e da Torrezinha na Tela Montada
+    const btnZoomIn = document.getElementById("btn-mapa-zoom-in");
+    const btnZoomOut = document.getElementById("btn-mapa-zoom-out");
+    const btnAlternar = document.getElementById("btn-alternar-camadas");
+    const torre = document.getElementById("torre-camadas");
+    const layerButtons = document.querySelectorAll(".live-layer-item");
+    const controlesContainer = document.getElementById("controles-mapa");
+
+    // Limites de zoom dinâmicos
+    function atualizarZoomBotoes() {
+      const z = mapa.getZoom();
+      if (btnZoomIn) btnZoomIn.disabled = z >= MAX_ZOOM;
+      if (btnZoomOut) btnZoomOut.disabled = z <= MIN_ZOOM;
+    }
+    mapa.on("zoomend", atualizarZoomBotoes);
+    atualizarZoomBotoes();
+
+    // Feedback tátil: brilho com swell disparado na rolagem do mouse sobre o mapa
+    function dispararSwell(btn) {
+      if (!btn || btn.disabled) return;
+      btn.classList.add("pilula-mapa__btn-zoom--swell");
+      clearTimeout(btn._swellTimer);
+      btn._swellTimer = setTimeout(() => {
+        btn.classList.remove("pilula-mapa__btn-zoom--swell");
+      }, 350);
+    }
+
+    // Cliques de zoom
+    if (btnZoomIn) btnZoomIn.addEventListener("click", () => { mapa.zoomIn(); dispararSwell(btnZoomIn); });
+    if (btnZoomOut) btnZoomOut.addEventListener("click", () => { mapa.zoomOut(); dispararSwell(btnZoomOut); });
+
+    // Captura de eventos de rolagem (wheel / scroll) da bola do mouse sobre o mapa
+    const mapContainer = mapa.getContainer();
+    mapContainer.addEventListener("wheel", (e) => {
+      if (e.deltaY < 0) {
+        dispararSwell(btnZoomIn);
+      } else if (e.deltaY > 0) {
+        dispararSwell(btnZoomOut);
+      }
+    }, { passive: true });
+
+    // Sincronia complementar com qualquer variação de nível de zoom do Leaflet
+    let zoomAnterior = mapa.getZoom();
+    mapa.on("zoomstart", () => {
+      zoomAnterior = mapa.getZoom();
+    });
+    mapa.on("zoom", () => {
+      const z = mapa.getZoom();
+      if (z > zoomAnterior) dispararSwell(btnZoomIn);
+      else if (z < zoomAnterior) dispararSwell(btnZoomOut);
+      zoomAnterior = z;
+    });
+
+    // Toggle da torrezinha
+    function fecharTorre() {
+      torre.classList.add("torre-camadas--fechada");
+      torre.classList.remove("torre-camadas--aberta");
+      btnAlternar.setAttribute("aria-expanded", "false");
+    }
+
+    function abrirTorre() {
+      torre.classList.remove("torre-camadas--fechada");
+      torre.classList.add("torre-camadas--aberta");
+      btnAlternar.setAttribute("aria-expanded", "true");
+    }
+
+    btnAlternar.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const aberta = torre.classList.contains("torre-camadas--aberta");
+      if (aberta) fecharTorre(); else abrirTorre();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!controlesContainer.contains(e.target)) fecharTorre();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") fecharTorre();
+    });
+
+    // Troca de camadas base
+    layerButtons.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const nome = btn.dataset.camadaNome;
+        const layerAlvo = baseLayers[nome];
+        if (!layerAlvo) return;
+
+        Object.values(baseLayers).forEach((l) => {
+          if (mapa.hasLayer(l)) mapa.removeLayer(l);
+        });
+        layerAlvo.addTo(mapa);
+
+        layerButtons.forEach((b) => {
+          const ativo = b === btn;
+          b.classList.toggle("torre-camadas__item--ativo", ativo);
+          b.setAttribute("aria-checked", ativo ? "true" : "false");
+        });
+
+        fecharTorre();
+      });
+    });
+
+    // Sincronização do hover na torre (reforço cross-browser para migração imediata do seletor)
+    const sincronizarHoverTorre = (itens, containerTorre) => {
+      itens.forEach((item) => {
+        item.addEventListener("mouseenter", () => containerTorre.classList.add("has-item-hover"));
+        item.addEventListener("mouseleave", () => containerTorre.classList.remove("has-item-hover"));
+      });
+    };
+    sincronizarHoverTorre(layerButtons, torre);
+
+    // 3. Orquestração do Organismo Demonstrativo (seção 4)
+    const demoBtnCamadas = document.getElementById("demo-btn-camadas");
+    const demoTorre = document.getElementById("demo-torre");
+    const demoLayerItems = document.querySelectorAll(".demo-layer-item");
+    sincronizarHoverTorre(demoLayerItems, demoTorre);
+    const demoLayerLabel = document.getElementById("demo-layer-active");
+    const demoZoomIn = document.getElementById("demo-zoom-in");
+    const demoZoomOut = document.getElementById("demo-zoom-out");
+    const demoZoomDisplay = document.getElementById("demo-zoom-level");
+    let demoZoom = 14;
+
+    demoBtnCamadas.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const aberta = demoTorre.classList.contains("torre-camadas--aberta");
+      demoTorre.classList.toggle("torre-camadas--aberta", !aberta);
+      demoTorre.classList.toggle("torre-camadas--fechada", aberta);
+      demoBtnCamadas.setAttribute("aria-expanded", (!aberta).toString());
+    });
+
+    demoLayerItems.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        demoLayerItems.forEach((b) => b.classList.remove("torre-camadas__item--ativo"));
+        btn.classList.add("torre-camadas__item--ativo");
+        demoLayerLabel.textContent = btn.dataset.layer;
+        demoTorre.classList.add("torre-camadas--fechada");
+        demoTorre.classList.remove("torre-camadas--aberta");
+        demoBtnCamadas.setAttribute("aria-expanded", "false");
+      });
+    });
+
+    demoZoomIn.addEventListener("click", () => {
+      if (demoZoom < 18) demoZoom++;
+      demoZoomDisplay.textContent = demoZoom;
+      demoZoomIn.disabled = demoZoom >= 18;
+      demoZoomOut.disabled = demoZoom <= 13;
+    });
+
+    demoZoomOut.addEventListener("click", () => {
+      if (demoZoom > 13) demoZoom--;
+      demoZoomDisplay.textContent = demoZoom;
+      demoZoomIn.disabled = demoZoom >= 18;
+      demoZoomOut.disabled = demoZoom <= 13;
+    });
+
+    const demoArea = document.getElementById("demo-area");
+    if (demoArea) {
+      demoArea.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        if (e.deltaY < 0 && demoZoom < 18) {
+          demoZoomIn.click();
+          dispararSwell(demoZoomIn);
+        } else if (e.deltaY > 0 && demoZoom > 13) {
+          demoZoomOut.click();
+          dispararSwell(demoZoomOut);
+        }
+      }, { passive: false });
+    }
+
+    // 4. Teste de .moldura-fixa com Modal
+    const toggleModal = document.getElementById("toggle-modal-teste");
+    const modalSimulacao = document.getElementById("modal-simulacao");
+    const btnFecharModal = document.getElementById("btn-fechar-modal");
+
+    toggleModal.addEventListener("change", () => {
+      const abrir = toggleModal.checked;
+      modalSimulacao.classList.toggle("opacity-100", abrir);
+      modalSimulacao.classList.toggle("pointer-events-auto", abrir);
+      modalSimulacao.classList.toggle("opacity-0", !abrir);
+      modalSimulacao.classList.toggle("pointer-events-none", !abrir);
+
+      document.querySelectorAll(".moldura-fixa").forEach((el) => {
+        el.classList.toggle("opacity-0", abrir);
+        el.classList.toggle("-translate-y-5", abrir);
+        el.classList.toggle("scale-95", abrir);
+        el.classList.toggle("pointer-events-none", abrir);
+      });
+    });
+
+    btnFecharModal.addEventListener("click", () => {
+      toggleModal.checked = false;
+      toggleModal.dispatchEvent(new Event("change"));
+    });
+  </script>
+</body>
+</html>

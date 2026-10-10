@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC street_view/002 — Street View na gaveta inferior (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet para o mapa vivo da home (skill `mock`) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec">
+    /* TOKEN · --gaveta-panorama-altura — a altura da gaveta inferior quando ela hospeda o panorama. */
+    :root { --gaveta-panorama-altura: 45dvh; }
+
+    /* Peças da SPEC design/022, ainda fora do tema: saem deste arquivo quando ela for portada. */
+    :root {
+      --gaveta-puxavel-piso: 12rem;
+      --gaveta-puxavel-teto: 75dvh;
+      --gaveta-puxavel-partida: var(--gaveta-rasa-altura);
+    }
+    @layer components {
+      @media (width >= 48rem) {
+        .tela-home:has(.gaveta-inferior-puxavel) {
+          --gaveta-rasa-altura: clamp(
+            var(--gaveta-puxavel-piso),
+            var(--gaveta-puxada-altura, var(--gaveta-puxavel-partida)),
+            var(--gaveta-puxavel-teto)
+          );
+        }
+        .gaveta-inferior-puxavel { @apply max-h-none; }
+        .gaveta-inferior-puxavel > .gaveta-alca { @apply flex-col gap-1 cursor-ns-resize touch-none select-none; }
+        .gaveta-inferior-puxavel > .gaveta-alca .etched-line { @apply h-1; }
+        .tela-home[data-puxando] .gaveta-inferior-puxavel > .gaveta-alca .etched-line {
+          @apply w-24;
+          background-color: rgba(0, 119, 182, 0.5);
+          filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+        }
+        .tela-home[data-puxando] .gaveta-lateral { transition-property: transform; }
+      }
+      @media (width < 48rem) {
+        .gaveta-inferior-puxavel > .gaveta-alca .etched-line + .etched-line { @apply hidden; }
+      }
+    }
+    /* Fim das peças da SPEC design/022. */
+
+    @layer components {
+      /* VARIANTE · .gaveta-inferior-panorama — composta no HTML com a .gaveta-inferior-rasa, de quem
+         herda a alça, a paleta, o recolher e a saída, e com a .gaveta-inferior-puxavel, a quem diz
+         em que altura nasce. A gaveta lateral para acima dela pela regra que já existe. */
+      .tela-home:has(.gaveta-inferior-panorama) { --gaveta-puxavel-partida: var(--gaveta-panorama-altura); }
+
+      /* MOLÉCULA · .palco-panorama — o assento do panorama, composto no HTML com a .gaveta-figura.
+         __tela é onde a imagem entra; __espera e __aviso ficam por cima dela. */
+      .palco-panorama { @apply relative flex-1 min-h-0 w-full; }
+      .palco-panorama__tela { @apply absolute inset-0; }
+      .palco-panorama__espera { @apply absolute inset-0 z-10 grid place-items-center text-agua-600; }
+      .palco-panorama__aviso {
+        @apply absolute top-3 left-1/2 -translate-x-1/2 z-10 w-max max-w-[calc(100%-1.5rem)] p-1.5 rounded-2xl;
+      }
+
+      /* ÁTOMO · .pino-panorama — o pino do mapa enquanto o Street View está aberto, na tinta do
+         ponto. Vai dentro do divIcon do Leaflet: quem posiciona é o marcador, quem incha é o SVG. */
+      .pino-panorama {
+        @apply block w-9 h-9 text-agua-500 cursor-grab origin-bottom transition-transform duration-200;
+        filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.9)) drop-shadow(0 2px 3px rgba(7, 58, 84, 0.45));
+      }
+      .pino-panorama:hover { @apply scale-110; }
+      .pino-panorama.pino-panorama--arrastando { @apply scale-125 cursor-grabbing; }
+      .pino-panorama__corpo { @apply fill-current stroke-white; }
+      .pino-panorama__olho { @apply fill-white; }
+
+      /* andaime do mock: moldura que faz as vezes da casca da home. O contain segura a
+         .gaveta-inferior, que é fixed, dentro do quadro; a altura do panorama vira fração do quadro,
+         como os 45dvh são fração da tela. */
+      .quadro-tela {
+        --altura-quadro: 40rem;
+        --gaveta-panorama-altura: calc(var(--altura-quadro) * var(--fracao-panorama, 0.45));
+        --gaveta-puxavel-teto: calc(var(--altura-quadro) * 0.75);
+        height: var(--altura-quadro);
+        @apply relative w-full overflow-clip rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+      .quadro-tela--baixo { --altura-quadro: 30rem; }
+      .quadro-tela--vivo { --altura-quadro: max(42rem, 88dvh); }
+      /* andaime do mock: o que fica no lugar da imagem do Google quando não há chave na URL. */
+      .andaime-panorama {
+        @apply absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-6;
+        @apply bg-gradient-to-b from-rocha-500 to-rocha-800 text-rocha-100;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+  <!-- Defs da gravação e glifos: os partials da própria aplicação. -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- Fundo: o mapa vivo da home, de mapping/_mapa_fullscreen.html. -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-7xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC street_view/002 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Street View na gaveta inferior</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-3xl">
+          O panorama na gaveta inferior, o pino que anda no mapa e o ponto desenhado que ele deixa
+          quando a posição é selecionada. Sem chave, a imagem é um andaime com botões de andar; abrindo esta página com
+          <span class="text-code">?chave=SUA_CHAVE</span> na URL, a tela ao vivo carrega o panorama do Google.
+        </p>
+      </header>
+
+      <!-- 1 · TOKENS -->
+      <section id="tokens" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <h2 class="section-title">1 · Tokens</h2>
+        <!-- --gaveta-panorama-altura -->
+        <div class="card-well p-5 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+          <p class="text-code">--gaveta-panorama-altura</p>
+          <p class="text-xl font-bold tabular-nums">45dvh</p>
+          <p class="text-sm text-base-content/70">A régua da tela ao vivo, lá embaixo, experimenta outras frações.</p>
+        </div>
+      </section>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">2 · Átomos</h2>
+
+        <!-- .pino-panorama -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.pino-panorama · entre o ponto do endereço e o ponto desenhado</p>
+          <div class="card-well p-6 flex flex-wrap items-end gap-10">
+            <!-- antes: o ponto do endereço, como a camada de resultado o desenha -->
+            <div class="flex flex-col items-center gap-3">
+              <span class="block w-4 h-4 rounded-full bg-agua-500/85 border-2 border-agua-500"></span>
+              <span class="text-xs text-base-content/60">ponto do endereço</span>
+            </div>
+            <!-- repouso -->
+            <div class="flex flex-col items-center gap-3">
+              <span data-pino></span>
+              <span class="text-xs text-base-content/60">pino · repouso</span>
+            </div>
+            <!-- arrastando -->
+            <div class="flex flex-col items-center gap-3">
+              <span data-pino="pino-panorama--arrastando"></span>
+              <span class="text-xs text-base-content/60">pino · arrastando</span>
+            </div>
+            <!-- depois: o ponto desenhado da bancada, selecionado -->
+            <div class="flex flex-col items-center gap-3">
+              <span data-ponto-desenhado></span>
+              <span class="text-xs text-base-content/60">ponto desenhado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- botão de selecionar a posição -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">selecionar esta posição · no cabeçalho da gaveta do panorama</p>
+          <div class="card-well p-5 flex flex-wrap items-center gap-8">
+            <!-- livre -->
+            <div class="flex flex-col items-start gap-2">
+              <span data-botao-selecionar></span>
+              <span class="text-xs text-base-content/60">com imagem</span>
+            </div>
+            <!-- desabilitado: a imagem ainda não chegou -->
+            <div class="flex flex-col items-start gap-2">
+              <span data-botao-selecionar="desabilitado"></span>
+              <span class="text-xs text-base-content/60">carregando</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- item do poço: de link a botão -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">item do poço · botão</p>
+          <div class="card-well p-5 flex flex-wrap items-center gap-8">
+            <!-- livre -->
+            <div class="flex flex-col items-start gap-2">
+              <button type="button" class="btn btn-onsen btn-sm gap-2">
+                <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+                Visão da rua
+              </button>
+              <span class="text-xs text-base-content/60">livre</span>
+            </div>
+            <!-- travado: com o Street View aberto -->
+            <div class="flex flex-col items-start gap-2">
+              <div data-troca-cena inert>
+                <button type="button" class="btn btn-onsen btn-sm gap-2">
+                  <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+                  Visão da rua
+                </button>
+              </div>
+              <span class="text-xs text-base-content/60">travado</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <h2 class="section-title">3 · Moléculas</h2>
+        <p class="text-overline">.palco-panorama · sobre a .gaveta-figura</p>
+        <div class="grid md:grid-cols-3 gap-6">
+          <!-- estado: carregando -->
+          <div class="flex flex-col gap-2">
+            <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col p-4"><div data-palco="carregando"></div></div>
+            <span class="text-xs text-base-content/60">carregando</span>
+          </div>
+          <!-- estado: com imagem -->
+          <div class="flex flex-col gap-2">
+            <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col p-4"><div data-palco="imagem"></div></div>
+            <span class="text-xs text-base-content/60">com imagem</span>
+          </div>
+          <!-- estado: pino solto onde não há imagem -->
+          <div class="flex flex-col gap-2">
+            <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col p-4"><div data-palco="aviso"></div></div>
+            <span class="text-xs text-base-content/60">pino solto onde não há imagem</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="flex flex-col gap-6">
+        <h2 class="section-title">4 · Organismos</h2>
+        <div class="grid lg:grid-cols-3 gap-6">
+          <!-- estado: com panorama -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta do panorama · com imagem</span>
+            <div class="quadro-tela quadro-tela--baixo tela-home" data-gaveta-panorama="imagem" data-toggle="org-imagem"></div>
+          </div>
+          <!-- estado de falta: sem imagem perto do endereço -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta do panorama · sem imagem</span>
+            <div class="quadro-tela quadro-tela--baixo tela-home" data-gaveta-panorama="sem_imagem" data-toggle="org-sem-imagem"></div>
+          </div>
+          <!-- estado de falta: Google fora do ar ou sem chave -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta do panorama · indisponível</span>
+            <div class="quadro-tela quadro-tela--baixo tela-home" data-gaveta-panorama="indisponivel" data-toggle="org-indisponivel"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- estado: ao vivo -->
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-1">
+            <span class="text-overline drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · abra a Visão da rua pelo poço, ande, arraste o pino, dê duplo clique no mapa, puxe a gaveta pela alça; selecione a posição ou feche pelo ✕</span>
+            <!-- andaime do mock: faz as vezes dos swaps do HTMX e da cobertura do Google -->
+            <div class="glass-panel px-3 py-2 flex flex-wrap items-center gap-3">
+              <button type="button" id="andaime-endereco" class="btn btn-onsen btn-sm">Localizar endereço</button>
+              <label class="flex items-center gap-2 text-xs">
+                <span class="text-overline">próxima abertura</span>
+                <select id="andaime-falta" class="select select-sm w-40">
+                  <option value="">com imagem</option>
+                  <option value="sem_imagem">sem imagem</option>
+                  <option value="indisponivel">indisponível</option>
+                </select>
+              </label>
+              <label class="flex items-center gap-2 text-xs">
+                <span class="text-overline">altura de partida</span>
+                <input type="range" id="andaime-altura" class="range range-xs w-28" min="30" max="60" value="45">
+                <span id="andaime-altura-valor" class="text-code tabular-nums">45%</span>
+              </label>
+              <button type="button" id="andaime-limpar" class="btn btn-ghost btn-glass btn-sm">Limpar</button>
+            </div>
+          </div>
+
+          <!-- página: core/home.html -->
+          <div class="quadro-tela quadro-tela--vivo tela-home" id="quadro-vivo">
+            <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+            <div id="mapa-tela" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+            <!-- fica na página: a UI flutuante da busca -->
+            <div data-busca></div>
+            <!-- fica na página: <div id="gaveta-entidade"></div> — a gaveta do endereço e, ao fechar, a dos desenhos -->
+            <div id="gaveta-entidade"></div>
+            <!-- fica na página: <div id="gaveta-inferior-conteudo"></div> — alvo do hx-get de street_view:abrir e do hx-post de street_view:fechar -->
+            <div id="gaveta-inferior-conteudo"></div>
+            <!-- fica na página: a marca do contexto, trocada por OOB (mapping/_contexto_acao_oob.html) -->
+            <div id="contexto-acao" hidden></div>
+          </div>
+        </div>
+
+        <!-- estados da tela, lado a lado -->
+        <div class="grid xl:grid-cols-2 gap-6">
+          <!-- estado: Street View aberto -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">street view aberto · o pino no lugar do ponto, a lateral acima da gaveta, o poço travado</span>
+            <div class="quadro-tela tela-home" data-tela-estado="aberto">
+              <div class="absolute inset-0 z-0" data-mapa="pino"></div>
+              <!-- partial: address_geocoder/partials/_gaveta_endereco.html — a lista do poço ganha data-troca-cena -->
+              <!-- partial: street_view/partials/_item_street_view.html — botão com hx-get, alvo #gaveta-inferior-conteudo -->
+              <div data-lateral="endereco" data-toggle="estado-aberto-lateral" data-travada></div>
+              <!-- /partial -->
+              <!-- /partial -->
+              <!-- partial: street_view/partials/_gaveta_panorama.html — resposta de street_view:abrir -->
+              <div data-gaveta-panorama="imagem" data-toggle="estado-aberto"></div>
+              <!-- /partial -->
+              <div id="contexto-acao" hidden data-contexto-acao="street-view"></div>
+            </div>
+          </div>
+
+          <!-- estado: posição selecionada — o pino virou ponto desenhado -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">posição selecionada · o pino virou ponto desenhado, marcado na gaveta dos desenhos</span>
+            <div class="quadro-tela tela-home" data-tela-estado="fechado">
+              <div class="absolute inset-0 z-0" data-mapa="desenhado"></div>
+              <!-- partial: mapping/_gaveta_desenhos.html — pedida pela bancada depois do street_view:fechar; já existe -->
+              <div data-lateral="desenhos" data-toggle="estado-fechado-lateral"></div>
+              <!-- /partial -->
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- A busca da home, como está em core/home.html. -->
+  <template id="molde-busca">
+    <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">
+      <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+        <div class="relative w-full flex items-center">
+          <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="search" value="AL SANTOS, 1293" class="input input-glass pl-11" />
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script type="module">
+    import { iconePonto } from "/static/src/js/mapa/desenho/ferramentas.js";
+
+    // andaime do mock: erro de carga aparece na tela, não só no console.
+    function denunciar(mensagem) {
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        '<pre class="fixed top-0 inset-x-0 z-50 m-0 p-3 text-xs bg-error text-error-content whitespace-pre-wrap">' + mensagem + "</pre>",
+      );
+    }
+    window.addEventListener("error", (evento) => denunciar("erro: " + evento.message));
+    window.addEventListener("unhandledrejection", (evento) => denunciar("falhou: " + evento.reason));
+
+    // ── andaime do mock: o que o servidor entregaria ────────────────────────────────────────────
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const PONTO = L.latLng(-23.5621, -46.6571);
+    const COR_PONTO = "#00B4D8";
+    const RAIO_M = 50;
+    const CHAVE = new URLSearchParams(location.search).get("chave");
+    // O eixo da rua em que o panorama simulado anda.
+    const RUA = [L.latLng(-23.56105, -46.65845), L.latLng(-23.5633, -46.65575)];
+    const PASSO = 0.03;
+    const FALTAS = {
+      sem_imagem: "O Google não tem imagem de rua a até " + RAIO_M + " m deste ponto.",
+      sem_imagem_no_destino: "Não há imagem de rua a até " + RAIO_M + " m de onde o pino foi solto.",
+      indisponivel: "A Visão da rua está indisponível no momento.",
+    };
+
+    async function partial(caminho) {
+      const r = await fetch(caminho);
+      if (!r.ok) throw new Error(r.status + " em " + caminho + " — sirva a RAIZ do projeto");
+      return (await r.text()).replace(TAG_DE_TEMPLATE, "").trim();
+    }
+    const [filtros, glifosDesenho, glifosMapa, glifosStreetView, fundo] = await Promise.all([
+      partial("/templates/partials/_filtros_gravacao.html"),
+      partial("/templates/mapping/_glifos_desenho.html"),
+      partial("/templates/mapping/_glifos_mapa.html"),
+      partial("/templates/street_view/partials/_glifos_street_view.html"),
+      partial("/templates/mapping/_mapa_fullscreen.html"),
+    ]);
+    document.getElementById("defs-aplicacao").innerHTML = filtros + glifosDesenho + glifosMapa + glifosStreetView;
+    document.getElementById("fundo-home").innerHTML = fundo;
+
+    const naRua = (t) => L.latLng(
+      RUA[0].lat + (RUA[1].lat - RUA[0].lat) * t,
+      RUA[0].lng + (RUA[1].lng - RUA[0].lng) * t,
+    );
+    function trechoMaisProximo(latlng) {
+      const k = Math.cos((latlng.lat * Math.PI) / 180);
+      const dx = (RUA[1].lng - RUA[0].lng) * k;
+      const dy = RUA[1].lat - RUA[0].lat;
+      const t = (((latlng.lng - RUA[0].lng) * k) * dx + (latlng.lat - RUA[0].lat) * dy) / (dx * dx + dy * dy);
+      return Math.min(1, Math.max(0, t));
+    }
+    const CAMERA_INICIAL = naRua(trechoMaisProximo(PONTO));
+
+    // ── A marcação em julgamento ────────────────────────────────────────────────────────────────
+
+    // ÁTOMO · o pino. O desenho é o do #glifo-ponto, cheio.
+    function svgPino(classe = "") {
+      return `
+        <svg class="pino-panorama ${classe}" viewBox="0 0 24 24" aria-hidden="true">
+          <path class="pino-panorama__corpo" stroke-width="1.6" stroke-linejoin="round" d="M12 21.5s7-6.6 7-11.5a7 7 0 1 0-14 0c0 4.9 7 11.5 7 11.5z"/>
+          <circle class="pino-panorama__olho" cx="12" cy="9.8" r="2.6"/>
+        </svg>`;
+    }
+
+    // andaime do mock: o que fica no lugar da imagem do Google.
+    const ANDAIME_PANORAMA = `
+      <div class="andaime-panorama">
+        <p class="text-overline text-rocha-100">andaime · panorama simulado</p>
+        <div class="flex gap-3">
+          <button type="button" class="btn btn-glass btn-sm" data-andar="-1">← Recuar</button>
+          <button type="button" class="btn btn-glass btn-sm" data-andar="1">Avançar →</button>
+        </div>
+      </div>`;
+
+    const avisoDestino = (oculto) => `
+      <div class="palco-panorama__aviso glass-panel-thick" data-falta="sem_imagem_no_destino" ${oculto ? "hidden" : ""}>
+        <div role="alert" class="alert alert-warning alert-soft">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-8.02 13.89A1.5 1.5 0 003.57 20h16.86a1.5 1.5 0 001.3-2.25L13.71 3.86a1.5 1.5 0 00-2.6 0z"/></svg>
+          <span>${FALTAS.sem_imagem_no_destino}</span>
+        </div>
+      </div>`;
+
+    // MOLÉCULA · .palco-panorama. estado: carregando | imagem | aviso
+    function palco(estado) {
+      return `
+        <div class="gaveta-figura palco-panorama" data-street-view data-lat="${PONTO.lat}" data-lon="${PONTO.lng}" data-raio="${RAIO_M}">
+          <div class="palco-panorama__tela" data-tela>${estado === "carregando" ? "" : ANDAIME_PANORAMA}</div>
+          <div class="palco-panorama__espera" data-espera ${estado === "carregando" ? "" : "hidden"}><span class="loading loading-spinner loading-lg"></span></div>
+          ${avisoDestino(estado !== "aviso")}
+        </div>`;
+    }
+
+    const falta = (motivo, oculta) => `
+      <div class="gaveta-vazia" data-falta="${motivo}" ${oculta ? "hidden" : ""}>
+        <svg class="w-8 h-8 etched" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+        <p>${FALTAS[motivo]}</p>
+      </div>`;
+
+    // ÁTOMO · o botão que troca o pino pelo ponto desenhado. Nasce desabilitado, até a imagem chegar.
+    const botaoSelecionar = (desabilitado) => `
+      <button type="button" class="btn btn-onsen btn-sm gap-2" title="Marca no mapa o ponto em que a câmera está" data-selecionar-posicao ${desabilitado ? "disabled" : ""}>
+        <span class="poco-acoes__icone"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></span>
+        Selecionar esta posição
+      </button>`;
+
+    // ORGANISMO · street_view/partials/_gaveta_panorama.html. estado: carregando | imagem | sem_imagem | indisponivel
+    function gavetaPanorama(idToggle, estado) {
+      const comPalco = estado === "carregando" || estado === "imagem";
+      return `
+        <input type="checkbox" id="${idToggle}" class="gaveta-toggle" checked>
+        <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa gaveta-inferior-puxavel gaveta-inferior-panorama" role="dialog" aria-label="Visão da rua">
+          <input type="checkbox" id="${idToggle}-recolhida" class="gaveta-inferior-recolher">
+          <label for="${idToggle}-recolhida" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span><span class="etched-line"></span></label>
+          <label for="${idToggle}-recolhida" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+            <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+          </label>
+          <header class="gaveta-cabecalho items-center">
+            <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+              <h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Visão da rua</h2>
+              <p class="text-sm text-base-content/70">Ande pela imagem, arraste o pino ou dê duplo clique no mapa.</p>
+            </div>
+            <div class="flex items-center gap-4">
+              <!-- os dois fecham pelo hx-post de street_view:fechar; só este deixa o ponto desenhado -->
+              ${comPalco ? botaoSelecionar(estado === "carregando") : ""}
+              <!-- no produto: mapping/_fechar_gaveta.html -->
+              <button type="button" class="btn-etched btn-etched-swell etched self-center" aria-label="Fechar" data-fechar>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </button>
+            </div>
+          </header>
+          <div class="gaveta-corpo">
+            <section class="gaveta-coluna">
+              ${comPalco ? palco(estado) : ""}
+              ${falta("sem_imagem", estado !== "sem_imagem")}
+              ${falta("indisponivel", estado !== "indisponivel")}
+            </section>
+          </div>
+        </aside>`;
+    }
+
+    // A casca de toda gaveta lateral (SPEC design/013), já existente.
+    function cascaLateral({ chave, toggle, cabecalho, corpo, voltar = "" }) {
+      return `
+        <div class="gaveta-lateral" data-gaveta="${chave}">
+          <input type="checkbox" id="${toggle}" class="gaveta-lateral-toggle" checked>
+          <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+            <header class="gaveta-lateral-cabecalho">${cabecalho}</header>
+            <div class="gaveta-lateral-corpo" data-scroll-etched>
+              <div class="gaveta-lateral-rolador" data-rolador><div class="gaveta-lateral-conteudo">${corpo}</div></div>
+              <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+            </div>
+          </div>
+          ${voltar}
+          <label for="${toggle}" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+            <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+          </label>
+        </div>`;
+    }
+
+    // address_geocoder/partials/_gaveta_endereco.html — o que muda é a lista do poço e o item.
+    function gavetaEndereco(toggle, travada = false) {
+      return cascaLateral({
+        chave: "endereco-178462-1293",
+        toggle,
+        cabecalho: `
+          <p class="text-overline text-madeira-600">Entidade localizada</p>
+          <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Endereço</h2>
+          <p class="text-sm font-medium mt-2">AL SANTOS, 1293</p>`,
+        corpo: `
+          <div class="card-well p-4 flex flex-col gap-3">
+            <div class="flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Logradouro</p>
+                <p class="font-bold leading-tight">SANTOS</p>
+              </div>
+            </div>
+            <div class="h-px w-full bg-rocha-950/10"></div>
+            <div class="flex items-baseline justify-between gap-4">
+              <p class="text-overline">Codlog</p>
+              <p class="text-code text-sm">178462</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Número</p>
+              <p class="text-xl font-bold tabular-nums">1293</p>
+            </div>
+            <div class="card-well p-4">
+              <p class="text-overline mb-1">Faixa do segmento</p>
+              <p class="text-xl font-bold tabular-nums">1201 – 1399</p>
+            </div>
+          </div>
+          <div class="card-well poco-acoes">
+            <p class="text-overline poco-acoes__titulo">Ações</p>
+            <div class="poco-acoes__lista" data-troca-cena ${travada ? "inert" : ""}>
+              <button type="button" class="btn btn-onsen btn-sm" title="Procura no mesmo logradouro, a até 50 m do ponto.">
+                <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/></svg></span>
+                Lote mais próximo
+              </button>
+              <button type="button" class="btn btn-onsen btn-sm" title="Abre o Google Street View na gaveta inferior" data-item-street-view>
+                <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+                Visão da rua
+              </button>
+            </div>
+          </div>`,
+      });
+    }
+
+    // Já existem: os ícones pequenos das consultas do poço do ponto.
+    const SVG_LOGRADOURO_MAIS_PROXIMO = `
+      <svg viewBox="0 0 24 24"><path d="M1.4 16.5 20.4 8.5M3.6 21.9 22.6 13.9"/><path d="M2.5 19.2 21.5 11.2" stroke-width="1.2" stroke-dasharray="2 2.2"/><path d="M6.5 4.7 9.4 11.6M6.7 10.3 9.4 11.6 10.3 8.8"/></svg>`;
+    const SVG_ENDERECO_MAIS_PROXIMO = `
+      <svg viewBox="0 0 24 24"><path d="M1.4 16.5 7.6 13.9M12.6 11.8 20.4 8.5M3.6 21.9 22.6 13.9"/><path d="M2.5 19.2 21.5 11.2" stroke-width="1.2" stroke-dasharray="2 2.2"/><path d="M10 16C10 16 5.5 11.4 5.5 7.5a4.5 4.5 0 0 1 9 0C14.5 11.4 10 16 10 16z"/><circle cx="10" cy="7.5" r="1.5"/></svg>`;
+    const itemDoPoco = (svg, rotulo) => `
+      <button type="button" class="card-well item-menu item-menu-swell">
+        <span class="icone-acao icone-acao-pequeno icone-acao-acende">${svg}</span>
+        <span class="item-menu-rotulo">${rotulo}</span>
+      </button>`;
+
+    // mapping/_gaveta_desenhos.html — já existe; aqui com o ponto que o pino deixou.
+    function gavetaDesenhos(toggle, posicao) {
+      return cascaLateral({
+        chave: "desenhos",
+        toggle,
+        cabecalho: `
+          <p class="text-overline text-madeira-600">Bancada de desenho</p>
+          <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Desenhos no mapa</h2>`,
+        corpo: `
+          <div class="poco-desenhos poco-desenhos--ponto card-well">
+            <label class="linha-desenho">
+              <input type="radio" name="id_bancada-${toggle}" class="linha-desenho__marca" checked>
+              <span class="linha-desenho__rotulo">Ponto 1</span>
+              <span class="linha-desenho__medida">${posicao.lat.toFixed(3)}, ${posicao.lng.toFixed(3)}</span>
+              <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar ponto 1"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+            </label>
+            <div class="poco-desenhos__acoes"><div class="poco-desenhos__acoes-recorte">
+              <div class="placa-lista glass-panel">
+                <div class="placa-lista__cabecalho"><span class="text-overline">Ações</span><span class="placa-lista__contagem">2</span></div>
+                <div class="placa-lista__conteudo" data-troca-cena>
+                  ${itemDoPoco(SVG_LOGRADOURO_MAIS_PROXIMO, "Logradouro mais próximo")}
+                  ${itemDoPoco(SVG_ENDERECO_MAIS_PROXIMO, "Endereço mais próximo")}
+                </div>
+              </div>
+            </div></div>
+          </div>
+          <button type="button" class="btn-etched btn-etched-swell etched self-end">Limpar desenhos</button>`,
+        voltar: `
+          <div class="gaveta-lateral-voltar">
+            <div class="voltar-gaveta" data-troca-cena>
+              <button type="button" class="btn-etched btn-etched-swell etched" title="Voltar para Endereço · AL SANTOS, 1293" data-voltar>Voltar</button>
+            </div>
+          </div>`,
+      });
+    }
+
+    // ── andaime do mock: mapas e montagem dos estados estáticos ─────────────────────────────────
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers, version: WMS.version, format: "image/png", transparent: false, attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+    const circuloDoEndereco = (mapa) => L.circleMarker(PONTO, {
+      radius: 7, color: COR_PONTO, weight: 2, fillColor: COR_PONTO, fillOpacity: 0.85,
+    }).addTo(mapa);
+    const iconePino = () => L.divIcon({ className: "", html: svgPino(), iconSize: [36, 36], iconAnchor: [18, 32] });
+
+    document.querySelectorAll("[data-pino]").forEach((alvo) => { alvo.innerHTML = svgPino(alvo.dataset.pino); });
+    document.querySelectorAll("[data-botao-selecionar]").forEach((alvo) => {
+      alvo.outerHTML = botaoSelecionar(alvo.dataset.botaoSelecionar === "desabilitado");
+    });
+    document.querySelectorAll("[data-ponto-desenhado]").forEach((alvo) => { alvo.innerHTML = iconePonto("selecionado").options.html; });
+    document.querySelectorAll("[data-palco]").forEach((alvo) => { alvo.outerHTML = palco(alvo.dataset.palco); });
+    document.querySelectorAll("[data-gaveta-panorama]").forEach((alvo) => {
+      alvo.insertAdjacentHTML("beforeend", gavetaPanorama(alvo.dataset.toggle, alvo.dataset.gavetaPanorama));
+    });
+    document.querySelectorAll("[data-lateral]").forEach((alvo) => {
+      alvo.outerHTML = alvo.dataset.lateral === "endereco"
+        ? gavetaEndereco(alvo.dataset.toggle, alvo.hasAttribute("data-travada"))
+        : gavetaDesenhos(alvo.dataset.toggle, CAMERA_INICIAL);
+    });
+
+    base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(PONTO, 15));
+
+    document.querySelectorAll("[data-mapa]").forEach((alvo, indice) => {
+      alvo.id = "mapa-estado-" + indice;
+      const mapa = base(L.map(alvo.id, {
+        zoomControl: false, minZoom: 13, maxZoom: 19, dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+      }).setView(CAMERA_INICIAL, 18));
+      // A gaveta lateral cobre a esquerda e, com o panorama aberto, a gaveta inferior cobre o rodapé.
+      mapa.panBy(alvo.dataset.mapa === "pino" ? [-180, 130] : [-180, 0], { animate: false });
+      if (alvo.dataset.mapa === "pino") L.marker(CAMERA_INICIAL, { icon: iconePino() }).addTo(mapa);
+      else L.marker(CAMERA_INICIAL, { icon: iconePonto("selecionado") }).addTo(mapa);
+    });
+
+    const { montarBarrasGravadas } = await import("/static/src/js/ui/scroll_etched.js");
+    montarBarrasGravadas();
+
+    // ── A tela ao vivo ──────────────────────────────────────────────────────────────────────────
+    const quadro = document.getElementById("quadro-vivo");
+    quadro.querySelector("[data-busca]").replaceWith(document.getElementById("molde-busca").content.cloneNode(true));
+    const mapa = base(L.map("mapa-tela", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(PONTO, 18));
+    const alvoLateral = document.getElementById("gaveta-entidade");
+    const alvoInferior = document.getElementById("gaveta-inferior-conteudo");
+    const marca = quadro.querySelector("#contexto-acao");
+    const seletorFalta = document.getElementById("andaime-falta");
+    let camadaResultado = null;
+    let desenhados = [];
+
+    // andaime do mock: os dois motores entregam a mesma coisa ao script — achar a imagem mais
+    // próxima, mostrá-la, ir a outra e avisar quando a câmera anda.
+    function motorSimulado(palcoEmTela) {
+      let trecho = 0;
+      let aoAndar = () => {};
+      return {
+        async procurar(latlng, raio) {
+          const t = trechoMaisProximo(latlng);
+          const posicao = naRua(t);
+          return posicao.distanceTo(latlng) <= raio ? { id: t, posicao } : null;
+        },
+        mostrar(achado) {
+          trecho = achado.id;
+          const tela = palcoEmTela.querySelector("[data-tela]");
+          tela.innerHTML = ANDAIME_PANORAMA;
+          tela.addEventListener("click", (evento) => {
+            const botao = evento.target.closest("[data-andar]");
+            if (botao === null) return;
+            trecho = Math.min(1, Math.max(0, trecho + PASSO * Number(botao.dataset.andar)));
+            aoAndar();
+          });
+        },
+        irPara(achado) { trecho = achado.id; aoAndar(); },
+        reler() {},
+        posicao: () => naRua(trecho),
+        aoAndar(chamada) { aoAndar = chamada; },
+      };
+    }
+
+    let googleMaps = null;
+    function carregarGoogle(chave) {
+      googleMaps ??= new Promise((pronto, falhou) => {
+        window.__googlePronto = async () => {
+          await Promise.all([google.maps.importLibrary("streetView"), google.maps.importLibrary("geometry")]);
+          pronto(google.maps);
+        };
+        const script = document.createElement("script");
+        script.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(chave) + "&v=weekly&loading=async&callback=__googlePronto";
+        script.onerror = () => falhou(new Error("o script do Google não carregou"));
+        document.head.append(script);
+      });
+      return googleMaps;
+    }
+
+    async function motorGoogle(palcoEmTela) {
+      const maps = await carregarGoogle(CHAVE);
+      const servico = new maps.StreetViewService();
+      const paraLeaflet = (latLng) => L.latLng(latLng.lat(), latLng.lng());
+      let panorama = null;
+      // Chave recusada só se descobre depois da carga.
+      window.gm_authFailure = () => revelarFalta(palcoEmTela, "indisponivel");
+      return {
+        async procurar(latlng, raio) {
+          const resposta = await servico.getPanorama({
+            location: { lat: latlng.lat, lng: latlng.lng },
+            radius: raio,
+            preference: maps.StreetViewPreference.NEAREST,
+            // Só acervo oficial e de rua: foto esférica de usuário não tem por onde andar.
+            sources: [maps.StreetViewSource.GOOGLE, maps.StreetViewSource.OUTDOOR],
+          }).catch(() => null);
+          if (resposta === null) return null;
+          const local = resposta.data.location;
+          return { id: local.pano, posicao: paraLeaflet(local.latLng), noGoogle: local.latLng };
+        },
+        mostrar(achado, alvo) {
+          const rumo = maps.geometry.spherical.computeHeading(achado.noGoogle, { lat: alvo.lat, lng: alvo.lng });
+          panorama = new maps.StreetViewPanorama(palcoEmTela.querySelector("[data-tela]"), {
+            pano: achado.id,
+            pov: { heading: rumo, pitch: 0 },
+            addressControl: false,
+            fullscreenControl: false,
+          });
+        },
+        irPara(achado) { panorama.setPano(achado.id); },
+        reler() { maps.event.trigger(panorama, "resize"); },
+        posicao() {
+          const posicao = panorama.getPosition();
+          return posicao ? paraLeaflet(posicao) : null;
+        },
+        aoAndar(chamada) { panorama.addListener("position_changed", chamada); },
+      };
+    }
+
+    async function criarMotor(palcoEmTela) {
+      if (seletorFalta.value === "indisponivel") throw new Error("indisponível (simulado)");
+      return CHAVE ? motorGoogle(palcoEmTela) : motorSimulado(palcoEmTela);
+    }
+
+    // ---- static/src/js/mapa/street_view.js — o script do produto, como a SPEC §6 o prevê ----
+    const ESTADO = { motor: null, pino: null };
+
+    function revelarFalta(palcoEmTela, motivo) {
+      palcoEmTela.hidden = true;
+      palcoEmTela.parentElement.querySelector('.gaveta-vazia[data-falta="' + motivo + '"]').hidden = false;
+    }
+
+    function avisarDestino(palcoEmTela) {
+      const aviso = palcoEmTela.querySelector('[data-falta="sem_imagem_no_destino"]');
+      aviso.hidden = false;
+      setTimeout(() => { aviso.hidden = true; }, 4000);
+    }
+
+    // O que as gavetas deixam de mapa à vista: é para dentro disso que o pino é trazido.
+    function areaLivre() {
+      const lateral = quadro.querySelector(".gaveta-lateral:has(> .gaveta-lateral-toggle:checked)");
+      const placa = quadro.querySelector(".gaveta-toggle:checked + .gaveta-inferior");
+      const recolhida = placa?.querySelector(":scope > .gaveta-inferior-recolher:checked");
+      return {
+        paddingTopLeft: [(lateral ? lateral.offsetWidth : 0) + 56, 96],
+        paddingBottomRight: [56, (placa && !recolhida ? placa.offsetHeight : 0) + 40],
+      };
+    }
+
+    function acompanhar() {
+      // Recém-criado, o panorama ainda não sabe onde está: o pino fica onde nasceu.
+      const posicao = ESTADO.motor.posicao();
+      if (posicao !== null) ESTADO.pino.setLatLng(posicao);
+      mapa.panInside(ESTADO.pino.getLatLng(), areaLivre());
+    }
+
+    // A gaveta foi puxada: o palco mudou de tamanho e a área livre do mapa também.
+    function acomodar() {
+      if (ESTADO.motor === null) return;
+      ESTADO.motor.reler();
+      acompanhar();
+    }
+
+    async function soltar(palcoEmTela, raio) {
+      const achado = await ESTADO.motor.procurar(ESTADO.pino.getLatLng(), raio);
+      if (achado === null) {
+        acompanhar();
+        avisarDestino(palcoEmTela);
+        return;
+      }
+      ESTADO.motor.irPara(achado);
+    }
+
+    // No produto, com ferramenta de desenho na mão o duplo clique não leva o pino.
+    function levarPino(evento) {
+      if (ESTADO.pino === null) return;
+      const palcoEmTela = alvoInferior.querySelector("[data-street-view]");
+      const raio = Number(palcoEmTela.dataset.raio);
+      ESTADO.pino.setLatLng(evento.latlng);
+      soltar(palcoEmTela, raio);
+    }
+
+    function criarPino(palcoEmTela, posicao, raio) {
+      const pino = L.marker(posicao, { icon: iconePino(), draggable: true, zIndexOffset: 1000 }).addTo(mapa);
+      const desenho = () => pino.getElement().querySelector(".pino-panorama");
+      pino.on("dragstart", () => desenho().classList.add("pino-panorama--arrastando"));
+      pino.on("dragend", () => {
+        desenho().classList.remove("pino-panorama--arrastando");
+        soltar(palcoEmTela, raio);
+      });
+      return pino;
+    }
+
+    async function abrir(palcoEmTela) {
+      const alvo = L.latLng(Number(palcoEmTela.dataset.lat), Number(palcoEmTela.dataset.lon));
+      const raio = Number(palcoEmTela.dataset.raio);
+      // andaime do mock: o motivo da falha vai ao console, para diagnosticar a chave.
+      const motor = await criarMotor(palcoEmTela).catch((erro) => {
+        console.error("[mock street view] o panorama não abriu:", erro);
+        return null;
+      });
+      if (motor === null) return revelarFalta(palcoEmTela, "indisponivel");
+      // andaime do mock: "sem imagem" simulado procura longe de qualquer rua.
+      const achado = seletorFalta.value === "sem_imagem" ? null : await motor.procurar(alvo, raio);
+      if (achado === null) return revelarFalta(palcoEmTela, "sem_imagem");
+      ESTADO.motor = motor;
+      motor.mostrar(achado, alvo);
+      palcoEmTela.querySelector("[data-espera]").hidden = true;
+      palcoEmTela.closest(".gaveta-inferior").querySelector("[data-selecionar-posicao]").disabled = false;
+      // Só agora o ponto do endereço sai de cena: na falta, ele fica como estava.
+      ocultarResultado();
+      ESTADO.pino = criarPino(palcoEmTela, achado.posicao, raio);
+      motor.aoAndar(acompanhar);
+      mapa.doubleClickZoom.disable();
+      acompanhar();
+    }
+
+    // Selecionada, a posição vira ponto desenhado e é devolvida; fechada pelo ✕, o pino sai e o
+    // ponto do endereço volta. Sem panorama aberto não há o que desfazer.
+    function encerrar(selecionada) {
+      if (ESTADO.pino === null) return null;
+      const posicao = ESTADO.pino.getLatLng();
+      mapa.removeLayer(ESTADO.pino);
+      mapa.doubleClickZoom.enable();
+      ESTADO.pino = null;
+      ESTADO.motor = null;
+      if (!selecionada) {
+        devolverResultado();
+        return null;
+      }
+      // No produto: mapa.fire("pm:create", …) — a bancada adota o ponto e pede a gaveta dos desenhos.
+      desenhados.push(L.marker(posicao, { icon: iconePonto("selecionado") }).addTo(mapa));
+      return posicao;
+    }
+
+    // No produto é o init.js que registra, uma vez só.
+    mapa.on("dblclick", levarPino);
+    // ---- fim do script do produto ----
+
+    // ---- static/src/js/ui/puxar_gaveta.js — o script da SPEC design/022, como o mock dela o traz ----
+    const ALCA = ".tela-home .gaveta-inferior-puxavel > .gaveta-alca";
+    const LIMIAR_ARRASTO_PX = 6;
+    const GESTO = { alca: null, origem: 0, folga: 0, puxou: false };
+
+    function apertar(evento) {
+      GESTO.puxou = false;
+      GESTO.alca = evento.target.closest?.(ALCA) ?? null;
+      if (GESTO.alca === null) return;
+      GESTO.origem = evento.clientY;
+      GESTO.folga = evento.clientY - GESTO.alca.parentElement.getBoundingClientRect().top;
+      GESTO.alca.setPointerCapture(evento.pointerId);
+    }
+
+    function mover(evento) {
+      if (GESTO.alca === null) return;
+      if (!GESTO.puxou && Math.abs(evento.clientY - GESTO.origem) < LIMIAR_ARRASTO_PX) return;
+      GESTO.puxou = true;
+      const casca = GESTO.alca.closest(".tela-home");
+      casca.dataset.puxando = "";
+      const altura = casca.getBoundingClientRect().bottom - evento.clientY + GESTO.folga;
+      casca.style.setProperty("--gaveta-puxada-altura", altura + "px");
+    }
+
+    function largar() {
+      const alca = GESTO.alca;
+      GESTO.alca = null;
+      if (alca === null || !GESTO.puxou) return;
+      delete alca.closest(".tela-home").dataset.puxando;
+      alca.dispatchEvent(new CustomEvent("gaveta-inferior:puxada", { bubbles: true }));
+    }
+
+    function pouparRecolher(evento) {
+      if (!GESTO.puxou) return;
+      GESTO.puxou = false;
+      if (evento.target.closest?.(ALCA)) evento.preventDefault();
+    }
+
+    document.addEventListener("pointerdown", apertar);
+    document.addEventListener("pointermove", mover);
+    document.addEventListener("pointerup", largar);
+    document.addEventListener("pointercancel", largar);
+    document.addEventListener("click", pouparRecolher, { capture: true });
+    // ---- fim do script da SPEC design/022 ----
+
+    // ── andaime do mock: o que os swaps do HTMX fariam ──────────────────────────────────────────
+    function retirarResultado() {
+      if (camadaResultado) camadaResultado.remove();
+      camadaResultado = null;
+    }
+    // No produto são do init.js, dono da camada de resultado: tirar de cena não é destruir.
+    function ocultarResultado() {
+      if (camadaResultado) camadaResultado.remove();
+    }
+    function devolverResultado() {
+      if (camadaResultado) camadaResultado.addTo(mapa);
+    }
+    function travar(travado) {
+      if (travado) marca.dataset.contextoAcao = "street-view";
+      else delete marca.dataset.contextoAcao;
+      quadro.querySelectorAll("[data-troca-cena]").forEach((peca) => { peca.inert = travado; });
+    }
+    function trocarLateral(marcacao) {
+      alvoLateral.innerHTML = marcacao;
+      montarBarrasGravadas();
+    }
+    function mostrarEndereco() {
+      retirarResultado();
+      camadaResultado = circuloDoEndereco(mapa);
+      trocarLateral(gavetaEndereco("vivo-lateral"));
+      mapa.fitBounds(L.latLngBounds([PONTO, PONTO]), {
+        maxZoom: 18, paddingTopLeft: [alvoLateral.firstElementChild.offsetWidth + 80, 120], paddingBottomRight: [80, 80],
+      });
+    }
+    function limpar() {
+      if (ESTADO.pino) mapa.removeLayer(ESTADO.pino);
+      mapa.doubleClickZoom.enable();
+      ESTADO.pino = null;
+      ESTADO.motor = null;
+      desenhados.forEach((ponto) => ponto.remove());
+      desenhados = [];
+      retirarResultado();
+      alvoLateral.replaceChildren();
+      alvoInferior.replaceChildren();
+      travar(false);
+    }
+    function abrirStreetView() {
+      alvoInferior.innerHTML = gavetaPanorama("vivo-panorama", "carregando");
+      travar(true);
+      abrir(alvoInferior.querySelector("[data-street-view]"));
+    }
+    function fecharStreetView(selecionada) {
+      alvoInferior.querySelector(".gaveta-toggle").checked = false;
+      // O tempo do swap:500ms do _fechar_gaveta.html: a placa desce antes de sair do DOM.
+      setTimeout(() => {
+        alvoInferior.replaceChildren();
+        travar(false);
+        const posicao = encerrar(selecionada);
+        if (posicao === null) return;
+        // A cena do endereço dá lugar à dos desenhos; o Voltar a devolve.
+        retirarResultado();
+        trocarLateral(gavetaDesenhos("vivo-desenhos", posicao));
+      }, 500);
+    }
+
+    quadro.addEventListener("click", (evento) => {
+      if (evento.target.closest("[data-item-street-view]")) abrirStreetView();
+      if (evento.target.closest("[data-selecionar-posicao]")) fecharStreetView(true);
+      if (evento.target.closest("[data-fechar]")) fecharStreetView(false);
+      if (evento.target.closest("[data-voltar]")) mostrarEndereco();
+    });
+    // Recolher e reabrir a gaveta muda a área livre: o pino volta para dentro dela.
+    quadro.addEventListener("change", (evento) => {
+      if (evento.target.matches(".gaveta-inferior-recolher, .gaveta-lateral-toggle") && ESTADO.pino) acompanhar();
+    });
+    document.getElementById("andaime-endereco").addEventListener("click", () => { limpar(); mostrarEndereco(); });
+    document.getElementById("andaime-limpar").addEventListener("click", limpar);
+    // No produto o street_view.js ouve o mesmo evento, publicado pelo puxar_gaveta.js.
+    quadro.addEventListener("gaveta-inferior:puxada", acomodar);
+    document.getElementById("andaime-altura").addEventListener("input", (evento) => {
+      // A régua mexe na altura de partida: a puxada é esquecida para ela aparecer.
+      quadro.style.removeProperty("--gaveta-puxada-altura");
+      quadro.style.setProperty("--fracao-panorama", String(Number(evento.target.value) / 100));
+      document.getElementById("andaime-altura-valor").textContent = evento.target.value + "%";
+      if (ESTADO.pino) acompanhar();
+    });
+
+    mostrarEndereco();
+  </script>
+</body>
+</html>

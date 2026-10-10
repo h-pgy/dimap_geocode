@@ -1,0 +1,227 @@
+"""Testes automatizados da SPEC design/020: a gaveta de desenhos da bancada, aberta sem login pela
+rota `mapping:desenhos_da_bancada`, e a fiação em `core:home` e no styleguide."""
+
+import json
+from pathlib import Path
+from typing import Any
+
+from bs4 import BeautifulSoup, Tag
+from django.http import HttpResponse
+from django.test import Client
+from django.urls import reverse
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+JS_INIT = REPO_ROOT / "static" / "src" / "js" / "mapa" / "init.js"
+
+PONTO_GEOJSON = {"type": "Point", "coordinates": [-46.6559, -23.5614]}
+LINHA_GEOJSON = {
+    "type": "LineString",
+    "coordinates": [[-46.6560, -23.5620], [-46.6550, -23.5610]],
+}
+POLIGONO_GEOJSON = {
+    "type": "Polygon",
+    "coordinates": [[
+        [-46.6560, -23.5620],
+        [-46.6550, -23.5620],
+        [-46.6550, -23.5610],
+        [-46.6560, -23.5610],
+        [-46.6560, -23.5620],
+    ]],
+}
+
+
+# ---------------------------------------------------------------------------
+# Builders
+# ---------------------------------------------------------------------------
+
+
+def _postar_desenhos(
+    desenhos: list[dict[str, Any]],
+    selecionado: str = "",
+    client: Client | None = None,
+) -> HttpResponse:
+    return (client or Client()).post(  # type: ignore[return-value]
+        reverse("mapping:desenhos_da_bancada"),
+        {
+            "desenhos": json.dumps(desenhos),
+            "selecionado": selecionado,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rota da gaveta dos desenhos — aberta sem login
+# ---------------------------------------------------------------------------
+
+
+def test_desenhos_da_bancada_abrem_a_gaveta_sem_login() -> None:
+    resposta = _postar_desenhos(
+        [
+            {"id_bancada": "1", "geometria": PONTO_GEOJSON},
+            {"id_bancada": "2", "geometria": POLIGONO_GEOJSON},
+        ],
+        selecionado="2",
+    )
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    pocos = soup.find_all(class_="poco-desenhos")
+    assert len(pocos) == 2
+
+    radios = soup.find_all("input", class_="linha-desenho__marca")
+    marcados = {radio["value"] for radio in radios if radio.has_attr("checked")}
+    assert marcados == {"2"}
+    formularios = {id(radio.find_parent("form")) for radio in radios}
+    assert len(formularios) == 1
+    assert radios[0].find_parent("form") is not None
+
+    limpar = soup.select_one('[command="show-modal"][commandfor="limpar-desenhos"]')
+    assert limpar is not None
+    assert limpar.find_previous(class_="poco-desenhos") is pocos[-1]
+    assert limpar.find_next(class_="poco-desenhos") is None
+
+    pergunta = soup.find("dialog", id="limpar-desenhos")
+    assert pergunta is not None
+    assert pergunta.select_one("[data-limpar-desenhos]") is not None
+    contagens = {badge.get_text(strip=True) for badge in pergunta.select(".badge-ponto, .badge-poligono")}
+    assert contagens == {"1 ponto", "1 polígono"}
+
+
+def test_linha_carrega_o_id_da_camada() -> None:
+    resposta = _postar_desenhos([
+        {"id_bancada": "42", "geometria": PONTO_GEOJSON},
+        {"id_bancada": "43", "geometria": PONTO_GEOJSON},
+    ])
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    radio = soup.find("input", class_="linha-desenho__marca")
+    assert radio is not None
+    assert radio["value"] == "42"
+
+    for linha in soup.find_all(class_="linha-desenho"):
+        marca = linha.find("input", class_="linha-desenho__marca")
+        apagar = linha.find(class_="linha-desenho__apagar")
+        assert marca is not None
+        assert apagar is not None
+        dialogo = soup.find("dialog", id=apagar["commandfor"])
+        assert dialogo is not None
+        confirmar = dialogo.find(class_="linha-desenho__confirmar-apagar")
+        assert confirmar is not None
+        assert confirmar["value"] == marca["value"]
+
+
+def test_gaveta_anonima_traz_lotes_intersectados_no_poco_de_poligonos() -> None:
+    resposta = _postar_desenhos(
+        [
+            {"id_bancada": "1", "geometria": LINHA_GEOJSON},
+            {"id_bancada": "2", "geometria": POLIGONO_GEOJSON},
+        ],
+        selecionado="2",
+    )
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    recorte = soup.select_one("#acoes-desenho-poligono .poco-desenhos__acoes-recorte")
+    assert recorte is not None
+    botao = recorte.find("button", attrs={"hx-post": reverse("lotes_mais_proximos:lotes_do_desenho")})
+    assert botao is not None
+    assert botao["hx-include"] == ".linha-desenho__marca:checked"
+    assert "Lotes intersectados" in botao.get_text()
+
+    ancora_linha = soup.select_one("#acoes-desenho-linha")
+    assert ancora_linha is not None
+    assert ancora_linha.contents == []
+
+
+def test_gaveta_anonima_traz_as_duas_consultas_no_poco_de_pontos() -> None:
+    resposta = _postar_desenhos(
+        [
+            {"id_bancada": "1", "geometria": PONTO_GEOJSON},
+            {"id_bancada": "2", "geometria": LINHA_GEOJSON},
+        ],
+        selecionado="1",
+    )
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    recorte = soup.select_one("#acoes-desenho-ponto .poco-desenhos__acoes-recorte")
+    assert recorte is not None
+    botoes = recorte.find_all("button")
+    assert [botao["hx-post"] for botao in botoes] == [
+        reverse("logradouro_mais_proximo:do_ponto"),
+        reverse("endereco_mais_proximo:do_ponto"),
+    ]
+    assert all(botao["hx-include"] == ".linha-desenho__marca:checked" for botao in botoes)
+    assert "Logradouro mais próximo" in botoes[0].get_text()
+    assert "Endereço mais próximo" in botoes[1].get_text()
+
+    ancora_linha = soup.select_one("#acoes-desenho-linha")
+    assert ancora_linha is not None
+    assert ancora_linha.contents == []
+
+
+def test_colecao_vazia_nao_devolve_gaveta() -> None:
+    resposta = _postar_desenhos([])
+    assert resposta.status_code == 200
+    assert resposta.content.decode().strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# Home: URL declarada no container do mapa e sincronia carregada como módulo
+# ---------------------------------------------------------------------------
+
+
+def test_home_carrega_a_sincronia_dos_desenhos() -> None:
+    resposta = Client().get(reverse("core:home"))
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    container = soup.select_one("[data-url-desenhos]")
+    assert container is not None
+    assert container["data-url-desenhos"] == reverse("mapping:desenhos_da_bancada")
+
+    conteudo_init = JS_INIT.read_text(encoding="utf-8")
+    assert 'from "./desenho/sincronia.js"' in conteudo_init
+    assert "inicializarSincronia(mapa" in conteudo_init
+
+
+# ---------------------------------------------------------------------------
+# Styleguide
+# ---------------------------------------------------------------------------
+
+
+def test_styleguide_registra_as_pecas_do_poco() -> None:
+    resposta = Client().get(reverse("core:design_system"))
+    assert resposta.status_code == 200
+    soup = BeautifulSoup(resposta.content.decode(), "html.parser")
+
+    assert soup.find(class_="poco-desenhos") is not None
+    assert soup.find(class_="linha-desenho") is not None
+
+
+# ---------------------------------------------------------------------------
+# Histórico da gaveta lateral (SPEC design/021)
+# ---------------------------------------------------------------------------
+
+
+def _itens_do_historico(client: Client) -> list[Tag]:
+    resposta = client.get(reverse("mapping:historico_gaveta"), {"chave": "outra-gaveta"})
+    assert resposta.status_code == 200
+    return BeautifulSoup(resposta.content.decode(), "html.parser").select(".item-historico")
+
+
+def test_gaveta_dos_desenhos_entra_sem_cena_e_sai_sem_desenho() -> None:
+    client = Client()
+
+    _postar_desenhos([{"id_bancada": "1", "geometria": PONTO_GEOJSON}], client=client)
+
+    itens = _itens_do_historico(client)
+    assert len(itens) == 1
+    assert itens[0].has_attr("data-pedir-desenhos")
+    assert not itens[0].has_attr("hx-post")
+    assert itens[0].select_one('use[href="#glifo-gaveta-desenhos"]') is not None
+    assert itens[0].get_text(strip=True) == "1 desenho"
+
+    _postar_desenhos([], client=client)
+
+    assert _itens_do_historico(client) == []

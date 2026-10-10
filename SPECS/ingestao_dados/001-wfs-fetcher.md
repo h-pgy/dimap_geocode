@@ -2,6 +2,7 @@
 spec: ingestao-dados/001
 versao: v3
 atualizado_em: 2026-06-19
+implementado: true
 changelog:
   - v3: planeja a fiação da WfsRetryPolicy nos 3 management commands de ingestão (settings → DTO → run → WfsFetcher) — ver Patches
   - v2: planeja resiliência a timeout/conexão no WfsFetcher (retries limitados + backoff aleatório + WfsTimeoutError/WfsConnectionError) — ver Patches

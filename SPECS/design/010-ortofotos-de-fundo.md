@@ -1,7 +1,7 @@
 ---
 spec: design/010
-versao: v7
-atualizado_em: 2026-08-28
+versao: v10
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
@@ -14,6 +14,11 @@ changelog:
   - v6: a conexão do comando declara o timeout do GetMap
   - v7: a troca ganha crossfade — o `transition:true` nativo não estava suavizando, então o fade
     passa a ser manual, via as classes que o próprio HTMX aplica no swap (sem JS)
+  - v8: fim do flash branco ao navegar — rocha sempre por baixo, carga da página sem fade, a
+    ortofoto em tela mantida entre telas e view transition entre documentos
+  - v9: a subida gera as ortofotos que faltam, e o GeoSampa fora do ar vira aviso no stdout em
+    vez de erro
+  - v10: as views do app `mapping` viram pacote, e a do fundo passa a `apps/mapping/views/fundo.py` (SPEC design/021)
 ---
 
 # SPEC design/010 — Ortofotos de fundo pré-geradas
@@ -25,7 +30,8 @@ com o fundo montado, sem esperar o carregamento do mapa a cada navegação.
 ## 2 · Condições de pronto
 - [ ] A área administrativa **não faz nenhuma requisição ao GeoSampa** em tempo de request, e uma
       ortofoto já vista **não é rebuscada**.
-- [ ] Cada abertura de tela entra num **ponto sorteado**, e o fundo **troca sozinho a cada minuto**.
+- [ ] A primeira tela entra num **ponto sorteado**, a navegação **mantém o que está em tela** sem
+      flash, e o fundo **troca sozinho a cada minuto**.
 - [ ] O servidor **troca o fundo na hora**, **desliga** e **ajusta a velocidade** da deriva.
 - [ ] Desligar o fundo ou mudar a velocidade **permanece** na tela seguinte e na sessão seguinte.
 - [ ] A deriva **nunca descobre a borda da imagem**, em qualquer proporção de tela.
@@ -35,6 +41,12 @@ com o fundo montado, sem esperar o carregamento do mapa a cada navegação.
 - [ ] Reexecutar a geração **não busca nada na rede**; acrescentar um ponto ao catálogo faz **só
       aquele ponto** ser buscado.
 - [ ] Um ponto com coordenada **fora do município de São Paulo** é recusado no boot.
+- [ ] **Subir o sistema gera as ortofotos que faltam** no disco, e o stdout **anuncia o download**
+      antes de ele começar e a cada ortofoto.
+- [ ] Com o **GeoSampa fora do ar** — sem conexão ou sem resposta no prazo —, a geração **não pede
+      nenhuma ortofoto**: termina com saída zero e **aviso no stdout** nomeando os pontos que
+      ficaram sem imagem.
+- [ ] **Qualquer outro erro** da geração termina em erro, e na subida **derruba o web**.
 - [ ] O design foi aprovado no **mock**, e as peças foram portadas para
       `static/src/tema-dimap.dev.css` e para o styleguide.
 
@@ -84,6 +96,10 @@ do CLAUDE.md, declarada aqui.
 - `@config/settings.py` → leitura de `paleta_ds.json`: JSON versionado lido no boot, falhando alto.
 - `@services/integrations/wms` → `WmsFetcher`, `WmsMapRequest`, `BoundingBox`: o GetMap ao raster
   do GeoSampa, com erro de rede e ServiceException já encapsulados.
+- `@services/integrations/wms` → `WmsConnectionError`, `WmsTimeoutError`: o GeoSampa fora do ar;
+  `WmsError`: a base de todo erro do WMS ([ingestao_dados/002](../ingestao_dados/002-wms-fetcher.md)).
+- `@docker/entrypoint.sh` → o roteiro da subida do web, sob `set -e`.
+- `@tests/docker/test_entrypoint.py` → entrypoint exercitado por subprocesso com `python` falso.
 - `@services/scripts/contrato.py` → `ScriptRunner`: contrato de entrada de todo script.
 - `@apps/core/management/commands/atualizar_dados.py` → comando fino: parsing, chamada e stdout.
 - `@templates/mapping/_mapa_admin.html` → as quatro camadas da lente sobre o fundo.
@@ -146,26 +162,67 @@ def enquadrar(ponto: PontoFundo, config: OrtofotoConfig) -> BoundingBox:
 ```
 
 O gerador é a classe callable do §7.1: `__call__` fino, `pipeline` orquestrando os passos. A
-idempotência é o `exists()` — quem já está no disco não vira requisição.
+idempotência é o `exists()` — quem já está no disco não vira requisição. Antes da primeira ortofoto
+vai uma sonda: um GetMap de poucos pixels na mesma camada, que responde se o GeoSampa está no ar sem
+custar o recorte inteiro. Quem imprime é o comando: o gerador recebe por composição a função que
+anuncia o progresso.
 
 **`services/scripts/ortofotos_fundo/gerador.py`**
 ```python
+SONDA_LADO_PX = 16
+# Só o GeoSampa fora do ar vira pendência: status de erro e ServiceException sobem como erro.
+ERROS_DE_INDISPONIBILIDADE = (WmsConnectionError, WmsTimeoutError)
+
+
+def _calado(mensagem: str) -> None:
+    return None
+
+
 class GeradorOrtofotosFundo:
+    def __init__(self, avisar: Callable[[str], None] = _calado) -> None:
+        self.avisar = avisar
+
     def __call__(self, config: OrtofotoConfig, *, verbose: bool = False, manual: bool = True) -> OrtofotoResultado:
         return self.pipeline(config)
 
     def pipeline(self, config: OrtofotoConfig) -> OrtofotoResultado:
+        faltantes = self._faltantes(config)
         geradas: list[str] = []
-        puladas: list[str] = []
-        for chave, ponto in config.pontos.items():
-            destino = config.destino / f"{chave}.png"
-            # A chave é o nome do arquivo: ponto novo no catálogo é o único que vai à rede.
-            if destino.exists() and not config.forcar:
-                puladas.append(chave)
-                continue
-            self._gravar(self._buscar(ponto, config), destino)
-            geradas.append(chave)
-        return OrtofotoResultado(geradas=geradas, puladas=puladas)
+        indisponibilidade: str | None = None
+        # Catálogo inteiro no disco: nem a sonda vai à rede.
+        if faltantes:
+            # Antes da sonda: se o GeoSampa demorar, quem olha o log já sabe o que a subida espera.
+            self.avisar(f"Baixando {len(faltantes)} ortofoto(s) de fundo do GeoSampa...")
+            try:
+                self._sondar(next(iter(faltantes.values())), config)
+                for ordem, (chave, ponto) in enumerate(faltantes.items(), start=1):
+                    self.avisar(f"[{ordem}/{len(faltantes)}] {chave}")
+                    self._gravar(self._buscar(ponto, config), config.destino / f"{chave}.png")
+                    geradas.append(chave)
+            # Um except só para a sonda e para o laço: GeoSampa que cai no meio para a geração do
+            # mesmo jeito, e o que já foi gravado fica no disco e em `geradas`.
+            except ERROS_DE_INDISPONIBILIDADE as exc:
+                indisponibilidade = str(exc)
+        return OrtofotoResultado(
+            geradas=geradas,
+            puladas=[chave for chave in config.pontos if chave not in faltantes],
+            pendentes=[chave for chave in faltantes if chave not in geradas],
+            indisponibilidade=indisponibilidade,
+        )
+
+    def _faltantes(self, config: OrtofotoConfig) -> dict[str, PontoFundo]:
+        # A chave é o nome do arquivo: ponto novo no catálogo é o único que vai à rede.
+        return {
+            chave: ponto
+            for chave, ponto in config.pontos.items()
+            if config.forcar or not (config.destino / f"{chave}.png").exists()
+        }
+
+    def _sondar(self, ponto: PontoFundo, config: OrtofotoConfig) -> None:
+        # A mesma requisição da ortofoto, encolhida: o enquadramento sai do config, então
+        # 16 × 16 px são ~70 m de lado em vez de 8,8 km.
+        sonda = config.model_copy(update={"largura_px": SONDA_LADO_PX, "altura_px": SONDA_LADO_PX})
+        self._buscar(ponto, sonda)
 
     def _buscar(self, ponto: PontoFundo, config: OrtofotoConfig) -> bytes:
         # raster=True escolhe o WMS de raster: a ortofoto não é servida pelo WMS geral do GeoSampa.
@@ -207,9 +264,14 @@ class OrtofotoConfig(BaseModel):
 class OrtofotoResultado(BaseModel):
     geradas: list[str]
     puladas: list[str]
+    # Pontos que seguem sem PNG porque o GeoSampa não respondeu.
+    pendentes: list[str] = []
+    # O erro do WMS que interrompeu a geração; None = nada a interrompeu.
+    indisponibilidade: str | None = None
 ```
 
-O comando é a fronteira de erro: quem roda no terminal vê por que a geração parou, nunca traceback.
+O comando é a fronteira de erro: GeoSampa fora do ar chega pronto no DTO e sai como aviso, com
+código de saída zero; o resto do `WmsError` vira `CommandError`, e o que não é WMS sobe cru.
 
 **`apps/core/management/commands/gerar_ortofotos_fundo.py`**
 ```python
@@ -239,13 +301,38 @@ class Command(BaseCommand):
             forcar=bool(options["forcar"]),
         )
         try:
-            resultado = GeradorOrtofotosFundo()(config)
-        except WmsError as exc:  # inclui WmsTimeoutError
+            resultado = GeradorOrtofotosFundo(avisar=self.stdout.write)(config)
+        except WmsError as exc:
             raise CommandError(f"geração abortada: {exc}") from exc
 
-        for chave in resultado.geradas:
-            self.stdout.write(self.style.SUCCESS(f"[gerada] {chave}"))
-        self.stdout.write(f"{len(resultado.puladas)} já em disco.")
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"{len(resultado.geradas)} gerada(s), {len(resultado.puladas)} já em disco."
+            )
+        )
+        # stdout, e não stderr nem CommandError: é a linha que aparece no log do container sem
+        # derrubar o `set -e` do entrypoint.
+        if resultado.pendentes:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"AVISO: GeoSampa indisponível ({resultado.indisponibilidade}). "
+                    f"{len(resultado.pendentes)} ortofoto(s) de fundo sem gerar: "
+                    f"{', '.join(resultado.pendentes)}. "
+                    "Rode `manage.py gerar_ortofotos_fundo` quando o serviço voltar."
+                )
+            )
+```
+
+A subida chama o comando depois da migração e fora do bloco dela: a geração não toca o banco.
+
+**`docker/entrypoint.sh`** — antes do `exec "$@"`:
+```sh
+if [ -f manage.py ]; then
+    echo "==> Gerando ortofotos de fundo que faltam..."
+    # Sem `||`: o comando já sai zero com o GeoSampa fora do ar, e o que sobra é erro de verdade,
+    # que o `set -e` não deve engolir.
+    python manage.py gerar_ortofotos_fundo
+fi
 ```
 
 O sorteio nunca devolve o que já está na tela — é o que faz o rodízio e o botão Trocar mudarem
@@ -279,11 +366,27 @@ def ortofotos_disponiveis() -> tuple[str, ...]:
     return tuple(chave for chave in MAP_FUNDO_PONTOS if (MAP_FUNDO_DIR / f"{chave}.png").exists())
 
 
-def contexto_fundo_admin() -> dict[str, Any]:
+def ortofoto_do_fundo(em_tela: str | None) -> str | None:
     disponiveis = ortofotos_disponiveis()
-    return {"ortofoto_fundo": sortear_diferente(disponiveis, None) if disponiveis else None}
+    if not disponiveis:
+        return None
+    if em_tela in disponiveis:
+        return em_tela
+    return sortear_diferente(disponiveis, None)
 ```
 
+**`apps/mapping/context_processors.py`** — toda tela lê a ortofoto que já estava em tela (cookie
+`ortofoto_fundo`, escrito pelo `fundo_ortofoto.js` ao revelar cada camada), em vez de sortear outra.
+```python
+def fundo_admin(request: HttpRequest) -> dict[str, Any]:
+    return {"ortofoto_fundo": ortofoto_do_fundo(request.COOKIES.get(COOKIE_ORTOFOTO_FUNDO))}
+```
+
+A rocha fica sempre por baixo da ortofoto: a lente nunca tinge o branco da página enquanto a foto
+decodifica. A camada da carga da página nasce visível, sem fade — o fade de rocha para foto a cada
+navegação era ele mesmo o flash; só o rodízio (design/011) faz crossfade. O `<img>` pede
+`decoding="sync"` para o primeiro quadro esperar a foto em cache, e a navegação entre telas usa
+`@view-transition { navigation: auto; }`: a página antiga só sai quando a nova está pintada.
 **`templates/mapping/_fundo_ortofoto.html`**
 ```django
 <div class="fundo-ortofoto" id="fundo-ortofoto"
@@ -406,10 +509,32 @@ Cada aba administrativa aberta faz uma requisição por minuto à rota do fundo.
 partial de poucas linhas e o uso é interno, de dezenas de pessoas. O custo é tráfego perpétuo
 enquanto houver aba aberta, inclusive esquecida.
 
-Os PNGs ficam fora do git e a entrega roda o comando, que só busca o que falta no disco.
+Os PNGs ficam fora do git e a subida do web roda o comando, que só busca o que falta no disco.
 Versioná-los custaria ~2 MB por ponto no histórico a cada regeneração, e a entrega não precisa
 deles prontos para subir. O custo é que a idempotência depende do diretório sobreviver entre
-entregas: em filesystem efêmero, toda entrega rebusca o catálogo inteiro.
+entregas: em filesystem efêmero, toda subida rebusca o catálogo inteiro, e o web só atende depois
+de o download terminar.
+
+A geração sai com código zero quando o GeoSampa não conecta ou não responde no prazo. O fundo é
+decorativo e o GeoSampa é serviço de terceiro, então a indisponibilidade dele não pode decidir se o
+sistema sobe. O custo é que só uma linha de aviso no log do container diz que a área administrativa
+subiu sem ortofoto, e quem encadear o comando pelo código de saída não percebe a falha.
+
+Só conexão e timeout contam como GeoSampa fora do ar. Status de erro e ServiceException são tratados
+como defeito a consertar, que aviso nenhum deveria esconder. O custo é que um GeoSampa respondendo
+502 ou 503 derruba a subida do web, tal como disco sem permissão de escrita.
+
+A sonda usa o timeout da conexão, o mesmo do GetMap inteiro. Um timeout próprio seria mais uma
+variável de ambiente para um caso só. O custo é que, com o GeoSampa pendurado em vez de recusando,
+a subida espera `WMS_REQUEST_TIMEOUT_SECONDS` antes de seguir.
+
+Ninguém tenta de novo depois da subida. A geração roda uma vez por boot do container, porque
+repetir em segundo plano pediria um agendador para um fundo decorativo. O custo é que um GeoSampa
+fora do ar na subida deixa o fundo sem ortofoto até alguém rodar o comando ou reiniciar o web.
+
+No compose de desenvolvimento os PNGs nascem pelo container do web, sobre o bind mount do código. O
+web roda como root, porque é o usuário da imagem e a migração já roda assim. O custo é que a pasta
+`static/src/img/ortofotos_fundo/` passa a pertencer a root na máquina de quem desenvolve.
 
 `ortofotos_disponiveis()` é memoizado no processo. O disco só muda quando o comando roda, e ler
 sete `exists()` a cada requisição do rodízio seria IO por nada. O custo é que gerar um ponto novo
@@ -428,7 +553,20 @@ alteração sem aval. O custo é mais uma classe onde um parâmetro de tamanho b
 - `test_enquadramento_centra_no_ponto` — a bbox gerada tem o ponto no centro e largura igual a
   `largura_px × metros_por_pixel`, em 31983.
 - `test_geracao_pula_ortofoto_existente` — com o arquivo já no disco, o buscador não é chamado.
-- `test_geracao_forcada_rebusca` — com `forcar=True`, o buscador é chamado mesmo com arquivo no disco.
+- `test_geracao_forcada_rebusca` — com `forcar=True`, o ponto é regerado mesmo com arquivo no disco.
+- `test_geosampa_fora_do_ar_nao_pede_ortofoto` — com a sonda levantando `WmsConnectionError`,
+  nenhuma requisição no tamanho da ortofoto é feita, nada é gravado e o resultado traz todos os
+  faltantes em `pendentes`, com a indisponibilidade.
+- `test_queda_no_meio_preserva_as_geradas` — `WmsTimeoutError` no segundo ponto: o primeiro fica no
+  disco e em `geradas`, os demais em `pendentes`.
+- `test_erro_que_nao_e_indisponibilidade_propaga` — `WmsHttpError` na sonda sai do gerador como
+  exceção, sem virar pendência.
+- `test_download_e_anunciado_antes_de_comecar` — havendo ponto faltante, o anúncio do download chega
+  a quem avisa antes da primeira requisição; com tudo no disco, nada é anunciado.
+- `test_comando_com_geosampa_fora_do_ar_sai_zero_com_aviso` — com o gerador devolvendo pendentes, o
+  comando não levanta e o stdout traz o aviso nomeando cada ponto pendente.
+- `test_entrypoint_gera_ortofotos_antes_do_processo_final` — a subida chama `gerar_ortofotos_fundo`,
+  e o comando saindo em erro impede o processo final de rodar.
 - `test_ortofoto_gravada_em_tons_de_cinza` — o PNG salvo tem um único canal.
 - `test_ponto_fora_do_municipio_e_recusado` — coordenada fora da faixa de São Paulo derruba a
   validação do catálogo.

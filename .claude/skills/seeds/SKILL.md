@@ -5,6 +5,14 @@ description: Padrão de carga de catálogos versionados (cargos, unidades, tipos
 
 # Seeds — carga de catálogo versionado em `data/seed/`
 
+## Sumário
+
+- O padrão, em 3 peças
+- Por que a carga vive no `app`, não em `services/`
+- Idempotência (obrigatória): a seed **só cria o que falta**
+- O management command: erros semânticos
+- Testes
+
 ## O padrão, em 3 peças
 
 1. **`data/seed/<nome>.json`** — o dado, versionado no git. Nunca em `services/`: dado ≠ código (§5).

@@ -1,0 +1,15 @@
+{# fragmento HTMX, sem extends — recebe: texto (str, como digitado), provedor (rótulo) #}
+<ul class="flex flex-col gap-0.5">
+  <li class="suggestion-item items-center gap-4"
+      hx-post="{% url 'geocodificacao_externa:selecionar' %}"
+      hx-vals='{"texto": "{{ texto|escapejs }}"}'
+      hx-target="#resultado-busca"
+      hx-swap="innerHTML">
+    <svg class="icon-glow w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+    <span class="font-medium truncate">{{ texto }}</span>
+    <span class="ml-auto flex items-center gap-2 shrink-0">
+      <span class="text-xs text-base-content/60">via {{ provedor }}</span>
+      <span class="badge badge-ponto badge-sm">Endereço</span>
+    </span>
+  </li>
+</ul>

@@ -5,6 +5,14 @@ description: Como consumir os catálogos cacheados em memória do DIMAP GeoCoder
 
 # Catálogos de lookup — `services/domain/*/catalog.py`
 
+## Sumário
+
+- Regras inegociáveis
+- O que existe
+- Ciclo de vida
+- Uso típico
+- Relação com o pipeline de dados
+
 Em runtime, os dados oficiais de **logradouros** e **endereços fiscais/lotes** não vêm do banco:
 vêm de catálogos em memória, carregados a partir dos parquets de `data/` e **aquecidos** na subida
 do processo web (`[LogradouroCatalog] aquecendo cache...` / `[ContribuinteCatalog] aquecendo

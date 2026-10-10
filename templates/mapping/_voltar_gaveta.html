@@ -1,0 +1,4 @@
+{# Fora da cena guardada: a cada vez que a gaveta é mostrada, o canto busca o histórico de agora. #}
+<div class="gaveta-lateral-voltar"
+     hx-get="{% url 'mapping:historico_gaveta' %}?chave={{ chave|urlencode }}"
+     hx-trigger="load" hx-target="this" hx-swap="innerHTML"></div>

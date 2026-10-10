@@ -1,0 +1,11 @@
+{% load l10n %}
+{# Item do poço de ações (SPEC street_view/002): abre o panorama na gaveta inferior. #}
+{% if request.user.is_authenticated %}
+  <button type="button" class="btn btn-onsen btn-sm" title="Abre o Google Street View na gaveta inferior"
+          hx-get="{% url 'street_view:abrir' %}"
+          hx-vals='{"lon": "{{ ponto.coordinates.0|unlocalize }}", "lat": "{{ ponto.coordinates.1|unlocalize }}"}'
+          hx-target="#gaveta-inferior-conteudo" hx-swap="innerHTML">
+    <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+    Visão da rua
+  </button>
+{% endif %}

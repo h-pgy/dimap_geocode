@@ -13,6 +13,7 @@ class TipoEntrada(StrEnum):
     ENDERECO = "endereco"
     ENDERECO_CODLOG = "endereco_codlog"
     ENDERECO_LOTE = "endereco_lote"
+    GEOCODIFICACAO_EXTERNA = "geocodificacao_externa"
 
 
 class RoteamentoStatus(StrEnum):
@@ -167,13 +168,19 @@ class EnderecoLoteParse(BaseModel):
         return chave_numero_porta(self.numero_bruto)
 
 
+class GeocodificacaoExternaParse(BaseModel):
+    tipo: Literal[TipoEntrada.GEOCODIFICACAO_EXTERNA] = TipoEntrada.GEOCODIFICACAO_EXTERNA
+    texto: str  # a entrada inteira, como digitada: é o que vai ao provedor
+
+
 Candidato = Annotated[
     ContribuinteParse
     | CodlogParse
     | LogradouroParse
     | EnderecoParse
     | EnderecoCodlogParse
-    | EnderecoLoteParse,
+    | EnderecoLoteParse
+    | GeocodificacaoExternaParse,
     Field(discriminator="tipo"),
 ]
 

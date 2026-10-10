@@ -63,5 +63,5 @@ def test_run_seeds_script_contem_todos_os_comandos_de_seed_em_ordem(
         for linha in log_file.read_text(encoding="utf-8").splitlines()
         if linha.strip()
     ]
-    assert chamadas == ["seed_unidades", "seed_cargos", "seed_tipos_impedimento"]
+    assert chamadas == ["seed_unidades", "seed_cargos", "seed_tipos_impedimento", "seed_admin"]
     assert "Seeds concluídas com sucesso" in resultado.stdout

@@ -1,0 +1,12 @@
+<div class="modal modal-open modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+    {% include "certidao_lancamento/partials/_cabecalho_conjunto.html" %}
+
+    {% include "partials/_tarja_recusa.html" with erros=motivos titulo="O conjunto mudou depois que o modal abriu — nada foi emitido" %}
+
+    <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+      <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Voltar à tabela</button>
+    </div>
+  </div>
+  <label class="modal-backdrop" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</label>
+</div>

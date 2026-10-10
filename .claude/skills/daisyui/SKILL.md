@@ -7,6 +7,85 @@ metadata:
 ---
 
 # daisyUI 5
+
+## Contents
+
+- When to run this skill:
+- daisyUI 5 install notes
+- daisyUI 5 usage rules
+- Config
+- daisyUI 5 colors
+  - daisyUI color names
+  - daisyUI color rules
+  - daisyUI custom theme with custom colors
+  - Component discovery protocol
+- daisyUI components
+  - accordion
+  - alert
+  - avatar
+  - badge
+  - breadcrumbs
+  - button
+  - calendar
+  - card
+  - carousel
+  - chat
+  - checkbox
+  - collapse
+  - countdown
+  - diff
+  - divider
+  - dock
+  - drawer
+  - dropdown
+  - fab
+  - fieldset
+  - file-input
+  - filter
+  - footer
+  - hero
+  - hover-3d
+  - hover-gallery
+  - indicator
+  - input
+  - join
+  - kbd
+  - label
+  - link
+  - list
+  - loading
+  - mask
+  - menu
+  - mockup-browser
+  - mockup-code
+  - mockup-phone
+  - mockup-window
+  - modal
+  - navbar
+  - pagination
+  - progress
+  - radial-progress
+  - radio
+  - range
+  - rating
+  - select
+  - skeleton
+  - stack
+  - stat
+  - status
+  - steps
+  - swap
+  - tab
+  - table
+  - text-rotate
+  - textarea
+  - theme-controller
+  - timeline
+  - toast
+  - toggle
+  - tooltip
+  - validator
+
 daisyUI 5 is a CSS library for Tailwind CSS 4.
 daisyUI 5 provides class names for common UI components, semantic color names and themes.
 

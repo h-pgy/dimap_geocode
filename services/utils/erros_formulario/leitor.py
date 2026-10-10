@@ -26,12 +26,21 @@ class LeitorDeFormulario[T: BaseModel]:
 
 
 def de_pydantic(erros: Sequence[ErrorDetails]) -> tuple[ErroBruto, ...]:
+    return tuple(_erro_bruto(erro) for erro in erros)
+
+
+def _erro_bruto(erro: ErrorDetails) -> ErroBruto:
+    if not erro["loc"]:
+        # Regra que cruza campos (`model_validator`): sem controle para realçar, e o `ValueError`
+        # já traz a frase em português, que sai na tarja.
+        return ErroBruto(
+            controle="",
+            tipo=erro["type"],
+            mensagem=str(erro["ctx"]["error"]),
+        )
     # `mensagem` fica vazia de propósito: o Pydantic escreve em inglês e por tipo, e quem traduz é
     # o catálogo.
-    return tuple(
-        ErroBruto(controle=controle_do_campo(str(erro["loc"][0])), tipo=erro["type"])
-        for erro in erros
-    )
+    return ErroBruto(controle=controle_do_campo(str(erro["loc"][0])), tipo=erro["type"])
 
 
 def controle_do_campo(campo: str) -> str:

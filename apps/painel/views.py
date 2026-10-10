@@ -5,7 +5,6 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
 from apps.competencias.resolucao import slugs_liberados
-from apps.mapping.context import contexto_fundo_admin
 from apps.user_admin.models import Perfil
 
 from .abas_declaradas import PAINEL
@@ -24,4 +23,4 @@ def painel(request: HttpRequest) -> HttpResponse:
             perfil_id=perfil.pk,
         )
     )
-    return render(request, TEMPLATE_PAINEL, {"painel": resolvido, **contexto_fundo_admin()})
+    return render(request, TEMPLATE_PAINEL, {"painel": resolvido})

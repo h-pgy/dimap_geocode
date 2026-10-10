@@ -5,6 +5,18 @@ description: "Como modelar um domínio como ontologia em Pydantic no DIMAP GeoCo
 
 # Skill: Escrever ontologia — DIMAP GeoCoder
 
+## Sumário
+
+- 1 · A ontologia é o domínio, não o transporte
+- 2 · As três relações
+- 3 · Derivado nunca é campo
+- 4 · O tipo carrega a regra
+- 5 · Enum × subtipo
+- 6 · Nomes
+- 7 · Antipadrões
+- 8 · Perguntas ao usuário
+- Checklist
+
 **Ontologia é o domínio dito em tipos:** quais entidades existem, o que cada uma tem e como elas se
 relacionam. O tipo é a especificação — campo ausente é decisão declarada, campo opcional diz o que
 pode faltar, enum diz quantas respostas existem. O que o tipo consegue dizer **não se escreve em

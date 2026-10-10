@@ -10,7 +10,7 @@
         <input type="hidden" name="unidade" value="{{ unidade.pk }}">
         <div>
           <h2 class="text-xl font-bold tracking-tight text-madeira-700">Definir titular</h2>
-          <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {{ unidade.tipo.nome }} · hoje sem titular</p>
+          <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {% include "unidades/partials/_rotulo_tipo_unidade.html" with tipo=unidade.tipo %} · hoje sem titular</p>
         </div>
 
         <label class="form-field">
@@ -40,7 +40,7 @@
       <div class="flex flex-col gap-6">
         <div>
           <h2 class="text-xl font-bold tracking-tight text-madeira-700">Definir titular</h2>
-          <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {{ unidade.tipo.nome }} · hoje sem titular</p>
+          <p class="text-sm text-base-content/70 mt-1">{{ unidade.sigla }} · {% include "unidades/partials/_rotulo_tipo_unidade.html" with tipo=unidade.tipo %} · hoje sem titular</p>
         </div>
 
         <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-3">

@@ -5,6 +5,22 @@ description: "Como construir o mock HTML de validação de design do DIMAP GeoCo
 
 # Skill: Mock de validação — DIMAP GeoCoder
 
+## Sumário
+
+- Fronteira: o que é desta skill e o que é das outras
+- Onde mora
+- Como o mock carrega o tema
+- O fundo da página: o oficial, nunca um novo
+- O mock implementa Atomic Design — não é rascunho de tela
+- JS de interface: pergunte, não faça malabarismo
+- O que o mock precisa mostrar
+- Template do mock
+- Comentários no mock: só de interface
+  - O recorte de partials se anota na tela montada
+- Iteração: ajuste fino só no mock
+- Aprovado o mock, o porte é obrigatório — em dois lugares
+- Checklist do mock
+
 **Prosa não aprova interface.** Descrever "poço rebaixado com aresta tracejada que acende no foco" não
 permite julgar nada — ver na tela permite. O mock é para o front-end o que o snippet é para o domínio:
 o artefato pelo qual a iteração é avaliada.

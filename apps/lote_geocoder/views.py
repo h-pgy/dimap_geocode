@@ -7,15 +7,34 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 
 from apps.mapping.context import contexto_aviso, contexto_mapa
+from apps.mapping.historico_gaveta import responder_cena
 from services.domain.geometry import GeoFeature, to_geojson_feature_collection
-from services.domain.lote_geocod import LoteGeocoder, LoteGeocodInput
+from services.domain.historico_gaveta import Etiqueta, TipoGaveta
+from services.domain.lote_geocod import (
+    GavetaLoteInput,
+    LoteAttributes,
+    LoteGeocoder,
+    LoteGeocodInput,
+    MontarGavetaLote,
+)
 from services.integrations.wfs import build_fetcher
 from services.domain.geometry.models import GeoJsonProperties
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
+MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 WFS_LAYER_LOTE_CIDADAO: str = settings.WFS_LAYER_LOTE_CIDADAO
 MAP_COR_POLIGONO: str = settings.MAP_COR_POLIGONO
 MAP_COR_POLIGONO_CONDOMINIO: str = settings.MAP_COR_POLIGONO_CONDOMINIO
+
+TEMPLATE_GAVETA_LOTE = "lote_geocoder/partials/_gaveta_lote.html"
+
+
+def etiqueta_do_lote(lote: LoteAttributes) -> Etiqueta:
+    return Etiqueta(
+        chave=f"lote-{lote.id_poligono}",
+        tipo=TipoGaveta.LOTE,
+        resumo=f"SQL {lote.sql}" if lote.sql else "Sem contribuinte",
+    )
 
 
 def _properties(f: GeoFeature[Any, Any]) -> GeoJsonProperties:
@@ -57,7 +76,12 @@ def geocodificar_lote(
             contexto_aviso("Este lote não possui geometria cadastrada para exibir no mapa."),
         )
     geojson = to_geojson_feature_collection(features, _properties)
-    return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_POLIGONO))
+    # A gaveta fala de UM lote: o primeiro polígono é o lote pedido (ver Caveats da SPEC).
+    gaveta = MontarGavetaLote()(
+        GavetaLoteInput(lote=features[0], crs_metrico=MAP_INTERPOLATION_CRS)
+    )
+    contexto = contexto_mapa(geojson, MAP_COR_POLIGONO) | {"gaveta": gaveta}
+    return responder_cena(request, etiqueta_do_lote(gaveta.lote), TEMPLATE_GAVETA_LOTE, contexto)
 
 
 @require_POST

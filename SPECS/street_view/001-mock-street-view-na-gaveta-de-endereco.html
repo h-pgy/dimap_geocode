@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC street_view/001 — Street View na gaveta de endereço (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet para o mapa vivo da home (skill `mock`) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Nenhuma peça de CSS nova nesta SPEC: só o andaime do mock. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* andaime do mock: moldura que faz as vezes da casca da home */
+      .quadro-tela {
+        @apply relative h-[36rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+  <!-- Defs da gravação: o partial da própria aplicação. -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- Fundo: o mapa vivo da home, de mapping/_mapa_fullscreen.html. -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC street_view/001 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Street View na gaveta de endereço</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          O poço de ações nas duas gavetas de endereço — o lote mais próximo, que sai do botão largo, e
+          o Street View — e o aviso de pop-up bloqueado. O item do Street View deste mock abre de
+          verdade a janela do Google.
+        </p>
+      </header>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">2 · Átomos</h2>
+
+        <!-- glifo do Street View -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">glifo do street view</p>
+          <div class="card-well p-5 flex flex-wrap items-end gap-8">
+            <!-- 16px: a medida do poço de ações -->
+            <div class="flex flex-col items-start gap-2">
+              <span class="poco-acoes__icone text-rocha-950"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+              <span class="text-xs text-base-content/60">16px</span>
+            </div>
+            <!-- 24px -->
+            <div class="flex flex-col items-start gap-2">
+              <svg class="w-6 h-6 text-rocha-950" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+              <span class="text-xs text-base-content/60">24px</span>
+            </div>
+            <!-- na bolha -->
+            <div class="flex flex-col items-start gap-2">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+              </div>
+              <span class="text-xs text-base-content/60">na bolha</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- item do poço: link com pele de botão -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">item do poço · link que abre janela</p>
+          <div class="card-well p-5 flex flex-wrap items-center gap-6">
+            <a class="btn btn-onsen btn-sm gap-2" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=-23.5621%2C-46.6571" target="_blank" rel="noopener noreferrer" data-janela-popup title="Abre o Google Street View em outra janela">
+              <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+              Visão da rua
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .poco-acoes — peça existente, com os itens das gavetas de endereço -->
+        <div class="grid sm:grid-cols-2 gap-6 max-w-2xl">
+          <!-- estado: logado -->
+          <div class="flex flex-col gap-3">
+            <p class="text-overline">poço de ações · logado</p>
+            <div data-poco></div>
+          </div>
+          <!-- estado: sem login — só o item aberto -->
+          <div class="flex flex-col gap-3">
+            <p class="text-overline">poço de ações · sem login</p>
+            <div data-poco data-anonimo></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="flex flex-col gap-6">
+        <h2 class="section-title">4 · Organismos</h2>
+
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- estado: gaveta do endereço, logado -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta do endereço · logado</span>
+            <div class="quadro-tela" data-gaveta="endereco" data-toggle="org-endereco-logado" data-aberta></div>
+          </div>
+
+          <!-- estado: gaveta do endereço, sem login — poço só com o lote mais próximo -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta do endereço · sem login</span>
+            <div class="quadro-tela" data-gaveta="endereco" data-toggle="org-endereco-anonimo" data-aberta data-anonimo></div>
+          </div>
+
+          <!-- estado: gaveta do endereço externo — sempre logado -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta do endereço externo</span>
+            <div class="quadro-tela" data-gaveta="externo" data-toggle="org-externo" data-aberta></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- estado: ao vivo -->
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-1">
+            <span class="text-overline drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · localize o endereço e abra a Visão da rua pelo poço</span>
+            <!-- andaime do mock: faz as vezes dos swaps do HTMX -->
+            <div class="flex flex-wrap gap-2">
+              <button type="button" id="andaime-endereco" class="btn btn-onsen btn-sm">Endereço</button>
+              <button type="button" id="andaime-externo" class="btn btn-ghost btn-glass btn-sm">Endereço externo</button>
+              <button type="button" id="andaime-bloqueio" class="btn btn-ghost btn-glass btn-sm">Simular pop-up bloqueado</button>
+              <button type="button" id="andaime-limpar" class="btn btn-ghost btn-glass btn-sm">Limpar</button>
+            </div>
+          </div>
+
+          <!-- página: core/home.html -->
+          <div class="quadro-tela tela-home" id="quadro-vivo">
+            <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+            <div id="mapa-tela" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+            <!-- fica na página: a UI flutuante da busca; #resultado-busca é o alvo do aviso -->
+            <div data-busca></div>
+            <!-- fica na página: <div id="gaveta-entidade"></div> — alvo do OOB (innerHTML) -->
+            <div id="gaveta-entidade"></div>
+          </div>
+        </div>
+
+        <!-- estados da tela, lado a lado -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- estado: endereço localizado, logado -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">endereço localizado · poço de ações no fim da gaveta</span>
+            <div class="quadro-tela tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="ponto"></div>
+              <!-- partial: address_geocoder/partials/_gaveta_endereco.html — chega por OOB em #gaveta-entidade -->
+              <!-- partial: street_view/partials/_item_street_view.html — o item do poço; incluído pelas duas gavetas de endereço -->
+              <div data-gaveta="endereco" data-toggle="tela-endereco" data-aberta></div>
+              <!-- /partial -->
+              <!-- /partial -->
+            </div>
+          </div>
+
+          <!-- estado de falta: pop-up bloqueado — a gaveta recolhe, a busca volta com o aviso -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">pop-up bloqueado · a gaveta recolhe, a alça a reabre</span>
+            <div class="quadro-tela tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="ponto"></div>
+              <!-- partial: street_view/partials/_aviso_popup_bloqueado.html — resposta de street_view:popup_bloqueado em #resultado-busca, pedida pelo janela_popup.js -->
+              <!-- partial: mapping/_aviso.html — tom error -->
+              <div data-busca data-aviso></div>
+              <!-- /partial -->
+              <!-- partial: mapping/_recolher_gaveta_oob.html — o toggle da gaveta de onde o clique saiu -->
+              <div data-gaveta="endereco" data-toggle="tela-endereco-bloqueado"></div>
+              <!-- /partial -->
+              <!-- /partial -->
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Glifos desta tela. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <!-- NOVO nesta SPEC: a câmera sobre o anel do chão -->
+      <g id="glifo-street-view">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5.5 6a1.5 1.5 0 011.5-1.5h1.6l1-1.5h4.8l1 1.5H17a1.5 1.5 0 011.5 1.5v6.5A1.5 1.5 0 0117 14H7a1.5 1.5 0 01-1.5-1.5z"/>
+        <circle cx="12" cy="9.25" r="2"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.6 16.7c-1.35.5-2.1 1.15-2.1 1.8 0 1.9 4.7 3 10.5 3s10.5-1.1 10.5-3c0-.65-.75-1.3-2.1-1.8"/>
+      </g>
+      <!-- JÁ EXISTE: o globo do provedor externo -->
+      <g id="glifo-globo">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/>
+      </g>
+      <!-- JÁ EXISTE: o do botão de lote mais próximo -->
+      <g id="glifo-lote-proximo">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/>
+      </g>
+      <!-- JÁ EXISTE: o pino da gaveta de endereço -->
+      <g id="glifo-pino">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- A busca da home, como está em core/home.html. -->
+  <template id="molde-busca">
+    <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">
+      <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+        <div class="relative w-full flex items-center">
+          <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="search" value="AL SANTOS, 1293" class="input input-glass pl-11" />
+        </div>
+      </div>
+      <div class="pointer-events-auto w-11/12 max-w-2xl mt-3" data-resultado-busca></div>
+    </div>
+  </template>
+
+  <!-- O poço de ações das gavetas de endereço: a casca fica no template de cada gaveta. -->
+  <template id="molde-poco">
+    <div class="card-well poco-acoes">
+      <p class="text-overline poco-acoes__titulo">Ações</p>
+      <div class="poco-acoes__lista">
+        <!-- item: lote mais próximo — hx-post no próprio botão, alvo #resultado-busca; com ou sem login -->
+        <button type="button" class="btn btn-onsen btn-sm" data-item-lote>
+          <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-lote-proximo"/></svg></span>
+          Lote mais próximo
+        </button>
+        <!-- item: street view — só para quem está logado -->
+        <!-- andaime do mock: o href vai direto ao Google; no produto é a rota street_view:abrir -->
+        <a class="btn btn-onsen btn-sm" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=-23.5621%2C-46.6571" target="_blank" rel="noopener noreferrer" data-janela-popup data-item-street-view title="Abre o Google Street View em outra janela">
+          <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+          Visão da rua
+        </a>
+      </div>
+    </div>
+  </template>
+
+  <!-- Conteúdo da gaveta do endereço (address_geocoder/partials/_gaveta_endereco.html). -->
+  <template id="conteudo-endereco">
+    <input type="checkbox" class="gaveta-lateral-toggle">
+    <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+      <header class="gaveta-lateral-cabecalho">
+        <p class="text-overline text-madeira-600">Entidade localizada</p>
+        <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Endereço</h2>
+        <p class="text-sm font-medium mt-2">AL SANTOS, 1293</p>
+      </header>
+
+      <div class="gaveta-lateral-corpo" data-scroll-etched>
+        <div class="gaveta-lateral-rolador" data-rolador>
+          <div class="gaveta-lateral-conteudo">
+            <div class="card-well p-4 flex flex-col gap-3">
+              <div class="flex gap-4 items-center">
+                <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-pino"/></svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline mb-0.5">Logradouro</p>
+                  <p class="font-bold leading-tight">SANTOS</p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="flex items-baseline justify-between gap-4">
+                <p class="text-overline">Codlog</p>
+                <p class="text-code text-sm">178462</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="card-well p-4">
+                <p class="text-overline mb-1">Número</p>
+                <p class="text-xl font-bold tabular-nums">1293</p>
+              </div>
+              <div class="card-well p-4">
+                <p class="text-overline mb-1">Faixa do segmento</p>
+                <p class="text-xl font-bold tabular-nums">1201 – 1399</p>
+              </div>
+            </div>
+
+            <!-- o poço de ações, no lugar do botão largo -->
+            <div data-poco></div>
+          </div>
+        </div>
+        <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+      </div>
+    </div>
+    <label class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+      <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    </label>
+  </template>
+
+  <!-- Conteúdo da gaveta do endereço externo (geocodificacao_externa/partials/_gaveta_endereco_externo.html). -->
+  <template id="conteudo-externo">
+    <input type="checkbox" class="gaveta-lateral-toggle">
+    <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+      <header class="gaveta-lateral-cabecalho">
+        <p class="text-overline text-madeira-600">Entidade localizada</p>
+        <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Endereço externo</h2>
+        <p class="text-sm font-medium mt-2">Alameda Santos, 1293 - Jardim Paulista, São Paulo - SP, 01419-002, Brasil</p>
+        <span class="badge badge-success badge-soft badge-sm font-bold mt-3" title="Precisão declarada pelo provedor">No imóvel</span>
+      </header>
+
+      <div class="gaveta-lateral-corpo" data-scroll-etched>
+        <div class="gaveta-lateral-rolador" data-rolador>
+          <div class="gaveta-lateral-conteudo">
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-globo"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Geocodificado por</p>
+                <p class="font-bold leading-tight">Google</p>
+                <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+              </div>
+            </div>
+
+            <!-- o poço de ações, no lugar do botão largo -->
+            <div data-poco></div>
+          </div>
+        </div>
+        <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+      </div>
+    </div>
+    <label class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+      <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    </label>
+  </template>
+
+  <script type="module">
+    // andaime do mock: erro de carga aparece na tela, não só no console.
+    function denunciar(mensagem) {
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        '<pre class="fixed top-0 inset-x-0 z-50 m-0 p-3 text-xs bg-error text-error-content whitespace-pre-wrap">' + mensagem + "</pre>",
+      );
+    }
+    window.addEventListener("error", (evento) => denunciar("erro: " + evento.message));
+    window.addEventListener("unhandledrejection", (evento) => denunciar("falhou: " + evento.reason));
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    const RAMO_DO_AVISO_COMUM = /\{% else %\}[\s\S]*?\{% endif %\}/;
+    // No produto a config desce do servidor; o mock não tem Django por trás do Live Server.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5621, -46.6571];
+    const PONTO = [-23.5621, -46.6571];
+    const COR_PONTO = "#00B4D8";
+    const MSG_POPUP_BLOQUEADO =
+      "O navegador bloqueou a janela da Visão da rua. Libere os pop-ups para este site e tente de novo.";
+
+    async function partial(caminho) {
+      const r = await fetch(caminho);
+      if (!r.ok) throw new Error(r.status + " em " + caminho + " — sirva a RAIZ do projeto");
+      return r.text();
+    }
+    const semTags = (texto) => texto.replace(TAG_DE_TEMPLATE, "").trim();
+
+    const [filtros, fundo, avisoBruto] = await Promise.all([
+      partial("/templates/partials/_filtros_gravacao.html"),
+      partial("/templates/mapping/_mapa_fullscreen.html"),
+      partial("/templates/mapping/_aviso.html"),
+    ]);
+    document.getElementById("defs-aplicacao").innerHTML = semTags(filtros);
+    document.getElementById("fundo-home").innerHTML = semTags(fundo);
+
+    // O aviso é o mapping/_aviso.html da aplicação, no tom error: só a placa, sem o OOB das sugestões.
+    function avisoDeBloqueio() {
+      const marcacao = avisoBruto
+        .replace("{{ tom|default:'warning' }}", "error")
+        .replace(RAMO_DO_AVISO_COMUM, "")
+        .replace("{{ mensagem }}", MSG_POPUP_BLOQUEADO);
+      const molde = document.createElement("template");
+      molde.innerHTML = semTags(marcacao);
+      return molde.content.querySelector("[role=alert]").cloneNode(true);
+    }
+
+    function busca(alvo) {
+      alvo.replaceWith(document.getElementById("molde-busca").content.cloneNode(true));
+    }
+
+    // O alcance da consulta, que era legenda sob o botão largo, vira a dica do item.
+    const DICA_DO_LOTE = {
+      endereco: "Procura no mesmo logradouro, a até 50 m do ponto.",
+      externo: "Procura em qualquer logradouro, a até 50 m do ponto.",
+    };
+
+    function poco(tipo, anonimo) {
+      const peca = document.getElementById("molde-poco").content.cloneNode(true);
+      peca.querySelector("[data-item-lote]").title = DICA_DO_LOTE[tipo];
+      if (anonimo) peca.querySelector("[data-item-street-view]").remove();
+      return peca;
+    }
+
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers,
+        version: WMS.version,
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+
+    function ponto(mapa) {
+      return L.circleMarker(PONTO, {
+        radius: 8, color: COR_PONTO, weight: 3, fillColor: COR_PONTO, fillOpacity: 0.6,
+      }).addTo(mapa);
+    }
+
+    function gaveta(tipo, idToggle, aberta, anonimo) {
+      const casca = document.createElement("div");
+      casca.className = "gaveta-lateral";
+      casca.appendChild(document.getElementById("conteudo-" + tipo).content.cloneNode(true));
+      const toggle = casca.querySelector(".gaveta-lateral-toggle");
+      toggle.id = idToggle;
+      toggle.checked = aberta;
+      casca.querySelector(".paleta-gaveta").htmlFor = toggle.id;
+      casca.querySelector("[data-poco]").replaceWith(poco(tipo, anonimo));
+      return casca;
+    }
+
+    // Molécula isolada.
+    document.querySelectorAll("#moleculas [data-poco]").forEach((alvo) => {
+      alvo.appendChild(poco("endereco", alvo.hasAttribute("data-anonimo")));
+    });
+
+    // Estados estáticos: busca com aviso, gavetas e mapas de cada quadro.
+    document.querySelectorAll("[data-busca][data-aviso]").forEach((alvo) => {
+      const quadro = alvo.parentElement;
+      busca(alvo);
+      quadro.querySelector("[data-resultado-busca]").appendChild(avisoDeBloqueio());
+    });
+
+    document.querySelectorAll("[data-gaveta]").forEach((alvo) => {
+      alvo.appendChild(gaveta(
+        alvo.dataset.gaveta,
+        alvo.dataset.toggle,
+        alvo.hasAttribute("data-aberta"),
+        alvo.hasAttribute("data-anonimo"),
+      ));
+    });
+
+    base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15));
+
+    document.querySelectorAll("[data-mapa]").forEach((alvo, indice) => {
+      alvo.id = "mapa-estado-" + indice;
+      const mapa = base(L.map(alvo.id, {
+        zoomControl: false, minZoom: 13, maxZoom: 19,
+        dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+      }).setView(CENTRO, 18));
+      mapa.panBy([-180, 0], { animate: false });
+      ponto(mapa);
+    });
+
+    const { montarBarrasGravadas } = await import("/static/src/js/ui/scroll_etched.js");
+    montarBarrasGravadas();
+
+    // andaime do mock: o que os swaps do HTMX fariam na tela ao vivo.
+    const quadroVivo = document.getElementById("quadro-vivo");
+    busca(quadroVivo.querySelector("[data-busca]"));
+    const mapaTela = base(L.map("mapa-tela", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 16));
+    const alvoGaveta = document.getElementById("gaveta-entidade");
+    let camadaPonto = null;
+
+    function enquadrar() {
+      const recuo = alvoGaveta.firstElementChild ? alvoGaveta.firstElementChild.offsetWidth + 80 : 80;
+      mapaTela.fitBounds(L.latLngBounds([PONTO, PONTO]), {
+        maxZoom: 18, paddingTopLeft: [recuo, 120], paddingBottomRight: [80, 80],
+      });
+    }
+
+    function limpar() {
+      alvoGaveta.replaceChildren();
+      quadroVivo.querySelector("[data-resultado-busca]").replaceChildren();
+      if (camadaPonto) { camadaPonto.remove(); camadaPonto = null; }
+    }
+
+    function localizar(tipo) {
+      limpar();
+      camadaPonto = ponto(mapaTela);
+      alvoGaveta.replaceChildren(gaveta(tipo, "tela-viva", true, false));
+      montarBarrasGravadas();
+      enquadrar();
+    }
+
+    // andaime do mock: no produto é o htmx.ajax que busca o aviso, e o OOB que desmarca o toggle.
+    function avisarBloqueio(link) {
+      const quadro = link.closest(".tela-home");
+      if (quadro === null) return;
+      const resultado = quadro.querySelector("[data-resultado-busca]");
+      if (resultado === null) return;
+      resultado.replaceChildren(avisoDeBloqueio());
+      link.closest(".gaveta-lateral").querySelector(".gaveta-lateral-toggle").checked = false;
+    }
+
+    document.getElementById("andaime-endereco").addEventListener("click", () => localizar("endereco"));
+    document.getElementById("andaime-externo").addEventListener("click", () => localizar("externo"));
+    document.getElementById("andaime-limpar").addEventListener("click", limpar);
+    document.getElementById("andaime-bloqueio").addEventListener("click", () => {
+      if (!alvoGaveta.firstElementChild) localizar("endereco");
+      alvoGaveta.querySelector(".gaveta-lateral-toggle").checked = true;
+      avisarBloqueio(alvoGaveta.querySelector("a[data-janela-popup]"));
+    });
+
+    // ---- static/src/js/ui/janela_popup.js — o script do produto, tal como a SPEC §6 o prevê ----
+    const FEICOES = "popup,width=1100,height=720";
+
+    function abrirJanela(link) {
+      const janela = window.open(link.href, "_blank", FEICOES);
+      if (janela === null) {
+        avisarBloqueio(link);
+        return;
+      }
+      janela.opener = null;
+    }
+
+    document.body.addEventListener("click", (evento) => {
+      const link = evento.target.closest("a[data-janela-popup]");
+      if (link === null) return;
+      evento.preventDefault();
+      abrirJanela(link);
+    });
+  </script>
+</body>
+</html>

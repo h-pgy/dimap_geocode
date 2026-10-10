@@ -5,6 +5,13 @@ description: Como usar a função de normalização de texto do DIMAP GeoCoder (
 
 # Normalização de texto — `services.utils.normalization`
 
+## Sumário
+
+- Regra inegociável
+- O que é exportado
+- O que ela faz
+- Uso
+
 ## Regra inegociável
 
 **Nunca escreva uma função de limpeza ou normalização de texto.** A função já existe e deve ser

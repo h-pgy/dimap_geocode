@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC geocodificacao/008 — Endereço mais próximo de um ponto desenhado (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + andaime deste mock no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Esta SPEC não traz classe nova para o tema: a única peça é o SVG do ícone. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* andaime do mock: moldura que faz as vezes da casca da home. O contain segura as gavetas,
+         que são fixed, dentro do quadro. */
+      .quadro-tela {
+        @apply relative h-[40rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Defs da gravação e glifos da bancada e do Street View: os partials da própria aplicação. -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- Fundo: o mapa vivo da home, de mapping/_mapa_fullscreen.html. -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC geocodificacao/008 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Endereço mais próximo de um ponto desenhado</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          A ação "Endereço mais próximo" no poço do ponto selecionado. Acionada, o ponto do endereço vai
+          ao mapa, sobre o eixo do logradouro, e a gaveta dos desenhos dá lugar à gaveta do endereço da
+          busca.
+        </p>
+      </header>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">2 · Átomos</h2>
+
+        <!-- ícone da ação: static/src/acoes/endereco_mais_proximo/do_ponto/icones/pequeno.svg -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.icone-acao · endereco_mais_proximo.do_ponto — pequeno, a medida do poço; ao lado, ampliado só para conferir o traço</p>
+          <div class="flex items-end gap-8">
+            <span class="icone-acao icone-acao-pequeno text-agua-700" data-icone-endereco></span>
+            <span class="icone-acao icone-acao-grande text-agua-700" data-icone-endereco></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .poco-desenhos de ponto com as duas ações -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.poco-desenhos, na largura da gaveta — ponto selecionado (as duas ações à vista) e seleção em outro poço (recolhidas); por último, um poço estreito, onde os nomes cortam</p>
+          <div class="flex flex-wrap gap-4 items-start" data-pocos-demo></div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · selecione um ponto e acione "Endereço mais próximo"; clique num ponto desenhado para voltar à bancada. O Ponto 1 está no lado par da Av. Paulista, o 2 no lado ímpar da Al. Santos, e o 3 não tem logradouro com numeração no raio. "Logradouro mais próximo" é a ação do mock da 005 e aqui não responde; as ações da gaveta do endereço também não</span>
+
+          <!-- página: core/home.html -->
+          <div class="quadro-tela tela-home">
+            <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+            <div id="mapa-tela" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+
+            <!-- fica na página: a UI flutuante da busca, que já existe -->
+            <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4 transition-all duration-500 ease-in-out">
+              <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+                <div class="relative w-full flex items-center">
+                  <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                  <input type="search" placeholder="Rua, endereço, codlog ou nº de contribuinte…" class="input input-glass pl-11" />
+                </div>
+              </div>
+              <!-- fica na página: #resultado-busca, alvo do hx-post da ação -->
+              <div id="resultado-tela" class="pointer-events-auto w-11/12 max-w-2xl mt-3">
+                <!-- partial: address_geocoder/partials/_resultado_endereco.html — endereco_mais_proximo:do_ponto; payload do mapa (mapping/_mapa.html) + OOB do #gaveta-entidade -->
+                <!-- partial: mapping/_recusa_acao.html — a recusa: aviso + toggle dos desenhos desmarcado -->
+                <!-- /partial -->
+              </div>
+            </div>
+
+            <!-- página: <div id="gaveta-entidade"></div> — alvo do swap da rota dos desenhos e do OOB da ação -->
+            <div id="gaveta-entidade">
+              <!-- partial: mapping/_gaveta_desenhos.html — mapping:desenhos_da_bancada; cada poço é mapping/_poco_desenhos.html -->
+              <!-- partial: address_geocoder/partials/_gaveta_endereco.html — a gaveta do endereço da busca, sem alteração -->
+              <!-- /partial -->
+            </div>
+
+            <!-- fica na página: mapping/_bancada_desenho.html -->
+            <div data-bancada></div>
+          </div>
+        </div>
+
+        <!-- estado: endereço encontrado, gaveta do endereço aberta -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">endereço encontrado · o ponto do endereço sobre o eixo, ao lado do ponto desenhado; o pop-up é o do clique no ponto</span>
+          <div class="quadro-tela tela-home">
+            <div class="absolute inset-0 z-0" data-mapa-estatico="resultado"></div>
+            <div data-gaveta-endereco></div>
+          </div>
+        </div>
+
+        <!-- estado de falta: nenhum logradouro com numeração no raio -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">nenhum logradouro com numeração no raio · o aviso no lugar do resultado, a gaveta dos desenhos recolhida e o mapa como estava</span>
+          <div class="quadro-tela tela-home">
+            <div class="absolute inset-0 z-0" data-mapa-estatico="recusa"></div>
+            <div data-busca-estatica></div>
+            <div data-gaveta-recolhida></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    // andaime do mock: erro de carga aparece na tela, não só no console.
+    function denunciar(mensagem) {
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        '<pre class="fixed top-0 inset-x-0 z-50 m-0 p-3 text-xs bg-error text-error-content whitespace-pre-wrap">' + mensagem + "</pre>",
+      );
+    }
+    window.addEventListener("error", (evento) => denunciar("erro: " + evento.message));
+    window.addEventListener("unhandledrejection", (evento) => denunciar("falhou: " + evento.reason));
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    // No produto a config desce do servidor; o mock não tem Django por trás do Live Server.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5628, -46.6556];
+    // De static/src/js/mapa/desenho/catalogo.js.
+    const COR = { ponto: "#00B4D8", linha: "#0F766E" };
+    const TRACO_LINHA = {
+      normal: { weight: 3, opacity: 1 },
+      selecionado: { weight: 6, opacity: 1 },
+    };
+    const DIAMETRO_PONTO = { normal: 14, selecionado: 22 };
+    // De static/src/js/mapa/camada_resultado.js, na cor MAP_COR_PONTO: o ponto do endereço da busca.
+    const PONTO_RESULTADO = { radius: 7, color: "#00B4D8", weight: 2, fillColor: "#00B4D8", fillOpacity: 0.85 };
+    const MSG_SEM_ENDERECO = "Nenhum logradouro com numeração foi encontrado a 50 metros do ponto.";
+
+    // Já existe (SPEC 005): static/src/acoes/logradouro_mais_proximo/do_ponto/icones/pequeno.svg
+    const SVG_LOGRADOURO_MAIS_PROXIMO =
+      '<svg viewBox="0 0 24 24">' +
+      '<path d="M1.4 16.5 20.4 8.5M3.6 21.9 22.6 13.9"/>' +
+      '<path d="M2.5 19.2 21.5 11.2" stroke-width="1.2" stroke-dasharray="2 2.2"/>' +
+      '<path d="M6.5 4.7 9.4 11.6M6.7 10.3 9.4 11.6 10.3 8.8"/>' +
+      "</svg>";
+
+    // ── PEÇA DESTA SPEC: static/src/acoes/endereco_mais_proximo/do_ponto/icones/pequeno.svg
+    const SVG_ENDERECO_MAIS_PROXIMO =
+      '<svg viewBox="0 0 24 24">' +
+      '<path d="M1.4 16.5 7.6 13.9M12.6 11.8 20.4 8.5M3.6 21.9 22.6 13.9"/>' +
+      '<path d="M2.5 19.2 21.5 11.2" stroke-width="1.2" stroke-dasharray="2 2.2"/>' +
+      '<path d="M10 16C10 16 5.5 11.4 5.5 7.5a4.5 4.5 0 0 1 9 0C14.5 11.4 10 16 10 16z"/>' +
+      '<circle cx="10" cy="7.5" r="1.5"/>' +
+      "</svg>";
+
+    // ── andaime do mock: os desenhos da bancada e o endereço que a consulta devolveria ──────────
+    const DESENHOS = [
+      {
+        id: "11", tipo: "ponto", rotulo: "Ponto 1", latlng: [-23.56274, -46.65463],
+        endereco: {
+          nomeCompleto: "AV PAULISTA", nome: "PAULISTA", codlog: "156566", numero: 1374,
+          faixa: [1294, 1410], latlng: [-23.562839, -46.654727],
+        },
+      },
+      {
+        id: "12", tipo: "ponto", rotulo: "Ponto 2", latlng: [-23.56243, -46.65741],
+        endereco: {
+          nomeCompleto: "AL SANTOS", nome: "SANTOS", codlog: "177911", numero: 1893,
+          faixa: [1811, 1987], latlng: [-23.562383, -46.657361],
+        },
+      },
+      { id: "13", tipo: "ponto", rotulo: "Ponto 3", latlng: [-23.56400, -46.65437], endereco: null },
+      { id: "31", tipo: "linha", rotulo: "Linha 1", comprimento: 121, latlngs: [[-23.56118, -46.65492], [-23.56052, -46.65398]] },
+    ];
+    const desenhoPorId = (id) => DESENHOS.find((d) => d.id === id);
+    const doTipo = (tipo) => DESENHOS.filter((d) => d.tipo === tipo);
+
+    // ── A marcação em julgamento ────────────────────────────────────────────────────────────────
+    function itemDoPoco(gancho, svg, rotulo, dica) {
+      return (
+        // No produto: hx-post="{% url item.url_name %}" hx-include=".linha-desenho__marca:checked".
+        '<button type="button" class="card-well item-menu item-menu-swell" ' + gancho + ' title="' + dica + '">' +
+        '<span class="icone-acao icone-acao-pequeno icone-acao-acende">' + svg + "</span>" +
+        '<span class="item-menu-rotulo">' + rotulo + "</span>" +
+        "</button>"
+      );
+    }
+
+    // A ordem é a do registro de desenho: logradouro, depois endereço.
+    function placaAcoes() {
+      return (
+        '<div class="placa-lista glass-panel">' +
+        '<div class="placa-lista__cabecalho"><span class="text-overline">Ações</span><span class="placa-lista__contagem">2</span></div>' +
+        '<div class="placa-lista__conteudo">' +
+        itemDoPoco("data-acao-logradouro", SVG_LOGRADOURO_MAIS_PROXIMO, "Logradouro mais próximo",
+          "Logradouro oficial cujo eixo passa mais perto do ponto marcado.") +
+        itemDoPoco("data-acao-endereco", SVG_ENDERECO_MAIS_PROXIMO, "Endereço mais próximo",
+          "Endereço oficial do logradouro mais perto do ponto marcado.") +
+        "</div>" +
+        "</div>"
+      );
+    }
+
+    function linhaDesenho(desenho, marcado) {
+      const medida = desenho.comprimento
+        ? '<span class="linha-desenho__medida">' + desenho.comprimento + " m</span>"
+        : '<span class="linha-desenho__medida">' + desenho.latlng.map((v) => v.toFixed(3)).join(", ") + "</span>";
+      return (
+        '<label class="linha-desenho">' +
+        '<input type="radio" name="id_bancada" class="linha-desenho__marca" value="' + desenho.id + '"' + (marcado ? " checked" : "") + ">" +
+        '<span class="linha-desenho__rotulo">' + desenho.rotulo + "</span>" +
+        medida +
+        '<button type="button" class="linha-desenho__apagar etched" aria-label="Apagar ' + desenho.rotulo + '">' +
+        '<svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>' +
+        "</label>"
+      );
+    }
+
+    // mapping/_poco_desenhos.html
+    function pocoDesenhos(tipo, desenhos, idMarcado, comAcao) {
+      // Sem espaço dentro da âncora quando não há ação: é o :empty que a recolhe.
+      return (
+        '<div class="poco-desenhos poco-desenhos--' + tipo + ' card-well">' +
+        desenhos.map((d) => linhaDesenho(d, d.id === idMarcado)).join("") +
+        '<div class="poco-desenhos__acoes">' +
+        (comAcao ? '<div class="poco-desenhos__acoes-recorte">' + placaAcoes() + "</div>" : "") +
+        "</div>" +
+        "</div>"
+      );
+    }
+
+    const PALETA = (idToggle) =>
+      '<label for="' + idToggle + '" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">' +
+      '<svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>' +
+      "</label>";
+
+    // mapping/_gaveta_desenhos.html
+    function gavetaDesenhos(idMarcado, idToggle, aberta) {
+      const casca = document.createElement("div");
+      casca.className = "gaveta-lateral";
+      casca.dataset.gaveta = "desenhos";
+      casca.innerHTML =
+        '<input type="checkbox" id="' + idToggle + '" class="gaveta-lateral-toggle"' + (aberta ? " checked" : "") + ">" +
+        '<div class="gaveta-lateral-painel glass-drawer-panel-denso">' +
+        '<header class="gaveta-lateral-cabecalho">' +
+        '<p class="text-overline text-madeira-600">Bancada de desenho</p>' +
+        '<h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Desenhos no mapa</h2>' +
+        "</header>" +
+        '<div class="gaveta-lateral-corpo" data-scroll-etched>' +
+        '<div class="gaveta-lateral-rolador" data-rolador>' +
+        '<form class="gaveta-lateral-conteudo">' +
+        pocoDesenhos("ponto", doTipo("ponto"), idMarcado, true) +
+        pocoDesenhos("linha", doTipo("linha"), idMarcado, false) +
+        '<button type="button" class="btn-etched btn-etched-swell etched self-end">Limpar desenhos</button>' +
+        "</form>" +
+        "</div>" +
+        '<div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>' +
+        "</div>" +
+        "</div>" +
+        PALETA(idToggle);
+      return casca;
+    }
+
+    // mapping/_aviso.html, com a mensagem da recusa.
+    function aviso(mensagem) {
+      return (
+        '<div role="alert" class="alert alert-warning alert-soft">' +
+        '<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-8.02 13.89A1.5 1.5 0 003.57 20h16.86a1.5 1.5 0 001.3-2.25L13.71 3.86a1.5 1.5 0 00-2.6 0z"/></svg>' +
+        "<span>" + mensagem + "</span></div>"
+      );
+    }
+
+    // address_geocoder/partials/_popup_endereco.html
+    function popupEndereco(endereco) {
+      return (
+        '<span class="font-bold text-madeira-700">' + endereco.nomeCompleto + ", " + endereco.numero + "</span><br>" +
+        '<span class="text-code text-xs">codlog ' + endereco.codlog + "</span>"
+      );
+    }
+
+    // camada_resultado.js: o ponto do endereço, com o pop-up e o rótulo que as properties trazem.
+    function camadaEndereco(endereco) {
+      return L.featureGroup([
+        L.circleMarker(endereco.latlng, PONTO_RESULTADO)
+          .bindPopup(popupEndereco(endereco))
+          .bindTooltip(endereco.nomeCompleto + ", " + endereco.numero, { direction: "top", sticky: true }),
+      ]);
+    }
+
+    // A busca dos quadros estáticos: a mesma marcação da tela ao vivo, sem ids.
+    function buscaEstatica(conteudo) {
+      return (
+        '<div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">' +
+        '<div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">' +
+        '<div class="relative w-full flex items-center">' +
+        '<svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
+        '<input type="search" placeholder="Rua, endereço, codlog ou nº de contribuinte…" class="input input-glass pl-11" />' +
+        "</div></div>" +
+        '<div class="pointer-events-auto w-11/12 max-w-2xl mt-3">' + conteudo + "</div>" +
+        "</div>"
+      );
+    }
+
+    // ── andaime do mock: os estados estáticos que não dependem de partial ──────────────────────
+    document.querySelectorAll("[data-icone-endereco]").forEach((alvo) => (alvo.innerHTML = SVG_ENDERECO_MAIS_PROXIMO));
+    // Cada estado no seu formulário: radios sem formulário formariam um grupo só na página.
+    document.querySelector("[data-pocos-demo]").innerHTML = [
+      pocoDesenhos("ponto", doTipo("ponto"), "11", true),
+      pocoDesenhos("ponto", doTipo("ponto"), null, true),
+    // A largura é a do conteúdo da gaveta lateral (--gaveta-largura menos o recuo): é onde o poço vive.
+    ].map((poco) => '<form class="w-[20.25rem]">' + poco + "</form>").join("") +
+      // estado: poço estreito — os nomes das ações cortam com reticências, dentro da placa.
+      '<form class="w-[12rem]">' + pocoDesenhos("ponto", doTipo("ponto").slice(0, 1), "11", true) + "</form>";
+    document.querySelectorAll("[data-busca-estatica]").forEach((alvo) => {
+      alvo.outerHTML = buscaEstatica(aviso(MSG_SEM_ENDERECO));
+    });
+    document.querySelectorAll("[data-gaveta-recolhida]").forEach((alvo, indice) => {
+      alvo.replaceWith(gavetaDesenhos("13", "estatica-desenhos-" + indice, false));
+    });
+    // andaime do mock: sem htmx nem Django, o formulário e o link da gaveta do endereço não levam a lugar nenhum.
+    document.addEventListener("submit", (evento) => evento.preventDefault());
+    document.addEventListener("click", (evento) => {
+      if (evento.target.closest("[data-janela-popup]")) evento.preventDefault();
+    });
+
+    // ── Fundo, glifos, bancada e gaveta do endereço: os partials da própria aplicação ───────────
+    async function bruto(caminho) {
+      const r = await fetch(caminho);
+      if (!r.ok) throw new Error(r.status + " em " + caminho + " — sirva a RAIZ do projeto");
+      return r.text();
+    }
+    const partial = async (caminho) => (await bruto(caminho)).replace(TAG_DE_TEMPLATE, "").trim();
+
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers,
+        version: WMS.version,
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+
+    function iconePonto(estado) {
+      const d = DIAMETRO_PONTO[estado];
+      return L.divIcon({
+        className: "",
+        iconSize: [d, d],
+        iconAnchor: [d / 2, d / 2],
+        html: '<span style="display:block;width:' + d + "px;height:" + d + "px;border-radius:9999px;background:" +
+          COR.ponto + ';border:2px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(72,202,228,.9)"></span>',
+      });
+    }
+
+    function camadaDoDesenho(desenho) {
+      return desenho.tipo === "ponto"
+        ? L.marker(desenho.latlng, { icon: iconePonto("normal") })
+        : L.polyline(desenho.latlngs, { color: COR.linha, ...TRACO_LINHA.normal });
+    }
+
+    // andaime do mock: o tema é compilado no navegador, depois do fetch. Mapa criado antes disso mede
+    // o quadro sem a moldura (.quadro-tela), enquadra para um tamanho que não existe e o resultado
+    // cai fora da vista.
+    async function temaAplicado() {
+      const quadro = document.querySelector(".quadro-tela");
+      while (getComputedStyle(quadro).contain !== "layout") {
+        await new Promise((pronto) => requestAnimationFrame(pronto));
+      }
+    }
+
+    const [filtros, glifos, glifosStreetView, fundo, bancada, moldeGaveta, moldeStreetView] = await Promise.all([
+      partial("/templates/partials/_filtros_gravacao.html"),
+      partial("/templates/mapping/_glifos_desenho.html"),
+      partial("/templates/street_view/partials/_glifos_street_view.html"),
+      partial("/templates/mapping/_mapa_fullscreen.html"),
+      partial("/templates/mapping/_bancada_desenho.html"),
+      bruto("/templates/address_geocoder/partials/_gaveta_endereco.html"),
+      bruto("/templates/street_view/partials/_item_street_view.html"),
+    ]);
+    document.getElementById("defs-aplicacao").innerHTML = filtros + glifos + glifosStreetView;
+    document.getElementById("fundo-home").innerHTML = fundo;
+
+    // address_geocoder/partials/_gaveta_endereco.html: o partial da própria aplicação, com os valores
+    // que o Django poria. O selo de certeza sai (a ação não tem score), e o item do Street View entra
+    // como para quem fez login.
+    const SELO_DE_CERTEZA = /\{%\s*if score is not None\s*%\}[\s\S]*?\{%\s*endif\s*%\}/;
+    const INCLUDE_STREET_VIEW = /\{%\s*include "street_view[^%]*%\}/;
+    const VALOR = /\{\{\s*([\w.]+)[^}]*\}\}/g;
+    function gavetaEndereco(endereco, idToggle) {
+      const valores = {
+        "endereco.logradouro.nome_completo": endereco.nomeCompleto,
+        "endereco.numero": endereco.numero,
+        "endereco.logradouro.nome_logradouro": endereco.nome,
+        "endereco.logradouro.codlog": endereco.codlog,
+        "endereco.numeracao_inicial": endereco.faixa[0],
+        "endereco.numeracao_final": endereco.faixa[1],
+        "ponto.coordinates.0": endereco.latlng[1],
+        "ponto.coordinates.1": endereco.latlng[0],
+        raio_m: 50,
+        toggle: idToggle,
+      };
+      const molde = document.createElement("template");
+      molde.innerHTML = moldeGaveta
+        .replace(SELO_DE_CERTEZA, "")
+        .replace(INCLUDE_STREET_VIEW, moldeStreetView)
+        .replace(VALOR, (_, chave) => valores[chave] ?? "")
+        .replace(TAG_DE_TEMPLATE, "")
+        .replaceAll("gaveta-endereco-toggle", idToggle)
+        .trim();
+      return molde.content.firstElementChild;
+    }
+
+    document.querySelectorAll("[data-gaveta-endereco]").forEach((alvo, indice) => {
+      alvo.replaceWith(gavetaEndereco(desenhoPorId("11").endereco, "estatica-endereco-" + indice));
+    });
+
+    await temaAplicado();
+    base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15));
+
+    // A bancada entra como cenário, sem id algum e sem o bancada.js.
+    document.querySelectorAll("[data-bancada]").forEach((alvo) => {
+      alvo.outerHTML = bancada.replace(/\s+id="[^"]*"/g, "");
+    });
+
+    // Mapas estáticos: os desenhos e, no estado "resultado", o endereço do Ponto 1.
+    document.querySelectorAll("[data-mapa-estatico]").forEach((alvo, indice) => {
+      alvo.id = "mapa-estatico-" + indice;
+      const mapa = base(L.map(alvo.id, {
+        zoomControl: false, minZoom: 13, maxZoom: 19,
+        dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+      }));
+      const desenhos = L.featureGroup(DESENHOS.map(camadaDoDesenho));
+      if (alvo.dataset.mapaEstatico === "recusa") {
+        mapa.fitBounds(desenhos.getBounds(), { paddingTopLeft: [90, 130], paddingBottomRight: [90, 90] });
+        desenhos.addTo(mapa);
+        return;
+      }
+      const resultado = camadaEndereco(desenhoPorId("11").endereco);
+      // camada_resultado.js: enquadra o resultado, com folga de 20px e zoom máximo 18.
+      mapa.fitBounds(resultado.getBounds(), { maxZoom: 18, padding: [20, 20] });
+      desenhos.addTo(mapa);
+      resultado.addTo(mapa);
+      resultado.getLayers()[0].openPopup();
+    });
+
+    const { montarBarrasGravadas } = await import("/static/src/js/ui/scroll_etched.js");
+    montarBarrasGravadas();
+
+    // ── andaime do mock: a tela ao vivo faz as vezes do HTMX e do init.js ──────────────────────
+    const mapaTela = base(L.map("mapa-tela", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 17));
+    const alvoGaveta = document.getElementById("gaveta-entidade");
+    const alvoResultado = document.getElementById("resultado-tela");
+    let camadaResultado = null;
+
+    // static/src/js/ui/troca_gaveta.js, aqui sem o htmx: o modo vai no alvo antes do swap, e a
+    // "troca" espera o fade-out — no produto, o swapOverride "innerHTML swap:150ms".
+    const espera = (ms) => new Promise((pronto) => setTimeout(pronto, ms));
+    async function trocarGaveta(nova) {
+      const aberta = alvoGaveta.querySelector(":scope > .gaveta-lateral > .gaveta-lateral-toggle:checked");
+      const atual = alvoGaveta.querySelector(":scope > .gaveta-lateral")?.dataset.gaveta;
+      const modo = !aberta ? "entrada" : atual === nova.dataset.gaveta ? "mesma" : "troca";
+      alvoGaveta.dataset.trocaGaveta = modo;
+      if (modo === "troca") {
+        alvoGaveta.classList.add("htmx-swapping");
+        await espera(150);
+        alvoGaveta.classList.remove("htmx-swapping");
+      }
+      alvoGaveta.replaceChildren(nova);
+      montarBarrasGravadas();
+    }
+
+    // A gaveta dos desenhos, remontada como a rota dos desenhos faria.
+    async function mostrarDesenhos(idMarcado) {
+      await trocarGaveta(gavetaDesenhos(idMarcado, "gaveta-desenhos-toggle", true));
+      destacar();
+    }
+
+    // selecao.js: traço com radio marca; sem radio no DOM, a bancada volta com ele selecionado.
+    function clicarNoDesenho(desenho) {
+      const radio = alvoGaveta.querySelector('.linha-desenho__marca[value="' + desenho.id + '"]');
+      if (!radio) {
+        mostrarDesenhos(desenho.id);
+        return;
+      }
+      radio.checked = true;
+      radio.dispatchEvent(new Event("change", { bubbles: true }));
+      alvoGaveta.querySelector(".gaveta-lateral-toggle").checked = true;
+    }
+
+    DESENHOS.forEach((desenho) => {
+      desenho.camada = camadaDoDesenho(desenho).addTo(mapaTela);
+      desenho.camada.on("click", (evento) => {
+        L.DomEvent.stopPropagation(evento);
+        clicarNoDesenho(desenho);
+      });
+    });
+    mapaTela.fitBounds(L.featureGroup(DESENHOS.map((d) => d.camada)).getBounds(), {
+      paddingTopLeft: [440, 100],
+      paddingBottomRight: [90, 90],
+    });
+
+    function destacar() {
+      const marcado = alvoGaveta.querySelector(".linha-desenho__marca:checked")?.value;
+      DESENHOS.forEach((desenho) => {
+        const estado = desenho.id === marcado ? "selecionado" : "normal";
+        if (desenho.tipo === "ponto") {
+          desenho.camada.setIcon(iconePonto(estado));
+          return;
+        }
+        desenho.camada.setStyle(TRACO_LINHA[estado]);
+      });
+    }
+
+    // endereco_mais_proximo:do_ponto
+    async function enderecoMaisProximo() {
+      const desenho = desenhoPorId(alvoGaveta.querySelector(".linha-desenho__marca:checked").value);
+      alvoResultado.replaceChildren();
+      if (!desenho.endereco) {
+        // mapping/_recusa_acao.html: o aviso e o toggle dos desenhos desmarcado; o mapa fica como estava.
+        alvoGaveta.querySelector(".gaveta-lateral-toggle").checked = false;
+        alvoResultado.innerHTML = aviso(MSG_SEM_ENDERECO);
+        return;
+      }
+      if (camadaResultado) camadaResultado.remove();
+      camadaResultado = camadaEndereco(desenho.endereco).addTo(mapaTela);
+      // address_geocoder/partials/_resultado_endereco.html: a gaveta do endereço chega por OOB no #gaveta-entidade.
+      await trocarGaveta(gavetaEndereco(desenho.endereco, "gaveta-endereco-toggle"));
+      destacar();
+      // camada_resultado.js: o enquadramento do resultado, igual ao do endereço da busca.
+      mapaTela.fitBounds(camadaResultado.getBounds(), { maxZoom: 18, padding: [20, 20] });
+    }
+
+    mostrarDesenhos(null);
+
+    alvoGaveta.addEventListener("change", (evento) => {
+      if (evento.target.matches(".linha-desenho__marca")) destacar();
+    });
+    document.addEventListener("click", (evento) => {
+      if (evento.target.closest("[data-acao-endereco]") && alvoGaveta.contains(evento.target)) enderecoMaisProximo();
+    });
+  </script>
+</body>
+</html>

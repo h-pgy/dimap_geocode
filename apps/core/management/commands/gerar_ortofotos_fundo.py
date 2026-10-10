@@ -34,10 +34,23 @@ class Command(BaseCommand):
             forcar=bool(options["forcar"]),
         )
         try:
-            resultado = GeradorOrtofotosFundo()(config)
-        except WmsError as exc:  # inclui WmsTimeoutError
+            resultado = GeradorOrtofotosFundo(avisar=self.stdout.write)(config)
+        except WmsError as exc:
             raise CommandError(f"geração abortada: {exc}") from exc
 
-        for chave in resultado.geradas:
-            self.stdout.write(self.style.SUCCESS(f"[gerada] {chave}"))
-        self.stdout.write(f"{len(resultado.puladas)} já em disco.")
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"{len(resultado.geradas)} gerada(s), {len(resultado.puladas)} já em disco."
+            )
+        )
+        # stdout e saída zero: a linha aparece no log do container sem derrubar o `set -e` do
+        # entrypoint.
+        if resultado.pendentes:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"AVISO: GeoSampa indisponível ({resultado.indisponibilidade}). "
+                    f"{len(resultado.pendentes)} ortofoto(s) de fundo sem gerar: "
+                    f"{', '.join(resultado.pendentes)}. "
+                    "Rode `manage.py gerar_ortofotos_fundo` quando o serviço voltar."
+                )
+            )

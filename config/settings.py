@@ -12,7 +12,7 @@ from datetime import time
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -149,11 +149,35 @@ class _Settings(BaseSettings):
     wfs_version: str = Field(default="1.0.0", alias="WFS_VERSION")
     wfs_layer_logradouros: str = Field(default="segmento_logradouro", alias="WFS_LAYER_LOGRADOUROS")
     wfs_layer_lote_cidadao: str = Field(default="lote_cidadao", alias="WFS_LAYER_LOTE_CIDADAO")
+    # Nome do campo de geometria na camada de lotes, usado pelo predicado espacial DWITHIN
+    # (services.domain.lotes_mais_proximos) — só a orquestração o lê, o domínio o recebe pronto.
+    wfs_lote_cidadao_campo_geometria: str = Field(
+        default="ge_poligono", alias="WFS_LOTE_CIDADAO_CAMPO_GEOMETRIA"
+    )
+    wfs_logradouros_campo_geometria: str = Field(
+        default="ge_linha", alias="WFS_LOGRADOUROS_CAMPO_GEOMETRIA"
+    )
     wfs_verbose: bool = Field(default=True, alias="WFS_VERBOSE")
     wfs_request_timeout_seconds: float = Field(default=30.0, alias="WFS_REQUEST_TIMEOUT_SECONDS")
     wfs_max_retries: int = Field(default=3, alias="WFS_MAX_RETRIES")
     wfs_retry_wait_min_seconds: float = Field(default=1.0, alias="WFS_RETRY_WAIT_MIN_SECONDS")
     wfs_retry_wait_max_seconds: float = Field(default=5.0, alias="WFS_RETRY_WAIT_MAX_SECONDS")
+
+    # Um raio só para toda consulta de "mais próximo" (SPEC geocodificacao/005): calibrar uma move as outras.
+    mais_proximo_raio_limite_m: float = Field(default=50.0, alias="MAIS_PROXIMO_RAIO_LIMITE_M")
+    # Teto da área do desenho na busca de lotes intersectados (SPEC localizacao_lote/003): sem ele um
+    # desenho sobre um bairro devolveria dezenas de milhares de lotes.
+    lotes_desenho_area_maxima_m2: float = Field(
+        default=250_000.0, alias="LOTES_DESENHO_AREA_MAXIMA_M2"
+    )
+    # Fração da área do lote que precisa cair dentro do desenho para ele contar como contido, na
+    # sugestão do tipo de despacho da certidão do conjunto (SPEC certidao_lancamento/002).
+    lote_fracao_minima_contida: float = Field(
+        default=0.99,
+        gt=0,
+        le=1,
+        alias="LOTE_FRACAO_MINIMA_CONTIDA",
+    )
 
     wms_url: str = Field(
         default="https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
@@ -172,6 +196,7 @@ class _Settings(BaseSettings):
     wms_layer_mapa_base: str = Field(
         default="geoportal:MapaBase_Politico", alias="WMS_LAYER_MAPA_BASE"
     )
+    wms_zoom_nativo_ortofoto: int = Field(default=20, alias="WMS_ZOOM_NATIVO_ORTOFOTO")
     # Sobrescreve o catálogo de config/pontos_fundo.json inteiro (SPEC design/010) — quem quiser
     # outro recorte de pontos não edita o repositório, só o .env.
     map_fundo_pontos: str | None = Field(default=None, alias="MAP_FUNDO_PONTOS")
@@ -180,6 +205,9 @@ class _Settings(BaseSettings):
     map_cor_ponto: str = Field(default=_GEOMETRIAS["ponto"], alias="MAP_COR_PONTO")
     map_cor_poligono_condominio: str = Field(
         default=_ESCALAS["sakura"]["700"], alias="MAP_COR_POLIGONO_CONDOMINIO"
+    )
+    map_cor_resultado_acao: str = Field(
+        default=_ESCALAS["rocha"]["600"], alias="MAP_COR_RESULTADO_ACAO"
     )
     map_tiles_publicos_url: str = Field(
         default="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
@@ -223,6 +251,9 @@ class _Settings(BaseSettings):
     # banco não conhece esta regra — só a rota de cadastro por tela.
     enforce_prefeitura_email: bool = Field(default=True, alias="ENFORCE_PREFEITURA_EMAIL")
 
+    admin_rf: str = Field(default="0000000", alias="ADMIN_RF")
+    admin_email: str = Field(default="hpougy@sf.prefeitura.sp.gov.br", alias="ADMIN_EMAIL")
+
     # Reenvio de credencial de primeiro acesso (SPEC autenticacao/004).
     janela_reenvio_segundos: int = Field(default=120, alias="JANELA_REENVIO_SEGUNDOS")
     prazo_mesma_senha_segundos: int = Field(default=300, alias="PRAZO_MESMA_SENHA_SEGUNDOS")
@@ -230,6 +261,88 @@ class _Settings(BaseSettings):
         default=24 * 3600,
         alias="PRAZO_SENHA_ANTERIOR_SEGUNDOS",
     )
+
+    # Documento oficial timbrado (SPEC documentos_oficiais/003). Texto institucional e tema têm
+    # default no domínio: aqui só sobrepõe quem o ambiente de fato definir.
+    documento_logo_horizontal: Path | None = Field(default=None, alias="DOCUMENTO_LOGO_HORIZONTAL")
+    documento_logo_vertical: Path | None = Field(default=None, alias="DOCUMENTO_LOGO_VERTICAL")
+    documento_unidade: tuple[str, ...] | None = Field(default=None, alias="DOCUMENTO_UNIDADE")
+    documento_endereco: tuple[str, ...] | None = Field(default=None, alias="DOCUMENTO_ENDERECO")
+    documento_cor_tinta: str | None = Field(default=None, alias="DOCUMENTO_COR_TINTA")
+    documento_cor_tinta_secundaria: str | None = Field(
+        default=None, alias="DOCUMENTO_COR_TINTA_SECUNDARIA"
+    )
+    documento_cor_traco_tabela: str | None = Field(default=None, alias="DOCUMENTO_COR_TRACO_TABELA")
+    documento_cor_fundo_cabecalho_tabela: str | None = Field(
+        default=None, alias="DOCUMENTO_COR_FUNDO_CABECALHO_TABELA"
+    )
+    documento_fonte: str | None = Field(default=None, alias="DOCUMENTO_FONTE")
+    documento_fonte_negrito: str | None = Field(default=None, alias="DOCUMENTO_FONTE_NEGRITO")
+    documento_corpo_titulo_pt: float | None = Field(default=None, alias="DOCUMENTO_CORPO_TITULO_PT")
+    documento_corpo_subtitulo_pt: tuple[float, float, float] | None = Field(
+        default=None,
+        alias="DOCUMENTO_CORPO_SUBTITULO_PT",
+    )
+    documento_corpo_paragrafo_pt: float | None = Field(
+        default=None, alias="DOCUMENTO_CORPO_PARAGRAFO_PT"
+    )
+    documento_corpo_paragrafo_recuado_pt: float | None = Field(
+        default=None, alias="DOCUMENTO_CORPO_PARAGRAFO_RECUADO_PT"
+    )
+    documento_corpo_celula_pt: float | None = Field(default=None, alias="DOCUMENTO_CORPO_CELULA_PT")
+    documento_corpo_cabecalho_marca_pt: float | None = Field(
+        default=None, alias="DOCUMENTO_CORPO_CABECALHO_MARCA_PT"
+    )
+    documento_corpo_rodape_marca_pt: float | None = Field(
+        default=None, alias="DOCUMENTO_CORPO_RODAPE_MARCA_PT"
+    )
+    documento_fator_entrelinha: float | None = Field(
+        default=None, alias="DOCUMENTO_FATOR_ENTRELINHA"
+    )
+    documento_entrelinha_marca_mm: float | None = Field(
+        default=None, alias="DOCUMENTO_ENTRELINHA_MARCA_MM"
+    )
+
+    # Selo de integridade (services.utils.assinatura, SPEC documentos_oficiais/006). Default
+    # inseguro de desenvolvimento, no mesmo padrão de DJANGO_SECRET_KEY.
+    assinatura_segredo: str = Field(
+        default="dev-insecure-assinatura-secret-troque-me", alias="ASSINATURA_SEGREDO"
+    )
+    assinatura_id_chave: str = Field(default="k1", alias="ASSINATURA_ID_CHAVE")
+
+    google_geocoding_token: str = Field(default="", alias="GOOGLE_GEOCODING_TOKEN")
+    google_maps_browser_key: str = Field(default="", alias="GOOGLE_MAPS_BROWSER_KEY")
+    geocodificacao_externa_provedor: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_PROVEDOR"
+    )
+    geocodificacao_externa_idioma: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_IDIOMA"
+    )
+    geocodificacao_externa_pais: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_PAIS"
+    )
+    geocodificacao_externa_uf: str | None = Field(default=None, alias="GEOCODIFICACAO_EXTERNA_UF")
+    geocodificacao_externa_municipio: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_MUNICIPIO"
+    )
+    geocodificacao_externa_precisao_minima: str | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_PRECISAO_MINIMA"
+    )
+    geocodificacao_externa_validade_dias: int | None = Field(
+        default=None, alias="GEOCODIFICACAO_EXTERNA_VALIDADE_DIAS"
+    )
+
+    @field_validator("documento_unidade", "documento_endereco", mode="before")
+    @classmethod
+    def _parse_linhas_institucionais(cls, v: Any) -> tuple[str, ...] | None:
+        # `None` distingue "ambiente calado" de "lista vazia", e é ele que deixa o padrão do
+        # domínio valer; o `_parse_lista_env` sozinho devolveria `[]` nos dois casos.
+        return tuple(_parse_lista_env(v)) or None
+
+    @field_validator("documento_corpo_subtitulo_pt", mode="before")
+    @classmethod
+    def _parse_corpos_subtitulo(cls, v: Any) -> tuple[float, ...] | None:
+        return tuple(float(item) for item in _parse_lista_env(v)) or None
 
 
 _env = _Settings()
@@ -248,6 +361,8 @@ WFS_SERVICE = _env.wfs_service
 WFS_VERSION = _env.wfs_version
 WFS_LAYER_LOGRADOUROS = _env.wfs_layer_logradouros
 WFS_LAYER_LOTE_CIDADAO = _env.wfs_layer_lote_cidadao
+WFS_LOTE_CIDADAO_CAMPO_GEOMETRIA = _env.wfs_lote_cidadao_campo_geometria
+WFS_LOGRADOUROS_CAMPO_GEOMETRIA = _env.wfs_logradouros_campo_geometria
 # Liga o log da requisição WFS (URL + params) em todos os geocoders — diagnóstico
 # do GeoSampa. O WfsFetcher imprime cada GET quando verbose; build_fetcher lê daqui.
 WFS_VERBOSE = _env.wfs_verbose
@@ -255,6 +370,10 @@ WFS_REQUEST_TIMEOUT_SECONDS = _env.wfs_request_timeout_seconds
 WFS_MAX_RETRIES = _env.wfs_max_retries
 WFS_RETRY_WAIT_MIN_SECONDS = _env.wfs_retry_wait_min_seconds
 WFS_RETRY_WAIT_MAX_SECONDS = _env.wfs_retry_wait_max_seconds
+
+MAIS_PROXIMO_RAIO_LIMITE_M = _env.mais_proximo_raio_limite_m
+LOTES_DESENHO_AREA_MAXIMA_M2 = _env.lotes_desenho_area_maxima_m2
+LOTE_FRACAO_MINIMA_CONTIDA = _env.lote_fracao_minima_contida
 
 # WMS (GeoSampa → Leaflet tile layer). Config lida aqui e injetada no contexto do
 # app mapping; o JS nunca hardcoda URL, versão ou nomes de camadas (§11).
@@ -267,10 +386,25 @@ WMS_VERSION = _env.wms_version
 WMS_REQUEST_TIMEOUT_SECONDS = _env.wms_request_timeout_seconds
 WMS_LAYER_ORTOFOTO = _env.wms_layer_ortofoto
 WMS_LAYER_MAPA_BASE = _env.wms_layer_mapa_base
-# Lista ordenada de bases; a 1ª é a visível por padrão.
-WMS_BASES: list[dict[str, str]] = [
-    {"nome": "Ortofoto", "layers": WMS_LAYER_ORTOFOTO, "url": WMS_RASTER_URL},
-    {"nome": "Mapa base", "layers": WMS_LAYER_MAPA_BASE},
+# Último zoom em que a ortofoto tem detalhe real; acima dele o GeoServer devolve só o próprio
+# upscale. O Leaflet passa a ampliar no cliente o tile nativo (maxNativeZoom), sem pedir tile novo.
+# É propriedade da imagem, não do mapa: base vetorial não tem teto, o servidor a desenha em
+# qualquer escala.
+WMS_ZOOM_NATIVO_ORTOFOTO = _env.wms_zoom_nativo_ortofoto
+# Lista ordenada de bases com o glifo de apresentação para a torrezinha (SPEC design/016); a 1ª é a visível por padrão.
+WMS_BASES: list[dict[str, str | int]] = [
+    {
+        "nome": "Ortofoto",
+        "glifo": "glifo-satelite",
+        "layers": WMS_LAYER_ORTOFOTO,
+        "url": WMS_RASTER_URL,
+        "zoom_nativo": WMS_ZOOM_NATIVO_ORTOFOTO,
+    },
+    {
+        "nome": "Mapa base",
+        "glifo": "glifo-mapa-base",
+        "layers": WMS_LAYER_MAPA_BASE,
+    },
 ]
 
 # Mapa — CRS de saída, centro/zoom default e cores por tipo de geometria.
@@ -278,6 +412,14 @@ MAP_OUTPUT_CRS = 4326
 # CRS projetado/métrico p/ interpolar o número do endereço sobre o segmento (§7.3);
 # 31983 = SIRGAS 2000 / UTM 23S, nativo do GeoSampa.
 MAP_INTERPOLATION_CRS = 31983
+# CRS geográfico em que a posição de um ponto é exibida: SIRGAS 2000, o referencial oficial do Brasil.
+MAP_GEOGRAPHIC_CRS = 4674
+# CRS em que o Google lê as coordenadas do panorama de Street View (Maps JavaScript API).
+STREET_VIEW_CRS = 4326
+# Raio, em metros, em que o Google procura a imagem de rua mais próxima do ponto pedido: o endereço,
+# ao abrir, ou o lugar aonde o pino foi levado. Sem imagem dentro dele, a gaveta mostra a falta.
+# 50 é o padrão do próprio Google: mais que isso, a imagem já é de outra quadra.
+STREET_VIEW_RAIO_M = 50.0
 MAP_CENTRO_DEFAULT: list[float] = [-23.55, -46.63]
 # 14 preenche a viewport com a ortofoto sem mostrar os limites do município (em 12/13 sobra "vazio").
 MAP_ZOOM_DEFAULT = 14
@@ -286,6 +428,9 @@ MAP_COR_POLIGONO = _env.map_cor_poligono
 MAP_COR_PONTO = _env.map_cor_ponto
 # Cor agregada do lote condominial: mesma família do polígono, tom mais fundo (sakura-700).
 MAP_COR_POLIGONO_CONDOMINIO = _env.map_cor_poligono_condominio
+# Cor única de todo resultado de ação (SPEC localizacao_lote/003): separa o que a pessoa traçou do
+# que o sistema devolveu (rocha-600). O halo .realce-resultado do tema é escrito nessa tinta.
+MAP_COR_RESULTADO_ACAO = _env.map_cor_resultado_acao
 
 MAP_TILES_PUBLICOS_URL = _env.map_tiles_publicos_url
 MAP_TILES_PUBLICOS_SUBDOMINIOS = _env.map_tiles_publicos_subdominios
@@ -322,6 +467,10 @@ EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS = _env.email_smtp_retry_wait_max_seconds
 # Cadastro de servidor (apps.user_admin.cadastro) — desligue só em ambiente de teste.
 ENFORCE_PREFEITURA_EMAIL = _env.enforce_prefeitura_email
 
+# Admin inicial do sistema (apps.user_admin.seeds.admin); e-mail vazio = seed não cria.
+ADMIN_RF = _env.admin_rf
+ADMIN_EMAIL = _env.admin_email
+
 # Reenvio de credencial (apps.autenticacao.janela_envio e apps.autenticacao.reenvio).
 JANELA_REENVIO_SEGUNDOS = _env.janela_reenvio_segundos
 PRAZO_MESMA_SENHA_SEGUNDOS = _env.prazo_mesma_senha_segundos
@@ -331,6 +480,53 @@ PRAZO_SENHA_ANTERIOR_SEGUNDOS = _env.prazo_senha_anterior_segundos
 RECUPERACAO_SENHA_VALIDADE_HORAS = 1
 # O nome é do Django: é ele que o `PasswordResetTokenGenerator.check_token` consulta.
 PASSWORD_RESET_TIMEOUT = RECUPERACAO_SENHA_VALIDADE_HORAS * 3600
+
+# Documento oficial timbrado (services.domain.documento_oficial). Os caminhos dos logotipos têm
+# default aqui porque dependem do BASE_DIR, que o domínio não conhece; unidade, endereço e tema
+# têm default no domínio — aqui só o que o ambiente de fato sobrepõe.
+DOCUMENTO_LOGO_HORIZONTAL = _env.documento_logo_horizontal or (
+    BASE_DIR / "static" / "src" / "img" / "documento_oficial" / "sec_fazenda_horizontal.svg"
+)
+DOCUMENTO_LOGO_VERTICAL = _env.documento_logo_vertical or (
+    BASE_DIR / "static" / "src" / "img" / "documento_oficial" / "sec_fazenda_vertical.svg"
+)
+DOCUMENTO_UNIDADE = _env.documento_unidade
+DOCUMENTO_ENDERECO = _env.documento_endereco
+DOCUMENTO_COR_TINTA = _env.documento_cor_tinta
+DOCUMENTO_COR_TINTA_SECUNDARIA = _env.documento_cor_tinta_secundaria
+DOCUMENTO_COR_TRACO_TABELA = _env.documento_cor_traco_tabela
+DOCUMENTO_COR_FUNDO_CABECALHO_TABELA = _env.documento_cor_fundo_cabecalho_tabela
+DOCUMENTO_FONTE = _env.documento_fonte
+DOCUMENTO_FONTE_NEGRITO = _env.documento_fonte_negrito
+DOCUMENTO_CORPO_TITULO_PT = _env.documento_corpo_titulo_pt
+DOCUMENTO_CORPO_SUBTITULO_PT = _env.documento_corpo_subtitulo_pt
+DOCUMENTO_CORPO_PARAGRAFO_PT = _env.documento_corpo_paragrafo_pt
+DOCUMENTO_CORPO_PARAGRAFO_RECUADO_PT = _env.documento_corpo_paragrafo_recuado_pt
+DOCUMENTO_CORPO_CELULA_PT = _env.documento_corpo_celula_pt
+DOCUMENTO_CORPO_CABECALHO_MARCA_PT = _env.documento_corpo_cabecalho_marca_pt
+DOCUMENTO_CORPO_RODAPE_MARCA_PT = _env.documento_corpo_rodape_marca_pt
+DOCUMENTO_FATOR_ENTRELINHA = _env.documento_fator_entrelinha
+DOCUMENTO_ENTRELINHA_MARCA_MM = _env.documento_entrelinha_marca_mm
+
+# Selo de integridade (services.utils.assinatura). SecretStr para o segredo não vazar em log nem
+# traceback — o mesmo tipo que SelarInput/ConferirInput exigem.
+ASSINATURA_SEGREDO = SecretStr(_env.assinatura_segredo)
+ASSINATURA_ID_CHAVE = _env.assinatura_id_chave
+
+# SecretStr para o token não vazar em log nem traceback; vazio desliga a geocodificação externa.
+GOOGLE_GEOCODING_TOKEN = SecretStr(_env.google_geocoding_token)
+# Chave de NAVEGADOR da Maps JavaScript API; vazia desliga o panorama. Não é o GOOGLE_GEOCODING_TOKEN.
+GOOGLE_MAPS_BROWSER_KEY = SecretStr(_env.google_maps_browser_key)
+
+# Geocodificação externa (services.domain.geocodificador_externo). Todos opcionais: o padrão
+# mora na PoliticaGeocodificacao e no PROVEDOR_PADRAO do domínio.
+GEOCODIFICACAO_EXTERNA_PROVEDOR = _env.geocodificacao_externa_provedor
+GEOCODIFICACAO_EXTERNA_IDIOMA = _env.geocodificacao_externa_idioma
+GEOCODIFICACAO_EXTERNA_PAIS = _env.geocodificacao_externa_pais
+GEOCODIFICACAO_EXTERNA_UF = _env.geocodificacao_externa_uf
+GEOCODIFICACAO_EXTERNA_MUNICIPIO = _env.geocodificacao_externa_municipio
+GEOCODIFICACAO_EXTERNA_PRECISAO_MINIMA = _env.geocodificacao_externa_precisao_minima
+GEOCODIFICACAO_EXTERNA_VALIDADE_DIAS = _env.geocodificacao_externa_validade_dias
 
 
 # Application definition
@@ -360,7 +556,15 @@ INSTALLED_APPS = [
     "apps.mapping",
     "apps.logradouro_geocoder",
     "apps.lote_geocoder",
+    "apps.lotes_mais_proximos",
+    "apps.logradouro_mais_proximo",
+    "apps.endereco_mais_proximo",
+    "apps.geocodificacao_externa",
+    "apps.street_view",
     "apps.amostrador_ofertas",
+    "apps.documentos",
+    "apps.acoes_lote",
+    "apps.certidao_lancamento",
 ]
 
 MIDDLEWARE = [
@@ -404,6 +608,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.autenticacao.context_processors.contexto_usuario_autenticado",
+                "apps.mapping.context_processors.fundo_admin",
             ],
         },
     },

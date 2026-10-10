@@ -1,0 +1,23 @@
+{# Confirmação de certidão emitida com sucesso (SPEC documentos_oficiais/009) #}
+<div class="flex flex-col gap-5">
+  <div class="card-well flex flex-col items-center text-center gap-2 p-6">
+    <span class="icon-bubble w-12 h-12 bg-success/15 border-success/30 text-success">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m8.7 12 2.4 2.4 4.2-4.6"/>
+      </svg>
+    </span>
+    <span class="text-overline text-success">Certidão emitida</span>
+    <p class="text-[15px] font-bold text-rocha-950 leading-tight">O documento já está no acervo.</p>
+    <p class="text-code text-sm">{{ codigo }}</p>
+  </div>
+  <a href="{% url 'documentos:segunda_via' codigo=codigo %}" class="btn btn-onsen gap-2" target="_blank">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+    </svg>
+    Baixar certidão
+  </a>
+  <div class="modal-action">
+    <label for="modal-certidao-atos" class="btn btn-glass btn-sm">Fechar</label>
+  </div>
+</div>

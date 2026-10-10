@@ -7,7 +7,6 @@ from .models import (
     LogradouroMatchOutput,
     LogradouroMatchQuery,
     LogradouroMatchResult,
-    LogradouroRow,
     ResolucaoLogradouroItem,
     ResolucaoLogradouroQuery,
     ResolucaoLogradouroResult,
@@ -66,25 +65,28 @@ class LogradouroResolver:
         )
 
     def _itens_do_fuzzy(
-        self, resultado: LogradouroMatchResult, limite: int
+        self,
+        resultado: LogradouroMatchResult,
+        limite: int,
     ) -> list[ResolucaoLogradouroItem]:
         filtro = None if resultado.ignorou_filtro_tipo else self._codigo_do_tipo(resultado)
-        itens = [
-            ResolucaoLogradouroItem(logradouro=self._to_output(row), score=match.similarity_score)
-            for match in resultado.match_nome.matches
-            if match.similarity_score >= self._threshold
-            for row in self._catalog.linhas_por_nome(match.original_string, filtro)
-        ]
+        aceitos = [m for m in resultado.match_nome.matches if m.similarity_score >= self._threshold]
+        itens: list[ResolucaoLogradouroItem] = []
+        vistas: set[int] = set()
+        for match in aceitos:
+            for row in self._catalog.linhas_por_texto(match.original_string, filtro):
+                # A mesma linha chega por mais de um texto; fica a primeira, a de maior score.
+                if id(row) in vistas:
+                    continue
+                vistas.add(id(row))
+                itens.append(
+                    ResolucaoLogradouroItem(
+                        logradouro=LogradouroMatchOutput.da_linha(row),
+                        score=match.similarity_score,
+                    )
+                )
         return itens[:limite]
 
     def _codigo_do_tipo(self, resultado: LogradouroMatchResult) -> str | None:
         melhor_tipo = resultado.match_tipo.best_match if resultado.match_tipo else None
         return self._catalog.codigo_da_variacao(melhor_tipo.original_string) if melhor_tipo else None
-
-    def _to_output(self, row: LogradouroRow) -> LogradouroMatchOutput:
-        return LogradouroMatchOutput(
-            codlog=row.codlog,
-            dv=row.dv,
-            tipo_codigo=row.tipo_logradouro,
-            nome_logradouro=row.nm_logradouro,
-        )

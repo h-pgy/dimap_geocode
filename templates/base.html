@@ -13,18 +13,23 @@
 
     {# Leaflet (mapa) — CSS no head #}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css" />
+    {# Leaflet-Geoman (SPEC design/018): a bancada de desenho chama a API do plugin — a toolbar #}
+    {# nativa dele nunca é ligada (addControls não é chamado em lugar nenhum). #}
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20/dist/leaflet-geoman.css" />
 
     {# Design system compilado pelo serviço `tailwind` do compose (SPEC infraestrutura/004). #}
     {# A fonte segue sendo static/src/tema-dimap.dev.css, agora via static/src/input.css. #}
     <link rel="stylesheet" href="{% static 'output.css' %}" />
     <script src="https://unpkg.com/htmx.org@2"></script>
     <script>
-      // 422 (ValidationError do Pydantic) deve fazer swap normalmente.
+      // 422 (ValidationError do Pydantic) deve fazer swap normalmente; 409 também, porque a recusa
+      // por conflito (o conjunto mudou depois que o modal abriu) chega com a explicação no corpo.
       // Os demais 4xx/5xx mantêm o comportamento padrão (sem swap).
       htmx.config.responseHandling = [
         {code: "204", swap: false},
         {code: "[23]..", swap: true},
         {code: "422", swap: true},
+        {code: "409", swap: true},
         {code: "[45]..", swap: false, error: true},
       ];
     </script>
@@ -97,6 +102,8 @@
 
     {# Leaflet JS antes do fim do body #}
     <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+    {# Leaflet-Geoman: depois do Leaflet, que ele estende (SPEC design/018). #}
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20/dist/leaflet-geoman.min.js"></script>
     {# JS centralizado do mapa — registra htmx.onLoad uma única vez (§11 caso 1) #}
     <script type="module" src="{% static 'js/mapa/init.js' %}"></script>
     {% block scripts %}{% endblock %}

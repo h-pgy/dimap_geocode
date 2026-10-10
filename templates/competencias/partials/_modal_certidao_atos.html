@@ -1,0 +1,56 @@
+{# Modal de emissão de certidão de atos praticados (SPEC documentos_oficiais/009) #}
+<input type="checkbox" id="modal-certidao-atos" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+    <div class="flex items-center gap-3">
+      <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+          <path d="m8.7 12 2.4 2.4 4.2-4.6"/>
+        </svg>
+      </span>
+      <div>
+        <p class="text-overline">Registro de Ações</p>
+        <p class="text-[16px] font-bold text-rocha-950 leading-tight">Gerar documento com minhas ações</p>
+      </div>
+    </div>
+
+    {# #certidao-atos-corpo: o único alvo do hx-post do formulário #}
+    <div id="certidao-atos-corpo">
+      <form class="flex flex-col gap-5"
+            hx-post="{% url 'competencias:emitir_certidao_atos' %}"
+            hx-target="#certidao-atos-corpo"
+            hx-swap="innerHTML">
+        <label class="form-field">
+          <span class="text-overline">Período</span>
+          <span class="campo-periodo">
+            <input type="date" data-campo-data name="inicio" class="input input-glass input-sm" value="{{ inicio }}">
+            <span class="campo-periodo-traco">até</span>
+            <input type="date" data-campo-data name="fim" class="input input-glass input-sm" value="{{ fim }}">
+          </span>
+        </label>
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">Tipos de ação</span>
+          <div class="card-well p-2 table-onsen-poco" data-scroll-etched>
+            <div class="table-onsen-wrap max-h-[9rem]" data-rolador>
+              <div class="flex flex-col gap-0.5 p-2">
+                {% for acao in acoes %}
+                  <label class="flex items-center gap-2.5 cursor-pointer py-1">
+                    <input type="checkbox" name="acoes" value="{{ acao.slug }}" class="checkbox-onsen">
+                    <span class="text-sm text-base-content/85">{{ acao.nome }}</span>
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <span class="form-field-hint">Nenhum marcado traz todos os tipos.</span>
+        </div>
+        <div class="modal-action">
+          <label for="modal-certidao-atos" class="btn btn-glass btn-sm">Cancelar</label>
+          <button type="submit" class="btn btn-onsen btn-sm">Emitir certidão</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <label class="modal-backdrop" for="modal-certidao-atos">Fechar</label>
+</div>

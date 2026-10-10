@@ -1,10 +1,12 @@
 ---
 spec: ingestao-dados/002
-versao: v2
-atualizado_em: 2026-08-28
+versao: v3
+atualizado_em: 2026-10-07
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: a conexão declara timeout e o estouro vira WmsTimeoutError
+  - v3: falha de conexão vira WmsConnectionError
 ---
 
 # SPEC ingestao-dados/002 — Integration WMS Fetcher (imagem PNG por bbox)
@@ -28,7 +30,7 @@ consumidor reimplementar a montagem do `GetMap`.
 - [ ] Entrada modelada em Pydantic: `WmsMapRequest`, carregando o `bbox` (`BoundingBox`), camada, dimensões e flag `raster`.
 - [ ] Saída modelada em Pydantic: `WmsImage` (bytes + content-type + dimensões + bbox + camada de proveniência).
 - [ ] Seleção de servidor vetorial vs **raster** resolvida pela config a partir da flag do request.
-- [ ] Exceções **específicas do módulo** em `services/integrations/wms/exceptions.py`: base `WmsError`; `WmsHttpError` (disparada quando `raise_for_status` falharia — **herda de `requests.HTTPError`**); `WmsResponseNotImageError` (HTTP 200 mas corpo não-imagem / `ServiceException`); `WmsTimeoutError` (o servidor não respondeu dentro de `request_timeout_seconds`).
+- [ ] Exceções **específicas do módulo** em `services/integrations/wms/exceptions.py`: base `WmsError`; `WmsHttpError` (disparada quando `raise_for_status` falharia — **herda de `requests.HTTPError`**); `WmsResponseNotImageError` (HTTP 200 mas corpo não-imagem / `ServiceException`); `WmsTimeoutError` (o servidor não respondeu dentro de `request_timeout_seconds`); `WmsConnectionError` (a conexão não se estabeleceu — DNS, recusa, rede fora — **herda de `requests.ConnectionError`**).
 - [ ] `services/integrations/wms/__init__.py` expõe **apenas**: os models Pydantic de entrada/saída, as exceptions e a classe callable `WmsFetcher` — nada de helpers internos.
 - [ ] Existe `tests/` na **raiz**, espelhando `services/integrations/wms/`, com testes unitários `pytest` que **mockam a resposta da API** (sem rede).
 
@@ -171,7 +173,13 @@ class WmsResponseNotImageError(WmsError):
 # services/integrations/wms/__init__.py
 # Expõe apenas a API pública: models de entrada/saída, exceptions e a classe callable.
 from .models import BoundingBox, WmsConnectionConfig, WmsMapRequest, WmsImage
-from .exceptions import WmsError, WmsHttpError, WmsResponseNotImageError, WmsTimeoutError
+from .exceptions import (
+    WmsConnectionError,
+    WmsError,
+    WmsHttpError,
+    WmsResponseNotImageError,
+    WmsTimeoutError,
+)
 from .fetcher import WmsFetcher
 
 __all__ = [
@@ -179,6 +187,7 @@ __all__ = [
     "BoundingBox", "WmsConnectionConfig", "WmsMapRequest", "WmsImage",
     # exceptions
     "WmsError", "WmsHttpError", "WmsResponseNotImageError", "WmsTimeoutError",
+    "WmsConnectionError",
     # callable
     "WmsFetcher",
 ]
@@ -372,6 +381,9 @@ def test_config_picks_url():
   1.1.1 usa `srs` e é lon/lat. Garantir que `BoundingBox.string_wms` produz a ordem coerente com
   a `version`/`crs`. Se a fonte exigir 1.1.1, mapear a chave `crs`→`srs` no `_build_params` (registrar
   em Patches).
+- **Falha de conexão:** `requests.get` levantando `requests.ConnectionError` → `WmsConnectionError`,
+  capturável como `WmsError`. `requests.ConnectTimeout` herda de `Timeout` **e** de
+  `ConnectionError`: o `except` de `Timeout` vem primeiro, e ele segue virando `WmsTimeoutError`.
 - **`BoundingBox` (DTO local):** testar `string_wms` (formato `minx,miny,maxx,maxy`) e os defaults de
   CRS — ver `test_models.py`.
 

@@ -1,0 +1,56 @@
+<section id="tabela-conjunto" class="gaveta-coluna" {% if oob %}hx-swap-oob="true"{% endif %}>
+  {% if conjunto.lotes %}
+    <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+      <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+        <table class="table table-onsen table-onsen-compacta">
+          <thead data-cabecalho>
+            <tr>
+              <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+              <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+              <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Lançamento</span></div></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lote in conjunto.lotes %}
+              <tr data-id-feature="{{ lote.attributes.id_poligono }}"
+                  hx-get="{% url 'lotes_mais_proximos:detalhe_do_lote' %}?id={{ lote.attributes.id_poligono }}"
+                  hx-target="#gaveta-entidade" hx-swap="innerHTML">
+                <td class="text-code whitespace-nowrap">{% if lote.attributes.sql %}{{ lote.attributes.sql }}{% else %}<span class="valor-ausente">sem contribuinte</span>{% endif %}</td>
+                <td>{% if lote.attributes.endereco_completo %}{{ lote.attributes.endereco_completo }}{% else %}<span class="valor-ausente">não informado</span>{% endif %}</td>
+                <td>
+                  {% if lote.attributes.possui_lancamento %}
+                    <span class="badge badge-success badge-soft badge-xs">Ativo</span>
+                  {% else %}
+                    <span class="badge badge-neutral badge-soft badge-xs whitespace-nowrap">Sem lançamento</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {# stopPropagation: o clique na lixeira não chega à linha, que abriria a gaveta do lote que está saindo. #}
+                  <button type="button" class="btn-lixeira" aria-label="Tirar do conjunto"
+                          hx-post="{% url 'lotes_mais_proximos:remover_do_conjunto' %}"
+                          hx-vals='{"chave": "{{ chave }}", "id_poligono": "{{ lote.attributes.id_poligono }}"}'
+                          hx-target="#resultado-busca" hx-swap="innerHTML"
+                          hx-on:click="event.stopPropagation()">
+                    <svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg>
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+    </div>
+  {% elif conjunto.apurado.lotes %}
+    <div class="gaveta-vazia">
+      <svg class="w-8 h-8 etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 4h16v16H4z" stroke-dasharray="2.5 2.5"/></svg>
+      <p>Todos os lotes foram tirados do conjunto.</p>
+    </div>
+  {% else %}
+    <div class="gaveta-vazia">
+      <svg class="w-8 h-8 etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 4h16v16H4z" stroke-dasharray="2.5 2.5"/></svg>
+      <p>O polígono não cruza nenhum lote cadastrado.</p>
+    </div>
+  {% endif %}
+</section>

@@ -5,6 +5,7 @@ from .models import (
     EnderecoCodlogParse,
     EnderecoLoteParse,
     EnderecoParse,
+    GeocodificacaoExternaParse,
     LogradouroParse,
     RoteamentoQuery,
     RoteamentoResult,
@@ -27,4 +28,5 @@ __all__ = [
     "EnderecoParse",
     "EnderecoCodlogParse",
     "EnderecoLoteParse",
+    "GeocodificacaoExternaParse",
 ]

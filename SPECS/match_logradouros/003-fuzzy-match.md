@@ -3,6 +3,7 @@
 spec: match-logradouros/003
 versao: v4
 atualizado_em: 2026-06-22
+implementado: true
 changelog:
 
 * v1: versão inicial

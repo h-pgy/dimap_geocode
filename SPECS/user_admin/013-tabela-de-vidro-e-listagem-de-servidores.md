@@ -1,7 +1,7 @@
 ---
 spec: user_admin/013
-versao: v5
-atualizado_em: 2026-08-18
+versao: v6
+atualizado_em: 2026-09-10
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
@@ -14,6 +14,7 @@ changelog:
   - v4: faixa de RF dos fictícios sobe para 999900-999919, longe de qualquer RF real
   - v5: afordância de clique na listagem — micro-zoom no nome do servidor (.link-tabela-onsen) e
         micro-zoom com brilho ciano na sigla da secretaria/unidade (.link-sigla-onsen)
+  - v6: "[bugfix] peça de coluna em repouso passa a ser água pálida e não branco: sobre a bandeja branca ela só podia ler como mais branco, e os dois estados liam como peças diferentes em vez de um par"
 ---
 
 # SPEC user_admin/013 — Tabela de vidro, gravação no gelo e a listagem de servidores

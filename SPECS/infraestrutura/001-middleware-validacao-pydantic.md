@@ -2,6 +2,7 @@
 spec: infraestrutura/001
 versao: v1
 atualizado_em: 2026-06-26
+implementado: true
 changelog:
   - v1: versão inicial (extraída de roteamento-busca/004 v2)
   - v1.1: partial de erro agora usa componentes idiomáticos DaisyUI (alert-error)

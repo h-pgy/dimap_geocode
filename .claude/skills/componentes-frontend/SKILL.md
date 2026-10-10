@@ -5,6 +5,26 @@ description: Design system "Onsen de Inverno" e padronização dos componentes d
 
 # Design System "Onsen de Inverno" — DIMAP GeoCoder
 
+## Sumário
+
+- 1. O Conceito: água límpida sob luz fria de inverno
+- 2. Atomic Design — o método para criar componentes
+  - 2.1 Tokens (a camada de design)
+  - 2.2 Átomos (elementos mínimos)
+  - 2.3 Moléculas (combinações pequenas)
+  - 2.4 Organismos (seções de domínio)
+  - 2.5 Checklist para qualquer componente novo
+- 3. Paleta
+  - 3.1 Escalas
+  - 3.2 Papéis do tema daisyUI (tema `dimap`, claro)
+  - 3.3 Cores por geometria (default das camadas do mapa)
+- 4. Tipografia
+- 5. Materiais de vidro (o gelo fosco)
+- 6. O mapa como canvas (água límpida)
+- 7. Coreografia, micro-interações e HTMX
+- 8. Setup técnico (Tailwind 4 + daisyUI 5)
+- 9. Arquivos de referência (ordem de consulta)
+
 Esta skill define o design system do projeto e **como construir componentes com Atomic Design**.
 Ela não lista o que existe — quem lista é a aplicação.
 
@@ -185,7 +205,7 @@ brilho de gelo na quina: `inset 0 1px 0 white/80`. CSS pronto em `static/src/tem
 | `.card-well` | poço rebaixado: sub-cards dentro de painéis (stats, metadados) | escura |
 | **empilhado** | vidro sobre vidro **não se repinta** (SPEC design/009): `.glass-panel`, `.card-well` e `.upload-well` dentro de outro material de vidro ficam só com desfoque, aresta e sombra — a pintura acontece uma vez por pilha. Regra de descendência no tema: **nenhum markup muda**, e a peça volta a pintar sozinha quando renderizada fora. Única exceção: `.modal-box-glass` | escura |
 | `.glass-panel-deep` | variante escura **pontual**: tooltips, contraste invertido | clara (`rocha-100`, acentos `agua-300`/`madeira-300`) |
-| `.th-onsen-bandeja` | bandeja do cabeçalho de tabela: `94%→86%` sobre blur 56px — a **única** densidade fora das três, e só porque ela separa um cabeçalho grudento das linhas que correm por trás (§2.3) | escura |
+| `.th-onsen-bandeja` | bandeja do cabeçalho de tabela: `74%→64%` sobre blur **72px** — a **única** densidade fora das três, e a única peça que empilha: placa da página + bandeja + `.th-onsen` chegam juntas ao que o olho lê. Quem separa o cabeçalho grudento das linhas que correm por trás é o **blur**, não o branco — subir a tinta aqui estoura a soma (§2.3) | escura |
 | `.modal-glass` + `.modal-box-glass` | modal: a cena **embaça** o fundo a 16px (nunca escurece) e a caixa é a **terceira densidade** — 97%→88%, blur 28px, aresta `white/80` —, escrita no próprio `.modal-box-glass` (SPEC design/008 v2). O modal não flutua sobre a interface: ele a substitui enquanto está aberto, e é o único lugar em que a opacidade alta é o acerto. O `.glass-panel-thick` empilhado no markup continua ali e é vencido por ordem. Abre/fecha por `checkbox` nativo | escura |
 
 Regras:
@@ -243,6 +263,11 @@ O Leaflet é a tela inteira, atrás de tudo (`z-0`), **claro e legível**:
   `.loading` do daisyUI (a UI de vidro nunca bloqueia sem feedback). Use `.htmx-added`/`.htmx-swapping`
   para amarrar animações de entrada/saída dos partials.
 - **JS restrito** (regra do projeto): callbacks de eventos HTMX e utilitários do Leaflet, nada mais.
+- **Gancho de JS se registra no teste do CSS.** Classe posta em `class=` só para o JS achar o
+  elemento por seletor (`closest(".linha-desenho__confirmar-apagar")`), sem regra no tema, não sai
+  no `output.css` — e o `tests/static/test_css_compilado.py` (marker `integration`) a acusa como
+  classe ausente. Todo gancho novo entra, **na mesma entrega**, em `CLASSES_SEM_ESTILO` desse
+  teste. Classe que tem estilo **não** entra ali: se ela falta no CSS, o bug é real.
 
 ## 8. Setup técnico (Tailwind 4 + daisyUI 5)
 

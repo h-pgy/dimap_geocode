@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC certidao_lancamento/002 — Certidão de lançamento de um conjunto de lotes (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação, nunca recriados. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <!-- Leaflet só para a tela montada, que é a home. -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças da SPEC 001 + peças desta SPEC no MESMO bloco
+       text/tailwindcss. As da 001 ainda não foram portadas: são lidas do mock dela, nunca copiadas.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    const MOCK_001 = "/SPECS/certidao_lancamento/001-mock-certidao-de-um-lote.html";
+    const texto = (caminho) => fetch(caminho).then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); });
+    Promise.all([texto("/static/src/tema-dimap.dev.css"), texto(MOCK_001)])
+      .then(([css, mock001]) => {
+        const pecas001 = new DOMParser().parseFromString(mock001, "text/html").getElementById("tokens-spec").textContent;
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + pecas001 + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css ou o mock 001 não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema, ou no mock da SPEC 001, NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* MOLÉCULA · .gaveta-coluna-acoes — composta com .gaveta-coluna: a coluna estreita do poço de
+         ações, centrada na altura da gaveta; é o poço que rola, não a coluna */
+      .gaveta-coluna-acoes { @apply justify-center overflow-hidden; }
+      @media (width >= 48rem) {
+        .gaveta-coluna-acoes { @apply flex-none w-72; }
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Sprites e filtros da aplicação (_filtros_gravacao, _glifos_documento, _glifos_desenho) e o ícone
+       centralizado da ação, buscados pelo andaime no fim do arquivo. -->
+  <div id="pecas-aplicacao" class="absolute w-0 h-0 overflow-hidden" aria-hidden="true"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC certidao_lancamento/002 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Certidão de lançamento de um conjunto de lotes</h1>
+      </header>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .gaveta-coluna-acoes, ao lado da coluna da tabela; a placa h-56 é andaime: faz as vezes da gaveta rasa -->
+        <div class="grid lg:grid-cols-2 gap-6 items-start">
+          <!-- uma ação: o poço assenta no meio da coluna -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.gaveta-coluna-acoes · uma ação</p>
+            <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col">
+              <div class="gaveta-corpo">
+                <section class="gaveta-coluna">
+                  <div class="card-well h-full flex items-center justify-center text-xs text-base-content/50">tabela do conjunto</div>
+                </section>
+                <section class="gaveta-coluna gaveta-coluna-acoes">
+                  <div class="card-well poco-acoes">
+                    <p class="text-overline poco-acoes__titulo">Ações</p>
+                    <div class="poco-acoes__lista">
+                      <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Certidão de lançamento</button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <!-- muitas ações: o poço cresce até a altura da coluna e passa a rolar -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.gaveta-coluna-acoes · muitas ações</p>
+            <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col">
+              <div class="gaveta-corpo">
+                <section class="gaveta-coluna">
+                  <div class="card-well h-full flex items-center justify-center text-xs text-base-content/50">tabela do conjunto</div>
+                </section>
+                <section class="gaveta-coluna gaveta-coluna-acoes">
+                  <div class="card-well poco-acoes">
+                    <p class="text-overline poco-acoes__titulo">Ações</p>
+                    <div class="poco-acoes__lista">
+                      <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Certidão de lançamento</button>
+                      <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Ação de exemplo 2</button>
+                      <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Ação de exemplo 3</button>
+                      <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Ação de exemplo 4</button>
+                      <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>Ação de exemplo 5</button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+          <!-- sem ação liberada: a rota devolve vazio, a coluna não existe e a tabela fica com a largura toda -->
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS — as faces do modal do conjunto, clonadas dos <template> do fim do arquivo -->
+      <section id="organismos" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <h2 class="section-title">4 · Organismos</h2>
+
+        <div class="grid lg:grid-cols-2 gap-8 items-start">
+          <!-- formulário (GET 200) -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">formulário · GET 200</p>
+            <div data-face="tmpl-modal-form"></div>
+          </div>
+          <!-- recusa do formulário (POST 422) -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">recusa do formulário · POST 422</p>
+            <div data-face="tmpl-modal-recusa"></div>
+          </div>
+          <!-- estado de falta: lotes impeditivos -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">lotes impeditivos · GET 200 ou POST 422, sem formulário</p>
+            <div data-face="tmpl-modal-impeditivos"></div>
+          </div>
+          <!-- estado de falta: conjunto vazio -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">conjunto vazio · GET 200 sem formulário</p>
+            <div data-face="tmpl-modal-vazio"></div>
+          </div>
+          <!-- conjunto alterado na emissão (POST 409) -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">conjunto alterado · POST 409</p>
+            <div data-face="tmpl-modal-alterado"></div>
+          </div>
+          <!-- emitida -->
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">certidão emitida · POST 200</p>
+            <div data-face="tmpl-modal-emitida"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- andaime: troca a face do modal, o perfil e a quantidade de ações -->
+        <div class="card-well p-3 flex flex-wrap items-center gap-2">
+          <span class="text-overline mr-2">Andaime</span>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-form">Formulário</button>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-recusa">Recusa 422</button>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-impeditivos">Lotes impeditivos</button>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-vazio">Conjunto vazio</button>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-alterado">Conjunto alterado 409</button>
+          <button type="button" class="btn btn-glass btn-sm" data-abrir="tmpl-modal-emitida">Emitida</button>
+          <button type="button" class="btn btn-glass btn-sm" id="alternar-concessao">Perfil sem concessão</button>
+          <button type="button" class="btn btn-glass btn-sm" id="alternar-quantidade">Cinco ações</button>
+        </div>
+
+        <!-- página: core/home.html -->
+        <div class="quadro-tela tela-home">
+          <!-- fica na página: mapping/_mapa_fullscreen.html, montado do partial real pelo andaime -->
+          <div id="canvas-home" class="absolute inset-0"></div>
+
+          <!-- fica na página: a busca, recolhida pelo contexto de ação enquanto a gaveta inferior está aberta -->
+
+          <!-- fica na página: <div id="gaveta-inferior-conteudo"></div> — alvo OOB do resultado do desenho -->
+          <div id="gaveta-inferior-conteudo">
+            <!-- partial: mapping/_resultado_acao.html estendido por lotes_mais_proximos/partials/_resultado_desenho.html -->
+            <input type="checkbox" id="gaveta-resultado" class="gaveta-toggle" checked>
+            <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-labelledby="gaveta-resultado-titulo">
+              <input type="checkbox" id="gaveta-resultado-recolhida" class="gaveta-inferior-recolher">
+              <label for="gaveta-resultado-recolhida" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span></label>
+              <label for="gaveta-resultado-recolhida" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+                <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+              </label>
+              <header class="gaveta-cabecalho items-center">
+                <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+                  <h2 id="gaveta-resultado-titulo" class="text-xl font-bold tracking-tight leading-none text-madeira-700">Lotes intersectados</h2>
+                  <!-- partial: lotes_mais_proximos/partials/_resumo_conjunto.html — OOB ao retirar lote -->
+                  <div id="resumo-conjunto" class="flex items-baseline gap-3 flex-wrap">
+                    <span class="badge badge-poligono badge-sm">Polígono</span>
+                    <p class="text-sm text-base-content/70">
+                      <span class="font-bold text-base-content tabular-nums" id="contagem-lotes">3 lotes</span>
+                      · desenho de 1.250 m²
+                    </p>
+                  </div>
+                  <!-- /partial -->
+                </div>
+                <!-- partial: lotes_mais_proximos/partials/_controles_conjunto.html -->
+                <div id="controles-conjunto" class="flex items-center gap-2">
+                  <button type="button" class="btn-etched btn-etched-swell etched self-center" aria-label="Fechar">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                  </button>
+                </div>
+                <!-- /partial -->
+              </header>
+
+              <div class="gaveta-corpo">
+                <!-- partial: lotes_mais_proximos/partials/_tabela_conjunto.html — alvo de hx-swap ao retirar lote -->
+                <section id="tabela-conjunto" class="gaveta-coluna">
+                  <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+                    <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+                      <table class="table table-onsen table-onsen-compacta">
+                        <thead data-cabecalho>
+                          <tr>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                            <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Lançamento</span></div></th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td class="text-code whitespace-nowrap">012.345.6789-0</td>
+                            <td>RUA AUGUSTA, 100 — APTO 12</td>
+                            <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                            <td><button type="button" class="btn-lixeira" aria-label="Tirar do conjunto"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button></td>
+                          </tr>
+                          <tr>
+                            <td class="text-code whitespace-nowrap">012.345.6790-3</td>
+                            <td>RUA AUGUSTA, 102 — LOJA 1</td>
+                            <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                            <td><button type="button" class="btn-lixeira" aria-label="Tirar do conjunto"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button></td>
+                          </tr>
+                          <tr>
+                            <td class="text-code whitespace-nowrap">012.345.6791-1</td>
+                            <td>RUA AUGUSTA, 104</td>
+                            <td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td>
+                            <td><button type="button" class="btn-lixeira" aria-label="Tirar do conjunto"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+                  </div>
+                </section>
+                <!-- /partial -->
+
+                <!-- partial: acoes_lote/partials/_coluna_acoes_conjunto.html — hx-get no load, troca o placeholder (outerHTML); fora da #tabela-conjunto, a lixeira não o repede -->
+                <section id="poco-acoes-conjunto" class="gaveta-coluna gaveta-coluna-acoes">
+                  <!-- partial: acoes_lote/partials/_poco_acoes.html (SPEC 001) -->
+                  <div class="card-well poco-acoes">
+                    <p class="text-overline poco-acoes__titulo">Ações</p>
+                    <div class="poco-acoes__lista" id="lista-acoes-conjunto">
+                      <button type="button" class="btn btn-onsen btn-sm" data-abrir="tmpl-modal-form">
+                        <span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>
+                        Certidão de lançamento
+                      </button>
+                    </div>
+                  </div>
+                  <!-- /partial -->
+                </section>
+                <!-- /partial -->
+              </div>
+            </aside>
+            <!-- /partial -->
+          </div>
+
+          <!-- fica na página: <div id="poco-modal" class="poco-modal"></div> — alvo do hx-get do botão da ação -->
+          <div id="poco-modal" class="poco-modal"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- partial: certidao_lancamento/partials/_modal_conjunto.html — formulário (GET 200) -->
+  <template id="tmpl-modal-form">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de 3 lotes</p>
+            <p class="text-xs text-base-content/70">Desenho de 1.250 m²</p>
+          </div>
+        </header>
+
+        <!-- os lotes que restaram na tabela: a lista que a certidão vai atestar -->
+        <div class="flex flex-col gap-2">
+          <label for="lista-lotes-form" class="btn-etched btn-etched-sm btn-etched-swell etched self-start">Ver lista de lotes</label>
+          <!-- .painel-onsen: a lista de lotes, recolhida -->
+          <div class="painel-onsen">
+            <input type="checkbox" id="lista-lotes-form" class="painel-onsen-toggle">
+            <div class="painel-onsen-corpo">
+              <div class="card-well pb-2 table-onsen-poco flex flex-col" data-scroll-etched>
+                <div class="table-onsen-wrap max-h-40" data-rolador>
+                  <table class="table table-onsen table-onsen-compacta">
+                    <thead data-cabecalho>
+                      <tr>
+                        <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                        <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6789-0</td><td>RUA AUGUSTA, 100 — APTO 12</td></tr>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6790-3</td><td>RUA AUGUSTA, 102 — LOJA 1</td></tr>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6791-1</td><td>RUA AUGUSTA, 104</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form class="flex flex-col gap-4" data-chave-condicional>
+          <input type="hidden" name="chave" value="conjunto-8f92">
+          <input type="hidden" name="confirmados" value="3198301">
+          <input type="hidden" name="confirmados" value="3198302">
+          <input type="hidden" name="confirmados" value="3198303">
+
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-overline text-xs">Processo SEI</label>
+              <input type="text" name="processo" class="input input-glass input-sm w-full font-mono" data-mascara="0000.0000/0000000-0" placeholder="0000.0000/0000000-0">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-overline text-xs">CPF/CNPJ <span class="normal-case text-base-content/50">· opcional</span></label>
+              <input type="text" name="cpf_cnpj" class="input input-glass input-sm w-full font-mono" data-mascara="000.000.000-00|00.000.000/0000-00" placeholder="CPF ou CNPJ">
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs">Nome do interessado</label>
+            <input type="text" name="interessado" class="input input-glass input-sm w-full" placeholder="Nome completo ou razão social">
+          </div>
+
+          <!-- .chave-onsen: o sentido mostra só os textos dele; o escopo da chave é o form inteiro -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-xs">Despacho</span>
+            <div class="card-well chave-onsen self-start">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="sentido" value="deferido" class="sr-only" checked>
+                <span class="chave-onsen-rotulo etched etched-deeper">Deferido</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="sentido" value="indeferido" class="sr-only">
+                <span class="chave-onsen-rotulo etched etched-deeper">Indeferido</span>
+              </label>
+            </div>
+            <fieldset class="flex flex-col gap-2" data-mostra-se="deferido">
+              <legend class="form-field-hint mb-2">Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que…</legend>
+              <!-- marcado: o tipo que a geometria sugere — aqui o desenho contém os três lotes -->
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="possui_lancamento" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">possui lançamento</span>
+                <span class="opcao-texto__corpo">…os imóveis relacionados acima possuem lançamento do Imposto Predial e Territorial Urbano – IPTU – pelos respectivos contribuintes.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="lancamento_em_maior_area" class="sr-only" checked>
+                <span class="text-overline opcao-texto__titulo">lançamento em maior área</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU, em maior área, pelos contribuintes números 012.345.6789-0, 012.345.6790-3 e 012.345.6791-1.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="lancamento_parcial" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">lançamento parcial</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelos contribuintes números 012.345.6789-0, 012.345.6790-3 e 012.345.6791-1.</span>
+              </label>
+            </fieldset>
+            <fieldset class="flex flex-col gap-2" data-mostra-se="indeferido" hidden>
+              <legend class="form-field-hint mb-2">Solicitação INDEFERIDA. Com base nas informações presentes no processo, declara-se que…</legend>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="imovel_nao_localizado" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">imóvel não localizado</span>
+                <span class="opcao-texto__corpo">…não foi possível a localização dos imóveis, já que as informações constantes no processo não são suficientes para a sua identificação inequívoca.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="pedido_de_acesso_a_informacao" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">equivale a pedido de acesso à informação</span>
+                <span class="opcao-texto__corpo">…não é possível atender ao pedido, pois equivale a Pedido de Acesso à Informação, nos termos do Decreto nº 53.623/2012.</span>
+              </label>
+            </fieldset>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <!-- duas colunas: a ressalva e o mapa; [data-padrao-se] volta ao padrão a cada troca da chave -->
+            <div class="grid sm:grid-cols-2 gap-3 items-start">
+              <div class="flex flex-col items-start gap-1">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" name="incluir_ressalva" class="checkbox-onsen" checked>
+                  <span class="text-sm">Incluir a ressalva padrão</span>
+                </label>
+                <!-- .btn-etched-sm: gatilho da sanfona, sob o rótulo e alinhado ao texto dele (ml-6 + px-1 = checkbox + gap) -->
+                <label for="ressalva-texto-form" class="btn-etched btn-etched-sm btn-etched-swell etched ml-6">Ver o texto</label>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" name="incluir_planta" class="checkbox-onsen" data-padrao-se="deferido" checked>
+                <span class="text-sm">Acrescentar mapa com a localização dos lotes</span>
+              </label>
+            </div>
+            <!-- .painel-onsen: a ressalva, recolhida -->
+            <div class="painel-onsen">
+              <input type="checkbox" id="ressalva-texto-form" class="painel-onsen-toggle">
+              <div class="painel-onsen-corpo">
+                <p class="card-well p-3 text-[13px] text-base-content/80">Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.</p>
+              </div>
+            </div>
+            <label class="text-overline text-xs">Observações <span class="normal-case text-base-content/50">· opcional</span></label>
+            <textarea name="observacoes" rows="3" class="textarea textarea-glass textarea-sm w-full" placeholder="Entram no despacho depois da ressalva"></textarea>
+          </div>
+
+          <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+            <button type="button" class="btn btn-glass btn-sm" data-fechar>Cancelar</button>
+            <button type="button" class="btn btn-onsen btn-sm" data-emitir>Emitir certidão</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
+    </div>
+  </template>
+
+  <!-- partial: certidao_lancamento/partials/_modal_conjunto.html — recusa do formulário (POST 422) -->
+  <template id="tmpl-modal-recusa">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de 3 lotes</p>
+            <p class="text-xs text-base-content/70">Desenho de 1.250 m²</p>
+          </div>
+        </header>
+
+        <!-- partial: partials/_tarja_recusa.html — tom crítico -->
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+          <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+          <div>
+            <p class="text-[13px] font-semibold text-base-content/90">Não foi possível emitir a certidão</p>
+            <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+              <li>O número do processo SEI não está no formato padrão (NNNN.AAAA/NNNNNNN-D).</li>
+            </ul>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <div class="flex flex-col gap-2">
+          <label for="lista-lotes-recusa" class="btn-etched btn-etched-sm btn-etched-swell etched self-start">Ver lista de lotes</label>
+          <!-- .painel-onsen: a lista de lotes, recolhida -->
+          <div class="painel-onsen">
+            <input type="checkbox" id="lista-lotes-recusa" class="painel-onsen-toggle">
+            <div class="painel-onsen-corpo">
+              <div class="card-well pb-2 table-onsen-poco flex flex-col" data-scroll-etched>
+                <div class="table-onsen-wrap max-h-40" data-rolador>
+                  <table class="table table-onsen table-onsen-compacta">
+                    <thead data-cabecalho>
+                      <tr>
+                        <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                        <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6789-0</td><td>RUA AUGUSTA, 100 — APTO 12</td></tr>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6790-3</td><td>RUA AUGUSTA, 102 — LOJA 1</td></tr>
+                      <tr><td class="text-code whitespace-nowrap">012.345.6791-1</td><td>RUA AUGUSTA, 104</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form class="flex flex-col gap-4" data-chave-condicional>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-overline text-xs">Processo SEI</label>
+              <input type="text" name="processo" class="input input-glass input-sm w-full font-mono campo-realce-erro" data-mascara="0000.0000/0000000-0" value="6017.2026/123-4">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-overline text-xs">CPF/CNPJ <span class="normal-case text-base-content/50">· opcional</span></label>
+              <input type="text" name="cpf_cnpj" class="input input-glass input-sm w-full font-mono" data-mascara="000.000.000-00|00.000.000/0000-00" value="12345678000190">
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-overline text-xs">Nome do interessado</label>
+            <input type="text" name="interessado" class="input input-glass input-sm w-full" value="EMPRESA CONSTRUTORA EXEMPLO LTDA">
+          </div>
+
+          <!-- .chave-onsen: o sentido mostra só os textos dele; o escopo da chave é o form inteiro -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-xs">Despacho</span>
+            <div class="card-well chave-onsen self-start">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="sentido" value="deferido" class="sr-only" checked>
+                <span class="chave-onsen-rotulo etched etched-deeper">Deferido</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="sentido" value="indeferido" class="sr-only">
+                <span class="chave-onsen-rotulo etched etched-deeper">Indeferido</span>
+              </label>
+            </div>
+            <fieldset class="flex flex-col gap-2" data-mostra-se="deferido">
+              <legend class="form-field-hint mb-2">Solicitação DEFERIDA. Com base nas informações presentes no processo, declara-se que…</legend>
+              <!-- marcado: o tipo que a geometria sugere — aqui o desenho contém os três lotes -->
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="possui_lancamento" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">possui lançamento</span>
+                <span class="opcao-texto__corpo">…os imóveis relacionados acima possuem lançamento do Imposto Predial e Territorial Urbano – IPTU – pelos respectivos contribuintes.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="lancamento_em_maior_area" class="sr-only" checked>
+                <span class="text-overline opcao-texto__titulo">lançamento em maior área</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU, em maior área, pelos contribuintes números 012.345.6789-0, 012.345.6790-3 e 012.345.6791-1.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="lancamento_parcial" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">lançamento parcial</span>
+                <span class="opcao-texto__corpo">…o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelos contribuintes números 012.345.6789-0, 012.345.6790-3 e 012.345.6791-1.</span>
+              </label>
+            </fieldset>
+            <fieldset class="flex flex-col gap-2" data-mostra-se="indeferido" hidden>
+              <legend class="form-field-hint mb-2">Solicitação INDEFERIDA. Com base nas informações presentes no processo, declara-se que…</legend>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="imovel_nao_localizado" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">imóvel não localizado</span>
+                <span class="opcao-texto__corpo">…não foi possível a localização dos imóveis, já que as informações constantes no processo não são suficientes para a sua identificação inequívoca.</span>
+              </label>
+              <label class="card-well opcao-texto">
+                <input type="radio" name="tipo_despacho" value="pedido_de_acesso_a_informacao" class="sr-only">
+                <span class="text-overline opcao-texto__titulo">equivale a pedido de acesso à informação</span>
+                <span class="opcao-texto__corpo">…não é possível atender ao pedido, pois equivale a Pedido de Acesso à Informação, nos termos do Decreto nº 53.623/2012.</span>
+              </label>
+            </fieldset>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <!-- duas colunas: a ressalva e o mapa; [data-padrao-se] volta ao padrão a cada troca da chave -->
+            <div class="grid sm:grid-cols-2 gap-3 items-start">
+              <div class="flex flex-col items-start gap-1">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" name="incluir_ressalva" class="checkbox-onsen" checked>
+                  <span class="text-sm">Incluir a ressalva padrão</span>
+                </label>
+                <!-- .btn-etched-sm: gatilho da sanfona, sob o rótulo e alinhado ao texto dele (ml-6 + px-1 = checkbox + gap) -->
+                <label for="ressalva-texto-recusa" class="btn-etched btn-etched-sm btn-etched-swell etched ml-6">Ver o texto</label>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" name="incluir_planta" class="checkbox-onsen" data-padrao-se="deferido" checked>
+                <span class="text-sm">Acrescentar mapa com a localização dos lotes</span>
+              </label>
+            </div>
+            <!-- .painel-onsen: a ressalva, recolhida -->
+            <div class="painel-onsen">
+              <input type="checkbox" id="ressalva-texto-recusa" class="painel-onsen-toggle">
+              <div class="painel-onsen-corpo">
+                <p class="card-well p-3 text-[13px] text-base-content/80">Ressalta-se que a análise tem como base somente a situação factual do imóvel. Assim sendo, o presente despacho não se destina a confirmar a correspondência do imóvel com o título aquisitivo ou documento equivalente, bem como sua regularidade.</p>
+              </div>
+            </div>
+            <label class="text-overline text-xs">Observações <span class="normal-case text-base-content/50">· opcional</span></label>
+            <textarea name="observacoes" rows="3" class="textarea textarea-glass textarea-sm w-full" placeholder="Entram no despacho depois da ressalva"></textarea>
+          </div>
+
+          <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+            <button type="button" class="btn btn-glass btn-sm" data-fechar>Cancelar</button>
+            <button type="button" class="btn btn-onsen btn-sm" data-emitir>Emitir certidão</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
+    </div>
+  </template>
+
+  <!-- partial: certidao_lancamento/partials/_modal_conjunto.html — lotes impeditivos (sem formulário) -->
+  <template id="tmpl-modal-impeditivos">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de 5 lotes</p>
+            <p class="text-xs text-base-content/70">Desenho de 1.250 m²</p>
+          </div>
+        </header>
+
+        <!-- partial: partials/_tarja_recusa.html — tom pendente; um item por lote impeditivo -->
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+          <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+          <div>
+            <p class="text-[13px] font-semibold text-base-content/90">Tire estes lotes da tabela antes de emitir</p>
+            <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+              <li>012.345.0002-8 · RUA AUGUSTA, 98 — sem lançamento ativo</li>
+              <li>012.345.0005-2 · RUA AUGUSTA, 106 — condominial</li>
+            </ul>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+          <button type="button" class="btn btn-glass btn-sm" data-fechar>Voltar à tabela</button>
+        </div>
+      </div>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
+    </div>
+  </template>
+
+  <!-- partial: certidao_lancamento/partials/_modal_conjunto.html — conjunto vazio (sem formulário) -->
+  <template id="tmpl-modal-vazio">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Nenhum lote no conjunto</p>
+            <p class="text-xs text-base-content/70">Desenho de 1.250 m²</p>
+          </div>
+        </header>
+
+        <!-- partial: partials/_tarja_recusa.html — tom pendente -->
+        <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2">
+          <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+          <div>
+            <p class="text-[13px] font-semibold text-base-content/90">Certidão indisponível para este conjunto</p>
+            <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+              <li>Todos os lotes foram tirados do conjunto.</li>
+            </ul>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+          <button type="button" class="btn btn-glass btn-sm" data-fechar>Fechar</button>
+        </div>
+      </div>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
+    </div>
+  </template>
+
+  <!-- partial: certidao_lancamento/partials/_conjunto_alterado.html — POST 409 -->
+  <template id="tmpl-modal-alterado">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
+        <header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+          <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+            <svg class="w-6 h-6"><use href="#glifo-certidao-lancamento"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-overline">Certidão de Existência de Lançamento</p>
+            <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de 3 lotes</p>
+            <p class="text-xs text-base-content/70">Desenho de 1.250 m²</p>
+          </div>
+        </header>
+
+        <!-- partial: partials/_tarja_recusa.html — tom crítico -->
+        <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+          <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+          <div>
+            <p class="text-[13px] font-semibold text-base-content/90">O conjunto mudou depois que o modal abriu — nada foi emitido</p>
+            <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+              <li>012.345.6790-3 saiu da camada de lotes do GeoSampa.</li>
+            </ul>
+          </div>
+        </div>
+        <!-- /partial -->
+
+        <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+          <button type="button" class="btn btn-glass btn-sm" data-fechar>Voltar à tabela</button>
+        </div>
+      </div>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
+    </div>
+  </template>
+
+  <!-- partial: certidao_lancamento/_certidao_emitida.html (SPEC 001) — POST 200 -->
+  <template id="tmpl-modal-emitida">
+    <div class="modal modal-open modal-glass" role="dialog">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg">
+        <div class="card-well flex flex-col items-center text-center gap-3 p-6">
+          <span class="icon-bubble w-14 h-14 bg-success/15 border-success/30 text-success">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+          </span>
+          <div>
+            <span class="text-overline text-success font-bold">Certidão selada e emitida</span>
+            <h3 class="text-lg font-bold text-rocha-950 mt-0.5">Documento registrado no acervo</h3>
+          </div>
+          <div class="flex flex-col items-center gap-1 bg-white/40 border border-rocha-950/10 rounded-lg px-4 py-2 w-full">
+            <span class="text-overline text-xs">Código de autenticidade</span>
+            <span class="text-code text-base font-bold tracking-wider text-rocha-950">2026-CL-9B41-C7D2</span>
+          </div>
+          <p class="text-xs text-base-content/70">Emitida de forma automatizada com consulta oficial ao GeoSampa.</p>
+        </div>
+
+        <a href="001-amostra-certidao.pdf" target="_blank" class="btn btn-onsen gap-2 w-full justify-center">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-baixar"/></svg>
+          Baixar certidão
+        </a>
+
+        <div class="modal-action mt-0 pt-1">
+          <button type="button" class="btn btn-glass btn-sm w-full sm:w-auto" data-fechar>Fechar</button>
+        </div>
+      </div>
+      <label class="modal-backdrop" data-fechar>Fechar</label>
+    </div>
+  </template>
+
+  <!-- andaime do mock: busca as peças da aplicação e da SPEC 001, clona as faces, faz as vezes do HTMX -->
+  <script type="module">
+    import { montarBarrasGravadas } from "/static/src/js/ui/scroll_etched.js";
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    const MOCK_001 = "/SPECS/certidao_lancamento/001-mock-certidao-de-um-lote.html";
+    const PARTIAIS = [
+      "/templates/partials/_filtros_gravacao.html",
+      "/templates/documentos/partials/_glifos_documento.html",
+      "/templates/mapping/_glifos_desenho.html",
+    ];
+    const ICONE_DA_ACAO = "/static/src/acoes/certidao_lancamento/emitir/icones/pequeno.svg";
+    const CANVAS_HOME = "/templates/mapping/_mapa_fullscreen.html";
+    const WMS_GEOSAMPA = "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows";
+    const CENTRO = [-23.5614, -46.6559];
+    const TINTA_POLIGONO = "#D84F7F"; // sakura-500
+    const TINTA_DESENHO = "#0096C7";  // agua-600
+    const LOTES = [
+      [[-46.6567, -23.5608], [-46.6560, -23.5608], [-46.6560, -23.5620], [-46.6567, -23.5620], [-46.6567, -23.5608]],
+      [[-46.6560, -23.5608], [-46.6555, -23.5608], [-46.6555, -23.5620], [-46.6560, -23.5620], [-46.6560, -23.5608]],
+      [[-46.6555, -23.5608], [-46.6549, -23.5608], [-46.6549, -23.5620], [-46.6555, -23.5620], [-46.6555, -23.5608]],
+    ];
+    const DESENHO = [[-46.6569, -23.5606], [-46.6547, -23.5606], [-46.6547, -23.5622], [-46.6569, -23.5622], [-46.6569, -23.5606]];
+    const ACOES_DE_EXEMPLO = ["Ação de exemplo 2", "Ação de exemplo 3", "Ação de exemplo 4", "Ação de exemplo 5"];
+
+    async function buscar(caminho) {
+      const resposta = await fetch(caminho);
+      if (!resposta.ok) throw new Error(`${caminho} → ${resposta.status}`);
+      return (await resposta.text()).replace(TAG_DE_TEMPLATE, "").trim();
+    }
+
+    // O campo_mascarado e a chave_condicional propostos ainda só existem no mock da SPEC 001: vêm de lá.
+    async function montarMascaraDa001() {
+      const mock001 = new DOMParser().parseFromString(await buscar(MOCK_001), "text/html");
+      const codigo = mock001.getElementById("campo-mascarado-proposto").textContent;
+      await import(URL.createObjectURL(new Blob([codigo], { type: "text/javascript" })));
+      const chave = mock001.getElementById("chave-condicional-proposta").textContent;
+      await import(URL.createObjectURL(new Blob([chave], { type: "text/javascript" })));
+      document.body.dispatchEvent(new CustomEvent("htmx:load", { detail: { elt: document.body } }));
+    }
+
+    async function montarPecas() {
+      const pecas = document.getElementById("pecas-aplicacao");
+      for (const caminho of PARTIAIS) pecas.insertAdjacentHTML("beforeend", await buscar(caminho));
+      const icone = new DOMParser().parseFromString(await buscar(ICONE_DA_ACAO), "image/svg+xml").documentElement;
+      pecas.insertAdjacentHTML(
+        "beforeend",
+        `<svg><symbol id="glifo-certidao-lancamento" viewBox="${icone.getAttribute("viewBox")}">${icone.innerHTML}</symbol></svg>`,
+      );
+    }
+
+    async function montarCanvasHome() {
+      document.getElementById("canvas-home").innerHTML = await buscar(CANVAS_HOME);
+      const mapa = L.map("map", { zoomControl: false, attributionControl: false }).setView(CENTRO, 18);
+      L.tileLayer.wms(WMS_GEOSAMPA, {
+        layers: "geoportal:MapaBase_Politico",
+        version: "1.3.0",
+        format: "image/png",
+      }).addTo(mapa);
+      LOTES.forEach((anel) => L.polygon(anel.map(([x, y]) => [y, x]), {
+        color: TINTA_POLIGONO, weight: 2, fillColor: TINTA_POLIGONO, fillOpacity: 0.3,
+      }).addTo(mapa));
+      L.polygon(DESENHO.map(([x, y]) => [y, x]), {
+        color: TINTA_DESENHO, weight: 3, dashArray: "6 4", fill: false,
+      }).addTo(mapa);
+    }
+
+    function clonarFaces() {
+      document.querySelectorAll("[data-face]").forEach((alvo) => {
+        const caixa = document.getElementById(alvo.dataset.face).content.querySelector(".modal-box").cloneNode(true);
+        caixa.classList.remove("modal-box", "w-11/12", "max-w-lg");
+        // A face exposta convive com o modal vivo: o id ganha sufixo para o label achar a própria sanfona.
+        caixa.querySelectorAll("[id]").forEach((el) => { el.id = `${el.id}-face`; });
+        caixa.querySelectorAll("label[for]").forEach((el) => { el.htmlFor = `${el.htmlFor}-face`; });
+        alvo.appendChild(caixa);
+      });
+    }
+
+    const pocoModal = document.getElementById("poco-modal");
+
+    function abrir(face) {
+      pocoModal.replaceChildren(document.getElementById(face).content.cloneNode(true));
+      document.body.dispatchEvent(new CustomEvent("htmx:load", { detail: { elt: pocoModal } }));
+      document.dispatchEvent(new CustomEvent("htmx:afterSwap"));
+      montarBarrasGravadas();
+    }
+
+    function emitir() {
+      const processo = pocoModal.querySelector("[name=processo]");
+      const cpfCnpj = pocoModal.querySelector("[name=cpf_cnpj]");
+      const interessado = pocoModal.querySelector("[name=interessado]");
+      const cpfCnpjValido = !cpfCnpj.value || cpfCnpj.dataset.digitosCompletos === "sim";
+      const valido = processo.dataset.digitosCompletos === "sim" && cpfCnpjValido && interessado.value.trim().length >= 3;
+      abrir(valido ? "tmpl-modal-emitida" : "tmpl-modal-recusa");
+    }
+
+    // A lixeira faz as vezes do hx-post: tira a linha e atualiza o resumo; sem linhas, o botão abre o vazio.
+    function tirarLote(lixeira) {
+      const corpo = lixeira.closest("tbody");
+      lixeira.closest("tr").remove();
+      const restantes = corpo.rows.length;
+      document.getElementById("contagem-lotes").textContent = restantes ? `${restantes} lote${restantes > 1 ? "s" : ""}` : "nenhum lote";
+      const botao = document.querySelector("#lista-acoes-conjunto [data-abrir]");
+      botao.dataset.abrir = restantes ? "tmpl-modal-form" : "tmpl-modal-vazio";
+    }
+
+    document.addEventListener("click", (evento) => {
+      const abridor = evento.target.closest("[data-abrir]");
+      if (abridor && !abridor.closest("[data-face]")) abrir(abridor.dataset.abrir);
+      if (evento.target.closest("#poco-modal [data-fechar]")) pocoModal.replaceChildren();
+      if (evento.target.closest("#poco-modal [data-emitir]")) emitir();
+      const lixeira = evento.target.closest("#tabela-conjunto .btn-lixeira");
+      if (lixeira) tirarLote(lixeira);
+    });
+
+    document.getElementById("alternar-concessao").addEventListener("click", (evento) => {
+      const coluna = document.getElementById("poco-acoes-conjunto");
+      coluna.hidden = !coluna.hidden;
+      evento.currentTarget.textContent = coluna.hidden ? "Perfil com concessão" : "Perfil sem concessão";
+    });
+
+    document.getElementById("alternar-quantidade").addEventListener("click", (evento) => {
+      const lista = document.getElementById("lista-acoes-conjunto");
+      const extras = lista.querySelectorAll("[data-exemplo]");
+      if (extras.length) {
+        extras.forEach((botao) => botao.remove());
+        evento.currentTarget.textContent = "Cinco ações";
+        return;
+      }
+      ACOES_DE_EXEMPLO.forEach((rotulo) => lista.insertAdjacentHTML(
+        "beforeend",
+        `<button type="button" class="btn btn-onsen btn-sm" data-exemplo><span class="poco-acoes__icone"><svg><use href="#glifo-certidao-lancamento"/></svg></span>${rotulo}</button>`,
+      ));
+      evento.currentTarget.textContent = "Uma ação";
+    });
+
+    clonarFaces();
+    montarMascaraDa001().catch((erro) => console.error(erro));
+    montarPecas().catch((erro) => console.error(erro));
+    montarCanvasHome().then(montarBarrasGravadas).catch((erro) => console.error(erro));
+  </script>
+</body>
+</html>

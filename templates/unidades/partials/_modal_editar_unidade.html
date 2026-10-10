@@ -59,13 +59,16 @@
             <input type="checkbox" id="editar-campo-tipo" class="campo-onsen-toggle"{% if realce.tipo %} checked{% endif %} />
             <span class="text-overline etched-rotulo">Tipo</span>
             <div class="campo-onsen-linha">
-              <p class="campo-onsen-valor">{{ unidade.tipo.nome }} <span class="text-base-content/50">· nível {{ unidade.tipo.nivel }}</span></p>
+              <p class="campo-onsen-valor">{% include "unidades/partials/_rotulo_tipo_unidade.html" with tipo=unidade.tipo %} <span class="text-base-content/50">· nível {{ unidade.tipo.nivel }}</span></p>
               <div class="campo-onsen-campo">
                 <select name="tipo" class="select select-glass {{ realce.tipo }}" data-select-onsen>
                   {% for tipo in tipos_unidade %}
-                    <option value="{{ tipo.pk }}"{% if tipo.pk == valores.tipo_id %} selected{% endif %}>{{ tipo.nome }}</option>
+                    <option value="{{ tipo.pk }}"{% if tipo.pk == valores.tipo_id %} selected{% endif %}{% if tipo.extinto %} data-extinto="true" title="Tipo de unidade extinto"{% endif %}>{{ tipo.nome }}</option>
                   {% endfor %}
                 </select>
+                {% if unidade.tipo.extinto %}
+                  <span class="form-field-hint text-warning">Este tipo está extinto e é mantido apenas porque a unidade já o utilizava.</span>
+                {% endif %}
                 <div class="tarja-vinculo tarja-vinculo-pendente flex items-start gap-2 mt-2">
                   <svg class="w-5 h-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-alerta"/></svg>
                   <p class="text-[13px] text-base-content/80">É <strong>recusado na validação</strong> quando o titular atual não satisfaz o novo tipo, ou quando alguma filha deixaria de ser subordinada.</p>

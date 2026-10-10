@@ -67,12 +67,25 @@ html[data-theme="dimap"] {
   /* Troca de fundo sem vão (SPEC design/011): duração do crossfade entre a camada que sai e a
      que entra — ver .fundo-ortofoto__camada. */
   --fundo-troca-duracao: 700ms;
+  /* Água sobre o fundo administrativo (SPEC design/017): o grão do piso de rocha. */
+  --fundo-rocha-grao: 0.055;
   /* Gaveta lateral (SPEC design/013). A largura é token porque a paleta se ancora na borda direita
      da casca: fechada, é ela que põe o meio disco exatamente sobre a borda da tela. O recuo é o
      quanto da segunda gaveta fica enfiado sob a primeira, e é também o que ela reserva à esquerda. */
   --gaveta-largura: 24rem;
   --gaveta-detalhe-largura: 22rem;
   --gaveta-recuo: 2rem;
+  /* Gaveta inferior rasa (SPEC localizacao_lote/003): altura fixa, e não teto. É a medida
+     conhecida que deixa a gaveta lateral da home parar acima dela sem JavaScript. */
+  --gaveta-rasa-altura: 16rem;
+  /* Gaveta inferior puxável (SPEC design/022): os limites da altura puxada e a altura de nascença,
+     que é a da rasa lida aqui — a casca reescreve --gaveta-rasa-altura e não pode lê-la de si. */
+  --gaveta-puxavel-piso: 12rem;
+  --gaveta-puxavel-teto: 75dvh;
+  --gaveta-puxavel-partida: var(--gaveta-rasa-altura);
+  /* Gaveta do panorama (SPEC street_view/002): a altura da gaveta inferior quando ela hospeda o
+     Street View. */
+  --gaveta-panorama-altura: 45dvh;
 }
 
 @theme {
@@ -295,61 +308,101 @@ html[data-theme="dimap"] {
     @apply bg-white/15;
   }
 
-  /* Moldura da imagem de perfil: a unidade é luz atrás do disco, não anel. O hex vem em
-     --cor-unidade porque classe montada no template (ring-[cor]) some do build de produção.
-     Anel sólido saía de `outline`, aresta dura desenhada fora de uma caixa que não a reserva: em
-     w-28 pousava inteiro sobre o poço vizinho. Luz que esmaece atravessa o vizinho sem quebrá-lo.
-     --halo-escala é o alcance dela, que segue o diâmetro (padrão de w-9 a w-16; disco maior abre
-     no include). --halo-aro é o contato, e não escala: contato tem espessura de contato em
-     qualquer disco. Ele vem na opacidade da imagem, e os fades partem dele. */
+  /* .avatar-glass — Esfera de vidro fosco (Frosted Glass) translúcida com refração e brilho com fade (SPEC design/015) */
   .avatar-glass {
     --halo-escala: 1;
-    --halo-aro: 3px;
-    @apply relative rounded-full overflow-hidden bg-white/40;
+    position: relative;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--cor-unidade, #0077b6) 28%, rgba(255, 255, 255, 0.12));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.8),
-      0 8px 28px rgba(7, 58, 84, 0.28),
-      0 0 0 var(--halo-aro) color-mix(in srgb, var(--cor-unidade) 88%, transparent),
-      0 0 calc(11px * var(--halo-escala)) calc(var(--halo-aro) + 3px * var(--halo-escala))
-        color-mix(in srgb, var(--cor-unidade) 55%, transparent),
-      0 0 calc(24px * var(--halo-escala)) calc(var(--halo-aro) + 6px * var(--halo-escala))
-        color-mix(in srgb, var(--cor-unidade) 26%, transparent);
-  }
-  /* O domo do disco: a óptica simulada do mapa (§6) aplicada ao avatar — curvatura por luz, sem
-     deformar a malha. Só o aro curva; o miolo até 78% do raio é onde está o rosto, e mancha larga
-     ali não faz volume, faz véu. Porcentagem, não px: o disco vai de w-9 a w-28. */
-  .avatar-glass::after {
-    content: "";
-    @apply absolute inset-0 rounded-full pointer-events-none;
-    background:
-      radial-gradient(
-        circle at 50% 50%,
-        transparent 78%,
-        rgba(7, 58, 84, 0.1) 90%,
-        rgba(7, 58, 84, 0.26) 100%
-      ),
-      radial-gradient(
-        ellipse 72% 24% at 50% 3%,
-        rgba(255, 255, 255, 0.55),
-        transparent 72%
-      ),
-      radial-gradient(
-        ellipse 60% 20% at 50% 98%,
-        rgba(202, 240, 248, 0.34),
-        transparent 72%
-      );
+      0 0 calc(4px * var(--halo-escala, 1)) calc(0.8px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 88%, white 12%),
+      0 0 calc(10px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 60%, transparent),
+      0 0 calc(24px * var(--halo-escala, 1)) calc(4px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 30%, transparent),
+      0 calc(6px * var(--halo-escala, 1)) calc(18px * var(--halo-escala, 1)) rgba(7, 58, 84, 0.14),
+      inset 0 0 calc(5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 65%, white 35%),
+      inset 0 calc(1px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) rgba(255, 255, 255, 0.5),
+      inset 0 0 calc(14px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 42%, transparent);
+    /* Nunca url() aqui: referência a filtro SVG em backdrop-filter obriga o navegador a capturar o
+       Backdrop Root do documento, e toda outra superfície de vidro da página — a bandeja da tabela
+       em primeiro lugar — passa a resolver contra um backdrop chapado. */
+    backdrop-filter: blur(14px) saturate(200%);
+    -webkit-backdrop-filter: blur(14px) saturate(200%);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    isolation: isolate;
+    cursor: pointer;
+    outline: 0;
+    transition: all 0.25s ease;
   }
 
-  /* O SVG do avatar é markup do domínio (services/domain/avatar) e não carrega classe alguma:
-     quem o dimensiona é a moldura. */
-  .avatar-glass > svg { @apply w-full h-full; }
-  /* A imagem cede um pouco ao gelo por baixo: disco opaco no meio de uma cena de vidro é o único
-     corpo sólido da tela. A opacidade fica no FILHO, nunca no .avatar-glass — no pai ela levaria
-     junto o halo da unidade e o domo, que são luz e não podem esmaecer com a foto.
-     SVG de letras precisa de mais transparência para integrar melhor com o vidro e evitar
-     aparência pixelada — opacidade de cor sólida sobre fundo translúcido fica áspera. */
-  .avatar-glass > img { @apply opacity-[0.88]; }
-  .avatar-glass > svg { @apply opacity-[0.65]; }
+  .avatar-glass:hover {
+    background: color-mix(in srgb, var(--cor-unidade, #0077b6) 35%, rgba(255, 255, 255, 0.16));
+    box-shadow:
+      0 0 calc(6px * var(--halo-escala, 1)) calc(1.5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 95%, white 5%),
+      0 0 calc(16px * var(--halo-escala, 1)) calc(3px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 75%, transparent),
+      0 0 calc(32px * var(--halo-escala, 1)) calc(6px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 40%, transparent),
+      0 calc(10px * var(--halo-escala, 1)) calc(24px * var(--halo-escala, 1)) rgba(7, 58, 84, 0.18),
+      inset 0 0 calc(7px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 75%, white 25%),
+      inset 0 calc(1px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1)) rgba(255, 255, 255, 0.65),
+      inset 0 0 calc(18px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 55%, transparent);
+  }
+
+  /* Filtro da cor da unidade sobre a foto com proteção de lente */
+  .avatar-glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--cor-unidade, #0077b6) 15%, transparent);
+    box-shadow: inset 0 0 calc(5px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 45%, rgba(255, 255, 255, 0.35));
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+    z-index: 2;
+  }
+
+  .avatar-glass:hover::after {
+    background: color-mix(in srgb, var(--cor-unidade, #0077b6) 8%, transparent);
+    box-shadow: inset 0 0 calc(7px * var(--halo-escala, 1)) color-mix(in srgb, var(--cor-unidade, #0077b6) 60%, rgba(255, 255, 255, 0.45));
+  }
+
+  /* Filhos no plano intermediário: foto ou SVG de iniciais */
+  .avatar-glass > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .avatar-glass > svg {
+    width: 100%;
+    height: 100%;
+    transition: transform 0.25s ease;
+  }
+
+  .avatar-glass > svg circle {
+    fill-opacity: 0.32;
+    transition: fill-opacity 0.25s ease;
+  }
+
+  .avatar-glass:hover > svg circle {
+    fill-opacity: 0.44;
+  }
+
+  .avatar-glass > svg text {
+    filter: drop-shadow(0 1px 2px rgba(7, 58, 84, 0.45));
+  }
+
+  .avatar-glass > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.95;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+
+  .avatar-glass:hover > img {
+    opacity: 1;
+    transform: scale(1.03);
+  }
 
   /* ==================== ÁTOMOS ==================== */
   .btn-onsen {
@@ -391,6 +444,16 @@ html[data-theme="dimap"] {
   .file-input-glass {
     @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content backdrop-blur-[10px] transition-all duration-300 focus:outline-none focus:border-agua-500;
     box-shadow: var(--sombra-poco);
+  }
+
+  /* ÁTOMO · .textarea-glass (SPEC certidao_lancamento/001) — a receita do .input-glass e do
+     .select-glass, no textarea */
+  .textarea-glass {
+    @apply w-full rounded-xl bg-white/30 border-rocha-900/15 text-base-content placeholder:text-rocha-700/60 backdrop-blur-[10px] transition-all duration-300 focus:bg-white/45 focus:border-agua-500 focus:outline-none;
+    box-shadow: var(--sombra-poco);
+  }
+  .textarea-glass:focus {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
   }
 
   /* Controle em realce (SPEC criacao_usuarios/004): o halo semântico no CONTROLE, não no campo
@@ -452,10 +515,14 @@ html[data-theme="dimap"] {
   .calendario-celula:disabled { @apply opacity-25 cursor-not-allowed; }
   .calendario-celula:disabled:hover { @apply scale-100 bg-transparent text-base-content; }
 
-  /* ÁTOMO · OTP (SPEC autenticacao/001). O campo de código de uso único: 8 caixas monoespaçadas
-     com fundo de vidro e destaque em foco. */
+  /* ÁTOMO · OTP (SPEC autenticacao/001, documentos_oficiais/010). O campo de código de uso único:
+     8 caixas para autenticação ou 12 caixas (.otp-onsen-12) para validação de documento,
+     monoespaçadas com fundo de vidro e destaque em foco. */
   .otp-onsen {
     @apply flex items-center justify-center gap-2;
+  }
+  .otp-onsen.otp-onsen-12 {
+    @apply flex-wrap max-w-[18rem] sm:max-w-[20rem] mx-auto;
   }
   .otp-onsen .otp-caixa {
     @apply w-10 h-13 sm:w-11 sm:h-14 text-center text-xl font-bold font-mono rounded-lg border border-base-300 bg-base-100/90 text-agua-700 focus:border-agua-500 focus:outline-none focus:ring-2 focus:ring-agua-400/30 transition-all;
@@ -627,6 +694,36 @@ html[data-theme="dimap"] {
     background-color: rgba(0, 119, 182, 0.85);
   }
   .toggle-onsen:focus-visible {
+    @apply outline-none border-agua-500;
+    box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+
+  /* .checkbox-onsen — o checkbox do sistema (SPEC documentos_oficiais/009): como .toggle-onsen,
+     ignora a caixa nativa do daisyUI e desenha tudo sobre o <input> puro: poço fino em repouso,
+     ciano cheio quando marcado. */
+  .checkbox-onsen {
+    @apply relative w-5 h-5 shrink-0 appearance-none cursor-pointer rounded-md
+           bg-white/30 border border-white/45 transition-all duration-300;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  .checkbox-onsen:hover {
+    @apply bg-white/45;
+  }
+  .checkbox-onsen:checked {
+    @apply bg-agua-600/90 border-agua-500/60;
+  }
+  /* O traço do check é tinta de rocha gravada — nunca branco cheio, como o resto do sistema
+     (o mesmo #etched-onsen que esculpe o polegar do .toggle-onsen). */
+  .checkbox-onsen:checked::after {
+    content: "";
+    @apply absolute w-2.5 h-1.5 border-b-2 border-l-2;
+    border-color: rgba(13, 27, 42, 0.75);
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    filter: url(#etched-onsen);
+  }
+  .checkbox-onsen:focus-visible {
     @apply outline-none border-agua-500;
     box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
   }
@@ -861,13 +958,13 @@ html[data-theme="dimap"] {
      Duas formas do mesmo material: caixa inteira fora da tabela, segmentos dentro dela — não
      existe elemento que envolva um <tr>, e como todo segmento repete o mesmo gradiente vertical na
      mesma altura, as emendas somem.
-     A densidade fica acima do gelo espesso (94%→86%) porque a bandeja é a única coisa entre o
-     cabeçalho grudento e as linhas que correm por trás: desde que o poço aninhado deixou de pintar
-     (SPEC design/009), o blur de 56px sozinho não apaga o texto que emerge. Abaixo do modal
-     (97%→88%), que é o teto: acima dele a peça deixa de ler como gelo. */
+     A densidade é BAIXA (74%→64%) porque ela é a segunda de três demãos: a placa da página por
+     baixo e a peça do §3 por cima. Somadas, 88% de bandeja levavam o cabeçalho a 97% de opacidade
+     contra 65% das linhas — o degrau que fazia a peça ler como papel. Quem sela o que corre por
+     trás é o blur, e é ele que sobe para 72px em troca do branco que saiu. */
   .th-onsen-bandeja,
   .table-onsen thead th::before {
-    @apply backdrop-blur-[56px] bg-gradient-to-b from-white/94 to-agua-100/86 border-y border-white/55;
+    @apply backdrop-blur-[72px] bg-gradient-to-b from-white/74 to-agua-100/64 border-y border-white/55;
     @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9)];
     background-color: transparent;
   }
@@ -953,6 +1050,14 @@ html[data-theme="dimap"] {
     @apply text-warning underline decoration-dotted decoration-warning/45 underline-offset-4;
   }
 
+  /* Rótulo do tipo de unidade (SPEC user_admin/031): mesma forma do rótulo de cargo, sob nome
+     próprio — a base não pinta, e o extinto é o MESMO nome em tom de warning, com o pontilhado
+     que anuncia o tooltip. */
+  .rotulo-tipo-unidade { @apply text-inherit; }
+  .rotulo-tipo-unidade-extinto {
+    @apply text-warning underline decoration-dotted decoration-warning/45 underline-offset-4;
+  }
+
   /* Link destacado de tabela com micro-zoom de afordância no hover (SPEC user_admin/019) */
   .link-tabela-onsen {
     @apply inline-flex items-center gap-1 font-medium text-madeira-700 transition-all duration-200 origin-left;
@@ -1022,19 +1127,24 @@ html[data-theme="dimap"] {
      cabeçalho cresce como uma peça só. Declarar altura aqui é o que travaria esse crescimento. */
   .th-onsen {
     @apply relative flex items-start gap-1.5 px-3 py-2 rounded-xl text-left whitespace-nowrap transition-all duration-300;
-    /* Em repouso a peça pode ser translúcida: quem esconde as linhas que rolam por baixo é a
-       BANDEJA, não ela. */
-    @apply backdrop-blur-[20px] bg-gradient-to-br from-white/68 via-white/56 to-white/46 border border-white/70;
-    /* Espalhamento negativo nas sombras de fora: recolhe o alcance lateral para dentro da folga da
+    /* A tinta é a MESMA do estado afundado, mais clara — branco sobre a bandeja branca só podia
+       ler como mais branco, e era esse o estouro. Os dois estados passam a diferir pelo que de
+       fato os distingue: a intensidade da água e a DIREÇÃO da luz (lábio em cima aqui, sombra
+       interna lá). */
+    @apply backdrop-blur-[20px] bg-agua-100/26 border border-white/55;
+    /* Com o preenchimento frio, a aresta é o único branco que sobrou — e é ela que delimita a
+       peça: a tinta de água quase não contrasta com a bandeja, então quem desenha o contorno é a
+       luz presa no fio, não o fundo.
+       Espalhamento negativo nas sombras de fora: recolhe o alcance lateral para dentro da folga da
        célula, senão a sombra vaza para a coluna vizinha e morre cortada na emenda. */
-    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_-8px_rgba(7,58,84,0.32),0_0_14px_-6px_rgba(72,202,228,0.3)];
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_8px_18px_-8px_rgba(7,58,84,0.32),0_0_14px_-6px_rgba(72,202,228,0.3)];
   }
   /* AFUNDADO = a coluna TEM FILTRO — não "alguém clicou". Estado é valor, não memória: o :has lê o
      campo e o CSS desenha, sem estado de UI em JavaScript. O gelo segue opaco (só a direção da luz
      inverte), senão as linhas apareceriam através do cabeçalho grudento. */
   .th-onsen:focus-within,
   .th-onsen:has(.th-onsen-input:not(:placeholder-shown)) {
-    @apply bg-none bg-agua-100/45 border-white/45 translate-y-px;
+    @apply bg-agua-100/45 border-white/45 translate-y-px;
     @apply shadow-[inset_0_3px_8px_rgba(7,58,84,0.28)];
   }
   /* O rótulo NÃO some quando a coluna afunda: o placeholder desaparece ao digitar e a coluna
@@ -1239,7 +1349,13 @@ html[data-theme="dimap"] {
   /* Painel da barra de busca: largura/padding moram AQUI, não como utilities no markup — a
      navbar mobile abaixo precisa vencê-los, e utility no HTML ganharia da regra de componente
      (layer utilities acima de layer components). Markup: class="glass-panel search-panel ...". */
-  .search-panel { @apply w-11/12 max-w-2xl p-4 transition-all duration-500 ease-in-out; }
+  .search-panel {
+    @apply w-11/12 max-w-2xl p-4;
+    transition: width 400ms ease-in-out 100ms, max-width 400ms ease-in-out 100ms, padding 400ms ease-in-out 100ms, border-radius 150ms ease-out;
+  }
+  .search-panel .input {
+    transition: height 400ms ease-in-out 100ms, border-radius 150ms ease-out;
+  }
 
   /* Navbar compacta (busca recolhida em tela estreita): abaixo de lg (64rem) a barra recolhida
      dividia o topo com os chips fixos (marca à esquerda, usuário à direita) e ficava coberta por
@@ -1251,9 +1367,29 @@ html[data-theme="dimap"] {
      #resultado-busca não vazio. A linha de dicas/badges (.search-hints) sai de cena no estado
      compacto; sugestões e resultado seguem w-11/12, abaixo da fileira. */
   @media (width < 64rem) {
-    .search-hero:has(#resultado-busca:not(:empty)) .search-panel { @apply w-[calc(100vw-9.5rem)] p-1.5 rounded-full; }
-    .search-hero:has(#resultado-busca:not(:empty)) .search-panel .input { @apply h-9 rounded-full; }
-    .search-hero:has(#resultado-busca:not(:empty)) .search-hints { @apply hidden; }
+    .search-hero:has(#resultado-busca:not(:empty)) .search-panel {
+      @apply w-[calc(100vw-9.5rem)] p-1.5;
+      border-radius: 25px;
+      transition: width 400ms ease-in-out, max-width 400ms ease-in-out, padding 400ms ease-in-out, border-radius 300ms ease-in-out 100ms;
+    }
+    .search-hero:has(#resultado-busca:not(:empty)) .search-panel .input {
+      @apply h-9;
+      border-radius: 18px;
+      transition: height 400ms ease-in-out, border-radius 300ms ease-in-out 100ms;
+    }
+    .search-hero:has(#resultado-busca:not(:empty)) .search-hints {
+      @apply opacity-0 pointer-events-none;
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      margin: 0;
+      overflow: hidden;
+      transition: opacity 100ms ease-out, max-height 250ms ease-out, padding 250ms ease-out;
+    }
+    .search-panel .search-hints {
+      max-height: 4rem;
+      transition: opacity 300ms ease-in 200ms, max-height 350ms ease-in-out 100ms, padding 350ms ease-in-out;
+    }
   }
   .cinematic-blur-layer { @apply absolute inset-0 z-10 pointer-events-none opacity-0 backdrop-blur-sm transition-opacity duration-500; }
   .cinematic-blur-layer.active { @apply opacity-100 pointer-events-auto; }
@@ -1421,6 +1557,11 @@ html[data-theme="dimap"] {
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
   }
   .item-menu-rotulo { @apply flex-1 min-w-0 truncate font-medium; }
+  /* Variante (SPEC design/020): o .item-menu que incha sob o ponteiro, como o .btn-etched-swell.
+     O .item-menu segue intocado: incha só quem pede a classe. */
+  .item-menu-swell { @apply origin-center; }
+  .item-menu-swell:hover,
+  .item-menu-swell:focus-visible { @apply scale-[1.03]; }
   .item-menu-apoio  { @apply block text-[13px] font-normal text-base-content/60 truncate; }
 
   /* Cartão de ação (SPEC autorizacao/006): a forma explicativa. Material: os tokens de gelo do tema
@@ -1602,15 +1743,51 @@ html[data-theme="dimap"] {
 
   /* ==================== FUNDO DE ORTOFOTO (SPEC design/010) ==================== */
 
+  /* .fundo-rocha — átomo (SPEC design/017): o piso, sempre presente por baixo da ortofoto (SPEC
+     design/010 v8). Sem ele, enquanto a foto decodifica, a lente mix-blend-multiply só consegue
+     tingir o branco da página — o flash a cada navegação. */
+  .fundo-rocha {
+    @apply fixed inset-0 z-0 pointer-events-none overflow-hidden;
+    background-image:
+      radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.35) 0%, transparent 62%),
+      linear-gradient(163deg,
+        var(--color-rocha-100) 0%,
+        var(--color-rocha-300) 46%,
+        var(--color-rocha-500) 100%);
+  }
+
+  /* .fundo-rocha__grao — átomo. Tile de turbulência como IMAGEM, nunca como `filter`: filtro de
+     tela cheia repinta a cada quadro. */
+  .fundo-rocha__grao {
+    @apply absolute inset-0;
+    opacity: var(--fundo-rocha-grao);
+    background-size: 180px 180px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+  }
+
+  /* .fundo-agua — átomo (SPEC design/017): a superfície de luz sobre o piso, qualquer que ele
+     seja. Cinza neutro e opaco — quem a torna invisível em repouso é o soft-light, cujo neutro é
+     0.5, não a opacidade. */
+  .fundo-agua {
+    @apply fixed inset-0 z-0 pointer-events-none w-full h-full;
+    mix-blend-mode: soft-light;
+  }
+
   /* .fundo-ortofoto — organismo: a casca que permanece, empilhando camadas absolutas
      (SPEC design/011 — troca de fundo sem vão). */
   .fundo-ortofoto {
     @apply fixed inset-0 z-0 pointer-events-none overflow-hidden;
+    transition: opacity var(--fundo-troca-duracao) ease-out;
   }
   /* Desligado no <html>, não no elemento: o HTMX empilha camadas dentro de #fundo-ortofoto a
      cada rodízio, e uma classe presa numa camada se perderia no descarte seguinte
-     (controle_fundo.js). */
-  html.fundo-desligado .fundo-ortofoto { @apply hidden; }
+     (controle_fundo.js). Opacidade, e não `display`: sobre o piso de rocha o corte apareceria
+     como salto, e `display` não transita (SPEC design/017). */
+  html.fundo-desligado .fundo-ortofoto { @apply opacity-0; }
+  /* Pausada, não zerada: `animation: none` devolveria a deriva ao ponto de partida, e o salto
+     apareceria no fade de volta. */
+  html.fundo-desligado .fundo-ortofoto__deriva,
+  html.fundo-desligado .fundo-ortofoto__imagem { animation-play-state: paused; }
 
   /* .fundo-ortofoto__camada — átomo: uma ortofoto e a deriva dela. Entra transparente; a classe
      que a revela é posta pelo JS depois do decode(), nunca por timer (SPEC design/011). */
@@ -1652,22 +1829,44 @@ html[data-theme="dimap"] {
     animation-direction: alternate;
   }
 
-  /* .range-onsen — átomo: o trilho é o poço em pílula do .toggle-onsen e o polegar é o disco
-     entintado da mesma família — mesmo vocabulário, escala de trilho contínuo. */
+  /* .range-onsen — átomo: bandeja funda com o fio do .etched-line correndo no fundo, entintado
+     até o polegar. A bandeja nunca se preenche — o que muda de estado é o fio, como na
+     .calha-cobertura. O --preenchimento é escrito pelo controle_fundo.js: a posição do polegar
+     não existe como seletor. */
   .range-onsen {
-    @apply w-full h-1.5 appearance-none cursor-pointer rounded-full bg-white/30 border border-white/45;
+    @apply w-full h-4 appearance-none cursor-pointer rounded-full bg-white/30 border border-white/45;
     box-shadow: var(--sombra-poco-fina);
+    background-image:
+      linear-gradient(to right, rgba(0, 119, 182, 0.85), rgba(0, 119, 182, 0.85)),
+      linear-gradient(to right, rgba(13, 27, 42, 0.14), rgba(13, 27, 42, 0.14));
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: var(--preenchimento, 0%) 0.375rem, 100% 0.375rem;
   }
   .range-onsen::-webkit-slider-thumb {
-    @apply w-4 h-4 rounded-full;
+    @apply w-4 h-4 rounded-full transition-transform duration-200;
     -webkit-appearance: none;
     background-color: rgba(0, 119, 182, 0.85);
     filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
   }
   .range-onsen::-moz-range-thumb {
-    @apply w-4 h-4 rounded-full border-0;
+    @apply w-4 h-4 rounded-full border-0 transition-transform duration-200;
     background-color: rgba(0, 119, 182, 0.85);
     filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+  .range-onsen:hover::-webkit-slider-thumb,
+  .range-onsen:active::-webkit-slider-thumb {
+    @apply scale-125;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.95));
+  }
+  .range-onsen:hover::-moz-range-thumb,
+  .range-onsen:active::-moz-range-thumb {
+    @apply scale-125;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.95));
+  }
+  .range-onsen:focus-visible {
+    @apply outline-none border-agua-500;
+    box-shadow: var(--sombra-poco-fina), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
   }
 
   /* .btn-etched-mini — variante do .btn-etched (SPEC design/010) para o controle flutuante do
@@ -1677,19 +1876,93 @@ html[data-theme="dimap"] {
     @apply text-[11px] px-1.5 py-0.5 gap-1.5 tracking-[0.1em];
   }
 
-  /* .fundo-controle — molécula: .toggle-onsen, .btn-etched e .range-onsen compostos no controle
-     flutuante de liga/desliga e velocidade da deriva. */
+  /* .fundo-controle — molécula: .toggle-onsen, .range-onsen e os discos de vidro compostos no
+     controle flutuante do fundo — liga/desliga, troca, velocidade da deriva e a engrenagem de
+     onde ascende a .torre-ajustes. `w-fit` porque a caixa aperta quando o Trocar e o trilho
+     recolhem.
+     Sem `position` aqui: `components` vence `utilities` nesta folha, e a regra atropelaria o
+     `relative`/`xl:fixed` do markup — que é também a âncora da torre. */
   .fundo-controle {
-    @apply flex flex-col gap-1.5 px-3 py-2 w-44;
+    @apply flex flex-col px-3 py-2 w-fit;
   }
-  .fundo-controle__cabecalho {
-    @apply flex items-center justify-between gap-4;
+  .fundo-controle__cabecalho { @apply flex items-center gap-1; }
+  .fundo-controle__acoes { @apply flex items-center; }
+  /* Composto sobre o .text-overline: só a medida muda. */
+  .fundo-controle__titulo { @apply text-[13px] tracking-[0.18em] leading-none -mr-[0.18em]; }
+  /* O `.tooltip` do daisyUI é inline-block, e o espaço do descendente desalinha o que ele
+     embrulha da linha de centro da fileira. */
+  .fundo-controle__dica { @apply inline-flex items-center; }
+
+  /* Recolhimento sem JS e sem medida fixa: a transição de `fr` fecha o vão sozinha, e o `w-fit`
+     do widget acompanha quadro a quadro. O espaçamento mora DENTRO do que recolhe — gap no
+     contêiner sobreviveria ao recolhimento e deixaria um vão morto. */
+  .fundo-controle__recolhe-x {
+    @apply grid transition-all duration-300 ease-out;
+    grid-template-columns: 1fr;
   }
-  .fundo-controle__velocidade {
-    @apply flex items-center gap-1.5;
+  .fundo-controle__recolhe-y {
+    @apply grid transition-all duration-300 ease-out;
+    grid-template-rows: 1fr;
   }
-  /* Fundo desligado: não há imagem a trocar nem velocidade a ajustar. */
-  .fundo-controle:has(.toggle-onsen:not(:checked)) .fundo-controle__corpo {
+  /* O `overflow: hidden` do recolhimento mora ABAIXO do `.tooltip`: no mesmo elemento, ele
+     recortaria o balão, que é desenhado fora da caixa. */
+  .fundo-controle__recolhido-x { @apply overflow-hidden pl-1.5; min-width: 0; }
+  .fundo-controle__recolhido-y { @apply block overflow-hidden pt-2 px-4; min-height: 0; }
+  /* Fundo desligado: não há imagem a trocar nem deriva a acelerar. Sobram o toggle — que desfaz
+     o gesto — e a engrenagem, porque a água roda com o fundo ligado ou desligado. */
+  .fundo-controle:has([data-fundo-ligado]:not(:checked)) .fundo-controle__recolhe-x {
+    grid-template-columns: 0fr;
+  }
+  .fundo-controle:has([data-fundo-ligado]:not(:checked)) .fundo-controle__recolhe-y {
+    grid-template-rows: 0fr;
+  }
+
+  /* .fundo-controle__acao — vidro mais fino que o .btn-glass: o disco mora DENTRO de uma placa de
+     gelo, e ali o branco a 40% do átomo soma com o do painel e estoura (SPEC design/009). */
+  .fundo-controle__acao {
+    @apply w-7 h-7 min-h-0 shrink-0 rounded-full bg-white/8 border-white/30;
+    @apply hover:bg-white/25 hover:border-white/50;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  .fundo-controle__acao:hover {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 10px rgba(72, 202, 228, 0.35);
+  }
+  /* Torre aberta: o disco afunda e vira poço. O gesto está preso, não pairando. */
+  .fundo-controle__acao[aria-expanded="true"] {
+    @apply bg-white/10 border-white/30;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  /* O `.tooltip` do daisyUI é inline-block, e o trilho precisa da largura toda. `w-0` +
+     `min-w-full` tira a fileira da disputa pela largura do `w-fit`: o range tem largura
+     intrínseca própria, e sem isso é ele — não o cabeçalho — quem dimensiona o widget. */
+  .fundo-controle__trilho { @apply block w-0 min-w-full; }
+  /* Recolhido não é o mesmo que ausente: `overflow: hidden` não tira do Tab. O `disabled` é o que
+     impede o foco de cair num controle que ninguém vê. */
+  .fundo-controle :is(.btn, .range-onsen):disabled {
+    @apply opacity-30 pointer-events-none;
+  }
+
+  /* .torre-ajustes — molécula (SPEC design/017): a torre que ascende da engrenagem, com a
+     coreografia da .torre-camadas e a geometria de painel. */
+  .torre-ajustes {
+    @apply absolute bottom-full right-0 mb-2.5 w-60 max-h-[70vh] overflow-y-auto overscroll-contain;
+    @apply flex flex-col gap-2.5 p-3 rounded-2xl origin-bottom-right;
+    @apply backdrop-blur-[24px] bg-gradient-to-br from-white/88 via-white/78 to-white/70 border border-white/70;
+    @apply transition-all duration-300 ease-out;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 8px 24px rgba(7, 58, 84, 0.3),
+      0 0 20px rgba(72, 202, 228, 0.2);
+  }
+  .torre-ajustes--fechada { @apply opacity-0 translate-y-3 scale-95 pointer-events-none; }
+  .torre-ajustes--aberta { @apply opacity-100 translate-y-0 scale-100 pointer-events-auto; }
+  .torre-ajustes__titulo { @apply text-sm font-bold text-madeira-700 m-0 leading-tight; }
+  .torre-ajustes__chave { @apply flex items-center justify-between gap-3; }
+  .torre-ajustes__barras { @apply flex flex-col gap-2.5; }
+  .torre-ajustes__linha { @apply flex flex-col gap-1; }
+  .torre-ajustes__linha-topo { @apply flex items-baseline justify-between gap-2; }
+  /* Animação desligada: não há o que calibrar. Mesmo gesto do Trocar sem ortofoto. */
+  .torre-ajustes:has([data-agua-ligada]:not(:checked)) .torre-ajustes__barras {
     @apply opacity-35 pointer-events-none;
   }
 
@@ -1790,6 +2063,12 @@ html[data-theme="dimap"] {
      .table-onsen é w-full e as células quebram. O modificador é de cada tabela, não do
      componente — tabela curta não deve nascer rolando. */
   .table-onsen-larga { @apply min-w-[74rem]; }
+  /* Tabela de rótulo longo (SPEC user_admin/031): cabeçalho que quebra em até duas linhas, com
+     todas as colunas reservando a mesma altura de rótulo — sem isso o campo de filtro desce só nas
+     colunas de nome comprido. O piso de largura é o que entrega o eixo horizontal ao poço. */
+  .table-onsen-rotulo-longo { @apply min-w-[56rem]; }
+  .table-onsen-rotulo-longo .th-onsen { @apply whitespace-normal; }
+  .table-onsen-rotulo-longo .th-onsen .text-overline { @apply min-h-[2lh]; }
 
   /* ==================== MOLÉCULA · BARRA GRAVADA HORIZONTAL (SPEC painel/002) ==================== */
   /* A gêmea da .scroll-etched deitada: o rolador esconde as duas barras nativas
@@ -1987,7 +2266,17 @@ html[data-theme="dimap"] {
 @media (prefers-reduced-motion: reduce) {
   .fundo-ortofoto__deriva,
   .fundo-ortofoto__imagem { animation: none; }
+}
 
+/* A página antiga fica na tela até a nova estar pintada, e as duas se cruzam: nenhum quadro
+   intermediário (rocha sem foto, deriva recomeçando) aparece ao navegar (SPEC design/010 v8). */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+
+/* A gaveta e o que veio depois dela pertencem ao design system: reabre a camada fechada acima
+   pelos @keyframes e pelo @media, que são de topo. */
+@layer components {
   /* ==================== GAVETA LATERAL (SPEC design/013) ======================================== */
 
   /* TOKEN · a terceira densidade como primitivo, e não mais escrita só dentro do .modal-box-glass:
@@ -2130,12 +2419,974 @@ html[data-theme="dimap"] {
   /* UI concorrente se recolhe: a busca sai por cima quando a gaveta abre, na mesma direção da
      .glass-hide-up. */
   .tela-home:has(.gaveta-lateral-toggle:checked) .search-hero {
-    @apply opacity-0 -translate-y-5 scale-95 pointer-events-none;
+    @apply opacity-0 -translate-y-5 scale-95 pointer-events-none invisible;
   }
+
+  /* ÁTOMO · .valor-ausente (SPEC localizacao_lote/001) — o "não informado" de um atributo que a
+     base não traz, distinto em tinta do valor que a base de fato informa. */
+  .valor-ausente { @apply italic font-normal text-base-content/50; }
+
+  /* MOLÉCULA · .ficha-atributos (SPEC localizacao_lote/001) — rótulo e valor, linha a linha,
+     dentro do poço. Serve à gaveta lateral e a qualquer ficha de atributos curtos. */
+  .ficha-atributos { @apply grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-3 p-4; }
+  .ficha-atributos > dd { @apply m-0 text-sm font-medium text-right break-words; }
 
   /* Vidro sobre vidro (SPEC design/009) alcançando as placas novas — no fim, depois de toda peça
      cuja tinta ela apaga. */
   :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) .glass-panel:where(:not(.modal-box-glass)) { @apply bg-none; }
   :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) :is(.card-well, .upload-well) { @apply bg-transparent; }
   :where(.glass-drawer-panel-denso, .glass-drawer-panel-recuado) .upload-well:where(:hover, :focus-within) { @apply bg-white/15; }
+
+  /* ==================== MOLÉCULA · VEREDITO DA CONFERÊNCIA (SPEC documentos_oficiais/008) ======= */
+  /* A resposta da conferência de documento: uma placa, quatro estados. Entre eles muda a tinta do
+     glifo e do rótulo; o layout, não — material composto no HTML (.card-well). */
+  .veredito        { @apply flex flex-col items-center text-center gap-3 p-6 sm:p-8; }
+  .veredito-glifo  { @apply w-16 h-16; }
+  .veredito-titulo { @apply text-[22px] font-bold text-madeira-700 leading-tight; }
+  .veredito-nota   { @apply text-[15px] text-base-content/75 leading-relaxed max-w-[46ch]; }
+
+  /* .veredito-estado empilha-se no .text-overline e só troca a tinta — os pares abaixo vencem o
+     átomo por especificidade, e não por ordem. */
+  .veredito-confere      .veredito-glifo  { @apply bg-success/15 border-success/30 text-success; }
+  .veredito-confere      .veredito-estado { @apply text-success; }
+  .veredito-nao-confere  .veredito-glifo  { @apply bg-error/15 border-error/30 text-error; }
+  .veredito-nao-confere  .veredito-estado { @apply text-error; }
+  .veredito-desconhecido .veredito-glifo  { @apply bg-warning/15 border-warning/30 text-warning; }
+  .veredito-desconhecido .veredito-estado { @apply text-warning; }
+  .veredito-sem-selo     .veredito-glifo  { @apply bg-rocha-400/20 border-rocha-500/30 text-rocha-600; }
+  .veredito-sem-selo     .veredito-estado { @apply text-rocha-600; }
+
+  /* ==================== ÁTOMO · ATALHO DO MAPA (SPEC documentos_oficiais/008) ==================== */
+  /* Pílula de vidro no canto inferior direito do mapa, no lugar que os botões de zoom do Leaflet
+     ocupavam. Só posição e folga: a pele é o .btn-glass empilhado no markup. */
+  .atalho-mapa { @apply absolute bottom-6 right-4 lg:right-6 z-20 gap-2 text-madeira-700; }
+
+  /* ==================== MOLÉCULA · CARD DE OPÇÃO (SPEC documentos_oficiais/010) =================== */
+  /* Cartão de escolha de caminho: poço rebaixado que acende na interação como o .upload-well,
+     mas sem aresta tracejada — a ação é navegar, não soltar arquivo. Material composto no HTML
+     com .card-well (.card-well.card-opcao). */
+  .card-opcao {
+    @apply flex flex-col items-center text-center gap-3 p-6 sm:p-8 rounded-2xl cursor-pointer transition-all duration-300;
+    box-shadow: var(--sombra-poco);
+  }
+  .card-opcao:hover,
+  .card-opcao:focus-visible {
+    @apply bg-white/45;
+    box-shadow: var(--sombra-poco), 0 0 22px rgba(72, 202, 228, 0.35);
+  }
+  .card-opcao:active {
+    @apply scale-[0.98];
+  }
+
+  /* ==================== MOLÉCULA · POÇO DE AÇÕES (SPEC certidao_lancamento/001) =================== */
+  /* .poco-acoes — composta com .card-well no HTML */
+  .poco-acoes { @apply px-4 pt-2.5 pb-3 flex flex-col gap-1 w-full min-h-0 max-h-full; }
+  .poco-acoes__titulo { @apply shrink-0 leading-none; }
+  .poco-acoes__lista {
+    @apply flex flex-col gap-2.5 p-1 min-h-0 overflow-y-auto overscroll-contain;
+    mask-image: linear-gradient(to bottom, transparent, black 8px, black calc(100% - 8px), transparent);
+  }
+  .poco-acoes__lista > .btn { @apply justify-start gap-2; }
+  .poco-acoes__icone { @apply w-4 h-4 shrink-0 flex items-center justify-center; }
+  .poco-acoes__icone > svg { @apply w-full h-full; }
+
+  /* ============ MOLÉCULA · COLUNA DE AÇÕES DA GAVETA (SPEC certidao_lancamento/002) ============== */
+  /* .gaveta-coluna-acoes — composta com .gaveta-coluna: a coluna estreita do poço de ações, centrada
+     na altura da gaveta; é o poço que rola, não a coluna */
+  .gaveta-coluna-acoes { @apply justify-center overflow-hidden; }
+  @media (width >= 48rem) {
+    .gaveta-coluna-acoes { @apply flex-none w-72; }
+  }
+
+  /* ==================== MOLÉCULA · OPÇÃO DE TEXTO (SPEC certidao_lancamento/001) ================== */
+  /* .opcao-texto — um texto oficial escolhível, composto com .card-well no HTML; o rádio é sr-only
+     e a escolha acende a água, como todo estado de seleção do sistema */
+  .opcao-texto { @apply flex flex-col gap-1 px-3.5 py-3 cursor-pointer transition-all duration-300; }
+  .opcao-texto:hover { @apply bg-white/45; }
+  .opcao-texto:has(input:checked) {
+    @apply border-agua-500/60;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(0, 150, 199, 0.35), 0 0 18px rgba(72, 202, 228, 0.35);
+  }
+  .opcao-texto:has(input:focus-visible) {
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+  .opcao-texto__titulo { @apply transition-colors duration-300; }
+  .opcao-texto:has(input:checked) .opcao-texto__titulo { @apply text-agua-700; }
+  .opcao-texto__corpo { @apply text-[13px] leading-snug text-base-content/80; }
+
+  /* ==================== MOLÉCULAS · CONTROLES DE MAPA (SPEC design/016) ==================== */
+  /* Pílula no canto inferior esquerdo do mapa, simétrica ao atalho de documentos à direita. */
+  .pilula-mapa {
+    @apply absolute bottom-6 left-4 lg:left-6 z-20 flex items-center gap-1.5 p-1 rounded-full backdrop-blur-[10px] bg-white/40 border border-white/60 text-base-content shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_8px_rgba(7,58,84,0.38)] transition-all duration-300;
+  }
+
+  /* Botão disparador do seletor de camadas */
+  .pilula-mapa__btn-camadas {
+    @apply w-9 h-9 rounded-full flex items-center justify-center text-madeira-700 transition-all duration-200 hover:bg-white/60 hover:shadow-[0_0_12px_rgba(72,202,228,0.35)] active:scale-95 cursor-pointer;
+  }
+  .pilula-mapa__btn-camadas[aria-expanded="true"] {
+    @apply bg-white/70 shadow-[0_0_14px_rgba(72,202,228,0.5)] text-agua-800;
+  }
+
+  /* Poço rebaixado contendo o par de botões de zoom */
+  .pilula-mapa__zoom {
+    @apply flex items-center gap-0.5 px-1 py-0.5 rounded-full;
+  }
+  .pilula-mapa__btn-zoom {
+    @apply w-7 h-7 rounded-full flex items-center justify-center font-bold text-madeira-700 transition-all duration-200 hover:bg-white/70 active:scale-90 cursor-pointer disabled:opacity-30 disabled:pointer-events-none;
+  }
+  .pilula-mapa__btn-zoom svg {
+    @apply transition-all duration-200 origin-center;
+  }
+  /* Feedback tátil na rolagem do mouse: sem círculo em volta, swell e brilho exclusivamente no próprio glifo */
+  .pilula-mapa__btn-zoom--swell svg {
+    @apply scale-[1.38] text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.95)) drop-shadow(0 0 10px rgba(0, 150, 199, 0.6));
+  }
+
+  /* Torrezinha vertical de camadas que ascende a partir da esquerda da pílula */
+  .torre-camadas {
+    @apply absolute bottom-full left-0 mb-2.5 flex flex-col gap-1 p-1 rounded-2xl backdrop-blur-[18px] bg-gradient-to-br from-white/65 via-white/50 to-white/40 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_24px_rgba(7,58,84,0.3),0_0_20px_rgba(72,202,228,0.2)] transition-all duration-300 ease-out origin-bottom-left;
+  }
+  .torre-camadas--fechada {
+    @apply opacity-0 translate-y-3 scale-95 pointer-events-none;
+  }
+  .torre-camadas--aberta {
+    @apply opacity-100 translate-y-0 scale-100 pointer-events-auto;
+  }
+
+  /* Item de camada da torrezinha: em repouso mostra só o glifo; em hover/foco vira poço com rótulo */
+  .torre-camadas__item {
+    @apply flex items-center gap-2 p-1.5 rounded-xl text-madeira-700 transition-all duration-200 cursor-pointer border border-transparent whitespace-nowrap;
+  }
+  .torre-camadas__glifo {
+    @apply w-7 h-7 flex items-center justify-center shrink-0 rounded-lg text-agua-700 transition-colors;
+  }
+  .torre-camadas__rotulo {
+    @apply text-xs pr-1.5 opacity-0 max-w-0 overflow-hidden transition-all duration-300 ease-out whitespace-nowrap;
+  }
+
+  /* Ao passar o cursor na torre (torre 'gorda'), todos os rótulos aparecem juntos */
+  .torre-camadas:hover .torre-camadas__rotulo,
+  .torre-camadas:focus-within .torre-camadas__rotulo {
+    @apply opacity-100 max-w-xs;
+  }
+
+  /* Rótulo de camada: padrão em tom Rocha secundário */
+  .torre-camadas__rotulo {
+    @apply text-rocha-700 font-medium;
+    filter: none;
+  }
+
+  /* Estado ativo em repouso (quando nenhum item da torre está sob o cursor):
+     a camada ativa exibe anel seletor ciano, iluminação e rótulo Madeira */
+  .torre-camadas__item--ativo {
+    @apply ring-1 ring-agua-500/70 bg-white/20;
+  }
+  .torre-camadas__item--ativo .torre-camadas__glifo {
+    @apply text-agua-700;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .torre-camadas__item--ativo .torre-camadas__rotulo {
+    @apply text-madeira-700 font-bold;
+    filter: none;
+  }
+
+  /* Hover/Foco sobre qualquer item da torre (cima->baixo ou baixo->cima):
+     Escavação em poço rebaixado (.card-well) + seletor ciano luminoso + rótulo Madeira */
+  .torre-camadas__item:hover,
+  .torre-camadas__item:focus-visible {
+    @apply rounded-xl bg-white/35 border-white/50 ring-1 ring-agua-500/70;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+  }
+  .torre-camadas__item:hover .torre-camadas__glifo,
+  .torre-camadas__item:focus-visible .torre-camadas__glifo {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .torre-camadas__item:hover .torre-camadas__rotulo,
+  .torre-camadas__item:focus-visible .torre-camadas__rotulo {
+    @apply text-madeira-700 font-bold;
+    filter: none;
+  }
+
+  /* Quando a torre tem algum item sob o cursor:
+     O item ativo que NÃO estiver sob o cursor cede temporariamente o seletor ciano
+     e volta ao tom Rocha secundário, permitindo que o seletor migre com total
+     simetria em qualquer direção (cima->baixo ou baixo->cima) */
+  .torre-camadas:has(.torre-camadas__item:hover) .torre-camadas__item--ativo:not(:hover),
+  .torre-camadas:has(.torre-camadas__item:focus-visible) .torre-camadas__item--ativo:not(:focus-visible),
+  .torre-camadas.has-item-hover .torre-camadas__item--ativo:not(:hover) {
+    @apply ring-0 bg-transparent;
+    box-shadow: none !important;
+  }
+  .torre-camadas:has(.torre-camadas__item:hover) .torre-camadas__item--ativo:not(:hover) .torre-camadas__glifo,
+  .torre-camadas:has(.torre-camadas__item:focus-visible) .torre-camadas__item--ativo:not(:focus-visible) .torre-camadas__glifo,
+  .torre-camadas.has-item-hover .torre-camadas__item--ativo:not(:hover) .torre-camadas__glifo {
+    filter: none;
+  }
+  .torre-camadas:has(.torre-camadas__item:hover) .torre-camadas__item--ativo:not(:hover) .torre-camadas__rotulo,
+  .torre-camadas:has(.torre-camadas__item:focus-visible) .torre-camadas__item--ativo:not(:focus-visible) .torre-camadas__rotulo,
+  .torre-camadas.has-item-hover .torre-camadas__item--ativo:not(:hover) .torre-camadas__rotulo {
+    @apply text-rocha-700 font-medium;
+    filter: none;
+  }
+
+  /* ==================== BANCADA DE DESENHO (SPEC design/018) ==================== */
+
+  /* .bancada-alca — a paleta que abre, fecha e CARREGA a bancada: clique alterna, arrasto move.
+     Vive ENFIADA sob a barra (z abaixo dela), sobrando só a lingueta — é o que a faz ler como
+     puxador e não como mais uma fileira de glifos. Material composto no markup. */
+  .bancada-alca {
+    @apply shrink-0 grid place-items-center cursor-grab touch-none rounded-lg;
+    transition: opacity 200ms linear;
+  }
+  .bancada-alca:active,
+  .bancada-alca--pega {
+    @apply cursor-grabbing;
+  }
+  /* Duas faces na MESMA célula da grade: o estojo diz o que a bancada guarda enquanto ela
+     está guardada; aberta, o que importa é poder pegá-la, e aí o que se vê é o fio. */
+  .bancada-alca__estojo,
+  .bancada-alca__fio {
+    grid-area: 1 / 1;
+    @apply transition-all duration-300;
+  }
+  .bancada-alca__estojo {
+    @apply w-5 h-5 origin-center;
+  }
+  .bancada-alca__fio {
+    @apply w-8 h-1.5;
+  }
+  .bancada-conjunto--fechada .bancada-alca__fio {
+    @apply opacity-0;
+  }
+  .bancada-conjunto:not(.bancada-conjunto--fechada) .bancada-alca__estojo {
+    @apply opacity-0;
+  }
+  /* O fio é o mesmo par repouso/entintado da .gaveta-alca: estica e enche de água sob o cursor. */
+  .bancada-alca:hover .bancada-alca__fio,
+  .bancada-alca:focus-visible .bancada-alca__fio,
+  .bancada-alca--pega .bancada-alca__fio {
+    @apply w-11;
+    background-color: rgba(0, 119, 182, 0.5);
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+  }
+  /* Swell: a afordância de pegada, emprestada do zoom da .pilula-mapa — o glifo incha e enche
+     de água em vez de ganhar crachá de botão. */
+  .bancada-alca:hover .bancada-alca__estojo,
+  .bancada-alca:focus-visible .bancada-alca__estojo,
+  .bancada-alca--pega .bancada-alca__estojo {
+    @apply scale-[1.35];
+    filter: url(#etched-onsen) drop-shadow(0 0 8px rgba(72, 202, 228, 0.9));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .bancada-alca:focus-visible {
+    @apply outline-none;
+  }
+
+  /* .bancada-desenho__categoria — a geometria. Ciano em repouso, como o .torre-camadas__glifo. */
+  .bancada-desenho__categoria {
+    @apply w-9 h-9 rounded-xl grid place-items-center cursor-pointer
+           border border-transparent transition-all duration-200;
+  }
+  .bancada-desenho__categoria svg {
+    @apply w-5 h-5 text-agua-700 transition-all duration-200;
+  }
+  .bancada-desenho__categoria:hover svg {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .bancada-desenho__categoria:hover {
+    @apply bg-white/60;
+    box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
+  }
+  .bancada-desenho__categoria:active {
+    @apply scale-95;
+  }
+  /* Submenu aberto ou ferramenta presa: nos dois casos o gelo AFUNDA — quem está no comando é
+     quem tem o poço. */
+  .bancada-desenho__categoria[aria-expanded="true"],
+  .bancada-desenho__categoria--ativa {
+    @apply bg-white/35 border-white/50 ring-1 ring-agua-500/70;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+  }
+  .bancada-desenho__categoria[aria-expanded="true"] svg,
+  .bancada-desenho__categoria--ativa svg {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+
+  /* .bancada-desenho__controle — editar, apagar, concluir, suspender e encaixe.
+     Não são ferramentas: governam o desenho. Tinta MADEIRA no poço, como o par (+/−) do zoom. */
+  .bancada-desenho__controle {
+    @apply w-8 h-8 rounded-lg grid place-items-center cursor-pointer
+           text-madeira-700 border border-transparent transition-all duration-200;
+  }
+  .bancada-desenho__controle svg {
+    @apply w-4 h-4 transition-all duration-200;
+  }
+  /* Hover incha e broca ciano — a mesma afordância de .bancada-desenho__categoria e
+     .bancada-submenu__tool, só que partindo da madeira. Só troca cor e filtro (a mesma
+     propriedade dos estados abaixo): num controle já ligado/ativo/armado, o hover ganha o
+     inchaço mas a cor do estado permanece por cima — nunca fica mudo. */
+  .bancada-desenho__controle:hover:not([aria-disabled="true"]) {
+    @apply bg-white/60;
+    box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
+  }
+  .bancada-desenho__controle:hover:not([aria-disabled="true"]) svg {
+    @apply scale-110 text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .bancada-desenho__controle:active:not([aria-disabled="true"]) {
+    @apply scale-95;
+  }
+  /* Indisponível fica em repouso e para de responder — mas SEM disabled nativo, que bloqueia até
+     o hover e cala o title do botão. `aria-disabled` só troca o cursor; quem barra o clique é o
+     JS. Nada de opacity: o glifo não pode sumir e o lugar virar buraco no corpo. */
+  .bancada-desenho__controle[aria-disabled="true"] {
+    @apply cursor-default;
+  }
+  /* Encaixe ligado: a tinta vira água. Estado permanente, não modo — nunca afunda. */
+  .bancada-desenho__controle--ligado {
+    @apply text-agua-700;
+  }
+  .bancada-desenho__controle--ligado svg {
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+  /* O disparador do submenu AFUNDA e vira água enquanto a linha dele está aberta: o poço diz
+     quem está no comando, e o ciano diz que ele está em uso — os dois sinais da linha de baixo. */
+  .bancada-desenho__controle--ativo,
+  .bancada-desenho__controle[aria-expanded="true"] {
+    @apply text-agua-700;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  .bancada-desenho__controle--ativo svg,
+  .bancada-desenho__controle[aria-expanded="true"] svg {
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  /* Apagar armado: o único lugar da bancada com cor semântica — modo destrutivo ligado é estado
+     do sistema, não escolha de ferramenta. */
+  .bancada-desenho__controle--armado-apagar {
+    @apply text-error;
+  }
+  .bancada-desenho__controle--armado-apagar svg {
+    filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.45));
+  }
+  /* Concluir e suspender seguem a mesma regra dos vizinhos: madeira parados, água armados. */
+  .bancada-desenho__controle--armado {
+    @apply text-agua-700;
+  }
+  .bancada-desenho__controle--armado svg {
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+  }
+
+  /* .bancada-submenu__tool — o glifo da linha que se abre. */
+  .bancada-submenu__tool {
+    @apply w-9 h-9 rounded-xl grid place-items-center cursor-pointer
+           border border-transparent transition-all duration-200;
+  }
+  .bancada-submenu__tool svg {
+    @apply w-5 h-5 text-agua-700 transition-all duration-200;
+  }
+  .bancada-submenu__tool:hover:not([aria-disabled="true"]) {
+    @apply bg-white/50 border-white/60;
+  }
+  .bancada-submenu__tool:hover:not([aria-disabled="true"]) svg {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .bancada-submenu__tool--ativa {
+    @apply bg-white/35 border-white/50 ring-1 ring-agua-500/70;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+  }
+  .bancada-submenu__tool--ativa svg {
+    @apply text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  /* Indisponível não apaga: some do olho e vira buraco no corpo — é a linha de baixo que ensinou
+     a regra (ver .bancada-desenho__controle), inclusive o `aria-disabled` no lugar do nativo. */
+  .bancada-submenu__tool[aria-disabled="true"] {
+    @apply cursor-default;
+  }
+
+  /* .bancada-desenho — o corpo inteiriço. O material é o .glass-panel-thick, composto no markup:
+     a segunda densidade é a de vidro SOBRE INTERFACE — sobre a ortofoto o fino deixava passar
+     demais. */
+  .bancada-desenho {
+    @apply relative z-10 flex gap-1 p-1.5 text-base-content;
+  }
+  .bancada-desenho__ferramentas {
+    @apply flex items-center justify-center gap-1;
+  }
+  /* Os poços são .card-well, empilhados no markup. Dentro do vidro espesso eles ficam só com o
+     degrau, pela regra de vidro sobre vidro (SPEC design/009) — a pintura é uma por pilha. */
+  .bancada-desenho__poco,
+  .bancada-submenu {
+    @apply flex items-center justify-center gap-0.5 p-1 rounded-xl;
+  }
+  .bancada-desenho__divisa {
+    @apply shrink-0;
+  }
+
+  /* .bancada-submenu — a linha que se abre DENTRO do corpo, sempre imediatamente acima da linha
+     de quem a abriu. Fechada, não existe no fluxo: é o corpo que encolhe, não um painel que some. */
+  .bancada-submenu--fechado {
+    @apply hidden;
+  }
+  /* Enquanto o corpo cresce ou encolhe, a medida vem em px da orquestração — nem largura nem
+     altura interpolam a partir de `auto`. */
+  .bancada-desenho--crescendo {
+    @apply overflow-hidden;
+    transition: width 320ms cubic-bezier(0.4, 0, 0.2, 1), height 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* .bancada-conjunto — o corpo que anda pela tela. `data-dock` diz o EIXO e de que lado ficam
+     a alça e o submenu; `--solta` apenas neutraliza a âncora. Separar as duas coisas é o que
+     permite arrastar uma bancada em pé sem que ela se deite no meio do caminho. */
+  .bancada-conjunto {
+    @apply absolute z-20 flex transition-transform duration-500 ease-in-out;
+  }
+  .bancada-pilha {
+    @apply relative flex;
+  }
+  .bancada-conjunto--solta {
+    @apply translate-x-0 translate-y-0;
+  }
+  /* Arrastando, a transição sai: ela existe para o encaixe e para o abrir/fechar, não para
+     perseguir o ponteiro. */
+  .bancada-conjunto--arrastando {
+    @apply transition-none;
+  }
+
+  /* --- Transmutação: ao trocar de eixo, a bancada esvazia, vira placa lisa, se estica no eixo
+         novo e só então recebe os glifos de volta. --- */
+  .bancada-conjunto--transmutando .bancada-desenho__ferramentas,
+  .bancada-conjunto--transmutando .bancada-desenho__poco,
+  .bancada-conjunto--transmutando .bancada-alca {
+    @apply opacity-0;
+  }
+  .bancada-conjunto--transmutando .bancada-desenho__ferramentas,
+  .bancada-conjunto--transmutando .bancada-desenho__poco {
+    transition: opacity 160ms linear;
+  }
+  .bancada-conjunto--transmutando .bancada-desenho {
+    @apply overflow-hidden;
+    transition: width 420ms cubic-bezier(0.4, 0, 0.2, 1), height 420ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* --- Encaixe no rodapé: a bancada deitada. É também o estado de quem não está encaixado em
+         lateral nenhuma: solta no meio da tela, ela se deita. --- */
+  .bancada-conjunto[data-dock="bottom"] {
+    @apply bottom-0 left-1/2 -translate-x-1/2 pb-6;
+  }
+  .bancada-conjunto[data-dock="bottom"] .bancada-desenho {
+    @apply flex-col;
+  }
+  .bancada-conjunto[data-dock="bottom"] .bancada-alca {
+    @apply w-full h-7;
+  }
+  .bancada-conjunto[data-dock="bottom"].bancada-conjunto--fechada:not(.bancada-conjunto--solta) {
+    @apply translate-y-[calc(100%-2.15rem)];
+  }
+
+  /* --- Encaixe à esquerda: o poço encosta na borda, as geometrias ficam por dentro --- */
+  .bancada-conjunto[data-dock="left"] {
+    @apply left-0 top-1/2 -translate-y-1/2 pl-6;
+  }
+  .bancada-conjunto[data-dock="left"] .bancada-desenho {
+    @apply flex-row-reverse;
+  }
+  .bancada-conjunto[data-dock="left"].bancada-conjunto--fechada:not(.bancada-conjunto--solta) {
+    @apply -translate-x-[calc(100%-2.15rem)];
+  }
+
+  /* --- Encaixe à direita: o espelho --- */
+  .bancada-conjunto[data-dock="right"] {
+    @apply right-0 top-1/2 -translate-y-1/2 pr-6;
+  }
+  .bancada-conjunto[data-dock="right"] .bancada-desenho {
+    @apply flex-row;
+  }
+  .bancada-conjunto[data-dock="right"].bancada-conjunto--fechada:not(.bancada-conjunto--solta) {
+    @apply translate-x-[calc(100%-2.15rem)];
+  }
+
+  /* --- O que a rotação vira em pé, nos dois encaixes laterais --- */
+  .bancada-conjunto[data-dock="left"] .bancada-alca,
+  .bancada-conjunto[data-dock="right"] .bancada-alca {
+    @apply h-full w-7;
+  }
+  .bancada-conjunto[data-dock="left"] .bancada-desenho__ferramentas,
+  .bancada-conjunto[data-dock="right"] .bancada-desenho__ferramentas,
+  .bancada-conjunto[data-dock="left"] .bancada-desenho__poco,
+  .bancada-conjunto[data-dock="right"] .bancada-desenho__poco,
+  .bancada-conjunto[data-dock="left"] .bancada-submenu,
+  .bancada-conjunto[data-dock="right"] .bancada-submenu {
+    @apply flex-col;
+  }
+  /* O fio da alça corre no eixo da faixa. */
+  .bancada-conjunto[data-dock="left"] .bancada-alca__fio,
+  .bancada-conjunto[data-dock="right"] .bancada-alca__fio {
+    @apply w-1.5 h-8;
+  }
+  .bancada-conjunto[data-dock="left"] .bancada-alca:hover .bancada-alca__fio,
+  .bancada-conjunto[data-dock="right"] .bancada-alca:hover .bancada-alca__fio,
+  .bancada-conjunto[data-dock="left"] .bancada-alca--pega .bancada-alca__fio,
+  .bancada-conjunto[data-dock="right"] .bancada-alca--pega .bancada-alca__fio {
+    @apply w-1.5 h-11;
+  }
+
+  /* A divisa acompanha o eixo: fio em pé deitado, fio deitado em pé. */
+  .bancada-conjunto[data-dock="bottom"] .bancada-desenho__divisa {
+    @apply w-px h-5 mx-1;
+    background-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(7, 58, 84, 0.16) 30%,
+      rgba(7, 58, 84, 0.16) 70%,
+      transparent 100%
+    );
+  }
+  .bancada-conjunto[data-dock="left"] .bancada-desenho__divisa,
+  .bancada-conjunto[data-dock="right"] .bancada-desenho__divisa {
+    @apply h-px w-5 my-1;
+    background-image: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(7, 58, 84, 0.16) 30%,
+      rgba(7, 58, 84, 0.16) 70%,
+      transparent 100%
+    );
+  }
+
+  /* Solta e fechada, some tudo menos a faixa: vira um estojo pousado onde o usuário largou.
+     Declarado depois das faixas, porque é regra de componente contra regra de componente. */
+  .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-desenho__ferramentas,
+  .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-desenho__poco,
+  .bancada-conjunto--solta.bancada-conjunto--fechada .bancada-submenu {
+    @apply hidden;
+  }
+
+  /* Recolhida, a bancada troca de material: o vidro fino (.glass-panel) das outras pílulas da
+     home — moldura-fixa, pilula-mapa —, não o espesso do markup. Ativa, o corpo lê melhor grosso
+     sobre a ortofoto; guardada, ela é só mais um chip da casca, e o padrão é o chip fino. Repinta
+     só as propriedades do material: a classe no HTML continua sendo .glass-panel-thick. */
+  .bancada-conjunto--fechada .bancada-desenho {
+    @apply backdrop-blur-[18px] bg-gradient-to-br from-white/65 via-white/45 to-white/30 border-white/60;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 32px rgba(7, 58, 84, 0.25), 0 0 24px rgba(72, 202, 228, 0.25);
+  }
+
+  /* .torre-snap — a torrezinha do encaixe, irmã da .torre-camadas. */
+  .torre-snap {
+    @apply absolute bottom-full left-0 mb-2.5 flex items-center gap-3 px-3 py-2.5
+           transition-all duration-300 ease-out origin-bottom-left;
+  }
+  .torre-snap--fechada {
+    @apply opacity-0 translate-y-3 scale-95 pointer-events-none;
+  }
+  .torre-snap__texto {
+    @apply flex flex-col gap-0.5 whitespace-nowrap;
+  }
+  .torre-snap__rotulo {
+    @apply text-xs font-bold text-madeira-700 leading-none;
+  }
+  .torre-snap__dica {
+    @apply text-[10px] text-rocha-700 leading-none;
+  }
+
+  /* Recolhe sob modal como a .moldura-fixa, mas sem a classe dela: o transform de recolhimento
+     brigaria com o deslize de fechar e com o encaixe. */
+  :root:has(.modal-toggle:checked) .bancada-conjunto {
+    @apply opacity-0 pointer-events-none;
+  }
+
+  /* ==================== ÁTOMO · .linha-desenho (SPEC design/020) ==================== */
+  /* A linha selecionável de um desenho, no poço da gaveta. A escolha salta: o trilho da tinta do
+     tipo cresce em `::before`, e a placa vira gelo. O cursor acende em água, como o [data-ativo]
+     do .select-onsen. */
+  .linha-desenho {
+    @apply relative flex items-center gap-2.5 w-full text-left pl-4 pr-7 py-2 rounded-xl text-sm;
+    @apply border border-transparent cursor-pointer text-base-content transition-all duration-200;
+  }
+  .linha-desenho::before {
+    content: "";
+    @apply absolute left-1 top-1/2 -translate-y-1/2 w-1 h-0 rounded-full transition-all duration-200;
+    @apply bg-[var(--tinta-desenho)];
+  }
+  .linha-desenho:has(.linha-desenho__marca:checked) {
+    @apply font-bold bg-white/75 border-white/70;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),0_4px_14px_rgba(7,58,84,0.16),0_0_16px_rgba(72,202,228,0.28)];
+  }
+  .linha-desenho:has(.linha-desenho__marca:checked)::before { @apply h-7; }
+  /* Realce do cursor, como o [data-ativo] do .select-onsen: hover e foco de teclado. */
+  .linha-desenho:hover,
+  .linha-desenho:has(.linha-desenho__marca:focus-visible) {
+    @apply bg-agua-400/45 border-transparent text-rocha-950 outline-none;
+    @apply shadow-[inset_0_0_0_1px_rgba(0,150,199,0.5),0_2px_10px_rgba(0,150,199,0.25)];
+  }
+
+  .linha-desenho__marca { @apply sr-only; }
+  .linha-desenho__rotulo { @apply truncate; }
+  .linha-desenho__medida { @apply ml-auto shrink-0 font-medium tabular-nums text-base-content/70 transition-colors duration-200; }
+  .linha-desenho:has(.linha-desenho__marca:checked) .linha-desenho__medida,
+  .linha-desenho:hover .linha-desenho__medida { @apply text-inherit; }
+  /* O X de apagar mora em toda linha: nas não marcadas fica invisível, guardando a coluna que
+     mantém as medidas alinhadas. Em repouso é gravação (.etched no markup); sob o ponteiro incha e
+     enche de água, como o .btn-etched-swell. */
+  .linha-desenho__apagar {
+    @apply absolute top-0.5 right-0.5 flex items-center justify-center w-5 h-5 rounded-full cursor-pointer;
+    @apply transition-all duration-300 origin-center;
+  }
+  .linha-desenho__apagar svg { @apply w-3 h-3; }
+  .linha-desenho:not(:has(.linha-desenho__marca:checked)) .linha-desenho__apagar { @apply invisible; }
+  .linha-desenho__apagar:hover,
+  .linha-desenho__apagar:focus-visible {
+    @apply scale-[1.25] outline-none;
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* ==================== MOLÉCULA · .poco-desenhos (SPEC design/020) ==================== */
+  /* O poço de um tipo: a lista de .linha-desenho na tinta daquela geometria, sobre o .card-well
+     composto no HTML. .poco-desenhos__acoes é a âncora que a ação do tipo preenche — sem ação
+     inscrita, ela some (`empty:hidden`); sem o desenho selecionado no poço, ela recolhe. */
+  .poco-desenhos { @apply flex flex-col gap-1.5 p-2.5; }
+  .poco-desenhos--ponto    { --tinta-desenho: var(--color-agua-500); }
+  .poco-desenhos--linha    { --tinta-desenho: var(--color-accent); }
+  .poco-desenhos--poligono { --tinta-desenho: var(--color-sakura-500); }
+  /* A grade 0fr → 1fr do .painel-onsen anima a altura. Recolhida, a margem negativa devolve o gap
+     do poço, e o invisible tira os botões do Tab. */
+  .poco-desenhos__acoes {
+    @apply grid -mt-1.5 opacity-0 invisible transition-all duration-300 ease-in-out empty:hidden;
+    grid-template-rows: 0fr;
+  }
+  .poco-desenhos:has(.linha-desenho__marca:checked) .poco-desenhos__acoes {
+    @apply mt-0 opacity-100 visible;
+    grid-template-rows: 1fr;
+  }
+  /* Sem padding, senão a trilha não chega a zero; o clip-margin deixa a sombra da placa vazar.
+     min-w-0: sem ele a coluna da grade cresce com o rótulo, e o truncate do .item-menu não corta. */
+  .poco-desenhos__acoes-recorte {
+    @apply min-h-0 min-w-0 overflow-clip;
+    overflow-clip-margin: 1.5rem;
+  }
+
+  /* ==================== MOLÉCULA · .placa-lista (SPEC localizacao_lote/003) ==================== */
+  /* A placa assentada que guarda uma lista curta dentro de um poço — as ações do .poco-desenhos. O
+     .glass-panel entra composto no HTML; a placa sobe do poço pela aresta de luz e pela sombra. */
+  .placa-lista {
+    @apply flex flex-col gap-1.5 p-2.5 transition-all duration-300;
+    border-radius: var(--radius-placa);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 6px 16px rgba(7, 58, 84, 0.28),
+      0 0 18px rgba(72, 202, 228, 0.22);
+  }
+  .placa-lista:hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 10px 22px rgba(7, 58, 84, 0.32),
+      0 0 24px rgba(72, 202, 228, 0.32);
+  }
+  .placa-lista__cabecalho { @apply flex items-center gap-2 px-1; }
+  .placa-lista__contagem {
+    @apply ml-auto text-[11px] font-bold tabular-nums leading-none px-2 py-1 rounded-full;
+    @apply bg-rocha-950/8 text-rocha-700;
+  }
+  .placa-lista__conteudo { @apply flex flex-col gap-1.5; }
+
+  /* VARIANTE · .table-onsen-compacta (SPEC localizacao_lote/003) — a .table-onsen em linha baixa,
+     para a tabela que divide a altura com o mapa. */
+  .table-onsen-compacta thead th { @apply p-1.5; }
+  .table-onsen-compacta tbody td { @apply px-3 py-1.5 text-[13px]; }
+
+  /* ÁTOMO · .btn-lixeira (SPEC localizacao_lote/004) — a lixeira da linha da tabela, com o visual do
+     controle de apagar da bancada: madeira em repouso; sob o ponteiro incha, enche de água e brilha. */
+  .btn-lixeira {
+    @apply w-7 h-7 rounded-lg grid place-items-center cursor-pointer
+           text-madeira-700 border border-transparent transition-all duration-200;
+  }
+  .btn-lixeira svg { @apply w-4 h-4 transition-all duration-200; }
+  .btn-lixeira:hover,
+  .btn-lixeira:focus-visible {
+    @apply bg-white/60 outline-none;
+    box-shadow: 0 0 12px rgba(72, 202, 228, 0.35);
+  }
+  .btn-lixeira:hover svg,
+  .btn-lixeira:focus-visible svg {
+    @apply scale-110 text-agua-600;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.75));
+  }
+  .btn-lixeira:active { @apply scale-95; }
+
+  /* VARIANTE · .gaveta-inferior-rasa (SPEC localizacao_lote/003) — altura fixa em vez de teto.
+     Abaixo do tablet vale a gaveta de tela inteira. */
+  @media (width >= 48rem) {
+    .gaveta-inferior-rasa { height: var(--gaveta-rasa-altura); }
+    .gaveta-inferior-rasa .gaveta-cabecalho { @apply pb-2; }
+    .gaveta-inferior-rasa .gaveta-coluna { @apply py-3; }
+
+    /* A gaveta lateral sobe a borda de baixo enquanto a rasa está aberta: nada se sobrepõe. */
+    .tela-home .gaveta-lateral { transition-property: transform, bottom; }
+    .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa) .gaveta-lateral {
+      bottom: calc(var(--gaveta-rasa-altura) + 0.75rem);
+    }
+  }
+
+  /* A rasa sobe devagar e assenta: mais longa que a gaveta comum, e só desacelerando. Chegando pelo
+     swap já aberta, ela sobe do rodapé em vez de aparecer pronta. */
+  .gaveta-inferior-rasa { @apply duration-1000 ease-out; }
+  @starting-style {
+    .gaveta-toggle:checked + .gaveta-inferior-rasa { @apply translate-y-full; }
+  }
+
+  /* ÁTOMO · .paleta-gaveta-inferior (SPEC localizacao_lote/003) — a .paleta-gaveta virada para o
+     rodapé: meio disco sobre a borda de cima da placa, centrado. Composta no HTML com .paleta-gaveta;
+     só aparece com a gaveta rasa recolhida. */
+  .paleta-gaveta-inferior {
+    @apply top-auto left-1/2 bottom-full -translate-x-1/2 translate-y-0 opacity-0 pointer-events-none;
+    @apply w-[4.5rem] h-9 rounded-none rounded-t-full border-l border-b-0 bg-gradient-to-t;
+    @apply shadow-[inset_0_1px_0_rgba(255,255,255,1),0_-8px_24px_rgba(7,58,84,0.28),0_0_20px_rgba(72,202,228,0.25)];
+  }
+
+  /* ESTADO · .gaveta-inferior-rasa recolhida — a alça recolhe, a placa sai da tela e só a paleta
+     fica na borda, como a gaveta lateral fechada. O controle mora DENTRO da placa: recolher não
+     desmarca o .gaveta-toggle, que só o ✕ fecha. */
+  .gaveta-inferior-recolher { @apply sr-only; }
+  .gaveta-toggle:checked + .gaveta-inferior-rasa:has(> .gaveta-inferior-recolher:checked) { @apply translate-y-full; }
+  .gaveta-toggle:checked + .gaveta-inferior-rasa:has(> .gaveta-inferior-recolher:checked) > .paleta-gaveta-inferior {
+    @apply opacity-100 pointer-events-auto;
+  }
+  /* Recolhida, a lateral volta à altura inteira. */
+  .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa > .gaveta-inferior-recolher:checked) .gaveta-lateral {
+    @apply bottom-0;
+  }
+
+  @media (width >= 48rem) {
+    /* VARIANTE · .gaveta-inferior-puxavel (SPEC design/022) — composta no HTML com a
+       .gaveta-inferior-rasa. A casca relê a medida da rasa; --gaveta-puxada-altura é escrita pelo
+       puxar_gaveta.js e não existe antes do primeiro arrasto. O piso e o teto são daqui, e não do
+       script: o dvh do teto se recalcula sozinho quando a janela muda. */
+    .tela-home:has(.gaveta-inferior-puxavel) {
+      --gaveta-rasa-altura: clamp(
+        var(--gaveta-puxavel-piso),
+        var(--gaveta-puxada-altura, var(--gaveta-puxavel-partida)),
+        var(--gaveta-puxavel-teto)
+      );
+    }
+
+    /* O teto de meia tela da .gaveta-inferior sai: quem limita a puxável é o clamp acima. */
+    .gaveta-inferior-puxavel { @apply max-h-none; }
+
+    /* ÁTOMO · a alça da puxável — dois fios, um sobre o outro. */
+    .gaveta-inferior-puxavel > .gaveta-alca { @apply flex-col gap-1 cursor-ns-resize touch-none select-none; }
+    .gaveta-inferior-puxavel > .gaveta-alca .etched-line { @apply h-1; }
+
+    /* ESTADO · puxando — a marca fica na casca: os fios seguem entintados com o ponteiro longe da
+       alça, e a gaveta lateral acompanha sem a transição do bottom, que a deixaria para trás. */
+    .tela-home[data-puxando] .gaveta-inferior-puxavel > .gaveta-alca .etched-line {
+      @apply w-24;
+      background-color: rgba(0, 119, 182, 0.5);
+      filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+    }
+    .tela-home[data-puxando] .gaveta-lateral { transition-property: transform; }
+  }
+  /* Abaixo do tablet a gaveta é a tela e não se puxa: sobra o fio único da alça comum. */
+  @media (width < 48rem) {
+    .gaveta-inferior-puxavel > .gaveta-alca .etched-line + .etched-line { @apply hidden; }
+  }
+
+  /* VARIANTE · .gaveta-inferior-panorama (SPEC street_view/002) — composta no HTML com a
+     .gaveta-inferior-rasa, de quem herda a alça, a paleta, o recolher e a saída, e com a
+     .gaveta-inferior-puxavel, a quem diz em que altura nasce. A gaveta lateral para acima dela pela
+     regra que já existe. */
+  .tela-home:has(.gaveta-inferior-panorama) { --gaveta-puxavel-partida: var(--gaveta-panorama-altura); }
+
+  /* MOLÉCULA · .palco-panorama (SPEC street_view/002) — o assento do panorama, composto no HTML com
+     a .gaveta-figura. __tela é onde a imagem entra; __espera e __aviso ficam por cima dela. */
+  .palco-panorama { @apply relative flex-1 min-h-0 w-full; }
+  .palco-panorama__tela { @apply absolute inset-0; }
+  .palco-panorama__espera { @apply absolute inset-0 z-10 grid place-items-center text-agua-600; }
+  .palco-panorama__aviso {
+    @apply absolute top-3 left-1/2 -translate-x-1/2 z-10 w-max max-w-[calc(100%-1.5rem)] p-1.5 rounded-2xl;
+  }
+
+  /* ÁTOMO · .pino-panorama (SPEC street_view/002) — o pino do mapa enquanto o Street View está
+     aberto, na tinta do ponto. Vai dentro do divIcon do Leaflet: quem posiciona é o marcador, quem
+     incha é o SVG. */
+  .pino-panorama {
+    @apply block w-9 h-9 text-agua-500 cursor-grab origin-bottom transition-transform duration-200;
+    filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.9)) drop-shadow(0 2px 3px rgba(7, 58, 84, 0.45));
+  }
+  .pino-panorama:hover { @apply scale-110; }
+  .pino-panorama.pino-panorama--arrastando { @apply scale-125 cursor-grabbing; }
+  .pino-panorama__corpo { @apply fill-current stroke-white; }
+  .pino-panorama__olho { @apply fill-white; }
+
+  /* ÁTOMO · .realce-resultado / .realce-resultado-forte (SPEC localizacao_lote/003) — o halo da
+     feature de resultado de ação realçada no mapa, na tinta de rocha dos resultados. Vai no <path>
+     do Leaflet; traço e preenchimento vêm do interacao_resultado.js. */
+  .realce-resultado { filter: drop-shadow(0 0 4px rgba(65, 90, 119, 0.75)); }
+  .realce-resultado-forte {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 10px rgba(46, 69, 96, 0.9));
+  }
+
+  /* ORGANISMO · troca da gaveta lateral (SPEC localizacao_lote/003) — o troca_gaveta.js diz no
+     alvo do swap como a gaveta nova chega: "entrada" desliza, "troca" funde só o conteúdo do
+     painel, "mesma" não anima. */
+  @starting-style {
+    [data-troca-gaveta="entrada"] > .gaveta-lateral:has(> .gaveta-lateral-toggle:checked) {
+      transform: translateX(-100%);
+    }
+    [data-troca-gaveta="troca"] .gaveta-lateral-painel > * { opacity: 0; }
+  }
+  [data-troca-gaveta="troca"] .gaveta-lateral-painel > * { @apply transition-opacity duration-150 ease-in-out; }
+  [data-troca-gaveta="troca"].htmx-swapping .gaveta-lateral-painel > * { @apply opacity-0; }
+
+  /* ORGANISMO · contexto de ação (SPEC localizacao_lote/003) — enquanto a marca existe, a busca
+     fica recolhida, como sob a gaveta lateral aberta. */
+  .tela-home:has(#contexto-acao[data-contexto-acao]) .search-hero {
+    @apply opacity-0 -translate-y-5 scale-95 pointer-events-none invisible;
+  }
+
+  /* ESTADO · saída da gaveta de resultado (SPEC localizacao_lote/004) — sem JS. O aviso de fechar
+     aberto recolhe a placa como se recolhida e mostra a paleta; o aviso entra depois da descida. */
+  .gaveta-toggle:checked + .gaveta-inferior-rasa:has(.gaveta-inferior-aviso-fechar[open]) { @apply translate-y-full; }
+  .gaveta-toggle:checked + .gaveta-inferior-rasa:has(.gaveta-inferior-aviso-fechar[open]) > .paleta-gaveta-inferior {
+    @apply opacity-100;
+  }
+  .gaveta-inferior-aviso-fechar[open] { transition-delay: 400ms; }
+
+  /* Encerramento em curso (.htmx-swapping no alvo): a placa desce, paleta e aviso somem em fade.
+     A duração casa com o swap:500ms do _fechar_gaveta.html e do _aviso_limpeza.html. */
+  #gaveta-inferior-conteudo.htmx-swapping .gaveta-inferior-rasa { @apply translate-y-full duration-500; }
+  #gaveta-inferior-conteudo.htmx-swapping :is(.paleta-gaveta-inferior, .gaveta-inferior-aviso-fechar) {
+    @apply opacity-0 duration-500;
+  }
+
+  /* ==================== HISTÓRICO DA GAVETA LATERAL (SPEC design/021) ==================== */
+
+  /* ÁTOMO · .glifo-gaveta — o glifo do tipo de gaveta, na tinta da geometria que ela põe no mapa. */
+  .glifo-gaveta { @apply w-5 h-5 shrink-0 text-rocha-700 transition-all duration-200; }
+  .glifo-gaveta--lote { @apply text-sakura-600; }
+  .glifo-gaveta--endereco,
+  .glifo-gaveta--endereco_externo { @apply text-agua-600; }
+  .glifo-gaveta--logradouro { @apply text-accent; }
+  .glifo-gaveta--desenhos { @apply text-madeira-600; }
+
+  /* ÁTOMO · .item-historico — uma gaveta na lista do histórico. Em repouso é só glifo e resumo;
+     pré-selecionada, afunda em poço com o seletor ciano, como o item da .torre-camadas. */
+  .item-historico {
+    @apply w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[15px];
+    @apply border border-transparent cursor-pointer outline-none transition-all duration-200;
+  }
+  .item-historico__resumo { @apply flex-1 min-w-0 truncate font-medium text-rocha-700 transition-colors duration-200; }
+  .item-historico--pre,
+  .item-historico:is(:hover, :focus-visible) {
+    @apply bg-white/35 border-white/50;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+  }
+  .item-historico--pre .item-historico__resumo,
+  .item-historico:is(:hover, :focus-visible) .item-historico__resumo { @apply text-madeira-700 font-bold; }
+  .item-historico--pre .glifo-gaveta,
+  .item-historico:is(:hover, :focus-visible) .glifo-gaveta { @apply drop-shadow-[0_0_6px_rgba(72,202,228,0.75)]; }
+  /* A volta do poço ao destino do Voltar espera um instante; sob o cursor, nada espera. */
+  .item-historico--pre,
+  .item-historico--pre :is(.item-historico__resumo, .glifo-gaveta) { @apply delay-200; }
+  .item-historico:is(:hover, :focus-visible),
+  .item-historico:is(:hover, :focus-visible) :is(.item-historico__resumo, .glifo-gaveta) { @apply delay-0; }
+
+  /* ÁTOMO · .dica-trava — a interrogação ao lado do controle que não responde. O motivo mora no
+     .tooltip empilhado no HTML; o foco de teclado entra pelo glifo. */
+  .dica-trava {
+    @apply hidden shrink-0 w-6 h-6 rounded-full items-center justify-center cursor-help;
+    @apply text-agua-700 bg-agua-400/15 border border-agua-600/30 transition-all duration-200;
+  }
+  .dica-trava svg { @apply w-3.5 h-3.5 outline-none; }
+  .dica-trava:hover { @apply bg-agua-400/30; }
+  .dica-trava:has(:focus-visible) { @apply ring-2 ring-agua-400/70; }
+  /* O balão cabe na gaveta: mais largo, o rolador do corpo o cortaria. */
+  .dica-trava[data-tip]::before { @apply max-w-52 text-left; }
+  /* Só existe enquanto a gaveta inferior é dona do mapa. */
+  .tela-home:has(#contexto-acao[data-contexto-acao]) .dica-trava { @apply inline-flex; }
+
+  /* ESTADO · travado — o que troca a cena, enquanto a gaveta inferior é dona do mapa. O `inert`
+     vem do trava_cena.js. */
+  [data-troca-cena] { @apply transition-opacity duration-300; }
+  [data-troca-cena][inert] { @apply opacity-40 grayscale; }
+
+  /* ORGANISMO · .gaveta-lateral-voltar — o canto superior direito da gaveta lateral. Filho da
+     casca, e não do painel, como a paleta: dentro do painel o gelo da lista não embaçaria o mapa.
+     Sem lugar no fluxo: o conteúdo chega por carga própria, e nada pula quando ele assenta. */
+  .gaveta-lateral-voltar { @apply absolute top-4 right-7 z-20 flex items-center gap-2 pointer-events-auto; }
+  [data-troca-gaveta="troca"] .gaveta-lateral-voltar { @apply transition-opacity duration-150 ease-in-out; }
+  [data-troca-gaveta="troca"].htmx-swapping .gaveta-lateral-voltar { @apply opacity-0; }
+
+  /* MOLÉCULA · .voltar-gaveta — o Voltar gravado e, saindo dele para a direita, a lista do
+     histórico. O botão é o .btn-etched e a lista é a .torre-ajustes, compostos no HTML: a torre
+     abre fora da gaveta, sobre o mapa. */
+  .voltar-gaveta { @apply relative inline-flex; }
+  /* A ponte cobre o caminho do botão até a lista: sem ela o ponteiro perde o hover no vão. */
+  .voltar-gaveta::before { content: ""; @apply absolute top-0 left-full w-10 h-12; }
+  .voltar-gaveta > .btn-etched:focus-visible { @apply outline-none; }
+  .voltar-gaveta > .btn-etched:disabled { @apply opacity-45 pointer-events-none; }
+  /* Com a lista no ar o sulco segue cheio de água, mesmo com o ponteiro já sobre ela. */
+  .voltar-gaveta:is(:hover, :focus-within) > .btn-etched:not(:disabled) {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* A torre troca de eixo: nasce no topo, logo depois da borda da gaveta, e desliza na horizontal.
+     ml-10 é o recuo do canto (right-7) mais a folga até a borda. */
+  .voltar-gaveta__lista { @apply top-0 bottom-auto left-full right-auto ml-10 mb-0 w-72 z-20 gap-1.5 origin-top-left; }
+  /* Recolher espera: o ponteiro que sai do Voltar tem tempo de chegar à lista. Quem a tira do
+     alcance é a visibilidade, que só vira no fim da transição — até lá ela ainda responde ao
+     ponteiro, e voltar a ela a reabre. */
+  .voltar-gaveta__lista.torre-ajustes--fechada { @apply translate-y-0 -translate-x-3 invisible pointer-events-auto delay-300; }
+  .voltar-gaveta:is(:hover, :focus-within) > .voltar-gaveta__lista {
+    @apply visible opacity-100 translate-x-0 scale-100 delay-150;
+  }
+  /* Sem vão entre os itens: no vão o ponteiro não está sobre item nenhum, e o poço voltaria ao
+     destino do Voltar a cada travessia. */
+  .voltar-gaveta__itens { @apply flex flex-col; }
+  /* O destino do Voltar nasce pré-selecionado, e cede o poço quando o cursor vai a outro item. */
+  .voltar-gaveta__itens:has(.item-historico:is(:hover, :focus-visible)) > .item-historico--pre:not(:hover, :focus-visible) {
+    @apply bg-transparent border-transparent shadow-none delay-0;
+  }
+  .voltar-gaveta__itens:has(.item-historico:is(:hover, :focus-visible)) > .item-historico--pre:not(:hover, :focus-visible) .item-historico__resumo {
+    @apply text-rocha-700 font-medium delay-0;
+  }
+  .voltar-gaveta__itens:has(.item-historico:is(:hover, :focus-visible)) > .item-historico--pre:not(:hover, :focus-visible) .glifo-gaveta {
+    @apply drop-shadow-none delay-0;
+  }
+}
+
+/* ==================== CURSOR DO MAPA (SPEC design/018) ==================== */
+/* FORA de @layer components, de propósito: o CSS do Leaflet e do Geoman entra por <link>, sem
+   layer nenhum, e regra sem layer vence regra em layer independentemente de especificidade.
+   Dentro do layer estas regras eram silenciosamente ignoradas — o cursor de apagar nunca
+   chegava a aparecer. Desvio assumido: é o único jeito de o design system mandar no cursor sem
+   recorrer a !important.
+
+   O cursor diz que ferramenta está na mão. Não existe cursor "lápis" nem "X": desenhar usa
+   `crosshair` (a mira de precisão, e o que o plugin já aplica sozinho); modificar usa a mão
+   aberta; apagar é o único com desenho próprio — `not-allowed` sozinho lê como "proibido", não
+   como "este clique destrói", daí o X em tinta de erro com halo branco, com `not-allowed` de
+   reserva onde o cursor custom não carregar. */
+.mapa-cursor--desenhar,
+.mapa-cursor--desenhar .leaflet-interactive {
+  cursor: crosshair;
+}
+.mapa-cursor--modificar,
+.mapa-cursor--modificar .leaflet-interactive {
+  cursor: grab;
+}
+.mapa-cursor--modificar:active,
+.mapa-cursor--modificar .leaflet-interactive:active {
+  cursor: grabbing;
+}
+.mapa-cursor--apagar,
+.mapa-cursor--apagar .leaflet-interactive {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 7 17 17M17 7 7 17' fill='none' stroke='white' stroke-width='5.5' stroke-linecap='round'/%3E%3Cpath d='M7 7 17 17M17 7 7 17' fill='none' stroke='%23dc2626' stroke-width='2.8' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, not-allowed;
 }

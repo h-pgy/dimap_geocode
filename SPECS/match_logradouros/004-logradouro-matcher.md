@@ -2,6 +2,7 @@
 spec: match-logradouros/004
 versao: v4
 atualizado_em: 2026-06-22
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: trata entrada sem tipo de logradouro (fast-forward direto para o match de nome)

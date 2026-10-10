@@ -11,4 +11,7 @@ python manage.py seed_cargos
 echo "==> Carregando seed de tipos de impedimento..."
 python manage.py seed_tipos_impedimento
 
+echo "==> Verificando admin do sistema..."
+python manage.py seed_admin
+
 echo "==> Seeds concluídas com sucesso."

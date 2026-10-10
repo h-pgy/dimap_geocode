@@ -1,0 +1,60 @@
+{# Partial dos controles de mapa do Onsen: canto inferior esquerdo do canvas. #}
+<div id="controles-mapa" class="pilula-mapa moldura-fixa pointer-events-auto" role="region" aria-label="Controles do mapa">
+  <!-- Torrezinha de camadas: sobe animada acima do botão esquerdo da pílula -->
+  <div id="torre-camadas" class="torre-camadas torre-camadas--fechada" role="menu" aria-label="Camadas base disponíveis">
+    {% for base in wms.bases %}
+      <button
+        type="button"
+        class="torre-camadas__item {% if forloop.first %}torre-camadas__item--ativo{% endif %}"
+        data-camada-nome="{{ base.nome }}"
+        role="menuitemradio"
+        aria-checked="{% if forloop.first %}true{% else %}false{% endif %}"
+        title="{{ base.nome }}"
+      >
+        <span class="torre-camadas__glifo">
+          <svg class="w-4 h-4" viewBox="0 0 24 24">
+            <use href="#{{ base.glifo|default:'glifo-mapa-base' }}"/>
+          </svg>
+        </span>
+        <span class="torre-camadas__rotulo">{{ base.nome }}</span>
+      </button>
+    {% endfor %}
+  </div>
+
+  <!-- Botão disparador do submenu de camadas -->
+  <button
+    type="button"
+    id="btn-alternar-camadas"
+    class="pilula-mapa__btn-camadas"
+    aria-expanded="false"
+    aria-haspopup="true"
+    aria-controls="torre-camadas"
+    title="Alternar camadas do mapa"
+  >
+    <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24">
+      <use href="#glifo-camadas"/>
+    </svg>
+  </button>
+
+  <!-- Poço rebaixado de controle de zoom -->
+  <div class="pilula-mapa__zoom card-well" role="group" aria-label="Controle de aproximação">
+    <button
+      type="button"
+      id="btn-mapa-zoom-out"
+      class="pilula-mapa__btn-zoom"
+      title="Afastar mapa (Zoom out)"
+      aria-label="Afastar mapa"
+    >
+      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg>
+    </button>
+    <button
+      type="button"
+      id="btn-mapa-zoom-in"
+      class="pilula-mapa__btn-zoom"
+      title="Aproximar mapa (Zoom in)"
+      aria-label="Aproximar mapa"
+    >
+      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg>
+    </button>
+  </div>
+</div>

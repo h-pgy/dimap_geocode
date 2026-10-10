@@ -1,0 +1,68 @@
+{% load icones %}
+{# <div>, não <form>: radios de formulários diferentes não formam um grupo só. #}
+<div class="poco-desenhos poco-desenhos--{{ poco.tipo }} card-well">
+  {% for medido in poco.desenhos %}
+    <label class="linha-desenho">
+      <input type="radio" name="id_bancada" class="linha-desenho__marca"
+             value="{{ medido.desenho.id_bancada }}"
+             {% if medido.desenho.id_bancada == gaveta.id_selecionado %}checked{% endif %}>
+      <span class="linha-desenho__rotulo">{{ poco.tipo|capfirst }} {{ forloop.counter }}</span>
+      {% if medido.medida %}
+        <span class="linha-desenho__medida">{{ medido.medida.valor|floatformat:0 }} {{ medido.medida.unidade }}</span>
+      {% endif %}
+      {% if medido.posicao %}
+        {% with lat=medido.posicao.latitude lon=medido.posicao.longitude %}
+          {# Ponto decimal, não vírgula: a vírgula já separa latitude de longitude. #}
+          <span class="linha-desenho__medida tooltip tooltip-left"
+                data-tip="{{ lat.graus }}°{{ lat.minutos|stringformat:'02d' }}′{% if lat.segundos < 10 %}0{% endif %}{{ lat.segundos|floatformat:3 }}″ {{ lat.hemisferio }} · {{ lon.graus }}°{{ lon.minutos|stringformat:'02d' }}′{% if lon.segundos < 10 %}0{% endif %}{{ lon.segundos|floatformat:3 }}″ {{ lon.hemisferio }}">{{ lat.graus_decimais|stringformat:'.3f' }}, {{ lon.graus_decimais|stringformat:'.3f' }}</span>
+        {% endwith %}
+      {% endif %}
+      <button type="button" class="linha-desenho__apagar etched"
+              commandfor="apagar-desenho-{{ medido.desenho.id_bancada }}" command="show-modal"
+              aria-label="Apagar {{ poco.tipo }} {{ forloop.counter }}">
+        <svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg>
+      </button>
+    </label>
+    {# Fora do label: clique dentro da pergunta não pode chegar ao radio. #}
+    <dialog id="apagar-desenho-{{ medido.desenho.id_bancada }}" class="modal modal-glass" closedby="any">
+      <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+        <div>
+          <p class="text-overline">Apagar desenho</p>
+          <p class="text-[18px] font-bold text-rocha-950">{{ poco.tipo|capfirst }} {{ forloop.counter }}</p>
+        </div>
+        <div class="modal-action">
+          <button type="button" class="btn btn-glass btn-sm"
+                  commandfor="apagar-desenho-{{ medido.desenho.id_bancada }}" command="close">Cancelar</button>
+          <button type="button" class="btn btn-onsen btn-sm linha-desenho__confirmar-apagar"
+                  value="{{ medido.desenho.id_bancada }}"
+                  commandfor="apagar-desenho-{{ medido.desenho.id_bancada }}" command="close">Apagar</button>
+        </div>
+      </div>
+    </dialog>
+  {% endfor %}
+  {# Sem espaço entre a âncora e o if: sem itens ela tem de sair :empty, senão o empty:hidden não a recolhe. #}
+  <div class="poco-desenhos__acoes" id="acoes-desenho-{{ poco.tipo }}">{% if itens %}
+    <div class="poco-desenhos__acoes-recorte">
+      <div class="placa-lista glass-panel">
+        <div class="placa-lista__cabecalho">
+          <span class="text-overline">Ações</span>
+          {% include "mapping/_dica_trava.html" with texto="Feche a gaveta inferior para poder fazer outra consulta." posicao="tooltip-right" %}
+          <span class="placa-lista__contagem">{{ itens|length }}</span>
+        </div>
+        {# Toda ação do poço troca a cena: a marca é o que o trava_cena.js cala enquanto há gaveta inferior. #}
+        <div class="placa-lista__conteudo" data-troca-cena>
+          {% for item in itens %}
+            {% icone_acao item.slug "pequeno" as svg %}
+            {# O hx-include pesca o único radio marcado na gaveta; o envio.js enxerta a geometria atual. #}
+            <button type="button" class="card-well item-menu item-menu-swell" title="{{ item.tooltip }}"
+                    hx-post="{% url item.url_name %}" hx-include=".linha-desenho__marca:checked"
+                    hx-target="#resultado-busca" hx-swap="innerHTML">
+              {% include "competencias/partials/_icone_acao.html" with svg=svg variante="pequeno" %}
+              <span class="item-menu-rotulo">{{ item.nome }}</span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}</div>
+</div>

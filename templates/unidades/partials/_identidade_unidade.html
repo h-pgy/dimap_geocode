@@ -10,7 +10,7 @@
         {% if unidade.extinta_em %}
           <span class="badge badge-neutral badge-soft badge-sm font-medium">Extinta</span>
         {% endif %}
-        <span class="badge badge-linha badge-sm">{{ unidade.tipo.nome }}</span>
+        <span class="badge badge-linha badge-sm">{% include "unidades/partials/_rotulo_tipo_unidade.html" with tipo=unidade.tipo %}</span>
         <span class="badge badge-info badge-soft">nível {{ unidade.tipo.nivel }}</span>
         <span class="badge badge-ponto badge-sm">{{ total_lotados }} servidor{{ total_lotados|pluralize }}</span>
       </div>

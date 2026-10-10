@@ -1,0 +1,54 @@
+{% if gaveta.pocos %}
+<div class="gaveta-lateral" data-gaveta="{{ etiqueta.chave }}">
+  <input type="checkbox" id="gaveta-desenhos-toggle" class="gaveta-lateral-toggle" checked>
+
+  <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+    <header class="gaveta-lateral-cabecalho">
+      <p class="text-overline text-madeira-600">Bancada de desenho</p>
+      <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Desenhos no mapa</h2>
+    </header>
+
+    <div class="gaveta-lateral-corpo" data-scroll-etched>
+      <div class="gaveta-lateral-rolador" data-rolador>
+        {# Um formulário só: os radios de todos os poços formam um grupo, e a ação submete o marcado. #}
+        <form class="gaveta-lateral-conteudo">
+          {% for poco, itens in pocos %}
+            {% include "mapping/_poco_desenhos.html" with poco=poco itens=itens %}
+          {% endfor %}
+          <button type="button" class="btn-etched btn-etched-swell etched self-end"
+                  commandfor="limpar-desenhos" command="show-modal">
+            Limpar desenhos
+          </button>
+          <dialog id="limpar-desenhos" class="modal modal-glass" closedby="any">
+            <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+              <div>
+                <p class="text-overline">Limpar desenhos</p>
+                <p class="text-[18px] font-bold text-rocha-950">Apagar todos os desenhos do mapa?</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                {% for poco in gaveta.pocos %}
+                  {% with total=poco.desenhos|length %}
+                    <span class="badge badge-{{ poco.tipo }} badge-sm">{{ total }} {{ poco.tipo.rotulo }}{{ total|pluralize }}</span>
+                  {% endwith %}
+                {% endfor %}
+              </div>
+              <div class="modal-action">
+                <button type="button" class="btn btn-glass btn-sm" commandfor="limpar-desenhos" command="close">Cancelar</button>
+                <button type="button" class="btn btn-onsen btn-sm" data-limpar-desenhos
+                        commandfor="limpar-desenhos" command="close">Apagar todos</button>
+              </div>
+            </div>
+          </dialog>
+        </form>
+      </div>
+      <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+    </div>
+  </div>
+
+  {% include "mapping/_voltar_gaveta.html" with chave=etiqueta.chave %}
+
+  <label for="gaveta-desenhos-toggle" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+    <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+  </label>
+</div>
+{% endif %}

@@ -48,6 +48,9 @@ class HttpFetcher:
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
             self._esperar_ou_desistir(url, repr(exc), tentativa)
             return None
+        except requests.exceptions.RequestException as exc:
+            # redirect em excesso, URL inválida: definitivo, repetir não ajuda
+            raise HttpFetchError(f"{url}: {repr(exc)}") from exc
 
         if resposta.status_code in self._policy.status_para_retry:
             self._esperar_ou_desistir(url, f"HTTP {resposta.status_code}", tentativa)

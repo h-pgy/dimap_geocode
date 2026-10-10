@@ -14,7 +14,7 @@
     </div>
     <div class="min-w-0">
       <p class="text-overline">Tipo de unidade</p>
-      <p class="text-[15px] text-base-content/90 mt-0.5">{{ unidade.tipo.nome }} <span class="text-base-content/50">· nível {{ unidade.tipo.nivel }}</span></p>
+      <p class="text-[15px] text-base-content/90 mt-0.5">{% include "unidades/partials/_rotulo_tipo_unidade.html" with tipo=unidade.tipo %} <span class="text-base-content/50">· nível {{ unidade.tipo.nivel }}</span></p>
     </div>
     <div class="min-w-0">
       <p class="text-overline">Cargo mínimo do titular</p>

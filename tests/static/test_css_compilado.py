@@ -39,6 +39,7 @@ CLASSES_SEM_ESTILO = frozenset(
         "link-interno",
         "tarja-vinculo-info",
         "bg-agua-50/70",
+        "linha-desenho__confirmar-apagar",
     }
 )
 

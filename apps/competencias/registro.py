@@ -8,12 +8,19 @@ from apps.cargos.acoes_declaradas import (
     ACAO_REATIVAR_CARGO,
     ACAO_REATIVAR_CARGO_BASE,
 )
+from apps.certidao_lancamento.acoes_declaradas import (
+    ACAO_EMITIR_CERTIDAO_LANCAMENTO,
+)
 from apps.unidades.acoes_declaradas import (
+    ACAO_CRIAR_TIPO_UNIDADE,
     ACAO_CRIAR_UNIDADE,
     ACAO_CRIAR_UNIDADE_RAIZ,
     ACAO_DEFINIR_TITULAR,
+    ACAO_EDITAR_TIPO_UNIDADE,
     ACAO_EDITAR_UNIDADE,
+    ACAO_EXTINGUIR_TIPO_UNIDADE,
     ACAO_EXTINGUIR_UNIDADE,
+    ACAO_REATIVAR_TIPO_UNIDADE,
 )
 from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
@@ -24,7 +31,11 @@ from apps.user_admin.acoes_declaradas import (
     ACAO_TORNAR_ADMINISTRADOR,
 )
 
-from .acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
+from .acoes_declaradas import (
+    ACAO_CONCEDER,
+    ACAO_DEFINIR_ATRIBUICAO,
+    ACAO_EMITIR_CERTIDAO_ATOS,
+)
 from .schemas import RegistroAcoes
 
 
@@ -35,6 +46,8 @@ def _construir_registro() -> RegistroAcoes:
         acoes=(
             ACAO_DEFINIR_ATRIBUICAO,
             ACAO_CONCEDER,
+            ACAO_EMITIR_CERTIDAO_ATOS,
+            ACAO_EMITIR_CERTIDAO_LANCAMENTO,
             ACAO_CRIAR_SERVIDOR,
             ACAO_EDITAR_SERVIDOR,
             ACAO_TORNAR_ADMINISTRADOR,
@@ -46,6 +59,10 @@ def _construir_registro() -> RegistroAcoes:
             ACAO_CRIAR_UNIDADE_RAIZ,
             ACAO_EXTINGUIR_UNIDADE,
             ACAO_DEFINIR_TITULAR,
+            ACAO_CRIAR_TIPO_UNIDADE,
+            ACAO_EDITAR_TIPO_UNIDADE,
+            ACAO_EXTINGUIR_TIPO_UNIDADE,
+            ACAO_REATIVAR_TIPO_UNIDADE,
             ACAO_CRIAR_CARGO,
             ACAO_EDITAR_CARGO,
             ACAO_EXTINGUIR_CARGO,

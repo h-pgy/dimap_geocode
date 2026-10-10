@@ -5,6 +5,19 @@ description: Como acrescentar um item ao painel de ações — item livre e card
   declarar uma ação administrativa.
 ---
 
+# Painel de ações — item livre, card de ação, grupo e aba
+
+## Sumário
+
+- Antes de acrescentar qualquer item: pergunte, nunca decida
+- Acrescentar item livre
+- Acrescentar card de ação
+- Modal ou página própria — o destino do card
+  - A rota abre um modal
+  - A rota é uma tela própria
+- Grupo e aba novos
+- Desenho próprio
+
 ## Antes de acrescentar qualquer item: pergunte, nunca decida
 Onde o item aparece, como se chama e que glifo carrega é decisão de quem conhece o processo — e ação
 sem card derruba a subida (`painel.E004`). Pergunte, nesta ordem:

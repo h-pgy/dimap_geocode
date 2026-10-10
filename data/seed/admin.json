@@ -1,0 +1,9 @@
+{
+  "admin": {
+    "nome": "Admin",
+    "sobrenome": "do Sistema",
+    "unidade_sigla": "SF-GAB",
+    "cargo_base_sigla": "AFTM",
+    "cargo_comissao_nome": "Assessor IV"
+  }
+}

@@ -62,24 +62,26 @@ barra gravada (`.scroll-etched` + `[data-barra]`/`[data-polegar]`) como na tabel
 `.lata-concessao`) empilha essas ações na mesma posição em todas as linhas.
 
 **Bandeja e célula de cabeçalho** (`.th-onsen-bandeja`, `.th-onsen`, `.th-onsen-campo`,
-`.th-onsen-input`, `.th-onsen-gravado`): o cabeçalho é **uma superfície** — o gelo mais denso do
-sistema depois do modal, `94%→86%` sobre 56px de blur, porque é a única coisa entre ele e as linhas
-que correm por trás — e cada coluna é uma peça assentada sobre ela — clicar a faz **afundar** e virar campo, porque campo aqui é sempre coisa
-rebaixada. **Afundado = a coluna tem filtro**, não "alguém clicou": o CSS lê o valor com
+`.th-onsen-input`, `.th-onsen-gravado`): o cabeçalho é **uma superfície** — `74%→64%` sobre
+72px de blur, densidade própria — e cada coluna é uma peça assentada sobre ela. **A leitura é a soma
+de três demãos** (placa da página + bandeja + peça): subir a tinta de qualquer uma estoura o
+conjunto, e quem sela o que corre por trás do cabeçalho grudento é o blur. A peça em repouso é
+`agua-100/26` — **água pálida, nunca branco**: branco sobre a bandeja branca só pode ler como mais
+branco. Clicar a faz **afundar** e virar campo, porque campo aqui é sempre coisa rebaixada; repouso
+e afundado são a mesma água em duas intensidades (26% e 45%), e o que os distingue é a direção da
+luz — lábio na quina de cima, sombra interna dentro. **Afundado = a coluna tem filtro**, não "alguém clicou": o CSS lê o valor com
 `:has(input:not(:placeholder-shown))`, sem estado de UI em JavaScript. A régua **abre inteira** (o
 campo de uma coluna abre o de todas). Coluna que não responde **não tem peça**: o rótulo é gravado
 direto na bandeja — a ausência da peça é a mensagem, sem cinza de desabilitado.
 
-**Imagem de perfil** (`.avatar-glass`): o disco com a foto ou o avatar de iniciais, recortado no
-círculo. A unidade **não é um anel** — é **luz atrás do disco**: um aro de contato (`--halo-aro`,
-3px, na mesma transparência da imagem) e, a partir dele, dois fades que se dissolvem. Anel sólido
-com `outline`/`offset` é aresta desenhada fora da caixa que a caixa não reserva: pousava sobre o
-vizinho. O hex chega em `--cor-unidade` e o alcance da luz em `--halo-escala` — o padrão serve de
-`w-9` a `w-16`; disco maior abre o alcance **no include**, não no token (`w-28` usa `2`, o chip do
-topo `0.5`). O volume vem do domo (`::after`): a mesma **óptica simulada** do mapa (§6) — só o aro
-curva, o miolo até 78% do raio é a imagem crua, e nada se distorce geometricamente. A imagem cede
-um pouco ao gelo (`opacity` no **filho**, nunca no `.avatar-glass`: no pai levaria junto o halo e o
-domo, que são luz).
+**Imagem de perfil** (`.avatar-glass`, SPEC design/015): esfera de vidro fosco (Frosted Glass)
+translúcida com refração (`backdrop-filter: blur(14px) saturate(200%)` — **nunca `url()`**, que
+obriga a captura do Backdrop Root do documento e chapa todo o resto do vidro da página) e aro perimétrico luminoso
+na cor da unidade (`--cor-unidade`), sem manchas brancas radiais chapadas. O alcance da luz escala
+proporcionalmente por `--halo-escala` — o padrão serve de `w-9` a `w-16`; disco maior abre o alcance
+no include (`w-28` usa `2`, o chip do topo `0.5`). O filtro vítreo suave (`::after`) protege a foto
+e integra a imagem à cor da unidade sem perder nitidez. O SVG de iniciais usa círculo com margem
+anti-serrilhado e opacidade que permite ao vidro transparecer o fundo.
 
 **Linha de pessoa, tarja de vínculo e calha da cobertura** (`.linha-pessoa`, `.tarja-vinculo`
 (`-pendente`/`-critica`), `.calha-cobertura*`, SPEC user_admin/015): a tarja é **placa clara
@@ -98,6 +100,21 @@ inteira pular sob o clone em movimento. Raio `--radius-placa`. Par com
 `static/src/js/ui/sincronia_unidades.js`, que escreve **só medida** em custom properties
 (`--topo-pincagem`, `--altura-pincagem`, `--duracao-pincagem`, `--largura-coluna`) — nenhuma
 declaração de pele sai do JS.
+
+**Voltar da gaveta lateral e trava da cena** (`.gaveta-lateral-voltar`, `.voltar-gaveta`,
+`.item-historico`, `.glifo-gaveta`, `.dica-trava`, SPEC design/021): o canto é **filho da casca**,
+entre o `.gaveta-lateral-painel` e a `.paleta-gaveta` — dentro do painel o gelo da lista não
+embaçaria o mapa — e chega por **carga própria** (`mapping/_voltar_gaveta.html`, `hx-trigger="load"`):
+nunca escreva o Voltar direto no template da gaveta, senão ele congela junto com a cena guardada. A
+lista é a `.torre-ajustes` composta no HTML e abre **só em CSS** (`:hover`/`:focus-within`), sempre
+com `torre-ajustes--fechada` no markup; o `--aberta` é só do styleguide. O sufixo de `.glifo-gaveta--`
+e de `#glifo-gaveta-` é o valor do `TipoGaveta`: tipo novo de gaveta pede glifo novo em
+`mapping/_glifos_mapa.html` e a tinta dele no tema. **Trava:** o que entrega a camada de resultado do
+mapa a outro dono declara `data-troca-cena`, e o `static/src/js/ui/trava_cena.js` põe `inert` nele
+enquanto existe `#contexto-acao[data-contexto-acao]`. A `.dica-trava` fica **fora** da marca — dentro,
+o `inert` a calaria junto —, só aparece sob `.tela-home` com a marca do contexto, e o foco de teclado
+entra pelo `<svg tabindex="0">` (o `.tooltip` do daisyUI abre por `:has(:focus-visible)`); use o
+partial `mapping/_dica_trava.html`.
 
 **Barra de rolagem gravada** (`.scroll-etched`, `.scroll-etched-thumb`, `.scroll-etched-ativa`,
 `.scroll-etched-ociosa`): trilho sulcado e polegar de água, para **qualquer** `.card-well` rolável.

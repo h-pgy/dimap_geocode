@@ -22,4 +22,12 @@ if [ -f manage.py ] && [ "${DJANGO_AUTO_MIGRATE:-1}" = "1" ]; then
     fi
 fi
 
+# Fora do bloco de migração: a geração das ortofotos de fundo não toca o banco. Sem `||`: o
+# comando já sai zero com o GeoSampa fora do ar, e o que sobra é erro que o `set -e` não deve
+# engolir.
+if [ -f manage.py ]; then
+    echo "==> Gerando ortofotos de fundo que faltam..."
+    python manage.py gerar_ortofotos_fundo
+fi
+
 exec "$@"

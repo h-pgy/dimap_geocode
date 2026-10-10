@@ -1,11 +1,13 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from services.domain.contribuinte_match import ContribuinteCatalog
 from services.domain.logradouros_match import LogradouroCatalog
 from services.utils.io import config as io_config
+from tests.abrir_artefato import abrir_artefato
 
 
 @pytest.fixture(autouse=True)
@@ -33,3 +35,55 @@ def _resetar_catalogos_singleton() -> Generator[None, None, None]:
     yield
     LogradouroCatalog.resetar_instancia()
     ContribuinteCatalog.resetar_instancia()
+
+
+@pytest.fixture(autouse=True)
+def _sessao_fora_do_banco(request: pytest.FixtureRequest, settings: Any) -> None:
+    # Abrir uma gaveta grava o histórico na sessão (SPEC design/021): em banco, todo teste de view
+    # pediria PostGIS de pé. Teste `banco` segue com o backend real.
+    if request.node.get_closest_marker("banco"):
+        return
+    settings.SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
+
+@pytest.fixture
+def publicar_artefato(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    pytestconfig: pytest.Config,
+) -> Callable[[str, bytes], Path]:
+    """Grava o artefato onde ele sobreviva à sessão e imprime onde ele está — o produto de um
+    teste `artefato` é o arquivo, não uma asserção. Sob `--open`, também abre cada artefato no
+    visualizador padrão do SO; a abertura é conveniência best-effort e nunca falha o teste."""
+    abrir = pytestconfig.getoption("--open")
+
+    def publicar(nome: str, conteudo: bytes) -> Path:
+        destino = tmp_path / nome
+        destino.write_bytes(conteudo)
+        # `pytest-current` é o symlink que o pytest mantém para a última sessão: um caminho
+        # fixo, que dá para deixar aberto no leitor de PDF/imagem e só recarregar a cada execução.
+        estavel = tmp_path.parent.parent / "pytest-current" / tmp_path.name / nome
+        with capsys.disabled():
+            print(f"\n  {nome} → {estavel}")
+        if abrir:
+            abrir_artefato(estavel)
+        return destino
+
+    return publicar
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption("--all", action="store_true", help="Roda a suíte inteira, markers inclusive.")
+    # A suíte inteira de artefatos abriria uma janela por arquivo; abrir é gesto de conferência
+    # manual, então é opt-in.
+    parser.addoption(
+        "--open",
+        action="store_true",
+        help="Abre cada artefato gerado no visualizador padrão do SO.",
+    )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    # O `-m` herdado do addopts é o que exclui as camadas pesadas; --all simplesmente o esvazia.
+    if config.getoption("--all"):
+        config.option.markexpr = ""

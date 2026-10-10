@@ -1,0 +1,222 @@
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from html import escape
+from typing import Any
+
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.platypus import Flowable, ListFlowable, ListItem, Paragraph
+
+from services.domain.documento_selado import SeloImpresso
+from services.utils.pdf import (
+    QrCodePdfInput,
+    QuadroInput,
+    TabelaInput,
+    VetorNomeado,
+    VetorReferenciado,
+    carregar_vetor,
+    imagem_raster,
+    qr_code_pdf,
+    quadro_pdf,
+    tabela_pdf,
+)
+from services.utils.qr_code import QrCodeInput, gerar_qr_code
+
+from .models import (
+    BlocoTextual,
+    Imagem,
+    ImagemRaster,
+    Lista,
+    Paragrafo,
+    QrCode,
+    SeloDeFecho,
+    Subtitulo,
+    Tabela,
+    Tema,
+    Titulo,
+)
+
+
+def _texto(bruto: str) -> str:
+    # `Paragraph` interpreta marcação própria do reportlab: o escape é daqui, como no e-mail.
+    return escape(bruto)
+
+
+class EscritorTexto[B: BlocoTextual](ABC):
+    """Base dos blocos de uma linha de texto. A herança define interface e nada mais: o que varia
+    é o estilo, e `__call__` é o mesmo para os três."""
+
+    def __init__(self, tema: Tema) -> None:
+        self._tema = tema
+
+    def __call__(self, bloco: B) -> Flowable:
+        return Paragraph(_texto(bloco.texto), self._estilo(bloco))
+
+    @abstractmethod
+    def _estilo(self, bloco: B) -> ParagraphStyle: ...
+
+
+class EscritorTitulo(EscritorTexto[Titulo]):
+    def _estilo(self, bloco: Titulo) -> ParagraphStyle:
+        return self._tema.estilos["titulo"]
+
+
+class EscritorSubtitulo(EscritorTexto[Subtitulo]):
+    def _estilo(self, bloco: Subtitulo) -> ParagraphStyle:
+        return self._tema.estilos[f"subtitulo_{bloco.nivel}"]
+
+
+class EscritorParagrafo(EscritorTexto[Paragrafo]):
+    def _estilo(self, bloco: Paragrafo) -> ParagraphStyle:
+        return self._tema.estilos["paragrafo_recuado" if bloco.recuado else "paragrafo"]
+
+
+class EscritorLista:
+    def __init__(self, tema: Tema) -> None:
+        self._tema = tema
+
+    def __call__(self, bloco: Lista) -> Flowable:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: Lista) -> Flowable:
+        # `bulletType="1"` numera pela POSIÇÃO na lista: o número não é dado do bloco, e duas
+        # listas seguidas recomeçam do 1 sem ninguém zerar contador.
+        return ListFlowable(
+            [ListItem(self._item(texto)) for texto in bloco.itens],
+            bulletType="1" if bloco.ordenada else "bullet",
+            bulletFontName=self._tema.estilos["item"].fontName,
+            leftIndent=24,
+        )
+
+    def _item(self, texto: str) -> Flowable:
+        return Paragraph(_texto(texto), self._tema.estilos["item"])
+
+
+class EscritorTabela:
+    """O bloco diz o que a tabela contém; o estilo é do tema, e a medida é do motor da SPEC 002."""
+
+    def __init__(self, tema: Tema) -> None:
+        self._tema = tema
+
+    def __call__(self, bloco: Tabela) -> Flowable:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: Tabela) -> Flowable:
+        return tabela_pdf(self._pedido(bloco))
+
+    def _pedido(self, bloco: Tabela) -> TabelaInput:
+        # Texto CRU, sem `_texto`: o `TabelaPdf` escapa cada célula ao montar o `Paragraph`.
+        # Escapar aqui também sairia `&amp;` no papel.
+        return TabelaInput(
+            colunas=bloco.colunas,
+            cabecalho=bloco.cabecalho,
+            linhas=bloco.linhas,
+            estilo=self._tema.estilo_tabela,
+        )
+
+
+class EscritorImagem:
+    """SVG, não raster: o vetor é o que o motor carrega (SPEC 001), e é o que mantém o arquivo leve
+    quando a mesma imagem se repete."""
+
+    def __init__(self, tema: Tema) -> None:
+        self._tema = tema
+
+    def __call__(self, bloco: Imagem) -> Flowable:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: Imagem) -> Flowable:
+        # `Drawing` já É um `Flowable`: o vetor entra no fluxo do corpo sem embrulho nenhum.
+        desenho = carregar_vetor(bloco.caminho, bloco.largura_mm)
+        desenho.hAlign = "CENTER"
+        return desenho
+
+
+class EscritorImagemRaster:
+    def __call__(self, bloco: ImagemRaster) -> Flowable:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: ImagemRaster) -> Flowable:
+        imagem = imagem_raster(bloco.conteudo, bloco.largura_mm)
+        imagem.hAlign = "CENTER"
+        return imagem
+
+
+class EscritorQrCode:
+    """O bloco diz o que o QR carrega; gerar o símbolo é do utilitário e assentá-lo é do motor.
+    Sem `Tema` no construtor: um QR não tem cor, fonte nem entrelinha a herdar."""
+
+    def __call__(self, bloco: QrCode) -> Flowable:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: QrCode) -> Flowable:
+        # `VetorReferenciado`, e não o `Drawing` cru: o símbolo entra no arquivo uma vez, e o mesmo
+        # QR repetido no corpo vira referência em vez de bytes novos.
+        return VetorReferenciado(self._vetor(bloco))
+
+    def _vetor(self, bloco: QrCode) -> VetorNomeado:
+        return qr_code_pdf(
+            QrCodePdfInput(
+                simbolo=gerar_qr_code(QrCodeInput(conteudo=bloco.conteudo)),
+                largura_mm=bloco.largura_mm,
+            )
+        )
+
+
+class EscritorSeloDeFecho:
+    """O quadro que encerra o documento: o símbolo centrado e, sob ele, o endereço, quem assinou, o
+    cargo e a data. Uma linha por peça, cada uma no estilo que o tema já resolveu."""
+
+    def __init__(self, tema: Tema) -> None:
+        self._tema = tema
+        # O mesmo escritor do bloco de QR: o símbolo do fecho não é um desenho diferente.
+        self._qr = EscritorQrCode()
+
+    def __call__(self, bloco: SeloDeFecho) -> Flowable:
+        return self.pipeline(bloco)
+
+    def pipeline(self, bloco: SeloDeFecho) -> Flowable:
+        return quadro_pdf(
+            QuadroInput(
+                conteudo=(self._simbolo(bloco), *self._linhas(bloco.selo)),
+                largura_mm=bloco.quadro.largura_mm,
+                traco=self._tema.estilo_traco_selo,
+                respiro_mm=bloco.quadro.respiro_interno_mm,
+            )
+        )
+
+    def _simbolo(self, bloco: SeloDeFecho) -> Flowable:
+        return self._qr(
+            QrCode(conteudo=bloco.selo.url_conferencia, largura_mm=bloco.quadro.largura_qr_mm)
+        )
+
+    def _linhas(self, selo: SeloImpresso) -> tuple[Flowable, ...]:
+        return (
+            self._apoio(selo.link_impresso),
+            Paragraph(_texto(selo.assinante), self._tema.estilos["selo_assinante"]),
+            self._apoio(selo.cargo),
+            *self._substituicao(selo),
+            self._apoio(selo.data_por_extenso),
+        )
+
+    def _substituicao(self, selo: SeloImpresso) -> tuple[Flowable, ...]:
+        if selo.substituindo is None:
+            return ()
+        return (self._apoio(f"em substituição a {selo.substituindo}"),)
+
+    def _apoio(self, texto: str) -> Flowable:
+        return Paragraph(_texto(texto), self._tema.estilos["selo_apoio"])
+
+
+def montar_escritores(tema: Tema) -> dict[str, Callable[[Any], Flowable]]:
+    # O registro é a única lista de tipos do módulo: bloco novo entra aqui e em lugar nenhum mais.
+    return {
+        "titulo": EscritorTitulo(tema),
+        "subtitulo": EscritorSubtitulo(tema),
+        "paragrafo": EscritorParagrafo(tema),
+        "lista": EscritorLista(tema),
+        "tabela": EscritorTabela(tema),
+        "imagem": EscritorImagem(tema),
+        "imagem_raster": EscritorImagemRaster(),
+        "qr_code": EscritorQrCode(),
+        "selo_de_fecho": EscritorSeloDeFecho(tema),
+    }

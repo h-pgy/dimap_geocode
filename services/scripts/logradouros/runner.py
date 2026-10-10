@@ -9,10 +9,12 @@ from .models import LogradouroNome, NomesLogradourosConfig, NomesLogradourosResu
 OUTPUT_FILENAME: str = "nomes_logradouros.parquet"
 
 
-def _to_columns(rows: list[LogradouroNome]) -> dict[str, list[str]]:
+def _to_columns(rows: list[LogradouroNome]) -> dict[str, list[str | None]]:
     return {
         "codlog": [r.codlog for r in rows],
         "cd_tipo_logradouro": [r.tipo_logradouro for r in rows],
+        "cd_titulo_logradouro": [r.titulo for r in rows],
+        "tx_preposicao_logradouro": [r.preposicao for r in rows],
         "nm_logradouro": [r.nm_logradouro for r in rows],
     }
 

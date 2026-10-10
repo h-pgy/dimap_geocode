@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC documentos_oficiais/010 — UX da validação de documento (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação (skill `mock`). -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* .card-opcao — molécula: cartão de escolha de caminho. Poço rebaixado que acende na
+         interação como o .upload-well, mas sem aresta tracejada — a ação é navegar, não soltar
+         arquivo. Material composto no HTML (.card-well). */
+      .card-opcao {
+        @apply flex flex-col items-center text-center gap-3 p-6 sm:p-8 rounded-2xl cursor-pointer transition-all duration-300;
+        box-shadow: var(--sombra-poco);
+      }
+      .card-opcao:hover,
+      .card-opcao:focus-visible {
+        @apply bg-white/45;
+        box-shadow: var(--sombra-poco), 0 0 22px rgba(72, 202, 228, 0.35);
+      }
+      .card-opcao:active {
+        @apply scale-[0.98];
+      }
+
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Os defs da gravação vêm do partial da própria aplicação (no produto, pelo base.html). -->
+  <script type="module">
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((svg) => document.body.insertAdjacentHTML("afterbegin", svg.replace(TAG_DE_TEMPLATE, "").trim()));
+  </script>
+
+  <!-- partial: documentos/partials/_glifos_documento.html — sprite da página -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m8.7 12 2.4 2.4 4.2-4.6"/>
+      </g>
+      <g id="glifo-selo-violado">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m9.6 9.6 4.8 4.8"/><path d="m14.4 9.6-4.8 4.8"/>
+      </g>
+      <g id="glifo-selo-alerta">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="M12 8.4v3.9"/><path d="M12 15.3v.1"/>
+      </g>
+      <g id="glifo-sem-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="M4.4 20.6 19.6 3.4"/>
+      </g>
+      <g id="glifo-upload">
+        <path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+      </g>
+      <g id="glifo-baixar">
+        <path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+      </g>
+      <g id="glifo-cadeado">
+        <path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5"/>
+        <rect x="5" y="10.5" width="14" height="9.5" rx="2"/>
+      </g>
+      <g id="glifo-lupa">
+        <circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>
+      </g>
+      <g id="glifo-documento">
+        <path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/>
+        <path d="M14 3.5v5h5"/>
+      </g>
+      <g id="glifo-teclado">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- O fundo é montado no topo do <body> pelo módulo do <head>; o conteúdo fica acima dele. -->
+  <div class="relative z-10">
+    <main class="max-w-5xl mx-auto px-4 py-12 flex flex-col gap-10">
+
+      <header class="glass-panel p-6 sm:p-8 flex flex-col gap-2">
+        <h1 class="text-[30px] font-black tracking-tight text-madeira-700 leading-tight">
+          SPEC documentos_oficiais/010 — mock de validação
+        </h1>
+        <p class="text-[15px] text-base-content/75 max-w-[70ch]">
+          UX da validação de documento: a página de escolha, o campo de código e o fluxo
+          progressivo do formulário de upload.
+        </p>
+      </header>
+
+      <!-- 2 · ÁTOMOS — nenhum átomo novo: o .otp-onsen/.otp-caixa já existe no tema (SPEC autenticacao/001),
+           e é reutilizado com 12 caixas para os caracteres do código do documento. -->
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .card-opcao — os dois cards de escolha -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.card-opcao — os dois caminhos de conferência</span>
+          <div class="grid sm:grid-cols-2 gap-6">
+
+            <!-- opção 1: tenho o documento -->
+            <div class="card-well card-opcao">
+              <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-documento"/></svg>
+              </span>
+              <p class="text-lg font-bold text-madeira-700">Tenho o documento em mãos</p>
+              <p class="text-xs text-base-content/60 max-w-[30ch]">
+                Suba o arquivo PDF que você recebeu para conferir se é autêntico.
+              </p>
+            </div>
+
+            <!-- opção 2: tenho o código -->
+            <div class="card-well card-opcao">
+              <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-teclado"/></svg>
+              </span>
+              <p class="text-lg font-bold text-madeira-700">Tenho o código em mãos</p>
+              <p class="text-xs text-base-content/60 max-w-[30ch]">
+                Digite os 12 caracteres impressos ao pé da folha para verificar.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- hover mostrando o card-opcao acendendo -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.card-opcao — sob o ponteiro (gelo acende)</span>
+          <div class="card-well p-4 flex flex-wrap items-center gap-4">
+            <div class="card-well card-opcao bg-white/45" style="box-shadow: var(--sombra-poco), 0 0 22px rgba(72, 202, 228, 0.35); max-width: 16rem;">
+              <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-documento"/></svg>
+              </span>
+              <p class="text-lg font-bold text-madeira-700">Tenho o documento em mãos</p>
+            </div>
+            <p class="text-xs text-base-content/70 max-w-xs">
+              O gelo acende sob o ponteiro (ao vivo). Mesmo material que o <span class="text-code">.upload-well</span> no hover.
+            </p>
+          </div>
+        </div>
+
+        <!-- .otp-onsen.otp-onsen-12 — 12 caixas (6 + 6) nos estados normal e erro semântico -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.otp-onsen.otp-onsen-12 — normal vs erro semântico (.campo-realce-erro)</span>
+          <div class="grid sm:grid-cols-2 gap-6">
+            <div class="card-well p-5 flex flex-col items-center gap-3">
+              <span class="text-overline">Estado normal (vazio)</span>
+              <div class="otp-onsen otp-onsen-12 flex-wrap">
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+                <input type="text" maxlength="1" class="otp-caixa" />
+              </div>
+            </div>
+            <div class="card-well p-5 flex flex-col items-center gap-3">
+              <span class="text-overline">Estado de erro (células com realce semântico)</span>
+              <div class="otp-onsen otp-onsen-12 flex-wrap">
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="7" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="K" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="4" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="M" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="I" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="2" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="X" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="Q" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="U" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="O" />
+                <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="B" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- ============ A · Página de escolha ============ -->
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          A · Escolher caminho — a tela que abre ao clicar em "Validar documento" na home. Dois
+          cards, sem formulário.
+        </p>
+
+        <!-- página: documentos/escolha_conferencia.html -->
+        <div class="max-w-2xl mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+            <!-- fica na página: identidade da tela -->
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Validar documento</h2>
+              <p class="text-xs text-base-content/60 mt-0.5 max-w-[44ch]">
+                Confira se um documento foi mesmo emitido pela DIMAP, e por quem.
+              </p>
+            </div>
+
+            <!-- fica na página: os dois caminhos -->
+            <div class="grid sm:grid-cols-2 gap-4">
+              <!-- partial: documentos/partials/_card_opcao_documento.html -->
+              <a href="/d/" class="card-well card-opcao no-underline">
+                <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-documento"/></svg>
+                </span>
+                <p class="text-lg font-bold text-madeira-700">Tenho o documento em mãos</p>
+                <p class="text-xs text-base-content/60 max-w-[30ch]">
+                  Suba o arquivo PDF que você recebeu para conferir se é autêntico.
+                </p>
+              </a>
+              <!-- /partial -->
+
+              <!-- partial: documentos/partials/_card_opcao_codigo.html -->
+              <a href="/d/?via=codigo" class="card-well card-opcao no-underline">
+                <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-teclado"/></svg>
+                </span>
+                <p class="text-lg font-bold text-madeira-700">Tenho o código em mãos</p>
+                <p class="text-xs text-base-content/60 max-w-[30ch]">
+                  Digite os 12 caracteres impressos ao pé da folha para verificar.
+                </p>
+              </a>
+              <!-- /partial -->
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ============ B · Tela do código ============ -->
+        <p class="text-sm text-base-content/75 max-w-3xl mt-4 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          B.1 · Digitar código — a tela da opção 2 no estado inicial. Aceita qualquer caractere alfanumérico sem restrição client-side e sem expor o alfabeto interno.
+        </p>
+
+        <!-- página: documentos/conferencia_codigo.html -->
+        <div class="max-w-md mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Digitar código</h2>
+              <p class="text-xs text-base-content/60 mt-0.5 max-w-[38ch]">
+                Os 12 caracteres impressos ao pé da folha, abaixo do QR.
+              </p>
+            </div>
+
+            <!-- partial: documentos/conferencia_codigo.html — formulário submetido via POST -->
+            <form class="flex flex-col gap-6">
+              <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-center text-base-content/70">Código do documento:</label>
+                <input type="hidden" name="codigo" id="codigo-valor" value="" />
+                <div class="otp-onsen otp-onsen-12 my-2 flex-wrap" data-otp-alvo="#codigo-valor">
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa" />
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-onsen w-full">Verificar</button>
+
+              <a href="#tela" class="btn-etched btn-etched-swell etched etched-deeper self-center">Voltar à escolha</a>
+            </form>
+            <!-- /partial -->
+
+          </div>
+        </div>
+
+        <!-- ============ B.2 · Código errado (recusa com realce semântico) ============ -->
+        <p class="text-sm text-base-content/75 max-w-3xl mt-4 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          B.2 · Código errado — resposta com status 422. Devolve o mesmo formulário com mensagem "Código errado" e as 12 caixas destacadas com o brilho semântico de erro (<span class="text-code">.campo-realce-erro</span>).
+        </p>
+
+        <div class="max-w-md mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Digitar código</h2>
+              <p class="text-xs text-base-content/60 mt-0.5 max-w-[38ch]">
+                Os 12 caracteres impressos ao pé da folha, abaixo do QR.
+              </p>
+            </div>
+
+            <!-- partial: documentos/conferencia_codigo.html — estado recusado (422) com realce semântico de erro -->
+            <form class="flex flex-col gap-6">
+              <div class="p-3 bg-error/10 border border-error/30 text-xs text-error rounded-lg font-medium text-center">
+                Código errado
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-center text-base-content/70">Código do documento:</label>
+                <input type="hidden" name="codigo" value="7K4M9I2XQUOB" />
+                <div class="otp-onsen otp-onsen-12 my-2 flex-wrap">
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="7" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="K" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="4" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="M" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="I" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="2" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="X" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="Q" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="U" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="O" />
+                  <input type="text" inputmode="text" maxlength="1" class="otp-caixa campo-realce-erro" value="B" />
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-onsen w-full">Verificar</button>
+
+              <a href="#tela" class="btn-etched btn-etched-swell etched etched-deeper self-center">Voltar à escolha</a>
+            </form>
+            <!-- /partial -->
+
+          </div>
+        </div>
+
+        <!-- ============ C · Upload: fluxo progressivo ============ -->
+        <p class="text-sm text-base-content/75 max-w-3xl mt-4 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          C · Upload com fluxo progressivo — três estados: vazio, arquivo escolhido e resultado.
+        </p>
+
+        <!-- estado: vazio (só o upload-well, sem botão de conferir) -->
+        <div class="max-w-2xl mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+            <!-- fica na página: identidade da tela -->
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Conferir documento</h2>
+              <p class="text-xs text-base-content/60 mt-0.5 max-w-[44ch]">
+                Confira se o arquivo que você recebeu foi mesmo emitido pela DIMAP, e por quem.
+              </p>
+            </div>
+
+            <!-- partial: documentos/partials/_form_upload.html — alvo de swap ao clicar "Carregar novo" -->
+            <div id="form-upload">
+              <form class="flex flex-col gap-5">
+                <label class="upload-well cursor-pointer">
+                  <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-upload"/></svg>
+                  </span>
+                  <span class="text-sm font-medium">Arraste o PDF ou clique para escolher</span>
+                  <input type="file" name="arquivo" accept="application/pdf" class="file-input file-input-glass file-input-sm max-w-xs" aria-label="Documento a conferir" />
+                  <span class="form-field-hint">PDF de até 10 MB. O arquivo é conferido e descartado — nada é guardado.</span>
+                </label>
+                <!-- Sem botão: ele aparece só quando o arquivo for escolhido (§ abaixo). -->
+              </form>
+            </div>
+            <!-- /partial -->
+
+            <a href="#tela" class="btn-etched btn-etched-swell etched etched-deeper self-center">Voltar à escolha</a>
+
+          </div>
+        </div>
+
+        <!-- estado: arquivo escolhido (agora o botão "Conferir documento" aparece) -->
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          C.2 · Arquivo escolhido — o botão "Conferir documento" apareceu.
+        </p>
+
+        <div class="max-w-2xl mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Conferir documento</h2>
+              <p class="text-xs text-base-content/60 mt-0.5 max-w-[44ch]">
+                Confira se o arquivo que você recebeu foi mesmo emitido pela DIMAP, e por quem.
+              </p>
+            </div>
+
+            <!-- partial: documentos/partials/_form_upload.html (estado: arquivo escolhido) -->
+            <div id="form-upload-2">
+              <form class="flex flex-col gap-5">
+                <label class="upload-well cursor-pointer">
+                  <span class="icon-bubble w-12 h-12 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-upload"/></svg>
+                  </span>
+                  <span class="text-sm font-medium">Arraste o PDF ou clique para escolher</span>
+                  <input type="file" accept="application/pdf" class="file-input file-input-glass file-input-sm max-w-xs" aria-label="Documento a conferir" />
+                  <span class="form-field-hint">PDF de até 10 MB. O arquivo é conferido e descartado — nada é guardado.</span>
+                </label>
+                <!-- O botão aparece porque há arquivo escolhido (JS de estado de interface). -->
+                <button type="submit" class="btn btn-onsen w-full">Conferir documento</button>
+              </form>
+            </div>
+            <!-- /partial -->
+
+            <a href="#tela" class="btn-etched btn-etched-swell etched etched-deeper self-center">Voltar à escolha</a>
+
+          </div>
+        </div>
+
+        <!-- estado: resultado (substitui o upload-well e o botão vira "Carregar novo documento") -->
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          C.3 · Resultado — o veredito substitui o upload-well; o botão vira "Carregar novo documento".
+        </p>
+
+        <!-- resultado: confere -->
+        <div class="max-w-2xl mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Conferir documento</h2>
+              <p class="text-xs text-base-content/60 mt-0.5 max-w-[44ch]">
+                Confira se o arquivo que você recebeu foi mesmo emitido pela DIMAP, e por quem.
+              </p>
+            </div>
+
+            <!-- partial: documentos/partials/_form_upload.html — swapped: resultado no lugar do form -->
+            <div id="form-upload-3">
+              <!-- O resultado inteiro substitui o formulário: upload-well sumiu. -->
+              <div class="flex flex-col gap-4">
+                <div class="glass-panel p-5 flex flex-col gap-4">
+                  <div class="card-well veredito veredito-confere">
+                    <span class="icon-bubble veredito-glifo">
+                      <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+                    </span>
+                    <span class="text-overline veredito-estado">Documento autêntico</span>
+                    <p class="veredito-titulo">O arquivo confere com o que a DIMAP emitiu.</p>
+                    <p class="veredito-nota">Nem um byte foi alterado desde a emissão, e o código está no acervo.</p>
+                  </div>
+
+                  <!-- ficha do ato: os mesmos pares que a SPEC 008 mostra -->
+                  <div class="card-well p-5 flex flex-col gap-4">
+                    <p class="text-overline">A assinatura</p>
+                    <div class="glass-panel rounded-2xl p-5 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                      <div class="min-w-0 sm:col-span-2">
+                        <p class="text-overline">Assinado por</p>
+                        <p class="valor-leitura font-medium text-base-content/90">Marina Salgado de Almeida</p>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-overline">Cargo</p>
+                        <p class="valor-leitura text-base-content/90">Diretora de Divisão Técnica</p>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-overline">Unidade</p>
+                        <p class="valor-leitura text-base-content/90">DIMAP-1 <span class="text-base-content/50">· Divisão de Avaliação Imobiliária</span></p>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-overline">Assinado em</p>
+                        <p class="valor-leitura text-base-content/90">8 de setembro de 2026, às 14h32min</p>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-overline">Código do documento</p>
+                        <p class="valor-leitura text-code">7K4M9P2XQ3TB</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- O botão vira "Carregar novo documento" -->
+                <button type="button" class="btn btn-glass w-full gap-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-upload"/></svg>
+                  Carregar novo documento
+                </button>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <a href="#tela" class="btn-etched btn-etched-swell etched etched-deeper self-center">Voltar à escolha</a>
+
+          </div>
+        </div>
+
+        <!-- resultado: não confere (com botão de carregar novo) -->
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          C.4 · Resultado: não confere — com original no acervo e botão de carregar novo.
+        </p>
+
+        <div class="max-w-2xl mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Conferir documento</h2>
+              <p class="text-xs text-base-content/60 mt-0.5 max-w-[44ch]">
+                Confira se o arquivo que você recebeu foi mesmo emitido pela DIMAP, e por quem.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-4">
+              <div class="glass-panel p-5 flex flex-col gap-4">
+                <div class="card-well veredito veredito-nao-confere">
+                  <span class="icon-bubble veredito-glifo">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-violado"/></svg>
+                  </span>
+                  <span class="text-overline veredito-estado">O arquivo foi alterado</span>
+                  <p class="veredito-titulo">O selo não fecha com o conteúdo deste arquivo.</p>
+                  <p class="veredito-nota">Não use esta via. O original guardado no acervo é o documento que vale.</p>
+                </div>
+
+                <div class="card-well p-5 flex flex-col items-center text-center gap-4">
+                  <div class="min-w-0 w-full">
+                    <p class="text-overline">Original no acervo</p>
+                    <p class="valor-leitura text-base-content/90">
+                      O código <span class="text-code">7K4M9P2XQ3TB</span> existe, e a DIMAP guarda a via emitida.
+                    </p>
+                  </div>
+                  <a href="#" class="btn btn-onsen gap-2 shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-baixar"/></svg>
+                    Baixar o original
+                  </a>
+                </div>
+                <p class="flex items-center justify-center gap-1.5 text-xs text-base-content/60">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                  Baixar o original é para servidor da DIMAP: pede login.
+                </p>
+              </div>
+
+              <button type="button" class="btn btn-glass w-full gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-upload"/></svg>
+                Carregar novo documento
+              </button>
+            </div>
+
+            <a href="#tela" class="btn-etched btn-etched-swell etched etched-deeper self-center">Voltar à escolha</a>
+
+          </div>
+        </div>
+
+        <!-- resultado: sem selo (com botão de carregar novo) -->
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          C.5 · Resultado: sem selo — com botão de carregar novo.
+        </p>
+
+        <div class="max-w-2xl mx-auto w-full">
+          <div class="glass-panel p-8 sm:p-9 flex flex-col gap-6 shadow-2xl border-white/70">
+
+            <div class="text-center flex flex-col items-center">
+              <div class="w-12 h-12 rounded-2xl bg-agua-600 text-white flex items-center justify-center shadow-lg mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </div>
+              <h2 class="text-2xl font-black text-madeira-700 tracking-tight">Conferir documento</h2>
+              <p class="text-xs text-base-content/60 mt-0.5 max-w-[44ch]">
+                Confira se o arquivo que você recebeu foi mesmo emitido pela DIMAP, e por quem.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-4">
+              <div class="glass-panel p-5">
+                <div class="card-well veredito veredito-sem-selo">
+                  <span class="icon-bubble veredito-glifo">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-sem-selo"/></svg>
+                  </span>
+                  <span class="text-overline veredito-estado">Sem selo</span>
+                  <p class="veredito-titulo">Este arquivo não traz selo da DIMAP.</p>
+                  <p class="veredito-nota">Ou o documento não saiu desta plataforma, ou o selo se perdeu ao reimprimir, digitalizar ou converter o arquivo.</p>
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-glass w-full gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-upload"/></svg>
+                Carregar novo documento
+              </button>
+            </div>
+
+            <a href="#tela" class="btn-etched btn-etched-swell etched etched-deeper self-center">Voltar à escolha</a>
+
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/static/src/js/ui/otp_onsen.js"></script>
+</body>
+</html>

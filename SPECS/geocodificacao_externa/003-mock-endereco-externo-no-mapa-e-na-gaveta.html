@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC geocodificacao_externa/003 — Endereço externo no mapa e na gaveta (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet para o mapa vivo da home (skill `mock`) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* andaime do mock: moldura que faz as vezes da casca da home */
+      .quadro-tela {
+        @apply relative h-[36rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+      .quadro-tela-baixo { @apply h-[22rem]; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content">
+  <!-- Defs da gravação: o partial da própria aplicação. -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- Fundo: o mapa vivo da home, de mapping/_mapa_fullscreen.html. -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC geocodificacao_externa/003 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Endereço externo no mapa e na gaveta</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          A gaveta do endereço que o provedor externo encontrou — o endereço como ele o escreve, o
+          provedor e a precisão —, o botão que busca o lote mais próximo em qualquer logradouro, e os
+          três avisos de falta.
+        </p>
+      </header>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- badge de precisão — badge semântico soft, no lugar do grau de certeza da gaveta oficial -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">badge de precisão · cabeçalho da gaveta</p>
+          <div class="card-well p-5 flex flex-wrap items-center gap-6">
+            <!-- estado: imóvel -->
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-success badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">No imóvel</span>
+              <span class="text-xs text-base-content/60">imóvel</span>
+            </div>
+            <!-- estado: interpolada -->
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-info badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Interpolada na via</span>
+              <span class="text-xs text-base-content/60">interpolada</span>
+            </div>
+            <!-- estado: logradouro — só aparece se a política baixar a precisão mínima -->
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-warning badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Centro da via</span>
+              <span class="text-xs text-base-content/60">logradouro</span>
+            </div>
+            <!-- estado: aproximada — idem -->
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-warning badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Aproximada</span>
+              <span class="text-xs text-base-content/60">aproximada</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- card do provedor — composição de .card-well + .icon-bubble + overline -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">card do provedor · gaveta do endereço externo</p>
+          <div class="max-w-md">
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-globo"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Geocodificado por</p>
+                <p class="font-bold leading-tight">Google</p>
+                <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- a ação da gaveta do endereço externo -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">ação · buscar lote mais próximo, sem recorte de logradouro</p>
+          <div class="grid lg:grid-cols-2 gap-4 max-w-2xl">
+            <!-- estado: em repouso -->
+            <div class="flex flex-col gap-2">
+              <button type="button" class="btn btn-onsen w-full">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-lote-proximo"/></svg>
+                Buscar lote mais próximo
+              </button>
+              <p class="text-xs text-base-content/60 text-center">Procura em qualquer logradouro, a até 50 m do ponto.</p>
+            </div>
+            <!-- estado: consultando o WFS -->
+            <div class="flex flex-col gap-2">
+              <button type="button" class="btn btn-onsen w-full" disabled>
+                <span class="loading loading-spinner loading-sm"></span>
+                Buscando lote…
+              </button>
+              <p class="text-xs text-base-content/60 text-center">Procura em qualquer logradouro, a até 50 m do ponto.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- card de distância com origem externa — a peça da SPEC localizacao_lote/002, com o endereço do provedor -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">card de distância · origem vinda do provedor</p>
+          <div class="max-w-md">
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-regua"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Distância do endereço</p>
+                <p class="text-xl font-bold tabular-nums leading-tight">14 <span class="text-sm font-normal text-base-content/60">m</span></p>
+                <p class="text-sm text-base-content/70 truncate">Alameda Santos, 1293 - Jardim Paulista, São Paulo - SP, 01419-002, Brasil</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="flex flex-col gap-6">
+        <h2 class="section-title">4 · Organismos</h2>
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          A gaveta do endereço externo, na casca da SPEC design/013, moldada na gaveta do endereço
+          interpolado.
+        </p>
+
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- estado: precisão no imóvel -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">precisão no imóvel</span>
+            <div class="quadro-tela" data-gaveta="externo" data-toggle="org-externo-imovel" data-aberta></div>
+          </div>
+
+          <!-- estado: precisão interpolada, endereço sem bairro nem CEP -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">precisão interpolada · endereço curto</span>
+            <div class="quadro-tela" data-gaveta="externo" data-toggle="org-externo-interpolada" data-aberta data-precisao="interpolada"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- estado: ao vivo — o encadeamento inteiro -->
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-1">
+            <span class="text-overline drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · geocodifique, busque o lote, e veja os estados de falta</span>
+            <!-- andaime do mock: faz as vezes dos swaps do HTMX -->
+            <div class="flex flex-wrap gap-2">
+              <button type="button" id="andaime-externo" class="btn btn-onsen btn-sm">Geocodificar externo</button>
+              <button type="button" id="andaime-sem-lote" class="btn btn-ghost btn-glass btn-sm">Sem lote no raio</button>
+              <button type="button" id="andaime-sem-resultado" class="btn btn-ghost btn-glass btn-sm">Sem resultado aceito</button>
+              <button type="button" id="andaime-indisponivel" class="btn btn-ghost btn-glass btn-sm">Provedor indisponível</button>
+              <button type="button" id="andaime-limpar" class="btn btn-ghost btn-glass btn-sm">Limpar</button>
+            </div>
+          </div>
+
+          <!-- página: core/home.html -->
+          <div class="quadro-tela tela-home" id="quadro-vivo">
+            <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+            <div id="mapa-tela" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]"></div>
+            <!-- fica na página: a UI flutuante da busca, que já existe; #resultado-busca é o alvo do swap -->
+            <div data-busca></div>
+            <!-- página: <div id="gaveta-entidade"></div> — nasce vazio; alvo do OOB (innerHTML) -->
+            <div id="gaveta-entidade"></div>
+          </div>
+        </div>
+
+        <!-- estados da tela, lado a lado -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <!-- estado: endereço externo — ponto no mapa, gaveta do endereço externo -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">endereço externo · só o ponto</span>
+            <div class="quadro-tela tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="ponto"></div>
+              <!-- partial: geocodificacao_externa/partials/_resultado_externo.html — resposta de geocodificacao_externa:selecionar em #resultado-busca -->
+              <!-- partial: geocodificacao_externa/partials/_gaveta_endereco_externo.html — chega por OOB em #gaveta-entidade; toggle #gaveta-endereco-externo-toggle -->
+              <div data-gaveta="externo" data-toggle="tela-externo" data-aberta></div>
+              <!-- /partial -->
+              <!-- /partial -->
+            </div>
+          </div>
+
+          <!-- estado: lote encontrado — ponto e polígono juntos, gaveta do lote com a origem externa -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">lote mais próximo · ponto e polígono juntos</span>
+            <div class="quadro-tela tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="ponto-lote"></div>
+              <!-- partial: lotes_mais_proximos/partials/_resultado_mais_proximo.html — resposta de lotes_mais_proximos:mais_proximo_do_ponto; a gaveta do lote chega por OOB -->
+              <div data-gaveta="lote" data-toggle="tela-lote" data-aberta></div>
+              <!-- /partial -->
+            </div>
+          </div>
+
+          <!-- estado de falta: sem lote no raio — o ponto fica; a gaveta recolhe para a busca voltar com o aviso -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">sem lote no raio · o ponto continua, a gaveta recolhe</span>
+            <div class="quadro-tela tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="ponto"></div>
+              <!-- partial: mapping/_aviso.html — resposta de mais_proximo_do_ponto em #resultado-busca -->
+              <div data-busca data-aviso="sem-lote"></div>
+              <!-- /partial -->
+              <!-- partial: mapping/_recolher_gaveta_oob.html com toggle="gaveta-endereco-externo-toggle" — no mesmo response do aviso -->
+              <div data-gaveta="externo" data-toggle="tela-externo-sem-lote"></div>
+              <!-- /partial -->
+            </div>
+          </div>
+
+          <!-- estado de falta: sem resultado aceito — nada desenhado -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">sem resultado aceito · nada desenhado</span>
+            <div class="quadro-tela quadro-tela-baixo tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="vazio"></div>
+              <!-- partial: mapping/_aviso.html — resposta de selecionar em #resultado-busca -->
+              <div data-busca data-aviso="sem-resultado"></div>
+              <!-- /partial -->
+            </div>
+          </div>
+
+          <!-- estado de falta: provedor indisponível ou não configurado — nada desenhado -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">provedor indisponível ou não configurado · nada desenhado</span>
+            <div class="quadro-tela quadro-tela-baixo tela-home">
+              <div class="absolute inset-0 z-0" data-mapa="vazio"></div>
+              <!-- partial: mapping/_aviso.html — resposta de selecionar em #resultado-busca -->
+              <div data-busca data-aviso="indisponivel"></div>
+              <!-- /partial -->
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Glifos desta tela. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <!-- NOVO nesta SPEC: o globo do provedor externo -->
+      <g id="glifo-globo">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/>
+      </g>
+      <!-- JÁ EXISTE: o do botão da gaveta do endereço interpolado -->
+      <g id="glifo-lote-proximo">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/>
+      </g>
+      <!-- JÁ EXISTE: o do card de distância -->
+      <g id="glifo-regua">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V6a2 2 0 012-2h12a2 2 0 012 2v2M4 8h16M4 8v10a2 2 0 002 2h12a2 2 0 002-2V8M8 8v3m4-3v4m4-4v3"/>
+      </g>
+      <!-- JÁ EXISTE: o pino da gaveta de endereço e de lote -->
+      <g id="glifo-pino">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- A busca da home, como está em core/home.html. -->
+  <template id="molde-busca">
+    <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">
+      <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+        <div class="relative w-full flex items-center">
+          <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="search" value="AL SANTOS, 1293" class="input input-glass pl-11" />
+        </div>
+      </div>
+      <div class="pointer-events-auto w-11/12 max-w-2xl mt-3" data-resultado-busca></div>
+    </div>
+  </template>
+
+  <!-- Conteúdo da gaveta do endereço externo. -->
+  <template id="conteudo-externo">
+    <input type="checkbox" class="gaveta-lateral-toggle">
+    <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+      <header class="gaveta-lateral-cabecalho">
+        <p class="text-overline text-madeira-600">Entidade localizada</p>
+        <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Endereço externo</h2>
+        <p class="text-sm font-medium mt-2" data-endereco>Alameda Santos, 1293 - Jardim Paulista, São Paulo - SP, 01419-002, Brasil</p>
+        <span class="badge badge-success badge-soft badge-sm font-bold mt-3" data-precisao title="Precisão declarada pelo provedor">No imóvel</span>
+      </header>
+
+      <div class="gaveta-lateral-corpo" data-scroll-etched>
+        <div class="gaveta-lateral-rolador" data-rolador>
+          <div class="gaveta-lateral-conteudo">
+            <!-- provedor -->
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-globo"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Geocodificado por</p>
+                <p class="font-bold leading-tight">Google</p>
+                <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+              </div>
+            </div>
+
+            <!-- a ação: um POST com o ponto e a origem, sem codlog -->
+            <form class="flex flex-col gap-2 pt-1" data-acao>
+              <button type="submit" class="btn btn-onsen w-full">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-lote-proximo"/></svg>
+                Buscar lote mais próximo
+              </button>
+              <p class="text-xs text-base-content/60 text-center">Procura em qualquer logradouro, a até 50 m do ponto.</p>
+            </form>
+          </div>
+        </div>
+        <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+      </div>
+    </div>
+    <label class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+      <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    </label>
+  </template>
+
+  <!-- Conteúdo da gaveta do lote (lote_geocoder/partials/_gaveta_lote.html, intocada), com o card de distância. -->
+  <template id="conteudo-lote">
+    <input type="checkbox" class="gaveta-lateral-toggle">
+    <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+      <header class="gaveta-lateral-cabecalho">
+        <p class="text-overline text-madeira-600">Entidade localizada</p>
+        <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
+        <p class="text-code text-sm font-medium mt-2">SQL 009.034.0021-7</p>
+        <span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>
+      </header>
+
+      <div class="gaveta-lateral-corpo" data-scroll-etched>
+        <div class="gaveta-lateral-rolador" data-rolador>
+          <div class="gaveta-lateral-conteudo">
+            <!-- card de distância: origem é o endereço como o provedor o escreve -->
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-regua"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Distância do endereço</p>
+                <p class="text-xl font-bold tabular-nums leading-tight">14 <span class="text-sm font-normal text-base-content/60">m</span></p>
+                <p class="text-sm text-base-content/70 truncate">Alameda Santos, 1293 - Jardim Paulista, São Paulo - SP, 01419-002, Brasil</p>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex flex-col gap-3">
+              <div class="flex gap-4 items-center">
+                <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-pino"/></svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-overline mb-0.5">Endereço cadastrado</p>
+                  <p class="font-bold leading-tight">AL SANTOS, 1297</p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="flex items-baseline justify-between gap-4">
+                <p class="text-overline">Codlog</p>
+                <p class="text-code text-sm">178462</p>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Área de terreno</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Cadastro</p>
+                  <p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Polígono</p>
+                  <p class="text-xl font-bold tabular-nums">1.462 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <p class="text-overline">Divergência</p>
+                <span class="badge badge-neutral badge-soft badge-lg text-lg font-bold px-4 tabular-nums">+0,8%</span>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex items-baseline justify-between gap-4">
+              <p class="text-overline">Área construída</p>
+              <p class="text-xl font-bold tabular-nums">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+            </div>
+
+            <p class="text-overline pt-1">Cadastro</p>
+            <div class="grid grid-cols-3 gap-3">
+              <div class="card-well p-3">
+                <p class="text-overline mb-1">Setor</p>
+                <p class="text-code text-lg font-bold">009</p>
+              </div>
+              <div class="card-well p-3">
+                <p class="text-overline mb-1">Quadra</p>
+                <p class="text-code text-lg font-bold">034</p>
+              </div>
+              <div class="card-well p-3">
+                <p class="text-overline mb-1">Lote</p>
+                <p class="text-code text-lg font-bold">0021</p>
+              </div>
+            </div>
+            <dl class="card-well ficha-atributos">
+              <dt class="text-overline">Tipo de quadra</dt>
+              <dd class="text-code">U</dd>
+              <dt class="text-overline">Tipo de lote</dt>
+              <dd class="text-code">F</dd>
+              <dt class="text-overline">Condomínio</dt>
+              <dd class="valor-ausente">não informado</dd>
+              <dt class="text-overline">Uso</dt>
+              <dd>Comércio e serviços</dd>
+              <dt class="text-overline">CIB</dt>
+              <dd class="text-code">1234567-8</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+      </div>
+    </div>
+    <label class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+      <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    </label>
+  </template>
+
+  <script type="module">
+    // andaime do mock: erro de carga aparece na tela, não só no console.
+    function denunciar(mensagem) {
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        '<pre class="fixed top-0 inset-x-0 z-50 m-0 p-3 text-xs bg-error text-error-content whitespace-pre-wrap">' + mensagem + "</pre>",
+      );
+    }
+    window.addEventListener("error", (evento) => denunciar("erro: " + evento.message));
+    window.addEventListener("unhandledrejection", (evento) => denunciar("falhou: " + evento.reason));
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    // No produto a config desce do servidor; o mock não tem Django por trás do Live Server.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5621, -46.6571];
+    const PONTO = [-23.5621, -46.6571];
+    const LOTE = {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [[
+          [-46.65728, -23.56170], [-46.65690, -23.56170],
+          [-46.65690, -23.56200], [-46.65728, -23.56200], [-46.65728, -23.56170],
+        ]],
+      },
+    };
+    const COR_PONTO = "#00B4D8";
+    const COR_POLIGONO = "#D84F7F";
+
+    // As mensagens da SPEC §6, na boca do partial real.
+    const MENSAGENS = {
+      "sem-lote": "Nenhum lote foi encontrado a 50 metros do ponto de busca.",
+      "sem-resultado": "O serviço externo não localizou este endereço com precisão suficiente.",
+      "indisponivel": "O serviço externo de geocodificação está indisponível no momento.",
+    };
+    const PRECISOES = {
+      imovel: { rotulo: "No imóvel", classe: "badge-success" },
+      interpolada: { rotulo: "Interpolada na via", classe: "badge-info" },
+    };
+
+    async function partial(caminho) {
+      const r = await fetch(caminho);
+      if (!r.ok) throw new Error(r.status + " em " + caminho + " — sirva a RAIZ do projeto");
+      return r.text();
+    }
+    const semTags = (texto) => texto.replace(TAG_DE_TEMPLATE, "").trim();
+
+    const [filtros, fundo, avisoBruto] = await Promise.all([
+      partial("/templates/partials/_filtros_gravacao.html"),
+      partial("/templates/mapping/_mapa_fullscreen.html"),
+      partial("/templates/mapping/_aviso.html"),
+    ]);
+    document.getElementById("defs-aplicacao").innerHTML = semTags(filtros);
+    document.getElementById("fundo-home").innerHTML = semTags(fundo);
+
+    // O aviso é o mapping/_aviso.html da aplicação: só a placa, sem o OOB que fecha as sugestões.
+    function aviso(chave) {
+      const molde = document.createElement("template");
+      molde.innerHTML = semTags(avisoBruto.replace("{{ mensagem }}", MENSAGENS[chave]));
+      return molde.content.querySelector("[role=alert]").cloneNode(true);
+    }
+
+    function busca(alvo) {
+      alvo.replaceWith(document.getElementById("molde-busca").content.cloneNode(true));
+    }
+
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers,
+        version: WMS.version,
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+
+    function ponto(mapa) {
+      return L.circleMarker(PONTO, {
+        radius: 8, color: COR_PONTO, weight: 3, fillColor: COR_PONTO, fillOpacity: 0.6,
+      }).addTo(mapa);
+    }
+
+    function poligono(mapa) {
+      return L.geoJSON(LOTE, {
+        style: { color: COR_POLIGONO, weight: 3, opacity: 1, fillColor: COR_POLIGONO, fillOpacity: 0.35 },
+      }).addTo(mapa);
+    }
+
+    function gaveta(tipo, idToggle, aberta, opcoes) {
+      const casca = document.createElement("div");
+      casca.className = "gaveta-lateral";
+      casca.appendChild(document.getElementById("conteudo-" + tipo).content.cloneNode(true));
+      const toggle = casca.querySelector(".gaveta-lateral-toggle");
+      toggle.id = idToggle;
+      toggle.checked = aberta;
+      casca.querySelector(".paleta-gaveta").htmlFor = toggle.id;
+      if (tipo === "externo" && opcoes.precisao === "interpolada") {
+        const selo = casca.querySelector("[data-precisao]");
+        selo.textContent = PRECISOES.interpolada.rotulo;
+        selo.classList.replace(PRECISOES.imovel.classe, PRECISOES.interpolada.classe);
+        casca.querySelector("[data-endereco]").textContent = "R. Nova Esperança, 87 - São Paulo - SP, Brasil";
+      }
+      return casca;
+    }
+
+    // Estados estáticos: busca com aviso, gavetas e mapas de cada quadro.
+    document.querySelectorAll("[data-busca][data-aviso]").forEach((alvo) => {
+      const chave = alvo.dataset.aviso;
+      const quadro = alvo.parentElement;
+      busca(alvo);
+      quadro.querySelector("[data-resultado-busca]").appendChild(aviso(chave));
+    });
+
+    document.querySelectorAll("[data-gaveta]").forEach((alvo) => {
+      alvo.appendChild(gaveta(alvo.dataset.gaveta, alvo.dataset.toggle, alvo.hasAttribute("data-aberta"), {
+        precisao: alvo.dataset.precisao,
+      }));
+    });
+
+    base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15));
+
+    document.querySelectorAll("[data-mapa]").forEach((alvo, indice) => {
+      alvo.id = "mapa-estado-" + indice;
+      const mapa = base(L.map(alvo.id, {
+        zoomControl: false, minZoom: 13, maxZoom: 19,
+        dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+      }).setView(CENTRO, alvo.dataset.mapa === "vazio" ? 16 : 18));
+      if (alvo.dataset.mapa === "vazio") return;
+      const temGaveta = alvo.parentElement.querySelector("[data-gaveta]");
+      if (temGaveta) mapa.panBy([-180, 0], { animate: false });
+      ponto(mapa);
+      if (alvo.dataset.mapa === "ponto-lote") poligono(mapa);
+    });
+
+    const { montarBarrasGravadas } = await import("/static/src/js/ui/scroll_etched.js");
+    montarBarrasGravadas();
+
+    // andaime do mock: o que os swaps do HTMX fariam na tela ao vivo.
+    const quadroVivo = document.getElementById("quadro-vivo");
+    busca(quadroVivo.querySelector("[data-busca]"));
+    quadroVivo.querySelector("[data-resultado-busca]").id = "resultado-busca";
+    const mapaTela = base(L.map("mapa-tela", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 16));
+    const alvoGaveta = document.getElementById("gaveta-entidade");
+    const alvoResultado = quadroVivo.querySelector("[data-resultado-busca]");
+    let camadaPonto = null;
+    let camadaLote = null;
+
+    function enquadrar() {
+      const alvo = camadaLote ? camadaLote.getBounds() : L.latLngBounds([PONTO, PONTO]);
+      const recuo = alvoGaveta.firstElementChild ? alvoGaveta.firstElementChild.offsetWidth + 80 : 80;
+      mapaTela.fitBounds(alvo, { maxZoom: 18, paddingTopLeft: [recuo, 120], paddingBottomRight: [80, 80] });
+    }
+
+    function limpar() {
+      alvoGaveta.replaceChildren();
+      alvoResultado.replaceChildren();
+      if (camadaPonto) { camadaPonto.remove(); camadaPonto = null; }
+      if (camadaLote) { camadaLote.remove(); camadaLote = null; }
+    }
+
+    function geocodificarExterno() {
+      limpar();
+      camadaPonto = ponto(mapaTela);
+      alvoGaveta.replaceChildren(gaveta("externo", "tela-viva", true, {}));
+      montarBarrasGravadas();
+      enquadrar();
+    }
+
+    function buscarLote() {
+      alvoResultado.replaceChildren();
+      camadaLote = poligono(mapaTela);
+      alvoGaveta.replaceChildren(gaveta("lote", "tela-viva", true, {}));
+      montarBarrasGravadas();
+      enquadrar();
+    }
+
+    function falhaDoProvedor(chave) {
+      limpar();
+      alvoResultado.replaceChildren(aviso(chave));
+      mapaTela.setView(CENTRO, 16);
+    }
+
+    document.getElementById("andaime-externo").addEventListener("click", geocodificarExterno);
+    document.getElementById("andaime-limpar").addEventListener("click", limpar);
+    document.getElementById("andaime-sem-resultado").addEventListener("click", () => falhaDoProvedor("sem-resultado"));
+    document.getElementById("andaime-indisponivel").addEventListener("click", () => falhaDoProvedor("indisponivel"));
+    document.getElementById("andaime-sem-lote").addEventListener("click", () => {
+      if (!camadaPonto || camadaLote) geocodificarExterno();
+      alvoResultado.replaceChildren(aviso("sem-lote"));
+      // o que o _recolher_gaveta_oob.html faz: só o toggle desmarca; a paleta reabre a gaveta
+      alvoGaveta.querySelector(".gaveta-lateral-toggle").checked = false;
+    });
+
+    // O botão da gaveta do endereço externo é o gatilho real: no produto é um hx-post.
+    alvoGaveta.addEventListener("submit", (evento) => {
+      evento.preventDefault();
+      buscarLote();
+    });
+  </script>
+</body>
+</html>

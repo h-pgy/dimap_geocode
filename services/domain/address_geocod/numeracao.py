@@ -18,9 +18,15 @@ def intervalo_numeracao(
     return attrs.numero_inicial_impar, attrs.numero_final_impar
 
 
+def tem_numeracao(attrs: SegmentoLogradouroAttributes, paridade: Paridade) -> bool:
+    inicial, final = intervalo_numeracao(attrs, paridade)
+    # A camada marca o lado vazio com None ou com 0–0; a faixa par 0–42 é numeração de verdade.
+    return inicial is not None and final is not None and final > 0
+
+
 def limite_inicial(attrs: SegmentoLogradouroAttributes, paridade: Paridade) -> int:
     """Início do intervalo, já sem `None`. Só é chamada sobre segmentos que passaram por
-    `_filtrar_com_numeracao` (ambos os lados garantidamente não-nulos para a paridade)."""
+    `tem_numeracao` (ambos os lados garantidamente não-nulos para a paridade)."""
     inicio, _ = intervalo_numeracao(attrs, paridade)
     assert inicio is not None
     return inicio

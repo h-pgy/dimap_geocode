@@ -5,6 +5,7 @@ from .contribuinte import ContribuinteIdentifier
 from .endereco import EnderecoIdentifier
 from .endereco_codlog import CodlogNumeroIdentifier
 from .endereco_lote import EnderecoLoteIdentifier
+from .geocodificacao_externa import GeocodificacaoExternaIdentifier
 from .logradouro import LogradouroIdentifier
 from .models import Candidato, RoteamentoQuery, RoteamentoResult, TipoEntrada
 
@@ -15,6 +16,7 @@ PRIORIDADE_TIPOS: tuple[TipoEntrada, ...] = (
     TipoEntrada.ENDERECO,
     TipoEntrada.CODLOG,
     TipoEntrada.LOGRADOURO,
+    TipoEntrada.GEOCODIFICACAO_EXTERNA,
 )
 
 
@@ -31,6 +33,7 @@ class EntradaRouter:
             LogradouroIdentifier(),
             EnderecoIdentifier(),
             EnderecoLoteIdentifier(),
+            GeocodificacaoExternaIdentifier(),
         )
 
     def __call__(self, query: RoteamentoQuery) -> RoteamentoResult:

@@ -1,0 +1,3 @@
+{% include "mapping/_mapa.html" %}
+{# `safe`: o texto saiu dos templates do projeto, com autoescape, e veio da sessão do servidor. #}
+<div id="gaveta-entidade" hx-swap-oob="innerHTML">{{ gaveta|safe }}</div>

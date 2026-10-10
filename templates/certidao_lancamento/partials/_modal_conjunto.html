@@ -1,0 +1,66 @@
+<div class="modal modal-open modal-glass" role="dialog">
+  <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5 w-11/12 max-w-lg shadow-2xl">
+    {% include "certidao_lancamento/partials/_cabecalho_conjunto.html" %}
+
+    {% if not motivos_recusa_conjunto %}
+      {% include "partials/_tarja_recusa.html" with erros=recusa.mensagens titulo="Não foi possível emitir a certidão" %}
+
+      {# Os lotes que restaram na tabela: a lista que a certidão vai atestar, recolhida como a ressalva. #}
+      <div class="flex flex-col gap-2">
+        <label for="lista-lotes-conjunto" class="btn-etched btn-etched-sm btn-etched-swell etched self-start">Ver lista de lotes</label>
+        <div class="painel-onsen">
+          <input type="checkbox" id="lista-lotes-conjunto" class="painel-onsen-toggle">
+          <div class="painel-onsen-corpo">
+            <div class="card-well pb-2 table-onsen-poco flex flex-col" data-scroll-etched>
+              <div class="table-onsen-wrap max-h-40" data-rolador>
+                <table class="table table-onsen table-onsen-compacta">
+                  <thead data-cabecalho>
+                    <tr>
+                      <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                      <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for lote in conjunto.lotes %}
+                      <tr>
+                        <td class="text-code whitespace-nowrap">{{ lote.attributes.sql }}</td>
+                        <td>{% if lote.attributes.endereco_completo %}{{ lote.attributes.endereco_completo }}{% else %}<span class="valor-ausente">não informado</span>{% endif %}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# O form inteiro é o escopo da chave: ela mostra os textos do sentido e repõe o padrão do mapa. #}
+      <form hx-post="{% url 'certidao_lancamento:emitir_conjunto' %}" hx-target="#poco-modal" hx-swap="innerHTML" class="flex flex-col gap-4" data-chave-condicional>
+        <input type="hidden" name="chave" value="{{ chave }}">
+        {% for lote in conjunto.lotes %}
+          <input type="hidden" name="confirmados" value="{{ lote.attributes.id_poligono }}">
+        {% endfor %}
+
+        {% include "certidao_lancamento/partials/_campos_pedido.html" with rotulo_mapa="Acrescentar mapa com a localização dos lotes" %}
+
+        <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+          <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Cancelar</button>
+          <button type="submit" class="btn btn-onsen btn-sm">Emitir certidão</button>
+        </div>
+      </form>
+    {% elif conjunto.lotes %}
+      {% include "partials/_tarja_recusa.html" with erros=motivos_recusa_conjunto titulo="Tire estes lotes da tabela antes de emitir" tom="pendente" %}
+      <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+        <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Voltar à tabela</button>
+      </div>
+    {% else %}
+      {% include "partials/_tarja_recusa.html" with erros=motivos_recusa_conjunto titulo="Certidão indisponível para este conjunto" tom="pendente" %}
+      <div class="modal-action mt-2 pt-3 border-t border-rocha-950/10">
+        <button type="button" class="btn btn-glass btn-sm" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</button>
+      </div>
+    {% endif %}
+  </div>
+  <label class="modal-backdrop" onclick="document.getElementById('poco-modal').innerHTML = ''">Fechar</label>
+</div>

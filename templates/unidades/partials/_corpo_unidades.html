@@ -11,7 +11,9 @@
       <td>
         <p class="td-nome-unidade">{{ linha.nome }}</p>
       </td>
-      <td class="text-base-content/80">{{ linha.tipo }}</td>
+      {# A linha carrega o nome e a marca do tipo, não o tipo: o mesmo átomo de                      #}
+      {# `_rotulo_tipo_unidade.html`, escrito sobre os dois campos da linha (SPEC user_admin/031). #}
+      <td class="text-base-content/80"><span class="rotulo-tipo-unidade{% if linha.tipo_extinto %} rotulo-tipo-unidade-extinto{% endif %}"{% if linha.tipo_extinto %} title="Tipo de unidade extinto"{% endif %}>{{ linha.tipo }}</span></td>
       <td>
         {% if linha.exige_alta_administracao %}
           <span class="badge badge-info badge-soft badge-sm font-medium">Alta adm.</span>

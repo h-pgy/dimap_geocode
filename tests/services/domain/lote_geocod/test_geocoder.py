@@ -184,6 +184,30 @@ def test_opcional_condominio_preenchido() -> None:
     assert attrs.condominio == "COND001"
 
 
+_PROPS_COM_CADASTRO: dict[str, object] = {
+    **_PROPS_COMPLETAS,
+    "cd_digito_sql": "5",
+    "tx_complemento_endereco": "APTO 12",
+    "tx_situ_lote": "ATIVO",
+    "dc_tipo_uso_imovel": "RESIDENCIAL VERTICAL",
+    "qt_area_terreno": 250.5,
+    "qt_area_construida": 120.0,
+    "cd_cib": "1234",
+}
+
+
+def test_feature_para_lote_le_atributos_cadastrais() -> None:
+    pages = [_page([_feat(_PROPS_COM_CADASTRO)])]
+    attrs = _geocoder(pages)(_entrada())[0].attributes
+    assert attrs.digito == "5"
+    assert attrs.complemento == "APTO 12"
+    assert attrs.situacao == "ATIVO"
+    assert attrs.uso == "RESIDENCIAL VERTICAL"
+    assert attrs.area_terreno_m2 == 250.5
+    assert attrs.area_construida_m2 == 120.0
+    assert attrs.cib == "1234"
+
+
 # ---------------------------------------------------------------------------
 # Envelope: geometry + crs
 # ---------------------------------------------------------------------------

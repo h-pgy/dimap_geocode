@@ -4,8 +4,24 @@
 {% block title %}DIMAP GeoCoder{% endblock %}
 
 {% block content %}
-<div class="relative h-screen w-screen overflow-hidden">
+<div class="tela-home relative h-screen w-screen overflow-hidden" data-url-desenhos="{% url 'mapping:desenhos_da_bancada' %}">
   {% include "mapping/_mapa_fullscreen.html" %}
+  {% include "documentos/partials/_glifos_documento.html" %}
+  {% include "documentos/partials/_atalho_validar.html" %}
+  {% include "mapping/_glifos_mapa.html" %}
+  {% include "mapping/_controles_mapa.html" %}
+  {% include "mapping/_glifos_desenho.html" %}
+  {% include "street_view/partials/_glifos_street_view.html" %}
+  {% include "mapping/_bancada_desenho.html" %}
+
+  {# Entidade localizada pela busca (SPEC localizacao_lote/001): nasce vazia, sem casca nem paleta. #}
+  <div id="gaveta-entidade"></div>
+
+  {# Resultado de ação sobre desenho (SPEC localizacao_lote/003): a gaveta inferior chega por OOB, #}
+  {# e a marca do contexto de ação recolhe a busca enquanto ela estiver aberta. #}
+  <div id="gaveta-inferior-conteudo"></div>
+  <div id="contexto-acao" hidden></div>
+  <div id="poco-modal" class="poco-modal"></div>
 
   {# UI flutuante sobre o mapa (skill componentes-frontend §6/mock_ui): sem pointer-events no #}
   {# layer, cada painel reabre a interação em pointer-events-auto. #}
@@ -68,4 +84,14 @@
   <script type="module" src="{% static 'js/busca/feedback_selecao.js' %}"></script>
   {# Atalho Ctrl+K prometido pela dica sob a barra: foca o input de busca #}
   <script type="module" src="{% static 'js/busca/atalho_foco_busca.js' %}"></script>
+  {# Clique fora da gaveta lateral a recolhe (SPEC design/019) #}
+  <script type="module" src="{% static 'js/ui/fechar_gaveta_clique_fora.js' %}"></script>
+  {# Arrasto da alça da gaveta inferior puxável (SPEC design/022) #}
+  <script type="module" src="{% static 'js/ui/puxar_gaveta.js' %}"></script>
+  {# Máscara progressiva para campos com [data-mascara] (SPEC certidao_lancamento/001) #}
+  <script type="module" src="{% static 'js/ui/campo_mascarado.js' %}"></script>
+  {# Chave deferido/indeferido do modal da certidão: mostra os textos do sentido (SPEC certidao_lancamento/001) #}
+  <script type="module" src="{% static 'js/ui/chave_condicional.js' %}"></script>
+  {# Fade-out dos avisos e erros exibidos em #resultado-busca sobre o mapa #}
+  <script type="module" src="{% static 'js/busca/aviso_busca.js' %}"></script>
 {% endblock %}

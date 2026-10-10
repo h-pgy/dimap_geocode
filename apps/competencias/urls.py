@@ -12,6 +12,8 @@ urlpatterns = [
     # Leitura, não ato (SPEC painel/002, §7): sem contrato, sem `acao_protegida`.
     path("registro-acoes/", views.listar_registro_acoes, name="listar_registro_acoes"),
     path("registro-acoes/corpo/", views.corpo_execucoes, name="corpo_execucoes"),
+    path("registro-acoes/certidao/", views.modal_certidao_atos, name="modal_certidao_atos"),
+    path("registro-acoes/certidao/emitir/", views.emitir_certidao_atos_view, name="emitir_certidao_atos"),
     # A tela. Sem argumento na URL: o alvo viaja como parâmetro, que é o que o alcance confere.
     path("atribuicoes/", views.definir_atribuicao, name="definir_atribuicao"),
     # Trocar de unidade na árvore troca só o painel — a árvore não é reenviada.

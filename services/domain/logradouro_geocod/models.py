@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
-from services.domain.geometry import GeoFeature, LineGeometry
+from services.domain.geometry import GeoFeature, LineGeometry, PointGeometry
+from services.domain.logradouro import Logradouro
 
 
 class LogradouroGeocodInput(BaseModel):
@@ -24,5 +25,32 @@ class SegmentoLogradouroAttributes(BaseModel):
     numero_inicial_impar: int | None = None
     numero_final_impar: int | None = None
 
+    # `@property`, não `@computed_field`: a entidade não entra no dump do segmento.
+    @property
+    def logradouro(self) -> Logradouro:
+        return Logradouro(
+            codlog=self.codlog,
+            tipo_logradouro=self.tipo_logradouro,
+            titulo=self.titulo,
+            preposicao=self.preposicao,
+            nome_logradouro=self.nome_logradouro,
+        )
+
 
 SegmentoLogradouroFeature = GeoFeature[LineGeometry, SegmentoLogradouroAttributes]
+
+
+class SegmentosNoRaioInput(BaseModel):
+    ponto: PointGeometry
+    crs_ponto: int
+    raio_m: float = Field(gt=0)
+    layer_name: str
+    campo_geometria: str
+    crs_metrico: int
+
+
+class SegmentoProximo(BaseModel):
+    """Um segmento e a distância dele ao ponto, apurada no CRS métrico."""
+
+    segmento: SegmentoLogradouroFeature
+    distancia_m: float = Field(ge=0)

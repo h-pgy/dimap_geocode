@@ -1,7 +1,8 @@
 """
 As ações que mantêm o organograma (SPEC user_admin/020): criar e editar unidade são estruturais,
 alcance de quem dirige; criar unidade raiz é exclusiva do superusuário, sem alcance — a raiz não
-pende de unidade alguma.
+pende de unidade alguma. E os quatro atos que mantêm o catálogo de tipos de unidade (SPEC
+user_admin/031), exclusivos do administrador do sistema e sem alcance — o catálogo é global.
 """
 
 from apps.competencias.utils import instanciar_acao
@@ -76,3 +77,54 @@ ACAO_DEFINIR_TITULAR = instanciar_acao(
     alcance=UnidadesEstritamenteSubordinadas(),
 )
 
+# Quatro ações para um catálogo só: é a `operacao` do registro que precisa distinguir os atos, e
+# quatro contratos é o que dá a cada um card, ícone e rastro próprios (SPEC user_admin/031, §7).
+ACAO_CRIAR_TIPO_UNIDADE = instanciar_acao(
+    slug="unidades.criar_tipo_unidade",
+    nome="Cadastrar tipo de unidade",
+    nome_curto="Novo tipo",
+    tooltip="Cria um tipo de unidade no catálogo da DIMAP.",
+    url_name="unidades:modal_criar_tipo_unidade",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    estrutural=False,
+    exclusiva_superusuario=True,
+    alcance=None,
+)
+
+ACAO_EDITAR_TIPO_UNIDADE = instanciar_acao(
+    slug="unidades.editar_tipo_unidade",
+    nome="Editar tipo de unidade",
+    nome_curto="Editar tipo",
+    tooltip="Altera nome, regras de subordinação e requisitos de titular de um tipo de unidade.",
+    url_name="unidades:modal_editar_tipo_unidade",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    estrutural=False,
+    exclusiva_superusuario=True,
+    alcance=None,
+)
+
+ACAO_EXTINGUIR_TIPO_UNIDADE = instanciar_acao(
+    slug="unidades.extinguir_tipo_unidade",
+    nome="Extinguir tipo de unidade",
+    nome_curto="Extinguir tipo",
+    tooltip="Retira um tipo de unidade das opções de novas unidades — e a reverte.",
+    # Precisa reverter sem argumento (`competencias.E004`): é a rota que abre o modal, e não as de
+    # gravação, que recebem o tipo no caminho.
+    url_name="unidades:modal_extinguir_tipo_unidade",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    estrutural=False,
+    exclusiva_superusuario=True,
+    alcance=None,
+)
+
+ACAO_REATIVAR_TIPO_UNIDADE = instanciar_acao(
+    slug="unidades.reativar_tipo_unidade",
+    nome="Reativar tipo de unidade",
+    nome_curto="Reativar tipo",
+    tooltip="Devolve um tipo de unidade extinto às opções de criação de unidades.",
+    url_name="unidades:modal_reativar_tipo_unidade",
+    variantes_icone=frozenset({VarianteIcone.PEQUENO, VarianteIcone.GRANDE}),
+    estrutural=False,
+    exclusiva_superusuario=True,
+    alcance=None,
+)

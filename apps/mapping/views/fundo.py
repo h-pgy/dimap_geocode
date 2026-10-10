@@ -1,9 +1,8 @@
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
+from apps.mapping.context import ortofotos_disponiveis
 from services.utils.sorteio import sortear_diferente
-
-from .context import ortofotos_disponiveis
 
 
 def fundo_ortofoto(request: HttpRequest) -> HttpResponse:

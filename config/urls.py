@@ -18,9 +18,17 @@ urlpatterns: list[URLResolver | URLPattern] = [
     path("", include("apps.search.urls")),
     path("logradouro/", include("apps.logradouro_matcher.urls")),
     path("logradouro/", include("apps.logradouro_geocoder.urls")),
+    path("logradouro-mais-proximo/", include("apps.logradouro_mais_proximo.urls")),
+    path("endereco-mais-proximo/", include("apps.endereco_mais_proximo.urls")),
     path("lote/", include("apps.lote_matcher.urls")),
     path("lote/", include("apps.lote_geocoder.urls")),
+    path("lote/", include("apps.lotes_mais_proximos.urls")),
+    path("lote/", include("apps.acoes_lote.urls")),
     path("endereco/", include("apps.address_geocoder.urls")),
+    path("endereco-externo/", include("apps.geocodificacao_externa.urls")),
+    path("street-view/", include("apps.street_view.urls")),
+    path("certidao-lancamento/", include("apps.certidao_lancamento.urls")),
+    path("", include("apps.documentos.urls")),
 ]
 
 # A foto do perfil (SPEC user_admin/006) é servida pelo runserver só em dev; em produção o arquivo

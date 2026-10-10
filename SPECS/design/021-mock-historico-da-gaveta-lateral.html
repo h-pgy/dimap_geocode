@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC design/021 — Histórico da gaveta lateral (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima.
+       O que já está no tema NÃO se repete aqui. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ÁTOMO · .glifo-gaveta — o glifo do tipo de gaveta, na tinta da geometria que ela põe no mapa. */
+      .glifo-gaveta { @apply w-5 h-5 shrink-0 text-rocha-700 transition-all duration-200; }
+      .glifo-gaveta--lote { @apply text-sakura-600; }
+      .glifo-gaveta--endereco,
+      .glifo-gaveta--endereco_externo { @apply text-agua-600; }
+      .glifo-gaveta--logradouro { @apply text-accent; }
+      .glifo-gaveta--desenhos { @apply text-madeira-600; }
+
+      /* ÁTOMO · .item-historico — uma gaveta na lista do histórico. Em repouso é só glifo e resumo;
+         pré-selecionada, afunda em poço com o seletor ciano, como o item da .torre-camadas. */
+      .item-historico {
+        @apply w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[15px];
+        @apply border border-transparent cursor-pointer outline-none transition-all duration-200;
+      }
+      .item-historico__resumo { @apply flex-1 min-w-0 truncate font-medium text-rocha-700 transition-colors duration-200; }
+      .item-historico--pre,
+      .item-historico:is(:hover, :focus-visible) {
+        @apply bg-white/35 border-white/50;
+        box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+      }
+      .item-historico--pre .item-historico__resumo,
+      .item-historico:is(:hover, :focus-visible) .item-historico__resumo { @apply text-madeira-700 font-bold; }
+      .item-historico--pre .glifo-gaveta,
+      .item-historico:is(:hover, :focus-visible) .glifo-gaveta { @apply drop-shadow-[0_0_6px_rgba(72,202,228,0.75)]; }
+      /* A volta do poço ao destino do Voltar espera um instante; sob o cursor, nada espera. */
+      .item-historico--pre,
+      .item-historico--pre :is(.item-historico__resumo, .glifo-gaveta) { @apply delay-200; }
+      .item-historico:is(:hover, :focus-visible),
+      .item-historico:is(:hover, :focus-visible) :is(.item-historico__resumo, .glifo-gaveta) { @apply delay-0; }
+
+      /* ÁTOMO · .dica-trava — a interrogação ao lado do controle que não responde. O motivo mora no
+         .tooltip empilhado no HTML; o foco de teclado entra pelo glifo. */
+      .dica-trava {
+        @apply hidden shrink-0 w-6 h-6 rounded-full items-center justify-center cursor-help;
+        @apply text-agua-700 bg-agua-400/15 border border-agua-600/30 transition-all duration-200;
+      }
+      .dica-trava svg { @apply w-3.5 h-3.5 outline-none; }
+      .dica-trava:hover { @apply bg-agua-400/30; }
+      .dica-trava:has(:focus-visible) { @apply ring-2 ring-agua-400/70; }
+      /* O balão cabe na gaveta: mais largo, o rolador do corpo o cortaria. */
+      .dica-trava[data-tip]::before { @apply max-w-52 text-left; }
+      .tela-home:has(#contexto-acao[data-contexto-acao]) .dica-trava { @apply inline-flex; }
+
+      /* ESTADO · travado — o que troca a cena, enquanto a gaveta inferior é dona do mapa. */
+      [data-troca-cena] { @apply transition-opacity duration-300; }
+      [data-troca-cena][inert] { @apply opacity-40 grayscale; }
+
+      /* ORGANISMO · .gaveta-lateral-voltar — o canto superior direito da gaveta lateral. Filho da
+         casca, e não do painel, como a paleta: dentro do painel o gelo da lista não embaçaria o mapa.
+         Sem lugar no fluxo: o conteúdo chega por carga própria, e nada pula quando ele assenta. */
+      .gaveta-lateral-voltar { @apply absolute top-4 right-7 z-20 flex items-center gap-2 pointer-events-auto; }
+      [data-troca-gaveta="troca"] .gaveta-lateral-voltar { @apply transition-opacity duration-150 ease-in-out; }
+      [data-troca-gaveta="troca"].htmx-swapping .gaveta-lateral-voltar { @apply opacity-0; }
+
+      /* MOLÉCULA · .voltar-gaveta — o Voltar gravado e, saindo dele para a direita, a lista do
+         histórico. O botão é o .btn-etched e a lista é a .torre-ajustes, compostos no HTML: a torre
+         abre fora da gaveta, sobre o mapa. */
+      .voltar-gaveta { @apply relative inline-flex; }
+      /* A ponte cobre o caminho do botão até a lista: sem ela o ponteiro perde o hover no vão. */
+      .voltar-gaveta::before { content: ""; @apply absolute top-0 left-full w-10 h-12; }
+      .voltar-gaveta > .btn-etched:focus-visible { @apply outline-none; }
+      .voltar-gaveta > .btn-etched:disabled { @apply opacity-45 pointer-events-none; }
+      /* Com a lista no ar o sulco segue cheio de água, mesmo com o ponteiro já sobre ela. */
+      .voltar-gaveta:is(:hover, :focus-within) > .btn-etched:not(:disabled) {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+
+      /* A torre troca de eixo: nasce no topo, logo depois da borda da gaveta, e desliza na horizontal.
+         ml-10 é o recuo do canto (right-7) mais a folga até a borda. */
+      .voltar-gaveta__lista { @apply top-0 bottom-auto left-full right-auto ml-10 mb-0 w-72 z-20 gap-1.5 origin-top-left; }
+      /* Recolher espera: o ponteiro que sai do Voltar tem tempo de chegar à lista. Quem a tira do
+         alcance é a visibilidade, que só vira no fim da transição — até lá ela ainda responde ao
+         ponteiro, e voltar a ela a reabre. */
+      .voltar-gaveta__lista.torre-ajustes--fechada { @apply translate-y-0 -translate-x-3 invisible pointer-events-auto delay-300; }
+      .voltar-gaveta:is(:hover, :focus-within) > .voltar-gaveta__lista {
+        @apply visible opacity-100 translate-x-0 scale-100 delay-150;
+      }
+      /* Sem vão entre os itens: no vão o ponteiro não está sobre item nenhum, e o poço voltaria ao
+         destino do Voltar a cada travessia. */
+      .voltar-gaveta__itens { @apply flex flex-col; }
+      /* O destino do Voltar nasce pré-selecionado, e cede o poço quando o cursor vai a outro item. */
+      .voltar-gaveta__itens:has(.item-historico:is(:hover, :focus-visible)) > .item-historico--pre:not(:hover, :focus-visible) {
+        @apply bg-transparent border-transparent shadow-none delay-0;
+      }
+      .voltar-gaveta__itens:has(.item-historico:is(:hover, :focus-visible)) > .item-historico--pre:not(:hover, :focus-visible) .item-historico__resumo {
+        @apply text-rocha-700 font-medium delay-0;
+      }
+      .voltar-gaveta__itens:has(.item-historico:is(:hover, :focus-visible)) > .item-historico--pre:not(:hover, :focus-visible) .glifo-gaveta {
+        @apply drop-shadow-none delay-0;
+      }
+
+      /* andaime do mock: moldura que faz as vezes da casca da home. O contain segura as gavetas,
+         que são fixed, dentro do quadro. */
+      .quadro-tela {
+        @apply relative h-[40rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+      .quadro-tela--organismo { @apply h-[34rem]; }
+      /* andaime do mock: o topo de uma gaveta, com o painel e o canto do Voltar lado a lado como na casca. */
+      .tira-gaveta { @apply relative w-96 max-w-full h-32; }
+      .tira-gaveta--alta { @apply h-64; }
+      .tira-gaveta__painel { @apply absolute inset-0 rounded-r-3xl; }
+      .glifo-gaveta--ampliado { @apply w-12 h-12; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Defs da gravação e glifos da bancada: os partials da própria aplicação. -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- ÁTOMOS · glifos desta SPEC: entram em templates/mapping/_glifos_mapa.html -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="glifo-gaveta-lote">
+        <path d="M3 7.5 20 4.5l1 12L4 19.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+        <path d="M8.7 6.5 14.3 5.5l1 12-5.6 1z" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-gaveta-endereco">
+        <path d="M12 18s5.5-5 5.5-9.2a5.5 5.5 0 1 0-11 0C6.5 13 12 18 12 18z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+        <circle cx="12" cy="8.8" r="2" fill="none" stroke="currentColor" stroke-width="1.9"/>
+        <path d="M6 21h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+      </g>
+      <g id="glifo-gaveta-endereco_externo">
+        <path d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g id="glifo-gaveta-logradouro">
+        <path d="M2.5 11.5 21.5 5M2.5 19 21.5 12.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        <path d="M2.5 15.25 21.5 8.75" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2.4 2.8"/>
+      </g>
+      <!-- o estojo da alça da bancada, de _glifos_desenho.html -->
+      <g id="glifo-gaveta-desenhos">
+        <use href="#glifo-caixa-ferramentas"/>
+      </g>
+      <g id="glifo-interrogacao">
+        <path d="M9 9.2a3 3 0 1 1 4.6 2.5c-1 .65-1.6 1.3-1.6 2.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="17.8" r="1.4" fill="currentColor"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- Fundo: o mapa vivo da home, de mapping/_mapa_fullscreen.html. -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC design/021 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Histórico da gaveta lateral</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          O Voltar gravado no canto superior direito da gaveta lateral, a lista do histórico que sai
+          dele para a direita, fora da gaveta, os glifos de tipo e o estado travado enquanto a gaveta de
+          resultado está aberta ou recolhida.
+        </p>
+      </header>
+
+      <!-- 2 · ÁTOMOS -->
+      <section id="atomos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">2 · Átomos</h2>
+
+        <!-- .glifo-gaveta -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.glifo-gaveta · um por tipo de gaveta, na tinta da geometria — na medida de uso e ampliado, só para conferir o traço</p>
+          <div class="glass-drawer-panel-denso rounded-2xl p-6 flex flex-wrap gap-x-10 gap-y-6" data-glifos-demo></div>
+        </div>
+
+        <!-- .dica-trava -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.dica-trava · passe o ponteiro ou foque com Tab — o balão do canto da gaveta desce; o do poço abre para a direita</p>
+          <div data-dica-demo></div>
+        </div>
+      </section>
+
+      <!-- 3 · MOLÉCULAS -->
+      <section id="moleculas" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">3 · Moléculas</h2>
+
+        <!-- .voltar-gaveta -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.voltar-gaveta, no canto superior direito — cada estado no topo de uma gaveta</p>
+          <div class="flex flex-col gap-8">
+            <!-- fechada -->
+            <div class="flex flex-col gap-2">
+              <span class="text-overline">em repouso · uma gaveta anterior; o ponteiro sobre o Voltar enche o sulco e faz a lista sair para a direita</span>
+              <div data-voltar-demo="uma"></div>
+            </div>
+            <!-- aberta -->
+            <div class="flex flex-col gap-2">
+              <span class="text-overline">lista aberta · quatro gavetas no histórico, fora da gaveta; a mais recente em cima, já em poço — é o destino do Voltar; passe o ponteiro de um item a outro e o poço acompanha, sem piscar de volta</span>
+              <div data-voltar-demo="lista"></div>
+            </div>
+            <!-- estado de falta: primeira gaveta -->
+            <div class="flex flex-col gap-2">
+              <span class="text-overline">primeira gaveta · o Voltar apagado, sem lista</span>
+              <div data-voltar-demo="vazia"></div>
+            </div>
+            <!-- estado: travada -->
+            <div class="flex flex-col gap-2">
+              <span class="text-overline">travada · gaveta de resultado aberta ou recolhida; a interrogação, ao lado, diz o porquê</span>
+              <div data-voltar-demo="travada"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- .poco-desenhos com a trava -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.poco-desenhos, na largura da gaveta — ações livres e ações travadas, com a interrogação no cabeçalho da placa</p>
+          <div class="glass-drawer-panel-denso rounded-2xl p-6 flex flex-wrap gap-6 items-start" data-pocos-demo></div>
+        </div>
+      </section>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="flex flex-col gap-6">
+        <h2 class="section-title">4 · Organismos</h2>
+        <p class="text-sm text-base-content/75 max-w-3xl drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+          A gaveta lateral com o Voltar no canto do cabeçalho: o corpo rola, o botão não sai dali.
+        </p>
+
+        <!-- em repouso -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta do lote · o Voltar na linha do "Entidade localizada"; role o corpo, com a barra, e passe o ponteiro no Voltar</span>
+          <div class="quadro-tela quadro-tela--organismo" data-org="repouso"></div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">ao vivo · abra entidades pelos botões, que fazem as vezes da busca; volte pelo Voltar do canto da gaveta, e deixe o ponteiro nele para a lista sair para a direita. Clique num desenho do mapa para a gaveta dos desenhos; selecione o polígono e acione "Lotes intersectados" para travar; o ✕ da gaveta de resultado destrava</span>
+
+          <!-- andaime do mock: a busca e a sessão do servidor -->
+          <div class="glass-panel p-3 flex flex-col gap-2">
+            <div class="flex flex-wrap items-center gap-2" data-andaime-busca></div>
+            <p class="text-code text-xs px-1" data-andaime-sessao></p>
+          </div>
+
+          <!-- página: core/home.html -->
+          <div id="tela-viva" class="quadro-tela tela-home">
+            <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+            <div id="mapa-tela" class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]" data-mapa></div>
+
+            <!-- fica na página: a UI flutuante da busca, que já existe -->
+            <div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4 transition-all duration-500 ease-in-out">
+              <div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">
+                <div class="relative w-full flex items-center">
+                  <svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                  <input type="search" placeholder="Rua, endereço, codlog ou nº de contribuinte…" class="input input-glass pl-11" />
+                </div>
+              </div>
+              <!-- fica na página: #resultado-busca, alvo da busca, das ações e do voltar -->
+              <div class="pointer-events-auto w-11/12 max-w-2xl mt-3">
+                <!-- partial: mapping/_cena.html — abrir uma entidade e mapping:devolver_cena; payload do mapa (mapping/_mapa.html) + OOB do #gaveta-entidade -->
+                <!-- /partial -->
+              </div>
+            </div>
+
+            <!-- página: <div id="gaveta-entidade"></div> — alvo do OOB da cena e do swap da rota dos desenhos -->
+            <div id="gaveta-entidade">
+              <!-- partial: as cinco gavetas laterais (_gaveta_lote, _gaveta_endereco, _gaveta_endereco_externo, _gaveta_logradouro, _gaveta_desenhos) — a raiz lê data-gaveta="{{ etiqueta.chave }}" -->
+                <!-- partial: mapping/_voltar_gaveta.html — o canto vazio (.gaveta-lateral-voltar), depois do .gaveta-lateral-painel e antes da paleta; hx-get mapping:historico_gaveta em hx-trigger="load" -->
+                  <!-- partial: mapping/_historico_gaveta.html — o que o canto carrega: .dica-trava e .voltar-gaveta (o Voltar e a torre) -->
+                    <!-- partial: mapping/_gatilho_cena.html — os atributos do Voltar e de cada item da lista: hx-post mapping:devolver_cena, ou data-pedir-desenhos -->
+                    <!-- /partial -->
+                  <!-- /partial -->
+                <!-- /partial -->
+                <!-- partial: mapping/_poco_desenhos.html — a .dica-trava no cabeçalho da placa e data-troca-cena no conteúdo dela -->
+                <!-- /partial -->
+              <!-- /partial -->
+            </div>
+
+            <!-- fica na página: mapping/_bancada_desenho.html -->
+            <div data-bancada></div>
+
+            <!-- página: <div id="contexto-acao" hidden></div> — a marca que a trava lê -->
+            <div id="contexto-acao" hidden></div>
+
+            <!-- página: <div id="gaveta-inferior-conteudo"></div> — a gaveta de resultado, que já existe -->
+            <div id="gaveta-inferior-conteudo"></div>
+          </div>
+        </div>
+
+        <!-- as telas de estado abaixo são vivas como a de cima: o recorte de partials é o mesmo -->
+        <!-- estado: lista aberta -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">lista aberta · a torre do histórico fora da gaveta do endereço, sobre o mapa; aqui ela nasce de pé, para se ver sem o ponteiro — escolha um item e a tela segue viva</span>
+          <div class="quadro-tela tela-home" data-tela="lista"></div>
+        </div>
+
+        <!-- estado de falta: primeira gaveta -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">primeira gaveta · o Voltar não responde</span>
+          <div class="quadro-tela tela-home" data-tela="primeira"></div>
+        </div>
+
+        <!-- estado: gaveta inferior aberta -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta de resultado aberta · o lote veio da tabela: Voltar travado, com a interrogação; feche a gaveta de baixo pelo ✕ e o Voltar destrava — leva aos desenhos e, de lá, ao lote da busca</span>
+          <div class="quadro-tela tela-home" data-tela="inferior"></div>
+        </div>
+
+        <!-- estado: gaveta inferior recolhida -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">gaveta de resultado recolhida · a gaveta dos desenhos reaberta: as ações do poço e o Voltar seguem travados; reabra a de baixo pela paleta, feche pelo ✕ e os dois destravam</span>
+          <div class="quadro-tela tela-home" data-tela="recolhida"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    // andaime do mock: erro de carga aparece na tela, não só no console.
+    function denunciar(mensagem) {
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        '<pre class="fixed top-0 inset-x-0 z-50 m-0 p-3 text-xs bg-error text-error-content whitespace-pre-wrap">' + mensagem + "</pre>",
+      );
+    }
+    window.addEventListener("error", (evento) => denunciar("erro: " + evento.message));
+    window.addEventListener("unhandledrejection", (evento) => denunciar("falhou: " + evento.reason));
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    // No produto a config desce do servidor; o mock não tem Django por trás do Live Server.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5614, -46.6559];
+    const COR = { ponto: "#00B4D8", linha: "#0F766E", poligono: "#D84F7F" };
+    // De static/src/js/mapa/desenho/catalogo.js e camada_resultado.js.
+    const TRACO_POLIGONO = {
+      normal: { weight: 3, opacity: 1, fillOpacity: 0.35 },
+      selecionado: { weight: 6, opacity: 1, fillOpacity: 0.55 },
+    };
+    const DIAMETRO_PONTO = { normal: 14, selecionado: 22 };
+    const PONTO_RESULTADO = { radius: 7, color: COR.ponto, weight: 2, fillColor: COR.ponto, fillOpacity: 0.85 };
+    // De static/src/js/mapa/interacao_resultado.js: o lote do resultado de ação, em rocha.
+    const REALCE_LOTE = {
+      normal: { color: "#5B7290", weight: 1.5, opacity: 0.9, fillColor: "#8FA3BB", fillOpacity: 0.18 },
+      escolhido: { color: "#2E4560", weight: 4, opacity: 1, fillColor: "#778DA9", fillOpacity: 0.55 },
+    };
+    const LIMITE_HISTORICO = 5;
+    const ROTULO_POR_TIPO = {
+      lote: "Lote fiscal",
+      endereco: "Endereço",
+      endereco_externo: "Endereço externo",
+      logradouro: "Logradouro",
+      desenhos: "Desenhos no mapa",
+    };
+    const DICA_VOLTAR = "Feche a gaveta inferior para poder voltar a outra gaveta.";
+    const DICA_POCO = "Feche a gaveta inferior para poder fazer outra consulta.";
+
+    // ── andaime do mock: as entidades que a busca devolveria ───────────────────────────────────
+    const retangulo = (norte, oeste, sul, leste) => [[norte, oeste], [norte, leste], [sul, leste], [sul, oeste]];
+    const LOTES = [
+      { id: "4471", sql: "009.055.0021-0", endereco: "AV PAULISTA, 1578", ativo: true, anel: retangulo(-23.5607, -46.6571, -23.5612, -46.6565) },
+      { id: "4480", sql: "009.055.0059-7", endereco: "R FREI CANECA, 1380", ativo: true, anel: retangulo(-23.5596, -46.6561, -23.5600, -46.6556) },
+      { id: "9902", sql: null, endereco: null, ativo: false, anel: retangulo(-23.5622, -46.6550, -23.5626, -46.6545) },
+    ];
+    const ENDERECOS = [
+      { nomeCompleto: "AV PAULISTA", nome: "PAULISTA", codlog: "156566", numero: 1000, faixa: [902, 1048], latlng: [-23.5648, -46.6519] },
+      { nomeCompleto: "AL SANTOS", nome: "SANTOS", codlog: "177911", numero: 1893, faixa: [1811, 1987], latlng: [-23.5624, -46.6574] },
+    ];
+    const EXTERNO = {
+      formatado: "Av. Paulista, 2073 - Bela Vista, São Paulo - SP, 01311-300, Brasil",
+      slug: "av-paulista-2073-bela-vista-sao-paulo-sp-01311-300-brasil",
+      precisao: "No imóvel",
+      provedor: "Google",
+      latlng: [-23.5581, -46.6600],
+    };
+    const LOGRADOURO = {
+      nomeCompleto: "AV PAULISTA", denominacao: "PAULISTA", codlog: "156566", tipo: "AV",
+      extensaoKm: "2,7", segmentos: 46, numeracao: [1, 2500],
+      eixo: [[-23.5700, -46.6455], [-23.5648, -46.6519], [-23.5614, -46.6559], [-23.5560, -46.6620]],
+    };
+    const DESENHOS = [
+      { id: "11", tipo: "ponto", rotulo: "Ponto 1", latlng: [-23.5617, -46.6583] },
+      { id: "21", tipo: "poligono", rotulo: "Polígono 1", area: 9100, anel: retangulo(-23.5604, -46.6548, -23.5612, -46.6538) },
+    ];
+    // Os lotes que "Lotes intersectados" devolveria para o Polígono 1.
+    const LOTES_DO_POLIGONO = [0, 1, 2].map((n) => {
+      const oeste = -46.65492 + n * 0.00041;
+      return {
+        id: "770" + n,
+        sql: "009.061.00" + (12 + n * 7) + "-" + ((n * 3 + 2) % 10),
+        endereco: "R PEIXOTO GOMIDE, " + (1020 + n * 24),
+        ativo: n !== 2,
+        anel: retangulo(-23.56028, oeste + 0.00002, -23.56132, oeste + 0.00039),
+      };
+    });
+
+    // A etiqueta de cada gaveta (§3 da SPEC) e o que a cena guarda: aqui, a função que remonta a gaveta.
+    const cenaDoLote = (lote) => ({
+      etiqueta: { chave: "lote-" + lote.id, tipo: "lote", resumo: lote.sql ? "SQL " + lote.sql : "Sem contribuinte" },
+      geometria: { tipo: "poligono", coords: lote.anel },
+      gaveta: (toggle) => gavetaLote(lote, toggle),
+    });
+    const cenaDoEndereco = (endereco) => ({
+      etiqueta: {
+        chave: "endereco-" + endereco.codlog + "-" + endereco.numero,
+        tipo: "endereco",
+        resumo: endereco.nomeCompleto + ", " + endereco.numero,
+      },
+      geometria: { tipo: "ponto", coords: endereco.latlng },
+      gaveta: (toggle) => gavetaEndereco(endereco, toggle),
+    });
+    const cenaDoExterno = (externo) => ({
+      etiqueta: { chave: "externo-" + externo.slug, tipo: "endereco_externo", resumo: externo.formatado },
+      geometria: { tipo: "ponto", coords: externo.latlng },
+      gaveta: (toggle) => gavetaExterno(externo, toggle),
+    });
+    const cenaDoLogradouro = (logradouro) => ({
+      etiqueta: {
+        chave: "logradouro-" + logradouro.codlog,
+        tipo: "logradouro",
+        resumo: logradouro.nomeCompleto + " · " + logradouro.codlog,
+      },
+      geometria: { tipo: "linha", coords: logradouro.eixo },
+      gaveta: (toggle) => gavetaLogradouro(logradouro, toggle),
+    });
+    const itemDe = (cena) => ({ etiqueta: cena.etiqueta, cena });
+    const itemDosDesenhos = (quantidade) => ({
+      etiqueta: { chave: "desenhos", tipo: "desenhos", resumo: quantidade + (quantidade === 1 ? " desenho" : " desenhos") },
+      cena: null,
+    });
+
+    const CENAS = [
+      cenaDoLote(LOTES[0]),
+      cenaDoLote(LOTES[1]),
+      cenaDoLote(LOTES[2]),
+      cenaDoEndereco(ENDERECOS[0]),
+      cenaDoEndereco(ENDERECOS[1]),
+      cenaDoExterno(EXTERNO),
+      cenaDoLogradouro(LOGRADOURO),
+    ];
+    const R = {
+      lote: itemDe(CENAS[0]),
+      endereco: itemDe(CENAS[3]),
+      externo: itemDe(CENAS[5]),
+      logradouro: itemDe(CENAS[6]),
+      desenhos: itemDosDesenhos(DESENHOS.length),
+    };
+
+    // ── A marcação em julgamento ────────────────────────────────────────────────────────────────
+    function glifoGaveta(tipo, ampliado = false) {
+      return (
+        '<svg class="glifo-gaveta glifo-gaveta--' + tipo + (ampliado ? " glifo-gaveta--ampliado" : "") + '" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<use href="#glifo-gaveta-' + tipo + '"/></svg>'
+      );
+    }
+
+    // O glifo é quem recebe o foco: o .tooltip do daisyUI abre por :has(:focus-visible).
+    function dicaTrava(texto, posicao) {
+      return (
+        '<span class="dica-trava tooltip ' + posicao + '" data-tip="' + texto + '">' +
+        '<svg viewBox="0 0 24 24" tabindex="0" role="img" aria-label="' + texto + '"><use href="#glifo-interrogacao"/></svg>' +
+        "</span>"
+      );
+    }
+
+    const nomeDe = (item) => ROTULO_POR_TIPO[item.etiqueta.tipo] + " · " + item.etiqueta.resumo;
+    // mapping/_gatilho_cena.html — no produto: hx-post="{% url 'mapping:devolver_cena' %}" hx-vals='{"chave": …}'
+    // hx-target="#resultado-busca"; sem cena, só data-pedir-desenhos.
+    const gatilhoDe = (item) => (item.cena ? 'data-devolver="' + item.etiqueta.chave + '"' : "data-pedir-desenhos");
+
+    // O item da lista, em mapping/_historico_gaveta.html; o primeiro, destino do Voltar, sai pré-selecionado.
+    function itemHistorico(item, indice) {
+      return (
+        '<button type="button" class="item-historico' + (indice === 0 ? " item-historico--pre" : "") + '" title="' + nomeDe(item) + '" ' + gatilhoDe(item) + ">" +
+        glifoGaveta(item.etiqueta.tipo) +
+        '<span class="item-historico__resumo">' + item.etiqueta.resumo + "</span>" +
+        "</button>"
+      );
+    }
+
+    // mapping/_historico_gaveta.html — `aberta` e `travada` só existem no mock, para mostrar o estado parado:
+    // no produto a torre sai sempre --fechada, e o inert é posto pelo trava_cena.js.
+    function historicoGaveta(demais, { aberta = false, travada = false } = {}) {
+      const anterior = demais[0];
+      // estado de falta: sem gaveta anterior, o Voltar sai disabled e a lista não existe.
+      const voltar = anterior
+        ? '<button type="button" class="btn-etched btn-etched-swell etched" title="Voltar para ' + nomeDe(anterior) + '" ' + gatilhoDe(anterior) + ">Voltar</button>"
+        : '<button type="button" class="btn-etched btn-etched-swell etched" title="Nenhuma gaveta anterior" disabled>Voltar</button>';
+      const lista = anterior
+        ? '<div class="voltar-gaveta__lista torre-ajustes torre-ajustes--' + (aberta ? "aberta" : "fechada") + '" role="group" aria-label="Histórico de gavetas">' +
+          '<p class="text-overline px-1">Histórico</p>' +
+          '<div class="voltar-gaveta__itens">' + demais.map(itemHistorico).join("") + "</div>" +
+          "</div>"
+        : "";
+      return (
+        dicaTrava(DICA_VOLTAR, "tooltip-bottom") +
+        '<div class="voltar-gaveta" data-troca-cena' + (travada ? " inert" : "") + ">" + voltar + lista + "</div>"
+      );
+    }
+
+    // Já existe (SPEC localizacao_lote/003): static/src/acoes/lotes_mais_proximos/lotes_intersectados/icones/pequeno.svg
+    const SVG_LOTES_INTERSECTADOS =
+      '<svg viewBox="0 0 24 24">' +
+      '<path d="M3.5 7 12 3.2 20.5 7.5 19 19.5 5 20.8z" stroke-dasharray="2.2 2.4"/>' +
+      '<rect x="7.6" y="8.6" width="8.8" height="8.2" rx="0.8"/>' +
+      '<path d="M12 8.6v8.2M7.6 12.7h8.8"/>' +
+      "</svg>";
+
+    // mapping/_poco_desenhos.html — a placa de ações com a interrogação e a marca da trava.
+    function placaAcoes(travada) {
+      return (
+        '<div class="placa-lista glass-panel">' +
+        '<div class="placa-lista__cabecalho">' +
+        '<span class="text-overline">Ações</span>' +
+        dicaTrava(DICA_POCO, "tooltip-right") +
+        '<span class="placa-lista__contagem">1</span>' +
+        "</div>" +
+        '<div class="placa-lista__conteudo" data-troca-cena' + (travada ? " inert" : "") + ">" +
+        '<button type="button" class="card-well item-menu item-menu-swell" data-acao-lotes title="Lotes cadastrados que o polígono marcado cruza.">' +
+        '<span class="icone-acao icone-acao-pequeno icone-acao-acende">' + SVG_LOTES_INTERSECTADOS + "</span>" +
+        '<span class="item-menu-rotulo">Lotes intersectados</span>' +
+        "</button>" +
+        "</div>" +
+        "</div>"
+      );
+    }
+
+    // ── O que já existe, remontado com dados de andaime ────────────────────────────────────────
+    const PALETA = (idToggle) =>
+      '<label for="' + idToggle + '" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">' +
+      '<svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>' +
+      "</label>";
+    const BOLHA_PINO =
+      '<div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">' +
+      '<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' +
+      "</div>";
+    const FIO = '<div class="h-px w-full bg-rocha-950/10"></div>';
+    const LOTE_MAIS_PROXIMO =
+      '<div class="card-well poco-acoes"><p class="text-overline poco-acoes__titulo">Ações</p><div class="poco-acoes__lista">' +
+      '<button type="button" class="btn btn-onsen btn-sm">' +
+      '<span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 6a5 5 0 100 10 5 5 0 000-10zM11 9v4M9 11h4"/></svg></span>' +
+      "Lote mais próximo</button></div></div>";
+
+    // A casca das cinco gavetas. O que muda nesta SPEC: data-gaveta em todas, e o canto do Voltar entre o painel e a paleta.
+    function cascaGaveta({ chave, toggle, aberta = true, cabecalho, corpo, formulario = false }) {
+      const conteudo = formulario ? "form" : "div";
+      const casca = document.createElement("div");
+      casca.className = "gaveta-lateral";
+      casca.dataset.gaveta = chave;
+      casca.innerHTML =
+        '<input type="checkbox" id="' + toggle + '" class="gaveta-lateral-toggle"' + (aberta ? " checked" : "") + ">" +
+        '<div class="gaveta-lateral-painel glass-drawer-panel-denso">' +
+        '<header class="gaveta-lateral-cabecalho">' + cabecalho + "</header>" +
+        '<div class="gaveta-lateral-corpo" data-scroll-etched>' +
+        '<div class="gaveta-lateral-rolador" data-rolador>' +
+        "<" + conteudo + ' class="gaveta-lateral-conteudo">' + corpo + "</" + conteudo + ">" +
+        "</div>" +
+        '<div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>' +
+        "</div>" +
+        "</div>" +
+        // mapping/_voltar_gaveta.html — no produto: hx-get="{% url 'mapping:historico_gaveta' %}?chave=…" hx-trigger="load".
+        '<div class="gaveta-lateral-voltar" data-chave="' + chave + '"></div>' +
+        PALETA(toggle);
+      return casca;
+    }
+
+    const cabecalhoEntidade = (titulo, complemento) =>
+      '<p class="text-overline text-madeira-600">Entidade localizada</p>' +
+      '<h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">' + titulo + "</h2>" +
+      complemento;
+
+    // lote_geocoder/partials/_gaveta_lote.html
+    function gavetaLote(lote, toggle) {
+      const etiqueta = cenaDoLote(lote).etiqueta;
+      const identidade = lote.sql
+        ? '<p class="text-code text-sm font-medium mt-2">SQL ' + lote.sql + "</p>"
+        : '<p class="text-sm font-medium mt-2">Sem contribuinte</p>';
+      const lancamento = lote.ativo
+        ? '<span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>'
+        : '<span class="badge badge-neutral badge-soft badge-sm font-bold mt-3">Sem lançamento ativo</span>';
+      const endereco = lote.endereco
+        ? '<p class="font-bold leading-tight">' + lote.endereco + "</p>"
+        : '<p class="valor-ausente">não informado</p>';
+      // No produto as ações chegam por hx-get em hx-trigger="load": não fazem parte da cena guardada.
+      const acoes = lote.sql
+        ? '<div class="card-well poco-acoes"><p class="text-overline poco-acoes__titulo">Ações</p><div class="poco-acoes__lista">' +
+          '<button type="button" class="btn btn-onsen btn-sm">Certidão de lançamento</button></div></div>'
+        : "";
+      return cascaGaveta({
+        chave: etiqueta.chave,
+        toggle,
+        cabecalho: cabecalhoEntidade("Lote fiscal", identidade + lancamento),
+        corpo:
+          '<div class="card-well p-4 flex flex-col gap-3">' +
+          '<div class="flex gap-4 items-center">' + BOLHA_PINO +
+          '<div class="min-w-0"><p class="text-overline mb-0.5">Endereço cadastrado</p>' + endereco + "</div></div>" +
+          FIO +
+          '<div class="flex items-baseline justify-between gap-4"><p class="text-overline">Codlog</p><p class="text-code text-sm">156566</p></div>' +
+          "</div>" +
+          '<div class="card-well p-4 flex flex-col gap-3">' +
+          '<p class="text-overline">Área de terreno</p>' +
+          '<div class="grid grid-cols-2 gap-4">' +
+          '<div><p class="text-overline mb-1">Cadastro</p><p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p></div>' +
+          '<div><p class="text-overline mb-1">Polígono</p><p class="text-xl font-bold tabular-nums">1.512 <span class="text-sm font-normal text-base-content/60">m²</span></p></div>' +
+          "</div>" +
+          FIO +
+          '<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4"><p class="text-overline">Divergência</p>' +
+          '<span class="badge badge-neutral badge-soft badge-lg text-lg font-bold px-4 tabular-nums">+4,3%</span></div>' +
+          "</div>" +
+          '<div class="card-well p-4 flex items-baseline justify-between gap-4"><p class="text-overline">Área construída</p>' +
+          '<p class="text-xl font-bold tabular-nums">8.920 <span class="text-sm font-normal text-base-content/60">m²</span></p></div>' +
+          '<p class="text-overline pt-1">Cadastro</p>' +
+          '<div class="grid grid-cols-3 gap-3">' +
+          '<div class="card-well p-3"><p class="text-overline mb-1">Setor</p><p class="text-code text-lg font-bold">009</p></div>' +
+          '<div class="card-well p-3"><p class="text-overline mb-1">Quadra</p><p class="text-code text-lg font-bold">055</p></div>' +
+          '<div class="card-well p-3"><p class="text-overline mb-1">Lote</p><p class="text-code text-lg font-bold">0021</p></div>' +
+          "</div>" +
+          '<dl class="card-well ficha-atributos">' +
+          '<dt class="text-overline">Tipo de quadra</dt><dd class="text-code">U</dd>' +
+          '<dt class="text-overline">Tipo de lote</dt><dd class="text-code">F</dd>' +
+          '<dt class="text-overline">Condomínio</dt><dd class="valor-ausente">não informado</dd>' +
+          '<dt class="text-overline">Uso</dt><dd>Comércio e serviços</dd>' +
+          '<dt class="text-overline">CIB</dt><dd class="text-code">1234567-8</dd>' +
+          "</dl>" +
+          acoes,
+      });
+    }
+
+    // address_geocoder/partials/_gaveta_endereco.html — sem o item do Street View, que depende de login.
+    function gavetaEndereco(endereco, toggle) {
+      return cascaGaveta({
+        chave: cenaDoEndereco(endereco).etiqueta.chave,
+        toggle,
+        cabecalho: cabecalhoEntidade(
+          "Endereço",
+          '<p class="text-sm font-medium mt-2">' + endereco.nomeCompleto + ", " + endereco.numero + "</p>",
+        ),
+        corpo:
+          '<div class="card-well p-4 flex flex-col gap-3">' +
+          '<div class="flex gap-4 items-center">' + BOLHA_PINO +
+          '<div class="min-w-0"><p class="text-overline mb-0.5">Logradouro</p><p class="font-bold leading-tight">' + endereco.nome + "</p></div></div>" +
+          FIO +
+          '<div class="flex items-baseline justify-between gap-4"><p class="text-overline">Codlog</p><p class="text-code text-sm">' + endereco.codlog + "</p></div>" +
+          "</div>" +
+          '<div class="grid grid-cols-2 gap-3">' +
+          '<div class="card-well p-4"><p class="text-overline mb-1">Número</p><p class="text-xl font-bold tabular-nums">' + endereco.numero + "</p></div>" +
+          '<div class="card-well p-4"><p class="text-overline mb-1">Faixa do segmento</p><p class="text-xl font-bold tabular-nums">' + endereco.faixa.join(" – ") + "</p></div>" +
+          "</div>" +
+          LOTE_MAIS_PROXIMO,
+      });
+    }
+
+    // geocodificacao_externa/partials/_gaveta_endereco_externo.html — idem.
+    function gavetaExterno(externo, toggle) {
+      return cascaGaveta({
+        chave: cenaDoExterno(externo).etiqueta.chave,
+        toggle,
+        cabecalho: cabecalhoEntidade(
+          "Endereço externo",
+          '<p class="text-sm font-medium mt-2">' + externo.formatado + "</p>" +
+          '<span class="badge badge-success badge-soft badge-sm font-bold mt-3">' + externo.precisao + "</span>",
+        ),
+        corpo:
+          '<div class="card-well p-4 flex gap-4 items-center">' +
+          '<div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">' +
+          '<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>' +
+          "</div>" +
+          '<div class="min-w-0"><p class="text-overline mb-0.5">Geocodificado por</p><p class="font-bold leading-tight">' + externo.provedor + "</p>" +
+          '<p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p></div>' +
+          "</div>" +
+          LOTE_MAIS_PROXIMO,
+      });
+    }
+
+    // logradouro_geocoder/partials/_gaveta_logradouro.html
+    function gavetaLogradouro(logradouro, toggle) {
+      return cascaGaveta({
+        chave: cenaDoLogradouro(logradouro).etiqueta.chave,
+        toggle,
+        cabecalho: cabecalhoEntidade("Logradouro", '<p class="text-sm font-medium mt-2">' + logradouro.nomeCompleto + "</p>"),
+        corpo:
+          '<div class="card-well p-4 flex flex-col gap-3">' +
+          '<div class="flex gap-4 items-center">' +
+          '<div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">' +
+          '<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>' +
+          "</div>" +
+          '<div class="min-w-0"><p class="text-overline mb-0.5">Nome</p><p class="font-bold leading-tight">' + logradouro.denominacao + "</p></div></div>" +
+          FIO +
+          '<div class="flex items-baseline justify-between gap-4"><p class="text-overline">Codlog</p><p class="text-code text-sm">' + logradouro.codlog + "</p></div>" +
+          FIO +
+          '<div class="flex items-baseline justify-between gap-4"><p class="text-overline">Tipo</p><p class="text-code text-sm">' + logradouro.tipo + "</p></div>" +
+          "</div>" +
+          '<div class="grid grid-cols-2 gap-3">' +
+          '<div class="card-well p-4"><p class="text-overline mb-1">Extensão</p><p class="text-xl font-bold tabular-nums">' + logradouro.extensaoKm + ' <span class="text-sm font-normal text-base-content/60">km</span></p></div>' +
+          '<div class="card-well p-4"><p class="text-overline mb-1">Segmentos</p><p class="text-xl font-bold tabular-nums">' + logradouro.segmentos + "</p></div>" +
+          "</div>" +
+          '<div class="card-well p-4 flex flex-col gap-3"><p class="text-overline">Numeração do logradouro</p>' +
+          '<div class="grid grid-cols-2 gap-4">' +
+          '<div><p class="text-overline mb-1">Menor</p><p class="text-xl font-bold tabular-nums">' + logradouro.numeracao[0] + "</p></div>" +
+          '<div><p class="text-overline mb-1">Maior</p><p class="text-xl font-bold tabular-nums">2.500</p></div>' +
+          "</div></div>",
+      });
+    }
+
+    function linhaDesenho(desenho, marcado) {
+      const medida = desenho.area
+        ? '<span class="linha-desenho__medida">9.100 m²</span>'
+        : '<span class="linha-desenho__medida">' + desenho.latlng.map((v) => v.toFixed(3)).join(", ") + "</span>";
+      return (
+        '<label class="linha-desenho">' +
+        '<input type="radio" name="id_bancada" class="linha-desenho__marca" value="' + desenho.id + '"' + (marcado ? " checked" : "") + ">" +
+        '<span class="linha-desenho__rotulo">' + desenho.rotulo + "</span>" +
+        medida +
+        '<button type="button" class="linha-desenho__apagar etched" aria-label="Apagar ' + desenho.rotulo + '">' +
+        '<svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>' +
+        "</label>"
+      );
+    }
+
+    // mapping/_poco_desenhos.html
+    function pocoDesenhos(tipo, idMarcado, travada) {
+      const desenhos = DESENHOS.filter((d) => d.tipo === tipo);
+      // Sem espaço dentro da âncora quando não há ação: é o :empty que a recolhe.
+      return (
+        '<div class="poco-desenhos poco-desenhos--' + tipo + ' card-well">' +
+        desenhos.map((d) => linhaDesenho(d, d.id === idMarcado)).join("") +
+        '<div class="poco-desenhos__acoes">' +
+        (tipo === "poligono" ? '<div class="poco-desenhos__acoes-recorte">' + placaAcoes(travada) + "</div>" : "") +
+        "</div>" +
+        "</div>"
+      );
+    }
+
+    // mapping/_gaveta_desenhos.html
+    function gavetaDesenhos(idMarcado, toggle, { aberta = true, travada = false } = {}) {
+      return cascaGaveta({
+        chave: "desenhos",
+        toggle,
+        aberta,
+        formulario: true,
+        cabecalho:
+          '<p class="text-overline text-madeira-600">Bancada de desenho</p>' +
+          '<h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Desenhos no mapa</h2>',
+        corpo:
+          pocoDesenhos("ponto", idMarcado, travada) +
+          pocoDesenhos("poligono", idMarcado, travada) +
+          '<button type="button" class="btn-etched btn-etched-swell etched self-end" data-limpar-desenhos>Limpar desenhos</button>',
+      });
+    }
+
+    // lotes_mais_proximos/partials/_resultado_desenho.html, sobre mapping/_resultado_acao.html
+    function gavetaInferior(toggle, recolhida = false) {
+      const th = (rotulo) =>
+        '<th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">' + rotulo + "</span></div></th>";
+      const linhas = LOTES_DO_POLIGONO.map(
+        (lote) =>
+          '<tr data-id-feature="' + lote.id + '">' +
+          '<td class="text-code whitespace-nowrap">' + lote.sql + "</td>" +
+          "<td>" + lote.endereco + "</td>" +
+          "<td>" +
+          (lote.ativo
+            ? '<span class="badge badge-success badge-soft badge-xs">Ativo</span>'
+            : '<span class="badge badge-neutral badge-soft badge-xs whitespace-nowrap">Sem lançamento</span>') +
+          "</td></tr>",
+      ).join("");
+      const casca = document.createElement("div");
+      casca.innerHTML =
+        '<input type="checkbox" id="' + toggle + '" class="gaveta-toggle" checked>' +
+        '<aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-label="Lotes intersectados">' +
+        '<input type="checkbox" id="' + toggle + '-recolhida" class="gaveta-inferior-recolher"' + (recolhida ? " checked" : "") + ">" +
+        '<label for="' + toggle + '-recolhida" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span></label>' +
+        '<label for="' + toggle + '-recolhida" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">' +
+        '<svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>' +
+        "</label>" +
+        '<header class="gaveta-cabecalho items-center">' +
+        '<div class="min-w-0 flex items-baseline gap-3 flex-wrap">' +
+        '<h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Lotes intersectados</h2>' +
+        '<span class="badge badge-poligono badge-sm">Polígono 1</span>' +
+        '<p class="text-sm text-base-content/70"><span class="font-bold text-base-content tabular-nums">3 lotes</span> · desenho de 9.100 m²</p>' +
+        "</div>" +
+        '<label for="' + toggle + '" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">' +
+        '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+        "</label>" +
+        "</header>" +
+        '<div class="gaveta-corpo"><section class="gaveta-coluna">' +
+        '<div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>' +
+        '<div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>' +
+        '<table class="table table-onsen table-onsen-compacta"><thead data-cabecalho><tr>' + th("SQL") + th("Endereço") + th("Lançamento") + "</tr></thead>" +
+        "<tbody>" + linhas + "</tbody></table>" +
+        "</div>" +
+        '<div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>' +
+        "</div>" +
+        "</section></div>" +
+        "</aside>";
+      return [...casca.childNodes];
+    }
+
+    // ── andaime do mock: os estados parados ────────────────────────────────────────────────────
+    // A interrogação só existe sob a marca do contexto de ação; fora da tela ao vivo, o mock a põe à mão.
+    const MARCA_PARADA = '<div id="contexto-acao" hidden data-contexto-acao="andaime"></div>';
+    const emContextoDeAcao = (html) => '<div class="tela-home">' + MARCA_PARADA + html + "</div>";
+
+    function preencherVoltar(gaveta, demais, opcoes) {
+      gaveta.querySelector(".gaveta-lateral-voltar").innerHTML = historicoGaveta(demais, opcoes);
+      return gaveta;
+    }
+
+    document.querySelector("[data-glifos-demo]").innerHTML = Object.entries(ROTULO_POR_TIPO)
+      .map(
+        ([tipo, rotulo]) =>
+          '<div class="flex flex-col items-center gap-2">' +
+          '<div class="flex items-end gap-4">' + glifoGaveta(tipo) + glifoGaveta(tipo, true) + "</div>" +
+          '<span class="text-overline">' + rotulo + "</span>" +
+          '<span class="text-code text-xs">#glifo-gaveta-' + tipo + "</span>" +
+          "</div>",
+      )
+      .join("");
+
+    document.querySelector("[data-dica-demo]").innerHTML = emContextoDeAcao(
+      '<div class="glass-drawer-panel-denso rounded-2xl px-6 pt-6 pb-20 flex items-center gap-16 w-fit">' +
+      '<div class="flex items-center gap-2 pl-16"><span class="text-overline">canto da gaveta</span>' + dicaTrava(DICA_VOLTAR, "tooltip-bottom") + "</div>" +
+      '<div class="flex items-center gap-2 pr-56"><span class="text-overline">poço</span>' + dicaTrava(DICA_POCO, "tooltip-right") + "</div>" +
+      "</div>",
+    );
+
+    const DEMOS_VOLTAR = {
+      uma: { demais: [R.lote] },
+      lista: { demais: [R.lote, R.logradouro, R.desenhos, R.externo], aberta: true, alta: true },
+      vazia: { demais: [] },
+      travada: { demais: [R.lote, R.logradouro], travada: true },
+    };
+    document.querySelectorAll("[data-voltar-demo]").forEach((alvo) => {
+      const demo = DEMOS_VOLTAR[alvo.dataset.voltarDemo];
+      const tira =
+        '<div class="tira-gaveta' + (demo.alta ? " tira-gaveta--alta" : "") + '">' +
+        '<div class="tira-gaveta__painel glass-drawer-panel-denso"><header class="gaveta-lateral-cabecalho">' +
+        cabecalhoEntidade("Endereço", '<p class="text-sm font-medium mt-2">AV PAULISTA, 1000</p>') +
+        "</header></div>" +
+        '<div class="gaveta-lateral-voltar">' + historicoGaveta(demo.demais, demo) + "</div>" +
+        "</div>";
+      alvo.innerHTML = demo.travada ? emContextoDeAcao(tira) : tira;
+    });
+
+    // Cada estado no seu formulário: radios sem formulário formariam um grupo só na página.
+    // A largura é a do conteúdo da gaveta lateral (--gaveta-largura menos o recuo).
+    document.querySelector("[data-pocos-demo]").innerHTML =
+      '<form class="w-[20.25rem]">' + pocoDesenhos("poligono", "21", false) + "</form>" +
+      emContextoDeAcao('<form class="w-[20.25rem]">' + pocoDesenhos("poligono", "21", true) + "</form>");
+
+    const ORGANISMOS = {
+      repouso: () => preencherVoltar(gavetaLote(LOTES[0], "org-lote-toggle"), [R.endereco, R.logradouro]),
+    };
+    document.querySelectorAll("[data-org]").forEach((quadro) => quadro.append(ORGANISMOS[quadro.dataset.org]()));
+
+    // ── Fundo, glifos e bancada: os partials da própria aplicação ───────────────────────────────
+    async function partial(caminho) {
+      const r = await fetch(caminho);
+      if (!r.ok) throw new Error(r.status + " em " + caminho + " — sirva a RAIZ do projeto");
+      return (await r.text()).replace(TAG_DE_TEMPLATE, "").trim();
+    }
+
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers,
+        version: WMS.version,
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+
+    function iconePonto(estado) {
+      const d = DIAMETRO_PONTO[estado];
+      return L.divIcon({
+        className: "",
+        iconSize: [d, d],
+        iconAnchor: [d / 2, d / 2],
+        html: '<span style="display:block;width:' + d + "px;height:" + d + "px;border-radius:9999px;background:" +
+          COR.ponto + ';border:2px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(72,202,228,.9)"></span>',
+      });
+    }
+
+    function camadaDoDesenho(desenho, estado = "normal") {
+      return desenho.tipo === "ponto"
+        ? L.marker(desenho.latlng, { icon: iconePonto(estado) })
+        : L.polygon(desenho.anel, { color: COR.poligono, fillColor: COR.poligono, ...TRACO_POLIGONO[estado] });
+    }
+
+    // camada_resultado.js: a geometria da entidade, na cor do tipo.
+    function camadaDaCena(cena) {
+      const { tipo, coords } = cena.geometria;
+      if (tipo === "poligono") return L.polygon(coords, { color: COR.poligono, weight: 3, fillColor: COR.poligono, fillOpacity: 0.35 });
+      if (tipo === "linha") return L.polyline(coords, { color: COR.linha, weight: 5, opacity: 0.9 });
+      return L.circleMarker(coords, PONTO_RESULTADO);
+    }
+
+    // andaime do mock: o tema é compilado no navegador, depois do fetch. Mapa criado antes disso mede
+    // o quadro sem a moldura (.quadro-tela) e enquadra para um tamanho que não existe.
+    async function temaAplicado() {
+      const quadro = document.querySelector(".quadro-tela");
+      while (getComputedStyle(quadro).contain !== "layout") {
+        await new Promise((pronto) => requestAnimationFrame(pronto));
+      }
+    }
+
+    const [filtros, glifos, fundo, bancada] = await Promise.all([
+      partial("/templates/partials/_filtros_gravacao.html"),
+      partial("/templates/mapping/_glifos_desenho.html"),
+      partial("/templates/mapping/_mapa_fullscreen.html"),
+      partial("/templates/mapping/_bancada_desenho.html"),
+    ]);
+    document.getElementById("defs-aplicacao").innerHTML = filtros + glifos;
+    document.getElementById("fundo-home").innerHTML = fundo;
+
+    await temaAplicado();
+    base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15));
+
+    // A bancada entra como cenário, sem id algum e sem o bancada.js.
+    document.querySelectorAll("[data-bancada]").forEach((alvo) => {
+      alvo.outerHTML = bancada.replace(/\s+id="[^"]*"/g, "");
+    });
+
+    const { montarBarrasGravadas } = await import("/static/src/js/ui/scroll_etched.js");
+    montarBarrasGravadas();
+
+    // ── andaime do mock: cada tela faz as vezes do HTMX, da sessão e do init.js ────────────────
+    // Toda tela da seção 5 é viva, com mapa e sessão próprios: as de estado só nascem adiantadas até ele.
+    const ESQUELETO_TELA =
+      '<div class="absolute inset-0 z-0 saturate-[0.8] brightness-[1.05] contrast-[0.95]" data-mapa></div>' +
+      '<div id="gaveta-entidade"></div>' +
+      '<div id="contexto-acao" hidden></div>' +
+      '<div id="gaveta-inferior-conteudo"></div>';
+    const espera = (ms) => new Promise((pronto) => setTimeout(pronto, ms));
+
+    function montarTela(quadro, { nome, barraBusca = null, leituraSessao = null }) {
+      const alvoGaveta = quadro.querySelector("#gaveta-entidade");
+      const alvoInferior = quadro.querySelector("#gaveta-inferior-conteudo");
+      const slotContexto = quadro.querySelector("#contexto-acao");
+      const mapa = base(L.map(quadro.querySelector("[data-mapa]"), { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 16));
+      const idResultado = nome + "-resultado";
+      const camadasDesenho = new Map();
+      const camadasLote = new Map();
+      let camadaResultado = null;
+      let camadaLotes = null;
+
+      // apps/mapping/historico_gaveta.py + services/domain/historico_gaveta: a sessão de quem usa o mapa.
+      let historicoDaSessao = [];
+      const fora = (chave) => historicoDaSessao.filter((item) => item.etiqueta.chave !== chave);
+      function abrirNoHistorico(item) {
+        historicoDaSessao = [item, ...fora(item.etiqueta.chave)].slice(0, LIMITE_HISTORICO);
+      }
+      const haGavetaInferior = () => slotContexto.hasAttribute("data-contexto-acao");
+
+      // PEÇA DESTA SPEC: static/src/js/ui/trava_cena.js — no produto, a cada htmx:afterSettle e sobre o
+      // documento inteiro; aqui, só sobre a tela.
+      function travar() {
+        const travado = haGavetaInferior();
+        quadro.querySelectorAll("[data-troca-cena]").forEach((peca) => { peca.inert = travado; });
+      }
+
+      function atualizarAndaime() {
+        if (!barraBusca) return;
+        barraBusca.querySelectorAll("button").forEach((botao) => {
+          botao.disabled = haGavetaInferior() || (botao.hasAttribute("data-redesenhar") && camadasDesenho.size > 0);
+        });
+        leituraSessao.textContent =
+          "andaime · histórico na sessão (" + historicoDaSessao.length + "/" + LIMITE_HISTORICO + "): " +
+          (historicoDaSessao.map((item) => item.etiqueta.chave).join("  ›  ") || "vazia");
+      }
+
+      // static/src/js/ui/troca_gaveta.js, aqui sem o htmx: o modo vai no alvo antes do swap, e a
+      // "troca" espera o fade-out — no produto, o swapOverride "innerHTML swap:150ms".
+      async function trocarGaveta(nova) {
+        const aberta = alvoGaveta.querySelector(":scope > .gaveta-lateral > .gaveta-lateral-toggle:checked");
+        const atual = alvoGaveta.querySelector(":scope > .gaveta-lateral")?.dataset.gaveta;
+        const modo = !aberta ? "entrada" : atual === nova.dataset.gaveta ? "mesma" : "troca";
+        alvoGaveta.dataset.trocaGaveta = modo;
+        if (modo === "troca") {
+          alvoGaveta.classList.add("htmx-swapping");
+          await espera(150);
+          alvoGaveta.classList.remove("htmx-swapping");
+        }
+        alvoGaveta.replaceChildren(nova);
+        // mapping:historico_gaveta — o canto carrega o histórico de agora, menos a gaveta que está na tela.
+        const canto = nova.querySelector(".gaveta-lateral-voltar");
+        canto.innerHTML = historicoGaveta(fora(canto.dataset.chave));
+        montarBarrasGravadas();
+        travar();
+        atualizarAndaime();
+      }
+
+      // responder_cena e mapping:devolver_cena são a mesma operação: a cena vai ao topo do histórico,
+      // e mapping/_cena.html devolve o desenho da entidade no mapa e a gaveta dela.
+      function abrirCena(cena) {
+        abrirNoHistorico(itemDe(cena));
+        if (camadaResultado) camadaResultado.remove();
+        camadaResultado = L.featureGroup([camadaDaCena(cena)]).addTo(mapa);
+        // camada_resultado.js: enquadra o resultado, com folga de 20px e zoom máximo 18.
+        mapa.fitBounds(camadaResultado.getBounds(), { maxZoom: 18, padding: [20, 20] });
+        return trocarGaveta(cena.gaveta(nome + "-gaveta-" + cena.etiqueta.tipo));
+      }
+
+      // sincronia.js: a seleção muda no navegador, e é ele quem lembra a última.
+      let ultimoMarcado = "";
+      function destacar() {
+        const marcado = alvoGaveta.querySelector(".linha-desenho__marca:checked")?.value;
+        DESENHOS.forEach((desenho) => {
+          const camada = camadasDesenho.get(desenho.id);
+          if (!camada) return;
+          const estado = desenho.id === marcado ? "selecionado" : "normal";
+          if (desenho.tipo === "ponto") {
+            camada.setIcon(iconePonto(estado));
+            return;
+          }
+          camada.setStyle(TRACO_POLIGONO[estado]);
+        });
+      }
+
+      // mapping:desenhos_da_bancada — entra no histórico sem cena: é o mapa que a remonta.
+      async function mostrarDesenhos(idMarcado) {
+        ultimoMarcado = idMarcado;
+        abrirNoHistorico(itemDosDesenhos(DESENHOS.length));
+        await trocarGaveta(gavetaDesenhos(idMarcado, nome + "-gaveta-desenhos"));
+        destacar();
+      }
+
+      function desenhar() {
+        DESENHOS.forEach((desenho) => {
+          const camada = camadaDoDesenho(desenho).addTo(mapa);
+          camadasDesenho.set(desenho.id, camada);
+          camada.on("click", (evento) => {
+            L.DomEvent.stopPropagation(evento);
+            const radio = alvoGaveta.querySelector('.linha-desenho__marca[value="' + desenho.id + '"]');
+            if (!radio) {
+              mostrarDesenhos(desenho.id);
+              return;
+            }
+            radio.checked = true;
+            radio.dispatchEvent(new Event("change", { bubbles: true }));
+            alvoGaveta.querySelector(".gaveta-lateral-toggle").checked = true;
+          });
+        });
+        atualizarAndaime();
+      }
+
+      // Apagado o último desenho, a gaveta dos desenhos sai do histórico.
+      function limparDesenhos() {
+        camadasDesenho.forEach((camada) => camada.remove());
+        camadasDesenho.clear();
+        ultimoMarcado = "";
+        historicoDaSessao = fora("desenhos");
+        alvoGaveta.replaceChildren();
+        atualizarAndaime();
+      }
+
+      // lotes_mais_proximos:lotes_do_desenho — a gaveta inferior passa a ser a dona do mapa.
+      function lotesIntersectados() {
+        // mapping/_recolher_gaveta_oob.html
+        alvoGaveta.querySelector(".gaveta-lateral-toggle").checked = false;
+        camadasLote.clear();
+        camadaLotes = L.featureGroup(
+          LOTES_DO_POLIGONO.map((lote) => {
+            const camada = L.polygon(lote.anel, REALCE_LOTE.normal).on("click", () => abrirLoteDaTabela(lote));
+            camadasLote.set(lote.id, camada);
+            return camada;
+          }),
+        ).addTo(mapa);
+        alvoInferior.replaceChildren(...gavetaInferior(idResultado));
+        // bancada.js: com gaveta inferior, o rodapé é dela — a bancada encaixada embaixo vai para a direita.
+        const bancadaTela = quadro.querySelector(".bancada-conjunto");
+        if (bancadaTela?.dataset.dock === "bottom") bancadaTela.dataset.dock = "right";
+        // mapping/_contexto_acao_oob.html
+        slotContexto.dataset.contextoAcao = "lotes_mais_proximos.lotes_intersectados";
+        montarBarrasGravadas();
+        travar();
+        atualizarAndaime();
+        mapa.fitBounds(camadaLotes.getBounds(), { maxZoom: 18, paddingTopLeft: [440, 80], paddingBottomRight: [80, 290] });
+      }
+
+      // lotes_mais_proximos:detalhe_do_lote — a gaveta abre com o Voltar, e não entra no histórico.
+      function abrirLoteDaTabela(lote) {
+        camadasLote.forEach((camada, id) => camada.setStyle(REALCE_LOTE[id === lote.id ? "escolhido" : "normal"]));
+        camadasLote.get(lote.id).bringToFront();
+        return trocarGaveta(gavetaLote(lote, nome + "-gaveta-lote-da-tabela"));
+      }
+
+      // mapping/_encerramento_acao.html: a marca sai, e a trava com ela.
+      function encerrarResultado() {
+        slotContexto.removeAttribute("data-contexto-acao");
+        camadaLotes?.remove();
+        camadaLotes = null;
+        camadasLote.clear();
+        travar();
+        atualizarAndaime();
+      }
+
+      quadro.addEventListener("click", (evento) => {
+        const devolver = evento.target.closest("[data-devolver]");
+        if (devolver) {
+          abrirCena(historicoDaSessao.find((item) => item.etiqueta.chave === devolver.dataset.devolver).cena);
+          return;
+        }
+        // sincronia.js desta SPEC: a volta à gaveta dos desenhos, com o último desenho selecionado.
+        if (evento.target.closest("[data-pedir-desenhos]")) {
+          mostrarDesenhos(ultimoMarcado);
+          return;
+        }
+        if (evento.target.closest("[data-acao-lotes]")) {
+          lotesIntersectados();
+          return;
+        }
+        if (evento.target.closest("[data-limpar-desenhos]") && !haGavetaInferior()) {
+          limparDesenhos();
+          return;
+        }
+        const linha = evento.target.closest("tr[data-id-feature]");
+        if (linha) abrirLoteDaTabela(LOTES_DO_POLIGONO.find((lote) => lote.id === linha.dataset.idFeature));
+      });
+
+      quadro.addEventListener("change", (evento) => {
+        if (evento.target.matches(".linha-desenho__marca")) {
+          ultimoMarcado = evento.target.value;
+          destacar();
+        }
+        if (evento.target.id === idResultado && !evento.target.checked) encerrarResultado();
+      });
+
+      desenhar();
+      mapa.fitBounds(L.featureGroup([...camadasDesenho.values()]).getBounds(), { maxZoom: 17, padding: [120, 120] });
+
+      return {
+        abrirCena,
+        mostrarDesenhos,
+        lotesIntersectados,
+        abrirLoteDaTabela,
+        desenhar,
+        // andaime do mock: põe a sessão num ponto do uso sem passar por cada abertura.
+        semear(itens) {
+          historicoDaSessao = itens;
+        },
+        // andaime do mock: a alça da gaveta inferior, e a paleta da lateral, sem o clique.
+        recolherResultado() {
+          quadro.querySelector("#" + idResultado + "-recolhida").checked = true;
+          alvoGaveta.querySelector(".gaveta-lateral-toggle").checked = true;
+        },
+        // andaime do mock: o hover não se fotografa — a torre nasce de pé até a gaveta ser trocada.
+        manterListaAberta() {
+          alvoGaveta.querySelector(".voltar-gaveta__lista").classList.replace("torre-ajustes--fechada", "torre-ajustes--aberta");
+        },
+      };
+    }
+
+    // andaime do mock: sem htmx, o formulário da gaveta dos desenhos não leva a lugar nenhum.
+    document.addEventListener("submit", (evento) => evento.preventDefault());
+
+    // A tela ao vivo, com a busca e a leitura da sessão de andaime.
+    const barraBusca = document.querySelector("[data-andaime-busca]");
+    barraBusca.innerHTML =
+      '<span class="text-overline">andaime · busca</span>' +
+      CENAS.map(
+        (cena, indice) =>
+          '<button type="button" class="btn btn-glass btn-sm gap-2" data-abrir="' + indice + '" title="' + cena.etiqueta.resumo + '">' +
+          glifoGaveta(cena.etiqueta.tipo) +
+          '<span class="max-w-40 truncate">' + cena.etiqueta.resumo + "</span></button>",
+      ).join("") +
+      '<button type="button" class="btn btn-glass btn-sm" data-redesenhar>Redesenhar</button>';
+    const telaViva = montarTela(document.getElementById("tela-viva"), {
+      nome: "viva",
+      barraBusca,
+      leituraSessao: document.querySelector("[data-andaime-sessao]"),
+    });
+    barraBusca.addEventListener("click", (evento) => {
+      const botao = evento.target.closest("button");
+      if (!botao) return;
+      if (botao.hasAttribute("data-redesenhar")) {
+        telaViva.desenhar();
+        return;
+      }
+      telaViva.abrirCena(CENAS[Number(botao.dataset.abrir)]);
+    });
+
+    // As telas de estado: o mesmo andaime, levado até o estado pelas mesmas operações.
+    const ESTADOS = {
+      async lista(tela) {
+        tela.semear([R.lote, R.logradouro, R.desenhos, R.externo]);
+        await tela.abrirCena(R.endereco.cena);
+        tela.manterListaAberta();
+      },
+      async primeira(tela) {
+        await tela.abrirCena(R.lote.cena);
+      },
+      async inferior(tela) {
+        tela.semear([R.lote]);
+        await tela.mostrarDesenhos("21");
+        tela.lotesIntersectados();
+        await tela.abrirLoteDaTabela(LOTES_DO_POLIGONO[1]);
+      },
+      async recolhida(tela) {
+        tela.semear([R.lote, R.endereco]);
+        await tela.mostrarDesenhos("21");
+        tela.lotesIntersectados();
+        tela.recolherResultado();
+      },
+    };
+    document.querySelectorAll("[data-tela]").forEach((quadro) => {
+      quadro.innerHTML = ESQUELETO_TELA;
+      ESTADOS[quadro.dataset.tela](montarTela(quadro, { nome: quadro.dataset.tela }));
+    });
+  </script>
+</body>
+</html>

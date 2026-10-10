@@ -1,0 +1,7 @@
+<div id="resumo-conjunto" class="flex items-baseline gap-3 flex-wrap" {% if oob %}hx-swap-oob="true"{% endif %}>
+  <span class="badge badge-poligono badge-sm">{{ conjunto.apurado.desenho.tipo.rotulo|capfirst }}</span>
+  <p class="text-sm text-base-content/70">
+    <span class="font-bold text-base-content tabular-nums">{% with total=conjunto.lotes|length %}{% if total %}{{ total }} lote{{ total|pluralize }}{% else %}nenhum lote{% endif %}{% endwith %}</span>
+    · desenho de {{ conjunto.apurado.area_m2|floatformat:"0g" }} m²
+  </p>
+</div>

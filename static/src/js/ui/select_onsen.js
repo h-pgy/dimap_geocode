@@ -32,6 +32,9 @@ function montarTrigger(casca, select) {
   const trigger = document.createElement("button");
   trigger.type = "button";
   trigger.className = "select select-glass select-onsen-trigger";
+  for (const tamanho of ["select-xs", "select-sm", "select-md", "select-lg"]) {
+    if (select.classList.contains(tamanho)) trigger.classList.add(tamanho);
+  }
   // Sem isto o halo do campo recusado (ou em alerta) morreria no <select> escondido: o servidor
   // marca o controle, e o controle visível é este.
   const realce = [...select.classList].find((classe) => classe.startsWith(PREFIXO_REALCE));

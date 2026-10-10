@@ -7,9 +7,13 @@ from django.views.decorators.http import require_POST
 
 from apps.address_geocoder.views import (
     geocodificar_endereco,
+    renderizar_endereco,
+    resolver_endereco,
     secao_endereco,
     secao_endereco_codlog,
 )
+from apps.geocodificacao_externa.secoes import secao_geocodificacao_externa
+from apps.geocodificacao_externa.views import geocodificador_externo, geocodificar_externo
 from apps.logradouro_geocoder.views import geocodificar_codlog
 from apps.logradouro_matcher.views import secao_codlog, secao_logradouro
 from apps.lote_geocoder.views import geocodificar_lote
@@ -19,6 +23,7 @@ from apps.lote_matcher.secoes import (
 )
 from apps.mapping.context import contexto_aviso
 from apps.search.secoes import SecaoResultado
+from apps.search.tentativas import FalhaBaseOficial
 from services.domain.codlog_match import CodlogMatchInput, match_codlog
 from services.domain.contribuinte_match import (
     ContribuinteMatchInput,
@@ -32,6 +37,7 @@ from services.domain.roteamento_busca import (
     EnderecoCodlogParse,
     EnderecoLoteParse,
     EnderecoParse,
+    GeocodificacaoExternaParse,
     LogradouroParse,
     RoteamentoQuery,
     TipoEntrada,
@@ -41,6 +47,7 @@ from services.domain.roteamento_busca import (
 SectionRenderer = Callable[..., SecaoResultado | None]
 
 MSG_SEM_RESULTADO_COMMIT = "Não foi possível localizar um resultado para essa busca no mapa."
+MSG_LOGRADOURO_FORA_DA_BASE = "O logradouro não foi encontrado na base oficial."
 
 REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
     TipoEntrada.CONTRIBUINTE: secao_contribuinte,
@@ -49,7 +56,18 @@ REGISTRO_SECOES: dict[TipoEntrada, SectionRenderer] = {
     TipoEntrada.ENDERECO: secao_endereco,
     TipoEntrada.CODLOG: secao_codlog,
     TipoEntrada.LOGRADOURO: secao_logradouro,
+    TipoEntrada.GEOCODIFICACAO_EXTERNA: secao_geocodificacao_externa,
 }
+
+# resposta pronta · a base oficial falhou dizendo por quê · o candidato não casou com nada
+Tentativa = HttpResponse | FalhaBaseOficial | None
+
+
+def _candidatos_liberados(request: HttpRequest, candidatos: list[Candidato]) -> list[Candidato]:
+    # a cota do provedor é paga: o roteador só lê o texto, e a view tira o externo de quem não logou
+    if request.user.is_authenticated:
+        return candidatos
+    return [c for c in candidatos if c.tipo is not TipoEntrada.GEOCODIFICACAO_EXTERNA]
 
 
 @require_POST
@@ -58,10 +76,9 @@ def rotear_busca(request: HttpRequest) -> HttpResponse:
         texto=request.POST.get("termo_pesquisa", ""),
         finished_typing=request.POST.get("tipo_evento") == "search",
     )
-    result = rotear_entrada(query)
     secoes = [
         secao
-        for candidato in result.candidatos
+        for candidato in _candidatos_liberados(request, rotear_entrada(query).candidatos)
         if (render_secao := REGISTRO_SECOES.get(candidato.tipo)) is not None
         and (secao := render_secao(candidato)) is not None
     ]
@@ -75,9 +92,14 @@ def _primeiro(itens: list[_T]) -> _T | None:
     return itens[0] if itens else None
 
 
-def _acionar_candidato(request: HttpRequest, candidato: Candidato) -> HttpResponse | None:
+def _acionar_candidato(
+    request: HttpRequest,
+    candidato: Candidato,
+    falha: FalhaBaseOficial | None,
+) -> Tentativa:
     """Geocodifica o melhor match do candidato reusando os geocoders — o mesmo que faria o clique
-    na 1ª sugestão dele. Devolve None quando o candidato não tem match (segue-se ao próximo)."""
+    na 1ª sugestão dele. Devolve None quando o candidato não tem match (segue-se ao próximo), e a
+    falha da base oficial quando o endereço por nome não resolve (segue-se ao externo)."""
     if isinstance(candidato, CodlogParse):
         cod = _primeiro(match_codlog(CodlogMatchInput(
             input_codlog=candidato.codlog,
@@ -135,9 +157,18 @@ def _acionar_candidato(request: HttpRequest, candidato: Candidato) -> HttpRespon
             modo="commit",
         )).itens)
         if item_end is None:
-            return None
+            return FalhaBaseOficial(motivo=MSG_LOGRADOURO_FORA_DA_BASE)
         logr_end = item_end.logradouro
-        return geocodificar_endereco(request, f"{logr_end.codlog}{logr_end.dv}", candidato.numero)
+        resolvido = resolver_endereco(f"{logr_end.codlog}{logr_end.dv}", candidato.numero)
+        if isinstance(resolvido, FalhaBaseOficial):
+            return resolvido  # no Enter a falha não bloqueia: segue para o externo
+        return renderizar_endereco(request, resolvido)
+
+    if isinstance(candidato, GeocodificacaoExternaParse):
+        geocodificador = geocodificador_externo()
+        if geocodificador is None:
+            return None  # sem provedor, o laço termina no aviso da base oficial
+        return geocodificar_externo(request, geocodificador, candidato.texto, falha)
 
     return None
 
@@ -145,11 +176,15 @@ def _acionar_candidato(request: HttpRequest, candidato: Candidato) -> HttpRespon
 @require_POST
 def comitar(request: HttpRequest) -> HttpResponse:
     """Enter na barra: comita a busca acionando o melhor match do 1º candidato que geocodifica —
-    equivale a clicar na 1ª sugestão. Sem candidato/geometria, responde o aviso."""
+    equivale a clicar na 1ª sugestão. Sem candidato/geometria, responde o aviso, com o motivo da
+    base oficial quando houver."""
     query = RoteamentoQuery(texto=request.POST.get("termo_pesquisa", ""), finished_typing=True)
-    result = rotear_entrada(query)
-    for candidato in result.candidatos:
-        resposta = _acionar_candidato(request, candidato)
-        if resposta is not None:
-            return resposta
-    return render(request, "mapping/_aviso.html", contexto_aviso(MSG_SEM_RESULTADO_COMMIT))
+    falha: FalhaBaseOficial | None = None
+    for candidato in _candidatos_liberados(request, rotear_entrada(query).candidatos):
+        tentativa = _acionar_candidato(request, candidato, falha)
+        if isinstance(tentativa, HttpResponse):
+            return tentativa
+        if isinstance(tentativa, FalhaBaseOficial):
+            falha = tentativa
+    mensagem = falha.motivo if falha is not None else MSG_SEM_RESULTADO_COMMIT
+    return render(request, "mapping/_aviso.html", contexto_aviso(mensagem))

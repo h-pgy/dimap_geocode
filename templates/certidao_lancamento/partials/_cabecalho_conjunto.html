@@ -1,0 +1,20 @@
+{% load icones %}
+{# O cabeçalho dos modais do conjunto. `conjunto` vem nulo quando o resultado foi substituído. #}
+<header class="flex items-center gap-3 border-b border-rocha-950/10 pb-4">
+  <span class="icon-bubble w-11 h-11 bg-agua-500/15 border-agua-600/30 text-agua-700 shrink-0">
+    <span class="w-6 h-6 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
+      {% icone_acao "certidao_lancamento.emitir" "pequeno" %}
+    </span>
+  </span>
+  <div class="min-w-0">
+    <p class="text-overline">Certidão de Existência de Lançamento</p>
+    {% if conjunto %}
+      {% with total=conjunto.lotes|length %}
+        <p class="text-base font-bold text-rocha-950 leading-tight">{% if total %}Conjunto de {{ total }} lote{{ total|pluralize }}{% else %}Nenhum lote no conjunto{% endif %}</p>
+      {% endwith %}
+      <p class="text-xs text-base-content/70">Desenho de {{ conjunto.apurado.area_m2|floatformat:"0g" }} m²</p>
+    {% else %}
+      <p class="text-base font-bold text-rocha-950 leading-tight">Conjunto de lotes</p>
+    {% endif %}
+  </div>
+</header>

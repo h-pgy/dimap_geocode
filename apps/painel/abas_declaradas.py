@@ -13,12 +13,20 @@ from apps.cargos.acoes_declaradas import (
     ACAO_REATIVAR_CARGO,
     ACAO_REATIVAR_CARGO_BASE,
 )
-from apps.competencias.acoes_declaradas import ACAO_CONCEDER, ACAO_DEFINIR_ATRIBUICAO
+from apps.competencias.acoes_declaradas import (
+    ACAO_CONCEDER,
+    ACAO_DEFINIR_ATRIBUICAO,
+    ACAO_EMITIR_CERTIDAO_ATOS,
+)
 from apps.unidades.acoes_declaradas import (
+    ACAO_CRIAR_TIPO_UNIDADE,
     ACAO_CRIAR_UNIDADE,
     ACAO_CRIAR_UNIDADE_RAIZ,
     ACAO_DEFINIR_TITULAR,
+    ACAO_EDITAR_TIPO_UNIDADE,
+    ACAO_EXTINGUIR_TIPO_UNIDADE,
     ACAO_EXTINGUIR_UNIDADE,
+    ACAO_REATIVAR_TIPO_UNIDADE,
 )
 from apps.user_admin.acoes_declaradas import (
     ACAO_CRIAR_SERVIDOR,
@@ -123,8 +131,8 @@ ABA_ESTRUTURA = Aba(
     rotulo="Estrutura Administrativa",
     titulo="Estrutura Administrativa",
     descricao=(
-        "A forma da DIMAP: as unidades que a compõem, como se subordinam, os cargos em comissão que "
-        "existem e quem responde pela direção de cada uma."
+        "A forma da DIMAP: as unidades que a compõem, como se subordinam, os tipos de unidade e quem "
+        "responde pela direção de cada uma."
     ),
     grupos=(
         Grupo(
@@ -140,6 +148,23 @@ ABA_ESTRUTURA = Aba(
                 ItemAcao(acao=ACAO_CRIAR_UNIDADE_RAIZ),
                 ItemAcao(acao=ACAO_DEFINIR_TITULAR, partial=PARTIAL_CARTAO_MODAL),
                 ItemAcao(acao=ACAO_EXTINGUIR_UNIDADE, partial=PARTIAL_CARTAO_MODAL),
+            ),
+        ),
+        Grupo(
+            rotulo="Tipos de Unidade",
+            itens=(
+                # Consultar o catálogo é leitura aberta (SPEC user_admin/031): quem não administra
+                # o sistema vê este card e nada mais do grupo.
+                ItemLivre(
+                    slug="painel.lista_tipos_unidade",
+                    nome="Tipos de unidade",
+                    tooltip="O catálogo de tipos de unidade da DIMAP, seus níveis e requisitos de titular.",
+                    url_name="unidades:listar_tipos_unidade",
+                ),
+                ItemAcao(acao=ACAO_CRIAR_TIPO_UNIDADE, partial=PARTIAL_CARTAO_MODAL),
+                ItemAcao(acao=ACAO_EDITAR_TIPO_UNIDADE, partial=PARTIAL_CARTAO_MODAL),
+                ItemAcao(acao=ACAO_EXTINGUIR_TIPO_UNIDADE, partial=PARTIAL_CARTAO_MODAL),
+                ItemAcao(acao=ACAO_REATIVAR_TIPO_UNIDADE, partial=PARTIAL_CARTAO_MODAL),
             ),
         ),
     ),
@@ -181,6 +206,7 @@ ABA_ADMINISTRACAO = Aba(
                     tooltip="Os atos praticados no seu alcance: quem, com qual cargo, sobre o quê e se podia.",
                     url_name="competencias:listar_registro_acoes",
                 ),
+                ItemAcao(acao=ACAO_EMITIR_CERTIDAO_ATOS, partial=PARTIAL_CARTAO_MODAL),
             ),
         ),
         # Sai de ABA_ATRIBUICOES, onde o grupo se chamava "Administração do Sistema" — o nome agora

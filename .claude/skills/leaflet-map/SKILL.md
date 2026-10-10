@@ -5,6 +5,20 @@ description: Como instanciar e configurar o mapa Leaflet do DIMAP GeoCoder — c
 
 # Leaflet — instanciar o mapa e renderizar uma camada
 
+## Sumário
+
+- Escopo
+- Regras de fronteira (CLAUDE.md, "Estilo e Convenções: JavaScript restrito" — não violar)
+- 1. O container e o mapa
+  - Enquadrar no resultado (o caso comum desta app)
+- 2. Camada base WMS (GeoSampa)
+  - Múltiplas bases + controle de camadas (opcional)
+- 3. Adicionar UMA camada de resultado (ponto / linha / polígono)
+  - Cores por tipo de geometria — resumo
+- 4. Popup e Tooltip
+- Passando dados do servidor para o JS (padrão do projeto)
+- Checklist antes de fechar o partial do mapa
+
 Referência para o **app `mapping`**: o partial do Leaflet recebe uma geometria do backend e a
 renderiza sobre o WMS do GeoSampa. Leaflet **1.9** já está carregado no `templates/base.html`
 (CSS no `<head>`, JS antes do `</body>`); a inicialização do mapa vai no `{% block scripts %}` da

@@ -1,7 +1,7 @@
 ---
 spec: design/009
-versao: v4
-atualizado_em: 2026-08-28
+versao: v5
+atualizado_em: 2026-09-10
 testes_tdd: true
 implementado: true
 changelog:
@@ -9,6 +9,7 @@ changelog:
   - v2: "[bugfix] a bandeja da tabela de vidro subiu para 88%→76%: sem a tinta do poço aninhado atrás, o cabeçalho grudento deixava as linhas emergirem legíveis por trás dele"
   - v3: "[bugfix] bandeja em 94%→86% e cabeçalho rente ao poço: a folga do topo e das laterais saiu das tabelas com cabeçalho, e a bandeja passou a atravessar a coluna da barra de rolagem"
   - v4: o poço de upload entra na regra — era o único poço que continuava pintando quando aninhado
+  - v5: "[bugfix] bandeja em 74%→64% sobre blur de 72px: somada à placa da página e à peça de coluna, a densidade de 94%→86% levava o cabeçalho a 97% de opacidade e ele lia como papel"
 ---
 
 # SPEC design/009 — Vidro sobre vidro: a placa aninhada

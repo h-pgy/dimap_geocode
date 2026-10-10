@@ -17,6 +17,10 @@ class WmsTimeoutError(WmsError, requests.Timeout):
     """Servidor WMS não respondeu dentro do timeout configurado."""
 
 
+class WmsConnectionError(WmsError, requests.ConnectionError):
+    """A conexão com o servidor WMS não se estabeleceu (DNS, recusa, rede fora)."""
+
+
 class WmsResponseNotImageError(WmsError):
     """HTTP 200, mas o corpo não é imagem (provável ServiceException XML do WMS)."""
 

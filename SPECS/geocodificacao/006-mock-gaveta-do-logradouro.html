@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC geocodificacao/006 — Gaveta do logradouro (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + andaime deste mock no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Esta SPEC não traz classe nova para o tema: a gaveta é composta de peças que já existem. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* andaime do mock: moldura que faz as vezes da casca da home. O contain segura as gavetas,
+         que são fixed, dentro do quadro. */
+      .quadro-tela {
+        @apply relative h-[40rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)];
+        contain: layout;
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Defs da gravação e glifos da bancada: os partials da própria aplicação. -->
+  <div id="defs-aplicacao"></div>
+
+  <!-- Fundo: o mapa vivo da home, de mapping/_mapa_fullscreen.html. -->
+  <div id="fundo-home" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
+
+      <header class="glass-panel p-8 sm:p-10">
+        <p class="text-overline text-madeira-600">SPEC geocodificacao/006 · mock de validação</p>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight mt-1 text-madeira-700">Gaveta do logradouro</h1>
+        <p class="text-sm text-base-content/75 mt-3 max-w-2xl">
+          A gaveta lateral do logradouro, aberta pela busca por logradouro e pelo "Logradouro mais
+          próximo" de um ponto desenhado.
+        </p>
+      </header>
+
+      <!-- 4 · ORGANISMOS -->
+      <section id="organismos" class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <h2 class="section-title">4 · Organismos</h2>
+
+        <!-- .gaveta-lateral do logradouro: logradouro_geocoder/partials/_gaveta_logradouro.html -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">gaveta do logradouro — pista dupla (Av. Paulista), pista simples (Al. Santos) e, por último, com título e sem numeração (Pq. Ten. Siqueira Campos)</p>
+          <div class="flex flex-wrap gap-4 items-start">
+            <!-- estado: completa, pista dupla -->
+            <div class="quadro-tela w-[24rem]">
+              <div class="absolute inset-0 z-0" data-mapa-estatico="156566"></div>
+              <div data-gaveta-logradouro="156566"></div>
+            </div>
+            <!-- estado: completa, pista simples -->
+            <div class="quadro-tela w-[24rem]">
+              <div class="absolute inset-0 z-0" data-mapa-estatico="177911"></div>
+              <div data-gaveta-logradouro="177911"></div>
+            </div>
+            <!-- estado de falta: sem numeração -->
+            <div class="quadro-tela w-[24rem]">
+              <div class="absolute inset-0 z-0" data-mapa-estatico="121339"></div>
+              <div data-gaveta-logradouro="121339"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · TELA MONTADA -->
+      <section id="tela" class="flex flex-col gap-6">
+        <h2 class="section-title">5 · Tela montada</h2>
+
+        <!-- estado: busca por logradouro -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">pela busca · a linha do logradouro inteiro e a gaveta aberta; a paleta recolhe e reabre a gaveta</span>
+
+          <!-- página: core/home.html -->
+          <div class="quadro-tela tela-home">
+            <!-- fica na página: o mapa da home (mapping/_mapa_fullscreen.html) -->
+            <div class="absolute inset-0 z-0" data-mapa-estatico="156566"></div>
+
+            <!-- fica na página: a UI flutuante da busca, que já existe -->
+            <!-- partial: logradouro_geocoder/partials/_resultado_logradouro.html — logradouro_geocoder:geocodificar e logradouro_mais_proximo:do_ponto; payload do mapa (mapping/_mapa.html) + OOB do #gaveta-entidade -->
+            <div data-busca-estatica="Av. Paulista"></div>
+            <!-- /partial -->
+
+            <!-- página: <div id="gaveta-entidade"></div> — alvo do OOB da resposta do logradouro -->
+            <!-- partial: logradouro_geocoder/partials/_gaveta_logradouro.html -->
+            <div data-gaveta-logradouro="156566"></div>
+            <!-- /partial -->
+
+            <!-- fica na página: mapping/_bancada_desenho.html -->
+            <div data-bancada></div>
+          </div>
+        </div>
+
+        <!-- estado: logradouro mais próximo do ponto desenhado (SPEC 005) -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline px-1 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">pelo ponto desenhado · a gaveta do logradouro no lugar da gaveta dos desenhos; o ponto fica no mapa, e clicar nele volta à bancada</span>
+          <div class="quadro-tela tela-home">
+            <div class="absolute inset-0 z-0" data-mapa-estatico="177911" data-ponto-desenhado></div>
+            <div data-busca-estatica=""></div>
+            <div data-gaveta-logradouro="177911"></div>
+            <div data-bancada></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    // andaime do mock: erro de carga aparece na tela, não só no console.
+    function denunciar(mensagem) {
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        '<pre class="fixed top-0 inset-x-0 z-50 m-0 p-3 text-xs bg-error text-error-content whitespace-pre-wrap">' + mensagem + "</pre>",
+      );
+    }
+    window.addEventListener("error", (evento) => denunciar("erro: " + evento.message));
+    window.addEventListener("unhandledrejection", (evento) => denunciar("falhou: " + evento.reason));
+
+    const TAG_DE_TEMPLATE = /\{[{%#][\s\S]*?[}%#]\}/g;
+    // No produto a config desce do servidor; o mock não tem Django por trás do Live Server.
+    const WMS = {
+      url: "https://wms.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/ows",
+      layers: "geoportal:MapaBase_Politico",
+      version: "1.3.0",
+    };
+    const CENTRO = [-23.5628, -46.6556];
+    // De static/src/js/mapa/desenho/catalogo.js.
+    const COR_PONTO = "#00B4D8";
+    // De static/src/js/mapa/camada_resultado.js, na cor MAP_COR_LINHA: o traço do logradouro da busca.
+    const TRACO_RESULTADO = { color: "#0F766E", weight: 4, opacity: 1 };
+
+    // ── andaime do mock: os logradouros que o WFS devolveria (geometria real do GeoSampa) ──────
+    const LOGRADOUROS = {
+      "156566": {
+        segmentos: [[[-23.56897,-46.64741],[-23.56789,-46.64883],[-23.56779,-46.64895]],[[-23.56779,-46.64895],[-23.56772,-46.64903]],[[-23.5556,-46.66284],[-23.55556,-46.6629]],[[-23.56312,-46.65439],[-23.56257,-46.65505]],[[-23.57127,-46.6442],[-23.57004,-46.64577],[-23.56953,-46.64644]],[[-23.5703,-46.64565],[-23.56984,-46.64626],[-23.56964,-46.64653]],[[-23.56964,-46.64653],[-23.56897,-46.64741]],[[-23.55745,-46.66112],[-23.55742,-46.66116]],[[-23.55904,-46.65929],[-23.55892,-46.65943],[-23.55817,-46.66028]],[[-23.56095,-46.65715],[-23.5606,-46.65754],[-23.56012,-46.65809]],[[-23.56206,-46.65587],[-23.562,-46.65595]],[[-23.55566,-46.66279],[-23.5556,-46.66284]],[[-23.56135,-46.65648],[-23.56085,-46.65705]],[[-23.56257,-46.65505],[-23.56196,-46.65578]],[[-23.56367,-46.65372],[-23.56312,-46.65439]],[[-23.5649,-46.65224],[-23.56367,-46.65372]],[[-23.56012,-46.65809],[-23.55904,-46.65929]],[[-23.56085,-46.65705],[-23.56001,-46.65798]],[[-23.56001,-46.65798],[-23.55918,-46.65892]],[[-23.55918,-46.65892],[-23.55808,-46.66016]],[[-23.56761,-46.64897],[-23.56609,-46.6508]],[[-23.55654,-46.66181],[-23.55646,-46.66191]],[[-23.55672,-46.662],[-23.55663,-46.6621]],[[-23.56196,-46.65578],[-23.56188,-46.65589]],[[-23.55808,-46.66016],[-23.5573,-46.66104]],[[-23.55538,-46.66312],[-23.55501,-46.66357],[-23.55497,-46.6636],[-23.55489,-46.66366]],[[-23.55556,-46.6629],[-23.55538,-46.66312]],[[-23.56897,-46.64741],[-23.56892,-46.64737],[-23.56886,-46.64732]],[[-23.57102,-46.64474],[-23.57035,-46.64559],[-23.5703,-46.64565]],[[-23.56177,-46.656],[-23.56135,-46.65648]],[[-23.56189,-46.65606],[-23.56095,-46.65715]],[[-23.55601,-46.6628],[-23.556,-46.66291],[-23.55599,-46.66303],[-23.556,-46.66313],[-23.556,-46.66322]],[[-23.5558,-46.66264],[-23.55566,-46.66279]],[[-23.55654,-46.66181],[-23.55659,-46.66194],[-23.55672,-46.662]],[[-23.55584,-46.66274],[-23.55583,-46.66273],[-23.55581,-46.66268],[-23.5558,-46.66264]],[[-23.55601,-46.6628],[-23.55594,-46.66281],[-23.5559,-46.66279]],[[-23.5559,-46.66279],[-23.55586,-46.66276],[-23.55584,-46.66274]],[[-23.56953,-46.64644],[-23.56886,-46.64732]],[[-23.55663,-46.6621],[-23.5564,-46.66236],[-23.55601,-46.6628]],[[-23.55489,-46.66366],[-23.55458,-46.66401],[-23.55452,-46.66404]],[[-23.56188,-46.65589],[-23.56177,-46.656]],[[-23.57138,-46.64429],[-23.57127,-46.64442],[-23.57102,-46.64474]],[[-23.55646,-46.66191],[-23.55619,-46.66221],[-23.5558,-46.66264]],[[-23.56609,-46.6508],[-23.5649,-46.65224]],[[-23.56886,-46.64732],[-23.56849,-46.6478],[-23.56761,-46.64897]],[[-23.5573,-46.66104],[-23.55711,-46.66117],[-23.55654,-46.66181]],[[-23.55742,-46.66116],[-23.55734,-46.66129],[-23.55672,-46.662]],[[-23.562,-46.65595],[-23.56189,-46.65606]],[[-23.56772,-46.64903],[-23.5671,-46.6498],[-23.56619,-46.65089]],[[-23.55817,-46.66028],[-23.55787,-46.66063],[-23.55749,-46.66105],[-23.55745,-46.66112]],[[-23.56376,-46.65382],[-23.56355,-46.65407],[-23.56222,-46.65569],[-23.56206,-46.65587]],[[-23.56499,-46.65234],[-23.56583,-46.65132],[-23.56619,-46.65089]],[[-23.56376,-46.65382],[-23.56465,-46.65275],[-23.56499,-46.65234]]],
+      },
+      "121339": {
+        segmentos: [[[-23.56115,-46.65716],[-23.56095,-46.65715]],[[-23.56199,-46.65802],[-23.56181,-46.65802]],[[-23.56228,-46.65729],[-23.56274,-46.65676],[-23.5621,-46.65611],[-23.56115,-46.65716],[-23.56181,-46.65783],[-23.56228,-46.65729]],[[-23.56246,-46.65748],[-23.56199,-46.65802],[-23.56267,-46.65872],[-23.5636,-46.65765],[-23.5629,-46.65698],[-23.56246,-46.65748]]],
+      },
+      "177911": {
+        segmentos: [[[-23.56464,-46.65469],[-23.56519,-46.65403]],[[-23.56914,-46.64925],[-23.56987,-46.64832],[-23.56991,-46.64826]],[[-23.56865,-46.64988],[-23.56875,-46.64976],[-23.56914,-46.64925]],[[-23.56291,-46.65675],[-23.56352,-46.65604]],[[-23.56352,-46.65604],[-23.56464,-46.65469]],[[-23.56519,-46.65403],[-23.56536,-46.65383]],[[-23.56536,-46.65383],[-23.56588,-46.6532]],[[-23.56588,-46.6532],[-23.56705,-46.65179],[-23.56708,-46.65176]],[[-23.55655,-46.66396],[-23.55667,-46.66385],[-23.5573,-46.66313],[-23.55742,-46.66299]],[[-23.55742,-46.66299],[-23.55749,-46.66292],[-23.55793,-46.66241],[-23.55826,-46.66204]],[[-23.55645,-46.66405],[-23.55655,-46.66396]],[[-23.55826,-46.66204],[-23.55828,-46.66202],[-23.55862,-46.66164],[-23.55902,-46.66119],[-23.55903,-46.66118]],[[-23.55903,-46.66118],[-23.55942,-46.66073],[-23.55989,-46.66019],[-23.5599,-46.66018]],[[-23.5599,-46.66018],[-23.5602,-46.65985],[-23.56071,-46.65927],[-23.56097,-46.65897]],[[-23.56097,-46.65897],[-23.56179,-46.65804],[-23.56181,-46.65802]],[[-23.57124,-46.6465],[-23.57143,-46.64626],[-23.57198,-46.64552],[-23.57203,-46.64549],[-23.57222,-46.6454]],[[-23.56991,-46.64826],[-23.57058,-46.64738]],[[-23.57058,-46.64738],[-23.57124,-46.6465]],[[-23.56181,-46.65802],[-23.56288,-46.65679],[-23.56291,-46.65675]],[[-23.56708,-46.65176],[-23.56855,-46.65],[-23.56865,-46.64988]]],
+      },
+    };
+
+    // ── andaime do mock: o que MontarGavetaLogradouro apuraria (números reais do GeoSampa) ──────
+    const GAVETAS = {
+      "156566": { nomeCompleto: "AV PAULISTA", nome: "PAULISTA", tipo: "AV", extensao: "5,4", segmentos: 53, numeracao: [1, 2747] },
+      "177911": { nomeCompleto: "AL SANTOS", nome: "SANTOS", tipo: "AL", extensao: "2,6", segmentos: 20, numeracao: [1, 2557] },
+      "121339": { nomeCompleto: "PQ TTE SIQUEIRA CAMPOS", nome: "TTE SIQUEIRA CAMPOS", tipo: "PQ", extensao: "1,0", segmentos: 4, numeracao: null },
+    };
+
+    // ── andaime do mock: o ponto desenhado da tela pela SPEC 005 ────────────────────────────────
+    const PONTO_DESENHADO = [-23.56243, -46.65741];
+
+    const PALETA = (idToggle) =>
+      '<label for="' + idToggle + '" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">' +
+      '<svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>' +
+      "</label>";
+
+    // ── PEÇA DESTA SPEC: logradouro_geocoder/partials/_gaveta_logradouro.html ──────────────────
+    function gavetaLogradouro(codlog, idToggle) {
+      const g = GAVETAS[codlog];
+      const numeracao = g.numeracao
+        ? '<div class="grid grid-cols-2 gap-4">' +
+          '<div><p class="text-overline mb-1">Menor</p><p class="text-xl font-bold tabular-nums">' + g.numeracao[0].toLocaleString("pt-BR") + "</p></div>" +
+          '<div><p class="text-overline mb-1">Maior</p><p class="text-xl font-bold tabular-nums">' + g.numeracao[1].toLocaleString("pt-BR") + "</p></div>" +
+          "</div>"
+        : '<p class="valor-ausente">sem numeração</p>';
+      const casca = document.createElement("div");
+      casca.className = "gaveta-lateral";
+      casca.dataset.gaveta = "logradouro-" + codlog;
+      casca.innerHTML =
+        '<input type="checkbox" id="' + idToggle + '" class="gaveta-lateral-toggle" checked>' +
+        '<div class="gaveta-lateral-painel glass-drawer-panel-denso">' +
+        '<header class="gaveta-lateral-cabecalho">' +
+        '<p class="text-overline text-madeira-600">Entidade localizada</p>' +
+        '<h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Logradouro</h2>' +
+        '<p class="text-sm font-medium mt-2">' + g.nomeCompleto + "</p>" +
+        "</header>" +
+        '<div class="gaveta-lateral-corpo" data-scroll-etched>' +
+        '<div class="gaveta-lateral-rolador" data-rolador>' +
+        '<div class="gaveta-lateral-conteudo">' +
+        // identidade
+        '<div class="card-well p-4 flex flex-col gap-3">' +
+        '<div class="flex gap-4 items-center">' +
+        '<div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">' +
+        '<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>' +
+        "</div>" +
+        '<div class="min-w-0"><p class="text-overline mb-0.5">Nome</p><p class="font-bold leading-tight">' + g.nome + "</p></div>" +
+        "</div>" +
+        '<div class="h-px w-full bg-rocha-950/10"></div>' +
+        '<div class="flex items-baseline justify-between gap-4"><p class="text-overline">Codlog</p><p class="text-code text-sm">' + codlog + "</p></div>" +
+        '<div class="h-px w-full bg-rocha-950/10"></div>' +
+        '<div class="flex items-baseline justify-between gap-4"><p class="text-overline">Tipo</p><p class="text-code text-sm">' + g.tipo + "</p></div>" +
+        "</div>" +
+        // medidas
+        '<div class="grid grid-cols-2 gap-3">' +
+        '<div class="card-well p-4"><p class="text-overline mb-1">Extensão</p><p class="text-xl font-bold tabular-nums">' + g.extensao + ' <span class="text-sm font-normal text-base-content/60">km</span></p></div>' +
+        '<div class="card-well p-4"><p class="text-overline mb-1">Segmentos</p><p class="text-xl font-bold tabular-nums">' + g.segmentos + "</p></div>" +
+        "</div>" +
+        // numeração do logradouro inteiro
+        '<div class="card-well p-4 flex flex-col gap-3"><p class="text-overline">Numeração do logradouro</p>' + numeracao + "</div>" +
+        "</div>" +
+        "</div>" +
+        '<div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>' +
+        "</div>" +
+        "</div>" +
+        PALETA(idToggle);
+      return casca;
+    }
+
+    // logradouro_geocoder/partials/_popup_segmento.html
+    function popupSegmento(codlog) {
+      return (
+        '<span class="font-bold text-madeira-700">' + GAVETAS[codlog].nomeCompleto + "</span><br>" +
+        '<span class="text-code text-xs">codlog ' + codlog + "</span>"
+      );
+    }
+
+    // camada_resultado.js: cada segmento com o pop-up e o rótulo que as properties trazem.
+    function camadaLogradouro(codlog) {
+      return L.featureGroup(
+        LOGRADOUROS[codlog].segmentos.map((segmento) =>
+          L.polyline(segmento, TRACO_RESULTADO)
+            .bindPopup(popupSegmento(codlog))
+            .bindTooltip(GAVETAS[codlog].nomeCompleto, { direction: "top", sticky: true }),
+        ),
+      );
+    }
+
+    // A busca dos quadros: a marcação da UI flutuante da home, sem ids.
+    function buscaEstatica(valor) {
+      return (
+        '<div class="search-hero absolute inset-0 z-10 pointer-events-none flex flex-col items-center px-4">' +
+        '<div class="pointer-events-auto glass-panel search-panel flex flex-col gap-2">' +
+        '<div class="relative w-full flex items-center">' +
+        '<svg class="w-5 h-5 absolute left-4 text-rocha-700/70 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
+        '<input type="search" placeholder="Rua, endereço, codlog ou nº de contribuinte…" class="input input-glass pl-11" value="' + valor + '" />' +
+        "</div></div>" +
+        "</div>"
+      );
+    }
+
+    // ── andaime do mock: os estados estáticos ───────────────────────────────────────────────────
+    document.querySelectorAll("[data-gaveta-logradouro]").forEach((alvo, indice) => {
+      alvo.replaceWith(gavetaLogradouro(alvo.dataset.gavetaLogradouro, "gaveta-logradouro-" + indice));
+    });
+    document.querySelectorAll("[data-busca-estatica]").forEach((alvo) => {
+      alvo.outerHTML = buscaEstatica(alvo.dataset.buscaEstatica);
+    });
+
+    // ── Fundo, glifos e bancada: os partials da própria aplicação ───────────────────────────────
+    async function partial(caminho) {
+      const r = await fetch(caminho);
+      if (!r.ok) throw new Error(r.status + " em " + caminho + " — sirva a RAIZ do projeto");
+      return (await r.text()).replace(TAG_DE_TEMPLATE, "").trim();
+    }
+
+    function base(mapa) {
+      L.tileLayer.wms(WMS.url, {
+        layers: WMS.layers,
+        version: WMS.version,
+        format: "image/png",
+        transparent: false,
+        attribution: "GeoSampa — PMSP",
+      }).addTo(mapa);
+      return mapa;
+    }
+
+    function iconePonto() {
+      const d = 14;
+      return L.divIcon({
+        className: "",
+        iconSize: [d, d],
+        iconAnchor: [d / 2, d / 2],
+        html: '<span style="display:block;width:' + d + "px;height:" + d + "px;border-radius:9999px;background:" +
+          COR_PONTO + ';border:2px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(72,202,228,.9)"></span>',
+      });
+    }
+
+    // andaime do mock: o tema é compilado no navegador, depois do fetch. Mapa criado antes disso mede
+    // o quadro sem a moldura (.quadro-tela) e enquadra para um tamanho que não existe.
+    async function temaAplicado() {
+      const quadro = document.querySelector(".quadro-tela");
+      while (getComputedStyle(quadro).contain !== "layout") {
+        await new Promise((pronto) => requestAnimationFrame(pronto));
+      }
+    }
+
+    const [filtros, glifos, fundo, bancada] = await Promise.all([
+      partial("/templates/partials/_filtros_gravacao.html"),
+      partial("/templates/mapping/_glifos_desenho.html"),
+      partial("/templates/mapping/_mapa_fullscreen.html"),
+      partial("/templates/mapping/_bancada_desenho.html"),
+    ]);
+    document.getElementById("defs-aplicacao").innerHTML = filtros + glifos;
+    document.getElementById("fundo-home").innerHTML = fundo;
+    await temaAplicado();
+    base(L.map("map", { zoomControl: false, minZoom: 13, maxZoom: 19 }).setView(CENTRO, 15));
+
+    // A bancada entra como cenário, sem id algum e sem o bancada.js.
+    document.querySelectorAll("[data-bancada]").forEach((alvo) => {
+      alvo.outerHTML = bancada.replace(/\s+id="[^"]*"/g, "");
+    });
+
+    // Mapas estáticos: cada quadro com o seu logradouro desenhado, como a resposta o deixaria.
+    document.querySelectorAll("[data-mapa-estatico]").forEach((alvo, indice) => {
+      alvo.id = "mapa-estatico-" + indice;
+      const mapa = base(L.map(alvo.id, { zoomControl: false, minZoom: 13, maxZoom: 19 }));
+      const resultado = camadaLogradouro(alvo.dataset.mapaEstatico).addTo(mapa);
+      if (alvo.hasAttribute("data-ponto-desenhado")) {
+        L.marker(PONTO_DESENHADO, { icon: iconePonto() }).addTo(mapa);
+      }
+      // andaime do mock: o quadro só tem a medida final depois do layout; sem isso o mapa enquadra
+      // para um tamanho zero e fica cinza.
+      requestAnimationFrame(() => {
+        mapa.invalidateSize();
+        // camada_resultado.js: enquadra o resultado inteiro, com folga de 20px.
+        mapa.fitBounds(resultado.getBounds(), { maxZoom: 18, padding: [20, 20] });
+      });
+    });
+
+    const { montarBarrasGravadas } = await import("/static/src/js/ui/scroll_etched.js");
+    montarBarrasGravadas();
+  </script>
+</body>
+</html>

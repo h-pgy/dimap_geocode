@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{% load static %}
+{% load static icones %}
 <html lang="pt-BR" data-theme="dimap">
 <head>
   <meta charset="UTF-8">
@@ -24,6 +24,9 @@
 
   {% include "partials/_filtros_gravacao.html" %}
   {% include "mapping/_mapa_admin.html" %}
+  {% include "mapping/_glifos_mapa.html" %}
+  {% include "mapping/_glifos_desenho.html" %}
+  {% include "street_view/partials/_glifos_street_view.html" %}
 
 
   <!-- Glifos de exemplo (SPEC autorizacao/006). Na aplicação cada um é um arquivo em
@@ -73,6 +76,32 @@
         <rect x="2.5" y="16.6" width="6" height="4.4" rx="1.2"/>
         <rect x="15.5" y="16.6" width="6" height="4.4" rx="1.2"/>
         <path d="M12 7.4v4.2"/><path d="M5.5 16.6v-5h13v5"/>
+      </g>
+      <!-- Conferência de documento (SPEC documentos_oficiais/008), também em
+           templates/documentos/partials/_glifos_documento.html. -->
+      <g id="glifo-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m8.7 12 2.4 2.4 4.2-4.6"/>
+      </g>
+      <g id="glifo-selo-violado">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="m9.6 9.6 4.8 4.8"/><path d="m14.4 9.6-4.8 4.8"/>
+      </g>
+      <g id="glifo-selo-alerta">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="M12 8.4v3.9"/><path d="M12 15.3v.1"/>
+      </g>
+      <g id="glifo-sem-selo">
+        <path d="M12 3l7.5 3v5.4c0 4.4-3 8.2-7.5 9.6-4.5-1.4-7.5-5.2-7.5-9.6V6z"/>
+        <path d="M4.4 20.6 19.6 3.4"/>
+      </g>
+      <g id="glifo-documento">
+        <path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/>
+        <path d="M14 3.5v5h5"/>
+      </g>
+      <g id="glifo-teclado">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>
       </g>
     </defs>
   </svg>
@@ -318,7 +347,7 @@
           <ul class="text-sm text-base-content/80 flex flex-col gap-1 list-disc list-inside">
             <li>Blur do gelo: <span class="text-code">10px</span> (gaveta densa: 12px). Blur fraco não separa figura do fundo.</li>
             <li><strong>Duas espessuras</strong> (SPECs <span class="text-code">user_admin/011</span> e <span class="text-code">design/008</span>): fino sobre o mapa, <strong>espesso sobre interface</strong> — <span class="text-code">.glass-blur-thick .glass-bg-thick .glass-panel-thick</span> (blur 28px, gradiente 88%→76%, aresta white/70, sombra funda). Mesma receita em outro grau, não material novo — quem esconde o que está atrás é o <strong>desfoque</strong>, não a opacidade: acima de ~90% de branco o gradiente vira papel e o material deixa de ler como gelo (SPEC design/008 v2).</li>
-            <li><strong>A terceira densidade é só do modal</strong> (<span class="text-code">.modal-box-glass</span>, 97%→88%): ali a opacidade alta é o acerto, porque o modal substitui a interface em vez de flutuar sobre ela. <strong>Peça nova compõe uma das três</strong> — densidade própria é exceção que se argumenta, não se copia. Existe uma: a bandeja da tabela (§3), em 94%→86%, porque ela é a única coisa entre um cabeçalho grudento e as linhas que correm por trás.</li>
+            <li><strong>A terceira densidade é só do modal</strong> (<span class="text-code">.modal-box-glass</span>, 97%→88%): ali a opacidade alta é o acerto, porque o modal substitui a interface em vez de flutuar sobre ela. <strong>Peça nova compõe uma das três</strong> — densidade própria é exceção que se argumenta, não se copia. Existe uma: a bandeja da tabela (§3), em 74%→64% sobre 72px de blur, porque ali quem sela é o desfoque e não o branco — o cabeçalho empilha três demãos, e é a soma delas que precisa ficar abaixo dos 90%.</li>
             <li><strong>Empilhado, o material não se repinta</strong> (§1.7): placa dentro de placa, ou dentro de poço, fica só com desfoque, aresta e sombra. A pintura acontece uma vez por pilha.</li>
             <li>Sombra em duas camadas: azul-fria <span class="text-code">rgba(7,58,84,.25)</span> dá a separação; ciana <span class="text-code">rgba(72,202,228,.25)</span> dá a vida.</li>
             <li>Aresta superior iluminada via <span class="text-code">inset 0 1px 0 white/80</span> — o brilho de gelo na quina.</li>
@@ -345,18 +374,18 @@
             <div class="card-well h-32 flex items-center justify-center gap-8">
               <div class="avatar-glass w-11 h-11" style="--cor-unidade: #0077b6; --halo-escala: 0.5">
                 <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
                 </svg>
               </div>
               <div class="avatar-glass w-16 h-16" style="--cor-unidade: #0077b6">
                 <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
                 </svg>
               </div>
             </div>
-            <p class="text-xs text-base-content/60">O aro de contato não escala; o que cresce com o disco é o alcance da luz. À esquerda, o chip do topo (<span class="text-code">0.5</span>); à direita, o padrão.</p>
+            <p class="text-xs text-base-content/60">Esfera de vidro fosco translúcida com refração suave e aro perimétrico luminoso na cor da unidade. À esquerda, o chip do topo (<span class="text-code">0.5</span>); à direita, o padrão.</p>
           </div>
           <div class="flex flex-col gap-2">
             <p class="text-overline">.admin-shell</p>
@@ -661,6 +690,39 @@
           <p class="text-xs text-base-content/60">A placa nova entra na regra de descendência do vidro sobre vidro: poço, tabela e painel dentro dela ficam só com desfoque, aresta e sombra. Nenhum markup muda por estar aqui dentro.</p>
         </div>
       </div>
+      <!-- 1.11 Altura da gaveta inferior rasa (SPEC localizacao_lote/003) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-3">
+        <h3 class="text-lg font-bold">1.11 · Altura da gaveta inferior rasa</h3>
+        <p class="text-sm text-base-content/70"><span class="text-code">--gaveta-rasa-altura: 16rem</span>. A <span class="text-code">.gaveta-inferior-rasa</span> tem altura <strong>fixa</strong>, e não teto: é a medida conhecida que deixa a gaveta lateral da home parar acima dela sem JavaScript (<span class="text-code">bottom: calc(var(--gaveta-rasa-altura) + 0.75rem)</span>).</p>
+      </div>
+      <!-- 1.12 Limites da gaveta inferior puxável (SPEC design/022) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <h3 class="text-lg font-bold">1.12 · Limites da gaveta inferior puxável</h3>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="card-well p-5 flex flex-col gap-1">
+            <p class="text-code">--gaveta-puxavel-piso</p>
+            <p class="text-xl font-bold tabular-nums">12rem</p>
+            <p class="text-sm text-base-content/70">Abaixo disto a gaveta não acompanha o ponteiro.</p>
+          </div>
+          <div class="card-well p-5 flex flex-col gap-1">
+            <p class="text-code">--gaveta-puxavel-teto</p>
+            <p class="text-xl font-bold tabular-nums">75dvh</p>
+            <p class="text-sm text-base-content/70">Acima disto também não: sobra um quarto da tela de mapa.</p>
+          </div>
+          <div class="card-well p-5 flex flex-col gap-1">
+            <p class="text-code">--gaveta-puxavel-partida</p>
+            <p class="text-xl font-bold tabular-nums">16rem</p>
+            <p class="text-sm text-base-content/70">A altura de nascença: a da <span class="text-code">--gaveta-rasa-altura</span>.</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/70">A <span class="text-code">.tela-home</span> que contém uma <span class="text-code">.gaveta-inferior-puxavel</span> reescreve a <span class="text-code">--gaveta-rasa-altura</span> como <span class="text-code">clamp(piso, --gaveta-puxada-altura, teto)</span>: a gaveta e a gaveta lateral seguem lendo a mesma medida. A <span class="text-code">--gaveta-puxada-altura</span> é escrita pelo <span class="text-code">puxar_gaveta.js</span> e não existe antes do primeiro arrasto — até lá vale a partida.</p>
+        <h3 class="text-lg font-bold">1.13 · Altura da gaveta do panorama</h3>
+        <div class="card-well p-5 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+          <p class="text-code">--gaveta-panorama-altura</p>
+          <p class="text-xl font-bold tabular-nums">45dvh</p>
+          <p class="text-sm text-base-content/70">A altura em que nasce a gaveta inferior que hospeda o Street View (SPEC street_view/002): a <span class="text-code">.gaveta-inferior-panorama</span> a entrega como <span class="text-code">--gaveta-puxavel-partida</span>.</p>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 2. ÁTOMOS ============ -->
@@ -729,8 +791,27 @@
         </div>
 
         <div>
-          <p class="text-overline mb-3">Campo OTP (SPEC autenticacao/001) — <span class="text-code">.otp-onsen</span></p>
+          <p class="text-overline mb-3">Textarea (vidro) (SPEC certidao_lancamento/001) — <span class="text-code">.textarea-glass</span>, mesma receita do .input-glass</p>
+          <div class="grid sm:grid-cols-3 gap-4">
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">vazio</span>
+              <textarea rows="3" class="textarea textarea-glass textarea-sm" placeholder="Observações do auditor"></textarea>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">preenchido</span>
+              <textarea rows="3" class="textarea textarea-glass textarea-sm">Vistoria realizada no processo 6017.2024/0034961-0.</textarea>
+            </div>
+            <div class="card-well p-4 flex flex-col gap-1.5">
+              <span class="text-overline">.campo-realce-erro</span>
+              <textarea rows="3" class="textarea textarea-glass textarea-sm campo-realce-erro">Texto acima do limite…</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-overline mb-3">Campo OTP (SPEC autenticacao/001, documentos_oficiais/010) — <span class="text-code">.otp-onsen</span></p>
           <div class="card-well p-5 flex flex-col gap-4 items-center">
+            <span class="text-overline text-xs text-base-content/60">8 caixas (autenticação)</span>
             <div class="otp-onsen">
               <input type="text" maxlength="1" class="otp-caixa" value="8" />
               <input type="text" maxlength="1" class="otp-caixa" value="4" />
@@ -751,8 +832,23 @@
               <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
               <input type="text" maxlength="1" class="otp-caixa campo-realce-erro" value="9" />
             </div>
+            <span class="text-overline text-xs text-base-content/60 mt-2">12 caixas (código de documento — <span class="text-code">.otp-onsen-12</span>)</span>
+            <div class="otp-onsen otp-onsen-12">
+              <input type="text" maxlength="1" class="otp-caixa" value="7" />
+              <input type="text" maxlength="1" class="otp-caixa" value="K" />
+              <input type="text" maxlength="1" class="otp-caixa" value="4" />
+              <input type="text" maxlength="1" class="otp-caixa" value="M" />
+              <input type="text" maxlength="1" class="otp-caixa" value="9" />
+              <input type="text" maxlength="1" class="otp-caixa" value="P" />
+              <input type="text" maxlength="1" class="otp-caixa" value="2" />
+              <input type="text" maxlength="1" class="otp-caixa" value="X" />
+              <input type="text" maxlength="1" class="otp-caixa" value="Q" />
+              <input type="text" maxlength="1" class="otp-caixa" value="3" />
+              <input type="text" maxlength="1" class="otp-caixa" value="T" />
+              <input type="text" maxlength="1" class="otp-caixa" value="B" />
+            </div>
           </div>
-          <p class="form-field-hint mt-2">8 caixas monoespaçadas para a senha de uso único do primeiro acesso; a segunda fileira é o estado recusado, com <span class="text-code">.campo-realce-erro</span> por caixa.</p>
+          <p class="form-field-hint mt-2">Caixas monoespaçadas com auto-avanço e colagem: 8 dígitos para primeiro acesso, ou 12 caracteres (<span class="text-code">.otp-onsen-12</span>) para conferência de documentos com quebra simétrica em duas fileiras de 6.</p>
         </div>
 
         <div>
@@ -965,6 +1061,40 @@
           </div>
         </div>
 
+        <!-- Átomo do checkbox (SPEC documentos_oficiais/009) -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">.checkbox-onsen</p>
+          <div class="card-well p-4 flex flex-wrap items-center gap-8 min-h-[4.5rem]">
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" class="checkbox-onsen" />
+              <span class="text-sm text-base-content/85">repouso</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" class="checkbox-onsen" checked />
+              <span class="text-sm text-base-content/85">marcado</span>
+            </label>
+          </div>
+          <p class="text-xs text-base-content/60">O checkbox do sistema (SPEC documentos_oficiais/009). Como o <span class="text-code">.toggle-onsen</span>, ignora a caixa nativa do daisyUI e desenha tudo sobre o <span class="text-code">&lt;input&gt;</span> puro: poço fino em repouso, ciano cheio quando marcado. O traço do check é tinta de rocha gravada com filtro <span class="text-code">#etched-onsen</span>.</p>
+        </div>
+
+        <!-- Água sobre o fundo administrativo (SPEC design/017) -->
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.fundo-rocha · .fundo-rocha__grao</p>
+            <div class="relative overflow-hidden rounded-2xl h-56 card-well">
+              <div class="fundo-rocha absolute! block!"><div class="fundo-rocha__grao"></div></div>
+            </div>
+            <p class="text-xs text-base-content/60">O piso que existe exatamente quando a ortofoto não existe: gradiente da escala <span class="text-code">rocha</span> com o grão por cima. Sem ele, o que a tinta <span class="text-code">mix-blend-multiply</span> da lente encontra atrás é o branco da página — e ela só consegue tingir, não escurecer. Quem o acende é a mesma classe <span class="text-code">fundo-desligado</span> no <span class="text-code">&lt;html&gt;</span> que apaga a ortofoto; aqui a cópia é inerte.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-overline">.fundo-agua</p>
+            <div class="relative overflow-hidden rounded-2xl h-56 card-well flex items-center justify-center p-6">
+              <p class="text-sm text-base-content/70 text-center">Em escala real é o fundo desta página — a onda que corre sobre a ortofoto e sobre o piso de rocha.</p>
+            </div>
+            <p class="text-xs text-base-content/60">Um <span class="text-code">&lt;canvas&gt;</span> de tela cheia em <span class="text-code">mix-blend-mode: soft-light</span>, cinza neutro e opaco: quem o torna invisível não é a opacidade, é o neutro do <span class="text-code">soft-light</span>, que é 0.5. Água em repouso tem relevo zero, jacobiano unitário e escreve exatamente 0.5 — a camada desaparece sozinha. É esse invariante que faz a mesma peça servir sobre os dois pisos sem conhecer nenhum deles. Sem WebGL2 ou sob <span class="text-code">prefers-reduced-motion</span>, o canvas sai do documento.</p>
+          </div>
+        </div>
+
         <!-- Fundo de ortofoto (SPEC design/010) -->
         <div class="flex flex-col gap-2">
           <p class="text-overline">.fundo-ortofoto__deriva · .fundo-ortofoto__imagem</p>
@@ -991,11 +1121,11 @@
 
         <div class="grid lg:grid-cols-2 gap-6">
           <div class="flex flex-col gap-2">
-            <p class="text-overline">.range-onsen</p>
+            <p class="text-overline">.range-onsen <span class="font-normal text-base-content/60">— vivo: arraste</span></p>
             <div class="card-well p-4 flex items-center min-h-[6.5rem]">
               <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
             </div>
-            <p class="text-xs text-base-content/60">O trilho é o poço em pílula do <span class="text-code">.toggle-onsen</span>; o polegar é o mesmo disco entintado, em escala de trilho contínuo — mesmo vocabulário, outra geometria.</p>
+            <p class="text-xs text-base-content/60">Bandeja funda com o fio do <span class="text-code">.etched-line</span> correndo no fundo, entintado até o polegar — o vocabulário da <span class="text-code">.calha-cobertura</span>: a bandeja nunca se preenche, o que muda de estado é o fio. O polegar é o disco entintado do <span class="text-code">.toggle-onsen</span>, e incha e acende sob o ponteiro. Quem escreve o <span class="text-code">--preenchimento</span> é o <span class="text-code">controle_fundo.js</span>: a posição do polegar não existe como seletor.</p>
           </div>
           <div class="flex flex-col gap-2">
             <p class="text-overline">.btn-etched-mini</p>
@@ -1013,7 +1143,7 @@
             <div class="avatar-editavel">
               <div class="avatar-glass w-28 h-28" style="--cor-unidade: #0077b6; --halo-escala: 2">
                 <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
                 </svg>
               </div>
@@ -1021,7 +1151,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-foto"/></svg>
               </button>
             </div>
-            <p class="text-xs text-base-content/60 max-w-sm">O <span class="text-code">.btn-foto</span> é irmão do <span class="text-code">.btn-criar-inline</span> — o mesmo círculo de gelo em tinta ciana —, pousado na quina do retrato. Quem posiciona é o <span class="text-code">.avatar-editavel</span>, e só isso: o retrato continua sendo o <span class="text-code">.avatar-glass</span> intocado, com o halo da unidade e o domo. No modal de edição o botão é o próprio <span class="text-code">.campo-onsen-lapis</span>, e vira ✕ quando o campo já está aberto.</p>
+            <p class="text-xs text-base-content/60 max-w-sm">O <span class="text-code">.btn-foto</span> é irmão do <span class="text-code">.btn-criar-inline</span> — o mesmo círculo de gelo em tinta ciana —, pousado na quina do retrato. Quem posiciona é o <span class="text-code">.avatar-editavel</span>, e só isso: o retrato continua sendo o <span class="text-code">.avatar-glass</span> intocado, com o halo da unidade e a lente de vidro fosco. No modal de edição o botão é o próprio <span class="text-code">.campo-onsen-lapis</span>, e vira ✕ quando o campo já está aberto.</p>
           </div>
         </div>
 
@@ -1051,6 +1181,96 @@
             </div>
           </div>
           <p class="text-xs text-base-content/60">O SVG entra <strong>inline</strong> e herda <span class="text-code">currentColor</span>: sem <span class="text-code">color</span> declarado no átomo, quem tinge é a pele empilhada (<span class="text-code">.icon-glow</span>, <span class="text-code">.icon-etched</span>) ou o contexto. Arquivo ausente cai no fallback genérico — nunca um buraco no menu.</p>
+        </div>
+
+        <!-- Glifo do Street View e item do poço (SPECs street_view/001 e 002) -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">glifo do street view</p>
+          <div class="card-well p-5 flex flex-wrap items-end gap-8">
+            <div class="flex flex-col items-start gap-2">
+              <span class="poco-acoes__icone text-rocha-950"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+              <span class="text-[11px] text-base-content/60">16px · no poço</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <svg class="w-6 h-6 text-rocha-950" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+              <span class="text-[11px] text-base-content/60">24px</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+              </div>
+              <span class="text-[11px] text-base-content/60">na bolha</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <button type="button" class="btn btn-onsen btn-sm" title="Abre o Google Street View na gaveta inferior">
+                <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+                Visão da rua
+              </button>
+              <span class="text-[11px] text-base-content/60">item do poço · livre</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <div data-troca-cena inert>
+                <button type="button" class="btn btn-onsen btn-sm" title="Abre o Google Street View na gaveta inferior">
+                  <span class="poco-acoes__icone"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg></span>
+                  Visão da rua
+                </button>
+              </div>
+              <span class="text-[11px] text-base-content/60">item do poço · travado</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">A câmera sobre o anel do chão, em <span class="text-code">templates/street_view/partials/_glifos_street_view.html</span>. O item do poço é um <span class="text-code">&lt;button&gt;</span> com a pele do <span class="text-code">.btn-onsen</span>, que pede o panorama por <span class="text-code">hx-get</span> para o <span class="text-code">#gaveta-inferior-conteudo</span>. A lista do poço sai dentro de <span class="text-code">data-troca-cena</span>: com o Street View aberto, o <span class="text-code">trava_cena.js</span> a deixa <span class="text-code">inert</span>.</p>
+        </div>
+
+        <!-- Pino do panorama (SPEC street_view/002) -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">.pino-panorama <span class="font-normal text-base-content/60">— entre o ponto do endereço e o ponto desenhado</span></p>
+          <div class="card-well p-6 flex flex-wrap items-end gap-10">
+            <div class="flex flex-col items-center gap-3">
+              <span class="block w-4 h-4 rounded-full bg-agua-500/85 border-2 border-agua-500"></span>
+              <span class="text-[11px] text-base-content/60">ponto do endereço</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <svg class="pino-panorama" viewBox="0 0 24 24" aria-hidden="true">
+                <path class="pino-panorama__corpo" stroke-width="1.6" stroke-linejoin="round" d="M12 21.5s7-6.6 7-11.5a7 7 0 1 0-14 0c0 4.9 7 11.5 7 11.5z"/>
+                <circle class="pino-panorama__olho" cx="12" cy="9.8" r="2.6"/>
+              </svg>
+              <span class="text-[11px] text-base-content/60">pino · repouso</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <svg class="pino-panorama pino-panorama--arrastando" viewBox="0 0 24 24" aria-hidden="true">
+                <path class="pino-panorama__corpo" stroke-width="1.6" stroke-linejoin="round" d="M12 21.5s7-6.6 7-11.5a7 7 0 1 0-14 0c0 4.9 7 11.5 7 11.5z"/>
+                <circle class="pino-panorama__olho" cx="12" cy="9.8" r="2.6"/>
+              </svg>
+              <span class="text-[11px] text-base-content/60">pino · arrastando</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <span class="block w-[22px] h-[22px] rounded-full bg-agua-500 border-2 border-white/90 shadow-[0_0_8px_rgba(72,202,228,0.9)]"></span>
+              <span class="text-[11px] text-base-content/60">ponto desenhado</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">O pino que toma o lugar do ponto do endereço enquanto o Street View está aberto, na tinta do ponto. O desenho é o do <span class="text-code">#glifo-ponto</span>, cheio. Vai dentro do <span class="text-code">divIcon</span> do Leaflet, montado pelo <span class="text-code">street_view.js</span>: quem posiciona é o marcador, quem incha é o SVG — sob o ponteiro e, mais, enquanto é arrastado (<span class="text-code">.pino-panorama--arrastando</span>). Selecionada a posição, ele dá lugar ao ponto desenhado da bancada.</p>
+        </div>
+
+        <!-- Botão de selecionar a posição (SPEC street_view/002) -->
+        <div class="flex flex-col gap-2">
+          <p class="text-overline">selecionar esta posição <span class="font-normal text-base-content/60">— no cabeçalho da gaveta do panorama</span></p>
+          <div class="card-well p-5 flex flex-wrap items-center gap-8">
+            <div class="flex flex-col items-start gap-2">
+              <button type="button" class="btn btn-onsen btn-sm gap-2" title="Marca no mapa o ponto em que a câmera está">
+                <span class="poco-acoes__icone"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></span>
+                Selecionar esta posição
+              </button>
+              <span class="text-[11px] text-base-content/60">com imagem</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <button type="button" class="btn btn-onsen btn-sm gap-2" title="Marca no mapa o ponto em que a câmera está" disabled>
+                <span class="poco-acoes__icone"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></span>
+                Selecionar esta posição
+              </button>
+              <span class="text-[11px] text-base-content/60">carregando</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">O <span class="text-code">.btn-onsen</span> com o <span class="text-code">#glifo-ponto</span>: fecha a gaveta pela mesma rota do ✕, e é o <span class="text-code">[data-selecionar-posicao]</span> que diz ao <span class="text-code">street_view.js</span> para deixar o ponto desenhado. Nasce <span class="text-code">disabled</span>, até a imagem chegar.</p>
         </div>
 
         <!-- Átomo da aura (SPEC user_admin/022) -->
@@ -1159,6 +1379,118 @@
           </div>
         </div>
         <p class="text-xs text-base-content/60">O material é o <span class="text-code">.etched-line</span>, composto no HTML; a alça só o mede e o entinta. Sob o ponteiro o sulco <strong>enche de água e se alonga</strong> — o mesmo par repouso/entintado do resto do sistema, dito pelo contêiner como na <span class="text-code">.lata-concessao</span>: quem carrega a afordância é a alça, não o fio. A área de toque é a faixa inteira porque o fio tem 6px de altura.</p>
+      </div>
+      <!-- Alça da gaveta puxável (SPEC design/022) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <p class="text-overline">.gaveta-alca <span class="font-normal text-base-content/60">— na .gaveta-inferior-puxavel</span></p>
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-2">
+            <div class="card-well p-6">
+              <div class="glass-drawer-bottom gaveta-inferior-puxavel rounded-t-3xl pt-1.5 pb-5">
+                <label class="gaveta-alca" tabindex="0"><span class="etched-line"></span><span class="etched-line"></span></label>
+              </div>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60 text-center">repouso · passe o ponteiro</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <div class="tela-home card-well p-6" data-puxando inert>
+              <div class="glass-drawer-bottom gaveta-inferior-puxavel rounded-t-3xl pt-1.5 pb-5">
+                <label class="gaveta-alca"><span class="etched-line"></span><span class="etched-line"></span></label>
+              </div>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60 text-center">puxando</p>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">Filha imediata da <span class="text-code">.gaveta-inferior-puxavel</span>, a alça ganha o <strong>segundo fio</strong>, composto no HTML, e o cursor de redimensionar: dois fios dizem "puxe", um diz "recolha". Enquanto se puxa, a marca <span class="text-code">data-puxando</span> fica na <span class="text-code">.tela-home</span>, e não na alça: os fios seguem entintados com o ponteiro longe dela. Abaixo de 768px o segundo fio some — a gaveta é a tela e não se puxa.</p>
+      </div>
+
+      <!-- .valor-ausente (SPEC localizacao_lote/001) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <p class="text-overline">.valor-ausente</p>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="card-well p-4">
+            <p class="text-overline mb-1">Uso</p>
+            <p class="text-sm font-medium">Comércio e serviços</p>
+          </div>
+          <div class="card-well p-4">
+            <p class="text-overline mb-1">Uso</p>
+            <p class="text-sm valor-ausente">não informado</p>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">O "não informado" de um atributo que a base não traz — itálico, tinta apagada — nunca em branco nem <span class="text-code">None</span>.</p>
+      </div>
+
+      <!-- .realce-resultado (SPEC localizacao_lote/003) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <p class="text-overline">.realce-resultado · .realce-resultado-forte</p>
+        <div class="card-well p-4 flex items-center justify-around gap-4 text-rocha-600">
+          <svg class="w-24 h-16" viewBox="0 0 120 80" fill="currentColor" stroke="currentColor"><path d="M14 12h92v56H14z" fill-opacity="0.18" stroke-width="1.5"/></svg>
+          <svg class="w-24 h-16 overflow-visible" viewBox="0 0 120 80" fill="currentColor" stroke="currentColor"><path class="realce-resultado" d="M14 12h92v56H14z" fill-opacity="0.4" stroke-width="3"/></svg>
+          <svg class="w-24 h-16 overflow-visible text-rocha-800" viewBox="0 0 120 80" fill="currentColor" stroke="currentColor"><path class="realce-resultado-forte" d="M14 12h92v56H14z" fill-opacity="0.55" stroke-width="4"/></svg>
+        </div>
+        <p class="text-xs text-base-content/60">O halo da feature de resultado de ação no mapa — em repouso, sob o ponteiro de uma linha da tabela e escolhida. Vai no <span class="text-code">&lt;path&gt;</span> do Leaflet; traço e preenchimento são do <span class="text-code">interacao_resultado.js</span>. Escrito na tinta de rocha de <span class="text-code">MAP_COR_RESULTADO_ACAO</span>, a cor única dos resultados de ação.</p>
+      </div>
+
+      <!-- .glifo-gaveta (SPEC design/021) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <p class="text-overline">.glifo-gaveta</p>
+        <div class="card-well p-5 flex flex-wrap gap-x-10 gap-y-6">
+          <div class="flex flex-col items-center gap-2">
+            <svg class="glifo-gaveta glifo-gaveta--lote" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-lote"/></svg>
+            <span class="text-overline">Lote fiscal</span>
+            <span class="text-code text-xs">#glifo-gaveta-lote</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <svg class="glifo-gaveta glifo-gaveta--endereco" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-endereco"/></svg>
+            <span class="text-overline">Endereço</span>
+            <span class="text-code text-xs">#glifo-gaveta-endereco</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <svg class="glifo-gaveta glifo-gaveta--endereco_externo" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-endereco_externo"/></svg>
+            <span class="text-overline">Endereço externo</span>
+            <span class="text-code text-xs">#glifo-gaveta-endereco_externo</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <svg class="glifo-gaveta glifo-gaveta--logradouro" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-logradouro"/></svg>
+            <span class="text-overline">Logradouro</span>
+            <span class="text-code text-xs">#glifo-gaveta-logradouro</span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <svg class="glifo-gaveta glifo-gaveta--desenhos" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-desenhos"/></svg>
+            <span class="text-overline">Desenhos no mapa</span>
+            <span class="text-code text-xs">#glifo-gaveta-desenhos</span>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">O glifo do tipo de gaveta lateral, na tinta da geometria que ela põe no mapa: sakura para o lote, água para os endereços, o verde da linha para o logradouro e madeira para os desenhos. O sufixo da classe e do <span class="text-code">&lt;use&gt;</span> é o valor do <span class="text-code">TipoGaveta</span>; os desenhos estão em <span class="text-code">mapping/_glifos_mapa.html</span>.</p>
+      </div>
+
+      <!-- .item-historico (SPEC design/021) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <p class="text-overline">.item-historico · .item-historico--pre</p>
+        <div class="card-well p-3 w-72 max-w-full flex flex-col">
+          <button type="button" class="item-historico item-historico--pre"><svg class="glifo-gaveta glifo-gaveta--lote" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-lote"/></svg><span class="item-historico__resumo">SQL 009.055.0021-0</span></button>
+          <button type="button" class="item-historico"><svg class="glifo-gaveta glifo-gaveta--logradouro" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-logradouro"/></svg><span class="item-historico__resumo">AV PAULISTA · 156566</span></button>
+          <button type="button" class="item-historico"><svg class="glifo-gaveta glifo-gaveta--endereco_externo" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-endereco_externo"/></svg><span class="item-historico__resumo">Av. Paulista, 2073 - Bela Vista, São Paulo - SP, 01311-300, Brasil</span></button>
+        </div>
+        <p class="text-xs text-base-content/60">Uma gaveta na lista do histórico: o <span class="text-code">.glifo-gaveta</span> do tipo e o resumo, que trunca. Em repouso é só tinta; pré-selecionado (<span class="text-code">--pre</span>, o destino do Voltar) ou sob o ponteiro e o foco, afunda em poço com o seletor ciano, como o item da <span class="text-code">.torre-camadas</span>.</p>
+      </div>
+
+      <!-- .dica-trava (SPEC design/021) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <p class="text-overline">.dica-trava</p>
+        {# A interrogação só existe sob a marca do contexto de ação: o quadro faz as vezes da home. #}
+        <div class="tela-home card-well px-5 pt-5 pb-20 flex flex-wrap items-center gap-x-16 gap-y-6">
+          <div id="contexto-acao" hidden data-contexto-acao="styleguide"></div>
+          <div class="flex items-center gap-2">
+            <span class="text-overline">canto da gaveta</span>
+            {% include "mapping/_dica_trava.html" with texto="Feche a gaveta inferior para poder voltar a outra gaveta." posicao="tooltip-bottom" %}
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-overline">poço</span>
+            {% include "mapping/_dica_trava.html" with texto="Feche a gaveta inferior para poder fazer outra consulta." posicao="tooltip-right" %}
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">A interrogação ao lado do controle que não responde. O motivo mora no <span class="text-code">.tooltip</span> do daisyUI, empilhado no HTML, e o foco de teclado entra pelo glifo. Fora do contexto de ação ela não existe: quem a mostra é <span class="text-code">.tela-home:has(#contexto-acao[data-contexto-acao])</span>. Partial: <span class="text-code">mapping/_dica_trava.html</span>.</p>
       </div>
     </section>
 
@@ -1357,7 +1689,7 @@
             <label class="upload-well cursor-pointer">
               <span class="avatar-glass w-16 h-16 shrink-0" style="--cor-unidade: #7f5539">
                 <svg viewBox="0 0 100 100" role="img" aria-label="MS">
-                  <circle cx="50" cy="50" r="50" fill="#7f5539"/>
+                  <circle cx="50" cy="50" r="48" fill="#7f5539"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">MS</text>
                 </svg>
               </span>
@@ -1521,12 +1853,12 @@
       <!-- Imagem de perfil em versão grande -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Imagem de perfil grande (à esquerda do nome)</p>
-        <p class="text-sm text-base-content/70">Foto ou avatar de iniciais — o que <span class="text-code">resolver_imagem_perfil</span> devolver; a molécula é a mesma nos dois ramos. A unidade não é um anel, é <strong>luz atrás do disco</strong>: aro de contato de <span class="text-code">--halo-aro</span> na mesma transparência da imagem, e a partir dele dois fades que se dissolvem. O hex chega em <span class="text-code">--cor-unidade</span> (resolvido na borda do app, nunca classe montada no template) e o alcance da luz em <span class="text-code">--halo-escala</span> — o padrão serve de <span class="text-code">w-9</span> a <span class="text-code">w-16</span>, e disco maior abre o alcance no include. O volume vem do domo (<span class="text-code">::after</span>): só o aro curva, o miolo até 78% do raio é a foto crua.</p>
+        <p class="text-sm text-base-content/70">Foto ou avatar de iniciais — o que <span class="text-code">resolver_imagem_perfil</span> devolver; a molécula é a mesma nos dois ramos. Esfera de vidro fosco (Frosted Glass) translúcida com refração orgânica e halo luminoso que irradia a cor da unidade (<span class="text-code">--cor-unidade</span>). O alcance do halo é proporcional à escala (<span class="text-code">--halo-escala</span>). O filtro vítreo suave (<span class="text-code">::after</span>) protege a foto e a integra aos tons do sistema.</p>
         <div class="grid lg:grid-cols-2 gap-6">
           <div class="card-well p-5 flex items-center gap-5">
             <div class="avatar-glass w-28 h-28 shrink-0" style="--cor-unidade: #0077b6">
               <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                 <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
               </svg>
             </div>
@@ -1672,7 +2004,7 @@
       <div class="glass-panel p-6 flex flex-col gap-4 lg:col-span-2">
         <div>
           <p class="text-overline">Bandeja de cabeçalho (<span class="text-code">.th-onsen-bandeja</span>) e célula (<span class="text-code">.th-onsen</span>)</p>
-          <p class="text-sm text-base-content/70 -mt-1">A bandeja é o gelo mais denso do sistema depois do modal — <span class="text-code">94%→86%</span> sobre 56px de blur. Ela não flutua: é a <strong>única</strong> coisa entre o cabeçalho grudento e as linhas que correm por trás, e a 74% o texto que emergia continuava legível. Dentro da tabela ela vem de <span class="text-code">thead th::before</span>, não de um elemento próprio — não existe caixa que envolva um <span class="text-code">&lt;tr&gt;</span>; a classe <span class="text-code">.th-onsen-bandeja</span> é a mesma receita na forma fora-de-tabela, mostrada aqui.</p>
+          <p class="text-sm text-base-content/70 -mt-1">A bandeja tem densidade própria — <span class="text-code">74%→64%</span> sobre <strong>72px</strong> de blur, o desfoque mais forte do sistema. Ela é a <strong>segunda de três demãos</strong>: a placa da página por baixo e a peça de coluna por cima. Sozinha ela parece leve; somada, o cabeçalho chegava a 97% de opacidade contra 65% das linhas, e esse degrau é o que lia como papel. Quem sela o que corre por trás do cabeçalho grudento é o <strong>blur</strong>, não o branco. Dentro da tabela ela vem de <span class="text-code">thead th::before</span>, não de um elemento próprio — não existe caixa que envolva um <span class="text-code">&lt;tr&gt;</span>; a classe <span class="text-code">.th-onsen-bandeja</span> é a mesma receita na forma fora-de-tabela, mostrada aqui.</p>
           <p class="text-sm text-base-content/70 mt-1">O cabeçalho é <strong>uma superfície só</strong> e cada coluna é uma <strong>peça assentada</strong> sobre ela. Clicar na peça a faz <strong>afundar no poço</strong> e virar campo — campo, neste design system, é sempre coisa rebaixada. <strong>Afundado = a coluna tem filtro</strong>, não "alguém clicou": o CSS lê o valor do campo com <span class="text-code">:has(input:not(:placeholder-shown))</span>, sem estado de UI em JavaScript.</p>
         </div>
         <div class="card-well p-6 flex flex-col gap-6">
@@ -1846,7 +2178,7 @@
           <div class="tarja-vinculo">
             <div class="linha-pessoa">
               <div class="avatar-glass shrink-0 w-10 h-10" style="--cor-unidade:#0077B6">
-                <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#0077B6"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Roboto" font-size="40" font-weight="700" fill="#F2F8FB">MC</text></svg>
+                <svg viewBox="0 0 100 100" role="img" aria-label="MC"><circle cx="50" cy="50" r="48" fill="#0077B6"/><text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#F2F8FB">MC</text></svg>
               </div>
               <div class="min-w-0">
                 <p class="linha-pessoa-nome">Marina Castro</p>
@@ -1969,6 +2301,11 @@
               Amostragem de ofertas
               <span class="item-menu-apoio">Ofertas próximas com características similares</span>
             </span>
+          </button>
+          <span class="text-overline mt-2">.item-menu-swell (SPEC design/020) <span class="font-normal text-base-content/50">— a variante que incha sob o ponteiro</span></span>
+          <button class="card-well item-menu item-menu-swell">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+            <span class="item-menu-rotulo">Lotes sob o polígono</span>
           </button>
         </div>
         <div class="card-well p-5 flex flex-col gap-3">
@@ -2141,46 +2478,76 @@
         </div>
       </div>
 
-      <!-- Controle do fundo (SPEC design/010) -->
+      <!-- Controle do fundo (SPECs design/010 e design/017) -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">Controle do fundo (<span class="text-code">.fundo-controle</span>)</p>
-        <p class="text-sm text-base-content/70 -mt-1"><span class="text-code">.toggle-onsen</span> + <span class="text-code">.btn-etched-mini</span> + <span class="text-code">.range-onsen</span>. Desligado, o <span class="text-code">:has()</span> apaga o corpo — não há velocidade a ajustar sem imagem a trocar. O posicionamento é governado pelo CSS (<span class="text-code">xl:fixed xl:bottom-6 xl:right-6</span> em tela cheia; em tela estreita entra no fluxo criando uma nova linha abaixo à direita e recolhe sob modal). As duas cópias abaixo são inertes.</p>
-        <div class="card-well p-5 grid gap-5 sm:grid-cols-2 justify-items-center">
-          <!-- ligado, no meio da escala -->
-          <div class="fundo-controle glass-panel">
+        <p class="text-sm text-base-content/70 -mt-1"><span class="text-code">.toggle-onsen</span> + <span class="text-code">.fundo-controle__acao</span> + <span class="text-code">.range-onsen</span>, numa fileira só: rótulo, chave do fundo, Trocar e a engrenagem dos ajustes da animação; o trilho da deriva embaixo. Com o fundo desligado, o <span class="text-code">:has()</span> recolhe o Trocar e o trilho por transição de <span class="text-code">fr</span> — a caixa aperta sozinha, sem medida fixa — e o <span class="text-code">disabled</span> os tira do Tab; a engrenagem fica, porque a água roda nos dois estados. O posicionamento é governado pelo CSS (<span class="text-code">xl:fixed xl:bottom-6 xl:right-6</span> em tela cheia; em tela estreita entra no fluxo criando uma nova linha abaixo à direita). <strong>A peça viva é a do canto inferior direito desta página</strong> — a cópia abaixo é inerte, sem os <span class="text-code">data-*</span> que o JS escuta, e por isso não recolhe.</p>
+        <div class="card-well p-5 flex justify-center">
+          <div class="fundo-controle glass-panel relative">
             <div class="fundo-controle__cabecalho">
-              <span class="text-overline">Fundo</span>
-              <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar o fundo" />
-            </div>
-            <div class="fundo-controle__corpo flex flex-col gap-1.5">
-              <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">
-                <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
-                Trocar
-              </button>
-              <div class="fundo-controle__velocidade">
-                <button class="btn-etched etched btn-etched-mini" aria-label="Mais devagar">&minus;</button>
-                <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
-                <button class="btn-etched etched btn-etched-mini" aria-label="Mais rápido">+</button>
+              <span class="text-overline fundo-controle__titulo">Fundo</span>
+              <div class="fundo-controle__acoes">
+                <span class="fundo-controle__dica">
+                  <input type="checkbox" class="toggle-onsen" checked aria-label="Mostrar o fundo" />
+                </span>
+                <span class="fundo-controle__dica">
+                  <span class="fundo-controle__recolhe-x">
+                    <span class="fundo-controle__recolhido-x">
+                      <button class="btn btn-sm btn-circle btn-glass fundo-controle__acao" type="button" aria-label="Trocar a imagem de fundo">
+                        <span class="icone-acao w-4 h-4 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
+                      </button>
+                    </span>
+                  </span>
+                </span>
+                <span class="fundo-controle__dica ml-1.5">
+                  <button class="btn btn-sm btn-circle btn-glass fundo-controle__acao" type="button" aria-expanded="false" aria-label="Ajustes da animação">
+                    <span class="icone-acao w-4 h-4 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-ajustes"/></svg></span>
+                  </button>
+                </span>
               </div>
             </div>
+            <span class="fundo-controle__trilho">
+              <span class="fundo-controle__recolhe-y">
+                <span class="fundo-controle__recolhido-y">
+                  <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
+                </span>
+              </span>
+            </span>
           </div>
-          <!-- desligado -->
-          <div class="fundo-controle glass-panel">
-            <div class="fundo-controle__cabecalho">
-              <span class="text-overline">Fundo</span>
-              <input type="checkbox" class="toggle-onsen" aria-label="Mostrar o fundo" />
+        </div>
+      </div>
+
+      <!-- Torre de ajustes da animação (SPEC design/017) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">Torre de ajustes (<span class="text-code">.torre-ajustes</span>)</p>
+        <p class="text-sm text-base-content/70 -mt-1">A coreografia da <span class="text-code">.torre-camadas</span> com geometria de painel: ascende da engrenagem do <span class="text-code">.fundo-controle</span>, ancorada no canto de onde sai. As linhas são montadas pelo <span class="text-code">controle_agua.js</span> a partir da tabela de ajustáveis — a tabela é o único lugar em que os parâmetros da água são enumerados. Com a animação desligada, o <span class="text-code">:has()</span> apaga as barras: não há o que calibrar. A cópia abaixo está forçada em <span class="text-code">static</span> e aberta.</p>
+        <div class="card-well p-5 flex justify-center">
+          <div class="torre-ajustes static! opacity-100! translate-y-0! scale-100! pointer-events-auto!">
+            <p class="torre-ajustes__titulo">Ajustes da Animação</p>
+            <div class="torre-ajustes__chave">
+              <span class="text-overline">Animação</span>
+              <input type="checkbox" class="toggle-onsen" checked aria-label="Ligar a animação da água" />
             </div>
-            <div class="fundo-controle__corpo flex flex-col gap-1.5">
-              <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center">
-                <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-trocar"/></svg></span>
-                Trocar
-              </button>
-              <div class="fundo-controle__velocidade">
-                <button class="btn-etched etched btn-etched-mini" aria-label="Mais devagar">&minus;</button>
-                <input type="range" class="range-onsen" min="0" max="4" step="1" value="2" aria-label="Velocidade da deriva" />
-                <button class="btn-etched etched btn-etched-mini" aria-label="Mais rápido">+</button>
+            <div class="torre-ajustes__barras">
+              <div class="torre-ajustes__linha">
+                <div class="torre-ajustes__linha-topo">
+                  <span class="text-overline">Intensidade</span>
+                  <span class="text-code text-[12px]">0.2</span>
+                </div>
+                <input type="range" class="range-onsen" min="0" max="0.6" step="0.005" value="0.2" aria-label="Intensidade" />
+              </div>
+              <div class="torre-ajustes__linha">
+                <div class="torre-ajustes__linha-topo">
+                  <span class="text-overline">Cáustica</span>
+                  <span class="text-code text-[12px]">5.5</span>
+                </div>
+                <input type="range" class="range-onsen" min="0" max="14" step="0.1" value="5.5" aria-label="Cáustica" />
               </div>
             </div>
+            <button class="btn-etched btn-etched-swell etched btn-etched-mini justify-center" type="button">
+              <span class="icone-acao w-3.5 h-3.5 icon-etched"><svg viewBox="0 0 24 24"><use href="#glifo-padrao"/></svg></span>
+              Padrão
+            </button>
           </div>
         </div>
 
@@ -2687,6 +3054,764 @@
             <p class="text-xs text-base-content/60">O estado de falta é <strong>frase escrita</strong>: placa em branco se lê como "ainda não carregou".</p>
           </div>
         </div>
+
+        <!-- Palco do panorama (SPEC street_view/002) -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.palco-panorama <span class="font-normal text-base-content/60">— sobre a .gaveta-figura</span></span>
+          <div class="grid md:grid-cols-3 gap-6">
+            <div class="flex flex-col gap-2">
+              <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col p-4">
+                <div class="gaveta-figura palco-panorama">
+                  <div class="palco-panorama__tela"></div>
+                  <div class="palco-panorama__espera"><span class="loading loading-spinner loading-lg"></span></div>
+                </div>
+              </div>
+              <span class="text-xs text-base-content/60">carregando</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col p-4">
+                <div class="gaveta-figura palco-panorama">
+                  <div class="palco-panorama__tela"><img class="w-full h-full object-cover" src="{% static 'img/ortofotos_fundo/anhangabau.png' %}" alt="Imagem no lugar do panorama"></div>
+                </div>
+              </div>
+              <span class="text-xs text-base-content/60">com imagem</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col p-4">
+                <div class="gaveta-figura palco-panorama">
+                  <div class="palco-panorama__tela"><img class="w-full h-full object-cover" src="{% static 'img/ortofotos_fundo/anhangabau.png' %}" alt="Imagem no lugar do panorama"></div>
+                  <div class="palco-panorama__aviso glass-panel-thick">
+                    <div role="alert" class="alert alert-warning alert-soft">
+                      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-8.02 13.89A1.5 1.5 0 003.57 20h16.86a1.5 1.5 0 001.3-2.25L13.71 3.86a1.5 1.5 0 00-2.6 0z"/></svg>
+                      <span>Não há imagem de rua a até 50 m de onde o pino foi solto.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <span class="text-xs text-base-content/60">pino solto onde não há imagem</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60">O assento do panorama do Google, composto no HTML com a <span class="text-code">.gaveta-figura</span>. A <span class="text-code">__tela</span> é onde a imagem entra; a <span class="text-code">__espera</span> e o <span class="text-code">__aviso</span> ficam por cima dela, e é o <span class="text-code">street_view.js</span> que os mostra e esconde pelo atributo <span class="text-code">hidden</span>. O aviso é passageiro: o pino já voltou para onde estava.</p>
+        </div>
+      </div>
+
+      <!-- Conferência de documento (SPEC documentos_oficiais/008) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-8">
+        <div>
+          <p class="text-overline">Veredito da conferência</p>
+          <p class="text-sm text-base-content/70 mt-1">SPEC <span class="text-code">documentos_oficiais/008</span>. Uma placa, quatro estados — só a tinta do glifo e do rótulo troca.</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.veredito-confere</span>
+            <div class="card-well veredito veredito-confere">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Documento autêntico</span>
+              <p class="veredito-titulo">O arquivo confere com o que a DIMAP emitiu.</p>
+              <p class="veredito-nota">Nem um byte foi alterado desde a emissão, e o código está no acervo.</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.veredito-nao-confere</span>
+            <div class="card-well veredito veredito-nao-confere">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-violado"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">O arquivo foi alterado</span>
+              <p class="veredito-titulo">O selo não fecha com o conteúdo deste arquivo.</p>
+              <p class="veredito-nota">Não use esta via. O original guardado no acervo é o documento que vale.</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.veredito-desconhecido</span>
+            <div class="card-well veredito veredito-desconhecido">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo-alerta"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Código desconhecido</span>
+              <p class="veredito-titulo">O selo fecha, mas este documento não está no acervo.</p>
+              <p class="veredito-nota">A DIMAP nunca emitiu o código que está neste arquivo. Avise a Divisão antes de dar fé ao documento.</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-3">
+            <span class="text-overline">.veredito-sem-selo</span>
+            <div class="card-well veredito veredito-sem-selo">
+              <span class="icon-bubble veredito-glifo">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-sem-selo"/></svg>
+              </span>
+              <span class="text-overline veredito-estado">Sem selo</span>
+              <p class="veredito-titulo">Este arquivo não traz selo da DIMAP.</p>
+              <p class="veredito-nota">Ou o documento não saiu desta plataforma, ou o selo se perdeu ao reimprimir, digitalizar ou converter o arquivo.</p>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">Material composto no HTML (<span class="text-code">.card-well</span>); <span class="text-code">.veredito</span> só arruma o layout, e o par <span class="text-code">.veredito-&lt;estado&gt;</span> tinge o <span class="text-code">.icon-bubble</span> e o <span class="text-code">.text-overline</span> por especificidade, não por ordem.</p>
+
+        <div>
+          <span class="text-overline">.atalho-mapa <span class="font-normal text-base-content/50">— repouso e sob o ponteiro</span></span>
+          <div class="card-well p-6 mt-3 relative h-24 overflow-hidden">
+            <a href="#" class="btn btn-glass atalho-mapa moldura-fixa text-madeira-700">
+              <svg class="w-5 h-5 text-agua-700" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-selo"/></svg>
+              Validar documento
+            </a>
+          </div>
+        </div>
+
+        <div>
+          <span class="text-overline">.pilula-mapa (SPEC design/016) <span class="font-normal text-base-content/50">— controles de mapa Onsen (zoom e camadas)</span></span>
+          <div class="card-well p-6 mt-3 flex flex-wrap items-center justify-around gap-6">
+            <div class="flex flex-col items-center gap-2">
+              <span class="text-[10px] text-rocha-700 uppercase tracking-wider font-bold">Pílula com poço de zoom</span>
+              <div class="pilula-mapa static!">
+                <button type="button" class="pilula-mapa__btn-camadas" title="Camadas">
+                  <svg class="w-5 h-5 text-agua-700" viewBox="0 0 24 24"><use href="#glifo-camadas"/></svg>
+                </button>
+                <div class="pilula-mapa__zoom card-well" role="group" aria-label="Controle de aproximação">
+                  <button type="button" class="pilula-mapa__btn-zoom" title="Afastar mapa"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-menos"/></svg></button>
+                  <button type="button" class="pilula-mapa__btn-zoom" title="Aproximar mapa"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><use href="#glifo-mais"/></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="text-[10px] text-rocha-700 uppercase tracking-wider font-bold">Torre de camadas (.torre-camadas)</span>
+              <div class="torre-camadas static! opacity-100! translate-y-0! scale-100! pointer-events-auto!">
+                <button type="button" class="torre-camadas__item torre-camadas__item--ativo">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-satelite"/></svg></span>
+                  <span class="torre-camadas__rotulo opacity-100! max-w-xs!">Ortofoto</span>
+                </button>
+                <button type="button" class="torre-camadas__item">
+                  <span class="torre-camadas__glifo"><svg class="w-4 h-4" viewBox="0 0 24 24"><use href="#glifo-mapa-base"/></svg></span>
+                  <span class="torre-camadas__rotulo opacity-100! max-w-xs!">Mapa base</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Pílula tátil de vidro fosco simétrica ao atalho de documentos (<span class="text-code">.pilula-mapa</span>) contendo poço de zoom rebaixado (<span class="text-code">.card-well</span>) com swell de rolagem e torrezinha retrátil de camadas (<span class="text-code">.torre-camadas</span>) com expansão horizontal no hover.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">.bancada-conjunto (SPEC design/018) <span class="font-normal text-base-content/50">— bancada de desenho: corpo, alça, poço e o submenu que abre dentro dele</span></span>
+          <div class="card-well p-6 mt-3 flex items-center justify-center">
+            <div class="bancada-conjunto static! translate-x-0! translate-y-0!" data-dock="bottom">
+              <div class="bancada-pilha">
+                <div class="bancada-desenho glass-panel-thick" role="toolbar" aria-label="Ferramentas de desenho">
+                  <button type="button" class="bancada-alca" aria-expanded="true" title="Abrir, fechar e arrastar a bancada">
+                    <svg class="bancada-alca__estojo etched" viewBox="0 0 24 24"><use href="#glifo-caixa-ferramentas"/></svg>
+                    <span class="bancada-alca__fio etched-line"></span>
+                  </button>
+                  <div class="bancada-desenho__ferramentas">
+                    <button type="button" class="bancada-desenho__categoria" title="Ponto"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></button>
+                    <button type="button" class="bancada-desenho__categoria" title="Linha"><svg viewBox="0 0 24 24"><use href="#glifo-linha"/></svg></button>
+                    <button type="button" class="bancada-desenho__categoria" title="Polígono"><svg viewBox="0 0 24 24"><use href="#glifo-poligono"/></svg></button>
+                  </div>
+                  <div class="bancada-submenu card-well" role="menu" aria-label="Ferramentas de edição">
+                    <button type="button" class="bancada-submenu__tool bancada-submenu__tool--ativa" title="Vértices"><svg viewBox="0 0 24 24"><use href="#glifo-vertices"/></svg></button>
+                    <button type="button" class="bancada-submenu__tool" title="Mover"><svg viewBox="0 0 24 24"><use href="#glifo-mover"/></svg></button>
+                    <button type="button" class="bancada-submenu__tool" title="Girar"><svg viewBox="0 0 24 24"><use href="#glifo-girar"/></svg></button>
+                    <button type="button" class="bancada-submenu__tool" title="Recortar"><svg viewBox="0 0 24 24"><use href="#glifo-recortar"/></svg></button>
+                  </div>
+                  <div class="bancada-desenho__poco card-well">
+                    <button type="button" class="bancada-desenho__controle bancada-desenho__controle--ativo" title="Editar"><svg viewBox="0 0 24 24"><use href="#glifo-modificar"/></svg></button>
+                    <button type="button" class="bancada-desenho__controle" disabled title="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+                    <button type="button" class="bancada-desenho__controle" disabled title="Concluir"><svg viewBox="0 0 24 24"><use href="#glifo-check"/></svg></button>
+                    <button type="button" class="bancada-desenho__controle bancada-desenho__controle--armado" title="Suspender"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                    <span class="bancada-desenho__divisa"></span>
+                    <button type="button" class="bancada-desenho__controle" title="Encaixe"><svg viewBox="0 0 24 24"><use href="#glifo-ima"/></svg></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Corpo inteiriço (<span class="text-code">.glass-panel-thick</span>) com alça (<span class="text-code">.bancada-alca</span>), categorias de geometria (<span class="text-code">.bancada-desenho__categoria</span>), o submenu que a categoria/o lápis abrem dentro do próprio corpo (<span class="text-code">.bancada-submenu__tool</span>) e o poço de controles (<span class="text-code">.bancada-desenho__controle</span>) — editar, apagar, concluir, suspender e encaixe. Substitui a toolbar nativa do Leaflet-Geoman.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">.poco-desenhos + .linha-desenho (SPEC design/020) <span class="font-normal text-base-content/50">— o poço da gaveta, um por tipo desenhado</span></span>
+          <form class="grid md:grid-cols-3 gap-4 mt-3 items-start">
+            <div class="poco-desenhos poco-desenhos--ponto card-well">
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca">
+                <span class="linha-desenho__rotulo">Ponto 1</span>
+                <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′40,320″ S · 46°39′23,760″ O">-23.561, -46.657</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+              </label>
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca">
+                <span class="linha-desenho__rotulo">Ponto 2</span>
+                <span class="linha-desenho__medida tooltip tooltip-left" data-tip="23°33′44,280″ S · 46°39′19,080″ O">-23.562, -46.655</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+              </label>
+              <div class="poco-desenhos__acoes">
+                <div class="poco-desenhos__acoes-recorte">
+                  <button type="button" class="card-well item-menu item-menu-swell">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+                    <span class="item-menu-rotulo">Lote sob o ponto</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="poco-desenhos poco-desenhos--linha card-well">
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca">
+                <span class="linha-desenho__rotulo">Linha 1</span>
+                <span class="linha-desenho__medida">318 m</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+              </label>
+              <div class="poco-desenhos__acoes">
+                <div class="poco-desenhos__acoes-recorte">
+                  <button type="button" class="card-well item-menu item-menu-swell">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+                    <span class="item-menu-rotulo">Lotes que a linha cruza</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="poco-desenhos poco-desenhos--poligono card-well">
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca">
+                <span class="linha-desenho__rotulo">Polígono 1</span>
+                <span class="linha-desenho__medida">1.240 m²</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+              </label>
+              <label class="linha-desenho">
+                <input type="radio" name="design-system-desenho" class="linha-desenho__marca" checked>
+                <span class="linha-desenho__rotulo">Polígono 2</span>
+                <span class="linha-desenho__medida">18.702 m²</span>
+                <button type="button" class="linha-desenho__apagar etched" aria-label="Apagar" commandfor="design-system-apagar-desenho" command="show-modal"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+              </label>
+              <dialog id="design-system-apagar-desenho" class="modal modal-glass" closedby="any">
+                <div class="modal-box modal-box-glass glass-panel-thick p-6 flex flex-col gap-5">
+                  <div>
+                    <p class="text-overline">Apagar desenho</p>
+                    <p class="text-[18px] font-bold text-rocha-950">Polígono 2</p>
+                  </div>
+                  <div class="modal-action">
+                    <button type="button" class="btn btn-glass btn-sm" commandfor="design-system-apagar-desenho" command="close">Cancelar</button>
+                    <button type="button" class="btn btn-onsen btn-sm" commandfor="design-system-apagar-desenho" command="close">Apagar</button>
+                  </div>
+                </div>
+              </dialog>
+              <div class="poco-desenhos__acoes">
+                <div class="poco-desenhos__acoes-recorte">
+                  <button type="button" class="card-well item-menu item-menu-swell">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-generico"/></svg></span>
+                    <span class="item-menu-rotulo">Lotes sob o polígono</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+          <p class="text-xs text-base-content/60 mt-2">Um poço por tipo desenhado, na tinta daquela geometria (<span class="text-code">--tinta-desenho</span>). A linha marcada lê o próprio radio (<span class="text-code">:has(.linha-desenho__marca:checked)</span>) — nenhum estado de seleção em JavaScript. O ponto mostra a posição em graus decimais com sinal, e o tooltip a traz em graus, minutos e segundos; linha mede comprimento, polígono mede área. O X de apagar (<span class="text-code">.linha-desenho__apagar</span>) está em toda linha, mas só a marcada o mostra — nas outras ele guarda a coluna; gravado em repouso, incha e enche de água sob o ponteiro, e abre a pergunta de confirmação num <span class="text-code">&lt;dialog&gt;</span> com <span class="text-code">.modal-glass</span> (experimente no Polígono 2). Os poços dividem um formulário só, então há um desenho marcado na gaveta inteira; as ações de um poço (<span class="text-code">.poco-desenhos__acoes</span> &gt; <span class="text-code">.poco-desenhos__acoes-recorte</span>) só se abrem, em <span class="text-code">ease-in-out</span>, quando o marcado é dele — marque um ponto e veja as do polígono recolherem.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">.card-opcao (SPEC documentos_oficiais/010) <span class="font-normal text-base-content/50">— escolha de caminho</span></span>
+          <div class="grid sm:grid-cols-2 gap-6 mt-3">
+            <div class="card-well card-opcao">
+              <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-documento"/></svg>
+              </span>
+              <p class="text-lg font-bold text-madeira-700">Tenho o documento em mãos</p>
+              <p class="text-xs text-base-content/60 max-w-[30ch]">
+                Suba o arquivo PDF que você recebeu para conferir se é autêntico.
+              </p>
+            </div>
+            <div class="card-well card-opcao">
+              <span class="icon-bubble w-14 h-14 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-teclado"/></svg>
+              </span>
+              <p class="text-lg font-bold text-madeira-700">Tenho o código em mãos</p>
+              <p class="text-xs text-base-content/60 max-w-[30ch]">
+                Digite os 12 caracteres impressos ao pé da folha para verificar.
+              </p>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Poço rebaixado que acende na interação como o <span class="text-code">.upload-well</span>, mas sem aresta tracejada — a ação é navegar, não soltar arquivo. Material composto no HTML (<span class="text-code">.card-well.card-opcao</span>).</p>
+        </div>
+
+        <div>
+          <span class="text-overline">.ficha-atributos (SPEC localizacao_lote/001)</span>
+          <div class="grid sm:grid-cols-2 gap-4 mt-3">
+            <dl class="card-well ficha-atributos">
+              <dt class="text-overline">Tipo de lote</dt>
+              <dd class="text-code">F</dd>
+              <dt class="text-overline">Tipo de quadra</dt>
+              <dd class="text-code">U</dd>
+              <dt class="text-overline">CIB</dt>
+              <dd class="text-code">1234567-8</dd>
+            </dl>
+            <dl class="card-well ficha-atributos">
+              <dt class="text-overline">Tipo de lote</dt>
+              <dd class="text-code">M</dd>
+              <dt class="text-overline">Tipo de quadra</dt>
+              <dd class="text-code">U</dd>
+              <dt class="text-overline">CIB</dt>
+              <dd class="valor-ausente">não informado</dd>
+            </dl>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Rótulo e valor, linha a linha, dentro do poço — grade <span class="text-code">[auto_1fr]</span>, e não colunas fixas: o rótulo toma só o espaço que precisa, o valor ocupa o resto, alinhado à direita.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Confronto de áreas do terreno (SPEC localizacao_lote/001)</span>
+          <div class="grid sm:grid-cols-2 gap-4 mt-3">
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Área de terreno</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Cadastro</p>
+                  <p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Polígono</p>
+                  <p class="text-xl font-bold tabular-nums">1.462 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <p class="text-overline">Divergência</p>
+                <span class="badge badge-neutral badge-soft badge-lg text-lg font-bold px-4 tabular-nums">+0,8%</span>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Área de terreno</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Cadastro</p>
+                  <p class="text-xl font-bold tabular-nums">1.450 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Polígono</p>
+                  <p class="text-xl font-bold tabular-nums">1.412 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <p class="text-overline">Divergência</p>
+                <span class="badge badge-warning badge-soft badge-lg text-lg font-bold px-4 tabular-nums">-2,6%</span>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Área de terreno</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Cadastro</p>
+                  <p class="text-xl font-bold tabular-nums">94 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Polígono</p>
+                  <p class="text-xl font-bold tabular-nums">40 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <p class="text-overline">Divergência</p>
+                <span class="badge badge-error badge-soft badge-lg text-lg font-bold px-4 tabular-nums">-57,1%</span>
+              </div>
+            </div>
+
+            <div class="card-well p-4 flex flex-col gap-3">
+              <p class="text-overline">Área de terreno</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-overline mb-1">Cadastro</p>
+                  <p class="valor-ausente">não informado</p>
+                </div>
+                <div>
+                  <p class="text-overline mb-1">Polígono</p>
+                  <p class="text-xl font-bold tabular-nums">3.210 <span class="text-sm font-normal text-base-content/60">m²</span></p>
+                </div>
+              </div>
+              <div class="h-px w-full bg-rocha-950/10"></div>
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <p class="text-overline">Divergência</p>
+                <p class="text-lg valor-ausente">não informado</p>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Área declarada no cadastro contra a medida no polígono, e a divergência entre elas centralizada no poço. A cor do badge é a faixa: neutro até 2%, <span class="text-code">badge-warning</span> acima de 2%, <span class="text-code">badge-error</span> acima de 5%. Sem área no cadastro, a divergência é <span class="text-code">.valor-ausente</span>.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">.placa-lista (SPEC localizacao_lote/003) <span class="font-normal text-base-content/50">— a placa de ações dentro do poço</span></span>
+          <div class="grid md:grid-cols-3 gap-4 mt-3 items-start">
+            <div class="card-well p-3">
+              <div class="placa-lista glass-panel">
+                <div class="placa-lista__cabecalho">
+                  <span class="text-overline">Ações</span>
+                  <span class="placa-lista__contagem">1</span>
+                </div>
+                <div class="placa-lista__conteudo">
+                  <button type="button" class="card-well item-menu item-menu-swell" title="Lotes cadastrados que o polígono marcado cruza.">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><path d="M3.5 7 12 3.2 20.5 7.5 19 19.5 5 20.8z" stroke-dasharray="2.2 2.4"/><rect x="7.6" y="8.6" width="8.8" height="8.2" rx="0.8"/><path d="M12 8.6v8.2M7.6 12.7h8.8"/></svg></span>
+                    <span class="item-menu-rotulo">Lotes intersectados</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Placa assentada que guarda uma lista curta dentro de um poço: o <span class="text-code">.glass-panel</span> entra composto no HTML, e ela sobe do poço pela aresta de luz e pela sombra. Cabeçalho com rótulo e contagem; os itens são <span class="text-code">.item-menu</span>. No <span class="text-code">.poco-desenhos</span> ela é a única filha de <span class="text-code">.poco-desenhos__acoes-recorte</span>.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">.table-onsen-compacta (SPEC localizacao_lote/003) <span class="font-normal text-base-content/50">— a tabela em linha baixa</span></span>
+          <div class="h-56 flex flex-col max-w-3xl mt-3">
+            <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+              <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+                <table class="table table-onsen table-onsen-compacta">
+                  <thead data-cabecalho>
+                    <tr>
+                      <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                      <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                      <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Lançamento</span></div></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td class="text-code whitespace-nowrap">009.055.0021-0</td><td>AV PAULISTA, 1500</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                    <tr><td class="text-code whitespace-nowrap">009.055.0023-7</td><td>R FREI CANECA, 1538</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                    <tr><td class="text-code whitespace-nowrap">009.055.0025-4</td><td>AL SANTOS, 1576</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                    <tr><td class="text-code whitespace-nowrap">009.055.0027-1</td><td>R PEIXOTO GOMIDE, 1614</td><td><span class="badge badge-neutral badge-soft badge-xs whitespace-nowrap">Sem lançamento</span></td></tr>
+                    <tr><td class="text-code whitespace-nowrap">009.055.0029-8</td><td>R AUGUSTA, 1652</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                    <tr><td class="text-code whitespace-nowrap">009.055.0031-5</td><td>AV PAULISTA, 1690</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">A <span class="text-code">.table-onsen</span> em linha baixa, para a tabela que divide a altura com o mapa: só o padding e o corpo do texto mudam.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">.btn-lixeira (SPEC localizacao_lote/004) <span class="font-normal text-base-content/50">— a lixeira da linha da tabela</span></span>
+          <div class="flex items-center gap-3 mt-3">
+            <button type="button" class="btn-lixeira" aria-label="Tirar do conjunto"><svg viewBox="0 0 24 24"><use href="#glifo-apagar"/></svg></button>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Com o visual do controle de apagar da bancada: <span class="text-code">#glifo-apagar</span> em madeira em repouso; sob o ponteiro ou o foco, incha, enche de água e brilha. Mora na última coluna da <span class="text-code">.table-onsen-compacta</span> e tira a linha do conjunto.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Badge de precisão (SPEC geocodificacao_externa/003) <span class="font-normal text-base-content/50">— cabeçalho da gaveta do endereço externo</span></span>
+          <div class="card-well p-5 flex flex-wrap items-center gap-6 mt-3">
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-success badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">No imóvel</span>
+              <span class="text-[10px] font-mono text-base-content/60">imóvel</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-info badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Interpolada na via</span>
+              <span class="text-[10px] font-mono text-base-content/60">interpolada</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-warning badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Centro da via</span>
+              <span class="text-[10px] font-mono text-base-content/60">logradouro</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <span class="badge badge-warning badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Aproximada</span>
+              <span class="text-[10px] font-mono text-base-content/60">aproximada</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O <span class="text-code">.badge-soft</span> do daisyUI no lugar do grau de certeza da gaveta oficial: verde no imóvel, azul na interpolação, âmbar abaixo disso — as duas últimas só aparecem se a política baixar a precisão mínima.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Card do provedor (SPEC geocodificacao_externa/003) <span class="font-normal text-base-content/50">— quem geocodificou, fora da base oficial</span></span>
+          <div class="max-w-md mt-3">
+            <div class="card-well p-4 flex gap-4 items-center">
+              <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-overline mb-0.5">Geocodificado por</p>
+                <p class="font-bold leading-tight">Google</p>
+                <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Composição de <span class="text-code">.card-well</span> + <span class="text-code">.icon-bubble</span> + overline, com o glifo do globo. O nome do provedor vem do domínio; a peça não conhece nenhum.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Selos do cabeçalho (SPEC geocodificacao_externa/005) <span class="font-normal text-base-content/50">— a precisão e, ao lado dela, o cacheado</span></span>
+          <div class="card-well p-5 flex flex-wrap items-start gap-8 mt-3">
+            <div class="flex flex-col items-start gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge badge-success badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">No imóvel</span>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">recém-consultado</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge badge-success badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">No imóvel</span>
+                <span class="badge badge-neutral badge-soft badge-sm font-bold" title="Resultado guardado de uma consulta anterior: o provedor não foi chamado agora">Cacheado</span>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">cacheado · no imóvel</span>
+            </div>
+            <div class="flex flex-col items-start gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge badge-info badge-soft badge-sm font-bold" title="Precisão declarada pelo provedor">Interpolada na via</span>
+                <span class="badge badge-neutral badge-soft badge-sm font-bold" title="Resultado guardado de uma consulta anterior: o provedor não foi chamado agora">Cacheado</span>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">cacheado · interpolada</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O badge de precisão ganha um vizinho: o <span class="text-code">.badge-neutral.badge-soft</span> "Cacheado", que só aparece quando o resultado veio do cache. Nenhuma classe nova — a linha é <span class="text-code">flex flex-wrap gap-2</span>.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Card do provedor com o momento da consulta (SPEC geocodificacao_externa/005) <span class="font-normal text-base-content/50">— quem geocodificou, e quando</span></span>
+          <div class="grid md:grid-cols-2 gap-4 max-w-3xl mt-3">
+            <div class="flex flex-col gap-2">
+              <div class="card-well p-4 flex flex-col gap-3">
+                <div class="flex gap-4 items-center">
+                  <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline mb-0.5">Geocodificado por</p>
+                    <p class="font-bold leading-tight">Google</p>
+                    <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+                  </div>
+                </div>
+                <div class="h-px w-full bg-rocha-950/10"></div>
+                <div class="flex items-baseline justify-between gap-4">
+                  <p class="text-overline">Consultado em</p>
+                  <p class="text-sm font-medium tabular-nums">09/10/2026 10:15</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">recém-consultado · o momento de agora</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="card-well p-4 flex flex-col gap-3">
+                <div class="flex gap-4 items-center">
+                  <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-overline mb-0.5">Geocodificado por</p>
+                    <p class="font-bold leading-tight">Google</p>
+                    <p class="text-sm text-base-content/70">Serviço externo, fora da base oficial</p>
+                  </div>
+                </div>
+                <div class="h-px w-full bg-rocha-950/10"></div>
+                <div class="flex items-baseline justify-between gap-4">
+                  <p class="text-overline">Consultado em</p>
+                  <p class="text-sm font-medium tabular-nums">02/10/2026 14:32</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/60">cacheado · o provedor e o momento da consulta original</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O card do provedor acima, em coluna, mais a linha de rótulo e valor da gaveta do lote sob um fio <span class="text-code">bg-rocha-950/10</span>. No resultado cacheado, provedor e momento são os da consulta original.</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Item de sugestão externa (SPEC geocodificacao_externa/004) <span class="font-normal text-base-content/50">— a última seção das sugestões de endereço por nome</span></span>
+          <div class="card-well p-3 flex flex-col gap-3 max-w-2xl mt-3">
+            <ul class="flex flex-col gap-0.5">
+              <li class="suggestion-item items-center gap-4">
+                <svg class="icon-glow w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+                <span class="font-medium truncate">rua augusta, 100</span>
+                <span class="ml-auto flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-base-content/60">via Google</span>
+                  <span class="badge badge-ponto badge-sm">Endereço</span>
+                </span>
+              </li>
+            </ul>
+            <ul class="flex flex-col gap-0.5">
+              <li class="suggestion-item htmx-request items-center gap-4">
+                <svg class="icon-glow w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+                <span class="font-medium truncate">av. brigadeiro faria lima, 3477 - itaim bibi, são paulo - sp, 04538-133</span>
+                <span class="ml-auto flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-base-content/60">via Google</span>
+                  <span class="badge badge-ponto badge-sm">Endereço</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2"><span class="text-code">.suggestion-item</span> com o globo em <span class="text-code">.icon-glow</span>, o texto como digitado (truncado) e o provedor antes do <span class="text-code">.badge-ponto</span>. O segundo item mostra o texto longo no estado de confirmação (<span class="text-code">.htmx-request</span>).</p>
+        </div>
+
+        <div>
+          <span class="text-overline">Aviso de fallback (SPEC geocodificacao_externa/004) <span class="font-normal text-base-content/50">— topo da gaveta do endereço externo, quando ele veio pelo Enter</span></span>
+          <div class="max-w-md mt-3">
+            <div role="status" class="alert alert-warning alert-soft items-start text-sm">
+              <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21c-2.5-2.4-3.75-5.4-3.75-9S9.5 5.4 12 3z"/></svg>
+              <span>O número informado está fora da faixa de numeração cadastrada para este logradouro. O resultado veio do serviço externo (Google), fora da base oficial.</span>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O <span class="text-code">.alert-warning .alert-soft</span> do aviso de hoje, com o glifo do globo no lugar do triângulo e <span class="text-code">role="status"</span>: acompanha um resultado, não o substitui.</p>
+        </div>
+
+        <!-- Poço de ações (SPEC certidao_lancamento/001) -->
+        <div>
+          <span class="text-overline"><span class="text-code">.poco-acoes</span> <span class="font-normal text-base-content/50">— o poço "Ações" da gaveta, composto com .card-well</span></span>
+          <div class="grid sm:grid-cols-2 gap-4 mt-3 items-start">
+            <div class="flex flex-col gap-2">
+              <p class="text-[10px] font-mono text-base-content/60">uma ação</p>
+              <div class="card-well poco-acoes">
+                <p class="text-overline poco-acoes__titulo">Ações</p>
+                <div class="poco-acoes__lista">
+                  <button type="button" class="btn btn-onsen btn-sm">
+                    <span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>
+                    Certidão de lançamento
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2">
+              <p class="text-[10px] font-mono text-base-content/60">várias ações sob teto</p>
+              <div class="h-44 flex flex-col">
+                <div class="card-well poco-acoes">
+                  <p class="text-overline poco-acoes__titulo">Ações</p>
+                  <div class="poco-acoes__lista">
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Certidão de lançamento</button>
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 2</button>
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 3</button>
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 4</button>
+                    <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 5</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O título e a lista de botões. Sob teto de altura a lista rola e dissolve nas bordas; sem ação liberada o poço não é desenhado.</p>
+        </div>
+
+        <!-- Coluna de ações da gaveta (SPEC certidao_lancamento/002) -->
+        <div>
+          <span class="text-overline"><span class="text-code">.gaveta-coluna-acoes</span> <span class="font-normal text-base-content/50">— a coluna estreita do poço de ações, composta com .gaveta-coluna</span></span>
+          <div class="grid lg:grid-cols-2 gap-6 mt-3 items-start">
+            <div class="flex flex-col gap-2">
+              <p class="text-[10px] font-mono text-base-content/60">uma ação</p>
+              <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col">
+                <div class="gaveta-corpo">
+                  <section class="gaveta-coluna">
+                    <div class="card-well h-full flex items-center justify-center text-xs text-base-content/50">tabela do conjunto</div>
+                  </section>
+                  <section class="gaveta-coluna gaveta-coluna-acoes">
+                    <div class="card-well poco-acoes">
+                      <p class="text-overline poco-acoes__titulo">Ações</p>
+                      <div class="poco-acoes__lista">
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Certidão de lançamento</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2">
+              <p class="text-[10px] font-mono text-base-content/60">muitas ações</p>
+              <div class="glass-drawer-bottom rounded-3xl h-56 flex flex-col">
+                <div class="gaveta-corpo">
+                  <section class="gaveta-coluna">
+                    <div class="card-well h-full flex items-center justify-center text-xs text-base-content/50">tabela do conjunto</div>
+                  </section>
+                  <section class="gaveta-coluna gaveta-coluna-acoes">
+                    <div class="card-well poco-acoes">
+                      <p class="text-overline poco-acoes__titulo">Ações</p>
+                      <div class="poco-acoes__lista">
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Certidão de lançamento</button>
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 2</button>
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 3</button>
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 4</button>
+                        <button type="button" class="btn btn-onsen btn-sm"><span class="poco-acoes__icone">{% icone_acao "certidao_lancamento.emitir" "pequeno" %}</span>Ação de exemplo 5</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">Em tela ampla a coluna tem largura fixa e o poço assenta no meio da altura; com muitas ações o poço cresce até a coluna e passa a rolar. Sem ação liberada a coluna não existe, e a tabela fica com a largura toda.</p>
+        </div>
+
+        <!-- Opção de texto (SPEC certidao_lancamento/001) -->
+        <div>
+          <span class="text-overline"><span class="text-code">.opcao-texto</span> <span class="font-normal text-base-content/50">— um texto oficial escolhível, composto com .card-well</span></span>
+          <form class="grid sm:grid-cols-2 gap-4 mt-3">
+            <label class="card-well opcao-texto">
+              <input type="radio" name="demo-opcao-texto" value="a" class="sr-only">
+              <span class="text-overline opcao-texto__titulo">lançamento parcial</span>
+              <span class="opcao-texto__corpo">…o imóvel possui lançamento parcial do Imposto Predial e Territorial Urbano – IPTU pelo contribuinte número 012.345.6789-0.</span>
+            </label>
+            <label class="card-well opcao-texto">
+              <input type="radio" name="demo-opcao-texto" value="b" class="sr-only" checked>
+              <span class="text-overline opcao-texto__titulo">possui lançamento</span>
+              <span class="opcao-texto__corpo">…o imóvel possui lançamento do Imposto Predial e Territorial Urbano – IPTU – pelo contribuinte número 012.345.6789-0.</span>
+            </label>
+          </form>
+          <p class="text-xs text-base-content/60 mt-2">Repouso × escolhido. O rádio é <span class="text-code">sr-only</span> e a escolha acende a água, como todo estado de seleção do sistema.</p>
+        </div>
+
+        <div class="lg:col-span-2">
+          <span class="text-overline">.voltar-gaveta (SPEC design/021) <span class="font-normal text-base-content/50">— o Voltar gravado e a lista do histórico que sai dele</span></span>
+          <div class="grid md:grid-cols-2 gap-4 mt-3 items-start">
+            <div class="card-well p-5 h-56">
+              <p class="text-overline mb-3">em repouso · ponteiro ou foco abrem a lista</p>
+              <div class="voltar-gaveta" data-troca-cena>
+                <button type="button" class="btn-etched btn-etched-swell etched" title="Voltar para Lote fiscal · SQL 009.055.0021-0">Voltar</button>
+                <div class="voltar-gaveta__lista torre-ajustes torre-ajustes--fechada" role="group" aria-label="Histórico de gavetas">
+                  <p class="text-overline px-1">Histórico</p>
+                  <div class="voltar-gaveta__itens">
+                    <button type="button" class="item-historico item-historico--pre"><svg class="glifo-gaveta glifo-gaveta--lote" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-lote"/></svg><span class="item-historico__resumo">SQL 009.055.0021-0</span></button>
+                    <button type="button" class="item-historico"><svg class="glifo-gaveta glifo-gaveta--logradouro" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-logradouro"/></svg><span class="item-historico__resumo">AV PAULISTA · 156566</span></button>
+                    <button type="button" class="item-historico"><svg class="glifo-gaveta glifo-gaveta--desenhos" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-desenhos"/></svg><span class="item-historico__resumo">2 desenhos</span></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card-well p-5 h-56">
+              <p class="text-overline mb-3">lista aberta · o destino do Voltar já em poço</p>
+              <div class="voltar-gaveta" data-troca-cena>
+                <button type="button" class="btn-etched btn-etched-swell etched" title="Voltar para Lote fiscal · SQL 009.055.0021-0">Voltar</button>
+                <div class="voltar-gaveta__lista torre-ajustes torre-ajustes--aberta" role="group" aria-label="Histórico de gavetas">
+                  <p class="text-overline px-1">Histórico</p>
+                  <div class="voltar-gaveta__itens">
+                    <button type="button" class="item-historico item-historico--pre"><svg class="glifo-gaveta glifo-gaveta--lote" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-lote"/></svg><span class="item-historico__resumo">SQL 009.055.0021-0</span></button>
+                    <button type="button" class="item-historico"><svg class="glifo-gaveta glifo-gaveta--logradouro" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-logradouro"/></svg><span class="item-historico__resumo">AV PAULISTA · 156566</span></button>
+                    <button type="button" class="item-historico"><svg class="glifo-gaveta glifo-gaveta--desenhos" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-desenhos"/></svg><span class="item-historico__resumo">2 desenhos</span></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card-well p-5">
+              <p class="text-overline mb-3">primeira gaveta · estado de falta</p>
+              <div class="voltar-gaveta" data-troca-cena>
+                <button type="button" class="btn-etched btn-etched-swell etched" title="Nenhuma gaveta anterior" disabled>Voltar</button>
+              </div>
+            </div>
+            {# Estado travado: a marca do contexto de ação mostra a interrogação, e o inert é o do trava_cena.js. #}
+            <div class="tela-home card-well p-5 flex flex-col gap-4">
+              <div id="contexto-acao" hidden data-contexto-acao="styleguide"></div>
+              <p class="text-overline">travado · gaveta inferior aberta ou recolhida</p>
+              <div class="flex items-center gap-2">
+                {% include "mapping/_dica_trava.html" with texto="Feche a gaveta inferior para poder voltar a outra gaveta." posicao="tooltip-bottom" %}
+                <div class="voltar-gaveta" data-troca-cena inert>
+                  <button type="button" class="btn-etched btn-etched-swell etched">Voltar</button>
+                </div>
+              </div>
+              <div class="placa-lista glass-panel">
+                <div class="placa-lista__cabecalho">
+                  <span class="text-overline">Ações</span>
+                  {% include "mapping/_dica_trava.html" with texto="Feche a gaveta inferior para poder fazer outra consulta." posicao="tooltip-right" %}
+                  <span class="placa-lista__contagem">1</span>
+                </div>
+                <div class="placa-lista__conteudo" data-troca-cena inert>
+                  <button type="button" class="card-well item-menu item-menu-swell" title="Lotes cadastrados que o polígono marcado cruza.">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><path d="M3.5 7 12 3.2 20.5 7.5 19 19.5 5 20.8z" stroke-dasharray="2.2 2.4"/><rect x="7.6" y="8.6" width="8.8" height="8.2" rx="0.8"/><path d="M12 8.6v8.2M7.6 12.7h8.8"/></svg></span>
+                    <span class="item-menu-rotulo">Lotes intersectados</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">O botão é o <span class="text-code">.btn-etched</span> e a lista é a <span class="text-code">.torre-ajustes</span>, compostos no HTML: a torre troca de eixo e sai para a direita, fora da gaveta, só em CSS — pelo ponteiro sobre o Voltar ou pelo foco. Os itens são <span class="text-code">.item-historico</span>, o primeiro pré-selecionado. Sem gaveta anterior o Voltar sai <span class="text-code">disabled</span> e a lista não existe. O que troca a cena declara <span class="text-code">data-troca-cena</span>: com a gaveta inferior aberta ou recolhida, o <span class="text-code">trava_cena.js</span> põe <span class="text-code">inert</span> nele, e a <span class="text-code">.dica-trava</span>, que fica fora da marca, diz o porquê. Partial: <span class="text-code">mapping/_historico_gaveta.html</span>.</p>
+        </div>
       </div>
     </section>
 
@@ -2859,7 +3984,7 @@
           <div class="flex items-center gap-5">
             <div class="avatar-glass w-28 h-28 shrink-0" style="--cor-unidade: #0077b6">
               <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                 <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
               </svg>
             </div>
@@ -2930,7 +4055,7 @@
             <label class="upload-well cursor-pointer">
               <span class="avatar-glass w-16 h-16 shrink-0" style="--cor-unidade: #0077b6">
                 <svg viewBox="0 0 100 100" role="img" aria-label="HP">
-                  <circle cx="50" cy="50" r="50" fill="#0077b6"/>
+                  <circle cx="50" cy="50" r="48" fill="#0077b6"/>
                   <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="Roboto, sans-serif" font-size="42" font-weight="700" fill="#f2f8fb">HP</text>
                 </svg>
               </span>
@@ -3356,6 +4481,73 @@
             <span class="text-overline">.table-onsen-larga + .scroll-etched-h</span>
             <p class="text-xs text-base-content/60 mb-1">Segundo eixo do poço de tabela (<span class="text-code">.table-onsen-poco</span>): a barra deitada gêmea da vertical, com a coluna dela subtraída da calha das duas — só quando a tabela é larga o bastante para rolar na horizontal (ver a tela montada em <span class="text-code">competencias/registro_acoes_list.html</span>).</p>
           </div>
+          <div class="card-well p-4 flex flex-col gap-3 sm:col-span-2">
+            <span class="text-overline">.rotulo-tipo-unidade + .rotulo-tipo-unidade-extinto (SPEC user_admin/031)</span>
+            <div class="flex flex-wrap items-center gap-8">
+              <span class="rotulo-tipo-unidade text-[15px]">Divisão</span>
+              <span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto text-[15px]" title="Tipo de unidade extinto">Seção</span>
+              <p class="linha-pessoa-meta">Tipo da unidade: <span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto" title="Tipo de unidade extinto">Seção</span></p>
+              <span class="badge badge-linha badge-sm"><span class="rotulo-tipo-unidade">Divisão</span></span>
+              <span class="badge badge-linha badge-sm"><span class="rotulo-tipo-unidade rotulo-tipo-unidade-extinto" title="Tipo de unidade extinto">Seção</span></span>
+            </div>
+            <p class="text-xs text-base-content/60">A base não pinta: o rótulo herda a tinta de onde está (célula, meta, badge, título de modal). O extinto é o <strong>mesmo nome</strong>, em tom de warning, com o pontilhado que anuncia o tooltip "Tipo de unidade extinto" — nunca um texto a mais. Markup único em <span class="text-code">unidades/partials/_rotulo_tipo_unidade.html</span>.</p>
+          </div>
+          <div class="card-well p-4 flex flex-col gap-3 sm:col-span-2">
+            <span class="text-overline">.table-onsen-rotulo-longo (SPEC user_admin/031)</span>
+            <div class="card-well pb-4 table-onsen-poco" data-scroll-etched>
+              <div class="table-onsen-wrap" data-rolador>
+                <table class="table table-onsen table-onsen-rotulo-longo">
+                  <thead data-cabecalho>
+                    <tr>
+                      <th>
+                        <div class="th-onsen">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Nível</span>
+                            <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por nível">▲</button>
+                        </div>
+                      </th>
+                      <th>
+                        <div class="th-onsen">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Requisito do titular</span>
+                            <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por requisito do titular">▲</button>
+                        </div>
+                      </th>
+                      <th>
+                        <div class="th-onsen">
+                          <label class="th-onsen-campo">
+                            <span class="text-overline">Tipos filhos vedados</span>
+                            <input class="th-onsen-input" placeholder="filtrar…" autocomplete="off">
+                          </label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por tipos filhos vedados">▲</button>
+                        </div>
+                      </th>
+                      <th class="w-28"><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Unidades</span></div></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>3</td>
+                      <td>Mínimo CDA-IV</td>
+                      <td>Divisão, Departamento</td>
+                      <td class="text-right">14</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="scroll-etched" data-barra aria-hidden="true">
+                <div class="scroll-etched-thumb" data-polegar></div>
+              </div>
+              <div class="scroll-etched-h" data-barra-h aria-hidden="true">
+                <div class="scroll-etched-h-thumb" data-polegar-h></div>
+              </div>
+            </div>
+            <p class="text-xs text-base-content/60">Modificador da <span class="text-code">.table-onsen</span> para cabeçalho de rótulo comprido: o rótulo quebra em até duas linhas e todas as colunas reservam essa altura, para os campos de filtro ficarem na mesma linha. O piso de largura (56rem) entrega o eixo horizontal ao poço — compõe com <span class="text-code">.scroll-etched-h</span>.</p>
+          </div>
         </div>
       </div>
 
@@ -3480,6 +4672,404 @@
         </div>
 
         <p class="text-xs text-base-content/60">Abrir e fechar é <span class="text-code">checkbox</span> nativo, com os campos <strong>dentro</strong> da casca e lidos como filhos imediatos — <span class="text-code">.gaveta-lateral:has(&gt; .gaveta-lateral-toggle:checked)</span>: assim duas gavetas convivem no mesmo documento sem que marcar uma abra a outra, e a peça não depende de classe nenhuma no ancestral. A segunda gaveta é <strong>irmã</strong> do painel, com <span class="text-code">z</span> abaixo dele; fechada, ela cabe inteira atrás — o <span class="text-code">translateX</span> é exatamente <span class="text-code">(largura − recuo)</span>. O estado de falta usa a <span class="text-code">.gaveta-vazia</span> da gaveta inferior. Na home a casca recebe <span class="text-code">.tela-home</span>, que é por onde o CSS recolhe a barra de busca quando a gaveta abre.</p>
+      </div>
+      <!-- Gaveta do logradouro (SPEC geocodificacao/006) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">gaveta do logradouro <span class="font-normal text-base-content/60">— logradouro_geocoder/partials/_gaveta_logradouro.html, num quadro</span></p>
+        <p class="text-sm text-base-content/80">Abre na busca por logradouro e no "Logradouro mais próximo" de um ponto desenhado. É composição da <span class="text-code">.gaveta-lateral</span>: o cartão de identidade, as medidas apuradas no conjunto dos segmentos e a numeração do logradouro inteiro. Sem segmento numerado, a numeração é a <span class="text-code">.valor-ausente</span>.</p>
+        <div class="relative h-[34rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)] [contain:layout]">
+          <div class="gaveta-lateral" data-gaveta="logradouro-styleguide">
+            <input type="checkbox" id="gaveta-logradouro-styleguide" class="gaveta-lateral-toggle" checked />
+            <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+              <header class="gaveta-lateral-cabecalho">
+                <p class="text-overline text-madeira-600">Entidade localizada</p>
+                <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Logradouro</h2>
+                <p class="text-sm font-medium mt-2">AV PAULISTA</p>
+              </header>
+              <div class="gaveta-lateral-corpo" data-scroll-etched>
+                <div class="gaveta-lateral-rolador" data-rolador>
+                  <div class="gaveta-lateral-conteudo">
+                    <div class="card-well p-4 flex flex-col gap-3">
+                      <div class="flex gap-4 items-center">
+                        <div class="icon-bubble w-12 h-12 shrink-0 bg-agua-500/15 border-agua-600/30 text-agua-700">
+                          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                        </div>
+                        <div class="min-w-0">
+                          <p class="text-overline mb-0.5">Nome</p>
+                          <p class="font-bold leading-tight">PAULISTA</p>
+                        </div>
+                      </div>
+                      <div class="h-px w-full bg-rocha-950/10"></div>
+                      <div class="flex items-baseline justify-between gap-4">
+                        <p class="text-overline">Codlog</p>
+                        <p class="text-code text-sm">156566</p>
+                      </div>
+                      <div class="h-px w-full bg-rocha-950/10"></div>
+                      <div class="flex items-baseline justify-between gap-4">
+                        <p class="text-overline">Tipo</p>
+                        <p class="text-code text-sm">AV</p>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Extensão</p>
+                        <p class="text-xl font-bold tabular-nums">5,4 <span class="text-sm font-normal text-base-content/60">km</span></p>
+                      </div>
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Segmentos</p>
+                        <p class="text-xl font-bold tabular-nums">53</p>
+                      </div>
+                    </div>
+                    <div class="card-well p-4 flex flex-col gap-3">
+                      <p class="text-overline">Numeração do logradouro</p>
+                      <div class="grid grid-cols-2 gap-4">
+                        <div>
+                          <p class="text-overline mb-1">Menor</p>
+                          <p class="text-xl font-bold tabular-nums">1</p>
+                        </div>
+                        <div>
+                          <p class="text-overline mb-1">Maior</p>
+                          <p class="text-xl font-bold tabular-nums">2.747</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="card-well p-4 flex flex-col gap-3">
+                      <p class="text-overline">Numeração do logradouro <span class="font-normal text-base-content/60">— estado de falta</span></p>
+                      <p class="valor-ausente">sem numeração</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+            <label for="gaveta-logradouro-styleguide" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </label>
+          </div>
+        </div>
+      </div>
+      <!-- Canto do voltar na gaveta lateral (SPEC design/021) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">.gaveta-lateral-voltar <span class="font-normal text-base-content/60">— o canto do Voltar na gaveta lateral, num quadro</span></p>
+        <p class="text-sm text-base-content/80">O canto superior direito de toda gaveta lateral, filho da casca — entre o painel e a paleta —, e não do painel: é o que deixa a lista do histórico abrir fora da gaveta, sobre o mapa. Sem lugar no fluxo, chega por carga própria (<span class="text-code">mapping/_voltar_gaveta.html</span>) a cada vez que a gaveta é mostrada. Role o corpo: o Voltar não sai dali.</p>
+        <div class="tela-home relative h-[30rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)] [contain:layout]">
+          <div class="gaveta-lateral" data-gaveta="endereco-styleguide">
+            <input type="checkbox" id="gaveta-voltar-styleguide" class="gaveta-lateral-toggle" checked />
+            <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+              <header class="gaveta-lateral-cabecalho">
+                <p class="text-overline text-madeira-600">Entidade localizada</p>
+                <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Endereço</h2>
+                <p class="text-sm font-medium mt-2">AV PAULISTA, 1000</p>
+              </header>
+              <div class="gaveta-lateral-corpo" data-scroll-etched>
+                <div class="gaveta-lateral-rolador" data-rolador>
+                  <div class="gaveta-lateral-conteudo">
+                    <div class="card-well p-4 flex items-baseline justify-between gap-4">
+                      <p class="text-overline">Codlog</p>
+                      <p class="text-code text-sm">156566</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Número</p>
+                        <p class="text-xl font-bold tabular-nums">1000</p>
+                      </div>
+                      <div class="card-well p-4">
+                        <p class="text-overline mb-1">Faixa do segmento</p>
+                        <p class="text-xl font-bold tabular-nums">902 – 1048</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+            <div class="gaveta-lateral-voltar">
+              <div class="voltar-gaveta" data-troca-cena>
+                <button type="button" class="btn-etched btn-etched-swell etched" title="Voltar para Lote fiscal · SQL 009.055.0021-0">Voltar</button>
+                <div class="voltar-gaveta__lista torre-ajustes torre-ajustes--fechada" role="group" aria-label="Histórico de gavetas">
+              <p class="text-overline px-1">Histórico</p>
+              <div class="voltar-gaveta__itens">
+                <button type="button" class="item-historico item-historico--pre"><svg class="glifo-gaveta glifo-gaveta--lote" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-lote"/></svg><span class="item-historico__resumo">SQL 009.055.0021-0</span></button>
+                <button type="button" class="item-historico"><svg class="glifo-gaveta glifo-gaveta--logradouro" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-logradouro"/></svg><span class="item-historico__resumo">AV PAULISTA · 156566</span></button>
+                <button type="button" class="item-historico"><svg class="glifo-gaveta glifo-gaveta--desenhos" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-desenhos"/></svg><span class="item-historico__resumo">2 desenhos</span></button>
+              </div>
+            </div>
+              </div>
+            </div>
+            <label for="gaveta-voltar-styleguide" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </label>
+          </div>
+        </div>
+      </div>
+      <!-- Gaveta inferior rasa com a lateral acima (SPEC localizacao_lote/003) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">.gaveta-inferior-rasa <span class="font-normal text-base-content/60">— com a gaveta lateral parada acima dela, num quadro</span></p>
+        <p class="text-sm text-base-content/80">O resultado de uma ação sobre desenho: a gaveta inferior de <strong>altura fixa</strong> (<span class="text-code">--gaveta-rasa-altura</span>), cabeçalho numa linha e só a tabela. Na <span class="text-code">.tela-home</span>, enquanto ela está aberta, a gaveta lateral encurta e termina acima dela. A <strong>alça recolhe</strong>: a placa sai de cena e sobra só a <span class="text-code">.paleta-gaveta-inferior</span> na borda, que a puxa de volta devagar. Só o <strong>✕</strong> gravado fecha. Recolha pela alça e veja a lateral descer.</p>
+        <div class="tela-home relative h-[34rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)] [contain:layout]">
+          <div class="gaveta-lateral" data-gaveta="lote-styleguide">
+            <input type="checkbox" id="gaveta-lateral-rasa-styleguide" class="gaveta-lateral-toggle" checked />
+            <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+              <header class="gaveta-lateral-cabecalho">
+                <p class="text-overline text-madeira-600">Entidade localizada</p>
+                <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
+                <p class="text-code text-sm font-medium mt-2">SQL 009.055.0023-7</p>
+                <span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>
+              </header>
+              <div class="gaveta-lateral-corpo" data-scroll-etched>
+                <div class="gaveta-lateral-rolador" data-rolador>
+                  <div class="gaveta-lateral-conteudo">
+                    <dl class="card-well ficha-atributos">
+                      <dt class="text-overline">Endereço</dt><dd>R FREI CANECA, 1538</dd>
+                      <dt class="text-overline">Tipo de lote</dt><dd class="text-code">F</dd>
+                      <dt class="text-overline">Condomínio</dt><dd class="valor-ausente">não informado</dd>
+                    </dl>
+                  </div>
+                </div>
+                <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+            <label for="gaveta-lateral-rasa-styleguide" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </label>
+          </div>
+
+          <input type="checkbox" id="gaveta-rasa-styleguide" class="gaveta-toggle" checked />
+          <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-label="Lotes intersectados">
+            <input type="checkbox" id="gaveta-rasa-recolhida-styleguide" class="gaveta-inferior-recolher" />
+            <label for="gaveta-rasa-recolhida-styleguide" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span></label>
+            <label for="gaveta-rasa-recolhida-styleguide" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+            </label>
+            <header class="gaveta-cabecalho items-center">
+              <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+                <h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Lotes intersectados</h2>
+                <span class="badge badge-poligono badge-sm">Polígono</span>
+                <p class="text-sm text-base-content/70"><span class="font-bold text-base-content tabular-nums">3 lotes</span> · desenho de 13.400 m²</p>
+              </div>
+              <label for="gaveta-rasa-styleguide" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </label>
+            </header>
+            <div class="gaveta-corpo">
+              <section class="gaveta-coluna">
+                <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+                  <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+                    <table class="table table-onsen table-onsen-compacta">
+                      <thead data-cabecalho>
+                        <tr>
+                          <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                          <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                          <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Lançamento</span></div></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0021-0</td><td>AV PAULISTA, 1500</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0023-7</td><td>R FREI CANECA, 1538</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0025-4</td><td>AL SANTOS, 1576</td><td><span class="badge badge-neutral badge-soft badge-xs whitespace-nowrap">Sem lançamento</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+        <p class="text-xs text-base-content/60">O controle de recolher (<span class="text-code">.gaveta-inferior-recolher</span>) mora <strong>dentro</strong> da placa, lido por <span class="text-code">:has(&gt; …)</span>, e o <span class="text-code">.gaveta-toggle</span> de fora só o ✕ desmarca: recolher não fecha. A <span class="text-code">.paleta-gaveta-inferior</span> é a <span class="text-code">.paleta-gaveta</span> da lateral virada para o rodapé, composta no HTML, e só aparece recolhida. Na home, a gaveta rasa é a base de toda resposta de ação (<span class="text-code">mapping/_resultado_acao.html</span>): chega por OOB com o toggle já marcado, e junto dela a marca <span class="text-code">#contexto-acao</span>, que recolhe a busca até a gaveta fechar. A gaveta lateral que entra no <span class="text-code">#gaveta-entidade</span> declara <span class="text-code">data-gaveta</span> na raiz: com outra entidade já aberta, só o conteúdo do painel troca, por fade. Sem resultado, o corpo é a <span class="text-code">.gaveta-vazia</span>.</p>
+      </div>
+      <!-- Gaveta inferior puxável com a lateral acompanhando (SPEC design/022) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">.gaveta-inferior-puxavel <span class="font-normal text-base-content/60">— com a gaveta lateral acompanhando a borda de cima, num quadro</span></p>
+        <p class="text-sm text-base-content/80">A <span class="text-code">.gaveta-inferior-rasa</span> que muda de altura quando se <strong>arrasta a alça</strong>, entre o piso e o teto. A gaveta lateral acompanha a borda de cima sem que uma cubra a outra; no teto, ela fica com a faixa que sobra. Um <strong>clique parado</strong> na alça segue recolhendo, e a paleta devolve a gaveta na altura em que estava. Arraste a alça de dois fios.</p>
+        <div class="tela-home relative h-[34rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)] [contain:layout] [--gaveta-puxavel-teto:25.5rem]">
+          <div class="gaveta-lateral" data-gaveta="lote-styleguide">
+            <input type="checkbox" id="gaveta-lateral-puxavel-styleguide" class="gaveta-lateral-toggle" checked />
+            <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+              <header class="gaveta-lateral-cabecalho">
+                <p class="text-overline text-madeira-600">Entidade localizada</p>
+                <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
+                <p class="text-code text-sm font-medium mt-2">SQL 009.055.0023-7</p>
+                <span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>
+              </header>
+              <div class="gaveta-lateral-corpo" data-scroll-etched>
+                <div class="gaveta-lateral-rolador" data-rolador>
+                  <div class="gaveta-lateral-conteudo">
+                    <dl class="card-well ficha-atributos">
+                      <dt class="text-overline">Endereço</dt><dd>R FREI CANECA, 1538</dd>
+                      <dt class="text-overline">Tipo de lote</dt><dd class="text-code">F</dd>
+                      <dt class="text-overline">Condomínio</dt><dd class="valor-ausente">não informado</dd>
+                    </dl>
+                    <dl class="card-well ficha-atributos">
+                      <dt class="text-overline">Setor</dt><dd class="text-code">009</dd>
+                      <dt class="text-overline">Quadra</dt><dd class="text-code">055</dd>
+                      <dt class="text-overline">Uso</dt><dd>Comercial</dd>
+                    </dl>
+                  </div>
+                </div>
+                <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+            <label for="gaveta-lateral-puxavel-styleguide" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </label>
+          </div>
+
+          <input type="checkbox" id="gaveta-puxavel-styleguide" class="gaveta-toggle" checked />
+          <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa gaveta-inferior-puxavel" role="dialog" aria-label="Resultado puxável">
+            <input type="checkbox" id="gaveta-puxavel-recolhida-styleguide" class="gaveta-inferior-recolher" />
+            <label for="gaveta-puxavel-recolhida-styleguide" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span><span class="etched-line"></span></label>
+            <label for="gaveta-puxavel-recolhida-styleguide" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+            </label>
+            <header class="gaveta-cabecalho items-center">
+              <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+                <h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Resultado puxável</h2>
+                <span class="badge badge-poligono badge-sm">Polígono</span>
+                <p class="text-sm text-base-content/70"><span class="font-bold text-base-content tabular-nums">8 lotes</span> · desenho de 13.400 m²</p>
+              </div>
+              <label for="gaveta-puxavel-styleguide" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </label>
+            </header>
+            <div class="gaveta-corpo">
+              <section class="gaveta-coluna">
+                <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+                  <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+                    <table class="table table-onsen table-onsen-compacta">
+                      <thead data-cabecalho>
+                        <tr>
+                          <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                          <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                          <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Lançamento</span></div></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0021-0</td><td>AV PAULISTA, 1500</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0023-7</td><td>R FREI CANECA, 1538</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0025-4</td><td>AL SANTOS, 1576</td><td><span class="badge badge-neutral badge-soft badge-xs whitespace-nowrap">Sem lançamento</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0027-0</td><td>AL SANTOS, 1590</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0029-7</td><td>AL SANTOS, 1602</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0031-9</td><td>R PEIXOTO GOMIDE, 671</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0033-5</td><td>R PEIXOTO GOMIDE, 685</td><td><span class="badge badge-neutral badge-soft badge-xs whitespace-nowrap">Sem lançamento</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0035-1</td><td>R PEIXOTO GOMIDE, 699</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+        <p class="text-xs text-base-content/60">A variante é <strong>composta no HTML</strong> com a rasa: a rasa dá a altura, a puxável deixa o ponteiro mudá-la. Quem arrasta é o <span class="text-code">puxar_gaveta.js</span>, que escreve a <span class="text-code">--gaveta-puxada-altura</span> na <span class="text-code">.tela-home</span> — fora dela a gaveta não se puxa — e, ao soltar, publica <span class="text-code">gaveta-inferior:puxada</span>, que é o que quem lê a altura da gaveta precisa ouvir. A altura é uma só para a página: vale para a próxima gaveta puxável aberta e some na recarga. Na home, a base de resposta de ação (<span class="text-code">mapping/_resultado_acao.html</span>) nasce puxável quando recebe <span class="text-code">puxavel</span> no contexto. Neste quadro o teto é fração do quadro, e não da tela.</p>
+      </div>
+      <!-- Gaveta do panorama (SPEC street_view/002) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">.gaveta-inferior-panorama <span class="font-normal text-base-content/60">— a gaveta inferior que hospeda o Street View, em quadros</span></p>
+        <p class="text-sm text-base-content/80">A <span class="text-code">.gaveta-inferior-rasa</span> puxável que nasce na <span class="text-code">--gaveta-panorama-altura</span>, com o <span class="text-code">.palco-panorama</span> no corpo. Sem imagem perto do endereço, com o Google fora do ar ou sem chave configurada, o corpo é o <strong>estado de falta escrito</strong>, sem palco e sem o botão de selecionar.</p>
+        <div class="grid lg:grid-cols-3 gap-6">
+          <div class="flex flex-col gap-2">
+            <span class="text-xs text-base-content/60">com imagem</span>
+            <div class="tela-home relative h-[30rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)] [contain:layout] [--gaveta-panorama-altura:13.5rem] [--gaveta-puxavel-teto:22.5rem]">
+              <input type="checkbox" id="gaveta-panorama-imagem-styleguide" class="gaveta-toggle" checked />
+              <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa gaveta-inferior-puxavel gaveta-inferior-panorama" role="dialog" aria-label="Visão da rua">
+                <input type="checkbox" id="gaveta-panorama-imagem-recolhida-styleguide" class="gaveta-inferior-recolher" />
+                <label for="gaveta-panorama-imagem-recolhida-styleguide" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span><span class="etched-line"></span></label>
+                <label for="gaveta-panorama-imagem-recolhida-styleguide" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+                  <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+                </label>
+                <header class="gaveta-cabecalho items-center">
+                  <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+                    <h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Visão da rua</h2>
+                    <p class="text-sm text-base-content/70">Ande pela imagem, arraste o pino ou dê duplo clique no mapa.</p>
+                  </div>
+                  <div class="flex items-center gap-4">
+                <button type="button" class="btn btn-onsen btn-sm gap-2" title="Marca no mapa o ponto em que a câmera está">
+                  <span class="poco-acoes__icone"><svg viewBox="0 0 24 24"><use href="#glifo-ponto"/></svg></span>
+                  Selecionar esta posição
+                </button>
+                    <label for="gaveta-panorama-imagem-styleguide" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    </label>
+                  </div>
+                </header>
+                <div class="gaveta-corpo">
+                  <section class="gaveta-coluna">
+                <div class="gaveta-figura palco-panorama">
+                  <div class="palco-panorama__tela"><img class="w-full h-full object-cover" src="{% static 'img/ortofotos_fundo/anhangabau.png' %}" alt="Imagem no lugar do panorama"></div>
+                </div>
+                  </section>
+                </div>
+              </aside>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <span class="text-xs text-base-content/60">sem imagem</span>
+            <div class="tela-home relative h-[30rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)] [contain:layout] [--gaveta-panorama-altura:13.5rem] [--gaveta-puxavel-teto:22.5rem]">
+              <input type="checkbox" id="gaveta-panorama-sem-imagem-styleguide" class="gaveta-toggle" checked />
+              <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa gaveta-inferior-puxavel gaveta-inferior-panorama" role="dialog" aria-label="Visão da rua">
+                <input type="checkbox" id="gaveta-panorama-sem-imagem-recolhida-styleguide" class="gaveta-inferior-recolher" />
+                <label for="gaveta-panorama-sem-imagem-recolhida-styleguide" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span><span class="etched-line"></span></label>
+                <label for="gaveta-panorama-sem-imagem-recolhida-styleguide" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+                  <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+                </label>
+                <header class="gaveta-cabecalho items-center">
+                  <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+                    <h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Visão da rua</h2>
+                    <p class="text-sm text-base-content/70">Ande pela imagem, arraste o pino ou dê duplo clique no mapa.</p>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <label for="gaveta-panorama-sem-imagem-styleguide" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    </label>
+                  </div>
+                </header>
+                <div class="gaveta-corpo">
+                  <section class="gaveta-coluna">
+                <div class="gaveta-vazia">
+                  <svg class="w-8 h-8 etched" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+                  <p>O Google não tem imagem de rua a até 50 m deste ponto.</p>
+                </div>
+                  </section>
+                </div>
+              </aside>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <span class="text-xs text-base-content/60">indisponível</span>
+            <div class="tela-home relative h-[30rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)] [contain:layout] [--gaveta-panorama-altura:13.5rem] [--gaveta-puxavel-teto:22.5rem]">
+              <input type="checkbox" id="gaveta-panorama-indisponivel-styleguide" class="gaveta-toggle" checked />
+              <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa gaveta-inferior-puxavel gaveta-inferior-panorama" role="dialog" aria-label="Visão da rua">
+                <input type="checkbox" id="gaveta-panorama-indisponivel-recolhida-styleguide" class="gaveta-inferior-recolher" />
+                <label for="gaveta-panorama-indisponivel-recolhida-styleguide" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span><span class="etched-line"></span></label>
+                <label for="gaveta-panorama-indisponivel-recolhida-styleguide" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+                  <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+                </label>
+                <header class="gaveta-cabecalho items-center">
+                  <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+                    <h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Visão da rua</h2>
+                    <p class="text-sm text-base-content/70">Ande pela imagem, arraste o pino ou dê duplo clique no mapa.</p>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <label for="gaveta-panorama-indisponivel-styleguide" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    </label>
+                  </div>
+                </header>
+                <div class="gaveta-corpo">
+                  <section class="gaveta-coluna">
+                <div class="gaveta-vazia">
+                  <svg class="w-8 h-8 etched" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#glifo-street-view"/></svg>
+                  <p>A Visão da rua está indisponível no momento.</p>
+                </div>
+                  </section>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">A variante é <strong>composta no HTML</strong> com a rasa e a puxável: da rasa herda a alça, a paleta, o recolher e a saída; à puxável diz em que altura nasce. A gaveta lateral para acima dela pela regra que já existe. Na home é o partial <span class="text-code">street_view/partials/_gaveta_panorama.html</span>, resposta de <span class="text-code">street_view:abrir</span>: chega com as faltas escritas e ocultas, e o <span class="text-code">street_view.js</span> só revela a que aconteceu. Nestes quadros a altura de partida e o teto são fração do quadro, e não da tela.</p>
       </div>
       <!-- Gaveta inferior (SPEC design/014) -->
       <div class="glass-panel p-6 flex flex-col gap-4">
@@ -3686,5 +5276,6 @@
   <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
   <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
   <script type="module" src="{% static 'js/ui/campo_data.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/puxar_gaveta.js' %}"></script>
 </body>
 </html>

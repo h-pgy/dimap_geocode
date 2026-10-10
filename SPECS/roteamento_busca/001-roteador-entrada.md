@@ -2,6 +2,7 @@
 spec: roteamento-busca/001
 versao: v4
 atualizado_em: 2026-06-24
+implementado: true
 changelog:
   - v1: versão inicial
   - v2: (1) aplica normalize_text no input; (2) parses ricos (setor/quadra/lote/DV;

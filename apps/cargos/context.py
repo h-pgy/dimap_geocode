@@ -16,7 +16,6 @@ from apps.cargos.extincao import (
 )
 from apps.cargos.models import ALGARISMOS_ROMANOS, CargoBase, CargoComissao
 from apps.core.tabela import colunas_da_tabela, marca_descendente
-from apps.mapping.context import contexto_fundo_admin
 from services.domain.listagem_gestao import (
     ColunaCargo,
     ColunaCargoBase,
@@ -44,8 +43,7 @@ NIVEL_OPCOES = tuple(sorted(ALGARISMOS_ROMANOS.items(), key=lambda item: item[0]
 
 def contexto_listagem_cargos(consulta: ConsultaCargos) -> dict[str, Any]:
     return (
-        contexto_fundo_admin()
-        | contexto_corpo_cargos(consulta)
+        contexto_corpo_cargos(consulta)
         | {
             "colunas": colunas_da_tabela(consulta, ColunaCargo, ROTULO_COLUNAS_CARGO),
             "ordenar_por": consulta.ordenar_por or "",
@@ -197,8 +195,7 @@ def _valores_de(cargo: CargoComissao) -> dict[str, Any]:
 
 def contexto_listagem_cargos_base(consulta: ConsultaCargosBase) -> dict[str, Any]:
     return (
-        contexto_fundo_admin()
-        | contexto_corpo_cargos_base(consulta)
+        contexto_corpo_cargos_base(consulta)
         | {
             "colunas": colunas_da_tabela(consulta, ColunaCargoBase, ROTULO_COLUNAS_CARGO_BASE),
             "ordenar_por": consulta.ordenar_por or "",

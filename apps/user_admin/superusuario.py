@@ -28,6 +28,7 @@ def criar_superusuario(novo: NovoSuperusuario, senha: SecretStr) -> Perfil:
             cargo_comissao=_cargo_comissao(novo.cargo_comissao_nome),
             is_staff=True,
             is_superuser=True,
+            senha_provisoria=novo.senha_provisoria,
         )
         # A senha nasce hasheada: nem o banco, nem o log, nem um traceback guardam o texto claro.
         perfil.set_password(senha.get_secret_value())

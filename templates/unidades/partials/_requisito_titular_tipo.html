@@ -1,0 +1,31 @@
+{# Requisito do titular do tipo de unidade (SPEC user_admin/031). Trocar de requisito redesenha o    #}
+{# bloco NO SERVIDOR: o hx-get vai à própria rota do modal (`url_do_modal`) e o hx-select pinça só    #}
+{# este bloco da resposta — sob alta administração o select de nível não existe, e por isso não      #}
+{# posta nada.                                                                                       #}
+<div class="flex flex-col gap-3"
+     data-requisito-titular
+     hx-target="this"
+     hx-select="[data-requisito-titular]"
+     hx-swap="outerHTML"
+     hx-include="this"
+     {% if tipo %}hx-vals='{"tipo": "{{ tipo.pk }}"}'{% endif %}>
+  <label class="flex items-center gap-2 cursor-pointer">
+    <input type="radio" name="exige_alta_administracao" value="off" class="radio radio-sm radio-primary"
+           hx-get="{{ url_do_modal }}"{% if not valores.exige_alta_administracao %} checked{% endif %} />
+    <span class="text-[13px] text-base-content/80">Exige cargo de chefia com nível mínimo</span>
+  </label>
+  {% if not valores.exige_alta_administracao %}
+    <div class="pl-6 max-w-xs">
+      <select name="nivel_minimo_titular" class="select select-glass {{ realce.nivel_minimo_titular }}" data-select-onsen>
+        {% for nivel, rotulo in minimo_opcoes %}
+          <option value="{{ nivel }}"{% if valores.nivel_minimo_titular == nivel %} selected{% endif %}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endif %}
+  <label class="flex items-center gap-2 cursor-pointer">
+    <input type="radio" name="exige_alta_administracao" value="on" class="radio radio-sm radio-primary"
+           hx-get="{{ url_do_modal }}"{% if valores.exige_alta_administracao %} checked{% endif %} />
+    <span class="text-[13px] text-base-content/80">Exige Alta Administração (sem nível numérico)</span>
+  </label>
+</div>

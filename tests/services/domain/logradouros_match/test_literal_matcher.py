@@ -34,9 +34,13 @@ class FakeCatalog(LogradouroCatalog):
     def todas_as_linhas(self) -> list[LogradouroRow]:
         return list(self._rows_data)
 
-    def linhas_por_nome(self, nome: str, codigo: str | None) -> list[LogradouroRow]:
+    def textos_de_busca(self, codigo: str | None) -> list[str]:
         universo = self.linhas_do_tipo(codigo) if codigo else self._rows_data
-        return [r for r in universo if r.nm_logradouro == nome]
+        return list(dict.fromkeys(texto for r in universo for texto in r.textos_de_busca))
+
+    def linhas_por_texto(self, texto: str, codigo: str | None) -> list[LogradouroRow]:
+        universo = self.linhas_do_tipo(codigo) if codigo else self._rows_data
+        return [r for r in universo if texto in r.textos_de_busca]
 
 
 def _catalog_padrao() -> FakeCatalog:

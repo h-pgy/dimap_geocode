@@ -7,14 +7,33 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 
 from apps.mapping.context import contexto_aviso, contexto_mapa
+from apps.mapping.historico_gaveta import responder_cena
 from services.domain.geometry import GeoFeature, to_geojson_feature_collection
-from services.domain.logradouro_geocod import LogradouroGeocoder, LogradouroGeocodInput
+from services.domain.historico_gaveta import Etiqueta, TipoGaveta
+from services.domain.logradouro import Logradouro
+from services.domain.logradouro_geocod import (
+    GavetaLogradouroInput,
+    LogradouroGeocoder,
+    LogradouroGeocodInput,
+    MontarGavetaLogradouro,
+)
 from services.integrations.wfs import build_fetcher
 from services.domain.geometry.models import GeoJsonProperties
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
+MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 WFS_LAYER_LOGRADOUROS: str = settings.WFS_LAYER_LOGRADOUROS
 MAP_COR_LINHA: str = settings.MAP_COR_LINHA
+
+TEMPLATE_GAVETA_LOGRADOURO = "logradouro_geocoder/partials/_gaveta_logradouro.html"
+
+
+def etiqueta_do_logradouro(logradouro: Logradouro) -> Etiqueta:
+    return Etiqueta(
+        chave=f"logradouro-{logradouro.codlog}",
+        tipo=TipoGaveta.LOGRADOURO,
+        resumo=f"{logradouro.nome_completo} · {logradouro.codlog}",
+    )
 
 
 def _properties(f: GeoFeature[Any, Any]) -> GeoJsonProperties:
@@ -22,7 +41,7 @@ def _properties(f: GeoFeature[Any, Any]) -> GeoJsonProperties:
         popup_html=render_to_string(
             "logradouro_geocoder/partials/_popup_segmento.html", {"a": f.attributes}
         ),
-        rotulo=f.attributes.nome_logradouro,
+        rotulo=f.attributes.logradouro.nome_completo,
         cor=None,
     )
 
@@ -41,8 +60,17 @@ def geocodificar_codlog(request: HttpRequest, codlog: str) -> HttpResponse:
             "mapping/_aviso.html",
             contexto_aviso("Este logradouro não possui geometria cadastrada para exibir no mapa."),
         )
+    montar_gaveta = MontarGavetaLogradouro()
+    gaveta = montar_gaveta(
+        GavetaLogradouroInput(
+            segmentos=features,
+            crs_metrico=MAP_INTERPOLATION_CRS,
+        ),
+    )
     geojson = to_geojson_feature_collection(features, _properties)
-    return render(request, "mapping/_mapa.html", contexto_mapa(geojson, MAP_COR_LINHA))
+    contexto = contexto_mapa(geojson, MAP_COR_LINHA) | {"gaveta": gaveta}
+    etiqueta = etiqueta_do_logradouro(gaveta.logradouro)
+    return responder_cena(request, etiqueta, TEMPLATE_GAVETA_LOGRADOURO, contexto)
 
 
 @require_POST

@@ -1,6 +1,25 @@
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
 
 from services.domain.geometry import GeoFeature, PointGeometry
+from services.domain.logradouro import Logradouro
+
+from .numeracao import Paridade
+
+
+class Lado(StrEnum):
+    """De que lado do eixo o ponto está, para quem segue o segmento no sentido em que a numeração cresce."""
+
+    DIREITA = "direita"
+    ESQUERDA = "esquerda"
+
+
+# A convenção de numeração do município: é ela que traduz lado em paridade.
+PARIDADE_POR_LADO = {
+    Lado.DIREITA: Paridade.PAR,
+    Lado.ESQUERDA: Paridade.IMPAR,
+}
 
 
 class AddressGeocodInput(BaseModel):
@@ -13,18 +32,12 @@ class AddressGeocodInput(BaseModel):
 
 class EnderecoAttributes(BaseModel):
     """Proveniência do ponto geocodificado (camada `attributes` da feature)."""
-    codlog: str
-    nome_logradouro: str
-    tipo_logradouro: str
+    logradouro: Logradouro
     numero: int
     id_segmento: str            # segmento que originou a interpolação
-    titulo: str | None = None
-
-    @property
-    def nome_completo(self) -> str:
-        """tipo + título (se houver) + nome — ex.: 'AV DR PAULISTA', 'R DIREITA'."""
-        partes = [self.tipo_logradouro, self.titulo, self.nome_logradouro]
-        return " ".join(p for p in partes if p)
+    # faixa do lado (par/ímpar) do segmento escolhido, no dia da geocodificação
+    numeracao_inicial: int
+    numeracao_final: int
 
 
 EnderecoFeature = GeoFeature[PointGeometry, EnderecoAttributes]
