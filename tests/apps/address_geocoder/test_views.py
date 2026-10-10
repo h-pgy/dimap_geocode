@@ -7,6 +7,7 @@ import json
 import pandas as pd
 import pytest
 from bs4 import BeautifulSoup, Tag
+from django.contrib.sessions.backends.cache import SessionStore
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
@@ -236,6 +237,8 @@ def test_gaveta_do_endereco_logado_traz_o_controle_do_street_view(
         reverse("address_geocoder:selecionar"), {"codlog": "123456", "numero": "100"}
     )
     request.user = _perfil()
+    # A gaveta aberta entra no histórico da sessão (SPEC design/021), que a RequestFactory não traz.
+    request.session = SessionStore()
 
     conteudo = views.selecionar(request).content.decode()
 
@@ -334,3 +337,28 @@ def test_sugestoes_mostram_o_nome_completo_do_logradouro(monkeypatch: pytest.Mon
 
     assert _nome_na_sugestao(por_codlog) == f"{LUIS_ANTONIO}, 100"
     assert _nome_na_sugestao(por_nome) == f"{LUIS_ANTONIO}, 100"
+
+
+# ---------------------------------------------------------------------------
+# Histórico da gaveta lateral (SPEC design/021)
+# ---------------------------------------------------------------------------
+
+
+def test_gaveta_do_endereco_entra_no_historico(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_geocoder_fake(monkeypatch)
+
+    resposta = client.post(
+        reverse("address_geocoder:selecionar"), {"codlog": "123456", "numero": "100"}
+    )
+
+    raiz = BeautifulSoup(resposta.content.decode(), "html.parser").select_one(".gaveta-lateral")
+    assert isinstance(raiz, Tag)
+    assert raiz["data-gaveta"] == "endereco-123456-100"
+    historico = client.get(reverse("mapping:historico_gaveta"), {"chave": "outra-gaveta"})
+    itens = BeautifulSoup(historico.content.decode(), "html.parser").select(".item-historico")
+    assert len(itens) == 1
+    assert itens[0].select_one('use[href="#glifo-gaveta-endereco"]') is not None
+    assert itens[0].get_text(strip=True) == "AV PAULISTA, 100"

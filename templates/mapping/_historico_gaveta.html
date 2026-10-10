@@ -1,0 +1,26 @@
+{% with anterior=demais.0 %}
+  {# Fora do data-troca-cena: dentro dele o inert calaria a interrogação junto. #}
+  {% include "mapping/_dica_trava.html" with texto="Feche a gaveta inferior para poder voltar a outra gaveta." posicao="tooltip-bottom" %}
+  <div class="voltar-gaveta" data-troca-cena>
+    {% if anterior %}
+      <button type="button" class="btn-etched btn-etched-swell etched"
+              title="Voltar para {{ anterior.etiqueta.tipo.rotulo }} · {{ anterior.etiqueta.resumo }}"
+              {% include "mapping/_gatilho_cena.html" with item=anterior %}>Voltar</button>
+      <div class="voltar-gaveta__lista torre-ajustes torre-ajustes--fechada" role="group" aria-label="Histórico de gavetas">
+        <p class="text-overline px-1">Histórico</p>
+        <div class="voltar-gaveta__itens">
+          {% for item in demais %}
+            <button type="button" class="item-historico{% if forloop.first %} item-historico--pre{% endif %}"
+                    title="{{ item.etiqueta.tipo.rotulo }} · {{ item.etiqueta.resumo }}"
+                    {% include "mapping/_gatilho_cena.html" with item=item %}>
+              <svg class="glifo-gaveta glifo-gaveta--{{ item.etiqueta.tipo }}" viewBox="0 0 24 24" aria-hidden="true"><use href="#glifo-gaveta-{{ item.etiqueta.tipo }}"/></svg>
+              <span class="item-historico__resumo">{{ item.etiqueta.resumo }}</span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <button type="button" class="btn-etched btn-etched-swell etched" title="Nenhuma gaveta anterior" disabled>Voltar</button>
+    {% endif %}
+  </div>
+{% endwith %}

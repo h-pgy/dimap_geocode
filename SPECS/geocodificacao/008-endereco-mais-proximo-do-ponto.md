@@ -1,7 +1,7 @@
 ---
 spec: geocodificacao/008
-versao: v4
-atualizado_em: 2026-10-03
+versao: v5
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [integration]
@@ -10,6 +10,7 @@ changelog:
   - v2: renumerada de 007 para 008 — o nome completo nas sugestões vem antes e passa a ser a 007.
   - v3: a faixa `0–0` conta como lado sem numeração, também na geocodificação da busca, e o `EnderecoAttributes` vigente passa a ser o da SPEC 006.
   - v4: o teste de integração marca o ponto na pista par da Av. Paulista em frente ao MASP, e não na calçada.
+  - v5: com a gaveta inferior aberta ou recolhida, a consulta deixa de responder (SPEC design/021)
 ---
 
 # SPEC geocodificacao/008 — Endereço mais próximo de um ponto desenhado

@@ -7,7 +7,10 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 
 from apps.mapping.context import contexto_aviso, contexto_mapa
+from apps.mapping.historico_gaveta import responder_cena
 from services.domain.geometry import GeoFeature, to_geojson_feature_collection
+from services.domain.historico_gaveta import Etiqueta, TipoGaveta
+from services.domain.logradouro import Logradouro
 from services.domain.logradouro_geocod import (
     GavetaLogradouroInput,
     LogradouroGeocoder,
@@ -21,6 +24,16 @@ MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 WFS_LAYER_LOGRADOUROS: str = settings.WFS_LAYER_LOGRADOUROS
 MAP_COR_LINHA: str = settings.MAP_COR_LINHA
+
+TEMPLATE_GAVETA_LOGRADOURO = "logradouro_geocoder/partials/_gaveta_logradouro.html"
+
+
+def etiqueta_do_logradouro(logradouro: Logradouro) -> Etiqueta:
+    return Etiqueta(
+        chave=f"logradouro-{logradouro.codlog}",
+        tipo=TipoGaveta.LOGRADOURO,
+        resumo=f"{logradouro.nome_completo} · {logradouro.codlog}",
+    )
 
 
 def _properties(f: GeoFeature[Any, Any]) -> GeoJsonProperties:
@@ -56,7 +69,8 @@ def geocodificar_codlog(request: HttpRequest, codlog: str) -> HttpResponse:
     )
     geojson = to_geojson_feature_collection(features, _properties)
     contexto = contexto_mapa(geojson, MAP_COR_LINHA) | {"gaveta": gaveta}
-    return render(request, "logradouro_geocoder/partials/_resultado_logradouro.html", contexto)
+    etiqueta = etiqueta_do_logradouro(gaveta.logradouro)
+    return responder_cena(request, etiqueta, TEMPLATE_GAVETA_LOGRADOURO, contexto)
 
 
 @require_POST

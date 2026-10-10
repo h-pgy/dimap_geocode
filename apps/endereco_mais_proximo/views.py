@@ -4,7 +4,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
 from apps.address_geocoder.views import renderizar_endereco
-from apps.mapping.consultas import ConsultaSobrePonto
+from apps.mapping.models import ConsultaSobrePonto
 from apps.mapping.context import contexto_aviso
 from services.domain.address_geocod import (
     EnderecoMaisProximo,

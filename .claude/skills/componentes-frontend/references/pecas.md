@@ -101,6 +101,21 @@ inteira pular sob o clone em movimento. Raio `--radius-placa`. Par com
 (`--topo-pincagem`, `--altura-pincagem`, `--duracao-pincagem`, `--largura-coluna`) — nenhuma
 declaração de pele sai do JS.
 
+**Voltar da gaveta lateral e trava da cena** (`.gaveta-lateral-voltar`, `.voltar-gaveta`,
+`.item-historico`, `.glifo-gaveta`, `.dica-trava`, SPEC design/021): o canto é **filho da casca**,
+entre o `.gaveta-lateral-painel` e a `.paleta-gaveta` — dentro do painel o gelo da lista não
+embaçaria o mapa — e chega por **carga própria** (`mapping/_voltar_gaveta.html`, `hx-trigger="load"`):
+nunca escreva o Voltar direto no template da gaveta, senão ele congela junto com a cena guardada. A
+lista é a `.torre-ajustes` composta no HTML e abre **só em CSS** (`:hover`/`:focus-within`), sempre
+com `torre-ajustes--fechada` no markup; o `--aberta` é só do styleguide. O sufixo de `.glifo-gaveta--`
+e de `#glifo-gaveta-` é o valor do `TipoGaveta`: tipo novo de gaveta pede glifo novo em
+`mapping/_glifos_mapa.html` e a tinta dele no tema. **Trava:** o que entrega a camada de resultado do
+mapa a outro dono declara `data-troca-cena`, e o `static/src/js/ui/trava_cena.js` põe `inert` nele
+enquanto existe `#contexto-acao[data-contexto-acao]`. A `.dica-trava` fica **fora** da marca — dentro,
+o `inert` a calaria junto —, só aparece sob `.tela-home` com a marca do contexto, e o foco de teclado
+entra pelo `<svg tabindex="0">` (o `.tooltip` do daisyUI abre por `:has(:focus-visible)`); use o
+partial `mapping/_dica_trava.html`.
+
 **Barra de rolagem gravada** (`.scroll-etched`, `.scroll-etched-thumb`, `.scroll-etched-ativa`,
 `.scroll-etched-ociosa`): trilho sulcado e polegar de água, para **qualquer** `.card-well` rolável.
 Opt-in por `data-scroll-etched` no poço, com `[data-rolador]`, `[data-barra]`, `[data-polegar]` e

@@ -9,6 +9,7 @@ import { inicializarEnvio } from "./desenho/envio.js";
 import { inicializarSelecao } from "./desenho/selecao.js";
 import { inicializarSincronia } from "./desenho/sincronia.js";
 import { inicializarInteracaoResultado, interagirComResultado } from "./interacao_resultado.js";
+import { inicializarTravaCena } from "../ui/trava_cena.js";
 import { inicializarTrocaGaveta } from "../ui/troca_gaveta.js";
 
 let mapa = null;
@@ -33,6 +34,7 @@ function montarMapaBase() {
   inicializarApagar(mapa);
   inicializarInteracaoResultado();
   inicializarTrocaGaveta();
+  inicializarTravaCena();
 }
 
 // htmx:afterSwap dispara a cada swap (garantido) — nele buscamos o payload por id no DOM. O

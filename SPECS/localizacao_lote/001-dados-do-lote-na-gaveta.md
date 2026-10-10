@@ -1,7 +1,7 @@
 ---
 spec: localizacao_lote/001
-versao: v6
-atualizado_em: 2026-09-18
+versao: v7
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 markers_obrigatorios: []
@@ -12,6 +12,7 @@ changelog:
   - v4: gaveta aberta vira parede para o arrasto da bancada, que não entra nem fica sob ela
   - v5: sem entidade buscada a gaveta não existe, e a esquerda só é dela enquanto houver entidade
   - v6: gaveta passa a ser montada por uma classe e confronta a área do polígono com a do cadastro
+  - v7: a resposta do lote passa pela cena do histórico, e o `_resultado_lote.html` deixa de existir (SPEC design/021)
 ---
 
 # SPEC localizacao_lote/001 — Dados do lote na gaveta lateral

@@ -1,13 +1,14 @@
 ---
 spec: geocodificacao/006
-versao: v3
-atualizado_em: 2026-10-02
+versao: v4
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 changelog:
   - v1: versão inicial
   - v2: testes TDD escritos e SPEC implementada.
   - v3: o nome completo nas sugestões é renumerado para geocodificacao/007
+  - v4: a resposta do logradouro passa pela cena do histórico, e o `_resultado_logradouro.html` deixa de existir (SPEC design/021)
 ---
 
 # SPEC geocodificacao/006 — Gaveta do logradouro

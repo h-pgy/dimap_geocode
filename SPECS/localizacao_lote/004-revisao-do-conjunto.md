@@ -1,7 +1,7 @@
 ---
 spec: localizacao_lote/004
-versao: v7
-atualizado_em: 2026-09-18
+versao: v8
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 markers_obrigatorios: []
@@ -13,6 +13,7 @@ changelog:
   - v5: clicar no lote no mapa também marca a linha dele na tabela e a traz para o foco
   - v6: a linha marcada vai para a primeira posição da tabela, que rola ao topo
   - v7: a linha sobe deslizando, com a pincagem da tabela de unidades
+  - v8: `Limpeza` e `AvisoDeLimpeza` passam a `apps/mapping/models` (SPEC design/021)
 ---
 
 # SPEC localizacao_lote/004 — Revisão do conjunto de lotes do desenho

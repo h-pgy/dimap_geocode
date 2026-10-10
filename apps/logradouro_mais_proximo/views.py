@@ -4,7 +4,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
 from apps.logradouro_geocoder.views import geocodificar_codlog
-from apps.mapping.consultas import ConsultaSobrePonto
+from apps.mapping.models import ConsultaSobrePonto
 from apps.mapping.context import contexto_aviso
 from services.domain.logradouro_geocod import SegmentosNoRaio, SegmentosNoRaioInput
 from services.integrations.wfs import build_fetcher

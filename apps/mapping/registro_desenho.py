@@ -1,7 +1,7 @@
 from apps.endereco_mais_proximo.desenho_declarado import CONSULTA_ENDERECO_MAIS_PROXIMO
 from apps.logradouro_mais_proximo.desenho_declarado import CONSULTA_LOGRADOURO_MAIS_PROXIMO
 from apps.lotes_mais_proximos.desenho_declarado import CONSULTA_LOTES_INTERSECTADOS
-from apps.mapping.acoes_desenho import RegistroDesenho
+from apps.mapping.models import RegistroDesenho
 
 
 def _construir_registro() -> RegistroDesenho:

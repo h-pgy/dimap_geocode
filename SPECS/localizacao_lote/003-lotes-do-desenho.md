@@ -1,7 +1,7 @@
 ---
 spec: localizacao_lote/003
-versao: v7
-atualizado_em: 2026-09-30
+versao: v8
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [integration]
@@ -13,6 +13,7 @@ changelog:
   - v5: o desenho que originou o resultado não responde ao clique enquanto o contexto de ação dura, e o resultado nasce fora da bancada
   - v6: a alça recolhe a gaveta inferior, que volta pela paleta, e só o ✕ a fecha; com ela presente, a bancada não encaixa no rodapé
   - v7: o percentual de cada lote sai do fora de escopo, e a relação do desenho com cada lote passa a ser da SPEC certidao_lancamento/002
+  - v8: com a gaveta inferior aberta ou recolhida, as ações do poço dos desenhos deixam de responder, e os DTOs do registro de desenho passam a `apps/mapping/models` (SPEC design/021)
 ---
 
 # SPEC localizacao_lote/003 — Lotes que cruzam um desenho

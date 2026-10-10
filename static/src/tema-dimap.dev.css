@@ -3195,6 +3195,102 @@ html[data-theme="dimap"] {
   #gaveta-inferior-conteudo.htmx-swapping :is(.paleta-gaveta-inferior, .gaveta-inferior-aviso-fechar) {
     @apply opacity-0 duration-500;
   }
+
+  /* ==================== HISTÓRICO DA GAVETA LATERAL (SPEC design/021) ==================== */
+
+  /* ÁTOMO · .glifo-gaveta — o glifo do tipo de gaveta, na tinta da geometria que ela põe no mapa. */
+  .glifo-gaveta { @apply w-5 h-5 shrink-0 text-rocha-700 transition-all duration-200; }
+  .glifo-gaveta--lote { @apply text-sakura-600; }
+  .glifo-gaveta--endereco,
+  .glifo-gaveta--endereco_externo { @apply text-agua-600; }
+  .glifo-gaveta--logradouro { @apply text-accent; }
+  .glifo-gaveta--desenhos { @apply text-madeira-600; }
+
+  /* ÁTOMO · .item-historico — uma gaveta na lista do histórico. Em repouso é só glifo e resumo;
+     pré-selecionada, afunda em poço com o seletor ciano, como o item da .torre-camadas. */
+  .item-historico {
+    @apply w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[15px];
+    @apply border border-transparent cursor-pointer outline-none transition-all duration-200;
+  }
+  .item-historico__resumo { @apply flex-1 min-w-0 truncate font-medium text-rocha-700 transition-colors duration-200; }
+  .item-historico--pre,
+  .item-historico:is(:hover, :focus-visible) {
+    @apply bg-white/35 border-white/50;
+    box-shadow: var(--sombra-poco), 0 0 0 1px rgba(72, 202, 228, 0.7);
+  }
+  .item-historico--pre .item-historico__resumo,
+  .item-historico:is(:hover, :focus-visible) .item-historico__resumo { @apply text-madeira-700 font-bold; }
+  .item-historico--pre .glifo-gaveta,
+  .item-historico:is(:hover, :focus-visible) .glifo-gaveta { @apply drop-shadow-[0_0_6px_rgba(72,202,228,0.75)]; }
+  /* A volta do poço ao destino do Voltar espera um instante; sob o cursor, nada espera. */
+  .item-historico--pre,
+  .item-historico--pre :is(.item-historico__resumo, .glifo-gaveta) { @apply delay-200; }
+  .item-historico:is(:hover, :focus-visible),
+  .item-historico:is(:hover, :focus-visible) :is(.item-historico__resumo, .glifo-gaveta) { @apply delay-0; }
+
+  /* ÁTOMO · .dica-trava — a interrogação ao lado do controle que não responde. O motivo mora no
+     .tooltip empilhado no HTML; o foco de teclado entra pelo glifo. */
+  .dica-trava {
+    @apply hidden shrink-0 w-6 h-6 rounded-full items-center justify-center cursor-help;
+    @apply text-agua-700 bg-agua-400/15 border border-agua-600/30 transition-all duration-200;
+  }
+  .dica-trava svg { @apply w-3.5 h-3.5 outline-none; }
+  .dica-trava:hover { @apply bg-agua-400/30; }
+  .dica-trava:has(:focus-visible) { @apply ring-2 ring-agua-400/70; }
+  /* O balão cabe na gaveta: mais largo, o rolador do corpo o cortaria. */
+  .dica-trava[data-tip]::before { @apply max-w-52 text-left; }
+  /* Só existe enquanto a gaveta inferior é dona do mapa. */
+  .tela-home:has(#contexto-acao[data-contexto-acao]) .dica-trava { @apply inline-flex; }
+
+  /* ESTADO · travado — o que troca a cena, enquanto a gaveta inferior é dona do mapa. O `inert`
+     vem do trava_cena.js. */
+  [data-troca-cena] { @apply transition-opacity duration-300; }
+  [data-troca-cena][inert] { @apply opacity-40 grayscale; }
+
+  /* ORGANISMO · .gaveta-lateral-voltar — o canto superior direito da gaveta lateral. Filho da
+     casca, e não do painel, como a paleta: dentro do painel o gelo da lista não embaçaria o mapa.
+     Sem lugar no fluxo: o conteúdo chega por carga própria, e nada pula quando ele assenta. */
+  .gaveta-lateral-voltar { @apply absolute top-4 right-7 z-20 flex items-center gap-2 pointer-events-auto; }
+  [data-troca-gaveta="troca"] .gaveta-lateral-voltar { @apply transition-opacity duration-150 ease-in-out; }
+  [data-troca-gaveta="troca"].htmx-swapping .gaveta-lateral-voltar { @apply opacity-0; }
+
+  /* MOLÉCULA · .voltar-gaveta — o Voltar gravado e, saindo dele para a direita, a lista do
+     histórico. O botão é o .btn-etched e a lista é a .torre-ajustes, compostos no HTML: a torre
+     abre fora da gaveta, sobre o mapa. */
+  .voltar-gaveta { @apply relative inline-flex; }
+  /* A ponte cobre o caminho do botão até a lista: sem ela o ponteiro perde o hover no vão. */
+  .voltar-gaveta::before { content: ""; @apply absolute top-0 left-full w-10 h-12; }
+  .voltar-gaveta > .btn-etched:focus-visible { @apply outline-none; }
+  .voltar-gaveta > .btn-etched:disabled { @apply opacity-45 pointer-events-none; }
+  /* Com a lista no ar o sulco segue cheio de água, mesmo com o ponteiro já sobre ela. */
+  .voltar-gaveta:is(:hover, :focus-within) > .btn-etched:not(:disabled) {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+
+  /* A torre troca de eixo: nasce no topo, logo depois da borda da gaveta, e desliza na horizontal.
+     ml-10 é o recuo do canto (right-7) mais a folga até a borda. */
+  .voltar-gaveta__lista { @apply top-0 bottom-auto left-full right-auto ml-10 mb-0 w-72 z-20 gap-1.5 origin-top-left; }
+  /* Recolher espera: o ponteiro que sai do Voltar tem tempo de chegar à lista. Quem a tira do
+     alcance é a visibilidade, que só vira no fim da transição — até lá ela ainda responde ao
+     ponteiro, e voltar a ela a reabre. */
+  .voltar-gaveta__lista.torre-ajustes--fechada { @apply translate-y-0 -translate-x-3 invisible pointer-events-auto delay-300; }
+  .voltar-gaveta:is(:hover, :focus-within) > .voltar-gaveta__lista {
+    @apply visible opacity-100 translate-x-0 scale-100 delay-150;
+  }
+  /* Sem vão entre os itens: no vão o ponteiro não está sobre item nenhum, e o poço voltaria ao
+     destino do Voltar a cada travessia. */
+  .voltar-gaveta__itens { @apply flex flex-col; }
+  /* O destino do Voltar nasce pré-selecionado, e cede o poço quando o cursor vai a outro item. */
+  .voltar-gaveta__itens:has(.item-historico:is(:hover, :focus-visible)) > .item-historico--pre:not(:hover, :focus-visible) {
+    @apply bg-transparent border-transparent shadow-none delay-0;
+  }
+  .voltar-gaveta__itens:has(.item-historico:is(:hover, :focus-visible)) > .item-historico--pre:not(:hover, :focus-visible) .item-historico__resumo {
+    @apply text-rocha-700 font-medium delay-0;
+  }
+  .voltar-gaveta__itens:has(.item-historico:is(:hover, :focus-visible)) > .item-historico--pre:not(:hover, :focus-visible) .glifo-gaveta {
+    @apply drop-shadow-none delay-0;
+  }
 }
 
 /* ==================== CURSOR DO MAPA (SPEC design/018) ==================== */

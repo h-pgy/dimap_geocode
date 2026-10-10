@@ -46,9 +46,11 @@
       <div class="placa-lista glass-panel">
         <div class="placa-lista__cabecalho">
           <span class="text-overline">Ações</span>
+          {% include "mapping/_dica_trava.html" with texto="Feche a gaveta inferior para poder fazer outra consulta." posicao="tooltip-right" %}
           <span class="placa-lista__contagem">{{ itens|length }}</span>
         </div>
-        <div class="placa-lista__conteudo">
+        {# Toda ação do poço troca a cena: a marca é o que o trava_cena.js cala enquanto há gaveta inferior. #}
+        <div class="placa-lista__conteudo" data-troca-cena>
           {% for item in itens %}
             {% icone_acao item.slug "pequeno" as svg %}
             {# O hx-include pesca o único radio marcado na gaveta; o envio.js enxerta a geometria atual. #}

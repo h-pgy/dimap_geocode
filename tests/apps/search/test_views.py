@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 from bs4 import BeautifulSoup, Tag
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.sessions.backends.cache import SessionStore
 from django.http import HttpRequest
 from django.test import RequestFactory
 from django.urls import reverse
@@ -135,6 +136,8 @@ def _perfil() -> Perfil:
 def _post(url_name: str, dados: dict[str, str], logado: bool = True) -> HttpRequest:
     request = RequestFactory().post(reverse(url_name), dados)
     request.user = _perfil() if logado else AnonymousUser()
+    # A gaveta aberta entra no histórico da sessão (SPEC design/021), que a RequestFactory não traz.
+    request.session = SessionStore()
     return request
 
 

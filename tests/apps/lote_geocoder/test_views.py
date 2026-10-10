@@ -4,10 +4,17 @@ resolvido — dados públicos da ontologia do lote, sem login (§3.5 do CLAUDE.m
 import re
 
 import pytest
-from django.test import Client
+from bs4 import BeautifulSoup, Tag
+from django.contrib.sessions.backends.cache import SessionStore
+from django.http import HttpRequest
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
+import apps.acoes_lote.views as acoes_lote_views
 import apps.lote_geocoder.views as views
+from apps.mapping import views as mapping_views
+from apps.unidades.models import CorUnidade, Unidade
+from apps.user_admin.models import Perfil
 from services.domain.geometry import PolygonGeometry, reprojetar
 from services.integrations.wfs import WfsFeatureCollection
 
@@ -69,9 +76,15 @@ def _page(features_raw: list[dict[str, object]]) -> WfsFeatureCollection:
 def _instalar_fetcher_fake(
     monkeypatch: pytest.MonkeyPatch,
     pages: list[WfsFeatureCollection],
+    consultas: list[object] | None = None,
 ) -> None:
+    def _fetcher_fake(req: object) -> object:
+        if consultas is not None:
+            consultas.append(req)
+        return iter(pages)
+
     def _build_fetcher_fake(_settings: object) -> object:
-        return lambda _req: iter(pages)
+        return _fetcher_fake
 
     monkeypatch.setattr(views, "build_fetcher", _build_fetcher_fake)
 
@@ -172,3 +185,103 @@ def test_gaveta_do_lote_sem_distancia_nao_mostra_o_card(
 
     assert "gaveta-lateral" in conteudo
     assert "Distância do endereço" not in conteudo
+
+
+# ---------------------------------------------------------------------------
+# Histórico da gaveta lateral (SPEC design/021)
+# ---------------------------------------------------------------------------
+
+CHAVE_DO_LOTE = "lote-POL001"
+
+
+def _perfil_com_competencia() -> Perfil:
+    # Sem banco: o superusuário recebe o registro inteiro de ações, sem consulta de permissão.
+    return Perfil(
+        rf="890021",
+        nome="Servidor",
+        sobrenome="Competente",
+        unidade=Unidade(nome="DIMAP-1", cor=CorUnidade.AGUA_700),
+        is_superuser=True,
+    )
+
+
+def _pedido_do_perfil(request: HttpRequest, perfil: Perfil, sessao: SessionStore) -> HttpRequest:
+    request.user = perfil
+    request.session = sessao
+    return request
+
+
+def _soup(conteudo: bytes) -> BeautifulSoup:
+    return BeautifulSoup(conteudo.decode(), "html.parser")
+
+
+def _payload_bruto(soup: BeautifulSoup) -> str:
+    script = soup.find("script", id="mapa-payload")
+    assert isinstance(script, Tag)
+    return script.get_text()
+
+
+def _gaveta_no_oob(soup: BeautifulSoup) -> Tag:
+    oob = soup.find(id="gaveta-entidade")
+    assert isinstance(oob, Tag)
+    assert oob.has_attr("hx-swap-oob")
+    return oob
+
+
+def test_gaveta_do_lote_entra_no_historico(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_fetcher_fake(monkeypatch, [_page([_feat(_PROPS_LOTE_COM_SQL)])])
+
+    resposta = client.post(reverse("lote_geocoder:geocodificar"), _POST_LOTE)
+
+    raiz = _soup(resposta.content).select_one(".gaveta-lateral")
+    assert isinstance(raiz, Tag)
+    assert raiz["data-gaveta"] == CHAVE_DO_LOTE
+    historico = client.get(reverse("mapping:historico_gaveta"), {"chave": "outra-gaveta"})
+    itens = _soup(historico.content).select(".item-historico")
+    assert len(itens) == 1
+    assert itens[0].select_one('use[href="#glifo-gaveta-lote"]') is not None
+    assert itens[0].get_text(strip=True) == "SQL 005.003.0048-5"
+
+
+def test_devolver_cena_reenvia_gaveta_e_mapa_sem_consultar_a_base(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    consultas: list[object] = []
+    _instalar_fetcher_fake(monkeypatch, [_page([_feat(_PROPS_LOTE_COM_SQL)])], consultas)
+    aberta = _soup(client.post(reverse("lote_geocoder:geocodificar"), _POST_LOTE).content)
+
+    resposta = client.post(reverse("mapping:devolver_cena"), {"chave": CHAVE_DO_LOTE})
+
+    assert resposta.status_code == 200
+    devolvida = _soup(resposta.content)
+    assert _payload_bruto(devolvida) == _payload_bruto(aberta)
+    assert _gaveta_no_oob(devolvida).decode_contents() == _gaveta_no_oob(aberta).decode_contents()
+    assert "SQL 005.003.0048-5" in _gaveta_no_oob(devolvida).get_text()
+    assert len(consultas) == 1
+
+
+def test_gaveta_devolvida_pede_as_acoes_de_novo(monkeypatch: pytest.MonkeyPatch) -> None:
+    # O router de ações só aceita id de polígono numérico, como o da base.
+    props = {**_PROPS_LOTE_COM_SQL, "cd_identificador": "1001"}
+    _instalar_fetcher_fake(monkeypatch, [_page([_feat(props)])])
+    perfil = _perfil_com_competencia()
+    sessao = SessionStore()
+    fabrica = RequestFactory()
+    abrir = fabrica.post(reverse("lote_geocoder:geocodificar"), _POST_LOTE)
+    views.geocodificar(_pedido_do_perfil(abrir, perfil, sessao))
+
+    devolver = fabrica.post(reverse("mapping:devolver_cena"), {"chave": "lote-1001"})
+    resposta = mapping_views.devolver_cena(_pedido_do_perfil(devolver, perfil, sessao))
+
+    gaveta = _gaveta_no_oob(_soup(resposta.content))
+    carga = gaveta.select_one(f'[hx-trigger="load"][hx-get^="{reverse("acoes_lote:acoes")}"]')
+    assert isinstance(carga, Tag)
+    assert gaveta.select(".gaveta-lateral-conteudo button") == []
+    # Quem abriu tem competência: a carga, pedida agora, é que traz a ação.
+    pedir_acoes = fabrica.get(str(carga["hx-get"]))
+    acoes = acoes_lote_views.acoes(_pedido_do_perfil(pedir_acoes, perfil, sessao))
+    assert _soup(acoes.content).select_one(".poco-acoes button") is not None

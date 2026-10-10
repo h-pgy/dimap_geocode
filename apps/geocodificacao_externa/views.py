@@ -5,14 +5,17 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 from pydantic import BaseModel
 
 from apps.geocodificacao_externa.cache import CacheEmBanco
 from apps.mapping.context import contexto_aviso, contexto_mapa
+from apps.mapping.historico_gaveta import responder_cena
 from apps.search.tentativas import FalhaBaseOficial
 from services.domain.geocodificador_externo import (
     ConsultaGeocodificacao,
+    EnderecoExternoAttributes,
     EnderecoExternoFeature,
     GeocodificacaoExternaInput,
     GeocodificacaoExternaOutput,
@@ -23,13 +26,14 @@ from services.domain.geocodificador_externo import (
 )
 from services.domain.geometry import to_geojson_feature_collection
 from services.domain.geometry.models import GeoJsonProperties
+from services.domain.historico_gaveta import Etiqueta, TipoGaveta
 
 MAP_OUTPUT_CRS: int = settings.MAP_OUTPUT_CRS
 MAP_COR_PONTO: str = settings.MAP_COR_PONTO
 MAIS_PROXIMO_RAIO_LIMITE_M: float = settings.MAIS_PROXIMO_RAIO_LIMITE_M
 
 TEMPLATE_AVISO = "mapping/_aviso.html"
-TEMPLATE_RESULTADO_EXTERNO = "geocodificacao_externa/partials/_resultado_externo.html"
+TEMPLATE_GAVETA_EXTERNO = "geocodificacao_externa/partials/_gaveta_endereco_externo.html"
 
 MSG_INDISPONIVEL = "O serviço externo de geocodificação está indisponível no momento."
 MSG_SEM_RESULTADO = "O serviço externo não localizou este endereço com precisão suficiente."
@@ -38,6 +42,15 @@ MSG_FALLBACK = "{motivo} O resultado veio do serviço externo ({provedor}), fora
 
 class SelecaoGeocodificacaoExterna(BaseModel):
     texto: str
+
+
+def etiqueta_do_endereco_externo(endereco: EnderecoExternoAttributes) -> Etiqueta:
+    slug = slugify(endereco.endereco_formatado)
+    return Etiqueta(
+        chave=f"externo-{slug}",
+        tipo=TipoGaveta.ENDERECO_EXTERNO,
+        resumo=endereco.endereco_formatado,
+    )
 
 
 def geocodificador_externo() -> GeocodificadorExterno | None:
@@ -64,7 +77,8 @@ def geocodificar_externo(
         return _aviso(request, MSG_SEM_RESULTADO, falha, tom="warning")
     aviso = _aviso_fallback(falha, saida.geocodificacao.endereco)
     contexto = _contexto_externo(saida) | {"aviso_fallback": aviso}
-    return render(request, TEMPLATE_RESULTADO_EXTERNO, contexto)
+    etiqueta = etiqueta_do_endereco_externo(saida.geocodificacao.endereco.attributes)
+    return responder_cena(request, etiqueta, TEMPLATE_GAVETA_EXTERNO, contexto)
 
 
 def _aviso(

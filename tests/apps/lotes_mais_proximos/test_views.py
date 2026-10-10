@@ -593,3 +593,54 @@ def test_chave_nao_vigente_nao_mexe_no_conjunto_vigente(
     assert encerramento.find("script", id="mapa-payload") is not None
 
     assert _conjunto_na_sessao(client) == antes
+
+
+# ---------------------------------------------------------------------------
+# Histórico da gaveta lateral (SPEC design/021)
+# ---------------------------------------------------------------------------
+
+
+def _itens_do_historico(client: Client) -> list[Tag]:
+    resposta = client.get(reverse("mapping:historico_gaveta"), {"chave": "outra-gaveta"})
+    assert resposta.status_code == 200
+    return BeautifulSoup(resposta.content.decode(), "html.parser").select(".item-historico")
+
+
+def _abrir_lote_mais_proximo(client: Client, monkeypatch: pytest.MonkeyPatch) -> BeautifulSoup:
+    lote = _feat(_PROPS_LOTE, _quadrado(333000.0, 7395000.0, 50.0))
+    _instalar_fetcher_fake(monkeypatch, [_page([lote])])
+    resposta = client.post(reverse("lotes_mais_proximos:mais_proximo"), _POST_BASE)
+    return BeautifulSoup(resposta.content.decode(), "html.parser")
+
+
+def test_gaveta_do_lote_mais_proximo_entra_no_historico(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    soup = _abrir_lote_mais_proximo(client, monkeypatch)
+
+    raiz = soup.select_one(".gaveta-lateral")
+    assert isinstance(raiz, Tag)
+    assert raiz["data-gaveta"] == "lote-POL001"
+    itens = _itens_do_historico(client)
+    assert len(itens) == 1
+    assert itens[0].select_one('use[href="#glifo-gaveta-lote"]') is not None
+    assert itens[0].get_text(strip=True) == "Sem contribuinte"
+
+
+def test_lote_da_tabela_nao_entra_no_historico(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _abrir_lote_mais_proximo(client, monkeypatch)
+    _instalar_fetcher_fake(monkeypatch, [_page([_feat_no_mapa("1001", 333000.0)])])
+
+    resposta = client.get(reverse("lotes_mais_proximos:detalhe_do_lote"), {"id": "1001"})
+
+    raiz = BeautifulSoup(resposta.content.decode(), "html.parser").select_one(".gaveta-lateral")
+    assert isinstance(raiz, Tag)
+    assert raiz["data-gaveta"] == "lote-1001"
+    voltar = raiz.select_one(".gaveta-lateral-voltar")
+    assert isinstance(voltar, Tag)
+    assert voltar["hx-get"] == reverse("mapping:historico_gaveta") + "?chave=lote-1001"
+    assert [item.get_text(strip=True) for item in _itens_do_historico(client)] == ["Sem contribuinte"]

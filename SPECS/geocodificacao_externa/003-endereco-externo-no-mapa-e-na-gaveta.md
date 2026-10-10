@@ -1,7 +1,7 @@
 ---
 spec: geocodificacao_externa/003
-versao: v4
-atualizado_em: 2026-10-02
+versao: v5
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [integration]
@@ -10,6 +10,7 @@ changelog:
   - v2: gaveta do endereço externo sem o aviso de correspondência parcial
   - v3: provedor e precisão declaram o próprio rótulo no domínio, e o aviso de sem lote recolhe a gaveta
   - v4: o raio passa a ser `MAIS_PROXIMO_RAIO_LIMITE_M`, único para toda consulta de "mais próximo" (SPEC geocodificacao/005)
+  - v5: as respostas do endereço externo e do lote mais próximo passam pela cena do histórico, e os `_resultado_*.html` deixam de existir (SPEC design/021)
 ---
 
 # SPEC geocodificacao_externa/003 — Endereço externo no mapa, na gaveta e no lote mais próximo

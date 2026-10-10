@@ -23,6 +23,7 @@ description: Como construir algo que opera sobre um desenho da bancada no DIMAP 
   - 5.3 A troca da gaveta lateral
   - 5.4 O contexto de ação
   - 5.5 A volta à bancada
+  - 5.6 O histórico e a trava da cena
 - 6 · O mapa com resultado
 - 7 · O que a ação nova escreve, e o que ela não toca
 - 8 · Testes TDD que o padrão pede
@@ -32,7 +33,10 @@ O desenho da bancada (SPEC `design/020`) é uma entidade territorial como as out
 de uma consulta ou de um ato administrativo. O padrão nasceu na SPEC
 [`localizacao_lote/003`](../../../SPECS/localizacao_lote/003-lotes-do-desenho.md) (v6), com a
 consulta "Lotes intersectados". **É a fonte de verdade**: os snippets dela são a referência de código, e
-esta skill é o raciocínio de como repetir o padrão.
+esta skill é o raciocínio de como repetir o padrão. A SPEC
+[`design/021`](../../../SPECS/design/021-historico-da-gaveta-lateral.md) mudou duas coisas nele: os
+DTOs do registro moram em `apps/mapping/models`, e com gaveta inferior presente as ações do poço não
+respondem (§5.6).
 
 > **Confira o `implementado:` da SPEC 003 antes de assumir que uma peça existe.** Enquanto ela estiver
 > `false`, `registro_desenho.py`, `acoes_desenho.py`, `_resultado_acao.html`, `contexto_acao.js`,
@@ -86,6 +90,8 @@ Cada app declara o que oferece sobre desenho num módulo próprio, como declara 
 
 ```python
 # apps/<app>/desenho_declarado.py
+from apps.mapping.models import ConsultaSobreDesenho
+
 CONSULTA_X = ConsultaSobreDesenho(
     slug="<app>.<nome>",                 # PADRAO_SLUG: é ele que encontra o SVG
     nome="Rótulo do botão",
@@ -124,8 +130,8 @@ revisável em code review. A ordem da tupla é a ordem dos botões no poço.
 
 ### 3.3 O router — não se mexe
 
-`OfertarNoPoco` (`apps/mapping/acoes_desenho.py`) recebe `OfertaPocoInput(tipo, slugs_liberados)` e
-devolve os `ItemPoco` do registro cujo `tipos` contém o tipo do poço **e** que estão liberados
+`OfertarNoPoco` (`apps/mapping/acoes_desenho.py`; os DTOs dele, em `apps/mapping/models`) recebe
+`OfertaPocoInput(tipo, slugs_liberados)` e devolve os `ItemPoco` do registro cujo `tipos` contém o tipo do poço **e** que estão liberados
 (consulta sempre, ato só com o slug nos liberados). Ele converge as duas naturezas no mesmo `ItemPoco`,
 e o template do poço não sabe qual é qual.
 
@@ -145,6 +151,9 @@ O botão do poço já sai pronto do `_poco_desenhos.html`:
         hx-post="{% url item.url_name %}" hx-include=".linha-desenho__marca:checked"
         hx-target="#resultado-busca" hx-swap="innerHTML">
 ```
+
+A lista desses botões sai dentro de `data-troca-cena`: toda ação do poço entrega a camada de
+resultado a outro dono, e por isso fica travada enquanto há gaveta inferior (§5.6).
 
 O que a rota recebe, e por quê:
 
@@ -266,8 +275,10 @@ recolhida, para o aviso (que mora na busca) ficar à vista. Sem payload de mapa.
 ser o mesmo valor; `properties.url_ficha` e o `hx-get` da linha têm de apontar para a mesma rota. É
 isso que o `interacao_resultado.js` usa, sem saber de que entidade se trata.
 
-A rota de detalhe devolve a gaveta lateral **existente** da entidade, intacta, e essa gaveta precisa
-de `data-gaveta="<tipo>-<id>"` na raiz `.gaveta-lateral` (§5.3).
+A rota de detalhe devolve a gaveta lateral **existente** da entidade, intacta, pelo `render` do
+template dela, com a `etiqueta` no contexto: é a etiqueta que dá o `data-gaveta` da raiz
+`.gaveta-lateral` (§5.3) e o canto do Voltar. **Sem `responder_cena`**: a entidade aberta pela tabela
+da gaveta inferior não entra no histórico (§5.6).
 
 ## 5 · As gavetas juntas: a coreografia
 
@@ -287,7 +298,7 @@ toggles e uma marca no DOM, que o servidor manda e o CSS lê.
 | Clica em outra linha/feature | a entidade nova **troca por fade**, sem recolher | aberta | recolhida | `troca_gaveta.js` |
 | Clica no desenho de **origem**, fora das features | nada: vale como clique no mapa vazio | aberta | recolhida | `selecao.js` lê `data-desenho` da marca |
 | Clica em **outro** desenho fora das features | **desenhos**, com ele selecionado | aberta | recolhida | `selecao.js` → `pedirGavetaDesenhos` |
-| Aciona de novo com outro polígono | desenhos recolhida | resultado **trocado** | recolhida | a mesma resposta |
+| Reabre os desenhos com a inferior presente | desenhos, com as ações do poço **travadas** e a interrogação | aberta ou recolhida | recolhida | `trava_cena.js` + `data-troca-cena` (§5.6) |
 | Recolhe a inferior (alça) | volta à **altura inteira** | fora da tela, só a **paleta** na borda | recolhida | CSS do `#gaveta-resultado-recolhida` |
 | Puxa pela paleta | termina acima da inferior | **aberta** de novo, subindo devagar | recolhida | idem |
 | Fecha a inferior (✕) | como estava | fechada, sem paleta | **volta** | `contexto_acao.js` apaga a marca |
@@ -331,9 +342,14 @@ atual com o da resposta e marca o alvo com `data-troca-gaveta`:
 - **`troca`**: estava aberta com **outra** coisa, e só o conteúdo do painel funde (`swap:150ms settle:200ms`);
 - **`mesma`**: a mesma gaveta redesenhada (a bancada a cada traço), sem animação.
 
-Por isso **toda gaveta que entra no `#gaveta-entidade` precisa de `data-gaveta` na raiz**:
-`"desenhos"` na bancada, `"lote-{{ id }}"` na do lote, `"<tipo>-{{ id }}"` na sua. Sem ele, duas
-entidades diferentes contam como "mesma" e a troca não anima.
+Por isso **toda gaveta que entra no `#gaveta-entidade` precisa de `data-gaveta` na raiz**, e ele é a
+chave da `Etiqueta` da gaveta (`data-gaveta="{{ etiqueta.chave }}"`, SPEC design/021): `"desenhos"`
+na bancada, `"lote-<id_poligono>"` na do lote, `"<tipo>-<id>"` na sua. Sem ele, duas entidades
+diferentes contam como "mesma" e a troca não anima.
+
+A gaveta que chega por **OOB** — toda cena (§5.6) — não passa pelo `htmx:beforeSwap` do alvo: o
+`troca_gaveta.js` a marca no `htmx:oobBeforeSwap`. A marca é a mesma, mas OOB não aceita espera de
+swap: a gaveta nova entra fundindo, sem o fade de saída da anterior.
 
 ### 5.4 O contexto de ação
 
@@ -358,6 +374,23 @@ Com a lateral mostrando uma entidade, o radio do desenho não está no DOM. O `s
 achar o radio de um desenho que **não** é o de origem (§5.4), pede a gaveta dos desenhos de volta por
 `pedirGavetaDesenhos(id)` (exportado de
 `sincronia.js`), já com ele selecionado. Para voltar sem clicar no mapa, há a paleta.
+
+### 5.6 O histórico e a trava da cena
+
+A camada de resultado do mapa tem **um dono por vez** (SPEC design/021): a gaveta inferior, enquanto
+houver uma, aberta ou recolhida; sem ela, a entidade da gaveta lateral.
+
+- **Entidade localizada responde por `responder_cena`** (`apps/mapping/historico_gaveta.py`), com a
+  `Etiqueta` dela: a gaveta e o payload do mapa entram no histórico da sessão, e o Voltar os devolve
+  sem consultar a base. Consulta do poço que resolve uma entidade (logradouro, endereço) chega aí pela
+  view da entidade, sem escrever nada.
+- **Resultado de ação não é cena.** A gaveta inferior e o que se abre a partir dela não entram no
+  histórico.
+- **Com gaveta inferior presente, o que troca a cena não responde**: o Voltar, a lista do histórico e
+  as ações do poço dos desenhos saem dentro de `data-troca-cena`, e o `trava_cena.js` põe `inert`
+  neles enquanto a marca do contexto existe. Para consultar outro desenho, fecha-se a gaveta pelo ✕.
+  A tabela, os controles da gaveta inferior e as ações da entidade aberta por ela seguem funcionando —
+  **não ponha `data-troca-cena` no que é da sua ação**.
 
 ## 6 · O mapa com resultado
 
@@ -392,7 +425,7 @@ que separa, sem legenda, o que a pessoa traçou do que o sistema devolveu.
 
 **Não toca:** o router, `_gaveta_desenhos.html`, `_poco_desenhos.html`, `envio.js`, `selecao.js`,
 `sincronia.js`, a base `_resultado_acao.html` e os seus OOBs, `contexto_acao.js`, `troca_gaveta.js`,
-`interacao_resultado.js` e as regras de CSS da §5. São peças de todas as ações: mudar uma delas é
+`trava_cena.js`, `interacao_resultado.js` e as regras de CSS da §5. São peças de todas as ações: mudar uma delas é
 mudar todas (§3.4 do CLAUDE.md). Se a ação não cabe nelas, **pare e pergunte**. A resposta costuma
 ser uma SPEC de base nova, não um remendo.
 
@@ -411,7 +444,7 @@ bateria da skill `acao-administrativa` §6.
 | conferência recusa sem chamar o fetcher fake | conferência antes da rede |
 | resposta traz payload com `id` e `url_ficha` em cada feature, OOB da inferior com `#gaveta-resultado` marcado e `data-id-feature` igual ao `id`, OOB do toggle dos desenhos desmarcado, OOB do `#contexto-acao` com o slug | o contrato com a home |
 | recusa devolve aviso + toggle dos desenhos desmarcado, **sem** payload de mapa; desenho do tipo errado é recusado pela validação; nenhum consulta o WFS | a recusa e a defesa contra POST forjado |
-| detalhe devolve a gaveta da entidade com `data-gaveta` na raiz | a troca por fade vai funcionar |
+| detalhe devolve a gaveta da entidade com `data-gaveta` na raiz e o canto do Voltar, e o histórico da sessão fica como estava | a troca por fade vai funcionar, e o que vem da gaveta inferior não vira cena |
 
 O JavaScript (ordem das camadas, realce, clique na feature, volta à bancada, fade, fim do contexto)
 **não tem teste automatizado** e fica no smoke test manual. Declare isso nos Caveats da SPEC.
@@ -430,7 +463,12 @@ O JavaScript (ordem das camadas, realce, clique na feature, volta à bancada, fa
   `:empty` e aparece vazia.
 - **Cor própria no resultado**, ou `properties.id` diferente do `data-id-feature`: o realce não liga
   linha e feature.
-- **Gaveta lateral nova sem `data-gaveta`** na raiz.
+- **Gaveta lateral nova sem `data-gaveta`** na raiz, ou sem o `mapping/_voltar_gaveta.html` entre o
+  painel e a paleta.
+- **`responder_cena` na rota de detalhe** da gaveta inferior: o lote da tabela viraria cena do
+  histórico.
+- **Renderizar ação por perfil no corpo da gaveta** da entidade: a cena guarda o HTML, e a ação
+  congela junto. O que depende de quem olha chega por `hx-get` com `hx-trigger="load"`.
 - **Camada no mapa sem `pmIgnore`** fora da bancada: o Geoman a trata como desenho (§6).
 - **Chamar `contexto_resultado_acao` sem o desenho de origem**: o polígono volta a cobrir as features
   quando clicado num vão (§5.4).

@@ -7,19 +7,30 @@ function chave(raiz) {
   return raiz.querySelector(".gaveta-lateral")?.dataset.gaveta ?? null;
 }
 
-function modo(alvo, html) {
-  if (!alvo.querySelector(":scope > .gaveta-lateral > .gaveta-lateral-toggle:checked")) return "entrada";
+function moldeDe(html) {
   const molde = document.createElement("template");
   molde.innerHTML = html;
+  return molde.content;
+}
+
+function modo(alvo, nova) {
+  if (!alvo.querySelector(":scope > .gaveta-lateral > .gaveta-lateral-toggle:checked")) return "entrada";
   // A mesma gaveta redesenhada (a bancada, a cada traço) não anima: só outra entidade troca.
-  return chave(molde.content) === chave(alvo) ? "mesma" : "troca";
+  return chave(nova) === chave(alvo) ? "mesma" : "troca";
 }
 
 export function inicializarTrocaGaveta() {
   htmx.on("htmx:beforeSwap", (evento) => {
     const alvo = evento.detail.target;
     if (alvo.id !== ALVO) return;
-    alvo.dataset.trocaGaveta = modo(alvo, evento.detail.serverResponse);
+    alvo.dataset.trocaGaveta = modo(alvo, moldeDe(evento.detail.serverResponse));
     if (alvo.dataset.trocaGaveta === "troca") evento.detail.swapOverride = TROCA_COM_FADE;
+  });
+  // A cena chega por OOB (SPEC design/021), que não dispara o beforeSwap nem aceita espera de swap:
+  // a marca vai no alvo do mesmo jeito, e a gaveta nova entra fundindo, sem o fade de saída.
+  htmx.on("htmx:oobBeforeSwap", (evento) => {
+    const alvo = evento.detail.target;
+    if (alvo.id !== ALVO) return;
+    alvo.dataset.trocaGaveta = modo(alvo, evento.detail.fragment);
   });
 }

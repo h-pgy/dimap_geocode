@@ -1,5 +1,6 @@
 from collections.abc import Callable, Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -34,6 +35,15 @@ def _resetar_catalogos_singleton() -> Generator[None, None, None]:
     yield
     LogradouroCatalog.resetar_instancia()
     ContribuinteCatalog.resetar_instancia()
+
+
+@pytest.fixture(autouse=True)
+def _sessao_fora_do_banco(request: pytest.FixtureRequest, settings: Any) -> None:
+    # Abrir uma gaveta grava o histórico na sessão (SPEC design/021): em banco, todo teste de view
+    # pediria PostGIS de pé. Teste `banco` segue com o backend real.
+    if request.node.get_closest_marker("banco"):
+        return
+    settings.SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 
 @pytest.fixture

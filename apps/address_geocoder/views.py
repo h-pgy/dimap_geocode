@@ -5,17 +5,20 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 
 from apps.mapping.context import contexto_aviso, contexto_mapa
+from apps.mapping.historico_gaveta import responder_cena
 from apps.search.secoes import SecaoResultado
 from apps.search.tentativas import FalhaBaseOficial
 from services.domain.address_geocod import (
     AddressGeocodInput,
     AddressGeocoder,
+    EnderecoAttributes,
     EnderecoFeature,
     NumeracaoNaoEncontradaError,
     SegmentoNaoEncontradoError,
 )
 from services.domain.codlog_match import CodlogMatchInput, match_codlog
 from services.domain.geometry import to_geojson_feature_collection
+from services.domain.historico_gaveta import Etiqueta, TipoGaveta
 from services.domain.logradouro_geocod import LogradouroGeocoder
 from services.domain.logradouros_match import ResolucaoLogradouroQuery, resolver_logradouro
 from services.domain.roteamento_busca import EnderecoCodlogParse, EnderecoParse
@@ -31,6 +34,8 @@ MAP_INTERPOLATION_CRS: int = settings.MAP_INTERPOLATION_CRS
 WFS_LAYER_LOGRADOUROS: str = settings.WFS_LAYER_LOGRADOUROS
 MAP_COR_PONTO: str = settings.MAP_COR_PONTO
 MAIS_PROXIMO_RAIO_LIMITE_M: float = settings.MAIS_PROXIMO_RAIO_LIMITE_M
+
+TEMPLATE_GAVETA_ENDERECO = "address_geocoder/partials/_gaveta_endereco.html"
 
 MSG_SEM_SEGMENTO = "Não foi possível localizar o logradouro para geocodificar este endereço."
 MSG_SEM_NUMERACAO = "O número informado está fora da faixa de numeração cadastrada para este logradouro."
@@ -79,6 +84,14 @@ def _properties(f: EnderecoFeature) -> GeoJsonProperties:
     )
 
 
+def etiqueta_do_endereco(endereco: EnderecoAttributes) -> Etiqueta:
+    return Etiqueta(
+        chave=f"endereco-{endereco.logradouro.codlog}-{endereco.numero}",
+        tipo=TipoGaveta.ENDERECO,
+        resumo=f"{endereco.logradouro.nome_completo}, {endereco.numero}",
+    )
+
+
 def resolver_endereco(codlog: str, numero: object) -> EnderecoFeature | FalhaBaseOficial:
     """Interpola o endereço (codlog 6 dígitos + número) na base oficial. `numero` chega como str
     (POST) ou int (candidato) — o Pydantic coage."""
@@ -112,7 +125,8 @@ def renderizar_endereco(
         "score": score,
         "raio_m": MAIS_PROXIMO_RAIO_LIMITE_M,
     }
-    return render(request, "address_geocoder/partials/_resultado_endereco.html", contexto)
+    etiqueta = etiqueta_do_endereco(feature.attributes)
+    return responder_cena(request, etiqueta, TEMPLATE_GAVETA_ENDERECO, contexto)
 
 
 def geocodificar_endereco(

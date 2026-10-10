@@ -1,12 +1,13 @@
 ---
 spec: design/011
-versao: v1
-atualizado_em: 2026-08-31
+versao: v2
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: as views do app `mapping` viram pacote, e a do fundo passa a `apps/mapping/views/fundo.py` (SPEC design/021)
 ---
 
 # SPEC design/011 — Troca de fundo sem vão

@@ -6,7 +6,7 @@ from django.urls import reverse
 from apps.lotes_mais_proximos.desenho_declarado import CONSULTA_LOTES_INTERSECTADOS
 from apps.lotes_mais_proximos.sessao import ConjuntoNaSessao
 from apps.mapping.context import contexto_resultado_acao
-from apps.mapping.limpeza import AvisoDeLimpeza, Limpeza
+from apps.mapping.models import AvisoDeLimpeza, Limpeza
 from services.domain.geometry import GeoFeature, to_geojson_feature_collection
 from services.domain.geometry.models import GeoJsonProperties
 from services.domain.lotes_mais_proximos import CamadaLotes, ConjuntoDeLotes

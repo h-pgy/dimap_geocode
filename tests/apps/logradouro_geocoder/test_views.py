@@ -103,3 +103,27 @@ def test_geocodificar_abre_a_gaveta_do_logradouro(
     assert "2,7 km" in texto
     assert "2.747" in texto
     assert len(capturado) == 1
+
+
+# ---------------------------------------------------------------------------
+# Histórico da gaveta lateral (SPEC design/021)
+# ---------------------------------------------------------------------------
+
+
+def test_gaveta_do_logradouro_entra_no_historico(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    segmento = _feat("SEG001", _eixo_no_mapa(333000.0, 1500.0), par="1000", impar="999")
+    _instalar_fetcher_fake(monkeypatch, _page([segmento]), [])
+
+    resposta = client.post(reverse("logradouro_geocoder:geocodificar"), {"codlog": CODLOG})
+
+    raiz = BeautifulSoup(resposta.content.decode(), "html.parser").select_one(".gaveta-lateral")
+    assert isinstance(raiz, Tag)
+    assert raiz["data-gaveta"] == f"logradouro-{CODLOG}"
+    historico = client.get(reverse("mapping:historico_gaveta"), {"chave": "outra-gaveta"})
+    itens = BeautifulSoup(historico.content.decode(), "html.parser").select(".item-historico")
+    assert len(itens) == 1
+    assert itens[0].select_one('use[href="#glifo-gaveta-logradouro"]') is not None
+    assert itens[0].get_text(strip=True) == f"AV BRIG LUIS ANTONIO · {CODLOG}"

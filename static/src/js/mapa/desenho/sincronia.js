@@ -3,6 +3,8 @@
 // converteu o círculo em polígono quando este roda.
 let mapaDaBancada = null;
 let urlDesenhos = null;
+// A seleção muda no navegador sem ida ao servidor: é ele quem lembra a última (SPEC design/021).
+let ultimoMarcado = "";
 
 const marcado = () => document.querySelector(".linha-desenho__marca:checked")?.value ?? "";
 
@@ -10,6 +12,7 @@ const marcado = () => document.querySelector(".linha-desenho__marca:checked")?.v
 // o clique no desenho pede a bancada de volta, já com ele selecionado.
 export function pedirGavetaDesenhos(selecionado) {
   if (!mapaDaBancada) return;
+  ultimoMarcado = selecionado;
   const desenhos = mapaDaBancada.pm.getGeomanLayers().map((camada) => ({
     id_bancada: String(L.Util.stamp(camada)),
     geometria: camada.toGeoJSON().geometry,
@@ -34,4 +37,11 @@ export function inicializarSincronia(mapa, container) {
   ["pm:globaleditmodetoggled", "pm:globaldragmodetoggled", "pm:globalrotatemodetoggled"].forEach(
     (evento) => mapa.on(evento, (dado) => { if (!dado.enabled) enviar(); }),
   );
+  document.addEventListener("change", (evento) => {
+    if (evento.target.matches(".linha-desenho__marca")) ultimoMarcado = evento.target.value;
+  });
+  // O voltar à gaveta dos desenhos: ela não tem cena guardada, é o mapa que a remonta.
+  document.addEventListener("click", (evento) => {
+    if (evento.target.closest("[data-pedir-desenhos]")) pedirGavetaDesenhos(ultimoMarcado);
+  });
 }

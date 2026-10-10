@@ -1,4 +1,4 @@
-from apps.mapping.acoes_desenho import ConsultaSobreDesenho
+from apps.mapping.models import ConsultaSobreDesenho
 from services.domain.desenho import TipoDesenho
 
 CONSULTA_LOTES_INTERSECTADOS = ConsultaSobreDesenho(

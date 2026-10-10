@@ -6,12 +6,14 @@ from zoneinfo import ZoneInfo
 import pytest
 from bs4 import BeautifulSoup, Tag
 from django.conf import settings
+from django.contrib.sessions.backends.cache import SessionStore
 from django.http import HttpRequest
 from django.test import Client, RequestFactory
 from django.urls import reverse
 from pydantic import ValidationError
 
 import apps.geocodificacao_externa.views as views
+from apps.mapping import views as mapping_views
 from apps.unidades.models import CorUnidade, Unidade
 from apps.user_admin.models import Perfil
 from services.domain.geocodificador_externo import (
@@ -110,6 +112,8 @@ def _perfil() -> Perfil:
 def _post_logado(dados: dict[str, str]) -> HttpRequest:
     request = RequestFactory().post(reverse("geocodificacao_externa:selecionar"), dados)
     request.user = _perfil()
+    # A gaveta aberta entra no histórico da sessão (SPEC design/021), que a RequestFactory não traz.
+    request.session = SessionStore()
     return request
 
 
@@ -286,3 +290,28 @@ def test_selecionar_sem_configuracao_responde_indisponivel(
     assert "alert-error" in aviso["class"]
     assert _payload(soup) is None
 
+
+
+# ---------------------------------------------------------------------------
+# Histórico da gaveta lateral (SPEC design/021)
+# ---------------------------------------------------------------------------
+
+CHAVE_DO_ENDERECO = "externo-alameda-santos-1293-jardim-paulista-sao-paulo-sp-01419-002-brasil"
+
+
+def test_gaveta_do_endereco_externo_entra_no_historico() -> None:
+    geocodificador = GeocodificadorExterno(ProvedorDuble([_endereco_externo()]))
+    abrir = _post_logado({})
+
+    resposta = views.geocodificar_externo(abrir, geocodificador, "al santos, 1293")
+
+    raiz = _soup(resposta.content).select_one(".gaveta-lateral")
+    assert isinstance(raiz, Tag)
+    assert raiz["data-gaveta"] == CHAVE_DO_ENDERECO
+    pedir = RequestFactory().get(reverse("mapping:historico_gaveta"), {"chave": "outra-gaveta"})
+    pedir.user = abrir.user
+    pedir.session = abrir.session
+    itens = _soup(mapping_views.historico_gaveta(pedir).content).select(".item-historico")
+    assert len(itens) == 1
+    assert itens[0].select_one('use[href="#glifo-gaveta-endereco_externo"]') is not None
+    assert itens[0].get_text(strip=True) == ENDERECO_FORMATADO

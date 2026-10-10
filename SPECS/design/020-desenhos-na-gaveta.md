@@ -1,7 +1,7 @@
 ---
 spec: design/020
-versao: v9
-atualizado_em: 2026-10-02
+versao: v10
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 changelog:
@@ -14,6 +14,7 @@ changelog:
   - v7: limpar desenhos passa a pedir confirmação, com a contagem por tipo do que será apagado
   - v8: a gaveta passa a ter uma seleção só, e as ações de um poço aparecem só quando o selecionado é dele
   - v9: "[bugfix] em poço estreito, o nome da ação vazava da placa em vez de cortar com reticências"
+  - v10: a rota da gaveta dos desenhos passa a `apps/mapping/views/desenho.py`, e a gaveta entra no histórico da gaveta lateral (SPEC design/021)
 ---
 
 # SPEC design/020 — Os desenhos da bancada na gaveta

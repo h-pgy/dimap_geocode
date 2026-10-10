@@ -1,0 +1,1 @@
+{% if item.cena %}hx-post="{% url 'mapping:devolver_cena' %}" hx-vals='{"chave": "{{ item.etiqueta.chave }}"}' hx-target="#resultado-busca" hx-swap="innerHTML"{% else %}data-pedir-desenhos{% endif %}

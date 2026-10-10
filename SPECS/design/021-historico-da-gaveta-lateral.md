@@ -1,50 +1,51 @@
 ---
 spec: design/021
-versao: v1
+versao: v2
 atualizado_em: 2026-10-09
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 changelog:
   - v1: versão inicial
+  - v2: o domínio passa a se chamar histórico da gaveta, e as views e os models do app mapping viram pacotes por tema
 ---
 
-# SPEC design/021 — Recentes da gaveta lateral
+# SPEC design/021 — Histórico da gaveta lateral
 
 ## 1 · User story
-Quem trabalha no mapa volta, pelo rodapé da gaveta lateral, a uma das últimas gavetas que abriu, no
+Quem trabalha no mapa volta, pela própria gaveta lateral, a uma das últimas gavetas que abriu, no
 contexto de um fluxo em que cada busca ou consulta toma o lugar da anterior, para retomar a entidade
 que estava vendo sem refazer a busca.
 
 ## 2 · Condições de pronto
 - [ ] Abrir um lote, um endereço, um endereço externo ou um logradouro — por sugestão da busca, pelo
-      Enter ou por consulta do poço dos desenhos — põe a gaveta nos **recentes**, que guardam as
+      Enter ou por consulta do poço dos desenhos — põe a gaveta no **histórico**, que guarda as
       **cinco últimas** sem repetir a mesma entidade: reaberta, ela volta ao topo.
-- [ ] Toda gaveta lateral traz, no rodapé, o **voltar**: um clique devolve a gaveta anterior **e o
+- [ ] Toda gaveta lateral traz o **voltar**: um clique devolve a gaveta anterior **e o
       desenho dela no mapa**, como estavam quando foram abertos, **sem consultar a base oficial nem o
       provedor externo**. Voltar de novo devolve a gaveta de onde se saiu.
-- [ ] Do voltar sobe a **lista dos recentes**, cada um com o **glifo do tipo** de gaveta e o
-      **resumo** dela — o SQL do lote, o endereço, o nome e o codlog do logradouro; escolher um o
+- [ ] Do voltar abre a **lista do histórico**, cada gaveta com o **glifo do tipo** e o
+      **resumo** dela — o SQL do lote, o endereço, o nome e o codlog do logradouro; escolher uma a
       devolve do mesmo jeito.
 - [ ] Na primeira gaveta, sem outra a que voltar, o voltar **não responde** ao clique nem ao teclado,
       e a lista não abre.
 - [ ] A gaveta devolvida **pede de novo as ações** dela: quem ganhou ou perdeu competência depois de
       abri-la vê as ações de agora.
-- [ ] A **gaveta dos desenhos** entra nos recentes enquanto houver desenho no mapa; voltar a ela a
+- [ ] A **gaveta dos desenhos** entra no histórico enquanto houver desenho no mapa; voltar a ela a
       remonta com os desenhos **como estão agora** e o último desenho selecionado. Apagado o último
-      desenho, ela sai dos recentes.
+      desenho, ela sai do histórico.
 - [ ] Com a **gaveta inferior** aberta ou recolhida, o voltar e a lista não respondem ao clique nem ao
-      teclado, e uma **interrogação** diz que é preciso fechar a gaveta de resultado; fechada pelo ✕,
-      eles voltam. O lote aberto pela tabela dela **não entra** nos recentes.
+      teclado, e uma **interrogação** diz que é preciso fechar a gaveta inferior; fechada pelo ✕,
+      eles voltam. O lote aberto pela tabela dela **não entra** no histórico.
 - [ ] Com a gaveta inferior aberta ou recolhida, as **ações do poço dos desenhos** ficam do mesmo
       jeito, com a mesma interrogação — inclusive "Lotes intersectados" sobre outro polígono. A
       tabela e os controles da gaveta inferior e as ações do lote aberto por ela seguem funcionando.
 - [ ] Trocar de um endereço para outro **funde o conteúdo** da gaveta, como já acontece entre lotes.
-- [ ] O design do rodapé, da lista, dos glifos de tipo e do estado travado foi aprovado no mock, e as
+- [ ] O design do voltar, da lista, dos glifos de tipo e do estado travado foi aprovado no mock, e as
       peças foram portadas para o tema e o styleguide antes de qualquer template da aplicação usá-las.
 
 ## 3 · Domínio
 Uma **cena** é o que a gaveta lateral e o mapa mostram juntos sobre uma entidade: a gaveta e o desenho
-dela na camada de resultado. Os **recentes** são as últimas gavetas abertas na sessão de quem usa o
+dela na camada de resultado. O **histórico** guarda as últimas gavetas abertas na sessão de quem usa o
 mapa.
 
 As gavetas são as da [gaveta do lote](../localizacao_lote/001-dados-do-lote-na-gaveta.md), do
@@ -55,10 +56,10 @@ As gavetas são as da [gaveta do lote](../localizacao_lote/001-dados-do-lote-na-
 identifica e como se resume numa linha?". Ao [contexto de ação](../localizacao_lote/003-lotes-do-desenho.md)
 ela pergunta "há gaveta inferior?".
 
-**`services/domain/recentes/models.py`** — NOVO.
+**`services/domain/historico_gaveta/models.py`** — NOVO.
 
 ```python
-LIMITE_RECENTES = 5
+LIMITE_HISTORICO = 5
 
 
 class TipoGaveta(StrEnum):
@@ -92,31 +93,31 @@ class Cena(BaseModel):
     mapa: dict[str, Any]    # o payload do mapa: geometria, cor e enquadramento
 
 
-class Recente(BaseModel):
-    """Uma gaveta aberta há pouco."""
+class ItemHistorico(BaseModel):
+    """Uma gaveta do histórico."""
 
     etiqueta: Etiqueta
     cena: Cena | None = None   # None: espelho do mapa, que não se guarda — pede-se de novo a ele
 
 
-class Recentes(BaseModel):
+class HistoricoGaveta(BaseModel):
     """As últimas gavetas abertas, da mais recente à mais antiga, uma por chave."""
 
-    itens: tuple[Recente, ...] = Field(default=(), max_length=LIMITE_RECENTES)
+    itens: tuple[ItemHistorico, ...] = Field(default=(), max_length=LIMITE_HISTORICO)
 
     @model_validator(mode="after")
     def _uma_por_chave(self) -> Self:
-        chaves = [recente.etiqueta.chave for recente in self.itens]
+        chaves = [item.etiqueta.chave for item in self.itens]
         if len(chaves) != len(set(chaves)):
-            raise ValueError("Os recentes repetem uma gaveta.")
+            raise ValueError("O histórico repete uma gaveta.")
         return self
 
-    def de_chave(self, chave: str) -> Recente | None:
-        return next((r for r in self.itens if r.etiqueta.chave == chave), None)
+    def de_chave(self, chave: str) -> ItemHistorico | None:
+        return next((item for item in self.itens if item.etiqueta.chave == chave), None)
 
-    def fora(self, chave: str) -> tuple[Recente, ...]:
-        """Os recentes menos a gaveta que está na tela: o primeiro é o destino do voltar."""
-        return tuple(r for r in self.itens if r.etiqueta.chave != chave)
+    def fora(self, chave: str) -> tuple[ItemHistorico, ...]:
+        """O histórico menos a gaveta que está na tela: o primeiro é o destino do voltar."""
+        return tuple(item for item in self.itens if item.etiqueta.chave != chave)
 ```
 
 A etiqueta de cada gaveta:
@@ -137,11 +138,11 @@ A camada de resultado do mapa tem um dono por vez: a gaveta inferior, enquanto h
 recolhida; sem ela, a entidade da gaveta lateral. Trocar a cena — abrir uma entidade, voltar a uma,
 acionar o poço dos desenhos — é entregar a camada a outro dono, e só existe quando o dono é a lateral.
 
-**Mock:** [021-mock-recentes-da-gaveta-lateral.html](021-mock-recentes-da-gaveta-lateral.html) — leia a skill `mock`.
+**Mock:** [021-mock-historico-da-gaveta-lateral.html](021-mock-historico-da-gaveta-lateral.html) — leia a skill `mock`.
 
 ## 4 · Fora de escopo
-- Recentes por aba do navegador (§7) — sem dono ainda.
-- O lote aberto pela tabela da gaveta inferior como cena dos recentes — sem dono ainda.
+- Histórico por aba do navegador (§7) — sem dono ainda.
+- O lote aberto pela tabela da gaveta inferior como cena do histórico — sem dono ainda.
 - Validade da cena: reconsultar a base depois de um prazo (§7) — sem dono ainda.
 - Voltar a um resultado anterior da gaveta inferior — sem dono ainda.
 
@@ -149,69 +150,70 @@ acionar o poço dos desenhos — é entregar a camada a outro dono, e só existe
 - `@apps/lotes_mais_proximos/sessao.py` → `guardar_conjunto`, `conjunto_vigente`: molde do DTO gravado na sessão e relido por `model_validate`.
 - `@apps/mapping/context.py` → `contexto_mapa`: o payload do mapa que a cena guarda.
 - `@templates/mapping/_mapa.html`: o payload na resposta; a cena devolvida passa por ele.
-- `@templates/lote_geocoder/partials/_gaveta_lote.html` → o `hx-get` com `hx-trigger="load"` das ações: molde da carga assíncrona do rodapé.
+- `@templates/lote_geocoder/partials/_gaveta_lote.html` → o `hx-get` com `hx-trigger="load"` das ações: molde da carga assíncrona do voltar.
 - `@static/src/js/ui/troca_gaveta.js`: lê o `data-gaveta` da raiz, que passa a ser a chave da etiqueta.
 - `@static/src/js/mapa/desenho/sincronia.js` → `pedirGavetaDesenhos`: remonta a gaveta dos desenhos a partir do mapa.
 - `@templates/mapping/_contexto_acao_oob.html` → `#contexto-acao`: a marca de que há gaveta inferior, que a trava lê.
-- `@static/src/tema-dimap.dev.css` → `.torre-ajustes`, `.btn-etched`, `.tooltip`, `.gaveta-lateral*`, e `@templates/mapping/_glifos_mapa.html`: as peças e a folha de glifos a compor no rodapé.
+- `@static/src/tema-dimap.dev.css` → `.btn-etched`, `.torre-ajustes`, `.torre-camadas__item`, `.tooltip`, `.paleta-gaveta`, e `@templates/mapping/_glifos_mapa.html`: o botão, a lista, o poço do item pré-selecionado, a dica, o molde de filho da casca fora do painel e a folha de glifos a compor no voltar.
+- `@apps/user_admin/models/__init__.py`: molde do pacote que só reexporta, com `__all__`.
 - Skills: `ontologia`, `mock`, `componentes-frontend`, `htmx`, `escrever-testes`, `test-django-views`.
 
 ## 6 · Snippets
 
 > Comentários didáticos: **não são portados** para o código (§7.2 do CLAUDE.md).
 
-**`services/domain/recentes/recentes.py`** — a regra dos recentes. Devolver uma cena é abrir de novo o
+**`services/domain/historico_gaveta/historico.py`** — a regra do histórico. Devolver uma cena é abrir de novo o
 que já está na lista: a mesma operação.
 
 ```python
 class AberturaInput(BaseModel):
-    recentes: Recentes
-    recente: Recente
+    historico: HistoricoGaveta
+    item: ItemHistorico
 
 
-class AbrirNosRecentes:
-    def __call__(self, entrada: AberturaInput) -> Recentes:
+class AbrirNoHistorico:
+    def __call__(self, entrada: AberturaInput) -> HistoricoGaveta:
         return self.pipeline(entrada)
 
-    def pipeline(self, entrada: AberturaInput) -> Recentes:
+    def pipeline(self, entrada: AberturaInput) -> HistoricoGaveta:
         # `fora` tira a de mesma chave: reabrir não duplica, e vale a cena mais nova.
-        demais = entrada.recentes.fora(entrada.recente.etiqueta.chave)
+        demais = entrada.historico.fora(entrada.item.etiqueta.chave)
         # O corte derruba a mais antiga quando a sexta entra.
-        itens = (entrada.recente, *demais)[:LIMITE_RECENTES]
-        return Recentes(itens=itens)
+        itens = (entrada.item, *demais)[:LIMITE_HISTORICO]
+        return HistoricoGaveta(itens=itens)
 
 
 class RetiradaInput(BaseModel):
-    recentes: Recentes
+    historico: HistoricoGaveta
     chave: str
 
 
-class TirarDosRecentes:
-    def __call__(self, entrada: RetiradaInput) -> Recentes:
-        return Recentes(itens=entrada.recentes.fora(entrada.chave))
+class TirarDoHistorico:
+    def __call__(self, entrada: RetiradaInput) -> HistoricoGaveta:
+        return HistoricoGaveta(itens=entrada.historico.fora(entrada.chave))
 ```
 
-**`apps/mapping/recentes.py`** — a sessão e a resposta de toda entidade localizada.
+**`apps/mapping/historico_gaveta.py`** — a sessão e a resposta de toda entidade localizada.
 
 ```python
-CHAVE_SESSAO = "mapping.recentes"
+CHAVE_SESSAO = "mapping.historico_gaveta"
 TEMPLATE_CENA = "mapping/_cena.html"
 
 
-def recentes_da_sessao(sessao: SessionBase) -> Recentes:
+def historico_da_sessao(sessao: SessionBase) -> HistoricoGaveta:
     bruto = sessao.get(CHAVE_SESSAO)
     if bruto is None:
-        return Recentes()
+        return HistoricoGaveta()
     try:
-        return Recentes.model_validate(bruto)
+        return HistoricoGaveta.model_validate(bruto)
     except ValidationError:
         # Sessão gravada por outra versão do modelo: recomeça vazia, em vez de derrubar a tela.
-        return Recentes()
+        return HistoricoGaveta()
 
 
-def abrir_nos_recentes(sessao: SessionBase, recente: Recente) -> None:
-    abertura = AberturaInput(recentes=recentes_da_sessao(sessao), recente=recente)
-    sessao[CHAVE_SESSAO] = AbrirNosRecentes()(abertura).model_dump(mode="json")
+def abrir_no_historico(sessao: SessionBase, item: ItemHistorico) -> None:
+    abertura = AberturaInput(historico=historico_da_sessao(sessao), item=item)
+    sessao[CHAVE_SESSAO] = AbrirNoHistorico()(abertura).model_dump(mode="json")
 
 
 def responder_cena(
@@ -223,7 +225,7 @@ def responder_cena(
     # A gaveta é renderizada uma vez só: o mesmo texto vai para a sessão e para a resposta.
     gaveta = render_to_string(template_gaveta, contexto | {"etiqueta": etiqueta}, request)
     cena = Cena(gaveta=gaveta, mapa=contexto["payload"])
-    abrir_nos_recentes(request.session, Recente(etiqueta=etiqueta, cena=cena))
+    abrir_no_historico(request.session, ItemHistorico(etiqueta=etiqueta, cena=cena))
     return render(request, TEMPLATE_CENA, contexto_cena(cena))
 
 
@@ -255,12 +257,12 @@ def etiqueta_do_lote(lote: LoteAttributes) -> Etiqueta:
 def geocodificar_lote(...) -> HttpResponse:
     ...
     contexto = contexto_mapa(geojson, MAP_COR_POLIGONO) | {"gaveta": gaveta}
-    # ALTERADO: a resposta passa pela cena, que a guarda nos recentes.
+    # ALTERADO: a resposta passa pela cena, que a guarda no histórico.
     return responder_cena(request, etiqueta_do_lote(gaveta.lote), TEMPLATE_GAVETA_LOTE, contexto)
 ```
 
 As demais respostas de entidade fazem a mesma troca, cada uma com a sua etiqueta (§3). É no ponto em
-que a gaveta é renderizada que ela entra nos recentes, e por isso a sugestão, o Enter e a consulta do
+que a gaveta é renderizada que ela entra no histórico, e por isso a sugestão, o Enter e a consulta do
 poço chegam juntos:
 
 | Onde a gaveta é renderizada | Etiqueta |
@@ -272,60 +274,100 @@ poço chegam juntos:
 | `apps/logradouro_geocoder/views.py` → `geocodificar_codlog` | logradouro |
 
 O `detalhe_do_lote`, que a tabela da gaveta inferior chama, passa a `etiqueta` ao template e segue
-respondendo com o `render` da gaveta: sem `responder_cena`, não entra nos recentes.
+respondendo com o `render` da gaveta: sem `responder_cena`, não entra no histórico.
 
-**Templates das gavetas laterais** — a raiz lê a chave da etiqueta, e o rodapé entra por carga
-própria. Vale para as cinco gavetas; endereço e endereço externo ganham o `data-gaveta` que não tinham.
+**Templates das gavetas laterais** — a raiz lê a chave da etiqueta, e o voltar entra por carga
+própria, como filho da casca, entre o painel e a paleta. Vale para as cinco gavetas; endereço e
+endereço externo ganham o `data-gaveta` que não tinham.
 
 ```html
 <div class="gaveta-lateral" data-gaveta="{{ etiqueta.chave }}">
   ...
-    <div class="gaveta-lateral-corpo" data-scroll-etched>...</div>
-    {% include "mapping/_rodape_gaveta.html" with chave=etiqueta.chave %}
-  </div>
+  <div class="gaveta-lateral-painel glass-drawer-panel-denso">...</div>
+  {% include "mapping/_voltar_gaveta.html" with chave=etiqueta.chave %}
+  <label class="paleta-gaveta" ...>...</label>
+</div>
 ```
 
-**`templates/mapping/_rodape_gaveta.html`** — o rodapé não faz parte da cena guardada: a cada vez que
-a gaveta é mostrada ele busca os recentes de agora.
+**`templates/mapping/_voltar_gaveta.html`** — o voltar não faz parte da cena guardada: a cada vez que
+a gaveta é mostrada ele busca o histórico de agora.
 
 ```html
-<footer class="gaveta-lateral-rodape"
-        hx-get="{% url 'mapping:recentes' %}?chave={{ chave|urlencode }}"
-        hx-trigger="load" hx-target="this" hx-swap="innerHTML"></footer>
+<div class="gaveta-lateral-voltar"
+     hx-get="{% url 'mapping:historico_gaveta' %}?chave={{ chave|urlencode }}"
+     hx-trigger="load" hx-target="this" hx-swap="innerHTML"></div>
 ```
 
-**`apps/mapping/views.py`** — o rodapé, a devolução e a gaveta dos desenhos.
+**`apps/mapping/views/`** e **`apps/mapping/models/`** — os dois viram pacote, um módulo por tema. O
+`__init__.py` de cada um só reexporta: o `urls.py` segue lendo `views.<nome>`, e quem consome um DTO
+do app importa de `apps.mapping.models`.
+
+```python
+# apps/mapping/views/__init__.py
+from .desenho import desenhos_da_bancada
+from .fundo import fundo_ortofoto
+from .historico_gaveta import devolver_cena, historico_gaveta
+
+__all__ = [
+    "desenhos_da_bancada",
+    "devolver_cena",
+    "fundo_ortofoto",
+    "historico_gaveta",
+]
+```
+
+| Módulo | O que mora nele | De onde vem |
+|---|---|---|
+| `views/fundo.py` | `fundo_ortofoto` | `views.py` |
+| `views/desenho.py` | `desenhos_da_bancada` | `views.py` |
+| `views/historico_gaveta.py` | `historico_gaveta`, `devolver_cena` | NOVO |
+| `models/camada_base.py` | `CamadaBaseItem` | `models.py` |
+| `models/desenho.py` | `AcaoSobreDesenho`, `ConsultaSobreDesenho`, `RegistroDesenho`, `ItemPoco`, `OfertaPocoInput`, `ConsultaSobrePonto` | `acoes_desenho.py`, `consultas.py` |
+| `models/limpeza.py` | `AvisoDeLimpeza`, `Limpeza` | `limpeza.py` |
+| `models/historico_gaveta.py` | `GavetaNaTela`, `PedidoDeCena` | NOVO |
+
+O `acoes_desenho.py` fica só com o `OfertarNoPoco`; `views.py`, `models.py`, `consultas.py` e
+`limpeza.py` deixam de existir. O app não tem model do Django: o primeiro que vier entra no mesmo
+pacote, no módulo do tema dele.
+
+**`apps/mapping/models/historico_gaveta.py`** — o que as duas rotas recebem.
 
 ```python
 class GavetaNaTela(BaseModel):
     chave: str
 
 
-@require_GET
-def recentes(request: HttpRequest) -> HttpResponse:
-    """Rota aberta: lê só os recentes da sessão de quem pede."""
-    na_tela = GavetaNaTela.model_validate(request.GET.dict())
-    demais = recentes_da_sessao(request.session).fora(na_tela.chave)
-    return render(request, TEMPLATE_RECENTES, {"demais": demais})
-
-
 class PedidoDeCena(BaseModel):
     chave: str
+```
+
+**`apps/mapping/views/historico_gaveta.py`** — o histórico e a devolução.
+
+```python
+@require_GET
+def historico_gaveta(request: HttpRequest) -> HttpResponse:
+    """Rota aberta: lê só o histórico da sessão de quem pede."""
+    na_tela = GavetaNaTela.model_validate(request.GET.dict())
+    demais = historico_da_sessao(request.session).fora(na_tela.chave)
+    return render(request, TEMPLATE_HISTORICO, {"demais": demais})
 
 
 @require_POST
 def devolver_cena(request: HttpRequest) -> HttpResponse:
     """Rota aberta: devolve só o que a sessão de quem pede guardou."""
     pedido = PedidoDeCena.model_validate(request.POST.dict())
-    recente = recentes_da_sessao(request.session).de_chave(pedido.chave)
+    item = historico_da_sessao(request.session).de_chave(pedido.chave)
     # Sessão expirada, ou cena que saiu da lista por outra aba: aviso, e o mapa não muda.
-    if recente is None or recente.cena is None:
-        return render(request, TEMPLATE_AVISO, contexto_aviso(MSG_CENA_FORA_DOS_RECENTES))
+    if item is None or item.cena is None:
+        return render(request, TEMPLATE_AVISO, contexto_aviso(MSG_CENA_FORA_DO_HISTORICO))
     # A devolvida volta ao topo: é o que faz o voltar seguinte trazer a gaveta de onde se saiu.
-    abrir_nos_recentes(request.session, recente)
-    return render(request, TEMPLATE_CENA, contexto_cena(recente.cena))
+    abrir_no_historico(request.session, item)
+    return render(request, TEMPLATE_CENA, contexto_cena(item.cena))
+```
 
+**`apps/mapping/views/desenho.py`** — a gaveta dos desenhos entra no histórico e sai dele.
 
+```python
 @require_POST
 def desenhos_da_bancada(request: HttpRequest) -> HttpResponse:
     ...
@@ -333,43 +375,43 @@ def desenhos_da_bancada(request: HttpRequest) -> HttpResponse:
     etiqueta = etiqueta_dos_desenhos(gaveta)
     # NOVO: entra sem cena — é o mapa que a remonta — e sai quando não sobra desenho.
     if gaveta.pocos:
-        abrir_nos_recentes(request.session, Recente(etiqueta=etiqueta))
+        abrir_no_historico(request.session, ItemHistorico(etiqueta=etiqueta))
     else:
-        tirar_dos_recentes(request.session, etiqueta.chave)
+        tirar_do_historico(request.session, etiqueta.chave)
     ...
 ```
 
-**`templates/mapping/_recentes.html`** — o que o rodapé carrega. O `data-troca-cena` marca o que
+**`templates/mapping/_historico_gaveta.html`** — o que o voltar carrega. O `data-troca-cena` marca o que
 entrega a camada do mapa a outro dono; a interrogação fica fora dele, senão o `inert` a calaria junto.
 A marcação é a do mock; aqui só os atributos que carregam regra.
 
 ```html
 {% with anterior=demais.0 %}
+  <span class="dica-trava tooltip" data-tip="Feche a gaveta inferior para poder voltar a outra gaveta."></span>
   <div class="voltar-gaveta" data-troca-cena>
-    {# sem `anterior`, o voltar sai `disabled` e a lista não é renderizada #}
-    {% include "mapping/_recente.html" with recente=anterior %}       {# o voltar #}
-    {% for recente in demais %}
-      {% include "mapping/_recente.html" with recente=recente %}     {# a lista que sobe #}
+    {# sem `anterior`, o voltar sai `disabled`, sem gatilho, e a lista não é renderizada #}
+    <button type="button" {% include "mapping/_gatilho_cena.html" with item=anterior %}>Voltar</button>
+    {% for item in demais %}
+      {# a lista que abre do voltar; o primeiro item, destino dele, sai pré-selecionado #}
+      <button type="button" {% include "mapping/_gatilho_cena.html" with item=item %}>
+        <svg viewBox="0 0 24 24"><use href="#glifo-gaveta-{{ item.etiqueta.tipo }}"/></svg>
+        <span>{{ item.etiqueta.resumo }}</span>
+      </button>
     {% endfor %}
   </div>
-  <span class="dica-trava tooltip" data-tip="Feche a gaveta de resultado para trocar de entidade."></span>
 {% endwith %}
 ```
 
-**`templates/mapping/_recente.html`** — os dois gatilhos: a cena guardada volta pelo servidor; a
-gaveta dos desenhos, pelo mapa.
+**`templates/mapping/_gatilho_cena.html`** — os dois gatilhos, como atributos do botão: a cena guardada
+volta pelo servidor; a gaveta dos desenhos, pelo mapa.
 
 ```html
-{% if recente.cena %}
-  <button type="button"
-          hx-post="{% url 'mapping:devolver_cena' %}" hx-vals='{"chave": "{{ recente.etiqueta.chave }}"}'
-          hx-target="#resultado-busca" hx-swap="innerHTML">
+{% if item.cena %}
+  hx-post="{% url 'mapping:devolver_cena' %}" hx-vals='{"chave": "{{ item.etiqueta.chave }}"}'
+  hx-target="#resultado-busca" hx-swap="innerHTML"
 {% else %}
-  <button type="button" data-pedir-desenhos>
+  data-pedir-desenhos
 {% endif %}
-    <svg viewBox="0 0 24 24"><use href="#glifo-gaveta-{{ recente.etiqueta.tipo }}"/></svg>
-    <span>{{ recente.etiqueta.resumo }}</span>
-  </button>
 ```
 
 **`templates/mapping/_poco_desenhos.html`** — toda ação do poço troca a cena: a lista delas ganha a
@@ -378,7 +420,7 @@ marca, e a interrogação entra no cabeçalho da placa.
 ```html
 <div class="placa-lista__cabecalho">
   <span class="text-overline">Ações</span>
-  <span class="dica-trava tooltip" data-tip="Feche a gaveta de resultado para acionar outra consulta."></span>
+  <span class="dica-trava tooltip" data-tip="Feche a gaveta inferior para poder fazer outra consulta."></span>
   ...
 </div>
 <div class="placa-lista__conteudo" data-troca-cena>
@@ -396,7 +438,7 @@ function travar() {
   document.querySelectorAll("[data-troca-cena]").forEach((peca) => { peca.inert = travado; });
 }
 
-// A cada resposta assentada: cobre a marca que chega, a que sai e o rodapé que carrega depois.
+// A cada resposta assentada: cobre a marca que chega, a que sai e o voltar que carrega depois.
 export function inicializarTravaCena() {
   htmx.on("htmx:afterSettle", travar);
 }
@@ -442,13 +484,13 @@ cinco e o que ela descarta precisam andar juntos, e o `popup_html` do `GeoJsonPr
 renderizado no domínio. O custo é o domínio carregar conteúdo de apresentação que não lê, e a resposta
 confiar na integridade da sessão.
 
-Os recentes moram na sessão do Django. É estado do servidor, sem lista no navegador (§3.1), e vale
+O histórico mora na sessão do Django. É estado do servidor, sem lista no navegador (§3.1), e vale
 para todos os processos do servidor web. O custo é duplo: a sessão é lida inteira por toda requisição
 que a toca, e cinco cenas com o desenho de uma avenida longa a deixam grande, sem teto por tamanho; e
 ela é do navegador, não da aba, de modo que duas abas compartilham a mesma lista.
 
 A gaveta dos desenhos é a única sem cena. Ela é o espelho do que está no mapa, e as ações do poço saem
-filtradas por perfil no próprio HTML dela. O custo é o item dos recentes ter dois gatilhos, e a volta
+filtradas por perfil no próprio HTML dela. O custo é o item do histórico ter dois gatilhos, e a volta
 a ela depender de JavaScript sem teste automatizado.
 
 A trava é o atributo `inert`, posto por JavaScript de estado visual (§7.2, mediante aprovação). A
@@ -466,11 +508,21 @@ Guardar só informação pública na cena é disciplina de quem escreve a gaveta
 livre para pôr qualquer coisa no HTML. O custo é que uma gaveta nova que renderize ação por perfil
 direto no corpo a congela na cena, e só o teste da gaveta do lote vigia isso.
 
-O rodapé entra por carga própria, e não junto da gaveta. Dentro da cena guardada ele traria a lista do
+O voltar entra por carga própria, e não junto da gaveta. Dentro da cena guardada ele traria a lista do
 dia em que a gaveta foi aberta. O custo é uma requisição a mais por gaveta mostrada, e por traço na
 gaveta dos desenhos.
 
-`recentes` e `devolver_cena` são rotas abertas. Elas não são ato administrativo, a informação das
+A lista do histórico abre pelo ponteiro sobre o voltar e pelo foco do teclado, só em CSS. Abrir por
+clique pediria estado de interface em JavaScript, e o clique já é o voltar. O custo é que numa tela de
+toque a lista só abre pelo teclado.
+
+As views e os models do app `mapping` viram pacotes nesta mesma entrega. As duas rotas novas dobrariam
+um `views.py` que já mistura fundo e desenho, e os DTOs do app estão espalhados em quatro módulos. O
+custo é um diff que move código sem mudar comportamento no meio de uma entrega de funcionalidade, e a
+troca de import nos três apps que consomem `acoes_desenho`, `consultas` e `limpeza` e nos testes do
+`mapping`.
+
+`historico_gaveta` e `devolver_cena` são rotas abertas. Elas não são ato administrativo, a informação das
 gavetas é pública (§3.5), e cada uma lê só a sessão de quem pede. O custo é o visitante anônimo passar
 a ter sessão gravada no banco, com até cinco cenas, a partir da primeira gaveta que abre.
 
@@ -480,23 +532,23 @@ a ter sessão gravada no banco, com até cinco cenas, a partir da primeira gavet
 - `test_devolver_cena_reenvia_gaveta_e_mapa_sem_consultar_a_base` — POST do lote com fetcher fake e,
   depois, `devolver_cena` com a chave dele: a resposta traz o mesmo payload de mapa e a mesma gaveta
   no OOB do `#gaveta-entidade`, e o fetcher foi chamado uma vez só.
-- `test_cada_gaveta_de_entidade_entra_nos_recentes` — lote, lote mais próximo, endereço, endereço
-  externo e logradouro: aberta a gaveta, a raiz traz o `data-gaveta` da tabela do §3, e o rodapé de
-  outra gaveta a lista com o glifo do tipo e o resumo.
+- `test_cada_gaveta_de_entidade_entra_no_historico` — lote, lote mais próximo, endereço, endereço
+  externo e logradouro: aberta a gaveta, a raiz traz o `data-gaveta` da tabela do §3, e o histórico
+  pedido por outra gaveta a lista com o glifo do tipo e o resumo.
 - `test_voltar_alterna_entre_as_duas_ultimas` — na primeira gaveta o voltar sai `disabled` e sem
   lista; aberta a segunda, ele aponta para a primeira; devolvida a primeira, aponta para a segunda.
 - `test_gaveta_devolvida_pede_as_acoes_de_novo` — a gaveta do lote aberta por quem tem competência é
   guardada com o `hx-get` de `hx-trigger="load"` das ações, e sem nenhum botão de ação no corpo.
 - `test_gaveta_dos_desenhos_entra_sem_cena_e_sai_sem_desenho` — POST dos desenhos com um ponto a põe
-  nos recentes com `data-pedir-desenhos` e sem `hx-post`; POST com a coleção vazia a tira.
-- `test_lote_da_tabela_nao_entra_nos_recentes` — o `detalhe_do_lote` devolve a gaveta com
-  `data-gaveta` e rodapé, e os recentes da sessão ficam como estavam.
+  no histórico com `data-pedir-desenhos` e sem `hx-post`; POST com a coleção vazia a tira.
+- `test_lote_da_tabela_nao_entra_no_historico` — o `detalhe_do_lote` devolve a gaveta com
+  `data-gaveta` e o voltar, e o histórico da sessão fica como estava.
 - `test_o_que_troca_a_cena_declara_a_trava` — o voltar, a lista e as ações do poço dos desenhos saem
   dentro de `data-troca-cena`, com a interrogação fora dele; os controles da gaveta inferior e o poço
   de ações do lote, não.
-- `test_cena_fora_dos_recentes_vira_aviso` — `devolver_cena` com chave que não está na sessão responde
+- `test_cena_fora_do_historico_vira_aviso` — `devolver_cena` com chave que não está na sessão responde
   o aviso, sem payload de mapa.
-- `test_sessao_de_outro_formato_recomeca_vazia` — sessão com recentes que o modelo não valida não
+- `test_sessao_de_outro_formato_recomeca_vazia` — sessão com histórico que o modelo não valida não
   derruba a resposta: a gaveta abre e a lista recomeça dela.
 
 O JavaScript — o `inert` da trava e a volta à gaveta dos desenhos — não tem teste automatizado e fica

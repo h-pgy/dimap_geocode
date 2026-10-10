@@ -1,7 +1,7 @@
 ---
 spec: design/010
-versao: v9
-atualizado_em: 2026-10-07
+versao: v10
+atualizado_em: 2026-10-09
 testes_tdd: true
 implementado: true
 markers_obrigatorios: [banco]
@@ -18,6 +18,7 @@ changelog:
     ortofoto em tela mantida entre telas e view transition entre documentos
   - v9: a subida gera as ortofotos que faltam, e o GeoSampa fora do ar vira aviso no stdout em
     vez de erro
+  - v10: as views do app `mapping` viram pacote, e a do fundo passa a `apps/mapping/views/fundo.py` (SPEC design/021)
 ---
 
 # SPEC design/010 — Ortofotos de fundo pré-geradas

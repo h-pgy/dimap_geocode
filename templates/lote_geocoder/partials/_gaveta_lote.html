@@ -1,4 +1,4 @@
-<div class="gaveta-lateral" data-gaveta="lote-{{ gaveta.lote.id_poligono }}">
+<div class="gaveta-lateral" data-gaveta="{{ etiqueta.chave }}">
   <input type="checkbox" id="gaveta-lote-toggle" class="gaveta-lateral-toggle" checked>
 
   <div class="gaveta-lateral-painel glass-drawer-panel-denso">
@@ -136,6 +136,8 @@
       <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
     </div>
   </div>
+
+  {% include "mapping/_voltar_gaveta.html" with chave=etiqueta.chave %}
 
   <label for="gaveta-lote-toggle" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
     <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>

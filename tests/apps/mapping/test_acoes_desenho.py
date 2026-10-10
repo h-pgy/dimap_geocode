@@ -1,9 +1,9 @@
 from apps.competencias.schemas import AcaoImplementada
-from apps.mapping.acoes_desenho import (
+from apps.mapping.acoes_desenho import OfertarNoPoco
+from apps.mapping.models import (
     AcaoSobreDesenho,
     ConsultaSobreDesenho,
     OfertaPocoInput,
-    OfertarNoPoco,
     RegistroDesenho,
 )
 from services.domain.autorizacao import Acao

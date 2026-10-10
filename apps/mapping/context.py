@@ -3,7 +3,7 @@ from typing import Any
 
 from django.conf import settings
 
-from apps.mapping.limpeza import Limpeza
+from apps.mapping.models import Limpeza
 from config.pontos_fundo import PontoFundo
 from services.domain.desenho import Desenho
 from services.utils.sorteio import sortear_diferente

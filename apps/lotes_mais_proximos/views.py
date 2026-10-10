@@ -20,7 +20,9 @@ from apps.lotes_mais_proximos.sessao import (
     descartar_conjunto,
     guardar_conjunto,
 )
+from apps.lote_geocoder.views import TEMPLATE_GAVETA_LOTE, etiqueta_do_lote
 from apps.mapping.context import contexto_aviso, contexto_encerramento_acao, contexto_mapa
+from apps.mapping.historico_gaveta import responder_cena
 from services.domain.desenho import Desenho
 from services.domain.geometry import (
     GeoFeature,
@@ -63,14 +65,12 @@ MAIS_PROXIMO_RAIO_LIMITE_M: float = settings.MAIS_PROXIMO_RAIO_LIMITE_M
 LOTES_DESENHO_AREA_MAXIMA_M2: float = settings.LOTES_DESENHO_AREA_MAXIMA_M2
 WFS_LAYER_LOTE_CIDADAO: str = settings.WFS_LAYER_LOTE_CIDADAO
 
-TEMPLATE_RESULTADO_MAIS_PROXIMO = "lotes_mais_proximos/partials/_resultado_mais_proximo.html"
 TEMPLATE_AVISO_SEM_LOTE_DO_PONTO = "lotes_mais_proximos/partials/_aviso_sem_lote_do_ponto.html"
 TEMPLATE_RESULTADO_DESENHO = "lotes_mais_proximos/partials/_resultado_desenho.html"
 TEMPLATE_REVISAO_DO_CONJUNTO = "lotes_mais_proximos/partials/_revisao_do_conjunto.html"
 TEMPLATE_ENCERRAMENTO_ACAO = "mapping/_encerramento_acao.html"
 TEMPLATE_AVISO = "mapping/_aviso.html"
 TEMPLATE_RECUSA_ACAO = "mapping/_recusa_acao.html"
-TEMPLATE_GAVETA_LOTE = "lote_geocoder/partials/_gaveta_lote.html"
 
 MSG_CONJUNTO_NAO_VIGENTE = (
     "Este resultado foi substituído por outra consulta ou já foi descartado. "
@@ -136,9 +136,12 @@ def _ponto_feature(ponto: PointGeometry) -> dict[str, Any]:
     }
 
 
-def _contexto_mais_proximo(
-    ponto: PointGeometry, proximo: LoteProximo, origem: str
-) -> dict[str, Any]:
+def _responder_mais_proximo(
+    request: HttpRequest,
+    ponto: PointGeometry,
+    proximo: LoteProximo,
+    origem: str,
+) -> HttpResponse:
     lote_geojson = to_geojson_feature_collection([proximo.lote], _properties_lote)
     geojson = {
         "type": "FeatureCollection",
@@ -147,11 +150,12 @@ def _contexto_mais_proximo(
     gaveta = MontarGavetaLote()(
         GavetaLoteInput(lote=proximo.lote, crs_metrico=MAP_INTERPOLATION_CRS)
     )
-    return contexto_mapa(geojson, MAP_COR_POLIGONO) | {
+    contexto = contexto_mapa(geojson, MAP_COR_POLIGONO) | {
         "gaveta": gaveta,
         "distancia_m": proximo.distancia_m,
         "origem_busca": origem,
     }
+    return responder_cena(request, etiqueta_do_lote(gaveta.lote), TEMPLATE_GAVETA_LOTE, contexto)
 
 
 @require_POST
@@ -171,11 +175,7 @@ def mais_proximo(request: HttpRequest) -> HttpResponse:
             "mapping/_aviso.html",
             contexto_aviso(MSG_SEM_LOTE_PROXIMO.format(raio_m=MAIS_PROXIMO_RAIO_LIMITE_M)),
         )
-    return render(
-        request,
-        TEMPLATE_RESULTADO_MAIS_PROXIMO,
-        _contexto_mais_proximo(entrada.ponto, proximo, consulta.origem),
-    )
+    return _responder_mais_proximo(request, entrada.ponto, proximo, consulta.origem)
 
 
 @require_POST
@@ -192,11 +192,7 @@ def mais_proximo_do_ponto(request: HttpRequest) -> HttpResponse:
     except NenhumLoteNoRaioError:
         mensagem = MSG_SEM_LOTE_NO_RAIO.format(raio_m=MAIS_PROXIMO_RAIO_LIMITE_M)
         return render(request, TEMPLATE_AVISO_SEM_LOTE_DO_PONTO, contexto_aviso(mensagem))
-    return render(
-        request,
-        TEMPLATE_RESULTADO_MAIS_PROXIMO,
-        _contexto_mais_proximo(entrada.ponto, proximo, consulta.origem),
-    )
+    return _responder_mais_proximo(request, entrada.ponto, proximo, consulta.origem)
 
 
 @require_POST
@@ -275,4 +271,6 @@ def detalhe_do_lote(request: HttpRequest) -> HttpResponse:
     if lote is None:
         return render(request, "mapping/_aviso.html", contexto_aviso(MSG_LOTE_NAO_ENCONTRADO))
     gaveta = MontarGavetaLote()(GavetaLoteInput(lote=lote, crs_metrico=MAP_INTERPOLATION_CRS))
-    return render(request, TEMPLATE_GAVETA_LOTE, {"gaveta": gaveta})
+    # Sem responder_cena: o lote aberto pela tabela da gaveta inferior não entra no histórico.
+    contexto = {"gaveta": gaveta, "etiqueta": etiqueta_do_lote(gaveta.lote)}
+    return render(request, TEMPLATE_GAVETA_LOTE, contexto)

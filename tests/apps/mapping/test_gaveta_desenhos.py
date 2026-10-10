@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from django.http import HttpResponse
 from django.test import Client
 from django.urls import reverse
@@ -38,8 +38,9 @@ POLIGONO_GEOJSON = {
 def _postar_desenhos(
     desenhos: list[dict[str, Any]],
     selecionado: str = "",
+    client: Client | None = None,
 ) -> HttpResponse:
-    return Client().post(  # type: ignore[return-value]
+    return (client or Client()).post(  # type: ignore[return-value]
         reverse("mapping:desenhos_da_bancada"),
         {
             "desenhos": json.dumps(desenhos),
@@ -196,3 +197,31 @@ def test_styleguide_registra_as_pecas_do_poco() -> None:
 
     assert soup.find(class_="poco-desenhos") is not None
     assert soup.find(class_="linha-desenho") is not None
+
+
+# ---------------------------------------------------------------------------
+# Histórico da gaveta lateral (SPEC design/021)
+# ---------------------------------------------------------------------------
+
+
+def _itens_do_historico(client: Client) -> list[Tag]:
+    resposta = client.get(reverse("mapping:historico_gaveta"), {"chave": "outra-gaveta"})
+    assert resposta.status_code == 200
+    return BeautifulSoup(resposta.content.decode(), "html.parser").select(".item-historico")
+
+
+def test_gaveta_dos_desenhos_entra_sem_cena_e_sai_sem_desenho() -> None:
+    client = Client()
+
+    _postar_desenhos([{"id_bancada": "1", "geometria": PONTO_GEOJSON}], client=client)
+
+    itens = _itens_do_historico(client)
+    assert len(itens) == 1
+    assert itens[0].has_attr("data-pedir-desenhos")
+    assert not itens[0].has_attr("hx-post")
+    assert itens[0].select_one('use[href="#glifo-gaveta-desenhos"]') is not None
+    assert itens[0].get_text(strip=True) == "1 desenho"
+
+    _postar_desenhos([], client=client)
+
+    assert _itens_do_historico(client) == []
