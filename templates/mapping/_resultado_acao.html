@@ -2,10 +2,11 @@
 <div id="gaveta-inferior-conteudo" hx-swap-oob="innerHTML">
   {# O toggle vem marcado junto da placa: é o swap que abre a gaveta, sem JS. #}
   <input type="checkbox" id="gaveta-resultado" class="gaveta-toggle" checked>
-  <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa" role="dialog" aria-labelledby="gaveta-resultado-titulo">
+  <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa{% if puxavel %} gaveta-inferior-puxavel{% endif %}" role="dialog" aria-labelledby="gaveta-resultado-titulo">
     {# Filho imediato da placa, lido por :has(> ...): recolher não fecha nem encerra o contexto. #}
     <input type="checkbox" id="gaveta-resultado-recolhida" class="gaveta-inferior-recolher">
-    <label for="gaveta-resultado-recolhida" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span></label>
+    {# O segundo fio é a marca visível da puxável (SPEC design/022); o label do recolher é o mesmo. #}
+    <label for="gaveta-resultado-recolhida" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span>{% if puxavel %}<span class="etched-line"></span>{% endif %}</label>
     <label for="gaveta-resultado-recolhida" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
       <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
     </label>

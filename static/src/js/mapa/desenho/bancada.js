@@ -267,6 +267,8 @@ export function inicializarBancadaDesenho(mapa) {
     }
   });
   document.body.addEventListener("htmx:afterSettle", acompanharGaveta);
+  // O arrasto da puxável (SPEC design/022) muda a altura sem mudar interruptor nenhum.
+  document.addEventListener("gaveta-inferior:puxada", acompanharGaveta);
 
   // ── Sincronia com o plugin ─────────────────────────────────────────────────────────────────
   mapa.on("pm:globaldrawmodetoggled", (evento) => {

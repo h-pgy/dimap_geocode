@@ -270,6 +270,19 @@ def test_lotes_do_desenho_devolve_mapa_tabela_e_recolhe_os_desenhos(
     assert not contexto.has_attr("data-encerra-com")
 
 
+def test_lotes_do_desenho_nasce_sem_puxar(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _instalar_fetcher_fake(monkeypatch, [_page([_feat_no_mapa("1001", 333000.0)])])
+
+    conteudo = _postar_lotes_do_desenho(client, _retangulo_no_mapa(333000.0, 7395000.0, 40.0))
+    placa = BeautifulSoup(conteudo, "html.parser").select_one("aside.gaveta-inferior")
+
+    assert placa is not None
+    assert "gaveta-inferior-puxavel" not in placa["class"]
+
+
 def test_lotes_do_desenho_recusa_invalido_e_nao_poligono(
     client: Client,
     monkeypatch: pytest.MonkeyPatch,

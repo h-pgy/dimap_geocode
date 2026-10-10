@@ -695,6 +695,28 @@
         <h3 class="text-lg font-bold">1.11 · Altura da gaveta inferior rasa</h3>
         <p class="text-sm text-base-content/70"><span class="text-code">--gaveta-rasa-altura: 16rem</span>. A <span class="text-code">.gaveta-inferior-rasa</span> tem altura <strong>fixa</strong>, e não teto: é a medida conhecida que deixa a gaveta lateral da home parar acima dela sem JavaScript (<span class="text-code">bottom: calc(var(--gaveta-rasa-altura) + 0.75rem)</span>).</p>
       </div>
+      <!-- 1.12 Limites da gaveta inferior puxável (SPEC design/022) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <h3 class="text-lg font-bold">1.12 · Limites da gaveta inferior puxável</h3>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="card-well p-5 flex flex-col gap-1">
+            <p class="text-code">--gaveta-puxavel-piso</p>
+            <p class="text-xl font-bold tabular-nums">12rem</p>
+            <p class="text-sm text-base-content/70">Abaixo disto a gaveta não acompanha o ponteiro.</p>
+          </div>
+          <div class="card-well p-5 flex flex-col gap-1">
+            <p class="text-code">--gaveta-puxavel-teto</p>
+            <p class="text-xl font-bold tabular-nums">75dvh</p>
+            <p class="text-sm text-base-content/70">Acima disto também não: sobra um quarto da tela de mapa.</p>
+          </div>
+          <div class="card-well p-5 flex flex-col gap-1">
+            <p class="text-code">--gaveta-puxavel-partida</p>
+            <p class="text-xl font-bold tabular-nums">16rem</p>
+            <p class="text-sm text-base-content/70">A altura de nascença: a da <span class="text-code">--gaveta-rasa-altura</span>.</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/70">A <span class="text-code">.tela-home</span> que contém uma <span class="text-code">.gaveta-inferior-puxavel</span> reescreve a <span class="text-code">--gaveta-rasa-altura</span> como <span class="text-code">clamp(piso, --gaveta-puxada-altura, teto)</span>: a gaveta e a gaveta lateral seguem lendo a mesma medida. A <span class="text-code">--gaveta-puxada-altura</span> é escrita pelo <span class="text-code">puxar_gaveta.js</span> e não existe antes do primeiro arrasto — até lá vale a partida.</p>
+      </div>
     </section>
 
     <!-- ============ 2. ÁTOMOS ============ -->
@@ -1290,6 +1312,29 @@
           </div>
         </div>
         <p class="text-xs text-base-content/60">O material é o <span class="text-code">.etched-line</span>, composto no HTML; a alça só o mede e o entinta. Sob o ponteiro o sulco <strong>enche de água e se alonga</strong> — o mesmo par repouso/entintado do resto do sistema, dito pelo contêiner como na <span class="text-code">.lata-concessao</span>: quem carrega a afordância é a alça, não o fio. A área de toque é a faixa inteira porque o fio tem 6px de altura.</p>
+      </div>
+      <!-- Alça da gaveta puxável (SPEC design/022) -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <p class="text-overline">.gaveta-alca <span class="font-normal text-base-content/60">— na .gaveta-inferior-puxavel</span></p>
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-2">
+            <div class="card-well p-6">
+              <div class="glass-drawer-bottom gaveta-inferior-puxavel rounded-t-3xl pt-1.5 pb-5">
+                <label class="gaveta-alca" tabindex="0"><span class="etched-line"></span><span class="etched-line"></span></label>
+              </div>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60 text-center">repouso · passe o ponteiro</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <div class="tela-home card-well p-6" data-puxando inert>
+              <div class="glass-drawer-bottom gaveta-inferior-puxavel rounded-t-3xl pt-1.5 pb-5">
+                <label class="gaveta-alca"><span class="etched-line"></span><span class="etched-line"></span></label>
+              </div>
+            </div>
+            <p class="text-[10px] font-mono text-base-content/60 text-center">puxando</p>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">Filha imediata da <span class="text-code">.gaveta-inferior-puxavel</span>, a alça ganha o <strong>segundo fio</strong>, composto no HTML, e o cursor de redimensionar: dois fios dizem "puxe", um diz "recolha". Enquanto se puxa, a marca <span class="text-code">data-puxando</span> fica na <span class="text-code">.tela-home</span>, e não na alça: os fios seguem entintados com o ponteiro longe dela. Abaixo de 768px o segundo fio some — a gaveta é a tela e não se puxa.</p>
       </div>
 
       <!-- .valor-ausente (SPEC localizacao_lote/001) -->
@@ -4727,6 +4772,92 @@
         </div>
         <p class="text-xs text-base-content/60">O controle de recolher (<span class="text-code">.gaveta-inferior-recolher</span>) mora <strong>dentro</strong> da placa, lido por <span class="text-code">:has(&gt; …)</span>, e o <span class="text-code">.gaveta-toggle</span> de fora só o ✕ desmarca: recolher não fecha. A <span class="text-code">.paleta-gaveta-inferior</span> é a <span class="text-code">.paleta-gaveta</span> da lateral virada para o rodapé, composta no HTML, e só aparece recolhida. Na home, a gaveta rasa é a base de toda resposta de ação (<span class="text-code">mapping/_resultado_acao.html</span>): chega por OOB com o toggle já marcado, e junto dela a marca <span class="text-code">#contexto-acao</span>, que recolhe a busca até a gaveta fechar. A gaveta lateral que entra no <span class="text-code">#gaveta-entidade</span> declara <span class="text-code">data-gaveta</span> na raiz: com outra entidade já aberta, só o conteúdo do painel troca, por fade. Sem resultado, o corpo é a <span class="text-code">.gaveta-vazia</span>.</p>
       </div>
+      <!-- Gaveta inferior puxável com a lateral acompanhando (SPEC design/022) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-overline">.gaveta-inferior-puxavel <span class="font-normal text-base-content/60">— com a gaveta lateral acompanhando a borda de cima, num quadro</span></p>
+        <p class="text-sm text-base-content/80">A <span class="text-code">.gaveta-inferior-rasa</span> que muda de altura quando se <strong>arrasta a alça</strong>, entre o piso e o teto. A gaveta lateral acompanha a borda de cima sem que uma cubra a outra; no teto, ela fica com a faixa que sobra. Um <strong>clique parado</strong> na alça segue recolhendo, e a paleta devolve a gaveta na altura em que estava. Arraste a alça de dois fios.</p>
+        <div class="tela-home relative h-[34rem] w-full overflow-hidden rounded-3xl border border-white/50 shadow-[0_20px_50px_rgba(7,58,84,0.28)] [contain:layout] [--gaveta-puxavel-teto:25.5rem]">
+          <div class="gaveta-lateral" data-gaveta="lote-styleguide">
+            <input type="checkbox" id="gaveta-lateral-puxavel-styleguide" class="gaveta-lateral-toggle" checked />
+            <div class="gaveta-lateral-painel glass-drawer-panel-denso">
+              <header class="gaveta-lateral-cabecalho">
+                <p class="text-overline text-madeira-600">Entidade localizada</p>
+                <h2 class="text-2xl font-bold tracking-tight leading-none text-madeira-700 mt-1">Lote fiscal</h2>
+                <p class="text-code text-sm font-medium mt-2">SQL 009.055.0023-7</p>
+                <span class="badge badge-success badge-soft badge-sm font-bold mt-3">Lançamento ativo</span>
+              </header>
+              <div class="gaveta-lateral-corpo" data-scroll-etched>
+                <div class="gaveta-lateral-rolador" data-rolador>
+                  <div class="gaveta-lateral-conteudo">
+                    <dl class="card-well ficha-atributos">
+                      <dt class="text-overline">Endereço</dt><dd>R FREI CANECA, 1538</dd>
+                      <dt class="text-overline">Tipo de lote</dt><dd class="text-code">F</dd>
+                      <dt class="text-overline">Condomínio</dt><dd class="valor-ausente">não informado</dd>
+                    </dl>
+                    <dl class="card-well ficha-atributos">
+                      <dt class="text-overline">Setor</dt><dd class="text-code">009</dd>
+                      <dt class="text-overline">Quadra</dt><dd class="text-code">055</dd>
+                      <dt class="text-overline">Uso</dt><dd>Comercial</dd>
+                    </dl>
+                  </div>
+                </div>
+                <div class="scroll-etched" data-barra><div class="scroll-etched-thumb" data-polegar></div></div>
+              </div>
+            </div>
+            <label for="gaveta-lateral-puxavel-styleguide" class="paleta-gaveta" tabindex="0" aria-label="Abrir ou recolher a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </label>
+          </div>
+
+          <input type="checkbox" id="gaveta-puxavel-styleguide" class="gaveta-toggle" checked />
+          <aside class="glass-drawer-bottom gaveta-inferior gaveta-inferior-rasa gaveta-inferior-puxavel" role="dialog" aria-label="Resultado puxável">
+            <input type="checkbox" id="gaveta-puxavel-recolhida-styleguide" class="gaveta-inferior-recolher" />
+            <label for="gaveta-puxavel-recolhida-styleguide" class="gaveta-alca" tabindex="0" aria-label="Recolher a gaveta"><span class="etched-line"></span><span class="etched-line"></span></label>
+            <label for="gaveta-puxavel-recolhida-styleguide" class="paleta-gaveta paleta-gaveta-inferior" tabindex="0" aria-label="Abrir a gaveta">
+              <svg class="etched paleta-gaveta-glifo" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+            </label>
+            <header class="gaveta-cabecalho items-center">
+              <div class="min-w-0 flex items-baseline gap-3 flex-wrap">
+                <h2 class="text-xl font-bold tracking-tight leading-none text-madeira-700">Resultado puxável</h2>
+                <span class="badge badge-poligono badge-sm">Polígono</span>
+                <p class="text-sm text-base-content/70"><span class="font-bold text-base-content tabular-nums">8 lotes</span> · desenho de 13.400 m²</p>
+              </div>
+              <label for="gaveta-puxavel-styleguide" class="btn-etched btn-etched-swell etched self-center" tabindex="0" aria-label="Fechar">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </label>
+            </header>
+            <div class="gaveta-corpo">
+              <section class="gaveta-coluna">
+                <div class="card-well pb-2 table-onsen-poco flex-1 min-h-0 flex flex-col" data-scroll-etched>
+                  <div class="table-onsen-wrap tabela-onsen-gaveta" data-rolador>
+                    <table class="table table-onsen table-onsen-compacta">
+                      <thead data-cabecalho>
+                        <tr>
+                          <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">SQL</span></div></th>
+                          <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Endereço</span></div></th>
+                          <th><div class="th-onsen th-onsen-gravado"><span class="text-overline etched etched-rotulo">Lançamento</span></div></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0021-0</td><td>AV PAULISTA, 1500</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0023-7</td><td>R FREI CANECA, 1538</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0025-4</td><td>AL SANTOS, 1576</td><td><span class="badge badge-neutral badge-soft badge-xs whitespace-nowrap">Sem lançamento</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0027-0</td><td>AL SANTOS, 1590</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0029-7</td><td>AL SANTOS, 1602</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0031-9</td><td>R PEIXOTO GOMIDE, 671</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0033-5</td><td>R PEIXOTO GOMIDE, 685</td><td><span class="badge badge-neutral badge-soft badge-xs whitespace-nowrap">Sem lançamento</span></td></tr>
+                        <tr><td class="text-code whitespace-nowrap">009.055.0035-1</td><td>R PEIXOTO GOMIDE, 699</td><td><span class="badge badge-success badge-soft badge-xs">Ativo</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+        <p class="text-xs text-base-content/60">A variante é <strong>composta no HTML</strong> com a rasa: a rasa dá a altura, a puxável deixa o ponteiro mudá-la. Quem arrasta é o <span class="text-code">puxar_gaveta.js</span>, que escreve a <span class="text-code">--gaveta-puxada-altura</span> na <span class="text-code">.tela-home</span> — fora dela a gaveta não se puxa — e, ao soltar, publica <span class="text-code">gaveta-inferior:puxada</span>, que é o que quem lê a altura da gaveta precisa ouvir. A altura é uma só para a página: vale para a próxima gaveta puxável aberta e some na recarga. Na home, a base de resposta de ação (<span class="text-code">mapping/_resultado_acao.html</span>) nasce puxável quando recebe <span class="text-code">puxavel</span> no contexto. Neste quadro o teto é fração do quadro, e não da tela.</p>
+      </div>
       <!-- Gaveta inferior (SPEC design/014) -->
       <div class="glass-panel p-6 flex flex-col gap-4">
         <p class="text-overline">.gaveta-inferior <span class="font-normal text-base-content/60">— a peça real vive no fim do documento, fixa no rodapé</span></p>
@@ -4932,5 +5063,6 @@
   <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
   <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
   <script type="module" src="{% static 'js/ui/campo_data.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/puxar_gaveta.js' %}"></script>
 </body>
 </html>

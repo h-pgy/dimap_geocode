@@ -78,6 +78,11 @@ html[data-theme="dimap"] {
   /* Gaveta inferior rasa (SPEC localizacao_lote/003): altura fixa, e não teto. É a medida
      conhecida que deixa a gaveta lateral da home parar acima dela sem JavaScript. */
   --gaveta-rasa-altura: 16rem;
+  /* Gaveta inferior puxável (SPEC design/022): os limites da altura puxada e a altura de nascença,
+     que é a da rasa lida aqui — a casca reescreve --gaveta-rasa-altura e não pode lê-la de si. */
+  --gaveta-puxavel-piso: 12rem;
+  --gaveta-puxavel-teto: 75dvh;
+  --gaveta-puxavel-partida: var(--gaveta-rasa-altura);
 }
 
 @theme {
@@ -3153,6 +3158,40 @@ html[data-theme="dimap"] {
   /* Recolhida, a lateral volta à altura inteira. */
   .tela-home:has(.gaveta-toggle:checked + .gaveta-inferior-rasa > .gaveta-inferior-recolher:checked) .gaveta-lateral {
     @apply bottom-0;
+  }
+
+  @media (width >= 48rem) {
+    /* VARIANTE · .gaveta-inferior-puxavel (SPEC design/022) — composta no HTML com a
+       .gaveta-inferior-rasa. A casca relê a medida da rasa; --gaveta-puxada-altura é escrita pelo
+       puxar_gaveta.js e não existe antes do primeiro arrasto. O piso e o teto são daqui, e não do
+       script: o dvh do teto se recalcula sozinho quando a janela muda. */
+    .tela-home:has(.gaveta-inferior-puxavel) {
+      --gaveta-rasa-altura: clamp(
+        var(--gaveta-puxavel-piso),
+        var(--gaveta-puxada-altura, var(--gaveta-puxavel-partida)),
+        var(--gaveta-puxavel-teto)
+      );
+    }
+
+    /* O teto de meia tela da .gaveta-inferior sai: quem limita a puxável é o clamp acima. */
+    .gaveta-inferior-puxavel { @apply max-h-none; }
+
+    /* ÁTOMO · a alça da puxável — dois fios, um sobre o outro. */
+    .gaveta-inferior-puxavel > .gaveta-alca { @apply flex-col gap-1 cursor-ns-resize touch-none select-none; }
+    .gaveta-inferior-puxavel > .gaveta-alca .etched-line { @apply h-1; }
+
+    /* ESTADO · puxando — a marca fica na casca: os fios seguem entintados com o ponteiro longe da
+       alça, e a gaveta lateral acompanha sem a transição do bottom, que a deixaria para trás. */
+    .tela-home[data-puxando] .gaveta-inferior-puxavel > .gaveta-alca .etched-line {
+      @apply w-24;
+      background-color: rgba(0, 119, 182, 0.5);
+      filter: drop-shadow(0 0 6px rgba(72, 202, 228, 0.6));
+    }
+    .tela-home[data-puxando] .gaveta-lateral { transition-property: transform; }
+  }
+  /* Abaixo do tablet a gaveta é a tela e não se puxa: sobra o fio único da alça comum. */
+  @media (width < 48rem) {
+    .gaveta-inferior-puxavel > .gaveta-alca .etched-line + .etched-line { @apply hidden; }
   }
 
   /* ÁTOMO · .realce-resultado / .realce-resultado-forte (SPEC localizacao_lote/003) — o halo da
