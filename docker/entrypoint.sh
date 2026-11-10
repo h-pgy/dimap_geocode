@@ -4,6 +4,13 @@
 # usando `exec` para que sinais (SIGTERM/SIGINT) cheguem ao processo real.
 set -e
 
+# Primeiro passo da subida: nada toca o banco antes de o ambiente ser aprovado. Com PROD
+# desligado o comando só avisa que pulou.
+if [ -f manage.py ]; then
+    echo "==> Checando ambiente de produção..."
+    python manage.py checar_ambiente_producao
+fi
+
 # Antes do scaffold do projeto Django o manage.py não existe — nesse caso
 # pulamos a migração para não quebrar comandos pontuais (ex.: startproject).
 # Em produção, desative o migrate automático com DJANGO_AUTO_MIGRATE=0.

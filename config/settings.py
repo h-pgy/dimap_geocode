@@ -103,6 +103,8 @@ class _Settings(BaseSettings):
         default="dev-insecure-secret-key-change-me", alias="DJANGO_SECRET_KEY"
     )
     debug: bool = Field(default=True, alias="DJANGO_DEBUG")
+    # Ligado, o entrypoint recusa subir o web com configuração perigosa (SPEC infraestrutura/005).
+    prod: bool = Field(default=False, alias="PROD")
     allowed_hosts: list[str] = Field(
         default_factory=lambda: ["*"], alias="DJANGO_ALLOWED_HOSTS"
     )
@@ -349,6 +351,7 @@ _env = _Settings()
 
 SECRET_KEY = _env.secret_key
 DEBUG = _env.debug
+PROD = _env.prod
 ALLOWED_HOSTS = _env.allowed_hosts
 CSRF_TRUSTED_ORIGINS = _env.csrf_trusted_origins
 

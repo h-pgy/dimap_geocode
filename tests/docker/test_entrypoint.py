@@ -113,6 +113,42 @@ def test_entrypoint_gera_ortofotos_antes_do_processo_final(tmp_path: Path) -> No
         check=False,
     )
 
-    assert comandos_log.read_text(encoding="utf-8").split() == ["gerar_ortofotos_fundo"]
+    assert comandos_log.read_text(encoding="utf-8").split() == [
+        "checar_ambiente_producao",
+        "gerar_ortofotos_fundo",
+    ]
     assert resultado.returncode != 0
+    assert not processo_final.exists()
+
+
+# ---------------------------------------------------------------------------
+# Checagem do ambiente de produção
+# ---------------------------------------------------------------------------
+
+
+def test_entrypoint_aborta_antes_da_migracao_quando_checagem_falha(tmp_path: Path) -> None:
+    seeds_log, _, env = _configurar_ambiente_de_teste(tmp_path)
+    env["DJANGO_AUTO_MIGRATE"] = "1"
+    env["DJANGO_AUTO_SEED"] = "1"
+    comandos_log = tmp_path / "comandos.log"
+    processo_final = tmp_path / "processo_final.log"
+    python_fake = tmp_path / "bin" / "python"
+    python_fake.write_text(
+        f'#!/bin/sh\necho "$2" >> "{comandos_log}"\n'
+        'if [ "$2" = "checar_ambiente_producao" ]; then exit 1; fi\n',
+        encoding="utf-8",
+    )
+
+    resultado = subprocess.run(
+        ["sh", str(ENTRYPOINT_PATH), "touch", str(processo_final)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert comandos_log.read_text(encoding="utf-8").split() == ["checar_ambiente_producao"]
+    assert resultado.returncode != 0
+    assert not seeds_log.exists()
     assert not processo_final.exists()

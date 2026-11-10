@@ -34,6 +34,7 @@ services:
       POSTGRES_PORT: 5432
       DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      PROD: ${PROD:-0}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-insecure-secret-key-change-me}
     volumes:
       # Bind mount do código para hot-reload; o venv vive em /opt/venv (intacto).
