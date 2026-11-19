@@ -1,6 +1,6 @@
 ---
 spec: faq/002
-versao: v15
+versao: v16
 atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
@@ -21,6 +21,7 @@ changelog:
   - v13: cadastro de palavras-chave e escolha delas numa árvore horizontal no formulário
   - v14: o vínculo com as telas passa a se chamar rota vinculada, como em faq/006
   - v15: caminhos seguem a estrutura de pacotes de faq/001
+  - v16: a área ganha cards na aba Administração do Sistema, visíveis só ao superusuário
 ---
 
 # SPEC faq/002 — Edição da FAQ pelo administrador
@@ -32,6 +33,9 @@ própria, para manter a FAQ em dia sem depender de deploy nem de desenvolvedor.
 ## 2 · Condições de pronto
 - [ ] O design da área de edição foi aprovado no mock e as peças foram portadas para o tema e o
       styleguide antes de o template da aplicação usá-las.
+- [ ] A aba Administração do Sistema do painel traz o grupo "FAQ", com os cards "Lista de FAQs" e
+      "Nova FAQ", **só para o superusuário**: os demais servidores não os veem, e a aba segue de pé para
+      eles.
 - [ ] Só superusuário entra nas telas de edição. Servidor logado sem a marca recebe 403, e anônimo é
       levado ao login.
 - [ ] O administrador vê e edita só as FAQs **que ele criou** e as **FAQs do sistema** (sem autor,
@@ -90,6 +94,32 @@ class Edicao(BaseModel):
         return self
 ```
 
+Pergunta que esta SPEC faz ao painel ([painel/001](../painel/001-painel-de-acoes-por-abas.md)): este
+item é só do superusuário? O `ItemLivre` e a `MontagemPainel` são alterados, e valem como abaixo.
+
+```python
+class ItemLivre(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    slug: str
+    nome: str
+    tooltip: str
+    url_name: str
+    argumento_perfil: str | None = None
+    partial: str | None = None
+    variante_icone: VarianteIcone = VarianteIcone.GRANDE
+    somente_superusuario: bool = False    # ALTERADO nesta SPEC: campo novo; o item some para os demais
+
+
+class MontagemPainel(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    painel: ContratoPainel
+    slugs_liberados: frozenset[str]
+    perfil_id: int
+    eh_superusuario: bool = False         # ALTERADO nesta SPEC: campo novo
+```
+
 **Mock:** [002-mock-edicao-de-faq.html](002-mock-edicao-de-faq.html) — leia a skill `mock`.
 
 ## 4 · Fora de escopo
@@ -113,6 +143,8 @@ class Edicao(BaseModel):
 - `@apps/core/tabela.py` → `consulta_da_listagem` e `colunas_da_tabela`: query string → consulta e cabeçalho.
 - `@templates/user_admin/partials/_tabela_servidores.html` → tabela de vidro, alternador de exonerados e
   gesto crítico por linha (SPECs user_admin/013 e 027): o molde da lista de FAQs.
+- `@apps/painel/abas_declaradas.py` → `ABA_ADMINISTRACAO`, `ItemLivre` e `_botao_voltar_painel.html`: o lugar
+  e o molde dos cards.
 - `@middleware de validação Pydantic` (SPEC infraestrutura/001): `ValidationError` na fronteira.
 - Skills: `erros-de-formulario`, `pydantic-validation-errors`, `componentes-frontend`, `daisyui`,
   `htmx-skill`, `mock`, `painel`, `escrever-testes`, `test-django-views`.
@@ -369,13 +401,58 @@ as de tema e palavra-chave em `apps/faq/taxonomia/urls.py`, e as duas listas ent
 | `faq:admin_palavra_chave_nova` / `faq:admin_palavra_chave_renomear` | palavras-chave, em qualquer dos três níveis |
 | `faq:admin_tema_novo` / `faq:admin_tema_renomear` | temas e subtemas |
 
-A entrada da área no painel (aba, grupo, glifo) é perguntada ao usuário na retomada, pela skill `painel`.
+**`apps/painel/resolucao.py`** — o item livre continua fora da cascata de competência; a única exceção é a
+marca de superusuário, que o `ItemLivre` declara e a resolução confere.
+
+```python
+def _visivel(self, item: ItemAcao | ItemLivre, montagem: MontagemPainel) -> bool:
+    if isinstance(item, ItemLivre):
+        # Só esconde o card: a barreira real é `superusuario_requerido`, na rota.
+        return montagem.eh_superusuario or not item.somente_superusuario
+    return item.acao.acao.slug in montagem.slugs_liberados
+```
+
+`apps/painel/views.py` passa `eh_superusuario=perfil.is_superuser` à `MontagemPainel`.
+
+**`apps/painel/abas_declaradas.py`** — novo grupo em `ABA_ADMINISTRACAO`, depois de "Administradores". Grupo
+sem item visível não renderiza, então os demais servidores não o veem. Os dois destinos são telas
+próprias, e levam `{% include "partials/_botao_voltar_painel.html" %}`.
+
+```python
+Grupo(
+    rotulo="FAQ",
+    itens=(
+        ItemLivre(
+            slug="painel.lista_faqs",
+            nome="Lista de FAQs",
+            tooltip="As FAQs que você pode editar, com filtro, exclusão e restauração.",
+            url_name="faq:admin_lista",
+            somente_superusuario=True,
+        ),
+        ItemLivre(
+            slug="painel.nova_faq",
+            nome="Nova FAQ",
+            tooltip="Escreve uma FAQ nova, que nasce como rascunho.",
+            url_name="faq:admin_nova",
+            somente_superusuario=True,
+        ),
+    ),
+),
+```
+
+Os SVGs ficam em `static/src/acoes/painel/lista_faqs/icones/grande.svg` e
+`static/src/acoes/painel/nova_faq/icones/grande.svg`.
 
 ## 7 · Caveats
 
 **A edição da FAQ não é ação administrativa (CLAUDE.md §3.5).** A FAQ documenta o uso do sistema, não
 um processo da DIMAP, e a competência é só "ser superusuário". Por isso a execução **não é registrada**
 em `ExecucaoAcao`, e quem mudou o quê se sabe só por `autor` e `atualizado_em`.
+
+**O painel de faq/001 é alterado: o `ItemLivre` deixa de ser sempre visível.** O campo novo tem default
+`False`, então nenhum item existente muda. A marca de superusuário passa a existir em dois lugares, o
+card e `superusuario_requerido`, e só o segundo é barreira; um card escondido não protege rota alguma.
+`painel/001` descreve o `ItemLivre` sem o campo, e esta SPEC é a que vale até ela ser revista.
 
 **Uma terceira peça de JavaScript entra no projeto: o editor Milkdown, com etapa de bundle.** Escrever
 markdown à mão afastaria quem mantém a FAQ, e um editor visual não sai de HTMX. O custo é uma
@@ -414,7 +491,8 @@ precisa de paginação, como a de execuções.
 
 ## 8 · Testes (TDD)
 - `test_rotas_de_edicao_exigem_superusuario` — parametrizado sobre as rotas: anônimo → login, logado
-  sem marca → 403. *(marker `banco`)*
+  sem marca → 403; e o painel mostra o grupo "FAQ" ao superusuário e o esconde do servidor comum, que
+  ainda vê a aba. *(marker `banco`)*
 - `test_faq_de_outro_admin_nao_aparece_nem_abre` — some da lista, e GET/POST com o id forjado dá 404.
   *(marker `banco`)*
 - `test_faq_do_sistema_eh_editavel_e_despublicavel_mas_nao_excluivel` — dois administradores editam e

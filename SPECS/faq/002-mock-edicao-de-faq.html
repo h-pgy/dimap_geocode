@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC faq/002 — Edição da FAQ (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação, nunca recriados.
+       Sem Leaflet: a ortofoto é pré-gerada (SPEC design/010), não mapa vivo. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <!-- CSS do Crepe numa camada declarada ANTES de todas: qualquer regra do tema vence a dele.
+       No produto, a mesma camada entra na primeira linha do input.css. -->
+  <style>
+    @layer crepe;
+    @import url("https://cdn.jsdelivr.net/npm/@milkdown/crepe@7.23.0/lib/theme/common/style.css") layer(crepe);
+  </style>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Filtros de gravação: o partial da aplicação (incluído no base.html), não uma cópia. -->
+  <script>
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((html) => {
+        const limpo = html.replace(/\{[{%#][\s\S]*?[}%#]\}/g, "");
+        const inserir = () => document.body.insertAdjacentHTML("afterbegin", limpo);
+        document.body ? inserir() : document.addEventListener("DOMContentLoaded", inserir);
+      });
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== ÁTOMO · BOTÃO CRÍTICO ==================== */
+      /* O gesto que confirma um ato destrutivo: a forma e o peso do .btn-onsen, o gelo do .btn-glass
+         e a tinta de erro da .tarja-vinculo-critica e da bolha de alerta. Acende em vermelho, nunca em água. */
+      .btn-critico {
+        @apply rounded-xl font-bold text-error bg-error/15 border border-error/35 backdrop-blur-[10px]
+               shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_2px_8px_rgba(7,58,84,0.3)]
+               transition-all duration-300
+               hover:bg-error/25 hover:border-error/50 hover:shadow-[0_4px_20px_rgba(220,38,38,0.35)]
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/40;
+      }
+
+      /* ==================== ÁTOMO · CHIP INERTE ==================== */
+      /* .chip-concessao + .chip-inerte: a relacionada excluída. O chip ativo é placa; o inerte afunda
+         no gelo (poço fino), sem link, sem remover e sem resposta ao ponteiro. */
+      .chip-inerte {
+        @apply pr-3 cursor-default bg-white/20 border-white/45 text-base-content/55 hover:bg-white/20;
+        box-shadow: var(--sombra-poco-fina);
+      }
+      .chip-inerte-marca {
+        @apply text-[10px] font-medium uppercase tracking-[0.14em] text-error/75;
+      }
+
+      /* ==================== MOLÉCULA · EDITOR DE MARKDOWN (pele do Crepe) ==================== */
+      /* .textarea-glass (o poço) > .texto-markdown (a tinta da página de FAQ) > o Crepe. O CSS do
+         Crepe mora numa camada abaixo do tema: toda regra daqui vence a dele sem !important. */
+      .editor-markdown { @apply relative block p-0 cursor-text; }
+      .editor-markdown:focus-within {
+        @apply bg-white/45 border-agua-500;
+        box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+      }
+      .editor-markdown .milkdown {
+        --crepe-color-background: transparent;
+        --crepe-color-on-background: rgba(13, 27, 42, 0.9);
+        --crepe-color-surface: rgba(255, 255, 255, 0.82);
+        --crepe-color-surface-low: rgba(255, 255, 255, 0.6);
+        --crepe-color-on-surface: #0d1b2a;
+        --crepe-color-on-surface-variant: #415a77;
+        --crepe-color-outline: #5b7290;
+        --crepe-color-primary: #0077b6;
+        --crepe-color-secondary: #ade8f4;
+        --crepe-color-on-secondary: #0d1b2a;
+        --crepe-color-inverse: #1b263b;
+        --crepe-color-on-inverse: #e0e1dd;
+        --crepe-color-inline-code: #0077b6;
+        --crepe-color-error: #dc2626;
+        --crepe-color-hover: rgba(255, 255, 255, 0.6);
+        --crepe-color-selected: #caf0f8;
+        --crepe-color-inline-area: #ffffff;
+        --crepe-base-font-size: 15px;
+        --crepe-font-title: Roboto, sans-serif;
+        --crepe-font-default: Roboto, sans-serif;
+        --crepe-font-code: "Roboto Mono", monospace;
+        --crepe-shadow-1: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 24px rgba(7, 58, 84, 0.25), 0 0 20px rgba(72, 202, 228, 0.25);
+        --crepe-shadow-2: var(--crepe-shadow-1);
+      }
+      /* A área editável ocupa o poço inteiro; a folga da esquerda é onde a alça do bloco pousa. */
+      .editor-markdown .ProseMirror { @apply block min-h-64 py-4 pr-5 pl-14 outline-none; }
+      /* Bloco, nunca flex: a área editável do ProseMirror perde o cursor em display:flex. O espaço
+         entre blocos repete o gap-3 da .texto-markdown. */
+      .editor-markdown .ProseMirror > * + * { @apply mt-3; }
+      /* A página rebaixa os títulos (faq/001: h1–h3 → h3, h4–h6 → h4); o editor mostra cada nível
+         escrito com a tinta em que ele vai sair. */
+      .editor-markdown .ProseMirror :is(h1, h2, h3) { @apply text-[18px] font-bold leading-snug text-rocha-950; }
+      .editor-markdown .ProseMirror :is(h4, h5, h6) { @apply text-[15px] font-bold leading-snug text-rocha-950; }
+      /* Modo Markdown: o mesmo poço, em fonte de código, na altura do Visual. */
+      .editor-markdown-fonte { @apply block w-full min-h-64 px-5 py-4 font-mono text-[13px] leading-relaxed resize-y; }
+      /* Os marcadores de lista são do Crepe (rótulo próprio), não do navegador. */
+      .editor-markdown .ProseMirror :is(ul, ol) { @apply pl-0 list-none; }
+      .editor-markdown .milkdown-list-item-block li .label-wrapper { @apply text-agua-600; }
+      .editor-markdown .milkdown-list-item-block li .label-wrapper svg { @apply fill-agua-600; }
+      .editor-markdown .crepe-placeholder::before { @apply text-rocha-700/60; }
+
+      /* As placas flutuantes do Crepe são gelo espesso. */
+      .editor-markdown :is(.milkdown-toolbar, .milkdown-slash-menu, .link-preview, .link-edit) {
+        @apply backdrop-blur-[28px] border border-white/70;
+      }
+      .editor-markdown .milkdown-toolbar { @apply rounded-(--radius-field); }
+      .editor-markdown .milkdown-toolbar .toolbar-item { @apply w-8 h-8 m-1 p-1.5 rounded-md transition-colors duration-200; }
+      .editor-markdown .milkdown-toolbar .toolbar-item svg { @apply w-5 h-5; }
+      .editor-markdown .milkdown-toolbar .toolbar-item.active { @apply bg-agua-100/60; }
+      .editor-markdown .milkdown-toolbar .divider { @apply h-5 my-2.5 mx-1; }
+
+      .editor-markdown .milkdown-block-handle .operation-item {
+        @apply w-6 h-6 p-0.5 rounded-md transition-colors duration-200 hover:bg-white/60;
+      }
+      .editor-markdown .milkdown-block-handle .operation-item svg { @apply w-5 h-5; }
+      .editor-markdown .milkdown-block-handle .operation-item:hover svg { @apply fill-agua-700; }
+
+      /* O menu herda o ul/li da .texto-markdown: aqui ele volta a ser menu. */
+      .editor-markdown .milkdown-slash-menu { @apply rounded-(--radius-placa) text-[14px] leading-normal; }
+      .editor-markdown .milkdown-slash-menu ul { @apply flex flex-col gap-0.5 pl-0 list-none; }
+      .editor-markdown .milkdown-slash-menu .tab-group { @apply px-2 pt-2 border-white/70; }
+      .editor-markdown .milkdown-slash-menu .tab-group ul { @apply flex-row gap-1 px-1 py-1.5; }
+      .editor-markdown .milkdown-slash-menu .tab-group ul li {
+        @apply px-2.5 py-1 rounded-(--radius-field) text-[11px] font-medium uppercase tracking-[0.12em] text-rocha-700;
+      }
+      .editor-markdown .milkdown-slash-menu .tab-group ul li.selected { @apply bg-white/65 text-agua-700; }
+      .editor-markdown .milkdown-slash-menu .menu-groups { @apply px-1.5 pb-1.5 max-h-80; }
+      .editor-markdown .milkdown-slash-menu .menu-groups .menu-group h6 {
+        @apply px-2 pt-3 pb-1 text-[11px] font-medium tracking-[0.14em] text-rocha-700;
+      }
+      .editor-markdown .milkdown-slash-menu .menu-groups .menu-group li {
+        @apply min-w-56 gap-3 px-2 py-1.5 rounded-(--radius-field) transition-colors duration-200;
+      }
+      .editor-markdown .milkdown-slash-menu .menu-groups .menu-group li.hover { @apply bg-white/60 text-agua-700; }
+      .editor-markdown .milkdown-slash-menu .menu-groups .menu-group li svg { @apply w-5 h-5; }
+      .editor-markdown .milkdown-slash-menu .menu-groups .menu-group li > span { @apply text-[14px] font-normal; }
+      .editor-markdown .milkdown-slash-menu .menu-groups .menu-group + .menu-group::before { @apply bg-white/70; }
+
+      .editor-markdown :is(.link-preview, .link-edit) { @apply h-9 items-center rounded-(--radius-field); }
+      .editor-markdown .link-edit > .input-area { @apply text-[14px] placeholder:text-rocha-700/60; }
+
+      /* ==================== MOLÉCULA · OPÇÃO DA ÁRVORE ==================== */
+      /* checkbox-onsen (marca) + nome (abre as filhas) + lápis (renomear, só sob o ponteiro). */
+      .arvore-opcao {
+        @apply flex items-center gap-2 pl-2 pr-1 rounded-(--radius-field)
+               transition-colors duration-200 hover:bg-white/50;
+      }
+      .arvore-opcao-nome {
+        @apply flex-1 min-w-0 flex items-center justify-between gap-2 py-1.5 text-left
+               text-[14px] text-base-content/90 cursor-pointer transition-colors duration-200
+               hover:text-agua-700 focus-visible:outline-none focus-visible:text-agua-700;
+      }
+      .arvore-opcao-nome > span { @apply truncate; }
+      .arvore-opcao-seta {
+        @apply w-4 h-4 shrink-0 text-base-content/35 transition-all duration-200;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .arvore-opcao-aberta { @apply bg-white/65; }
+      .arvore-opcao-aberta .arvore-opcao-nome { @apply font-medium text-agua-700; }
+      .arvore-opcao-aberta .arvore-opcao-seta {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      .arvore-opcao-lapis { @apply opacity-0 transition-opacity duration-200; }
+      .arvore-opcao:hover .arvore-opcao-lapis,
+      .arvore-opcao:focus-within .arvore-opcao-lapis { @apply opacity-100; }
+
+      /* ==================== MOLÉCULA · COLUNA DA ÁRVORE ==================== */
+      /* Material composto no HTML (.placa-clara): placa assentada no poço da seção. */
+      .arvore-coluna { @apply flex flex-col gap-0.5 p-2 min-h-52 rounded-(--radius-placa); }
+      .arvore-coluna-cabeca { @apply flex items-center justify-between gap-2 pl-2 pb-1.5; }
+      .arvore-coluna-caminho { @apply truncate; }
+      .arvore-coluna-vazia { @apply px-2 py-8 text-center text-[13px] italic text-base-content/55; }
+
+      /* ==================== ORGANISMO · ÁRVORE HORIZONTAL DE PALAVRAS-CHAVE ==================== */
+      .arvore-colunas {
+        @apply grid grid-flow-col auto-cols-[minmax(13rem,1fr)] gap-3 overflow-x-auto pb-1;
+      }
+      .arvore-marcadas { @apply flex flex-wrap items-center gap-2 min-h-9; }
+      .arvore-marcadas-vazio { @apply text-[13px] italic text-base-content/55; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content antialiased">
+  <!-- partial previsto: faq/partials/gestao/_glifos_gestao.html -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <g id="g-mais"><path d="M12 5v14"/><path d="M5 12h14"/></g>
+      <g id="g-x"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></g>
+      <g id="g-lapis"><path d="M4 20.2h4L18.6 9.6a2.1 2.1 0 0 0-3-3L5 17.2v3z"/><path d="m14.4 7.8 3 3"/></g>
+      <g id="g-lixeira">
+        <path d="M4.2 6.8h15.6"/><path d="M9.6 6.8V4.6h4.8v2.2"/>
+        <path d="M6.6 6.8 7.6 19.4h8.8L17.4 6.8"/><path d="M10.4 10.4v5.4"/><path d="M13.6 10.4v5.4"/>
+      </g>
+      <g id="g-restaurar"><path d="M20.4 12a8.4 8.4 0 1 1-2.46-5.94"/><path d="M20.4 3.6v4.9h-4.9"/></g>
+      <g id="g-seta-direita"><path d="M9 6l6 6-6 6"/></g>
+      <g id="g-cadeado"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></g>
+      <g id="g-voltar"><path d="M10.5 19.5 3 12l7.5-7.5"/><path d="M3 12h18"/></g>
+      <!-- Glifos dos cards do painel: static/src/acoes/painel/<nome>/icones/grande.svg -->
+      <g id="g-lista-faqs">
+        <path d="M3.8 6.2h9.4"/><path d="M3.8 10.6h7.2"/><path d="M3.8 15h4.4"/>
+        <path d="M20.8 15.4a4.6 4.6 0 0 1-6.7 4.1l-2.7.8.8-2.5a4.6 4.6 0 1 1 8.6-2.4z"/>
+        <path d="M14.9 14.3a1.4 1.4 0 0 1 2.7.5c0 .9-1.3 1.1-1.3 2"/><path d="M16.3 18.3v.1"/>
+      </g>
+      <g id="g-nova-faq">
+        <path d="M16.4 10.2a6.4 6.4 0 0 1-9.3 5.7l-3.7 1.1 1.1-3.5a6.4 6.4 0 1 1 11.9-3.3z"/>
+        <path d="M8.1 8.6a1.9 1.9 0 0 1 3.7.6c0 1.2-1.8 1.6-1.8 2.7"/><path d="M10 14v.1"/>
+        <path d="M18.9 15.4v5.2"/><path d="M16.3 18h5.2"/>
+      </g>
+      <!-- Glifos já existentes, reproduzidos só para compor a face do painel. -->
+      <g id="g-registro-acoes">
+        <path d="M3.8 6.2h12.4"/><path d="M3.8 10.6h9.6"/><path d="M3.8 15h5.2"/>
+        <circle cx="16.4" cy="16.4" r="4.9"/><path d="M14.1 15.4h4.6"/><path d="M14.5 17.6h3.8"/>
+      </g>
+      <g id="g-certidao-atos">
+        <path d="M3.8 6.2h9.4"/><path d="M3.8 10.6h7.2"/><path d="M3.8 15h4.4"/>
+        <path d="M15.6 9.9 19.8 11.6v3.1c0 2.6-1.7 4.7-4.2 5.5-2.5-.8-4.2-2.9-4.2-5.5v-3.1z"/><path d="m13.8 14.7 1.3 1.3 2.3-2.5"/>
+      </g>
+      <g id="g-administrador">
+        <path d="M12 3.2 5.5 5.8v5.1c0 4.2 2.7 7.4 6.5 8.9 3.8-1.5 6.5-4.7 6.5-8.9V5.8z"/>
+        <path d="M12 7.6 12.91 9.95 15.42 10.09 13.47 11.68 14.12 14.11 12 12.75 9.88 14.11 10.53 11.68 8.58 10.09 11.09 9.95z"/>
+      </g>
+      <g id="g-lista-cargos">
+        <path d="M2.4 9.6 8 5.8l5.6 3.8"/><path d="M2.4 13.6 8 9.8l5.6 3.8"/><path d="M2.4 17.6 8 13.8l5.6 3.8"/>
+        <path d="M16.2 11h5.6"/><path d="M16.2 15h5.6"/><path d="M16.2 19h5.6"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 p-8 max-w-6xl mx-auto flex flex-col gap-16">
+    <header class="glass-panel px-6 py-4">
+      <p class="text-overline text-agua-700">Mock de validação</p>
+      <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC faq/002 — Edição da FAQ</h1>
+      <nav class="flex flex-wrap gap-4 mt-3 text-xs text-base-content/70">
+        <a href="#atomos" class="link-tabela-onsen">2 · Átomos</a><span>·</span>
+        <a href="#moleculas" class="link-tabela-onsen">3 · Moléculas</a><span>·</span>
+        <a href="#organismos" class="link-tabela-onsen">4 · Organismos</a><span>·</span>
+        <a href="#tela" class="link-tabela-onsen font-semibold text-agua-700">5 · Tela montada</a>
+      </nav>
+    </header>
+
+    <!-- ===================================================================== -->
+    <!-- 2 · ÁTOMOS                                                            -->
+    <!-- ===================================================================== -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <h2 class="text-2xl font-bold text-madeira-700">2 · Átomos</h2>
+
+      <div class="glass-panel p-6 grid gap-6 md:grid-cols-2">
+        <!-- .btn-critico -->
+        <div class="flex flex-col gap-3 md:col-span-2">
+          <p class="text-overline">Botão crítico (.btn-critico) — confirma ato destrutivo, ao lado do .btn-glass</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="button" class="btn btn-glass btn-sm">Cancelar</button>
+            <button type="button" class="btn btn-critico btn-sm">Ok, excluir</button>
+            <button type="button" class="btn btn-critico">Ok, excluir</button>
+            <button type="button" class="btn btn-critico btn-sm btn-disabled" tabindex="-1" aria-disabled="true">Indisponível</button>
+          </div>
+        </div>
+
+        <!-- .chip-inerte -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">Chip de relacionada — ativa × inerte (.chip-concessao + .chip-inerte)</p>
+          <div class="flex flex-wrap gap-2">
+            <!-- estado: ativa -->
+            <span class="chip-concessao">
+              <a href="#" class="link-tabela-onsen">Como buscar um endereço?</a>
+              <button type="button" class="chip-concessao-remover" aria-label="Remover relacionada">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg>
+              </button>
+            </span>
+            <!-- estado: inerte (relacionada excluída) -->
+            <span class="chip-concessao chip-inerte">
+              Como trocar a senha?
+              <span class="chip-inerte-marca">Excluída</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- glifos dos cards do painel -->
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">Glifos dos cards — proposta, aguardando o ok</p>
+          <div class="flex flex-wrap gap-8 items-end">
+            <div class="flex flex-col items-center gap-2">
+              <div class="card-acao glass-bg glass-edge glass-shadow w-auto p-4">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-faqs"/></svg></span>
+              </div>
+              <span class="text-code text-xs">painel.lista_faqs</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <div class="card-acao glass-bg glass-edge glass-shadow w-auto p-4">
+                <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-nova-faq"/></svg></span>
+              </div>
+              <span class="text-code text-xs">painel.nova_faq</span>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <span class="icone-acao icone-acao-pequeno text-agua-700"><svg viewBox="0 0 24 24"><use href="#g-lista-faqs"/></svg></span>
+              <span class="icone-acao icone-acao-pequeno text-agua-700"><svg viewBox="0 0 24 24"><use href="#g-nova-faq"/></svg></span>
+              <span class="text-overline">20px</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- 3 · MOLÉCULAS                                                         -->
+    <!-- ===================================================================== -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <h2 class="text-2xl font-bold text-madeira-700">3 · Moléculas</h2>
+
+      <!-- .editor-markdown — o Crepe de verdade, com a pele do tema -->
+      <div class="glass-panel p-6 flex flex-col gap-6">
+        <div class="flex flex-col gap-1">
+          <p class="text-overline">Editor de markdown (abas .abas-onsen · Visual: .textarea-glass.editor-markdown &gt; .texto-markdown &gt; Crepe · Markdown: .textarea-glass.editor-markdown-fonte) — funcionando</p>
+          <p class="text-[13px] text-base-content/70">No Visual: selecione um trecho para a barra de formatação; digite <kbd class="kbd kbd-xs">/</kbd> numa linha vazia para o menu de blocos; <kbd class="kbd kbd-xs">#</kbd> + espaço vira título, <kbd class="kbd kbd-xs">1.</kbd> + espaço vira lista. No Markdown: o texto que o formulário envia — editar aqui e voltar ao Visual leva a mudança junto.</p>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <!-- estado: vazio -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline">vazio</span>
+            <!-- partial: faq/partials/gestao/_editor_markdown.html — as abas trocam de modo só em CSS -->
+              <div role="tablist" class="tabs abas-onsen p-0">
+                <label role="tab" class="tab">
+                  <input type="radio" name="modo-md-vazio" value="visual" checked data-modo-visual />
+                  <span class="abas-onsen-rotulo etched etched-rotulo">Visual</span>
+                  <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+                  <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+                </label>
+                <div role="tabpanel" class="tab-content pt-2">
+                  <div class="textarea-glass editor-markdown">
+                    <div class="texto-markdown" data-editor-markdown="md-vazio"></div>
+                  </div>
+                </div>
+                <label role="tab" class="tab">
+                  <input type="radio" name="modo-md-vazio" value="markdown" />
+                  <span class="abas-onsen-rotulo etched etched-rotulo">Markdown</span>
+                  <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+                  <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+                </label>
+                <div role="tabpanel" class="tab-content pt-2">
+                  <!-- o campo que o formulário envia: o modo Visual escreve nele, e o que se digita aqui volta ao Visual -->
+                  <textarea id="md-vazio" name="resposta_markdown" class="textarea textarea-glass editor-markdown-fonte" spellcheck="false"></textarea>
+                </div>
+              </div>
+              <!-- /partial -->
+          </div>
+
+          <!-- estado: preenchido -->
+          <div class="flex flex-col gap-2">
+            <span class="text-overline">preenchido — reaberto a partir do markdown gravado</span>
+            <!-- partial: faq/partials/gestao/_editor_markdown.html — as abas trocam de modo só em CSS -->
+              <div role="tablist" class="tabs abas-onsen p-0">
+                <label role="tab" class="tab">
+                  <input type="radio" name="modo-md-cheio" value="visual" checked data-modo-visual />
+                  <span class="abas-onsen-rotulo etched etched-rotulo">Visual</span>
+                  <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+                  <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+                </label>
+                <div role="tabpanel" class="tab-content pt-2">
+                  <div class="textarea-glass editor-markdown">
+                    <div class="texto-markdown" data-editor-markdown="md-cheio"></div>
+                  </div>
+                </div>
+                <label role="tab" class="tab">
+                  <input type="radio" name="modo-md-cheio" value="markdown" />
+                  <span class="abas-onsen-rotulo etched etched-rotulo">Markdown</span>
+                  <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+                  <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+                </label>
+                <div role="tabpanel" class="tab-content pt-2">
+                  <!-- o campo que o formulário envia: o modo Visual escreve nele, e o que se digita aqui volta ao Visual -->
+                  <textarea id="md-cheio" name="resposta_markdown" class="textarea textarea-glass editor-markdown-fonte" spellcheck="false" data-markdown-exemplo></textarea>
+                </div>
+              </div>
+              <!-- /partial -->
+          </div>
+        </div>
+      </div>
+
+      <!-- .arvore-opcao + .arvore-coluna -->
+      <div class="glass-panel p-6 flex flex-col gap-6">
+        <p class="text-overline">Opção e coluna da árvore (.arvore-opcao, .arvore-coluna sobre .placa-clara)</p>
+
+        <div class="card-well p-5 grid gap-6 md:grid-cols-[18rem_1fr]">
+          <div class="flex flex-col gap-1">
+            <!-- estado: repouso, com filhas -->
+            <span class="text-overline">repouso · com filhas</span>
+            <div class="arvore-opcao">
+              <input type="checkbox" class="checkbox-onsen" aria-label="Marcar ITBI" />
+              <button type="button" class="arvore-opcao-nome"><span>ITBI</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg></button>
+              <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Renomear ITBI"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></button>
+            </div>
+            <!-- estado: marcada -->
+            <span class="text-overline mt-2">marcada</span>
+            <div class="arvore-opcao">
+              <input type="checkbox" class="checkbox-onsen" checked aria-label="Marcar Certidão" />
+              <button type="button" class="arvore-opcao-nome"><span>Certidão</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg></button>
+              <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Renomear Certidão"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></button>
+            </div>
+            <!-- estado: aberta (o ramo escolhido) -->
+            <span class="text-overline mt-2">aberta — filhas na coluna ao lado</span>
+            <div class="arvore-opcao arvore-opcao-aberta">
+              <input type="checkbox" class="checkbox-onsen" aria-label="Marcar IPTU" />
+              <button type="button" class="arvore-opcao-nome"><span>IPTU</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg></button>
+              <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Renomear IPTU"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></button>
+            </div>
+            <!-- estado: sem filhas — sem seta, escolher não abre coluna -->
+            <span class="text-overline mt-2">sem filhas</span>
+            <div class="arvore-opcao">
+              <input type="checkbox" class="checkbox-onsen" aria-label="Marcar Desconto" />
+              <label class="arvore-opcao-nome"><span>Desconto</span></label>
+              <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Renomear Desconto"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></button>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <!-- estado: coluna com opções -->
+            <div class="placa-clara arvore-coluna">
+              <div class="arvore-coluna-cabeca">
+                <span class="text-overline arvore-coluna-caminho">IPTU › Certidão</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave em IPTU › Certidão"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg></button>
+              </div>
+              <div class="arvore-opcao">
+                <input type="checkbox" class="checkbox-onsen" checked aria-label="Marcar Lançamento" />
+                <label class="arvore-opcao-nome"><span>Lançamento</span></label>
+              </div>
+              <div class="arvore-opcao">
+                <input type="checkbox" class="checkbox-onsen" aria-label="Marcar Quitação" />
+                <label class="arvore-opcao-nome"><span>Quitação</span></label>
+              </div>
+            </div>
+            <!-- estado: coluna vazia — ramo sem palavra cadastrada -->
+            <div class="placa-clara arvore-coluna">
+              <div class="arvore-coluna-cabeca">
+                <span class="text-overline arvore-coluna-caminho">Palavras-chave</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg></button>
+              </div>
+              <p class="arvore-coluna-vazia">Nenhuma palavra-chave cadastrada. Use o + para criar a primeira.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- 4 · ORGANISMOS                                                        -->
+    <!-- ===================================================================== -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <h2 class="text-2xl font-bold text-madeira-700">4 · Organismos</h2>
+
+      <div class="glass-panel p-6 flex flex-col gap-6">
+        <p class="text-overline">Árvore horizontal de palavras-chave (.arvore-colunas + .arvore-marcadas) — clique nos nomes e marque</p>
+
+        <!-- estado: nada marcado, só as raízes -->
+        <div class="card-well p-5 flex flex-col gap-4">
+          <span class="text-overline">nada marcado — só as raízes</span>
+          <div class="arvore-colunas">
+            <div class="placa-clara arvore-coluna">
+              <div class="arvore-coluna-cabeca">
+                <span class="text-overline arvore-coluna-caminho">Palavras-chave</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg></button>
+              </div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar Cadastro" /><button type="button" class="arvore-opcao-nome"><span>Cadastro</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg></button></div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar IPTU" /><button type="button" class="arvore-opcao-nome"><span>IPTU</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg></button></div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar ITBI" /><button type="button" class="arvore-opcao-nome"><span>ITBI</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg></button></div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <span class="text-overline">Marcadas</span>
+            <div class="arvore-marcadas"><p class="arvore-marcadas-vazio">Nenhuma palavra-chave marcada.</p></div>
+          </div>
+        </div>
+
+        <!-- estado: interativo — três níveis abertos, marcadas em mais de um ramo -->
+        <div class="card-well p-5 flex flex-col gap-4" data-arvore-demo>
+          <span class="text-overline">ramo aberto até o terceiro nível — trocar de ramo não desmarca</span>
+          <div class="arvore-colunas" data-colunas></div>
+          <div class="flex flex-col gap-2">
+            <span class="text-overline">Marcadas</span>
+            <div class="arvore-marcadas" data-marcadas></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- 5 · TELA MONTADA                                                      -->
+    <!-- ===================================================================== -->
+    <section id="tela" class="flex flex-col gap-14">
+      <h2 class="text-2xl font-bold text-madeira-700">5 · Tela montada</h2>
+
+      <!-- ============ 5.1 · Painel — aba Administração do Sistema ============ -->
+      <div class="flex flex-col gap-4">
+        <div class="glass-panel px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+          <span class="text-overline">5.1 · painel — aba Administração do Sistema</span>
+          <div class="card-well chave-onsen">
+            <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+            <label class="chave-onsen-opcao">
+              <input type="radio" name="quem-ve" value="super" class="sr-only" checked data-quem-ve />
+              <span class="chave-onsen-rotulo etched etched-deeper">Superusuário</span>
+            </label>
+            <label class="chave-onsen-opcao">
+              <input type="radio" name="quem-ve" value="comum" class="sr-only" data-quem-ve />
+              <span class="chave-onsen-rotulo etched etched-deeper">Servidor comum</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- página: painel/painel.html -->
+        <div class="max-w-5xl mx-auto w-full flex flex-col gap-6">
+          <!-- partial: painel/partials/_abas.html — inalterado; muda só o que abas_declaradas.py declara -->
+          <div role="tablist" class="tabs glass-panel abas-onsen">
+            <label role="tab" class="tab">
+              <input type="radio" name="painel-tela" />
+              <span class="abas-onsen-rotulo etched etched-rotulo">Minha conta</span>
+              <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+              <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+            </label>
+            <div role="tabpanel" class="tab-content painel-face">
+              <div><h2 class="painel-titulo">Minha conta</h2><p class="painel-descricao">Seus dados de acesso e identificação no sistema.</p></div>
+            </div>
+
+            <label role="tab" class="tab">
+              <input type="radio" name="painel-tela" checked />
+              <span class="abas-onsen-rotulo etched etched-rotulo">Administração do Sistema</span>
+              <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+              <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+            </label>
+            <div role="tabpanel" class="tab-content painel-face">
+              <div>
+                <h2 class="painel-titulo">Administração do Sistema</h2>
+                <p class="painel-descricao">Quem tem plenos poderes sobre o sistema e o catálogo de cargos em comissão sobre o qual toda nomeação se apoia. Consultar o catálogo é aberto a todo servidor; alterá-lo, não.</p>
+              </div>
+              <div class="painel-grupos">
+                <!-- partial: painel/partials/_grupo.html -->
+                <div class="card-well grupo-painel">
+                  <p class="text-overline">Registro de Ações</p>
+                  <div class="menu-acoes-cartoes">
+                    <a href="#" class="hover-3d card-acao-alvo">
+                      <div class="glass-bg glass-edge glass-shadow card-acao">
+                        <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-registro-acoes"/></svg></span>
+                        <div><p class="card-acao-nome">Registro de Ações</p><p class="card-acao-descricao">Os atos praticados no seu alcance: quem, com qual cargo, sobre o quê e se podia.</p></div>
+                      </div>
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </a>
+                    <a href="#" class="hover-3d card-acao-alvo" data-so-super>
+                      <div class="glass-bg glass-edge glass-shadow card-acao">
+                        <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-certidao-atos"/></svg></span>
+                        <div><p class="card-acao-nome">Certidão de atos</p><p class="card-acao-descricao">Emite a certidão dos atos praticados por um servidor.</p></div>
+                      </div>
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </a>
+                  </div>
+                </div>
+
+                <div class="card-well grupo-painel" data-so-super>
+                  <p class="text-overline">Administradores</p>
+                  <div class="menu-acoes-cartoes">
+                    <a href="#" class="hover-3d card-acao-alvo">
+                      <div class="glass-bg glass-edge glass-shadow card-acao">
+                        <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-administrador"/></svg></span>
+                        <div><p class="card-acao-nome">Tornar administrador</p><p class="card-acao-descricao">Torna um servidor administrador do sistema — e desfaz.</p></div>
+                      </div>
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </a>
+                  </div>
+                </div>
+
+                <!-- grupo novo: some inteiro para quem não é superusuário (os dois itens têm somente_superusuario) -->
+                <div class="card-well grupo-painel" data-so-super>
+                  <p class="text-overline">FAQ</p>
+                  <div class="menu-acoes-cartoes">
+                    <a href="#tela-lista" class="hover-3d card-acao-alvo">
+                      <div class="glass-bg glass-edge glass-shadow card-acao">
+                        <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-faqs"/></svg></span>
+                        <div><p class="card-acao-nome">Lista de FAQs</p><p class="card-acao-descricao">As FAQs que você pode editar, com filtro, exclusão e restauração.</p></div>
+                      </div>
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </a>
+                    <a href="#tela-nova" class="hover-3d card-acao-alvo">
+                      <div class="glass-bg glass-edge glass-shadow card-acao">
+                        <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-nova-faq"/></svg></span>
+                        <div><p class="card-acao-nome">Nova FAQ</p><p class="card-acao-descricao">Escreve uma FAQ nova, que nasce como rascunho.</p></div>
+                      </div>
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </a>
+                  </div>
+                </div>
+
+                <div class="card-well grupo-painel">
+                  <p class="text-overline">Cargos em Comissão</p>
+                  <div class="menu-acoes-cartoes">
+                    <a href="#" class="hover-3d card-acao-alvo">
+                      <div class="glass-bg glass-edge glass-shadow card-acao">
+                        <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-cargos"/></svg></span>
+                        <div><p class="card-acao-nome">Cargos em comissão</p><p class="card-acao-descricao">O catálogo de cargos da DIMAP, com nível, natureza e quem os ocupa.</p></div>
+                      </div>
+                      <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 5.2 · Lista de FAQs ============ -->
+      <div class="flex flex-col gap-4" id="tela-lista">
+        <div class="glass-panel px-5 py-3"><span class="text-overline">5.2 · lista de FAQs — ligue “Mostrar FAQs excluídas” e tente restaurar a primeira excluída</span></div>
+
+        <!-- página: faq/gestao/lista.html -->
+        <div class="max-w-6xl mx-auto w-full flex flex-col gap-4">
+          <!-- partial: partials/_botao_voltar_painel.html — inalterado -->
+          <div>
+            <a href="#tela" class="btn btn-glass btn-sm gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-voltar"/></svg>
+              Voltar para a área do usuário
+            </a>
+          </div>
+
+          <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+            <!-- fica na página: cabeçalho, só arranjo -->
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">FAQs</h1>
+              <p class="text-sm text-base-content/70 mt-1">As que você escreveu e as do sistema. Clique num cabeçalho para filtrar; na seta, para ordenar.</p>
+            </div>
+
+            <!-- partial: faq/partials/gestao/_aviso_lista.html — alvo hx-swap-oob da restauração recusada -->
+            <div id="aviso-lista" hidden>
+              <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+                <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+                <div>
+                  <p class="text-[13px] font-semibold text-base-content/90">FAQ não restaurada</p>
+                  <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                    <li>A pergunta “Como trocar a senha?” já é respondida por outra FAQ.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_barra_acoes.html -->
+            <div class="barra-acoes glass-panel">
+              <div class="barra-acoes-gestos">
+                <a href="#tela-nova" class="btn btn-onsen btn-sm gap-1.5">
+                  <span class="icone-acao icone-acao-pequeno"><svg viewBox="0 0 24 24"><use href="#g-nova-faq"/></svg></span>
+                  Nova FAQ
+                </a>
+              </div>
+              <div class="barra-acoes-gestos">
+                <label class="barra-acoes-chave">
+                  <input type="checkbox" class="toggle-onsen" id="toggle-excluidas" aria-label="Mostrar FAQs excluídas" />
+                  <span class="text-overline">Mostrar FAQs excluídas</span>
+                </label>
+                <button type="button" class="btn-etched etched">✕ limpar filtros</button>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_tabela_faqs.html -->
+            <div class="card-well pb-2 table-onsen-poco" data-scroll-etched>
+              <div class="table-onsen-wrap" data-rolador>
+                <table class="table table-onsen" data-tabela-onsen>
+                  <thead data-cabecalho>
+                    <tr>
+                      <th>
+                        <div class="th-onsen" data-coluna="pergunta" aria-sort="ascending">
+                          <label class="th-onsen-campo"><span class="text-overline">Pergunta</span><input class="th-onsen-input" placeholder="filtrar…" autocomplete="off"></label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por pergunta">▲</button>
+                        </div>
+                      </th>
+                      <th class="w-52">
+                        <div class="th-onsen" data-coluna="tema">
+                          <label class="th-onsen-campo"><span class="text-overline">Tema</span><input class="th-onsen-input" placeholder="filtrar…" autocomplete="off"></label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por tema">▲</button>
+                        </div>
+                      </th>
+                      <th class="w-36">
+                        <div class="th-onsen" data-coluna="situacao">
+                          <label class="th-onsen-campo"><span class="text-overline">Situação</span><input class="th-onsen-input" placeholder="filtrar…" autocomplete="off"></label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por situação">▲</button>
+                        </div>
+                      </th>
+                      <th class="w-36">
+                        <div class="th-onsen" data-coluna="visibilidade">
+                          <label class="th-onsen-campo"><span class="text-overline">Visibilidade</span><input class="th-onsen-input" placeholder="filtrar…" autocomplete="off"></label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por visibilidade">▲</button>
+                        </div>
+                      </th>
+                      <th class="w-36">
+                        <div class="th-onsen" data-coluna="autor">
+                          <label class="th-onsen-campo"><span class="text-overline">Autor</span><input class="th-onsen-input" placeholder="filtrar…" autocomplete="off"></label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por autor">▲</button>
+                        </div>
+                      </th>
+                      <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
+                      <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
+                    </tr>
+                  </thead>
+
+                  <!-- partial: faq/partials/gestao/_corpo_faqs.html — alvo do hx-get dos filtros, da ordenação e do toggle (excluidas=1) -->
+                  <tbody id="corpo-faqs">
+                    <tr>
+                      <td><a href="#tela-editar" class="link-tabela-onsen td-nome-unidade">Como buscar um endereço?</a></td>
+                      <td class="text-base-content/80">Busca › Endereço</td>
+                      <td><span class="badge badge-soft badge-success badge-sm">Publicada</span></td>
+                      <td class="text-base-content/80">Pública</td>
+                      <td><span class="text-overline">Sistema</span></td>
+                      <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
+                      <!-- FAQ do sistema: sem gesto de excluir -->
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td><a href="#tela-editar" class="link-tabela-onsen td-nome-unidade">Como desenhar um polígono no mapa?</a></td>
+                      <td class="text-base-content/80">Mapa › Desenho</td>
+                      <td><span class="badge badge-soft badge-success badge-sm">Publicada</span></td>
+                      <td class="text-base-content/80">Pública</td>
+                      <td class="text-base-content/80">Ana Ramos</td>
+                      <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
+                      <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Excluir" data-abrir="modal-excluir-faq"><svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lixeira"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><a href="#tela-editar" class="link-tabela-onsen td-nome-unidade">Como emitir a certidão de lançamento?</a></td>
+                      <td class="text-base-content/80">Certidões › Lançamento</td>
+                      <td><span class="badge badge-soft badge-success badge-sm">Publicada</span></td>
+                      <td><span class="marca-interna"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-cadeado"/></svg>Interna</span></td>
+                      <td class="text-base-content/80">Ana Ramos</td>
+                      <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
+                      <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Excluir" data-abrir="modal-excluir-faq"><svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lixeira"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><a href="#tela-editar" class="link-tabela-onsen td-nome-unidade">Como pedir acesso ao sistema?</a></td>
+                      <td class="text-base-content/80">Acesso</td>
+                      <td><span class="badge badge-ghost badge-sm">Rascunho</span></td>
+                      <td class="text-base-content/80">Pública</td>
+                      <td><span class="text-overline">Sistema</span></td>
+                      <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
+                      <td></td>
+                    </tr>
+                    <tr class="linha-extinta" data-excluida hidden>
+                      <td><span class="td-nome-unidade">Como trocar a senha?</span></td>
+                      <td class="text-base-content/80">Acesso</td>
+                      <td><span class="badge badge-soft badge-error badge-sm">Excluída</span></td>
+                      <td class="text-base-content/80">Pública</td>
+                      <td class="text-base-content/80">Ana Ramos</td>
+                      <!-- excluída: não se edita — só se restaura -->
+                      <td></td>
+                      <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Restaurar como rascunho" data-restaurar-recusa><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-restaurar"/></svg></button></td>
+                    </tr>
+                    <tr class="linha-extinta" data-excluida hidden>
+                      <td><span class="td-nome-unidade">Onde vejo o histórico de atos?</span></td>
+                      <td class="text-base-content/80">Atos administrativos</td>
+                      <td><span class="badge badge-soft badge-error badge-sm">Excluída</span></td>
+                      <td><span class="marca-interna"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-cadeado"/></svg>Interna</span></td>
+                      <td class="text-base-content/80">Ana Ramos</td>
+                      <td></td>
+                      <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Restaurar como rascunho"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-restaurar"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><a href="#tela-editar" class="link-tabela-onsen td-nome-unidade">O que é o número de contribuinte?</a></td>
+                      <td class="text-base-content/80">Busca › Lote</td>
+                      <td><span class="badge badge-soft badge-success badge-sm">Publicada</span></td>
+                      <td class="text-base-content/80">Pública</td>
+                      <td><span class="text-overline">Sistema</span></td>
+                      <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td><a href="#tela-editar" class="link-tabela-onsen td-nome-unidade">Por que a certidão sai sem o contribuinte?</a></td>
+                      <td class="text-base-content/80">Certidões › Lançamento</td>
+                      <td><span class="badge badge-ghost badge-sm">Rascunho</span></td>
+                      <td><span class="marca-interna"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-cadeado"/></svg>Interna</span></td>
+                      <td class="text-base-content/80">Ana Ramos</td>
+                      <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
+                      <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Excluir" data-abrir="modal-excluir-faq"><svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lixeira"/></svg></button></td>
+                    </tr>
+                  </tbody>
+                  <!-- /partial -->
+                </table>
+              </div>
+              <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+            </div>
+            <!-- /partial -->
+          </div>
+        </div>
+
+        <!-- estado: filtro sem resultado -->
+        <div class="max-w-6xl mx-auto w-full glass-panel p-6 flex flex-col gap-3">
+          <span class="text-overline">estado: nenhuma FAQ corresponde aos filtros</span>
+          <div class="card-well pb-2 table-onsen-poco">
+            <div class="table-onsen-wrap">
+              <table class="table table-onsen">
+                <tbody>
+                  <tr><td colspan="7" class="table-onsen-vazio"><span class="etched text-3xl block mb-2">⌕</span>Nenhuma FAQ corresponde aos filtros.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 5.3 · Nova FAQ ============ -->
+      <div class="flex flex-col gap-4" id="tela-nova">
+        <div class="glass-panel px-5 py-3"><span class="text-overline">5.3 · nova FAQ — tudo vazio; nasce rascunho e pública</span></div>
+
+        <!-- página: faq/gestao/formulario.html -->
+        <div class="max-w-5xl mx-auto w-full flex flex-col gap-4">
+          <div>
+            <a href="#tela" class="btn btn-glass btn-sm gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-voltar"/></svg>
+              Voltar para a área do usuário
+            </a>
+          </div>
+
+          <!-- partial: faq/partials/gestao/_formulario_faq.html — alvo do próprio hx-post (outerHTML) -->
+          <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6" onsubmit="return false">
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Nova FAQ</h1>
+              <p class="text-sm text-base-content/70 mt-1">Nasce como rascunho: só aparece na página de FAQ depois de publicada.</p>
+            </div>
+
+            <!-- partial: faq/partials/gestao/_secao_perguntas.html -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Pergunta</p>
+              <label class="form-field">
+                <span class="text-overline">Pergunta principal</span>
+                <input type="text" class="input input-glass" placeholder="Como emitir a certidão de lançamento?" />
+                <span class="form-field-hint">É a que aparece na página. As outras formas ajudam a busca a achar a FAQ.</span>
+              </label>
+              <div class="form-field">
+                <span class="text-overline">Outras formas de perguntar</span>
+                <p class="text-[13px] italic text-base-content/55">Nenhuma ainda.</p>
+                <div>
+                  <button type="button" class="btn btn-ghost btn-glass btn-sm gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg>
+                    Outra forma
+                  </button>
+                </div>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_resposta.html -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Resposta</p>
+              <!-- partial: faq/partials/gestao/_editor_markdown.html — as abas trocam de modo só em CSS -->
+              <div role="tablist" class="tabs abas-onsen p-0">
+                <label role="tab" class="tab">
+                  <input type="radio" name="modo-md-nova" value="visual" checked data-modo-visual />
+                  <span class="abas-onsen-rotulo etched etched-rotulo">Visual</span>
+                  <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+                  <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+                </label>
+                <div role="tabpanel" class="tab-content pt-2">
+                  <div class="textarea-glass editor-markdown">
+                    <div class="texto-markdown" data-editor-markdown="md-nova"></div>
+                  </div>
+                </div>
+                <label role="tab" class="tab">
+                  <input type="radio" name="modo-md-nova" value="markdown" />
+                  <span class="abas-onsen-rotulo etched etched-rotulo">Markdown</span>
+                  <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+                  <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+                </label>
+                <div role="tabpanel" class="tab-content pt-2">
+                  <!-- o campo que o formulário envia: o modo Visual escreve nele, e o que se digita aqui volta ao Visual -->
+                  <textarea id="md-nova" name="resposta_markdown" class="textarea textarea-glass editor-markdown-fonte" spellcheck="false"></textarea>
+                </div>
+              </div>
+              <!-- /partial -->
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_classificacao.html -->
+            <div class="card-well p-5 flex flex-col gap-5">
+              <p class="text-overline">Classificação</p>
+              <div class="form-field">
+                <span class="text-overline">Tema</span>
+                <div class="form-field-inline-action">
+                  <select class="select select-glass" data-select-onsen>
+                    <option value="" selected>— escolha o tema —</option>
+                    <option>Acesso</option>
+                    <option>Atos administrativos</option>
+                    <option>Busca</option>
+                    <option>Busca › Endereço</option>
+                    <option>Busca › Lote</option>
+                    <option>Certidões</option>
+                    <option>Certidões › Lançamento</option>
+                    <option>Mapa</option>
+                    <option>Mapa › Desenho</option>
+                  </select>
+                  <button type="button" class="btn btn-circle btn-criar-inline" aria-label="Novo tema ou subtema" data-abrir="modal-tema-novo">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="form-field">
+                <span class="text-overline">Palavras-chave</span>
+                <span class="form-field-hint">Siglas e termos que o texto não usa. Marcar uma palavra faz a FAQ ser achada também pelas de cima.</span>
+                <!-- partial: faq/partials/taxonomia/_arvore_palavras_chave.html -->
+                <div class="arvore-colunas mt-1">
+                  <!-- partial: faq/partials/taxonomia/_coluna_palavras_chave.html — alvo do hx-get do nome escolhido -->
+                  <div class="placa-clara arvore-coluna">
+                    <div class="arvore-coluna-cabeca">
+                      <span class="text-overline arvore-coluna-caminho">Palavras-chave</span>
+                      <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave" data-abrir="modal-palavra-nova"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg></button>
+                    </div>
+                    <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar Cadastro" /><button type="button" class="arvore-opcao-nome"><span>Cadastro</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg></button></div>
+                    <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar IPTU" /><button type="button" class="arvore-opcao-nome"><span>IPTU</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg></button></div>
+                    <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar ITBI" /><button type="button" class="arvore-opcao-nome"><span>ITBI</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg></button></div>
+                  </div>
+                  <!-- /partial -->
+                </div>
+                <div class="flex flex-col gap-2 mt-2">
+                  <span class="text-overline">Marcadas</span>
+                  <!-- partial: faq/partials/taxonomia/_marcadas.html — alvo do hx-get de cada checkbox; leva os ids ao <form> -->
+                  <div class="arvore-marcadas"><p class="arvore-marcadas-vazio">Nenhuma palavra-chave marcada.</p></div>
+                  <!-- /partial -->
+                </div>
+                <!-- /partial -->
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_links.html -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Links de referência</p>
+              <p class="text-[13px] italic text-base-content/55">Nenhum link.</p>
+              <div>
+                <button type="button" class="btn btn-ghost btn-glass btn-sm gap-1.5">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg>
+                  Link
+                </button>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_relacionadas.html -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">FAQs relacionadas</p>
+              <p class="text-[13px] italic text-base-content/55">Nenhuma relacionada.</p>
+              <select class="select select-glass" data-select-onsen>
+                <option value="" selected>— relacionar outra FAQ —</option>
+                <option>Como buscar um endereço?</option>
+                <option>Como desenhar um polígono no mapa?</option>
+                <option>Como emitir a certidão de lançamento?</option>
+                <option>Como pedir acesso ao sistema?</option>
+                <option>O que é o número de contribuinte?</option>
+                <option>Por que a certidão sai sem o contribuinte?</option>
+              </select>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_publicacao.html -->
+            <div class="card-well p-5 grid gap-5 sm:grid-cols-2">
+              <div class="form-field">
+                <span class="text-overline">Situação</span>
+                <div class="card-well chave-onsen w-full">
+                  <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+                  <label class="chave-onsen-opcao"><input type="radio" name="nova-situacao" value="rascunho" class="sr-only" checked /><span class="chave-onsen-rotulo etched etched-deeper">Rascunho</span></label>
+                  <label class="chave-onsen-opcao"><input type="radio" name="nova-situacao" value="publicada" class="sr-only" /><span class="chave-onsen-rotulo etched etched-deeper">Publicada</span></label>
+                </div>
+              </div>
+              <div class="form-field">
+                <span class="text-overline">Visibilidade</span>
+                <div class="card-well chave-onsen w-full">
+                  <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+                  <label class="chave-onsen-opcao"><input type="radio" name="nova-visibilidade" value="publica" class="sr-only" checked /><span class="chave-onsen-rotulo etched etched-deeper">Pública</span></label>
+                  <label class="chave-onsen-opcao"><input type="radio" name="nova-visibilidade" value="interna" class="sr-only" /><span class="chave-onsen-rotulo etched etched-deeper">Interna</span></label>
+                </div>
+                <span class="form-field-hint">Interna: só servidor logado vê.</span>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <div class="flex justify-end gap-3 pt-1">
+              <a href="#tela-lista" class="btn btn-ghost btn-glass">Cancelar</a>
+              <button type="submit" class="btn btn-onsen">Salvar FAQ</button>
+            </div>
+          </form>
+          <!-- /partial -->
+        </div>
+      </div>
+
+      <!-- ============ 5.4 · Editar FAQ ============ -->
+      <div class="flex flex-col gap-4" id="tela-editar">
+        <div class="glass-panel px-5 py-3"><span class="text-overline">5.4 · editar FAQ — preenchida, com relacionada excluída (inerte) e os modais de tema e palavra-chave</span></div>
+
+        <!-- página: faq/gestao/formulario.html -->
+        <div class="max-w-5xl mx-auto w-full flex flex-col gap-4">
+          <div>
+            <a href="#tela-lista" class="btn btn-glass btn-sm gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-voltar"/></svg>
+              Voltar para a lista de FAQs
+            </a>
+          </div>
+
+          <!-- partial: faq/partials/gestao/_formulario_faq.html -->
+          <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6" onsubmit="return false">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Editar FAQ</h1>
+                <p class="text-sm text-base-content/70 mt-1">Escrita por você · atualizada em 12/11/2026.</p>
+              </div>
+              <span class="badge badge-soft badge-success">Publicada</span>
+            </div>
+
+            <!-- partial: faq/partials/gestao/_secao_perguntas.html -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Pergunta</p>
+              <label class="form-field">
+                <span class="text-overline">Pergunta principal</span>
+                <input type="text" class="input input-glass" value="Como emitir a certidão de lançamento?" />
+                <span class="form-field-hint">É a que aparece na página. As outras formas ajudam a busca a achar a FAQ.</span>
+              </label>
+              <div class="form-field">
+                <span class="text-overline">Outras formas de perguntar</span>
+                <div class="flex flex-col gap-2">
+                  <!-- partial: faq/partials/gestao/_linha_pergunta.html — "Outra forma" faz hx-get com hx-swap="beforeend" -->
+                  <div class="flex items-center gap-2">
+                    <input type="text" class="input input-glass" value="Como tirar a certidão de IPTU?" />
+                    <button type="button" class="btn btn-ghost btn-glass btn-sm btn-circle" aria-label="Remover esta forma"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+                  </div>
+                  <!-- /partial -->
+                  <div class="flex items-center gap-2">
+                    <input type="text" class="input input-glass" value="Onde emito a certidão de lançamento do imóvel?" />
+                    <button type="button" class="btn btn-ghost btn-glass btn-sm btn-circle" aria-label="Remover esta forma"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+                  </div>
+                </div>
+                <div>
+                  <button type="button" class="btn btn-ghost btn-glass btn-sm gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg>
+                    Outra forma
+                  </button>
+                </div>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_resposta.html -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Resposta</p>
+              <!-- partial: faq/partials/gestao/_editor_markdown.html — as abas trocam de modo só em CSS -->
+              <div role="tablist" class="tabs abas-onsen p-0">
+                <label role="tab" class="tab">
+                  <input type="radio" name="modo-md-editar" value="visual" checked data-modo-visual />
+                  <span class="abas-onsen-rotulo etched etched-rotulo">Visual</span>
+                  <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+                  <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+                </label>
+                <div role="tabpanel" class="tab-content pt-2">
+                  <div class="textarea-glass editor-markdown">
+                    <div class="texto-markdown" data-editor-markdown="md-editar"></div>
+                  </div>
+                </div>
+                <label role="tab" class="tab">
+                  <input type="radio" name="modo-md-editar" value="markdown" />
+                  <span class="abas-onsen-rotulo etched etched-rotulo">Markdown</span>
+                  <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+                  <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+                </label>
+                <div role="tabpanel" class="tab-content pt-2">
+                  <!-- o campo que o formulário envia: o modo Visual escreve nele, e o que se digita aqui volta ao Visual -->
+                  <textarea id="md-editar" name="resposta_markdown" class="textarea textarea-glass editor-markdown-fonte" spellcheck="false" data-markdown-exemplo></textarea>
+                </div>
+              </div>
+              <!-- /partial -->
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_classificacao.html -->
+            <div class="card-well p-5 flex flex-col gap-5">
+              <p class="text-overline">Classificação</p>
+              <div class="form-field">
+                <span class="text-overline">Tema</span>
+                <div class="form-field-inline-action">
+                  <select class="select select-glass" data-select-onsen>
+                    <option>Acesso</option>
+                    <option>Atos administrativos</option>
+                    <option>Busca</option>
+                    <option>Busca › Endereço</option>
+                    <option>Busca › Lote</option>
+                    <option>Certidões</option>
+                    <option selected>Certidões › Lançamento</option>
+                    <option>Mapa</option>
+                    <option>Mapa › Desenho</option>
+                  </select>
+                  <button type="button" class="btn btn-circle btn-glass" aria-label="Renomear o tema escolhido" data-abrir="modal-tema-renomear">
+                    <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg>
+                  </button>
+                  <button type="button" class="btn btn-circle btn-criar-inline" aria-label="Novo tema ou subtema" data-abrir="modal-tema-novo">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="form-field">
+                <span class="text-overline">Palavras-chave</span>
+                <span class="form-field-hint">Siglas e termos que o texto não usa. Marcar uma palavra faz a FAQ ser achada também pelas de cima.</span>
+                <!-- partial: faq/partials/taxonomia/_arvore_palavras_chave.html -->
+                <div class="flex flex-col gap-4 mt-1" data-arvore-demo data-com-modais>
+                  <div class="arvore-colunas" data-colunas></div>
+                  <div class="flex flex-col gap-2">
+                    <span class="text-overline">Marcadas</span>
+                    <div class="arvore-marcadas" data-marcadas></div>
+                  </div>
+                </div>
+                <!-- /partial -->
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_links.html -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Links de referência</p>
+              <div class="flex flex-col gap-2">
+                <!-- partial: faq/partials/gestao/_linha_link.html — "Link" faz hx-get com hx-swap="beforeend" -->
+                <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center">
+                  <input type="text" class="input input-glass" value="Página de busca" aria-label="Título do link" />
+                  <input type="text" class="input input-glass" value="/" aria-label="Endereço do link" />
+                  <button type="button" class="btn btn-ghost btn-glass btn-sm btn-circle" aria-label="Remover este link"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+                </div>
+                <!-- /partial -->
+                <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center">
+                  <input type="text" class="input input-glass" value="Lei do IPTU" aria-label="Título do link" />
+                  <input type="text" class="input input-glass" value="https://legislacao.prefeitura.sp.gov.br/leis/lei-6989-de-29-de-dezembro-de-1966" aria-label="Endereço do link" />
+                  <button type="button" class="btn btn-ghost btn-glass btn-sm btn-circle" aria-label="Remover este link"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+                </div>
+              </div>
+              <span class="form-field-hint">Endereço do sistema começa com / (ex.: /faq/); de fora, com https://.</span>
+              <div>
+                <button type="button" class="btn btn-ghost btn-glass btn-sm gap-1.5">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg>
+                  Link
+                </button>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_relacionadas.html -->
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">FAQs relacionadas</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="chip-concessao">
+                  <a href="#" class="link-tabela-onsen">Por que a certidão sai sem o contribuinte?</a>
+                  <button type="button" class="chip-concessao-remover" aria-label="Remover relacionada"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+                </span>
+                <span class="chip-concessao">
+                  <a href="#" class="link-tabela-onsen">O que é o número de contribuinte?</a>
+                  <button type="button" class="chip-concessao-remover" aria-label="Remover relacionada"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+                </span>
+                <!-- inerte: relacionada excluída -->
+                <span class="chip-concessao chip-inerte" title="Excluída: volta quando for restaurada">
+                  Onde vejo o histórico de atos?
+                  <span class="chip-inerte-marca">Excluída</span>
+                </span>
+              </div>
+              <select class="select select-glass" data-select-onsen>
+                <option value="" selected>— relacionar outra FAQ —</option>
+                <option>Como buscar um endereço?</option>
+                <option>Como desenhar um polígono no mapa?</option>
+                <option>Como pedir acesso ao sistema?</option>
+              </select>
+            </div>
+            <!-- /partial -->
+
+            <!-- partial: faq/partials/gestao/_secao_publicacao.html -->
+            <div class="card-well p-5 grid gap-5 sm:grid-cols-2">
+              <div class="form-field">
+                <span class="text-overline">Situação</span>
+                <div class="card-well chave-onsen w-full">
+                  <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+                  <label class="chave-onsen-opcao"><input type="radio" name="edit-situacao" value="rascunho" class="sr-only" /><span class="chave-onsen-rotulo etched etched-deeper">Rascunho</span></label>
+                  <label class="chave-onsen-opcao"><input type="radio" name="edit-situacao" value="publicada" class="sr-only" checked /><span class="chave-onsen-rotulo etched etched-deeper">Publicada</span></label>
+                </div>
+              </div>
+              <div class="form-field">
+                <span class="text-overline">Visibilidade</span>
+                <div class="card-well chave-onsen w-full">
+                  <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+                  <label class="chave-onsen-opcao"><input type="radio" name="edit-visibilidade" value="publica" class="sr-only" /><span class="chave-onsen-rotulo etched etched-deeper">Pública</span></label>
+                  <label class="chave-onsen-opcao"><input type="radio" name="edit-visibilidade" value="interna" class="sr-only" checked /><span class="chave-onsen-rotulo etched etched-deeper">Interna</span></label>
+                </div>
+                <span class="form-field-hint">Interna: só servidor logado vê.</span>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <div class="flex justify-end gap-3 pt-1">
+              <a href="#tela-lista" class="btn btn-ghost btn-glass">Cancelar</a>
+              <button type="submit" class="btn btn-onsen">Salvar FAQ</button>
+            </div>
+          </form>
+          <!-- /partial -->
+        </div>
+
+        <!-- estado: cabeçalho da FAQ do sistema -->
+        <div class="max-w-5xl mx-auto w-full glass-panel p-6 sm:p-8 flex flex-col gap-3">
+          <span class="text-overline">estado: editando uma FAQ do sistema</span>
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Editar FAQ</h1>
+              <p class="text-sm text-base-content/70 mt-1">FAQ do sistema · todo administrador edita e despublica; ninguém exclui.</p>
+            </div>
+            <span class="badge badge-ghost">Rascunho</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 5.5 · Formulário recusado ============ -->
+      <div class="flex flex-col gap-4">
+        <div class="glass-panel px-5 py-3"><span class="text-overline">5.5 · formulário recusado — pergunta já usada por outra FAQ e link inválido; nada é gravado</span></div>
+
+        <div class="max-w-5xl mx-auto w-full">
+          <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6" onsubmit="return false">
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Editar FAQ</h1>
+              <p class="text-sm text-base-content/70 mt-1">Escrita por você · atualizada em 12/11/2026.</p>
+            </div>
+
+            <!-- partial: partials/_tarja_recusa.html — inalterado -->
+            <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+              <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+              <div>
+                <p class="text-[13px] font-semibold text-base-content/90">FAQ não gravada</p>
+                <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5">
+                  <li>Outras formas de perguntar: “Como emitir a certidão?” já é respondida por outra FAQ.</li>
+                  <li>Endereço do link: use um endereço do sistema (/…) ou externo (https://…).</li>
+                </ul>
+              </div>
+            </div>
+            <!-- /partial -->
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Pergunta</p>
+              <label class="form-field">
+                <span class="text-overline">Pergunta principal</span>
+                <input type="text" class="input input-glass" value="Como emitir a certidão de lançamento?" />
+              </label>
+              <div class="form-field">
+                <span class="text-overline">Outras formas de perguntar</span>
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center gap-2">
+                    <input type="text" class="input input-glass" value="Como tirar a certidão de IPTU?" />
+                    <button type="button" class="btn btn-ghost btn-glass btn-sm btn-circle" aria-label="Remover esta forma"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+                  </div>
+                  <!-- estado: controle da pergunta ocupada -->
+                  <div class="flex items-center gap-2">
+                    <input type="text" class="input input-glass campo-realce-erro" value="Como emitir a certidão?" />
+                    <button type="button" class="btn btn-ghost btn-glass btn-sm btn-circle" aria-label="Remover esta forma"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-well p-5 flex flex-col gap-4">
+              <p class="text-overline">Links de referência</p>
+              <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center">
+                <input type="text" class="input input-glass" value="Lei do IPTU" aria-label="Título do link" />
+                <!-- estado: endereço recusado -->
+                <input type="text" class="input input-glass campo-realce-erro" value="javascript:alert(1)" aria-label="Endereço do link" />
+                <button type="button" class="btn btn-ghost btn-glass btn-sm btn-circle" aria-label="Remover este link"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ============ 5.6 · Modais ============ -->
+      <div class="flex flex-col gap-4">
+        <div class="glass-panel px-5 py-3 flex flex-col gap-3">
+          <span class="text-overline">5.6 · modais — também abrem pelos gestos das telas acima</span>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn btn-glass btn-sm" data-abrir="modal-excluir-faq">Excluir FAQ</button>
+            <button type="button" class="btn btn-glass btn-sm" data-abrir="modal-tema-novo">Novo tema</button>
+            <button type="button" class="btn btn-glass btn-sm" data-abrir="modal-tema-recusado">Novo tema — recusado</button>
+            <button type="button" class="btn btn-glass btn-sm" data-abrir="modal-tema-renomear">Renomear tema</button>
+            <button type="button" class="btn btn-glass btn-sm" data-abrir="modal-palavra-nova">Nova palavra-chave</button>
+            <button type="button" class="btn btn-glass btn-sm" data-abrir="modal-palavra-renomear">Renomear palavra-chave</button>
+          </div>
+        </div>
+
+        <!-- partial: faq/partials/gestao/_modal_excluir.html — alvo do hx-get da lixeira (faq:admin_excluir, GET) -->
+        <input type="checkbox" id="modal-excluir-faq" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5" onsubmit="return false">
+              <div class="flex items-start gap-3">
+                <span class="icon-bubble w-11 h-11 shrink-0 bg-error/15 border-error/30 text-error">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lixeira"/></svg>
+                </span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Excluir FAQ</h2>
+                  <p class="text-sm text-base-content/70 mt-0.5">Sai da página, da busca e da lista. As perguntas ficam livres para outra FAQ, e ela pode ser restaurada depois.</p>
+                </div>
+              </div>
+              <div class="card-well px-5 py-4">
+                <p class="text-overline">FAQ</p>
+                <p class="valor-leitura font-medium text-rocha-950">Como desenhar um polígono no mapa?</p>
+              </div>
+              <div class="modal-action">
+                <label for="modal-excluir-faq" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="submit" class="btn btn-critico btn-sm">Ok, excluir</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-excluir-faq">Fechar</label>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: faq/partials/taxonomia/_modal_tema.html — novo (faq:admin_tema_novo) -->
+        <input type="checkbox" id="modal-tema-novo" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5" onsubmit="return false">
+              <div class="flex items-start gap-3">
+                <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-mais"/></svg></span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Novo tema</h2>
+                  <p class="text-sm text-base-content/70 mt-0.5">Dentro de outro tema, vira subtema. São no máximo dois níveis.</p>
+                </div>
+              </div>
+              <div class="card-well p-5 flex flex-col gap-4">
+                <label class="form-field">
+                  <span class="text-overline">Nome</span>
+                  <input type="text" class="input input-glass" placeholder="Quitação" />
+                </label>
+                <div class="form-field">
+                  <span class="text-overline">Dentro de</span>
+                  <select class="select select-glass" data-select-onsen>
+                    <option value="" selected>— nenhum: é um tema —</option>
+                    <option>Acesso</option>
+                    <option>Atos administrativos</option>
+                    <option>Busca</option>
+                    <option>Certidões</option>
+                    <option>Mapa</option>
+                  </select>
+                </div>
+              </div>
+              <div class="modal-action">
+                <label for="modal-tema-novo" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="submit" class="btn btn-onsen btn-sm">Criar tema</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-tema-novo">Fechar</label>
+        </div>
+
+        <!-- estado: recusado — subtema sob subtema, realce no "Dentro de" -->
+        <input type="checkbox" id="modal-tema-recusado" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5" onsubmit="return false">
+              <div class="flex items-start gap-3">
+                <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-mais"/></svg></span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Novo tema</h2>
+                  <p class="text-sm text-base-content/70 mt-0.5">Dentro de outro tema, vira subtema. São no máximo dois níveis.</p>
+                </div>
+              </div>
+              <div class="tarja-vinculo tarja-vinculo-critica flex items-start gap-2">
+                <svg class="w-5 h-5 shrink-0 text-error" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+                <div>
+                  <p class="text-[13px] font-semibold text-base-content/90">Tema não criado</p>
+                  <ul class="text-[13px] text-base-content/80 list-disc list-inside mt-0.5"><li>Dentro de: subtema não pode ter subtema.</li></ul>
+                </div>
+              </div>
+              <div class="card-well p-5 flex flex-col gap-4">
+                <label class="form-field">
+                  <span class="text-overline">Nome</span>
+                  <input type="text" class="input input-glass" value="Segunda via" />
+                </label>
+                <div class="form-field">
+                  <span class="text-overline">Dentro de</span>
+                  <select class="select select-glass campo-realce-erro">
+                    <option>Certidões › Lançamento</option>
+                  </select>
+                </div>
+              </div>
+              <div class="modal-action">
+                <label for="modal-tema-recusado" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="submit" class="btn btn-onsen btn-sm">Criar tema</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-tema-recusado">Fechar</label>
+        </div>
+
+        <!-- partial: faq/partials/taxonomia/_modal_tema.html — renomear (faq:admin_tema_renomear) -->
+        <input type="checkbox" id="modal-tema-renomear" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5" onsubmit="return false">
+              <div class="flex items-start gap-3">
+                <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-lapis"/></svg></span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Renomear tema</h2>
+                  <p class="text-sm text-base-content/70 mt-0.5">O nome muda em todas as FAQs do tema.</p>
+                </div>
+              </div>
+              <div class="card-well p-5 flex flex-col gap-4">
+                <div class="form-field">
+                  <span class="text-overline">Tema</span>
+                  <p class="valor-leitura text-base-content/70">Certidões › Lançamento</p>
+                </div>
+                <label class="form-field">
+                  <span class="text-overline">Novo nome</span>
+                  <input type="text" class="input input-glass" value="Lançamento" />
+                </label>
+              </div>
+              <div class="modal-action">
+                <label for="modal-tema-renomear" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="submit" class="btn btn-onsen btn-sm">Renomear</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-tema-renomear">Fechar</label>
+        </div>
+        <!-- /partial -->
+
+        <!-- partial: faq/partials/taxonomia/_modal_palavra_chave.html — nova (faq:admin_palavra_chave_nova); o "Dentro de" chega com a coluna do + -->
+        <input type="checkbox" id="modal-palavra-nova" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5" onsubmit="return false">
+              <div class="flex items-start gap-3">
+                <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-mais"/></svg></span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Nova palavra-chave</h2>
+                  <p class="text-sm text-base-content/70 mt-0.5">Até três níveis. O nome só precisa ser único entre as irmãs.</p>
+                </div>
+              </div>
+              <div class="card-well p-5 flex flex-col gap-4">
+                <label class="form-field">
+                  <span class="text-overline">Nome</span>
+                  <input type="text" class="input input-glass" placeholder="Segunda via" />
+                </label>
+                <div class="form-field">
+                  <span class="text-overline">Dentro de</span>
+                  <select class="select select-glass" data-select-onsen>
+                    <option value="">— nenhuma: é uma raiz —</option>
+                    <option>Cadastro</option>
+                    <option>Cadastro › Lote</option>
+                    <option>IPTU</option>
+                    <option selected>IPTU › Certidão</option>
+                    <option>ITBI</option>
+                    <option>ITBI › Certidão</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <span class="text-overline">Relacionadas</span>
+                  <div class="flex flex-wrap gap-2">
+                    <span class="chip-concessao">ITBI › Certidão<button type="button" class="chip-concessao-remover" aria-label="Remover"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg></button></span>
+                  </div>
+                  <select class="select select-glass" data-select-onsen>
+                    <option value="" selected>— relacionar outra palavra —</option>
+                    <option>Cadastro › Lote</option>
+                    <option>Cadastro › Lote › Contribuinte</option>
+                    <option>ITBI › Base de cálculo</option>
+                  </select>
+                  <span class="form-field-hint">Palavras de outros ramos que dizem a mesma coisa. Vale nos dois sentidos.</span>
+                </div>
+              </div>
+              <div class="modal-action">
+                <label for="modal-palavra-nova" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="submit" class="btn btn-onsen btn-sm">Criar palavra-chave</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-palavra-nova">Fechar</label>
+        </div>
+
+        <!-- partial: faq/partials/taxonomia/_modal_palavra_chave.html — renomear (faq:admin_palavra_chave_renomear) -->
+        <input type="checkbox" id="modal-palavra-renomear" class="modal-toggle" />
+        <div class="modal modal-glass" role="dialog">
+          <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+            <form class="flex flex-col gap-5" onsubmit="return false">
+              <div class="flex items-start gap-3">
+                <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="#g-lapis"/></svg></span>
+                <div>
+                  <h2 class="text-xl font-bold tracking-tight text-madeira-700">Renomear palavra-chave</h2>
+                  <p class="text-sm text-base-content/70 mt-0.5">O nome muda em todas as FAQs marcadas com ela.</p>
+                </div>
+              </div>
+              <div class="card-well p-5 flex flex-col gap-4">
+                <div class="form-field">
+                  <span class="text-overline">Palavra-chave</span>
+                  <p class="valor-leitura text-base-content/70" data-alvo-renomear>IPTU › Certidão</p>
+                </div>
+                <label class="form-field">
+                  <span class="text-overline">Novo nome</span>
+                  <input type="text" class="input input-glass" value="Certidão" data-nome-renomear />
+                </label>
+              </div>
+              <div class="modal-action">
+                <label for="modal-palavra-renomear" class="btn btn-glass btn-sm">Cancelar</label>
+                <button type="submit" class="btn btn-onsen btn-sm">Renomear</button>
+              </div>
+            </form>
+          </div>
+          <label class="modal-backdrop" for="modal-palavra-renomear">Fechar</label>
+        </div>
+        <!-- /partial -->
+      </div>
+    </section>
+  </div>
+
+  <!-- Sem este módulo os selects seguem nativos: marcar o campo não carrega o componente. -->
+  <script type="module" src="/static/src/js/ui/select_onsen.js"></script>
+  <!-- E sem este a barra gravada do poço da tabela não é medida. -->
+  <script type="module" src="/static/src/js/ui/scroll_etched.js"></script>
+
+  <script type="module">
+    // static/src/js/editor_markdown.js — no produto, o Crepe vem do bundle do esbuild, não do CDN.
+    // ?bundle: um arquivo só. Sem ele o esm.sh serve o ProseMirror em várias cópias, e os atalhos
+    // de digitação (# → título, Enter na lista) param de reconhecer os próprios nós.
+    import { Crepe } from "https://esm.sh/@milkdown/crepe@7.23.0?bundle";
+
+    const MARKDOWN_EXEMPLO = `A certidão de lançamento atesta que o imóvel está lançado no IPTU sob um contribuinte. Ela sai em PDF, assinada pelo sistema.
+
+### Como emitir
+
+1. Localize o imóvel pelo **número de contribuinte** ou pelo endereço.
+2. Na gaveta do lote, abra **Ações**.
+3. Escolha *Emitir certidão de lançamento*.
+
+> Só quem recebeu a competência na sua unidade vê a ação.
+
+Dúvidas sobre o cadastro: veja [a página de busca](/).
+`;
+
+    const ROTULOS = {
+      [Crepe.Feature.Placeholder]: { text: "Escreva a resposta. Digite / para inserir títulos, listas e tabelas.", mode: "block" },
+      [Crepe.Feature.Toolbar]: { boldLabel: "Negrito", italicLabel: "Itálico", strikethroughLabel: "Riscado", codeLabel: "Código", linkLabel: "Link" },
+      [Crepe.Feature.LinkTooltip]: { inputPlaceholder: "Cole o endereço: /faq/ ou https://…" },
+      [Crepe.Feature.BlockEdit]: {
+        textGroup: {
+          label: "Texto",
+          text: { label: "Parágrafo" },
+          h1: { label: "Título 1" },
+          h2: { label: "Título 2" },
+          h3: { label: "Título 3" },
+          h4: { label: "Título 4" },
+          h5: { label: "Título 5" },
+          h6: { label: "Título 6" },
+          quote: { label: "Citação" },
+          divider: { label: "Linha horizontal" },
+        },
+        listGroup: {
+          label: "Listas",
+          bulletList: { label: "Lista" },
+          orderedList: { label: "Lista numerada" },
+          taskList: { label: "Lista de tarefas" },
+        },
+        advancedGroup: {
+          label: "Avançado",
+          codeBlock: { label: "Bloco de código" },
+          table: { label: "Tabela" },
+        },
+      },
+    };
+
+    function criarCrepe(alvo, campo, estado) {
+      const crepe = new Crepe({
+        root: alvo,
+        defaultValue: campo.value,
+        // Fora o que o renderizador de faq/001 não mostra: fórmula e o bloco de imagem do Crepe.
+        features: { [Crepe.Feature.Latex]: false, [Crepe.Feature.ImageBlock]: false },
+        featureConfigs: ROTULOS,
+      });
+      crepe.on((ouvinte) => ouvinte.markdownUpdated((_ctx, markdown) => {
+        campo.value = markdown;
+        estado.emitido = markdown;
+      }));
+      return crepe.create().then(() => crepe);
+    }
+
+    async function montarEditor(alvo) {
+      const campo = document.getElementById(alvo.dataset.editorMarkdown);
+      if (campo.hasAttribute("data-markdown-exemplo")) campo.value = MARKDOWN_EXEMPLO;
+      const estado = { emitido: campo.value };
+      let crepe = await criarCrepe(alvo, campo, estado);
+      // O que se digitou no modo Markdown volta ao Visual: o Crepe renasce do texto do campo.
+      const abaVisual = alvo.closest("[role=tablist]").querySelector("[data-modo-visual]");
+      abaVisual.addEventListener("change", async () => {
+        if (campo.value === estado.emitido) return;
+        await crepe.destroy();
+        alvo.replaceChildren();
+        estado.emitido = campo.value;
+        crepe = await criarCrepe(alvo, campo, estado);
+      });
+    }
+
+    document.querySelectorAll("[data-editor-markdown]").forEach((alvo) => {
+      montarEditor(alvo).catch((erro) => {
+        alvo.innerHTML = `<p class="p-4 text-[13px] text-error">O Crepe não carregou do CDN (${erro.message}).</p>`;
+      });
+    });
+  </script>
+
+  <script>
+    // Coreografia do mock. No servidor: o toggle e os filtros trocam o corpo da tabela, os gestos
+    // trazem o modal por hx-get, e a árvore troca colunas e marcadas por HTMX.
+    document.addEventListener("click", (evento) => {
+      const gatilho = evento.target.closest("[data-abrir]");
+      if (!gatilho) return;
+      evento.preventDefault();
+      const caixa = document.getElementById(gatilho.dataset.abrir);
+      if (caixa) caixa.checked = true;
+    });
+
+    document.getElementById("toggle-excluidas").addEventListener("change", (evento) => {
+      document.querySelectorAll("[data-excluida]").forEach((linha) => { linha.hidden = !evento.target.checked; });
+      if (!evento.target.checked) document.getElementById("aviso-lista").hidden = true;
+    });
+    document.querySelector("[data-restaurar-recusa]").addEventListener("click", () => {
+      document.getElementById("aviso-lista").hidden = false;
+    });
+
+    document.querySelectorAll("[data-quem-ve]").forEach((radio) => radio.addEventListener("change", () => {
+      const comum = document.querySelector("[data-quem-ve]:checked").value === "comum";
+      document.querySelectorAll("[data-so-super]").forEach((peca) => { peca.hidden = comum; });
+    }));
+
+    // Árvore: o catálogo que o servidor consultaria a cada coluna.
+    const PALAVRAS = {
+      raiz: ["Cadastro", "IPTU", "ITBI"],
+      "Cadastro": ["Logradouro", "Lote"],
+      "Cadastro › Lote": ["Condomínio", "Contribuinte"],
+      "IPTU": ["Certidão", "Desconto", "Isenção"],
+      "IPTU › Certidão": ["Lançamento", "Quitação"],
+      "ITBI": ["Base de cálculo", "Certidão"],
+      "ITBI › Certidão": ["Negativa"],
+    };
+    const SETA = '<svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#g-seta-direita"/></svg>';
+    const LAPIS = '<svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg>';
+    const MAIS = '<svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-mais"/></svg>';
+    const X = '<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#g-x"/></svg>';
+
+    function montarArvore(raiz, aberto, marcadas) {
+      const colunas = raiz.querySelector("[data-colunas]");
+      const lista = raiz.querySelector("[data-marcadas]");
+      const comModais = raiz.hasAttribute("data-com-modais");
+      const caminhos = [null, ...aberto.map((_, i) => aberto.slice(0, i + 1).join(" › "))];
+
+      colunas.innerHTML = caminhos
+        .filter((caminho) => caminho === null || PALAVRAS[caminho])
+        .map((caminho, nivel) => {
+          const nomes = PALAVRAS[caminho ?? "raiz"];
+          const opcoes = nomes.map((nome) => {
+            const completo = caminho ? `${caminho} › ${nome}` : nome;
+            const temFilhas = Boolean(PALAVRAS[completo]) && nivel < 2;
+            const estaAberta = aberto[nivel] === nome;
+            const nomeHtml = temFilhas
+              ? `<button type="button" class="arvore-opcao-nome" data-abrir-ramo="${nivel}" data-nome="${nome}"><span>${nome}</span>${SETA}</button>`
+              : `<label class="arvore-opcao-nome"><span>${nome}</span></label>`;
+            return `<div class="arvore-opcao${estaAberta ? " arvore-opcao-aberta" : ""}">
+              <input type="checkbox" class="checkbox-onsen" data-caminho="${completo}" ${marcadas.has(completo) ? "checked" : ""} aria-label="Marcar ${nome}" />
+              ${nomeHtml}
+              <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" ${comModais ? 'data-abrir="modal-palavra-renomear"' : ""} data-renomear="${completo}" aria-label="Renomear ${nome}">${LAPIS}</button>
+            </div>`;
+          }).join("");
+          return `<div class="placa-clara arvore-coluna">
+            <div class="arvore-coluna-cabeca">
+              <span class="text-overline arvore-coluna-caminho">${caminho ?? "Palavras-chave"}</span>
+              <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" ${comModais ? 'data-abrir="modal-palavra-nova"' : ""} aria-label="Nova palavra-chave">${MAIS}</button>
+            </div>${opcoes}</div>`;
+        }).join("");
+
+      lista.innerHTML = marcadas.size
+        ? [...marcadas].sort().map((caminho) => `<span class="chip-concessao">${caminho}<button type="button" class="chip-concessao-remover" data-desmarcar="${caminho}" aria-label="Desmarcar ${caminho}">${X}</button></span>`).join("")
+        : '<p class="arvore-marcadas-vazio">Nenhuma palavra-chave marcada.</p>';
+
+      raiz.onclick = (evento) => {
+        const ramo = evento.target.closest("[data-abrir-ramo]");
+        const desmarcar = evento.target.closest("[data-desmarcar]");
+        const renomear = evento.target.closest("[data-renomear]");
+        if (ramo) {
+          const nivel = Number(ramo.dataset.abrirRamo);
+          montarArvore(raiz, [...aberto.slice(0, nivel), ramo.dataset.nome], marcadas);
+        } else if (desmarcar) {
+          marcadas.delete(desmarcar.dataset.desmarcar);
+          montarArvore(raiz, aberto, marcadas);
+        } else if (renomear) {
+          document.querySelector("[data-alvo-renomear]").textContent = renomear.dataset.renomear;
+          document.querySelector("[data-nome-renomear]").value = renomear.dataset.renomear.split(" › ").pop();
+        }
+      };
+      raiz.onchange = (evento) => {
+        const caixa = evento.target.closest("[data-caminho]");
+        if (!caixa) return;
+        caixa.checked ? marcadas.add(caixa.dataset.caminho) : marcadas.delete(caixa.dataset.caminho);
+        montarArvore(raiz, aberto, marcadas);
+      };
+    }
+
+    document.querySelectorAll("[data-arvore-demo]").forEach((raiz) => {
+      montarArvore(raiz, ["IPTU", "Certidão"], new Set(["IPTU › Certidão › Lançamento", "Cadastro › Lote › Contribuinte"]));
+    });
+  </script>
+</body>
+</html>
