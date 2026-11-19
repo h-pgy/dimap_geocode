@@ -1,0 +1,5 @@
+{% include "faq/partials/taxonomia/_marcadas.html" %}
+{% if alternada %}
+  {# O checkbox da coluna acompanha o X do chip, se ainda estiver na tela. #}
+  {% include "faq/partials/taxonomia/_checkbox_palavra.html" with pk=alternada.pk nome=alternada.nome oob=True %}
+{% endif %}

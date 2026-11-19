@@ -46,6 +46,8 @@ class ItemLivre(BaseModel):
     argumento_perfil: str | None = None
     partial: str | None = None
     variante_icone: VarianteIcone = VarianteIcone.GRANDE
+    # Só esconde o card: a barreira é `superusuario_requerido`, na rota (SPEC faq/002).
+    somente_superusuario: bool = False
 
 
 class Grupo(BaseModel):

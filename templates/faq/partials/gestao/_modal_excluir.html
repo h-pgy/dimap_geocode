@@ -1,0 +1,33 @@
+{# Confirmação da exclusão lógica. Corpo vazio na resposta fecha o modal, e a tabela se recarrega. #}
+<input type="checkbox" id="modal-excluir-faq" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+    <form class="flex flex-col gap-5"
+          hx-post="{% url 'faq:admin_excluir' registro.pk %}"
+          hx-target="#poco-modal"
+          hx-swap="innerHTML">
+      <div class="flex items-start gap-3">
+        <span class="icon-bubble w-11 h-11 shrink-0 bg-error/15 border-error/30 text-error">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-lixeira"/></svg>
+        </span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">Excluir FAQ</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">Sai da página, da busca e da lista. As perguntas ficam livres para outra FAQ, e ela pode ser restaurada depois.</p>
+        </div>
+      </div>
+      <div class="card-well px-5 py-4">
+        <p class="text-overline">FAQ</p>
+        <p class="valor-leitura font-medium text-rocha-950">{{ pergunta }}</p>
+      </div>
+      <div class="modal-action">
+        <label for="modal-excluir-faq" class="btn btn-glass btn-sm">Cancelar</label>
+        {% if pode_excluir %}
+          <button type="submit" class="btn btn-critico btn-sm">Ok, excluir</button>
+        {% else %}
+          <button type="button" class="btn btn-critico btn-sm btn-disabled" tabindex="-1" aria-disabled="true">Indisponível</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-excluir-faq">Fechar</label>
+</div>

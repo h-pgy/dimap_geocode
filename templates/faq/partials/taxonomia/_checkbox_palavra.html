@@ -1,0 +1,13 @@
+{# Sem `name`: a marcação viaja pela lista de marcadas, não pelo checkbox, que some ao trocar de ramo. #}
+<input type="checkbox"
+       class="checkbox-onsen"
+       id="pc-marca-{{ pk }}"
+       value="{{ pk }}"
+       {% if marcada %}checked{% endif %}
+       {% if oob %}hx-swap-oob="true"{% endif %}
+       hx-get="{% url 'faq:admin_palavras_chave_marcadas' %}"
+       hx-vals='{"alternar": "{{ pk }}"}'
+       hx-include="#arvore-marcadas"
+       hx-target="#arvore-marcadas"
+       hx-swap="outerHTML"
+       aria-label="Marcar {{ nome }}" />

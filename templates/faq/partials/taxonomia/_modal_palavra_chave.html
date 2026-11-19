@@ -1,0 +1,64 @@
+{# Nova palavra-chave (o "Dentro de" chega com a coluna do +) ou renomear a do lápis. A resposta #}
+{# que passa fecha o modal e redesenha, fora de banda, o ramo onde a palavra está. #}
+<input type="checkbox" id="modal-palavra-chave" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+    <form class="flex flex-col gap-5"
+          {% if palavra %}hx-post="{% url 'faq:admin_palavra_chave_renomear' palavra.pk %}"{% else %}hx-post="{% url 'faq:admin_palavra_chave_nova' %}"{% endif %}
+          hx-target="#poco-modal"
+          hx-swap="innerHTML"
+          hx-include="#arvore-marcadas">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="{% if palavra %}#glifo-gestao-lapis{% else %}#glifo-gestao-mais{% endif %}"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">{% if palavra %}Renomear palavra-chave{% else %}Nova palavra-chave{% endif %}</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">
+            {% if palavra %}O nome muda em todas as FAQs marcadas com ela.{% else %}Até três níveis. O nome só precisa ser único entre as irmãs.{% endif %}
+          </p>
+        </div>
+      </div>
+
+      {% if recusa %}
+        {% include "partials/_tarja_recusa.html" with erros=recusa.mensagens titulo="Palavra-chave não gravada" %}
+      {% endif %}
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        {% if palavra %}
+          <div class="form-field">
+            <span class="text-overline">Palavra-chave</span>
+            <p class="valor-leitura text-base-content/70">{{ caminho }}</p>
+          </div>
+          <label class="form-field">
+            <span class="text-overline">Novo nome</span>
+            <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome|default:'' }}" />
+          </label>
+        {% else %}
+          <label class="form-field">
+            <span class="text-overline">Nome</span>
+            <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome|default:'' }}" placeholder="Segunda via" />
+          </label>
+          <div class="form-field">
+            <span class="text-overline">Dentro de</span>
+            <select name="pai" class="select select-glass {{ realce.pai }}" data-select-onsen>
+              <option value=""{% if not valores.pai %} selected{% endif %}>— nenhuma: é uma raiz —</option>
+              {% for pk, rotulo in pais %}
+                <option value="{{ pk }}"{% if pk == valores.pai %} selected{% endif %}>{{ rotulo }}</option>
+              {% endfor %}
+              {% if pai_fora %}
+                {# O pai que não aceita filha continua escolhido, para o realce cair sobre ele. #}
+                <option value="{{ pai_fora.0 }}" selected>{{ pai_fora.1 }}</option>
+              {% endif %}
+            </select>
+          </div>
+          {% include "faq/partials/taxonomia/_relacionadas_palavra.html" %}
+        {% endif %}
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-palavra-chave" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">{% if palavra %}Renomear{% else %}Criar palavra-chave{% endif %}</button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-palavra-chave">Fechar</label>
+</div>

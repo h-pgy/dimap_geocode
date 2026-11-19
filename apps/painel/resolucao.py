@@ -27,6 +27,7 @@ class MontagemPainel(BaseModel):
     # O router recebe o CONJUNTO, não o usuário: é o que o mantém puro e testável sem banco.
     slugs_liberados: frozenset[str]
     perfil_id: int
+    eh_superusuario: bool = False
 
 
 class ResolvedorPainel:
@@ -72,14 +73,15 @@ class ResolvedorPainel:
         return tuple(
             self._item(item, partial_padrao, montagem.perfil_id)
             for item in itens
-            if self._visivel(item, montagem.slugs_liberados)
+            if self._visivel(item, montagem)
         )
 
-    def _visivel(self, item: ItemAcao | ItemLivre, slugs_liberados: frozenset[str]) -> bool:
-        # O livre não é ato: não há caneta que o libere, e por isso não há caneta que o esconda.
+    def _visivel(self, item: ItemAcao | ItemLivre, montagem: MontagemPainel) -> bool:
+        # O livre não é ato: não há caneta que o esconda. A única exceção é a marca de
+        # superusuário, que só esconde o card — a barreira é `superusuario_requerido`, na rota.
         if isinstance(item, ItemLivre):
-            return True
-        return item.acao.acao.slug in slugs_liberados
+            return montagem.eh_superusuario or not item.somente_superusuario
+        return item.acao.acao.slug in montagem.slugs_liberados
 
     def _item(self, item: ItemAcao | ItemLivre, partial_padrao: str, perfil_id: int) -> ItemResolvido:
         # As duas naturezas convergem para o MESMO resolvido: o template desenha um card só, e o

@@ -1,0 +1,25 @@
+{# As abas trocam de modo só em CSS. O <textarea> é o campo que o formulário envia: o modo Visual #}
+{# escreve nele, e o que se digita nele volta ao Visual. Sem o JS, é ele que fica de pé. #}
+<div role="tablist" class="tabs abas-onsen p-0">
+  <label role="tab" class="tab">
+    <input type="radio" name="modo-resposta" value="visual" checked data-modo-visual />
+    <span class="abas-onsen-rotulo etched etched-rotulo">Visual</span>
+    <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+    <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+  </label>
+  <div role="tabpanel" class="tab-content pt-2">
+    <div class="textarea-glass editor-markdown {{ realce.resposta_markdown }}">
+      <div class="texto-markdown" data-editor-markdown="campo-resposta-markdown"></div>
+    </div>
+  </div>
+  <label role="tab" class="tab">
+    <input type="radio" name="modo-resposta" value="markdown" />
+    <span class="abas-onsen-rotulo etched etched-rotulo">Markdown</span>
+    <span class="abas-onsen-fio abas-onsen-fio-repouso etched-line" aria-hidden="true"></span>
+    <span class="abas-onsen-fio abas-onsen-fio-aberta etched-line-inked" aria-hidden="true"></span>
+  </label>
+  <div role="tabpanel" class="tab-content pt-2">
+    <textarea id="campo-resposta-markdown" name="resposta_markdown" class="textarea textarea-glass editor-markdown-fonte {{ realce.resposta_markdown }}" spellcheck="false">
+{{ valores.resposta_markdown }}</textarea>
+  </div>
+</div>

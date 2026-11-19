@@ -31,11 +31,11 @@ def carregar_faqs(visibilidades: Iterable[Visibilidade]) -> list[Faq]:
         )
         .order_by("id")
     )
-    faqs = [_faq_do_registro(registro) for registro in registros]
+    faqs = [faq_do_registro(registro) for registro in registros]
     return [faq for faq in faqs if faq is not None]
 
 
-def _faq_do_registro(registro: FaqModel) -> Faq | None:
+def faq_do_registro(registro: FaqModel) -> Faq | None:
     perguntas = sorted(registro.perguntas.all(), key=lambda p: p.pk)
     principal = next((p for p in perguntas if p.eh_principal), None)
     if principal is None:

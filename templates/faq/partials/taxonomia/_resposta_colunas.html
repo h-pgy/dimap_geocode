@@ -1,0 +1,8 @@
+{# A coluna pedida; fora de banda, as colunas acima com o ramo aberto e as vagas abaixo esvaziadas. #}
+{% include "faq/partials/taxonomia/_coluna_palavras_chave.html" with coluna=principal %}
+{% for coluna in anteriores %}
+  {% include "faq/partials/taxonomia/_coluna_palavras_chave.html" with oob=True %}
+{% endfor %}
+{% for nivel in vazios %}
+  <div id="arvore-coluna-{{ nivel }}" hidden hx-swap-oob="true"></div>
+{% endfor %}

@@ -44,6 +44,14 @@ RUN mkdir -p /opt/vendor \
  && cp    /opt/node/node_modules/htmx.org/dist/htmx.min.js             /opt/vendor/htmx.min.js \
  && cp -r /opt/node/node_modules/@fontsource/roboto                    /opt/vendor/roboto \
  && cp -r /opt/node/node_modules/@fontsource/roboto-mono               /opt/vendor/roboto-mono
+# O Crepe é o único pacote distribuído como ESM espalhado em dezenas de dependências (SPEC faq/002):
+# o esbuild o junta num módulo só e numa folha só. As fontes do KaTeX ficam vazias: a fórmula está
+# desligada no editor, e sem loader para elas o build da folha falha.
+RUN esbuild @milkdown/crepe --bundle --format=esm --minify \
+      --outfile=/opt/vendor/milkdown/crepe.js \
+ && esbuild @milkdown/crepe/theme/common/style.css --bundle --minify \
+      --loader:.woff=empty --loader:.woff2=empty --loader:.ttf=empty \
+      --outfile=/opt/vendor/milkdown/crepe.css
 
 # --- Aplicação ---
 

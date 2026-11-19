@@ -3565,6 +3565,162 @@ html[data-theme="dimap"] {
   .faq-lateral .respostas-abertas-conteudo { @apply hidden xl:flex; }
   .faq-conjunto:not(:has(.faq-item[open])) .respostas-abertas-conteudo { @apply hidden; }
 
+  /* ==================== ÁTOMO · BOTÃO CRÍTICO (SPEC faq/002) ==================== */
+  /* O gesto que confirma um ato destrutivo: a forma e o peso do .btn-onsen, o gelo do .btn-glass
+     e a tinta de erro da .tarja-vinculo-critica e da bolha de alerta. Acende em vermelho, nunca em água. */
+  .btn-critico {
+    @apply rounded-xl font-bold text-error bg-error/15 border border-error/35 backdrop-blur-[10px]
+           shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_2px_8px_rgba(7,58,84,0.3)]
+           transition-all duration-300
+           hover:bg-error/25 hover:border-error/50 hover:shadow-[0_4px_20px_rgba(220,38,38,0.35)]
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/40;
+  }
+
+  /* ==================== ÁTOMO · CHIP INERTE ==================== */
+  /* .chip-concessao + .chip-inerte: a relacionada excluída. O chip ativo é placa; o inerte afunda
+     no gelo (poço fino), sem link, sem remover e sem resposta ao ponteiro. */
+  .chip-inerte {
+    @apply pr-3 cursor-default bg-white/20 border-white/45 text-base-content/55 hover:bg-white/20;
+    box-shadow: var(--sombra-poco-fina);
+  }
+  .chip-inerte-marca {
+    @apply text-[10px] font-medium uppercase tracking-[0.14em] text-error/75;
+  }
+
+  /* ==================== MOLÉCULA · EDITOR DE MARKDOWN (pele do Crepe) ==================== */
+  /* .textarea-glass (o poço) > .texto-markdown (a tinta da página de FAQ) > o Crepe. O CSS do
+     Crepe mora numa camada abaixo do tema: toda regra daqui vence a dele sem !important. */
+  .editor-markdown { @apply relative block p-0 cursor-text; }
+  .editor-markdown:focus-within {
+    @apply bg-white/45 border-agua-500;
+    box-shadow: var(--sombra-poco), 0 0 0 3px rgba(0, 150, 199, 0.2), 0 0 20px rgba(72, 202, 228, 0.35);
+  }
+  .editor-markdown .milkdown {
+    --crepe-color-background: transparent;
+    --crepe-color-on-background: rgba(13, 27, 42, 0.9);
+    --crepe-color-surface: rgba(255, 255, 255, 0.82);
+    --crepe-color-surface-low: rgba(255, 255, 255, 0.6);
+    --crepe-color-on-surface: #0d1b2a;
+    --crepe-color-on-surface-variant: #415a77;
+    --crepe-color-outline: #5b7290;
+    --crepe-color-primary: #0077b6;
+    --crepe-color-secondary: #ade8f4;
+    --crepe-color-on-secondary: #0d1b2a;
+    --crepe-color-inverse: #1b263b;
+    --crepe-color-on-inverse: #e0e1dd;
+    --crepe-color-inline-code: #0077b6;
+    --crepe-color-error: #dc2626;
+    --crepe-color-hover: rgba(255, 255, 255, 0.6);
+    --crepe-color-selected: #caf0f8;
+    --crepe-color-inline-area: #ffffff;
+    --crepe-base-font-size: 15px;
+    --crepe-font-title: Roboto, sans-serif;
+    --crepe-font-default: Roboto, sans-serif;
+    --crepe-font-code: "Roboto Mono", monospace;
+    --crepe-shadow-1: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 24px rgba(7, 58, 84, 0.25), 0 0 20px rgba(72, 202, 228, 0.25);
+    --crepe-shadow-2: var(--crepe-shadow-1);
+  }
+  /* A área editável ocupa o poço inteiro; a folga da esquerda é onde a alça do bloco pousa. */
+  .editor-markdown .ProseMirror { @apply block min-h-64 py-4 pr-5 pl-14 outline-none; }
+  /* Bloco, nunca flex: a área editável do ProseMirror perde o cursor em display:flex. O espaço
+     entre blocos repete o gap-3 da .texto-markdown. */
+  .editor-markdown .ProseMirror > * + * { @apply mt-3; }
+  /* A página rebaixa os títulos (faq/001: h1–h3 → h3, h4–h6 → h4); o editor mostra cada nível
+     escrito com a tinta em que ele vai sair. */
+  .editor-markdown .ProseMirror :is(h1, h2, h3) { @apply text-[18px] font-bold leading-snug text-rocha-950; }
+  .editor-markdown .ProseMirror :is(h4, h5, h6) { @apply text-[15px] font-bold leading-snug text-rocha-950; }
+  /* Modo Markdown: o mesmo poço, em fonte de código, na altura do Visual. */
+  .editor-markdown-fonte { @apply block w-full min-h-64 px-5 py-4 font-mono text-[13px] leading-relaxed resize-y; }
+  /* Os marcadores de lista são do Crepe (rótulo próprio), não do navegador. */
+  .editor-markdown .ProseMirror :is(ul, ol) { @apply pl-0 list-none; }
+  .editor-markdown .milkdown-list-item-block li .label-wrapper { @apply text-agua-600; }
+  .editor-markdown .milkdown-list-item-block li .label-wrapper svg { @apply fill-agua-600; }
+  .editor-markdown .crepe-placeholder::before { @apply text-rocha-700/60; }
+
+  /* As placas flutuantes do Crepe são gelo espesso. */
+  .editor-markdown :is(.milkdown-toolbar, .milkdown-slash-menu, .link-preview, .link-edit) {
+    @apply backdrop-blur-[28px] border border-white/70;
+  }
+  .editor-markdown .milkdown-toolbar { @apply rounded-(--radius-field); }
+  .editor-markdown .milkdown-toolbar .toolbar-item { @apply w-8 h-8 m-1 p-1.5 rounded-md transition-colors duration-200; }
+  .editor-markdown .milkdown-toolbar .toolbar-item svg { @apply w-5 h-5; }
+  .editor-markdown .milkdown-toolbar .toolbar-item.active { @apply bg-agua-100/60; }
+  .editor-markdown .milkdown-toolbar .divider { @apply h-5 my-2.5 mx-1; }
+
+  .editor-markdown .milkdown-block-handle .operation-item {
+    @apply w-6 h-6 p-0.5 rounded-md transition-colors duration-200 hover:bg-white/60;
+  }
+  .editor-markdown .milkdown-block-handle .operation-item svg { @apply w-5 h-5; }
+  .editor-markdown .milkdown-block-handle .operation-item:hover svg { @apply fill-agua-700; }
+
+  /* O menu herda o ul/li da .texto-markdown: aqui ele volta a ser menu. */
+  .editor-markdown .milkdown-slash-menu { @apply rounded-(--radius-placa) text-[14px] leading-normal; }
+  .editor-markdown .milkdown-slash-menu ul { @apply flex flex-col gap-0.5 pl-0 list-none; }
+  .editor-markdown .milkdown-slash-menu .tab-group { @apply px-2 pt-2 border-white/70; }
+  .editor-markdown .milkdown-slash-menu .tab-group ul { @apply flex-row gap-1 px-1 py-1.5; }
+  .editor-markdown .milkdown-slash-menu .tab-group ul li {
+    @apply px-2.5 py-1 rounded-(--radius-field) text-[11px] font-medium uppercase tracking-[0.12em] text-rocha-700;
+  }
+  .editor-markdown .milkdown-slash-menu .tab-group ul li.selected { @apply bg-white/65 text-agua-700; }
+  .editor-markdown .milkdown-slash-menu .menu-groups { @apply px-1.5 pb-1.5 max-h-80; }
+  .editor-markdown .milkdown-slash-menu .menu-groups .menu-group h6 {
+    @apply px-2 pt-3 pb-1 text-[11px] font-medium tracking-[0.14em] text-rocha-700;
+  }
+  .editor-markdown .milkdown-slash-menu .menu-groups .menu-group li {
+    @apply min-w-56 gap-3 px-2 py-1.5 rounded-(--radius-field) transition-colors duration-200;
+  }
+  .editor-markdown .milkdown-slash-menu .menu-groups .menu-group li.hover { @apply bg-white/60 text-agua-700; }
+  .editor-markdown .milkdown-slash-menu .menu-groups .menu-group li svg { @apply w-5 h-5; }
+  .editor-markdown .milkdown-slash-menu .menu-groups .menu-group li > span { @apply text-[14px] font-normal; }
+  .editor-markdown .milkdown-slash-menu .menu-groups .menu-group + .menu-group::before { @apply bg-white/70; }
+
+  .editor-markdown :is(.link-preview, .link-edit) { @apply h-9 items-center rounded-(--radius-field); }
+  .editor-markdown .link-edit > .input-area { @apply text-[14px] placeholder:text-rocha-700/60; }
+
+  /* ==================== MOLÉCULA · OPÇÃO DA ÁRVORE ==================== */
+  /* checkbox-onsen (marca) + nome (abre as filhas) + lápis (renomear, só sob o ponteiro). */
+  .arvore-opcao {
+    @apply flex items-center gap-2 pl-2 pr-1 rounded-(--radius-field)
+           transition-colors duration-200 hover:bg-white/50;
+  }
+  .arvore-opcao-nome {
+    @apply flex-1 min-w-0 flex items-center justify-between gap-2 py-1.5 text-left
+           text-[14px] text-base-content/90 cursor-pointer transition-colors duration-200
+           hover:text-agua-700 focus-visible:outline-none focus-visible:text-agua-700;
+  }
+  .arvore-opcao-nome > span { @apply truncate; }
+  .arvore-opcao-seta {
+    @apply w-4 h-4 shrink-0 text-base-content/35 transition-all duration-200;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .arvore-opcao-aberta { @apply bg-white/65; }
+  .arvore-opcao-aberta .arvore-opcao-nome { @apply font-medium text-agua-700; }
+  .arvore-opcao-aberta .arvore-opcao-seta {
+    filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+    color: rgba(0, 119, 182, 0.85);
+  }
+  .arvore-opcao-lapis { @apply opacity-0 transition-opacity duration-200; }
+  .arvore-opcao:hover .arvore-opcao-lapis,
+  .arvore-opcao:focus-within .arvore-opcao-lapis { @apply opacity-100; }
+
+  /* ==================== MOLÉCULA · COLUNA DA ÁRVORE ==================== */
+  /* Material composto no HTML (.placa-clara): placa assentada no poço da seção. */
+  .arvore-coluna { @apply flex flex-col gap-0.5 p-2 min-h-52 rounded-(--radius-placa); }
+  .arvore-coluna-cabeca { @apply flex items-center justify-between gap-2 pl-2 pb-1.5; }
+  .arvore-coluna-caminho { @apply truncate; }
+  .arvore-coluna-vazia { @apply px-2 py-8 text-center text-[13px] italic text-base-content/55; }
+
+  /* ==================== ORGANISMO · ÁRVORE HORIZONTAL DE PALAVRAS-CHAVE ==================== */
+  .arvore-colunas {
+    @apply grid grid-flow-col auto-cols-[minmax(13rem,1fr)] gap-3 overflow-x-auto pb-1;
+  }
+  .arvore-marcadas { @apply flex flex-wrap items-center gap-2 min-h-9; }
+  .arvore-marcadas-vazio { @apply text-[13px] italic text-base-content/55; }
+
 }
 
 /* ==================== CURSOR DO MAPA (SPEC design/018) ==================== */

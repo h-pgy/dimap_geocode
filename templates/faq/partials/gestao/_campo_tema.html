@@ -1,0 +1,25 @@
+{# Alvo fora de banda dos modais de tema: criado ou renomeado, o select volta com ele escolhido. #}
+<div class="form-field" id="campo-tema"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <span class="text-overline">Tema</span>
+  <div class="form-field-inline-action">
+    <select name="tema" class="select select-glass {{ realce.tema }}" data-select-onsen>
+      <option value=""{% if not tema_escolhido %} selected{% endif %}>— escolha o tema —</option>
+      {% for pk, rotulo in temas %}
+        <option value="{{ pk }}"{% if pk == tema_escolhido %} selected{% endif %}>{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+    <button type="button" class="btn btn-circle btn-glass" aria-label="Renomear o tema escolhido"
+            hx-get="{% url 'faq:admin_tema_renomear' %}"
+            hx-include="#campo-tema [name=tema]"
+            hx-target="#poco-modal"
+            hx-swap="innerHTML settle:150ms">
+      <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-lapis"/></svg>
+    </button>
+    <button type="button" class="btn btn-circle btn-criar-inline" aria-label="Novo tema ou subtema"
+            hx-get="{% url 'faq:admin_tema_novo' %}"
+            hx-target="#poco-modal"
+            hx-swap="innerHTML settle:150ms">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-mais"/></svg>
+    </button>
+  </div>
+</div>

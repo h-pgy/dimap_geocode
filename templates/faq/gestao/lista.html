@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load static %}
+{% load icones %}
+
+{% block title %}FAQs · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+  {% include "faq/partials/gestao/_glifos_gestao.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-6xl mx-auto px-4 py-24 flex flex-col gap-4">
+      {% include "partials/_botao_voltar_painel.html" %}
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-5">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-madeira-700">FAQs</h1>
+          <p class="text-sm text-base-content/70 mt-1">Todas as FAQs, de qualquer administrador e do sistema. Clique num cabeçalho para filtrar; na seta, para ordenar.</p>
+        </div>
+
+        {% include "faq/partials/gestao/_aviso_lista.html" %}
+
+        <div class="barra-acoes glass-panel">
+          <div class="barra-acoes-gestos">
+            {% icone_acao "painel.nova_faq" "grande" as svg %}
+            <a href="{% url 'faq:admin_nova' %}" class="btn btn-onsen btn-sm gap-1.5">
+              <span class="icone-acao icone-acao-pequeno">{{ svg|safe }}</span>
+              Nova FAQ
+            </a>
+          </div>
+          <div class="barra-acoes-gestos">
+            {# `hx-include` leva os filtros do cabeçalho: ligar as excluídas não apaga o que já estava filtrado. #}
+            <label class="barra-acoes-chave">
+              <input type="checkbox"
+                     class="toggle-onsen"
+                     name="excluidas"
+                     value="1"
+                     {% if excluidas %}checked{% endif %}
+                     hx-get="{% url 'faq:admin_corpo' %}"
+                     hx-target="#corpo-faqs"
+                     hx-swap="outerHTML"
+                     hx-include="#tabela-faqs thead"
+                     aria-label="Mostrar FAQs excluídas" />
+              <span class="text-overline">Mostrar FAQs excluídas</span>
+            </label>
+            <button type="button" class="btn-etched etched" data-limpar-filtros="#tabela-faqs">✕ limpar filtros</button>
+          </div>
+        </div>
+
+        {% include "faq/partials/gestao/_tabela_faqs.html" %}
+      </div>
+    </div>
+  </div>
+
+  {# Poço do modal: alvo do hx-get da lixeira de cada linha. #}
+  <div id="poco-modal" class="poco-modal"></div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/tabela_onsen.js' %}"></script>
+{% endblock %}

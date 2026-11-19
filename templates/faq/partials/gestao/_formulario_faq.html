@@ -1,0 +1,49 @@
+{# Alvo do próprio hx-post (outerHTML): recusado, volta com o controle errado realçado. #}
+<form class="glass-panel p-6 sm:p-8 flex flex-col gap-6"
+      {% if registro %}hx-post="{% url 'faq:admin_editar' registro.pk %}"{% else %}hx-post="{% url 'faq:admin_nova' %}"{% endif %}
+      hx-target="this"
+      hx-swap="outerHTML">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-madeira-700">{% if registro %}Editar FAQ{% else %}Nova FAQ{% endif %}</h1>
+      <p class="text-sm text-base-content/70 mt-1">
+        {% if not registro %}
+          Nasce como rascunho: só aparece na página de FAQ depois de publicada.
+        {% elif eh_do_sistema %}
+          FAQ do sistema · todo administrador edita e despublica; ninguém exclui.
+        {% else %}
+          Escrita por {{ registro.autor.nome_completo }}{% if registro.editado_em %} · editada por {{ registro.editado_por.nome_completo }} em {{ registro.editado_em|date:"d/m/Y" }}{% endif %}.
+        {% endif %}
+      </p>
+    </div>
+    {% if registro %}
+      <div class="flex items-center gap-3">
+        {% if registro.situacao == "publicada" %}
+          <span class="badge badge-soft badge-success">Publicada</span>
+          <button type="button" class="btn btn-glass btn-sm"
+                  hx-post="{% url 'faq:admin_situacao' registro.pk %}" hx-vals='{"situacao": "rascunho"}'>Despublicar</button>
+        {% else %}
+          <span class="badge badge-ghost">Rascunho</span>
+          <button type="button" class="btn btn-glass btn-sm"
+                  hx-post="{% url 'faq:admin_situacao' registro.pk %}" hx-vals='{"situacao": "publicada"}'>Publicar</button>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  {% if recusa %}
+    {% include "partials/_tarja_recusa.html" with erros=recusa.mensagens titulo="FAQ não gravada" %}
+  {% endif %}
+
+  {% include "faq/partials/gestao/_secao_perguntas.html" %}
+  {% include "faq/partials/gestao/_secao_resposta.html" %}
+  {% include "faq/partials/gestao/_secao_classificacao.html" %}
+  {% include "faq/partials/gestao/_secao_links.html" %}
+  {% include "faq/partials/gestao/_secao_relacionadas.html" %}
+  {% include "faq/partials/gestao/_secao_publicacao.html" %}
+
+  <div class="flex justify-end gap-3 pt-1">
+    <a href="{% url 'faq:admin_lista' %}" class="btn btn-ghost btn-glass">Cancelar</a>
+    <button type="submit" class="btn btn-onsen">Salvar FAQ</button>
+  </div>
+</form>

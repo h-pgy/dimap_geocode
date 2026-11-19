@@ -1,5 +1,6 @@
 from .cargos import ColunaCargo, ColunaCargoBase, ConsultaCargos, ConsultaCargosBase, LinhaCargo, LinhaCargoBase
 from .consulta import ColunaT, ConsultaListagem, FiltroColuna, LinhaT, Pagina
+from .faqs import ColunaFaq, ConsultaFaqs, LinhaFaq
 from .execucoes import (
     JANELA_PADRAO_DIAS,
     SEM_AUTOR,
@@ -26,6 +27,9 @@ __all__ = [
     "ColunaCargoBase",
     "LinhaCargoBase",
     "ConsultaCargosBase",
+    "ColunaFaq",
+    "LinhaFaq",
+    "ConsultaFaqs",
     "ColunaServidor",
     "LinhaServidor",
     "ConsultaServidores",

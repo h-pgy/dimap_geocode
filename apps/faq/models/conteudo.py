@@ -29,6 +29,15 @@ class Faq(models.Model):
         blank=True,
     )
     relacionadas = models.ManyToManyField("self", symmetrical=True, blank=True)
+    # `atualizado_em` não serve: a seed (faq/008) também grava, e o `auto_now` a move sem editor.
+    editado_por = models.ForeignKey(
+        "user_admin.Perfil",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="faqs_editadas",
+    )
+    editado_em = models.DateTimeField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -37,8 +46,9 @@ class Pergunta(models.Model):
     # A FK diz "esta linha é de uma FAQ só"; o UNIQUE de `chave` diz "esta pergunta é de uma FAQ só".
     faq = models.ForeignKey(Faq, on_delete=models.CASCADE, related_name="perguntas")
     texto = models.CharField(max_length=300)
-    # Guardada só para o UNIQUE: `normalize_text` não tem equivalente em SQL.
-    chave = models.CharField(max_length=300, unique=True)
+    # Guardada só para o UNIQUE: `normalize_text` não tem equivalente em SQL. Nula na FAQ excluída:
+    # o UNIQUE não compara nulos, e a pergunta fica livre para outra FAQ (faq/002).
+    chave = models.CharField(max_length=300, unique=True, null=True)
     eh_principal = models.BooleanField(default=False)
 
     class Meta:

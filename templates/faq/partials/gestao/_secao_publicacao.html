@@ -1,0 +1,19 @@
+<div class="card-well p-5 grid gap-5 sm:grid-cols-2">
+  <div class="form-field">
+    <span class="text-overline">Situação</span>
+    <div class="card-well chave-onsen w-full {{ realce.situacao }}">
+      <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+      <label class="chave-onsen-opcao"><input type="radio" name="situacao" value="rascunho" class="sr-only"{% if valores.situacao != "publicada" %} checked{% endif %} /><span class="chave-onsen-rotulo etched etched-deeper">Rascunho</span></label>
+      <label class="chave-onsen-opcao"><input type="radio" name="situacao" value="publicada" class="sr-only"{% if valores.situacao == "publicada" %} checked{% endif %} /><span class="chave-onsen-rotulo etched etched-deeper">Publicada</span></label>
+    </div>
+  </div>
+  <div class="form-field">
+    <span class="text-overline">Visibilidade</span>
+    <div class="card-well chave-onsen w-full {{ realce.visibilidade }}">
+      <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+      <label class="chave-onsen-opcao"><input type="radio" name="visibilidade" value="publica" class="sr-only"{% if valores.visibilidade != "interna" %} checked{% endif %} /><span class="chave-onsen-rotulo etched etched-deeper">Pública</span></label>
+      <label class="chave-onsen-opcao"><input type="radio" name="visibilidade" value="interna" class="sr-only"{% if valores.visibilidade == "interna" %} checked{% endif %} /><span class="chave-onsen-rotulo etched etched-deeper">Interna</span></label>
+    </div>
+    <span class="form-field-hint">Interna: só servidor logado vê.</span>
+  </div>
+</div>

@@ -6,7 +6,9 @@
    com isso o daisyUI venceria o design system, que vive em @layer components. Servido por CDN a
    ordem saía invertida por acidente (a folha do daisyUI registrava base/utilities primeiro, e
    `components`, nome novo, ia para o fim da fila); aqui ela é intencional. */
-@layer properties, theme, base, utilities, components;
+/* `crepe` vem antes de todas (SPEC faq/002): a folha do editor entra nela por @import com layer() na
+   página do formulário, e qualquer regra do tema vence a dela sem !important. */
+@layer crepe, properties, theme, base, utilities, components;
 
 /* source(none) desliga a varredura automática da raiz do projeto: sem ela o Tailwind engoliria
    SPECS/, wireframes/ e os mocks das skills — inclusive path data de SVG —, e o CSS de

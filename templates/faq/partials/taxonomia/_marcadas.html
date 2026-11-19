@@ -1,0 +1,19 @@
+{# Alvo do gesto de cada checkbox e do X de cada chip. Os campos ocultos levam os ids ao <form>. #}
+<div class="arvore-marcadas" id="arvore-marcadas"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% for marcada in marcadas %}
+    <span class="chip-concessao">
+      {{ marcada.caminho }}
+      <input type="hidden" name="palavra_chave" value="{{ marcada.pk }}" />
+      <button type="button" class="chip-concessao-remover" aria-label="Desmarcar {{ marcada.caminho }}"
+              hx-get="{% url 'faq:admin_palavras_chave_marcadas' %}"
+              hx-vals='{"alternar": "{{ marcada.pk }}"}'
+              hx-include="#arvore-marcadas"
+              hx-target="#arvore-marcadas"
+              hx-swap="outerHTML">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg>
+      </button>
+    </span>
+  {% empty %}
+    <p class="arvore-marcadas-vazio">Nenhuma palavra-chave marcada.</p>
+  {% endfor %}
+</div>

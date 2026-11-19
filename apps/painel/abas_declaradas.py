@@ -215,6 +215,26 @@ ABA_ADMINISTRACAO = Aba(
             rotulo="Administradores",
             itens=(ItemAcao(acao=ACAO_TORNAR_ADMINISTRADOR, partial=PARTIAL_CARTAO_MODAL),),
         ),
+        # Só do superusuário (SPEC faq/002): sem item visível, o grupo some para os demais servidores.
+        Grupo(
+            rotulo="FAQ",
+            itens=(
+                ItemLivre(
+                    slug="painel.lista_faqs",
+                    nome="Lista de FAQs",
+                    tooltip="Todas as FAQs, com filtro, exclusão e restauração.",
+                    url_name="faq:admin_lista",
+                    somente_superusuario=True,
+                ),
+                ItemLivre(
+                    slug="painel.nova_faq",
+                    nome="Nova FAQ",
+                    tooltip="Escreve uma FAQ nova, que nasce como rascunho.",
+                    url_name="faq:admin_nova",
+                    somente_superusuario=True,
+                ),
+            ),
+        ),
         # Um grupo só: consultar e alterar o mesmo catálogo é o mesmo assunto, e a cascata já
         # separa os dois — `ItemLivre` não passa por caneta (`resolucao.py`, `_visivel`), os quatro
         # `ItemAcao` passam. É por isso que a lista vem primeiro: é ela quem sobra, e é ela quem

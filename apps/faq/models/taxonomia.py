@@ -19,12 +19,16 @@ class Tema(models.Model):
         constraints = [
             # A raiz precisa de condição própria: NULL ≠ NULL no Postgres.
             models.UniqueConstraint(
-                Lower("nome"), "pai", name="faq_tema_nome_unico_no_pai"
+                Lower("nome"),
+                "pai",
+                name="faq_tema_nome_unico_no_pai",
+                violation_error_message="Já existe um tema com esse nome aqui.",
             ),
             models.UniqueConstraint(
                 Lower("nome"),
                 condition=Q(pai__isnull=True),
                 name="faq_tema_nome_unico_na_raiz",
+                violation_error_message="Já existe um tema com esse nome aqui.",
             ),
         ]
 
@@ -59,11 +63,13 @@ class PalavraChave(models.Model):
                 Lower("nome"),
                 "pai",
                 name="faq_palavra_chave_nome_unico_no_pai",
+                violation_error_message="Já existe uma palavra-chave com esse nome aqui.",
             ),
             models.UniqueConstraint(
                 Lower("nome"),
                 condition=Q(pai__isnull=True),
                 name="faq_palavra_chave_nome_unico_na_raiz",
+                violation_error_message="Já existe uma palavra-chave com esse nome aqui.",
             ),
         ]
 

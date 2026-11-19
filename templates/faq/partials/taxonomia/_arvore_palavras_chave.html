@@ -1,0 +1,14 @@
+{# Árvore horizontal: uma coluna por nível, até três. As vagas vazias ficam ocultas e não ocupam #}
+{# coluna na grade. A lista de marcadas é que leva os ids ao <form>. #}
+<div class="arvore-colunas mt-1" id="arvore-colunas">
+  {% for coluna in colunas %}
+    {% include "faq/partials/taxonomia/_coluna_palavras_chave.html" %}
+  {% endfor %}
+  {% for nivel in vagas %}
+    <div id="arvore-coluna-{{ nivel }}" hidden></div>
+  {% endfor %}
+</div>
+<div class="flex flex-col gap-2 mt-2">
+  <span class="text-overline">Marcadas</span>
+  {% include "faq/partials/taxonomia/_marcadas.html" %}
+</div>

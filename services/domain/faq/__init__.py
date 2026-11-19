@@ -12,6 +12,7 @@ from .conteudo import (
     destino_gravado,
     resolver_destino,
 )
+from .edicao import Edicao, Editor, pode_excluir
 from .leitura import (
     IndiceFaq,
     ItemIndice,
@@ -46,8 +47,11 @@ __all__ = [
     "Situacao",
     "Tema",
     "Visibilidade",
+    "Edicao",
+    "Editor",
     "destino_gravado",
     "eh_visivel",
+    "pode_excluir",
     "resolver_destino",
     "visibilidades_para",
 ]

@@ -1,0 +1,49 @@
+{# Uma coluna da árvore. Escolher um nome com filhas troca a coluna seguinte pela das filhas dele. #}
+<div class="placa-clara arvore-coluna"
+     id="arvore-coluna-{{ coluna.nivel }}"
+     data-pai="{{ coluna.pai_id|default_if_none:'' }}"
+     {% if oob %}hx-swap-oob="true"{% endif %}>
+  <div class="arvore-coluna-cabeca">
+    <span class="text-overline arvore-coluna-caminho">{{ coluna.caminho }}</span>
+    <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave em {{ coluna.caminho }}"
+            hx-get="{% url 'faq:admin_palavra_chave_nova' %}{% if coluna.pai_id %}?pai={{ coluna.pai_id }}{% endif %}"
+            hx-target="#poco-modal"
+            hx-swap="innerHTML settle:150ms">
+      <svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-mais"/></svg>
+    </button>
+  </div>
+  {% for opcao in coluna.opcoes %}
+    <div class="arvore-opcao{% if opcao.pk == coluna.aberta_id %} arvore-opcao-aberta{% endif %}" data-palavra-nome="{{ opcao.nome }}">
+      {% include "faq/partials/taxonomia/_checkbox_palavra.html" with pk=opcao.pk nome=opcao.nome marcada=opcao.marcada %}
+      {% if opcao.tem_filhas %}
+        <button type="button" class="arvore-opcao-nome"
+                hx-get="{% url 'faq:admin_palavras_chave_coluna' %}?pai={{ opcao.pk }}"
+                hx-include="#arvore-marcadas"
+                hx-target="#arvore-coluna-{{ coluna.nivel|add:1 }}"
+                hx-swap="outerHTML">
+          <span>{{ opcao.nome }}</span>
+          <svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#glifo-gestao-seta-direita"/></svg>
+        </button>
+      {% elif coluna.nivel < 2 %}
+        {# Sem filhas ainda: escolher abre a coluna vazia, de onde o + cria a primeira. #}
+        <button type="button" class="arvore-opcao-nome"
+                hx-get="{% url 'faq:admin_palavras_chave_coluna' %}?pai={{ opcao.pk }}"
+                hx-include="#arvore-marcadas"
+                hx-target="#arvore-coluna-{{ coluna.nivel|add:1 }}"
+                hx-swap="outerHTML">
+          <span>{{ opcao.nome }}</span>
+        </button>
+      {% else %}
+        <label class="arvore-opcao-nome" for="pc-marca-{{ opcao.pk }}"><span>{{ opcao.nome }}</span></label>
+      {% endif %}
+      <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Renomear {{ opcao.nome }}"
+              hx-get="{% url 'faq:admin_palavra_chave_renomear' opcao.pk %}"
+              hx-target="#poco-modal"
+              hx-swap="innerHTML settle:150ms">
+        <svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-lapis"/></svg>
+      </button>
+    </div>
+  {% empty %}
+    <p class="arvore-coluna-vazia">Nenhuma palavra-chave cadastrada. Use o + para criar a primeira.</p>
+  {% endfor %}
+</div>

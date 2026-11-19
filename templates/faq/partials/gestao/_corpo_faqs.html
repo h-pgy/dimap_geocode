@@ -1,0 +1,88 @@
+{# Único alvo do swap: trocar o cabeçalho junto destruiria o campo em que se está digitando. #}
+<tbody id="corpo-faqs">
+  {% for linha in linhas %}
+    <tr data-pergunta="{{ linha.pergunta }}"{% if linha.excluida %} class="linha-extinta"{% endif %}>
+      <td>
+        {% if linha.excluida %}
+          <span class="td-nome-unidade">{{ linha.pergunta }}</span>
+        {% else %}
+          <a href="{% url 'faq:admin_editar' linha.pk %}" class="link-tabela-onsen td-nome-unidade">{{ linha.pergunta }}</a>
+        {% endif %}
+      </td>
+      <td class="text-base-content/80">{{ linha.tema }}</td>
+      <td>
+        {% if linha.excluida %}
+          <span class="badge badge-soft badge-error badge-sm">{{ linha.situacao }}</span>
+        {% elif linha.situacao == "Publicada" %}
+          <span class="badge badge-soft badge-success badge-sm">{{ linha.situacao }}</span>
+        {% else %}
+          <span class="badge badge-ghost badge-sm">{{ linha.situacao }}</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if linha.visibilidade == "Interna" %}
+          <span class="marca-interna"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-cadeado"/></svg>{{ linha.visibilidade }}</span>
+        {% else %}
+          <span class="text-base-content/80">{{ linha.visibilidade }}</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if linha.eh_do_sistema %}
+          <span class="text-overline">{{ linha.autor }}</span>
+        {% else %}
+          <span class="text-base-content/80">{{ linha.autor }}</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if linha.editado_em %}
+          <span class="text-base-content/80">{{ linha.editado_por }}</span>
+        {% else %}
+          <span class="td-alvo-vazio text-sm">{{ linha.editado_por }}</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if linha.editado_em %}
+          <span class="td-momento">{{ linha.editado_em|date:"d/m/Y" }}<span class="td-momento-hora">{{ linha.editado_em|date:"H:i" }}</span></span>
+        {% else %}
+          <span class="td-momento td-alvo-vazio">—</span>
+        {% endif %}
+      </td>
+      <td class="text-right">
+        {% if not linha.excluida %}
+          <a href="{% url 'faq:admin_editar' linha.pk %}" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar">
+            <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-lapis"/></svg>
+          </a>
+        {% endif %}
+      </td>
+      <td class="text-right">
+        {% if linha.excluida %}
+          {# Excluída não se edita: só se restaura, e volta como rascunho. #}
+          <button type="button"
+                  class="btn btn-ghost btn-glass btn-xs btn-circle"
+                  title="Restaurar como rascunho"
+                  hx-post="{% url 'faq:admin_restaurar' linha.pk %}"
+                  hx-target="#aviso-lista"
+                  hx-swap="outerHTML">
+            <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-restaurar"/></svg>
+          </button>
+        {% elif not linha.eh_do_sistema %}
+          <button type="button"
+                  class="btn btn-ghost btn-glass btn-xs btn-circle"
+                  title="Excluir"
+                  hx-get="{% url 'faq:admin_excluir' linha.pk %}"
+                  hx-target="#poco-modal"
+                  hx-swap="innerHTML settle:150ms">
+            <svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-lixeira"/></svg>
+          </button>
+        {% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="9" class="table-onsen-vazio">
+        <span class="etched text-3xl block mb-2">⌕</span>
+        Nenhuma FAQ corresponde aos filtros.
+      </td>
+    </tr>
+  {% endfor %}
+</tbody>

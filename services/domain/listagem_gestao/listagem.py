@@ -4,6 +4,7 @@ from services.domain.listagem_gestao.models import (
     ColunaCargo,
     ColunaCargoBase,
     ColunaExecucao,
+    ColunaFaq,
     ColunaServidor,
     ColunaT,
     ColunaTipoUnidade,
@@ -13,6 +14,7 @@ from services.domain.listagem_gestao.models import (
     LinhaCargo,
     LinhaCargoBase,
     LinhaExecucao,
+    LinhaFaq,
     LinhaServidor,
     LinhaT,
     LinhaTipoUnidade,
@@ -68,6 +70,28 @@ class ListadorTabela(Generic[LinhaT, ColunaT]):
         return normalize_text(str(valor or ""))
 
 
+class ListarFaqs:
+    """A tabela genérica, salvo a última edição: ordena pela data, e a nunca editada vai para o fim."""
+
+    def __init__(self) -> None:
+        self.listador = ListadorTabela[LinhaFaq, ColunaFaq]()
+
+    def __call__(
+        self,
+        linhas: Sequence[LinhaFaq],
+        consulta: ConsultaListagem[ColunaFaq],
+    ) -> list[LinhaFaq]:
+        if consulta.ordenar_por is not ColunaFaq.EDITADO_EM:
+            return self.listador(linhas, consulta)
+        filtradas = self.listador(linhas, consulta.model_copy(update={"ordenar_por": None}))
+        editadas = sorted(
+            (linha for linha in filtradas if linha.editado_em is not None),
+            key=lambda linha: linha.editado_em,  # type: ignore[arg-type,return-value]
+            reverse=consulta.descendente,
+        )
+        return editadas + [linha for linha in filtradas if linha.editado_em is None]
+
+
 ListarServidores = ListadorTabela[LinhaServidor, ColunaServidor]
 ListarUnidades = ListadorTabela[LinhaUnidade, ColunaUnidade]
 ListarTiposUnidade = ListadorTabela[LinhaTipoUnidade, ColunaTipoUnidade]
@@ -81,3 +105,4 @@ listar_tipos_unidade = ListarTiposUnidade()
 listar_cargos = ListarCargos()
 listar_cargos_base = ListarCargosBase()
 listar_execucoes = ListarExecucoes()
+listar_faqs = ListarFaqs()

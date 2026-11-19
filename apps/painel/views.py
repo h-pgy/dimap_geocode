@@ -21,6 +21,7 @@ def painel(request: HttpRequest) -> HttpResponse:
             painel=PAINEL,
             slugs_liberados=slugs_liberados(perfil),
             perfil_id=perfil.pk,
+            eh_superusuario=perfil.is_superuser,
         )
     )
     return render(request, TEMPLATE_PAINEL, {"painel": resolvido})

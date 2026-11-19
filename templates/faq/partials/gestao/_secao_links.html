@@ -1,0 +1,32 @@
+{% load faq_formulario %}
+<div class="card-well p-5 flex flex-col gap-4"
+     id="secao-links"
+     hx-target="this"
+     hx-swap="outerHTML"
+     hx-include="this">
+  <p class="text-overline">Links de referência</p>
+  {% if valores.links %}
+    <div class="flex flex-col gap-2">
+      {% for link in valores.links %}
+        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center">
+          <input type="text" name="{{ link.controle_titulo }}" class="input input-glass {{ realce|realce_do:link.controle_titulo }}" value="{{ link.titulo }}" placeholder="Título" aria-label="Título do link" />
+          <input type="text" name="{{ link.controle_url }}" class="input input-glass {{ realce|realce_do:link.controle_url }}" value="{{ link.url }}" placeholder="/faq/ ou https://…" aria-label="Endereço do link" />
+          <button type="button" class="btn btn-ghost btn-glass btn-sm btn-circle" aria-label="Remover este link"
+                  hx-get="{% url 'faq:admin_bloco_links' %}" hx-vals='{"remover": "{{ link.sufixo }}"}'>
+            <svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg>
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+    <span class="form-field-hint">Endereço do sistema começa com / (ex.: /faq/); de fora, com https://.</span>
+  {% else %}
+    <p class="text-[13px] italic text-base-content/55">Nenhum link.</p>
+  {% endif %}
+  <div>
+    <button type="button" class="btn btn-ghost btn-glass btn-sm gap-1.5"
+            hx-get="{% url 'faq:admin_bloco_links' %}" hx-vals='{"adicionar": "1"}'>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-mais"/></svg>
+      Link
+    </button>
+  </div>
+</div>

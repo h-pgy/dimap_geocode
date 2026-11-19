@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if registro %}Editar FAQ{% else %}Nova FAQ{% endif %} · DIMAP GeoCoder{% endblock %}
+
+{% block head %}
+  {# O import map dá ao módulo do projeto o mesmo nome do pacote: editor_markdown.js é servido como #}
+  {# fonte, sem passar pelo bundler. #}
+  {# A folha do Crepe entra na camada `crepe`, declarada antes de todas no input.css: o tema vence. #}
+  <style>@import url("{% static 'vendor/milkdown/crepe.css' %}") layer(crepe);</style>
+  <script type="importmap">
+    { "imports": { "@milkdown/crepe": "{% static 'vendor/milkdown/crepe.js' %}" } }
+  </script>
+{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+  {% include "faq/partials/gestao/_glifos_gestao.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-5xl mx-auto px-4 py-24 flex flex-col gap-4">
+      {% load navegacao %}
+      {% if request|veio_do_painel %}
+        {% include "partials/_botao_voltar_painel.html" %}
+      {% else %}
+        <div>
+          <a href="{% url 'faq:admin_lista' %}" class="btn btn-glass btn-sm gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-voltar"/></svg>
+            Voltar para a lista de FAQs
+          </a>
+        </div>
+      {% endif %}
+      {% include "faq/partials/gestao/_formulario_faq.html" %}
+    </div>
+  </div>
+
+  {# Poço dos modais de tema e palavra-chave: fora do <form>, que não admite formulário aninhado. #}
+  <div id="poco-modal" class="poco-modal"></div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
+  <script type="module" src="{% static 'js/editor_markdown.js' %}"></script>
+{% endblock %}

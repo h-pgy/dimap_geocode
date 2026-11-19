@@ -1,0 +1,31 @@
+{# Escolher no select e remover um chip redesenham o bloco no servidor, com os campos ocultos dele. #}
+<div class="form-field"
+     id="relacionadas-palavra"
+     hx-get="{% url 'faq:admin_palavra_chave_relacionadas' %}"
+     hx-trigger="change from:find select"
+     hx-target="this"
+     hx-swap="outerHTML"
+     hx-include="this">
+  <span class="text-overline">Relacionadas</span>
+  {% if relacionadas %}
+    <div class="flex flex-wrap gap-2">
+      {% for pk, caminho in relacionadas %}
+        <span class="chip-concessao">
+          {{ caminho }}
+          <input type="hidden" name="relacionada" value="{{ pk }}" />
+          <button type="button" class="chip-concessao-remover" aria-label="Remover {{ caminho }}"
+                  hx-get="{% url 'faq:admin_palavra_chave_relacionadas' %}" hx-trigger="click" hx-vals='{"desrelacionar": "{{ pk }}"}'>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg>
+          </button>
+        </span>
+      {% endfor %}
+    </div>
+  {% endif %}
+  <select name="relacionar" class="select select-glass" data-select-onsen aria-label="Relacionar outra palavra">
+    <option value="" selected>— relacionar outra palavra —</option>
+    {% for pk, caminho in candidatas %}
+      <option value="{{ pk }}">{{ caminho }}</option>
+    {% endfor %}
+  </select>
+  <span class="form-field-hint">Palavras de outros ramos que dizem a mesma coisa. Vale nos dois sentidos.</span>
+</div>

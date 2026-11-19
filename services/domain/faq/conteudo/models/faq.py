@@ -10,9 +10,12 @@ from pydantic import (
 )
 
 from services.domain.faq.taxonomia import PalavraChave, Tema
+from services.utils.frases import FormatadorDeFrases
 from services.utils.normalization import normalize_text
 
 from .links import LinkReferencia
+
+formatar_pergunta = FormatadorDeFrases(ultimo="?")
 
 
 class Visibilidade(StrEnum):
@@ -23,12 +26,18 @@ class Visibilidade(StrEnum):
 class Situacao(StrEnum):
     RASCUNHO = "rascunho"
     PUBLICADA = "publicada"
+    EXCLUIDA = "excluida"
 
 
 class Pergunta(BaseModel):
     """Uma forma de fazer a pergunta. A identidade é a `chave`, não o texto."""
 
     texto: str = Field(min_length=5, max_length=300)
+
+    @field_validator("texto", mode="before")
+    @classmethod
+    def _formatar(cls, valor: object) -> object:
+        return formatar_pergunta(valor) if isinstance(valor, str) else valor
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -61,6 +70,11 @@ class Faq(BaseModel):
     situacao: Situacao = Situacao.RASCUNHO
     autor_id: int | None = None
     relacionadas: list[int] = []
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def eh_do_sistema(self) -> bool:
+        return self.autor_id is None
 
     @model_validator(mode="after")
     def _perguntas_distintas(self) -> Self:

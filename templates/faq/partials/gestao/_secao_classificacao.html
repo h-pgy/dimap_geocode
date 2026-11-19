@@ -1,0 +1,9 @@
+<div class="card-well p-5 flex flex-col gap-5">
+  <p class="text-overline">Classificação</p>
+  {% include "faq/partials/gestao/_campo_tema.html" %}
+  <div class="form-field">
+    <span class="text-overline">Palavras-chave</span>
+    <span class="form-field-hint">Siglas e termos que o texto não usa. Marcar uma palavra faz a FAQ ser achada também pelas de cima.</span>
+    {% include "faq/partials/taxonomia/_arvore_palavras_chave.html" %}
+  </div>
+</div>

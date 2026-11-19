@@ -18,6 +18,11 @@
   {# O MESMO output.css das demais páginas: o styleguide não consegue exibir peça que a #}
   {# aplicação não tenha (SPEC infraestrutura/004). #}
   <link rel="stylesheet" href="{% static 'output.css' %}" />
+  {# O editor de markdown (SPEC faq/002): a folha na camada `crepe`, e o pacote pelo import map. #}
+  <style>@import url("{% static 'vendor/milkdown/crepe.css' %}") layer(crepe);</style>
+  <script type="importmap">
+    { "imports": { "@milkdown/crepe": "{% static 'vendor/milkdown/crepe.js' %}" } }
+  </script>
 
   {# Esta página é um documento longo e rolável: não estende base.html, que trava a viewport. #}
   <style>
@@ -26,6 +31,7 @@
   </style>
 </head>
 <body class="text-base-content">
+  {% include "faq/partials/gestao/_glifos_gestao.html" %}
 
   {% include "partials/_filtros_gravacao.html" %}
   {% include "mapping/_mapa_admin.html" %}
@@ -1579,6 +1585,34 @@
         </div>
       </div>
     
+      <!-- ===== SPEC faq/002 ===== -->
+      <div class="glass-panel p-6 grid gap-8 md:grid-cols-2">
+        <!-- .btn-critico -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.btn-critico — confirma ato destrutivo, ao lado do .btn-glass</span>
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="button" class="btn btn-glass btn-sm">Cancelar</button>
+            <button type="button" class="btn btn-critico btn-sm">Ok, excluir</button>
+            <button type="button" class="btn btn-critico">Ok, excluir</button>
+            <button type="button" class="btn btn-critico btn-sm btn-disabled" tabindex="-1" aria-disabled="true">Indisponível</button>
+          </div>
+        </div>
+
+        <!-- .chip-inerte -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.chip-concessao + .chip-inerte — relacionada ativa × excluída</span>
+          <div class="flex flex-wrap gap-2">
+            <span class="chip-concessao">
+              <a href="#" class="link-tabela-onsen">Como buscar um endereço?</a>
+              <button type="button" class="chip-concessao-remover" aria-label="Remover relacionada"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg></button>
+            </span>
+            <span class="chip-concessao chip-inerte" title="Excluída: volta quando for restaurada">
+              Como trocar a senha?
+              <span class="chip-inerte-marca">Excluída</span>
+            </span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 3. MOLÉCULAS ============ -->
@@ -4146,6 +4180,64 @@ bloco de código
         </div>
       </div>
     
+      <!-- ===== SPEC faq/002 ===== -->
+      <!-- .editor-markdown — o Crepe de verdade, com a pele do tema. Partial: faq/partials/gestao/_editor_markdown.html -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">Editor de markdown (abas .abas-onsen · Visual: .textarea-glass.editor-markdown &gt; .texto-markdown &gt; Crepe · Markdown: .textarea-glass.editor-markdown-fonte)</span>
+        {% include "faq/partials/gestao/_editor_markdown.html" %}
+        <p class="text-xs text-base-content/60">No Visual, selecione um trecho para a barra de formatação e digite <kbd class="kbd kbd-xs">/</kbd> numa linha vazia para o menu de blocos. O modo Markdown é o <span class="text-code">&lt;textarea&gt;</span> que o formulário envia: editar nele e voltar ao Visual leva a mudança junto. A folha do Crepe mora na camada <span class="text-code">crepe</span>, abaixo de todas: a pele daqui vence sem <span class="text-code">!important</span>.</p>
+      </div>
+
+      <!-- .arvore-opcao + .arvore-coluna -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">Opção e coluna da árvore (.arvore-opcao, .arvore-coluna sobre .placa-clara)</span>
+        <div class="card-well p-5 grid gap-6 md:grid-cols-[18rem_1fr]">
+          <div class="flex flex-col gap-1">
+            <span class="text-overline">repouso · com filhas</span>
+            <div class="arvore-opcao">
+              <input type="checkbox" class="checkbox-onsen" aria-label="Marcar ITBI" />
+              <button type="button" class="arvore-opcao-nome"><span>ITBI</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#glifo-gestao-seta-direita"/></svg></button>
+              <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Renomear ITBI"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-lapis"/></svg></button>
+            </div>
+            <span class="text-overline mt-2">marcada</span>
+            <div class="arvore-opcao">
+              <input type="checkbox" class="checkbox-onsen" checked aria-label="Marcar Certidão" />
+              <button type="button" class="arvore-opcao-nome"><span>Certidão</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#glifo-gestao-seta-direita"/></svg></button>
+              <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Renomear Certidão"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-lapis"/></svg></button>
+            </div>
+            <span class="text-overline mt-2">aberta — filhas na coluna ao lado</span>
+            <div class="arvore-opcao arvore-opcao-aberta">
+              <input type="checkbox" class="checkbox-onsen" aria-label="Marcar IPTU" />
+              <button type="button" class="arvore-opcao-nome"><span>IPTU</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#glifo-gestao-seta-direita"/></svg></button>
+              <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Renomear IPTU"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-lapis"/></svg></button>
+            </div>
+            <span class="text-overline mt-2">sem filhas</span>
+            <div class="arvore-opcao">
+              <input type="checkbox" class="checkbox-onsen" aria-label="Marcar Desconto" />
+              <label class="arvore-opcao-nome"><span>Desconto</span></label>
+              <button type="button" class="arvore-opcao-lapis btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Renomear Desconto"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-lapis"/></svg></button>
+            </div>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="placa-clara arvore-coluna">
+              <div class="arvore-coluna-cabeca">
+                <span class="text-overline arvore-coluna-caminho">IPTU › Certidão</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave em IPTU › Certidão"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-mais"/></svg></button>
+              </div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" checked aria-label="Marcar Lançamento" /><label class="arvore-opcao-nome"><span>Lançamento</span></label></div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar Quitação" /><label class="arvore-opcao-nome"><span>Quitação</span></label></div>
+            </div>
+            <div class="placa-clara arvore-coluna">
+              <div class="arvore-coluna-cabeca">
+                <span class="text-overline arvore-coluna-caminho">Palavras-chave</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-mais"/></svg></button>
+              </div>
+              <p class="arvore-coluna-vazia">Nenhuma palavra-chave cadastrada. Use o + para criar a primeira.</p>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">O checkbox marca, o nome abre as filhas, e o lápis (renomear) só aparece sob o ponteiro ou o foco. Sem filhas, o nome é um rótulo e não abre coluna. Partial: <span class="text-code">faq/partials/taxonomia/_coluna_palavras_chave.html</span>.</p>
+      </div>
     </section>
 
     <!-- ============ 4. ORGANISMOS ============ -->
@@ -5486,6 +5578,49 @@ bloco de código
               </div>
             </div>
           
+      <!-- ===== SPEC faq/002 ===== -->
+      <!-- .arvore-colunas + .arvore-marcadas — partial: faq/partials/taxonomia/_arvore_palavras_chave.html -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">Árvore horizontal de palavras-chave (.arvore-colunas + .arvore-marcadas) · ramo aberto, marcadas em mais de um ramo</span>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <div class="arvore-colunas">
+            <div class="placa-clara arvore-coluna">
+              <div class="arvore-coluna-cabeca">
+                <span class="text-overline arvore-coluna-caminho">Palavras-chave</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-mais"/></svg></button>
+              </div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar Cadastro" /><button type="button" class="arvore-opcao-nome"><span>Cadastro</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#glifo-gestao-seta-direita"/></svg></button></div>
+              <div class="arvore-opcao arvore-opcao-aberta"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar IPTU" /><button type="button" class="arvore-opcao-nome"><span>IPTU</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#glifo-gestao-seta-direita"/></svg></button></div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar ITBI" /><button type="button" class="arvore-opcao-nome"><span>ITBI</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#glifo-gestao-seta-direita"/></svg></button></div>
+            </div>
+            <div class="placa-clara arvore-coluna">
+              <div class="arvore-coluna-cabeca">
+                <span class="text-overline arvore-coluna-caminho">IPTU</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave em IPTU"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-mais"/></svg></button>
+              </div>
+              <div class="arvore-opcao arvore-opcao-aberta"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar Certidão" /><button type="button" class="arvore-opcao-nome"><span>Certidão</span><svg class="arvore-opcao-seta" viewBox="0 0 24 24"><use href="#glifo-gestao-seta-direita"/></svg></button></div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar Desconto" /><button type="button" class="arvore-opcao-nome"><span>Desconto</span></button></div>
+            </div>
+            <div class="placa-clara arvore-coluna">
+              <div class="arvore-coluna-cabeca">
+                <span class="text-overline arvore-coluna-caminho">IPTU › Certidão</span>
+                <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" aria-label="Nova palavra-chave em IPTU › Certidão"><svg class="w-3.5 h-3.5 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-mais"/></svg></button>
+              </div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" checked aria-label="Marcar Lançamento" /><label class="arvore-opcao-nome"><span>Lançamento</span></label></div>
+              <div class="arvore-opcao"><input type="checkbox" class="checkbox-onsen" aria-label="Marcar Quitação" /><label class="arvore-opcao-nome"><span>Quitação</span></label></div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <span class="text-overline">Marcadas</span>
+            <div class="arvore-marcadas">
+              <span class="chip-concessao">Cadastro › Lote › Contribuinte<button type="button" class="chip-concessao-remover" aria-label="Desmarcar"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg></button></span>
+              <span class="chip-concessao">IPTU › Certidão › Lançamento<button type="button" class="chip-concessao-remover" aria-label="Desmarcar"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg></button></span>
+            </div>
+            <div class="arvore-marcadas"><p class="arvore-marcadas-vazio">Nenhuma palavra-chave marcada.</p></div>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/60">Uma coluna por nível, até três. Escolher um nome com filhas troca as colunas à direita pela das filhas (GET HTMX), e a lista de marcadas, fora das colunas, é que leva os ids ao formulário: trocar de ramo descarta colunas, nunca marcação.</p>
+      </div>
     </section>
 
     <footer class="text-center text-xs text-base-content/60 pb-8 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
@@ -5683,5 +5818,6 @@ bloco de código
   <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
   <script type="module" src="{% static 'js/ui/campo_data.js' %}"></script>
   <script type="module" src="{% static 'js/ui/puxar_gaveta.js' %}"></script>
+  <script type="module" src="{% static 'js/editor_markdown.js' %}"></script>
 </body>
 </html>

@@ -1,0 +1,62 @@
+{# Novo tema (ou subtema, escolhendo o "Dentro de") ou renomear o tema escolhido no formulário. #}
+<input type="checkbox" id="modal-tema" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-xl p-6 sm:p-8">
+    <form class="flex flex-col gap-5"
+          {% if tema %}hx-post="{% url 'faq:admin_tema_renomear' %}"{% else %}hx-post="{% url 'faq:admin_tema_novo' %}"{% endif %}
+          hx-target="#poco-modal"
+          hx-swap="innerHTML">
+      <div class="flex items-start gap-3">
+        <span class="icone-acao icone-acao-pequeno text-agua-700 mt-0.5"><svg viewBox="0 0 24 24"><use href="{% if tema %}#glifo-gestao-lapis{% else %}#glifo-gestao-mais{% endif %}"/></svg></span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-madeira-700">{% if tema %}Renomear tema{% else %}Novo tema{% endif %}</h2>
+          <p class="text-sm text-base-content/70 mt-0.5">
+            {% if tema %}O nome muda em todas as FAQs do tema.{% else %}Dentro de outro tema, vira subtema. São no máximo dois níveis.{% endif %}
+          </p>
+        </div>
+      </div>
+
+      {% if recusa %}
+        {% include "partials/_tarja_recusa.html" with erros=recusa.mensagens titulo="Tema não gravado" %}
+      {% endif %}
+
+      <div class="card-well p-5 flex flex-col gap-4">
+        {% if tema %}
+          <input type="hidden" name="tema" value="{{ tema.pk }}" />
+          <div class="form-field">
+            <span class="text-overline">Tema</span>
+            <p class="valor-leitura text-base-content/70">{{ rotulo_tema }}</p>
+          </div>
+          <label class="form-field">
+            <span class="text-overline">Novo nome</span>
+            <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome|default:'' }}" />
+          </label>
+        {% else %}
+          <label class="form-field">
+            <span class="text-overline">Nome</span>
+            <input type="text" name="nome" class="input input-glass {{ realce.nome }}" value="{{ valores.nome|default:'' }}" placeholder="Quitação" />
+          </label>
+          <div class="form-field">
+            <span class="text-overline">Dentro de</span>
+            <select name="pai" class="select select-glass {{ realce.pai }}" data-select-onsen>
+              <option value=""{% if not valores.pai %} selected{% endif %}>— nenhum: é um tema —</option>
+              {% for pk, rotulo in raizes %}
+                <option value="{{ pk }}"{% if pk == valores.pai %} selected{% endif %}>{{ rotulo }}</option>
+              {% endfor %}
+              {% if pai_fora %}
+                {# O subtema recusado continua escolhido, para o realce cair sobre ele. #}
+                <option value="{{ pai_fora.0 }}" selected>{{ pai_fora.1 }}</option>
+              {% endif %}
+            </select>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="modal-action">
+        <label for="modal-tema" class="btn btn-glass btn-sm">Cancelar</label>
+        <button type="submit" class="btn btn-onsen btn-sm">{% if tema %}Renomear{% else %}Criar tema{% endif %}</button>
+      </div>
+    </form>
+  </div>
+  <label class="modal-backdrop" for="modal-tema">Fechar</label>
+</div>

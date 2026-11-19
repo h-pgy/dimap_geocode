@@ -1,0 +1,12 @@
+{# Corpo vazio fecha o modal. Fora de banda: o ramo da palavra, aberto até ela, e as marcadas, cujo #}
+{# caminho muda quando uma delas é renomeada. #}
+{% include "faq/partials/taxonomia/_coluna_palavras_chave.html" with coluna=principal oob=True %}
+{% for coluna in anteriores %}
+  {% include "faq/partials/taxonomia/_coluna_palavras_chave.html" with oob=True %}
+{% endfor %}
+{% for nivel in vazios %}
+  <div id="arvore-coluna-{{ nivel }}" hidden hx-swap-oob="true"></div>
+{% endfor %}
+{% if renomeada %}
+  {% include "faq/partials/taxonomia/_marcadas.html" with oob=True %}
+{% endif %}

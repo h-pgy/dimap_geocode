@@ -2,8 +2,8 @@
 spec: faq/002
 versao: v18
 atualizado_em: 2026-11-19
-testes_tdd: false
-implementado: false
+testes_tdd: true
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
