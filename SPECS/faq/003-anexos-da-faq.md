@@ -1,7 +1,7 @@
 ---
 spec: faq/003
-versao: v4
-atualizado_em: 2026-11-17
+versao: v7
+atualizado_em: 2026-11-18
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco, integration]
@@ -10,6 +10,9 @@ changelog:
   - v2: atualiza Faq com videos e delimita Anexo (documento com OCR) frente a MidiaFaq
   - v3: move anexos para o modelo Resposta
   - v4: ajusta Resposta e ponteiros após extrair mídias para faq/004 e índice para faq/005
+  - v5: vídeos saem do épico
+  - v6: OCR página a página, com prazo e sem disputar CPU com o web
+  - v7: o vínculo do anexo é gravado com o formulário da FAQ, como o das imagens
 ---
 
 # SPEC faq/003 — Anexos da FAQ com texto extraído
@@ -21,8 +24,9 @@ documento de referência e para que o texto do documento fique disponível para 
 ## 2 · Condições de pronto
 - [ ] O design da seção de anexos (na edição e na resposta aberta da página) foi aprovado no mock e as
       peças foram portadas para o tema e o styleguide antes de o template da aplicação usá-las.
-- [ ] Na edição, o administrador envia um PDF ou DOCX novo, ou escolhe um anexo já existente pelo
-      título, e o anexo passa a estar ligado à FAQ.
+- [ ] Na edição, inclusive de uma FAQ que ainda não foi gravada, o administrador envia um PDF ou DOCX
+      novo, ou escolhe um anexo já existente pelo título. O anexo entra marcado na lista do
+      formulário e fica ligado à FAQ quando ela é salva.
 - [ ] Só entra arquivo cujo texto possa ser extraído, inclusive por OCR. Arquivo sem texto aproveitável
       é recusado com a mensagem *"Só são aceitos documentos cujo texto possa ser extraído (inclusive
       por OCR)."*, e nada é gravado.
@@ -30,10 +34,12 @@ documento de referência e para que o texto do documento fique disponível para 
 - [ ] Arquivo que não é PDF nem DOCX de verdade é recusado, mesmo com a extensão certa.
 - [ ] Arquivo acima do limite de tamanho, ou PDF com mais páginas que o limite de OCR, é recusado antes
       de qualquer extração, com o limite na mensagem.
-- [ ] Enviar de novo um arquivo idêntico não cria um segundo anexo: o existente é ligado à FAQ.
+- [ ] Um OCR que passa do prazo é interrompido, e o arquivo é recusado com o pedido de dividir o PDF.
+- [ ] Enviar de novo um arquivo idêntico não cria um segundo anexo: o existente entra na lista.
 - [ ] A resposta aberta na página de FAQ lista os anexos para download. Um anexo só baixa se estiver
       ligado a pelo menos uma FAQ que o leitor pode ver; nos outros casos dá 404.
-- [ ] Desligar um anexo de uma FAQ não o apaga: ele continua disponível para as outras FAQs.
+- [ ] Desmarcar um anexo e salvar a FAQ o desliga sem apagá-lo: ele continua disponível para as outras
+      FAQs. Salvar sem mexer na lista mantém os anexos como estavam.
 
 ## 3 · Domínio
 
@@ -73,7 +79,7 @@ class Anexo(BaseModel):
 class Resposta(BaseModel):
     markdown: str = Field(min_length=1)
     links: list[LinkReferencia] = []
-    anexos: list[int] = []                   # NOVO: ids de Anexo; o vínculo não tem atributos
+    anexos: list[int] = []                   # NOVO: ids de Anexo, marcados no formulário; o vínculo não tem atributos
 
     @field_validator("markdown", mode="before")
     @classmethod
@@ -86,7 +92,7 @@ class Resposta(BaseModel):
 **Mock:** [003-mock-anexos-da-faq.html](003-mock-anexos-da-faq.html) — leia a skill `mock`.
 
 ## 4 · Fora de escopo
-- Imagens embutidas e vídeos ilustrativos da resposta — faq/004.
+- Imagens embutidas na resposta — faq/004.
 - Divisão do texto em trechos e embeddings dos anexos — faq/005.
 - Excluir anexo órfão (sem FAQ) e a tela do acervo de anexos — sem dono ainda.
 - Outros formatos documentais (ODT, planilhas) — sem dono ainda.
@@ -105,17 +111,20 @@ class Resposta(BaseModel):
 > O comentário didático destes blocos existe só aqui e **não é portado** (CLAUDE.md §7.2).
 
 **`services/utils/extracao_texto/models.py`** — os limites. `services/` não lê settings: o app monta
-este DTO a partir de `FAQ_ANEXO_TAMANHO_MAXIMO_BYTES` (padrão 20 MB) e `FAQ_ANEXO_PAGINAS_MAXIMAS_OCR`
-(padrão 40) e o entrega ao construtor do extrator.
+este DTO a partir de `FAQ_ANEXO_TAMANHO_MAXIMO_BYTES` (padrão 20 MB), `FAQ_ANEXO_PAGINAS_MAXIMAS_OCR`
+(padrão 40) e `FAQ_ANEXO_PRAZO_OCR_S` (padrão 120) e o entrega ao construtor do extrator.
 
 ```python
 class LimitesExtracao(BaseModel):
     tamanho_maximo_bytes: int = Field(gt=0)
     paginas_maximas_ocr: int = Field(gt=0)
+    prazo_ocr_s: float = Field(gt=0)
 
 
 MINIMO_CARACTERES_UTEIS = 40           # menos que isso é capa, carimbo ou ruído de OCR
 IDIOMA_OCR = "por"
+DPI_OCR = 200
+MENSAGEM_PRAZO_OCR = "O OCR deste PDF passou do tempo limite. Divida o arquivo e envie as partes."
 ```
 
 **`services/utils/extracao_texto/extrator.py`** — utilitário geral, sem domínio de FAQ. A falha é uma
@@ -127,6 +136,9 @@ class ExtracaoImpossivel(Exception):
 
 
 class ExtratorTexto:
+    def __init__(self, limites: LimitesExtracao) -> None:
+        self._limites = limites
+
     def __call__(self, conteudo: bytes) -> tuple[TipoDocumento, TextoExtraido]:
         return self.pipeline(conteudo)
 
@@ -156,8 +168,20 @@ class ExtratorTexto:
         camada = _texto_camada_pdf(conteudo)
         if _uteis(camada) >= MINIMO_CARACTERES_UTEIS:
             return self._validar(camada, OrigemTexto.CAMADA_DE_TEXTO)
-        self._conferir_paginas_para_ocr(conteudo)
-        return self._validar(_texto_ocr_pdf(conteudo, IDIOMA_OCR), OrigemTexto.OCR)
+        total_paginas = self._conferir_paginas_para_ocr(conteudo)
+        return self._validar(self._ocr_pagina_a_pagina(conteudo, total_paginas), OrigemTexto.OCR)
+
+    def _ocr_pagina_a_pagina(self, conteudo: bytes, total_paginas: int) -> str:
+        prazo = monotonic() + self._limites.prazo_ocr_s
+        paginas: list[str] = []
+        for numero in range(1, total_paginas + 1):
+            if monotonic() > prazo:
+                raise ExtracaoImpossivel(MENSAGEM_PRAZO_OCR)
+            # Uma página por vez, em tons de cinza: a memória fica em uma página (~4 MB a 200 dpi),
+            # e não nas 40 de uma vez.
+            imagem = _rasterizar_pagina(conteudo, numero, DPI_OCR)
+            paginas.append(_ocr_imagem(imagem, IDIOMA_OCR))
+        return "\n".join(paginas)
 
     def _validar(self, texto: str, origem: OrigemTexto) -> TextoExtraido:
         if _uteis(texto) < MINIMO_CARACTERES_UTEIS:
@@ -165,9 +189,11 @@ class ExtratorTexto:
         return TextoExtraido(conteudo=texto, origem=origem)
 ```
 
-OCR: `pdf2image` (poppler) rasteriza a página, e `pytesseract` (tesseract com `por`) lê a imagem.
-DOCX: `python-docx`, parágrafos e células de tabela. Os pacotes `tesseract-ocr`, `tesseract-ocr-por` e
-`poppler-utils` entram no `apt-get` de `docker/Dockerfile.web`.
+OCR: `pdf2image` (poppler) rasteriza a página (`first_page`/`last_page` iguais, `grayscale=True`), e
+`pytesseract` (tesseract com `por`) lê a imagem. DOCX: `python-docx`, parágrafos e células de tabela.
+Os pacotes `tesseract-ocr`, `tesseract-ocr-por` e `poppler-utils` entram no `apt-get` de
+`docker/Dockerfile.web`, junto com `ENV OMP_THREAD_LIMIT=1`: por padrão o tesseract abre uma thread
+por núcleo e disputa a CPU com os outros requests do web.
 
 **`apps/faq/models.py`**
 
@@ -195,20 +221,20 @@ class Anexo(models.Model):
 anexos = models.ManyToManyField(Anexo, blank=True, related_name="faqs")
 ```
 
-**`apps/faq/anexos.py`** — o upload: hash primeiro, extração só se o arquivo é novo.
+**`apps/faq/anexos.py`** — o upload: hash primeiro, extração só se o arquivo é novo. O upload não
+liga o anexo a FAQ nenhuma.
 
 ```python
 @transaction.atomic
-def receber_anexo(faq: FaqModel, envio: EnvioAnexo, editor: Editor) -> AnexoModel:
+def receber_anexo(envio: EnvioAnexo, editor: Editor) -> AnexoModel:
     conteudo = envio.conteudo
     hash_conteudo = sha256(conteudo).hexdigest()
     existente = AnexoModel.objects.filter(hash_conteudo=hash_conteudo).first()
     if existente is not None:
-        # Mesmo arquivo, mesmo anexo: só se liga. Título e texto do primeiro envio prevalecem.
-        faq.anexos.add(existente)
+        # Mesmo arquivo, mesmo anexo. Título e texto do primeiro envio prevalecem.
         return existente
     tipo, texto = extrair_texto(conteudo)            # ExtracaoImpossivel sobe antes de qualquer INSERT
-    anexo = AnexoModel.objects.create(
+    return AnexoModel.objects.create(
         titulo=envio.titulo,
         nome_arquivo=envio.nome_arquivo,
         tipo=tipo,
@@ -219,12 +245,17 @@ def receber_anexo(faq: FaqModel, envio: EnvioAnexo, editor: Editor) -> AnexoMode
         origem_texto=texto.origem,
         enviado_por_id=editor.perfil_id,
     )
-    faq.anexos.add(anexo)
-    return anexo
 ```
 
 A view captura `ExtracaoImpossivel` e devolve o `<form>` com a mensagem no campo do arquivo (skill
-`erros-de-formulario`).
+`erros-de-formulario`). No sucesso, devolve o item da lista de anexos do formulário: um checkbox
+`anexos` marcado, com o título.
+
+**O vínculo é gravado com o formulário, como o das imagens em faq/004.** `gravar_faq` (faq/001) e
+`regravar_faq` (faq/002) passam a sincronizar `registro.anexos` com `resposta.anexos`, que vem dos
+checkboxes marcados. Assim a FAQ nova recebe anexo antes da primeira gravação, desmarcar e salvar é o
+desligamento, e nenhuma rota liga ou desliga anexo fora do formulário. Um id de anexo que não existe
+devolve erro no campo de anexos, antes da gravação.
 
 **`services/domain/faq/visibilidade.py`** — a regra do download, ao lado das de faq/001.
 
@@ -235,16 +266,17 @@ def anexo_eh_baixavel(faqs_do_anexo: list[Faq], leitor: Leitor) -> bool:
 ```
 
 **Rotas:** `faq:anexo_baixar` (aberta, decidida por `anexo_eh_baixavel`, `Content-Disposition:
-attachment`), `faq:admin_anexo_enviar`, `faq:admin_anexo_ligar`, `faq:admin_anexo_desligar` e
-`faq:admin_anexo_buscar` (busca por título, em HTMX). As quatro de administração ficam atrás de
-`superusuario_requerido` e de `faq_editavel`.
+attachment`), `faq:admin_anexo_enviar` (devolve o item da lista), `faq:admin_anexo_buscar` (busca por
+título, em HTMX) e `faq:admin_anexo_item` (o item da lista de um anexo escolhido na busca, acrescentado
+com `hx-swap="beforeend"`). As três de administração ficam atrás de `superusuario_requerido`.
 
 ## 7 · Caveats
 
-**O OCR roda síncrono, dentro do request do upload.** Um PDF escaneado de 40 páginas leva dezenas de
-segundos, mas fila é exceção a justificar (CLAUDE.md §3.5), e o envio de anexo é raro. O teto de
-páginas é o que impede um upload de prender um worker por minutos, e um documento maior precisa ser
-dividido antes do envio.
+**O OCR roda síncrono, dentro do request do upload.** Fila é exceção a justificar (CLAUDE.md §3.5), e
+o envio de anexo é raro. Três limites seguram o custo: o teto de páginas recusa antes de começar, a
+rasterização página a página mantém uma página só na memória, e o prazo interrompe o OCR antes de
+prender a thread por minutos. Enquanto o OCR roda, uma thread do web fica ocupada e o administrador
+espera sem barra de progresso. Um documento maior que os limites precisa ser dividido antes do envio.
 
 **O container web ganha tesseract e poppler.** O OCR exige binários do sistema, e um serviço separado
 só para isso seria infraestrutura demais para o volume esperado. A imagem fica maior, e a suíte de OCR
@@ -258,8 +290,9 @@ tamanho é o controle.
 mesmo arquivo seriam o mesmo dado em dois lugares. O administrador que esperava renomear no reenvio não
 consegue; renomear fica sem dono.
 
-**Anexo órfão fica no banco.** Desligar não apaga, e não há tela de exclusão. Ele não baixa por
-ninguém (nenhuma FAQ visível), mas ocupa espaço até existir a limpeza.
+**Anexo órfão fica no banco.** Desligar não apaga, e o anexo enviado numa edição que não foi salva
+também fica sem FAQ. Não há tela de exclusão. Ele não baixa por ninguém (nenhuma FAQ visível), mas
+ocupa espaço até existir a limpeza.
 
 **O download é aberto e herda a visibilidade das FAQs.** O anexo não tem visibilidade própria, então
 ligar um anexo interno a uma FAQ pública o torna público. Quem decide é quem liga.
@@ -278,9 +311,13 @@ ligar um anexo interno a uma FAQ pública o torna público. Quem decide é quem 
   recusados.
 - `test_limites_recusam_antes_de_extrair` — tamanho acima do teto e PDF escaneado acima do teto de
   páginas são recusados sem chamar o extrator nem o OCR.
-- `test_reenvio_do_mesmo_arquivo_reaproveita_o_anexo` — duas FAQs, um só `Anexo`, e a extração roda
-  uma vez. *(marker `banco`)*
-- `test_upload_recusado_nao_grava_nada` — nenhum `Anexo` e nenhum vínculo depois da recusa.
-  *(marker `banco`)*
+- `test_ocr_que_passa_do_prazo_eh_recusado` — com `prazo_ocr_s` mínimo, um PDF escaneado de duas
+  páginas levanta `ExtracaoImpossivel` com `MENSAGEM_PRAZO_OCR`. *(marker `integration`)*
+- `test_reenvio_do_mesmo_arquivo_reaproveita_o_anexo` — dois envios do mesmo arquivo devolvem o mesmo
+  `Anexo`, e a extração roda uma vez. *(marker `banco`)*
+- `test_upload_recusado_nao_grava_nada` — nenhum `Anexo` depois da recusa. *(marker `banco`)*
+- `test_anexos_ligam_e_desligam_ao_salvar_a_faq` — uma FAQ nova salva com um anexo marcado fica
+  ligada a ele; reaberta, salva sem mexer na lista, continua ligada; desmarcado e salvo, o vínculo
+  some e o `Anexo` continua no banco. *(marker `banco`)*
 - `test_download_segue_a_faq_mais_aberta` — parametrizado: ligado só a interna → 404 para anônimo; ligado
   também a pública → baixa; ligado só a rascunho → 404 para todos. *(marker `banco`)*

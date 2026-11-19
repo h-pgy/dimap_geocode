@@ -1,12 +1,14 @@
 ---
 spec: faq/006
-versao: v1
-atualizado_em: 2026-11-17
+versao: v3
+atualizado_em: 2026-11-18
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
+  - v2: painel sem player de vídeo, que sai do épico
+  - v3: o decorator marca a view por atributo, e a ordem dos decorators deixa de importar
 ---
 
 # SPEC faq/006 — FAQ da tela: vínculo por rota e widget flutuante
@@ -24,9 +26,9 @@ as FAQs daquela tela, podendo ainda navegar pela FAQ inteira sem sair dela.
       POST ou de administração não aparece na lista.
 - [ ] Numa tela com ao menos uma FAQ visível ao leitor, aparece o botão de ajuda no canto inferior
       direito. Numa tela sem FAQ visível, o botão não aparece.
-- [ ] O botão abre um painel com as FAQs daquela tela, em accordion (com imagens e players de vídeo
-      contidos na largura do painel), e um "ver todas" que carrega a FAQ inteira no mesmo painel, com
-      volta para as da tela.
+- [ ] O botão abre um painel com as FAQs daquela tela, em accordion (com as imagens contidas na
+      largura do painel), e um "ver todas" que carrega a FAQ inteira no mesmo painel, com volta para
+      as da tela.
 - [ ] O painel respeita a visibilidade: o anônimo não vê FAQ interna, e rascunho não aparece para
       ninguém.
 - [ ] Respostas de HTMX (partials) não pagam consulta nenhuma por causa do widget.
@@ -36,7 +38,7 @@ as FAQs daquela tela, podendo ainda navegar pela FAQ inteira sem sair dela.
 ## 3 · Domínio
 
 A ontologia da FAQ é a de [faq/001](001-pagina-de-faq.md#3--domínio), já com [`Resposta`](004-midias-da-faq.md#3--domínio)
-estendida por anexos e mídias. Esta SPEC acrescenta a **tela**: uma página do sistema, identificada
+estendida por anexos e imagens. Esta SPEC acrescenta a **tela**: uma página do sistema, identificada
 pelo nome da rota Django, com um rótulo para o administrador.
 
 ```python
@@ -71,7 +73,7 @@ class Faq(BaseModel):
 - `@apps/autenticacao/context_processors.py` → padrão de context processor do projeto.
 - `@services/domain/faq/indice.py` → `MontarIndice` (faq/001): o accordion do painel é o mesmo índice.
 - `@templates/faq/` → o partial do item do accordion (faq/001 e faq/004), reaproveitado no painel
-  mantendo imagens e players de vídeo restritos à largura da caixa.
+  mantendo as imagens restritas à largura da caixa.
 - `@apps/painel/checks.py` → padrão de system check do projeto.
 - Skills: `componentes-frontend`, `daisyui`, `htmx-skill`, `mock`, `escrever-testes`, `test-django-views`.
 
@@ -79,27 +81,34 @@ class Faq(BaseModel):
 
 > O comentário didático destes blocos existe só aqui e **não é portado** (CLAUDE.md §7.2).
 
-**`apps/faq/telas.py`** — o decorator **declara** a tela. Ele não mexe no contexto: só marca a view e
-inscreve a tela num registro em memória, montado na importação das urls.
+**`apps/faq/telas.py`** — o decorator **declara** a tela. Ele não mexe no contexto: só grava o rótulo
+num atributo da view.
 
 ```python
-_REGISTRO: dict[Callable[..., HttpResponse], str] = {}
+ATRIBUTO_ROTULO = "tela_com_ajuda_rotulo"
 
 
 def tela_com_ajuda(rotulo: str) -> Callable[[ViewFunc], ViewFunc]:
     def _marcar(view: ViewFunc) -> ViewFunc:
-        _REGISTRO[view] = rotulo
+        # Atributo, e não registro pela identidade da função: o `wraps` de `login_required` e dos
+        # outros decorators copia o `__dict__`, então a marca sobrevive em qualquer ordem.
+        setattr(view, ATRIBUTO_ROTULO, rotulo)
         return view
     return _marcar
 
 
 def telas_declaradas() -> list[Tela]:
-    # Varre o resolver uma vez e cruza com as views marcadas: o nome da rota vem do urls.py, não do
-    # decorator, então renomear a rota não deixa o registro desatualizado.
+    # O nome da rota vem do urls.py, não do decorator: renomear a rota não deixa a marca desatualizada.
     return sorted(
-        (Tela(nome_rota=nome, rotulo=_REGISTRO[view]) for nome, view in _rotas_nomeadas() if view in _REGISTRO),
+        (Tela(nome_rota=nome, rotulo=rotulo) for nome, view in _rotas_nomeadas() if (rotulo := _rotulo(view))),
         key=lambda t: t.rotulo,
     )
+
+
+def _rotulo(view: Callable[..., HttpResponse]) -> str | None:
+    # View de classe: o `as_view()` não copia o `__dict__`, mas guarda a classe em `view_class`.
+    classe = getattr(view, "view_class", None)
+    return getattr(view, ATRIBUTO_ROTULO, None) or getattr(classe, ATRIBUTO_ROTULO, None)
 ```
 
 ```python
@@ -180,8 +189,9 @@ custo é uma consulta indexada por página inteira, inclusive nas telas sem FAQ.
 vínculo, a FAQ fica ligada a uma tela que não existe, sem efeito visível.
 
 ## 8 · Testes (TDD)
-- `test_so_views_marcadas_viram_tela` — `telas_declaradas()` traz a view marcada com o nome da rota do
-  `urls.py` e não traz uma view não marcada.
+- `test_so_views_marcadas_viram_tela` — parametrizado: `telas_declaradas()` traz, com o nome da rota
+  do `urls.py`, a view marcada acima e abaixo de `@login_required` e a view de classe marcada, e não
+  traz uma view não marcada.
 - `test_vincular_tela_nao_declarada_eh_recusado` — o formulário volta com erro em português no campo de
   telas, e nada é gravado. *(marker `banco`)*
 - `test_widget_aparece_so_com_faq_visivel` — parametrizado: tela com FAQ pública mostra o botão; tela

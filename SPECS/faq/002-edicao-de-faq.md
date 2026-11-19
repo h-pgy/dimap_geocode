@@ -1,7 +1,7 @@
 ---
 spec: faq/002
-versao: v5
-atualizado_em: 2026-11-17
+versao: v11
+atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -11,6 +11,12 @@ changelog:
   - v3: separa entrada do YouTube de imagens/MP4 e abre modal de metadados no drag-and-drop
   - v4: adapta snippets ao modelo Resposta e renomeia autores para usuarios_upload
   - v5: extrai upload de imagens e vídeos para faq/004, mantendo aqui apenas edição textual
+  - v6: vídeos saem do épico
+  - v7: aponta o pré-preenchimento da FAQ nova para faq/007
+  - v8: o editor deixa de oferecer fórmula e o bloco de imagem próprio do Crepe
+  - v9: a FAQ do sistema passa a vir da seed de faq/008
+  - v10: exclusão lógica com restauração, e a FAQ do sistema deixa de ser excluível
+  - v11: lista de edição na tabela de vidro, e a relacionada excluída fica inerte até a restauração
 ---
 
 # SPEC faq/002 — Edição da FAQ pelo administrador
@@ -24,24 +30,43 @@ própria, para manter a FAQ em dia sem depender de deploy nem de desenvolvedor.
       styleguide antes de o template da aplicação usá-las.
 - [ ] Só superusuário entra nas telas de edição. Servidor logado sem a marca recebe 403, e anônimo é
       levado ao login.
-- [ ] O administrador vê e edita só as FAQs **que ele criou** e as **FAQs do sistema** (carregadas pela
-      seed). A FAQ de outro administrador não aparece na lista e não abre nem pelo id na URL.
+- [ ] O administrador vê e edita só as FAQs **que ele criou** e as **FAQs do sistema** (sem autor,
+      carregadas pela seed de faq/008). A FAQ de outro administrador não aparece na lista e não abre
+      nem pelo id na URL. A FAQ do sistema pode ser editada e despublicada, mas não excluída: não há
+      gesto de excluir para ela, e o POST forjado é recusado.
+- [ ] A lista da área de edição é a tabela de vidro das telas de gestão: filtra por pergunta, tema,
+      situação, visibilidade e autor, ordena por qualquer dessas colunas, e o alternador "Mostrar FAQs
+      excluídas" revela as excluídas, com o gesto de restaurar na linha.
 - [ ] A FAQ é escrita num editor visual (negrito, listas, links, títulos) e é gravada como markdown.
-      Reaberta, aparece exatamente como foi escrita.
+      Reaberta, aparece exatamente como foi escrita, e na página aparece com a mesma formatação.
 - [ ] A FAQ nova nasce em **rascunho** e **pública**. Publicar faz a FAQ aparecer na página de FAQ, e
       despublicar a devolve a rascunho e a tira da página.
 - [ ] Pergunta ou variação já usada por outra FAQ devolve o formulário com a mensagem em português no
-      campo exato, e nada é gravado.
-- [ ] Editar a FAQ trocando a pergunta principal por uma de suas próprias variações é aceito.
+      campo exato, e nada é gravado. Trocar a pergunta principal por uma variação da própria FAQ é
+      aceito.
 - [ ] O administrador cria tema e subtema e renomeia temas existentes pela própria área de edição.
-- [ ] Excluir uma FAQ a tira da página e libera as perguntas dela para uso em outra FAQ.
+- [ ] Excluir uma FAQ a tira da página, da busca e da lista de edição, sem apagá-la do banco, e libera
+      as perguntas dela para outra FAQ. Restaurá-la a devolve como rascunho; se uma pergunta dela foi
+      reaproveitada nesse meio-tempo, a restauração é recusada com a pergunta ocupada na mensagem.
+- [ ] Uma relacionada excluída não aparece para o leitor e, na edição da outra FAQ, aparece marcada como
+      excluída, sem link nem gesto de remover. Salvar a edição não desfaz o relacionamento, e restaurar
+      a excluída o traz de volta nas duas FAQs.
 
 ## 3 · Domínio
 
 A ontologia da FAQ e da `Resposta` é a de [faq/001 §3](001-pagina-de-faq.md#3--domínio). Esta SPEC
-pergunta a ela quem pode alterar uma FAQ e como uma FAQ existente é regravada.
+pergunta a ela quem pode alterar ou excluir uma FAQ e como uma FAQ existente é regravada. A FAQ do
+sistema é a de `autor_id = None`. Relacionamento com FAQ excluída é **inerte**: existe, mas não se
+mostra ao leitor nem se edita.
 
 ```python
+# ALTERADO nesta SPEC: `Situacao` (faq/001) ganha EXCLUIDA.
+class Situacao(StrEnum):
+    RASCUNHO = "rascunho"
+    PUBLICADA = "publicada"
+    EXCLUIDA = "excluida"                 # NOVO: exclusão lógica; restaurada, volta a RASCUNHO
+
+
 class Editor(BaseModel):
     """O superusuário que está editando. A marca de superusuário é conferida na view."""
     perfil_id: int
@@ -51,15 +76,23 @@ class Edicao(BaseModel):
     """Pedido de regravação de uma FAQ existente, pelo editor."""
     faq: Faq                              # com `id` preenchido; `autor_id` é ignorado na regravação
     editor: Editor
+
+    @model_validator(mode="after")
+    def _sem_excluir_pela_edicao(self) -> Self:
+        if self.faq.situacao is Situacao.EXCLUIDA:
+            raise ValueError("A exclusão é feita pelo botão de excluir.")
+        return self
 ```
 
 **Mock:** [002-mock-edicao-de-faq.html](002-mock-edicao-de-faq.html) — leia a skill `mock`.
 
 ## 4 · Fora de escopo
 - Anexos documentais (PDF/DOCX) com extração de texto na edição — faq/003.
-- Envio de imagens no editor, upload/importação de vídeos MP4 e modal de metadados — faq/004.
+- Envio de imagens no editor e modal de metadados — faq/004.
 - Vínculo da FAQ às telas do sistema — faq/006.
+- Abrir `faq:admin_nova` já preenchido a partir do painel de buscas — faq/007.
 - Excluir ou mover tema — sem dono ainda; hoje tema com FAQ é protegido (`PROTECT`).
+- Expurgo definitivo de FAQ excluída — sem dono ainda.
 - Histórico de versões da FAQ — sem dono ainda.
 - Transferir a autoria de uma FAQ para outro administrador — sem dono ainda.
 
@@ -67,6 +100,10 @@ class Edicao(BaseModel):
 - `@apps/faq/cadastro.py` → `gravar_faq` (faq/001): a criação; esta SPEC acrescenta a regravação ao lado.
 - `@services/utils/markdown` → `RenderizadorMarkdown` (faq/001): a FAQ editada é exibida por ele.
 - `@services/utils/erros_formulario` → o erro de formulário com o campo destacado.
+- `@services/domain/listagem_gestao` → `ListadorTabela` e `ConsultaListagem`: filtro por coluna e ordenação.
+- `@apps/core/tabela.py` → `consulta_da_listagem` e `colunas_da_tabela`: query string → consulta e cabeçalho.
+- `@templates/user_admin/partials/_tabela_servidores.html` → tabela de vidro, alternador de exonerados e
+  gesto crítico por linha (SPECs user_admin/013 e 027): o molde da lista de FAQs.
 - `@middleware de validação Pydantic` (SPEC infraestrutura/001): `ValidationError` na fronteira.
 - Skills: `erros-de-formulario`, `pydantic-validation-errors`, `componentes-frontend`, `daisyui`,
   `htmx-skill`, `mock`, `painel`, `escrever-testes`, `test-django-views`.
@@ -79,9 +116,18 @@ class Edicao(BaseModel):
 filtrar a lista quanto para recusar o id forjado.
 
 ```python
+def eh_do_sistema(autor_id: int | None) -> bool:
+    return autor_id is None
+
+
 def pode_editar(autor_id: int | None, editor: Editor) -> bool:
     # FAQ do sistema (sem autor) é de todos os administradores; a dos outros, de ninguém além do autor.
-    return autor_id is None or autor_id == editor.perfil_id
+    return eh_do_sistema(autor_id) or autor_id == editor.perfil_id
+
+
+def pode_excluir(autor_id: int | None, editor: Editor) -> bool:
+    # A FAQ do sistema é editável por todos e excluível por ninguém: a seed (faq/008) conta com ela.
+    return not eh_do_sistema(autor_id) and pode_editar(autor_id, editor)
 ```
 
 **`apps/faq/acesso.py`** — o portão das rotas de edição.
@@ -98,18 +144,33 @@ def superusuario_requerido(view: Callable[..., HttpResponse]) -> Callable[..., H
 ```
 
 **`apps/faq/consulta.py`** — a FAQ alheia some com 404, e não com 403: a existência dela não é
-informação para quem não é o autor.
+informação para quem não é o autor. A excluída também: só a restauração a enxerga.
 
 ```python
-def faq_editavel(faq_id: int, editor: Editor) -> FaqModel:
-    registro = get_object_or_404(FaqModel, pk=faq_id)
+SITUACOES_ATIVAS = frozenset({Situacao.RASCUNHO, Situacao.PUBLICADA})
+
+
+def faq_editavel(
+    faq_id: int,
+    editor: Editor,
+    situacoes: frozenset[Situacao] = SITUACOES_ATIVAS,
+) -> FaqModel:
+    # Editar, publicar ou excluir uma FAQ já excluída dá 404; restaurar passa {EXCLUIDA}.
+    registro = get_object_or_404(FaqModel, pk=faq_id, situacao__in=situacoes)
     if not pode_editar(registro.autor_id, editor):
         raise Http404
     return registro
 
 
-def faqs_editaveis(editor: Editor) -> QuerySet[FaqModel]:
-    return FaqModel.objects.filter(Q(autor__isnull=True) | Q(autor_id=editor.perfil_id))
+def faqs_editaveis(
+    editor: Editor,
+    situacoes: frozenset[Situacao] = SITUACOES_ATIVAS,
+) -> QuerySet[FaqModel]:
+    # Com o alternador "Mostrar FAQs excluídas" ligado, a tabela pede SITUACOES_ATIVAS | {EXCLUIDA}.
+    return FaqModel.objects.filter(
+        Q(autor__isnull=True) | Q(autor_id=editor.perfil_id),
+        situacao__in=situacoes,
+    )
 ```
 
 **`apps/faq/cadastro.py`** — a regravação. As formulações antigas saem antes de as novas entrarem, na
@@ -125,7 +186,20 @@ def regravar_faq(edicao: Edicao) -> None:
     _aplicar_campos(registro, edicao.faq)             # resposta_markdown, tema, palavras-chave, visibilidade, situação
     _gravar_formulacoes(registro, edicao.faq)
     _gravar_links(registro, edicao.faq.resposta.links)
-    registro.relacionadas.set(edicao.faq.relacionadas)
+    registro.relacionadas.set(_relacionadas_regravadas(registro, edicao.faq.relacionadas))
+
+
+def _relacionadas_regravadas(registro: FaqModel, pedidas: list[int]) -> set[int]:
+    # A relacionada excluída não vem no formulário, porque é inerte: regravar só o pedido apagaria o
+    # relacionamento, e a restauração não teria o que devolver. Por isso ela é preservada aqui.
+    # Relacionar com uma excluída que não estava ligada (id forjado) é ignorado.
+    excluidas = set(
+        registro.relacionadas.filter(situacao=Situacao.EXCLUIDA).values_list("pk", flat=True)
+    )
+    ativas = set(
+        FaqModel.objects.filter(pk__in=pedidas, situacao__in=SITUACOES_ATIVAS).values_list("pk", flat=True)
+    )
+    return ativas | excluidas
 
 
 def _conferir_formulacoes_livres(faq: Faq) -> None:
@@ -141,10 +215,81 @@ def _conferir_formulacoes_livres(faq: Faq) -> None:
         raise FormulacaoOcupada(campos=[chaves[c] for c in ocupadas])
 ```
 
-`gravar_faq` (faq/001) passa a chamar a mesma `_conferir_formulacoes_livres` antes de criar.
+`gravar_faq` (faq/001) passa a chamar a mesma `_conferir_formulacoes_livres` antes de criar, e recusa
+`EXCLUIDA` como a `Edicao`.
 
-**Publicar e despublicar** são o mesmo POST que troca `situacao`, protegido por `faq_editavel`. Não há
-estado intermediário.
+**`apps/faq/cadastro.py`** — exclusão e restauração. `Formulacao.chave` (faq/001) passa a `null=True`:
+a chave nula libera a pergunta no UNIQUE, que não compara nulos, e o texto fica para a restauração.
+
+```python
+@transaction.atomic
+def excluir_faq(faq_id: int, editor: Editor) -> None:
+    registro = faq_editavel(faq_id, editor)
+    if not pode_excluir(registro.autor_id, editor):
+        raise PermissionDenied              # FAQ do sistema: 403, e nada muda
+    registro.situacao = Situacao.EXCLUIDA
+    registro.save(update_fields=["situacao", "atualizado_em"])
+    registro.formulacoes.update(chave=None)
+
+
+@transaction.atomic
+def restaurar_faq(faq_id: int, editor: Editor) -> None:
+    registro = faq_editavel(faq_id, editor, situacoes=frozenset({Situacao.EXCLUIDA}))
+    formulacoes = list(registro.formulacoes.all())
+    for formulacao in formulacoes:
+        formulacao.chave = normalize_text(formulacao.texto)
+    # Mesma pré-checagem da regravação: a pergunta reaproveitada por outra FAQ volta na mensagem.
+    _conferir_chaves_livres(formulacoes, faq_id=registro.pk)
+    FormulacaoModel.objects.bulk_update(formulacoes, ["chave"])
+    registro.situacao = Situacao.RASCUNHO   # volta fora da página: republicar é decisão do admin
+    registro.save(update_fields=["situacao", "atualizado_em"])
+```
+
+**`apps/faq/context.py`** — o formulário recebe as relacionadas separadas: as ativas viram controle
+(link e gesto de remover), as excluídas só aparecem marcadas. A página do leitor não precisa de nada
+novo: `MontarIndice` (faq/001) já poda a relacionada que não é `PUBLICADA`.
+
+```python
+def relacionadas_do_formulario(registro: FaqModel) -> dict[str, list[FaqModel]]:
+    todas = list(registro.relacionadas.all())
+    return {
+        "relacionadas_ativas": [f for f in todas if f.situacao != Situacao.EXCLUIDA],
+        "relacionadas_inertes": [f for f in todas if f.situacao == Situacao.EXCLUIDA],
+    }
+```
+
+O seletor de novas relacionadas não oferece FAQ excluída.
+
+**`services/domain/listagem_gestao/models/faqs.py`** — a lista de FAQs é mais uma tabela de gestão,
+filtrada e ordenada pelo `ListadorTabela` existente, como servidores e unidades.
+
+```python
+class ColunaFaq(StrEnum):
+    PERGUNTA = "pergunta"
+    TEMA = "tema"
+    SITUACAO = "situacao"
+    VISIBILIDADE = "visibilidade"
+    AUTOR = "autor"
+
+
+class LinhaFaq(BaseModel):
+    pk: int
+    pergunta: str
+    tema: str                              # "Busca › Endereço"
+    situacao: str                          # rótulo: "Rascunho", "Publicada", "Excluída"
+    visibilidade: str                      # rótulo: "Pública", "Interna"
+    autor: str                             # nome do autor, ou "Sistema"
+    eh_do_sistema: bool                    # sem gesto de excluir na linha
+    excluida: bool                         # linha marcada, com o gesto de restaurar
+
+
+ConsultaFaqs = ConsultaListagem[ColunaFaq]
+ListarFaqs = ListadorTabela[LinhaFaq, ColunaFaq]          # em listagem.py, ao lado dos outros
+```
+
+**Publicar e despublicar** são o mesmo POST que troca `situacao` entre `RASCUNHO` e `PUBLICADA`,
+protegido por `faq_editavel`, e valem também para a FAQ do sistema. `EXCLUIDA` só chega por
+`excluir_faq`.
 
 **`static/src/js/editor_markdown.js`** — o editor é **Milkdown (Crepe)**, empacotado pelo `esbuild` no
 estágio de build do front-end (`package.json`), sem CDN. O JS só espelha o markdown num `<textarea>`
@@ -152,20 +297,32 @@ oculto do `<form>`. Validação e gravação são do servidor.
 
 ```javascript
 // Estado visual do controle (CLAUDE.md §7.2), aprovado nesta SPEC: o editor é a única peça de JS.
-const crepe = new Crepe({ root: alvo, defaultValue: campo.value });
+const crepe = new Crepe({
+  root: alvo,
+  defaultValue: campo.value,
+  // Fora o que o renderizador de faq/001 não mostra: a fórmula, e o bloco de imagem do Crepe, que
+  // aceitaria endereço externo (a imagem entra pelo fluxo de faq/004).
+  features: { [Crepe.Feature.Latex]: false, [Crepe.Feature.ImageBlock]: false },
+});
 crepe.on((ouvinte) => ouvinte.markdownUpdated((_ctx, markdown) => { campo.value = markdown; }));
 await crepe.create();
 ```
+
+O resto do que o Crepe oferece (títulos de qualquer nível, riscado, lista de tarefas, tabela, linha
+horizontal) o renderizador de faq/001 cobre, e o teste `test_renderizador_cobre_o_markdown_do_editor`
+fixa isso.
 
 **Rotas** — todas protegidas por `superusuario_requerido`:
 
 | Rota | O que faz |
 |---|---|
-| `faq:admin_lista` | lista das FAQs editáveis, por situação e tema |
+| `faq:admin_lista` | página com a tabela de vidro das FAQs editáveis |
+| `faq:admin_corpo` | o `<tbody>` filtrado e ordenado, alvo do HTMX; `excluidas=1` inclui as excluídas |
 | `faq:admin_nova` | formulário de criação |
 | `faq:admin_editar` | formulário de edição |
 | `faq:admin_situacao` | publicar / despublicar (POST) |
-| `faq:admin_excluir` | exclusão, com confirmação (POST) |
+| `faq:admin_excluir` | modal de confirmação (GET) e exclusão lógica (POST); recusada na FAQ do sistema |
+| `faq:admin_restaurar` | restauração como rascunho (POST), pelo gesto da linha excluída |
 | `faq:admin_tema_novo` / `faq:admin_tema_renomear` | temas e subtemas |
 
 A entrada da área no painel (aba, grupo, glifo) é perguntada ao usuário na retomada, pela skill `painel`.
@@ -188,29 +345,54 @@ a gravação falhou. O que vaza é só que a formulação está ocupada, não a 
 quando uma variação vira pergunta principal. Os ids dessas linhas não são estáveis, e nada pode apontar
 para eles.
 
-**A FAQ do sistema é editável por qualquer superusuário e continua sem autor depois da edição.** Ela é
-bootstrap compartilhado, não obra de alguém. Duas edições simultâneas sobre a mesma FAQ do sistema
-seguem a regra "a última gravação vence", sem aviso.
+**A FAQ do sistema é editável e despublicável por qualquer superusuário, continua sem autor depois da
+edição e não é excluível.** Ela é bootstrap compartilhado, não obra de alguém, e a seed (faq/008)
+conta com a existência dela. Duas edições simultâneas sobre a mesma FAQ do sistema seguem a regra "a
+última gravação vence", sem aviso, e uma FAQ do sistema despublicada fica fora da página até alguém
+republicá-la.
+
+**A FAQ excluída fica no banco com a chave das formulações nula.** É o que libera a pergunta no UNIQUE
+sem perder o texto que a restauração recalcula. "Chave nula ⇔ FAQ excluída" depende de `excluir_faq` e
+`restaurar_faq` serem as únicas portas dessa transição.
+
+**A FAQ excluída mantém os vínculos: relacionadas, telas, anexos e imagens.** Toda leitura de 001 a 007
+filtra por `PUBLICADA`, então ela some sem tocar nessas SPECs, e a restaurada volta inteira. O custo é
+que toda consulta nova sobre FAQ precisa lembrar desse filtro.
+
+**O relacionamento com FAQ excluída é preservado pela regravação, e não pelo formulário.** A relacionada
+inerte não tem controle na tela, e só `_relacionadas_regravadas` impede que salvar a apague. Enquanto a
+outra está excluída, o administrador não consegue desfazer o relacionamento: precisa restaurá-la,
+remover e excluir de novo.
+
+**A tabela de FAQs carrega todas as linhas editáveis e filtra em memória.** É o padrão do
+`ListadorTabela`, e o volume esperado é de dezenas a poucas centenas de FAQs. Se crescer, a tabela
+precisa de paginação, como a de execuções.
 
 ## 8 · Testes (TDD)
 - `test_rotas_de_edicao_exigem_superusuario` — parametrizado sobre as rotas: anônimo → login, logado
   sem marca → 403. *(marker `banco`)*
 - `test_faq_de_outro_admin_nao_aparece_nem_abre` — some da lista, e GET/POST com o id forjado dá 404.
   *(marker `banco`)*
-- `test_faq_do_sistema_eh_editavel_por_qualquer_superusuario` — dois administradores editam a mesma
-  FAQ sem autor, e ela continua sem autor. *(marker `banco`)*
-- `test_pergunta_ocupada_volta_com_erro_no_campo` — POST com variação igual à pergunta de outra FAQ
-  devolve o `<form>` com a mensagem em português no controle daquela variação, e nada muda no banco.
-  *(marker `banco`)*
+- `test_faq_do_sistema_eh_editavel_e_despublicavel_mas_nao_excluivel` — dois administradores editam e
+  despublicam a mesma FAQ sem autor, e ela continua sem autor; o botão de excluir não aparece para
+  ela, e o POST forjado em `faq:admin_excluir` dá 403 sem mudar nada. *(marker `banco`)*
+- `test_formulario_devolve_erro_no_campo` — parametrizado: variação igual à pergunta de outra FAQ
+  volta com a mensagem em português no controle daquela variação, e subtema sob subtema, no campo
+  `pai`; nada muda no banco. *(marker `banco`)*
+- `test_lista_de_faqs_filtra_ordena_e_revela_excluidas` — `faq:admin_corpo` filtra por tema e
+  ordena por pergunta; a excluída só aparece com `excluidas=1`, marcada e com o gesto de restaurar, e
+  a FAQ do sistema sai sem o gesto de excluir. *(marker `banco`)*
 - `test_promover_variacao_a_pergunta_principal` — trocar pergunta e variação de lugar regrava sem
   colisão. *(marker `banco`)*
-- `test_publicar_e_despublicar_mudam_a_pagina` — publicada aparece em `/faq/`, e despublicada some.
-  *(marker `banco`)*
-- `test_faq_nova_nasce_rascunho_e_publica` — criada sem tocar nos dois controles, não aparece na
-  página até ser publicada, e publicada aparece para anônimo. *(marker `banco`)*
+- `test_faq_nova_nasce_rascunho_e_publica_e_publicacao_muda_a_pagina` — criada sem tocar nos dois
+  controles, não aparece em `/faq/` até ser publicada; publicada aparece para anônimo, e despublicada
+  some. *(marker `banco`)*
 - `test_markdown_editado_volta_identico` — o markdown enviado é o mesmo que reabre no formulário,
   byte a byte. *(marker `banco`)*
-- `test_excluir_libera_as_perguntas` — depois da exclusão, outra FAQ grava a mesma pergunta.
-  *(marker `banco`)*
-- `test_subtema_novo_sob_subtema_eh_recusado_no_formulario` — erro em português no campo `pai`.
-  *(marker `banco`)*
+- `test_excluir_eh_logico_e_restaurar_volta_rascunho` — a excluída some de `/faq/` e da lista de
+  edição, continua no banco, e outra FAQ grava a mesma pergunta; restaurar uma excluída de pergunta
+  livre a devolve como rascunho, e restaurar uma de pergunta reaproveitada é recusado com a mensagem,
+  sem mudar nada. *(marker `banco`)*
+- `test_relacionada_excluida_fica_inerte_e_volta_na_restauracao` — com A e B relacionadas e B
+  excluída: `/faq/` não mostra B na resposta de A, o formulário de A traz B só como inerte, regravar A
+  mantém o vínculo, e restaurar e republicar B o devolve na resposta de A. *(marker `banco`)*

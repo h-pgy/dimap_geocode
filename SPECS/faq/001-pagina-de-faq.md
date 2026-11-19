@@ -1,7 +1,7 @@
 ---
 spec: faq/001
-versao: v5
-atualizado_em: 2026-11-17
+versao: v9
+atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -11,6 +11,10 @@ changelog:
   - v3: legenda e descrição como metadados de MidiaFaq
   - v4: modelo próprio para Resposta e renomeia autores_ids para usuarios_upload_ids
   - v5: separa imagens e vídeos para faq/004, mantendo aqui apenas texto markdown, links e seed
+  - v6: vídeos saem do épico, e faq/004 fica só com imagens
+  - v7: a seed reconhece a FAQ por um id próprio e respeita a edição e a exclusão do administrador
+  - v8: o renderizador cobre tudo o que o editor de faq/002 produz
+  - v9: a seed sai para faq/008, no fim do épico
 ---
 
 # SPEC faq/001 — Página de FAQ
@@ -26,7 +30,8 @@ o uso do sistema e encontra, sem pedir ajuda a ninguém, a pergunta já respondi
       pergunta abre a resposta logo abaixo, em accordion.
 - [ ] Sem login, a página mostra só as FAQs **públicas**. Com login, mostra também as **internas**.
       FAQ em **rascunho** não aparece para ninguém.
-- [ ] A resposta escrita em markdown aparece formatada (negrito, listas, links e tabelas). HTML ou
+- [ ] A resposta escrita em markdown aparece formatada (negrito, riscado, listas, listas de tarefas,
+      links, tabelas e títulos). Título de qualquer nível aparece abaixo do título da página. HTML ou
       `<script>` embutido no texto não é executado.
 - [ ] A resposta aberta mostra os links de referência e as FAQs relacionadas. Uma relacionada que o
       leitor não pode ver não aparece, nem como link.
@@ -34,8 +39,6 @@ o uso do sistema e encontra, sem pedir ajuda a ninguém, a pergunta já respondi
       (`Como emito a certidão?` × `como emito a certidao`). Uma variação também não pode repetir a
       pergunta ou a variação de outra FAQ.
 - [ ] Subtema não tem subtema: tentar pendurar um tema num subtema é recusado.
-- [ ] `seed_faq` carrega os temas e as FAQs básicas de `data/seed/faq.json` e, rodado de novo, não
-      duplica nem altera nada.
 - [ ] Sem nenhuma FAQ visível ao leitor, a página mostra o estado vazio, não uma lista em branco.
 
 ## 3 · Domínio
@@ -105,7 +108,7 @@ class Faq(BaseModel):
     palavras_chave: list[str] = []                # siglas e termos ausentes do texto
     visibilidade: Visibilidade = Visibilidade.PUBLICA
     situacao: Situacao = Situacao.RASCUNHO
-    autor_id: int | None = None                   # None = FAQ do sistema (carga da seed)
+    autor_id: int | None = None                   # None = FAQ do sistema, sem autor (seed de faq/008)
     relacionadas: list[int] = []                  # ids de outras FAQs
 
     @model_validator(mode="after")
@@ -128,17 +131,19 @@ class Leitor(BaseModel):
 ## 4 · Fora de escopo
 - Criar, editar, publicar e despublicar FAQ pela interface do administrador — faq/002.
 - Anexos documentais (PDF/DOCX) com texto extraído, ligados às respostas — faq/003.
-- Imagens embutidas no markdown e vídeos MP4 (inclusive importados do YouTube) na resposta — faq/004.
+- Imagens embutidas no markdown — faq/004.
+- Vídeos na resposta (MP4 enviado ou importado do YouTube) — sem dono ainda.
 - Índice semântico, embeddings e pgvector — faq/005.
 - Telas do sistema vinculadas por nome de rota e o widget flutuante filtrado — faq/006.
 - Busca em texto livre na FAQ e o painel das buscas mais feitas — faq/007.
+- Carga inicial de temas e FAQs (seed) — faq/008.
 
 ## 5 · Peças de referência a compor
 - `@services/utils/normalization` → `normalize_text`: a chave da formulação.
 - `@apps/user_admin/models` → `Perfil`: o autor da FAQ.
 - `@middleware de validação Pydantic` (SPEC infraestrutura/001): `ValidationError` na fronteira, sem `try/except`.
-- Skills: `ontologia`, `seeds`, `management-commands`, `componentes-frontend`, `daisyui`, `mock`,
-  `escrever-testes`, `test-django-views`, `normalize-text`.
+- Skills: `ontologia`, `componentes-frontend`, `daisyui`, `mock`, `escrever-testes`,
+  `test-django-views`, `normalize-text`.
 
 ## 6 · Snippets
 
@@ -198,8 +203,8 @@ class LinkReferencia(models.Model):
     ordem = models.PositiveSmallIntegerField(default=0)
 ```
 
-**`apps/faq/cadastro.py`** — a única porta de escrita. A seed usa esta função, e faq/002 vai usar a
-mesma.
+**`apps/faq/cadastro.py`** — a única porta de escrita. faq/002 e a seed de faq/008 usam a mesma
+função.
 
 ```python
 @transaction.atomic
@@ -294,13 +299,15 @@ class MontarIndice:
         ...
 ```
 
-**`services/utils/markdown/renderizador.py`** — markdown → HTML seguro. É utilitário geral: faq/002
-usa o mesmo renderizador na pré-visualização do editor, e faq/004 abre a tag `<img>` nele.
+**`services/utils/markdown/renderizador.py`** — markdown → HTML seguro. É utilitário geral, e faq/004
+abre a tag `<img>` nele. O markdown que ele recebe é o que o editor de faq/002 (Milkdown/Crepe, GFM)
+grava, então ele cobre tudo o que o editor oferece: títulos de qualquer nível, riscado, lista de
+tarefas, tabela e linha horizontal.
 
 ```python
 TAGS_PERMITIDAS = frozenset({
-    "p", "br", "strong", "em", "code", "pre", "blockquote",
-    "ul", "ol", "li", "a", "h3", "h4", "table", "thead", "tbody", "tr", "th", "td",
+    "p", "br", "hr", "strong", "em", "s", "code", "pre", "blockquote",
+    "ul", "ol", "li", "input", "a", "h3", "h4", "table", "thead", "tbody", "tr", "th", "td",
 })
 ESQUEMAS_PERMITIDOS = frozenset({"http", "https", "mailto"})
 
@@ -308,7 +315,12 @@ ESQUEMAS_PERMITIDOS = frozenset({"http", "https", "mailto"})
 class RenderizadorMarkdown:
     def __init__(self) -> None:
         # html=False: HTML cru dentro do markdown sai escapado, e não interpretado.
-        self._md = MarkdownIt("commonmark", {"html": False}).enable("table")
+        self._md = (
+            MarkdownIt("commonmark", {"html": False})
+            .enable(["table", "strikethrough"])
+            .use(tasklists_plugin)                 # mdit_py_plugins: `- [ ]` vira checkbox desabilitado
+        )
+        self._md.core.ruler.push("nivelar_titulos", _nivelar_titulos)
 
     def __call__(self, texto: str) -> str:
         return self.pipeline(texto)
@@ -319,10 +331,19 @@ class RenderizadorMarkdown:
         return nh3.clean(
             html,
             tags=TAGS_PERMITIDAS,
-            attributes={"a": {"href", "title"}},
+            attributes={"a": {"href", "title"}, "input": {"type", "checked", "disabled"}},
+            # O único <input> que sobrevive é o checkbox da lista de tarefas, sempre só de leitura.
+            set_tag_attribute_values={"input": {"type": "checkbox", "disabled": "disabled"}},
             url_schemes=ESQUEMAS_PERMITIDOS,
             link_rel="noopener noreferrer",
         )
+
+
+def _nivelar_titulos(state: StateCore) -> None:
+    # A página já usa h1 e h2: o título da resposta desce para h3/h4, seja qual for o nível escrito.
+    for token in state.tokens:
+        if token.type in ("heading_open", "heading_close"):
+            token.tag = "h3" if token.tag in ("h1", "h2", "h3") else "h4"
 ```
 
 **`apps/faq/views.py`** — rota **aberta**, declarada aqui (CLAUDE.md §3.5).
@@ -338,51 +359,6 @@ def pagina_faq(request: HttpRequest) -> HttpResponse:
 O template renderiza a resposta pelo filtro `{{ item.faq.resposta.markdown|markdown }}`
 (`apps/faq/templatetags/faq_markdown.py`), que chama o `RenderizadorMarkdown` e marca a saída como
 segura.
-
-**`data/seed/faq.json`** — chave natural do tema: `(nome, pai)`. Chave natural da FAQ: a `chave` da
-pergunta. As FAQs da seed nascem `publicada`, com `autor_id = None`.
-
-```json
-{
-  "temas": [
-    {"nome": "Busca", "ordem": 1},
-    {"nome": "Endereço", "pai": "Busca", "ordem": 1},
-    {"nome": "Lote", "pai": "Busca", "ordem": 2},
-    {"nome": "Logradouro", "pai": "Busca", "ordem": 3},
-    {"nome": "Mapa", "ordem": 2},
-    {"nome": "Documentos emitidos", "ordem": 3},
-    {"nome": "Acesso", "ordem": 4}
-  ],
-  "faqs": [
-    {
-      "tema": ["Busca", "Endereço"],
-      "pergunta": "Como busco um endereço?",
-      "variacoes": ["Onde digito o endereço para localizar no mapa?"],
-      "palavras_chave": ["endereço", "número", "geocodificação"],
-      "visibilidade": "publica",
-      "resposta": "Digite o logradouro e o número na **barra de busca**...",
-      "links": [],
-      "relacionadas": ["O que é o codlog e como busco por ele?"]
-    }
-  ]
-}
-```
-
-Perguntas iniciais da seed (o texto das respostas é revisado por você na implementação):
-
-| Tema / subtema | Pergunta |
-|---|---|
-| Busca / Endereço | Como busco um endereço? |
-| Busca / Lote | Como encontro um lote pelo número do contribuinte (SQL)? |
-| Busca / Logradouro | O que é o codlog e como busco por ele? |
-| Mapa | Como desenho um ponto, uma linha ou um polígono no mapa? |
-| Documentos emitidos | Como confiro a autenticidade de um documento emitido pelo sistema? |
-| Acesso | Como consigo acesso ao sistema? |
-| Acesso | Esqueci minha senha. O que faço? |
-
-**`apps/faq/seeds/faq.py`** — segue a skill `seeds`. Há duas passadas: temas raiz e depois subtemas;
-FAQs e depois relacionadas, ligadas por pergunta e **só entre as FAQs criadas nesta carga**. Tudo roda
-num único `transaction.atomic()`, e cada FAQ é gravada por `gravar_faq`.
 
 ## 7 · Caveats
 
@@ -404,17 +380,19 @@ sobre o uso do sistema, não ato administrativo, e a FAQ pública existe justame
 login. A proteção do conteúdo interno passa a depender só da regra de visibilidade, nas duas camadas
 (query e índice).
 
-**Duas dependências novas: `markdown-it-py` e `nh3`.** Renderizar markdown a partir do texto de um
-administrador exige um parser e um sanitizador mantidos; escrever os dois à mão seria pior. O HTML
-chega ao template marcado como seguro, e a allowlist do `nh3` passa a ser a barreira contra XSS.
+**Três dependências novas: `markdown-it-py`, `mdit-py-plugins` e `nh3`.** Renderizar markdown a partir
+do texto de um administrador exige um parser e um sanitizador mantidos; escrever os dois à mão seria
+pior. O `mdit-py-plugins` entra só pela lista de tarefas, que o editor de faq/002 produz. O HTML chega
+ao template marcado como seguro, e a allowlist do `nh3` passa a ser a barreira contra XSS.
+
+**O editor e o renderizador são duas implementações de markdown.** O Milkdown, em JavaScript, grava; o
+markdown-it, em Python, exibe. O que garante que o leitor vê o que o administrador escreveu é o teste
+com uma amostra de tudo o que o editor oferece. Atualizar o Milkdown pode trazer uma construção nova,
+e a amostra precisa acompanhar.
 
 **A página renderiza o markdown de todas as FAQs a cada request.** O volume esperado é de dezenas a
 poucas centenas de FAQs, então o custo é desprezível. Se crescer, o HTML renderizado passa a ser cache
 por FAQ, invalidado na gravação.
-
-**As FAQs da seed não têm autor.** Elas são bootstrap do sistema, e nenhum superusuário existe com
-certeza no momento da carga. A regra "o admin edita só as que criou", de faq/002, precisa dizer o que
-acontece com essas.
 
 ## 8 · Testes (TDD)
 - `test_formulacao_repetida_entre_faqs_eh_recusada` — parametrizado: pergunta repetida com outra
@@ -431,7 +409,7 @@ acontece com essas.
   para o leitor anônimo.
 - `test_markdown_nao_executa_html_embutido` — `<script>`, `onclick` e `javascript:` no texto não
   sobrevivem à renderização, e `**negrito**`, listas e tabelas sobrevivem.
-- `test_seed_faq_cria_e_nao_toca_o_que_existe` — carrega hierarquia de temas, formulações, links e
-  relacionadas; recarregar com o JSON alterado não duplica nem reescreve. *(marker `banco`)*
-- `test_seed_faq_invalida_aborta_sem_gravar` — um subtema de subtema no JSON aborta a carga, e nenhum
-  tema nem FAQ persiste; `dry_run=True` também não persiste nada (parametrizado). *(marker `banco`)*
+- `test_renderizador_cobre_o_markdown_do_editor` — uma amostra com cada construção que o editor de
+  faq/002 oferece (`#` a `######`, `~~riscado~~`, `- [ ]`/`- [x]`, tabela, `---`, citação, bloco de
+  código) sai sem nenhuma sintaxe crua no HTML; `#` e `##` saem como `h3`, e o checkbox sai
+  desabilitado.
