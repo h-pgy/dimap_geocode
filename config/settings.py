@@ -116,7 +116,13 @@ class _Settings(BaseSettings):
         alias="DJANGO_CSRF_TRUSTED_ORIGINS",
     )
 
-    @field_validator("allowed_hosts", "csrf_trusted_origins", mode="before")
+    # Domínios em que o sistema é servido (SPEC faq/001). Não sai do ALLOWED_HOSTS, cujo default é `*`.
+    dominios_do_sistema: list[str] = Field(
+        default_factory=lambda: ["localhost", "127.0.0.1"],
+        alias="DOMINIOS_DO_SISTEMA",
+    )
+
+    @field_validator("allowed_hosts", "csrf_trusted_origins", "dominios_do_sistema", mode="before")
     @classmethod
     def _parse_listas(cls, v: Any) -> list[str]:
         return _parse_lista_env(v)
@@ -354,6 +360,7 @@ DEBUG = _env.debug
 PROD = _env.prod
 ALLOWED_HOSTS = _env.allowed_hosts
 CSRF_TRUSTED_ORIGINS = _env.csrf_trusted_origins
+DOMINIOS_DO_SISTEMA = frozenset(_env.dominios_do_sistema)
 
 # WFS (GeoSampa → MDSF). A orquestração lê essas constantes e monta
 # WfsConnectionConfig para injetar no WfsFetcher (nunca o domínio lê daqui).
@@ -568,6 +575,7 @@ INSTALLED_APPS = [
     "apps.documentos",
     "apps.acoes_lote",
     "apps.certidao_lancamento",
+    "apps.faq",
 ]
 
 MIDDLEWARE = [

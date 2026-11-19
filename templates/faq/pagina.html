@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Perguntas frequentes · DIMAP GeoCoder{% endblock %}
+
+{% block content %}
+  {% include "mapping/_mapa_admin.html" %}
+  {% include "faq/partials/pagina/_glifos_faq.html" %}
+
+  <div class="admin-shell">
+    <div class="max-w-6xl mx-auto px-4 py-24 flex flex-col gap-6">
+      <header class="glass-panel px-6 py-5 flex flex-col gap-1.5">
+        <p class="text-overline">Ajuda</p>
+        <h1 class="text-[30px] font-black tracking-tight text-madeira-700 leading-tight">Perguntas frequentes</h1>
+        {% if indice.secoes %}
+          <p class="painel-descricao">Dúvidas sobre o uso do GeoCoder, organizadas por tema. Clique numa pergunta para ver a resposta.</p>
+          {% if not leitor.eh_interno %}
+            <p class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px] text-base-content/70">
+              <svg class="w-4 h-4 text-rocha-700" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+              Você está vendo as perguntas públicas. Servidor da DIMAP?
+              <a href="{% url 'autenticacao:login' %}" class="link-tabela-onsen">Entre para ver também as internas</a>
+            </p>
+          {% endif %}
+        {% endif %}
+      </header>
+
+      {% if indice.secoes %}
+        <div class="faq-conjunto glass-panel">
+          <nav class="indice-temas-faq hidden lg:flex" aria-label="Temas">
+            <span class="text-overline px-3 pt-1 pb-1">Temas</span>
+            {% for secao in indice.secoes %}
+              <a href="#tema-{{ forloop.counter }}" class="item-menu" data-rola-faq><span class="item-menu-rotulo">{{ secao.tema.nome }}</span><span class="text-overline">{{ secao.total }}</span></a>
+            {% endfor %}
+          </nav>
+
+          <div class="faq-corpo">
+            <div class="faq-temas">
+              {% for secao in indice.secoes %}
+                {% if not forloop.first %}<div class="etched-line h-[3px]" aria-hidden="true"></div>{% endif %}
+                {% include "faq/partials/pagina/_secao_tema.html" with ancora="tema-"|add:forloop.counter %}
+              {% endfor %}
+            </div>
+
+            {% include "faq/partials/pagina/_respostas_abertas.html" %}
+          </div>
+        </div>
+      {% else %}
+        {% include "faq/partials/pagina/_vazio.html" %}
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'js/ui/faq.js' %}"></script>
+{% endblock %}

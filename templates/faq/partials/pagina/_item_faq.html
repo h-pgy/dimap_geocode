@@ -1,0 +1,55 @@
+{# Uma FAQ em accordion. `item` é um ItemIndice; `faq_dom` o id do <details>. #}
+{% load faq_markdown %}
+<details id="faq-{{ item.faq.id }}" class="faq-item">
+  <summary class="faq-item-pergunta">
+    <span class="faq-item-texto">{{ item.faq.pergunta.texto }}</span>
+    {% if item.faq.visibilidade == "interna" %}
+      <span class="marca-interna">
+        <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+        Interna
+      </span>
+    {% endif %}
+    <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+  </summary>
+  <div class="faq-item-resposta">
+    <div class="texto-markdown">{{ item.faq.resposta.markdown|markdown }}</div>
+    {% if item.faq.resposta.links or item.relacionadas %}
+      <div class="faq-item-rodape">
+        <div class="etched-line h-[3px] w-full"></div>
+        {% if item.faq.resposta.links %}
+          <div class="faq-item-rodape-bloco">
+            <span class="text-overline">Para saber mais</span>
+            <div class="links-referencia">
+              {% for link in item.faq.resposta.links %}
+                {% if link.destino.tipo == "sistema" %}
+                  <a href="{{ link.destino.href }}" class="item-menu">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-sistema"/></svg></span>
+                    <span class="item-menu-rotulo">{{ link.titulo }}<span class="item-menu-apoio">Nesta plataforma</span></span>
+                  </a>
+                {% else %}
+                  <a href="{{ link.destino.href }}" target="_blank" rel="noopener noreferrer" class="item-menu">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-externo"/></svg></span>
+                    <span class="item-menu-rotulo">{{ link.titulo }}<span class="item-menu-apoio">{{ link.destino.url.host }}<span class="sr-only"> (abre em nova aba)</span></span></span>
+                  </a>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        {% if item.relacionadas %}
+          <div class="faq-item-rodape-bloco">
+            <span class="text-overline">Perguntas relacionadas</span>
+            <div class="chips-relacionadas">
+              {% for relacionada in item.relacionadas %}
+                <a href="#faq-{{ relacionada.id }}" class="chip-relacionada" data-rola-faq>
+                  <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+                  {{ relacionada.pergunta.texto }}
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</details>

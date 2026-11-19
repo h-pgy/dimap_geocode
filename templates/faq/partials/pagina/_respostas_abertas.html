@@ -1,0 +1,29 @@
+{# Coluna lateral das respostas abertas: cada item nasce oculto, e static/src/js/ui/faq.js o mostra #}
+{# quando o <details> correspondente abre.                                                          #}
+<aside class="faq-lateral">
+  <div class="respostas-abertas placa-clara">
+    <nav class="respostas-abertas-conteudo" aria-label="Respostas abertas">
+      <span class="text-overline px-2">Respostas abertas</span>
+      <div class="respostas-abertas-lista">
+        {% for secao in indice.secoes %}
+          <div class="respostas-abertas-grupo">
+            <span class="text-overline respostas-abertas-tema">{{ secao.tema.nome }}</span>
+            {% for item in secao.itens %}
+              {% include "faq/partials/pagina/_resposta_aberta.html" %}
+            {% endfor %}
+            {% for sub in secao.subtemas %}
+              {% for item in sub.itens %}
+                {% include "faq/partials/pagina/_resposta_aberta.html" %}
+              {% endfor %}
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="etched-line h-[3px]" aria-hidden="true"></div>
+    </nav>
+    <button type="button" class="recolher-respostas" data-recolher-respostas>
+      <svg class="etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-recolher"/></svg>
+      Recolher respostas
+    </button>
+  </div>
+</aside>

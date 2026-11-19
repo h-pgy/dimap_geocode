@@ -1,6 +1,6 @@
 ---
 spec: faq/008
-versao: v2
+versao: v6
 atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
@@ -8,6 +8,10 @@ markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial
   - v2: a FAQ da seed guarda o próprio id_seed e, sendo do sistema, não é excluível
+  - v3: o link do JSON é texto, resolvido em interno ou externo na carga, e a pergunta ocupada é conferida pela função de faq/001
+  - v4: a palavra-chave da seed é um caminho de até três níveis
+  - v5: a FAQ da seed declara rotas vinculadas, como em faq/006
+  - v6: caminhos seguem a estrutura de pacotes de faq/001
 ---
 
 # SPEC faq/008 — Seed da FAQ
@@ -24,14 +28,14 @@ tudo do zero.
 - [ ] A lista de FAQs da seed, as respostas e as capturas de tela foram definidas em conversa com o
       usuário e revisadas por ele antes de entrar em `data/seed/`.
 - [ ] Nenhuma captura da seed mostra dado pessoal real (nome ou CPF de contribuinte, nome de servidor).
-- [ ] `seed_faq` carrega os temas, as FAQs, as imagens e os vínculos de tela de `data/seed/` e, rodado
+- [ ] `seed_faq` carrega os temas, as FAQs, as imagens e as rotas vinculadas de `data/seed/` e, rodado
       de novo, não duplica nem altera nada.
 - [ ] A imagem da seed aparece na resposta igual a uma enviada pelo editor, com a legenda como texto
       alternativo. Uma imagem idêntica já enviada por um administrador não é duplicada.
 - [ ] Uma FAQ da seed que o administrador editou ou despublicou não é sobrescrita nem republicada pela
       carga seguinte, e uma FAQ nova do JSON cuja pergunta já está em uso é pulada com aviso, sem
       derrubar a carga.
-- [ ] Um arquivo inválido (subtema de subtema, imagem inexistente, tela não declarada) aborta a carga
+- [ ] Um arquivo inválido (subtema de subtema, imagem inexistente, rota vinculada não declarada, link recusado) aborta a carga
       com a mensagem do erro, e nada é gravado.
 - [ ] Cada FAQ da seed é encontrada pelo fallback textual da busca a partir de cada uma das suas
       variações.
@@ -40,8 +44,8 @@ tudo do zero.
 ## 3 · Domínio
 
 A ontologia da FAQ é a de [faq/001](001-pagina-de-faq.md#3--domínio), com `Resposta` estendida por
-[faq/003](003-anexos-da-faq.md#3--domínio) e [faq/004](004-midias-da-faq.md#3--domínio) e `Faq.telas`
-de [faq/006](006-faq-da-tela.md#3--domínio). Esta SPEC pergunta a ela como uma FAQ do sistema
+[faq/003](003-anexos-da-faq.md#3--domínio) e [faq/004](004-midias-da-faq.md#3--domínio) e
+`Faq.rotas_vinculadas` de [faq/006](006-faq-da-tela.md#3--domínio). Esta SPEC pergunta a ela como uma FAQ do sistema
 (`autor_id = None`, editável e não excluível por [faq/002](002-edicao-de-faq.md#3--domínio)) nasce a
 partir de um arquivo versionado. O arquivo tem modelo próprio: a FAQ é
 identificada por um slug estável, e as imagens, as relacionadas e o tema são referências por nome,
@@ -63,17 +67,23 @@ class ImagemSeed(BaseModel):
     descricao: str = Field(default="", max_length=500)
 
 
+class LinkSeed(BaseModel):
+    """Link como escrito no JSON. Vira `LinkReferencia` na carga, por `resolver_destino` (faq/001)."""
+    titulo: str
+    url: str
+
+
 class FaqSeed(BaseModel):
     id: str = Field(pattern=r"^[a-z0-9-]+$")       # slug estável, nunca reaproveitado
     tema: list[str] = Field(min_length=1, max_length=2)   # [tema] ou [tema, subtema]
     pergunta: str
     variacoes: list[str] = []
-    palavras_chave: list[str] = []
+    palavras_chave: list[Annotated[list[str], Field(min_length=1, max_length=3)]] = []   # caminhos
     visibilidade: Visibilidade = Visibilidade.PUBLICA
     resposta: str                                  # markdown; imagem como ![](midia:<id da ImagemSeed>)
-    links: list[LinkReferencia] = []
+    links: list[LinkSeed] = []
     relacionadas: list[str] = []                   # ids de outras FaqSeed
-    telas: list[str] = []                          # nome_rota (faq/006)
+    rotas_vinculadas: list[str] = []               # nome_rota (faq/006)
 
 
 class ArquivoSeedFaq(BaseModel):
@@ -96,10 +106,13 @@ class ArquivoSeedFaq(BaseModel):
 - Retirar do sistema uma FAQ da seed que ficou obsoleta — sem dono; hoje ela só é despublicada.
 
 ## 5 · Peças de referência a compor
-- `@apps/faq/cadastro.py` → `gravar_faq` (faq/001, estendida em faq/004 e faq/006): a única porta de escrita.
-- `@services/domain/faq/midia.py` → `validar_imagem` (faq/004): formato e tamanho das capturas.
-- `@apps/faq/telas.py` → `telas_declaradas` (faq/006) e `@services/domain/faq/telas.py` → `conferir_telas`.
-- `@services/domain/faq/busca_textual.py` → fallback textual e `LIMIAR_SCORE_FUZZY` (faq/007).
+- `@apps/faq/conteudo/cadastro.py` → `gravar_faq` (faq/001, estendida em faq/004 e faq/006): a única porta de escrita.
+- `@apps/faq/conteudo/cadastro.py` → `conferir_perguntas_livres` e `PerguntaJaRespondida` (faq/001): a pergunta ocupada.
+- `@services/domain/faq/conteudo/links.py` → `resolver_destino` (faq/001) e `DOMINIOS_DO_SISTEMA`: o link do JSON.
+- `@services/domain/faq/arquivos/midia.py` → `validar_imagem` (faq/004): formato e tamanho das capturas.
+- `@apps/faq/telas/declaracao.py` → `telas_declaradas` (faq/006) e
+  `@services/domain/faq/telas/conferencia.py` → `conferir_rotas_vinculadas`.
+- `@services/domain/faq/busca/busca_textual.py` → fallback textual e `LIMIAR_SCORE_FUZZY` (faq/007).
 - `@apps/cargos/seeds` → padrão de carga, contagem e `dry_run` do projeto.
 - `@docker/run_seeds.sh` → a ordem das seeds na subida.
 - Skills: `seeds`, `management-commands`, `escrever-testes`, `claude-in-chrome` (capturas do §9).
@@ -108,7 +121,7 @@ class ArquivoSeedFaq(BaseModel):
 
 > O comentário didático destes blocos existe só aqui e **não é portado** (CLAUDE.md §7.2).
 
-**`apps/faq/models.py`** — `Faq` ganha o slug da seed. A FAQ do sistema nunca é excluída (faq/002),
+**`apps/faq/models/conteudo.py`** — `Faq` ganha o slug da seed. A FAQ do sistema nunca é excluída (faq/002),
 então a linha que carrega o `id_seed` existe para sempre.
 
 ```python
@@ -145,12 +158,12 @@ models.CheckConstraint(
       "tema": ["Busca", "Endereço"],
       "pergunta": "Como busco um endereço?",
       "variacoes": ["Onde digito o endereço para localizar no mapa?"],
-      "palavras_chave": ["endereço", "número", "geocodificação"],
+      "palavras_chave": [["Geocodificação", "Endereço"], ["Geocodificação", "Número"]],
       "visibilidade": "publica",
       "resposta": "Digite o logradouro e o número na **barra de busca**...\n\n![](midia:busca-endereco-sugestoes)",
       "links": [],
       "relacionadas": ["busca-codlog"],
-      "telas": ["search:busca"]
+      "rotas_vinculadas": ["search:busca"]
     }
   ]
 }
@@ -158,7 +171,7 @@ models.CheckConstraint(
 
 **Inventário da seed** — preenchido na conversa do §9. Preenchida a tabela, a SPEC sobe de versão.
 
-| id | Tema / subtema | Pergunta | Visibilidade | Telas | Capturas |
+| id | Tema / subtema | Pergunta | Visibilidade | Rotas vinculadas | Capturas |
 |---|---|---|---|---|---|
 | _a definir com o usuário_ | | | | | |
 
@@ -178,16 +191,20 @@ def _carregar_faqs(arquivo: ArquivoSeedFaq, aviso: Callable[[str], None]) -> dic
     for item in arquivo.faqs:
         if item.id in ja_carregadas:
             continue                     # editada ou despublicada depois da carga: o banco manda
-        if _alguma_formulacao_ocupada(item):
+        try:
+            conferir_perguntas_livres(_perguntas_de(item), faq_id=None)     # faq/001
+        except PerguntaJaRespondida:
             # Pular, e não abortar: a carga roda a cada subida, e uma FAQ do admin não pode derrubá-la.
             aviso(f"FAQ '{item.id}' pulada: a pergunta ou uma variação já é de outra FAQ.")
             continue
-        conferir_telas(item.telas, declaradas)        # tela fora do código aborta a carga inteira
+        conferir_rotas_vinculadas(item.rotas_vinculadas, declaradas)   # rota fora do código aborta a carga
         markdown = _resolver_imagens(item.resposta, imagens)
+        # Cada LinkSeed passa por resolver_destino(url, DOMINIOS_DO_SISTEMA); o recusado aborta a carga.
+        links = _resolver_links(item.links)
         # editor=None: carga do sistema. Dispensa `pode_usar_midia`, porque a imagem veio do próprio
         # arquivo, nesta transação (Caveats).
         criadas[item.id] = gravar_faq(
-            _como_dto(item, markdown, _temas_de(item)),
+            _como_dto(item, markdown, links, _temas_de(item)),
             editor=None,
             id_seed=item.id,
         )
@@ -209,7 +226,8 @@ def _midia_persistida(imagem: ImagemSeed) -> MidiaFaqModel:
 ```
 
 Os temas e as imagens são criados só quando uma FAQ nova da carga precisa deles; os temas em duas
-passadas (raiz, depois subtema). As relacionadas são ligadas pelo `id` do JSON, **só entre as FAQs
+passadas (raiz, depois subtema). As palavras-chave não têm declaração própria no JSON: `gravar_faq`
+(faq/001) as resolve pelo caminho, criando os níveis que faltam. As relacionadas são ligadas pelo `id` do JSON, **só entre as FAQs
 criadas nesta carga**. Tudo roda num único `transaction.atomic()`. O `seed_faq` entra no
 `docker/run_seeds.sh`, depois do `seed_admin`. As FAQs carregadas entram no índice semântico pelo
 ciclo normal do indexador de faq/005.
@@ -235,13 +253,13 @@ precisa existir desde a primeira subida, e o repositório é o único lugar vers
 O repositório cresce alguns MB, e uma tela redesenhada deixa a captura desatualizada; editar o JSON não
 propaga ao banco já carregado, e a troca é feita pela edição de faq/002.
 
-**O teste de conteúdo amarra o JSON ao código.** Ele confere telas declaradas, imagens válidas e o
+**O teste de conteúdo amarra o JSON ao código.** Ele confere as rotas vinculadas contra as telas declaradas, imagens válidas e o
 fallback textual sobre o arquivo real. Renomear uma rota, apertar `LIMIAR_SCORE_FUZZY` ou trocar a
 normalização quebra a suíte até o JSON ser ajustado.
 
 ## 8 · Testes (TDD)
-- `test_seed_faq_cria_e_nao_toca_o_que_existe` — carrega hierarquia de temas, formulações, links,
-  relacionadas e telas; recarregar com o JSON alterado não duplica nem reescreve. *(marker `banco`)*
+- `test_seed_faq_cria_e_nao_toca_o_que_existe` — carrega hierarquia de temas, palavras-chave,
+  perguntas, links, relacionadas e rotas vinculadas; recarregar com o JSON alterado não duplica nem reescreve. *(marker `banco`)*
 - `test_seed_faq_grava_imagem_e_troca_a_referencia` — `![](midia:x)` sai como
   `![<legenda>](/faq/midias/<id>/)`, a MidiaFaq fica ligada à FAQ sem `usuarios_upload` e é entregue ao
   anônimo; com o mesmo binário já enviado por um administrador, a carga reaproveita a MidiaFaq e a
@@ -251,10 +269,10 @@ normalização quebra a suíte até o JSON ser ajustado.
   das duas, e não aborta. Uma FAQ nova do JSON com pergunta já usada por FAQ do administrador é pulada
   com aviso, e as demais entram. *(marker `banco`)*
 - `test_seed_faq_invalida_aborta_sem_gravar` — parametrizado: subtema de subtema, `midia:` sem
-  imagem, arquivo de imagem ausente e tela não declarada abortam a carga, e nenhum tema, imagem nem FAQ
+  imagem, arquivo de imagem ausente, rota vinculada não declarada e link `javascript:` abortam a carga, e nenhum tema, imagem nem FAQ
   persiste; `dry_run=True` também não persiste nada. *(marker `banco`)*
-- `test_seed_real_eh_coerente` — sobre o `data/seed/faq.json` real: o arquivo valida, toda tela está
-  em `telas_declaradas()`, toda imagem existe e passa por `validar_imagem`, e cada variação acha a
+- `test_seed_real_eh_coerente` — sobre o `data/seed/faq.json` real: o arquivo valida, toda rota vinculada
+  está em `telas_declaradas()`, toda imagem existe e passa por `validar_imagem`, e cada variação acha a
   própria FAQ no fallback textual de faq/007.
 
 ## 9 · Roteiro do conteúdo
@@ -265,7 +283,7 @@ O mecanismo (§6) é aprovado com a SPEC; o conteúdo é decidido com o usuário
    telas declaradas (faq/006) e as ações do painel, uma lista candidata de temas e perguntas, e a
    apresenta ao usuário. Nada é escrito no JSON antes da conversa.
 2. **Conversa.** Usuário e agente decidem, FAQ por FAQ: se entra, tema e subtema, visibilidade
-   (pública ou interna), variações, telas vinculadas, relacionadas, e quais respostas pedem captura de
+   (pública ou interna), variações, rotas vinculadas, relacionadas, e quais respostas pedem captura de
    tela — de qual tela, em qual estado (gaveta aberta, desenho selecionado, zoom) e com qual dado de
    exemplo. O resultado preenche o inventário do §6, e a SPEC sobe de versão.
 3. **Capturas.** Para cada captura, o agente descreve o que ela deve mostrar. A forma de capturar é

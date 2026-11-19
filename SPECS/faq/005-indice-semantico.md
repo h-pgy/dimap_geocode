@@ -1,7 +1,7 @@
 ---
 spec: faq/005
-versao: v3
-atualizado_em: 2026-11-18
+versao: v5
+atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco, integration]
@@ -9,6 +9,8 @@ changelog:
   - v1: versão inicial
   - v2: índice cobre só texto e imagem, e vídeo sai do escopo
   - v3: o ciclo não lê binários, a busca vetorial é exata e a busca tem timeout próprio
+  - v4: a palavra-chave entra no trecho com o caminho desde a raiz
+  - v5: caminhos seguem a estrutura de pacotes de faq/001
 ---
 
 # SPEC faq/005 — Índice semântico da FAQ (EmbeddingGemma 2 + pgvector)
@@ -25,7 +27,7 @@ da busca em texto livre de faq/007.
 - [ ] Uma FAQ criada ou editada fica indexada em até um intervalo do indexador (padrão 30 s), sem
       nenhuma ação do administrador.
 - [ ] O índice de uma FAQ cobre a FAQ inteira (pergunta, tema, subtema, resposta sem URLs de mídia e
-      palavras-chave) e também cada formulação (pergunta e variações) separadamente.
+      palavras-chave) e também cada pergunta (a principal e as variações) separadamente.
 - [ ] O texto de cada anexo é dividido em trechos, e cada trecho é indexado.
 - [ ] Cada imagem ligada a FAQ publicada ganha um vetor multimodal (imagem + legenda/descrição).
 - [ ] Renomear um tema reindexa as FAQs daquele tema. FAQ, anexo ou imagem sem mudança não dispara
@@ -34,7 +36,7 @@ da busca em texto livre de faq/007.
 - [ ] Com o `ollama` fora do ar, o indexador registra a falha, não grava índice pela metade e retoma
       sozinho quando o serviço volta.
 - [ ] `manage.py buscar_faq "texto"` lista as FAQs mais próximas (inclusive por anexo ou imagem),
-      respeitando a visibilidade de quem pergunta (`--autenticado`). Rascunho nunca aparece, e o
+      respeitando a visibilidade de quem pergunta (`--rf <RF>` para o servidor logado). Rascunho nunca aparece, e o
       anônimo recebe as públicas mais próximas mesmo quando os trechos mais próximos são de internas.
 
 ## 3 · Domínio
@@ -47,7 +49,7 @@ Esta SPEC pergunta a elas que conteúdo (textual ou visual) representa cada uma 
 ```python
 class OrigemTrecho(StrEnum):
     FAQ_INTEIRA = "faq_inteira"          # pergunta + tema + resposta + palavras-chave
-    FORMULACAO = "formulacao"            # uma pergunta ou variação, sozinha
+    PERGUNTA = "pergunta"                # uma pergunta (principal ou variação), sozinha
     ANEXO = "anexo"                      # um pedaço do texto extraído do anexo
     IMAGEM = "imagem"                    # imagem MidiaFaq (visual + legenda e descrição)
 
@@ -110,9 +112,8 @@ class FaqSemelhante(BaseModel):
 
 ## 5 · Peças de referência a compor
 - `@services/utils/markdown` (faq/001) → o parser markdown-it, para tirar o markdown da resposta.
-- `@services/domain/faq/visibilidade.py` → `visibilidades_para` (faq/001): filtro da busca.
-- `@apps/faq/models.py` → `Faq`, `Formulacao`, `Tema`, `Anexo`, `MidiaFaq` (faq/001, faq/003 e
-  faq/004).
+- `@services/domain/faq/leitura/visibilidade.py` → `visibilidades_para` (faq/001): filtro da busca.
+- `@apps/faq/models/` → `Faq`, `Pergunta`, `Tema`, `Anexo`, `MidiaFaq` (faq/001, faq/003 e faq/004).
 - `requests` (já é dependência) → transporte do cliente Ollama.
 - `@docker/Dockerfile.web` → a imagem do `web`, reaproveitada pelo `indexador`.
 - `@docker/Dockerfile.daemon` e o serviço `daemon` do compose → padrão de processo fora do web.
@@ -256,8 +257,7 @@ class ClienteEmbeddingOllama:
         return vetores
 ```
 
-**`services/domain/faq/indexacao.py`** — que conteúdo representa o quê. O domínio depende de uma
-porta, não do Ollama.
+**`services/domain/faq/indexacao/embedding.py`** — o domínio depende de uma porta, não do Ollama.
 
 ```python
 # Formato de prompt do EmbeddingGemma: documento e consulta são prefixados de jeitos diferentes.
@@ -268,6 +268,14 @@ PROMPT_CONSULTA = "task: search result | query: {consulta}"
 
 class GeradorEmbedding(Protocol):
     def __call__(self, pedido: PedidoEmbedding) -> list[list[float]]: ...
+```
+
+**`services/domain/faq/indexacao/trechos.py`** — que conteúdo representa o quê: a FAQ, a imagem e o
+texto do anexo, dividido em pedaços.
+
+```python
+TAMANHO_TRECHO = 1200          # caracteres; folga ampla dentro da janela de contexto do modelo
+SOBREPOSICAO = 200             # a frase cortada na borda aparece inteira em um dos dois lados
 
 
 def trechos_da_faq(faq: Faq) -> list[TrechoIndexavel]:
@@ -276,7 +284,8 @@ def trechos_da_faq(faq: Faq) -> list[TrechoIndexavel]:
     partes = [
         caminho_tema,
         markdown_para_texto(faq.resposta.markdown),
-        ", ".join(faq.palavras_chave),
+        # O caminho inteiro: a FAQ marcada só com a folha também fica perto da consulta pelo ancestral.
+        ", ".join(" › ".join(p.caminho) for p in faq.palavras_chave),     # "IPTU › Certidão" 
     ]
     inteira = TrechoIndexavel(
         origem=OrigemTrecho.FAQ_INTEIRA,
@@ -284,11 +293,11 @@ def trechos_da_faq(faq: Faq) -> list[TrechoIndexavel]:
         titulo=faq.pergunta.texto,
         texto="\n".join(p for p in partes if p),
     )
-    formulacoes = [
-        TrechoIndexavel(origem=OrigemTrecho.FORMULACAO, faq_id=faq.id, titulo="none", texto=f.texto)
-        for f in [faq.pergunta, *faq.variacoes]
+    perguntas = [
+        TrechoIndexavel(origem=OrigemTrecho.PERGUNTA, faq_id=faq.id, titulo="none", texto=p.texto)
+        for p in [faq.pergunta, *faq.variacoes]
     ]
-    return [inteira, *formulacoes]
+    return [inteira, *perguntas]
 
 
 def trecho_da_imagem(midia: MidiaFaq) -> TrechoIndexavel:
@@ -300,13 +309,6 @@ def trecho_da_imagem(midia: MidiaFaq) -> TrechoIndexavel:
         texto=legenda_e_desc,
         midia_hash=midia.hash_conteudo,
     )
-```
-
-**`services/domain/faq/trechos.py`** — divisão do texto do anexo.
-
-```python
-TAMANHO_TRECHO = 1200          # caracteres; folga ampla dentro da janela de contexto do modelo
-SOBREPOSICAO = 200             # a frase cortada na borda aparece inteira em um dos dois lados
 
 
 def trechos_do_anexo(anexo: Anexo) -> list[TrechoIndexavel]:
@@ -318,15 +320,18 @@ def trechos_do_anexo(anexo: Anexo) -> list[TrechoIndexavel]:
     ]
 ```
 
-**`services/domain/faq/reconciliacao.py`** — o coração do indexador. Não há fila nem sinal: a cada
-ciclo, o que **deveria** estar indexado é comparado, por hash, com o que **está**.
+**`services/domain/faq/indexacao/models/reconciliacao.py`**
 
 ```python
 class PlanoReconciliacao(BaseModel):
     a_gerar: list[TrechoIndexavel]       # hash desejado ausente do banco
     a_remover: list[str]                 # hash no banco que ninguém mais deseja
+```
 
+**`services/domain/faq/indexacao/reconciliacao.py`** — o coração do indexador. Não há fila nem sinal:
+a cada ciclo, o que **deveria** estar indexado é comparado, por hash, com o que **está**.
 
+```python
 def planejar(desejados: list[TrechoIndexavel], existentes: set[str], modelo: ModeloEmbedding) -> PlanoReconciliacao:
     por_hash = {t.hash_para(modelo): t for t in desejados}
     return PlanoReconciliacao(
@@ -335,7 +340,7 @@ def planejar(desejados: list[TrechoIndexavel], existentes: set[str], modelo: Mod
     )
 ```
 
-**`apps/faq/indexador.py`** — a orquestração com o banco. Uma transação por FAQ, por anexo e por
+**`apps/faq/indexacao/indexador.py`** — a orquestração com o banco. Uma transação por FAQ, por anexo e por
 imagem: se o Ollama cai no meio, cada unidade fica inteira no estado antigo ou inteira no novo.
 
 ```python
@@ -358,17 +363,17 @@ def _entrada(trecho: TrechoIndexavel) -> EntradaEmbedding:
     return EntradaEmbedding(texto=trecho.prompt_texto() or None, imagem_bytes=bytes(arquivo))
 ```
 
-O comando `indexar_faq --continuo` chama `ciclo` em laço, dorme `FAQ_INDEXADOR_INTERVALO_S` e, diante
+O comando `indexar_faq --continuo` (`apps/faq/management/commands/`) chama `ciclo` em laço, dorme `FAQ_INDEXADOR_INTERVALO_S` e, diante
 de `OllamaIndisponivel`, registra no log e tenta de novo no ciclo seguinte, sem sair do processo.
 
-**`apps/faq/models.py`**
+**`apps/faq/models/indexacao.py`**
 
 ```python
 class TrechoIndexado(models.Model):
     origem = models.CharField(max_length=16, choices=OrigemTrecho.choices)
-    faq = models.ForeignKey(Faq, on_delete=models.CASCADE, null=True, related_name="trechos")
-    anexo = models.ForeignKey(Anexo, on_delete=models.CASCADE, null=True, related_name="trechos")
-    midia = models.ForeignKey(MidiaFaq, on_delete=models.CASCADE, null=True, related_name="trechos")
+    faq = models.ForeignKey("faq.Faq", on_delete=models.CASCADE, null=True, related_name="trechos")
+    anexo = models.ForeignKey("faq.Anexo", on_delete=models.CASCADE, null=True, related_name="trechos")
+    midia = models.ForeignKey("faq.MidiaFaq", on_delete=models.CASCADE, null=True, related_name="trechos")
     posicao = models.PositiveIntegerField(default=0)
     texto = models.TextField()
     modelo = models.CharField(max_length=80)
@@ -395,11 +400,11 @@ class TrechoIndexado(models.Model):
 
 A primeira migração do app nesta SPEC é `VectorExtension()` (do pacote `pgvector`).
 
-**`apps/faq/semantica.py`** — a consulta que faq/007 consome. A visibilidade entra no SQL, por junção, e
+**`apps/faq/indexacao/semantica.py`** — a consulta que faq/007 consome. A visibilidade entra no SQL, por junção, e
 não é copiada para a linha do trecho.
 
 ```python
-# Uma FAQ ocupa vários trechos (inteira, formulações, anexos), e k × 5 trechos cobre k FAQs na prática.
+# Uma FAQ ocupa vários trechos (inteira, perguntas, anexos), e k × 5 trechos cobre k FAQs na prática.
 FATOR_CANDIDATOS = 5
 
 
@@ -425,7 +430,7 @@ def buscar_semelhantes(
         .order_by("distancia")[: k * FATOR_CANDIDATOS]
     )
     # Um trecho de anexo ou imagem aponta para várias FAQs: o domínio expande e fica com o melhor por FAQ.
-    return melhor_por_faq(_como_ocorrencias(candidatos, faqs_visiveis), k)    # services/domain/faq/ranking.py
+    return melhor_por_faq(_como_ocorrencias(candidatos, faqs_visiveis), k)    # services/domain/faq/indexacao/ranking.py
 ```
 
 ## 7 · Caveats
@@ -470,7 +475,7 @@ só no `web`. Na primeira subida o indexador pode começar antes das migrações
 o traz de volta até o banco estar pronto.
 
 ## 8 · Testes (TDD)
-- `test_trechos_da_faq_cobrem_a_faq_e_cada_formulacao` — 1 trecho inteiro + 1 por formulação. O
+- `test_trechos_da_faq_cobrem_a_faq_e_cada_pergunta` — 1 trecho inteiro + 1 por pergunta. O
   inteiro traz `Tema › Subtema`, a resposta sem sintaxe markdown, `alt` de imagens (sem `/faq/midias/`)
   e palavras-chave.
 - `test_trechos_do_anexo_cobrem_o_texto_com_sobreposicao` — nenhum trecho passa do tamanho, trechos
@@ -480,7 +485,7 @@ o traz de volta até o banco estar pronto.
 - `test_ciclo_indexa_imagem_sem_rechamar_inalterada` — a imagem gera um trecho multimodal (`IMAGEM`)
   com os bytes e a legenda; no segundo ciclo o gerador não é chamado e nenhuma consulta lê a coluna
   `arquivo` (`CaptureQueriesContext`). *(marker `banco`)*
-- `test_renomear_tema_reindexa_so_o_trecho_inteiro` — o trecho inteiro é trocado, e os de formulação
+- `test_renomear_tema_reindexa_so_o_trecho_inteiro` — o trecho inteiro é trocado, e os de pergunta
   ficam. *(marker `banco`)*
 - `test_troca_de_modelo_reindexa_tudo` — mudar `ModeloEmbedding.nome` regera todos os trechos e remove
   os do modelo antigo. *(marker `banco`)*

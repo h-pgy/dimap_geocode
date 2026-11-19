@@ -54,6 +54,37 @@
       <!-- Alvo de revogar do .chip-concessao e gatilho de conceder (SPEC autorizacao/008). -->
       <g id="glifo-x"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></g>
       <g id="glifo-mais"><path d="M12 5v14"/><path d="M5 12h14"/></g>
+      <!-- Glifos da página de FAQ (SPEC faq/001); o glifo-x já existe acima. -->
+      <g id="glifo-seta-baixo"><path d="M6 9l6 6 6-6"/></g>
+      <g id="glifo-cadeado">
+      <rect x="5" y="11" width="14" height="10" rx="2"/>
+      <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+    </g>
+      <g id="glifo-link-externo">
+      <path d="M14 4h6v6"/>
+      <path d="M20 4l-9 9"/>
+      <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>
+    </g>
+      <g id="glifo-link-sistema">
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+      <path d="M14 3v5h5"/>
+      <path d="M9 14.5h6"/>
+      <path d="M12.6 12 15 14.5 12.6 17"/>
+    </g>
+      <g id="glifo-pergunta">
+      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/>
+      <path d="M9.8 9.6a2.3 2.3 0 0 1 4.4.9c0 1.5-2.2 2-2.2 3.3"/>
+      <path d="M12 16.6v.1"/>
+    </g>
+      <g id="glifo-recolher">
+      <path d="M7 4l5 5 5-5"/>
+      <path d="M7 20l5-5 5 5"/>
+    </g>
+      <g id="glifo-entrar">
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+      <path d="M10 17l5-5-5-5"/>
+      <path d="M15 12H3"/>
+    </g>
       <!-- Cromo das telas de servidor/unidade (SPECs user_admin/016, 017 e 022). -->
       <g id="glifo-foto">
         <path d="M3.6 8.6h3.1l1.4-2.3h7.8l1.4 2.3h3.1a1.5 1.5 0 0 1 1.5 1.5v7.6a1.5 1.5 0 0 1-1.5 1.5H3.6a1.5 1.5 0 0 1-1.5-1.5v-7.6a1.5 1.5 0 0 1 1.5-1.5z"/>
@@ -723,6 +754,20 @@
           <p class="text-sm text-base-content/70">A altura em que nasce a gaveta inferior que hospeda o Street View (SPEC street_view/002): a <span class="text-code">.gaveta-inferior-panorama</span> a entrega como <span class="text-code">--gaveta-puxavel-partida</span>.</p>
         </div>
       </div>
+
+      <!-- ===== SPEC faq/001 ===== -->
+      <!-- .placa-clara — sobre a placa de vidro, ao lado do poço que ela inverte -->
+      <div class="glass-panel p-6 grid gap-6 sm:grid-cols-2">
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">.placa-clara · em relevo</span>
+          <div class="placa-clara h-24"></div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">.card-well · rebaixado (existente)</span>
+          <div class="card-well h-24"></div>
+        </div>
+      </div>
+    
     </section>
 
     <!-- ============ 2. ÁTOMOS ============ -->
@@ -1492,6 +1537,43 @@
         </div>
         <p class="text-xs text-base-content/60">A interrogação ao lado do controle que não responde. O motivo mora no <span class="text-code">.tooltip</span> do daisyUI, empilhado no HTML, e o foco de teclado entra pelo glifo. Fora do contexto de ação ela não existe: quem a mostra é <span class="text-code">.tela-home:has(#contexto-acao[data-contexto-acao])</span>. Partial: <span class="text-code">mapping/_dica_trava.html</span>.</p>
       </div>
+
+      <!-- ===== SPEC faq/001 ===== -->
+      <div class="glass-panel p-6 grid gap-8 md:grid-cols-3">
+        <!-- .marca-interna -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.marca-interna</span>
+          <span class="marca-interna w-fit">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+            Interna
+          </span>
+        </div>
+
+        <!-- .faq-subtema -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.faq-subtema</span>
+          <h3 class="faq-subtema">Lotes e contribuintes</h3>
+        </div>
+
+        <!-- .chip-relacionada -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.chip-relacionada</span>
+          <a href="#" class="chip-relacionada w-fit">
+            <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+            O que a certidão de lançamento atesta?
+          </a>
+          <!-- relacionada interna, para o servidor logado -->
+          <a href="#" class="chip-relacionada w-fit">
+            <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+            Quem pode emitir a certidão de lançamento?
+            <span class="marca-interna">
+              <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+              Interna
+            </span>
+          </a>
+        </div>
+      </div>
+    
     </section>
 
     <!-- ============ 3. MOLÉCULAS ============ -->
@@ -3813,6 +3895,252 @@
           <p class="text-xs text-base-content/60 mt-2">O botão é o <span class="text-code">.btn-etched</span> e a lista é a <span class="text-code">.torre-ajustes</span>, compostos no HTML: a torre troca de eixo e sai para a direita, fora da gaveta, só em CSS — pelo ponteiro sobre o Voltar ou pelo foco. Os itens são <span class="text-code">.item-historico</span>, o primeiro pré-selecionado. Sem gaveta anterior o Voltar sai <span class="text-code">disabled</span> e a lista não existe. O que troca a cena declara <span class="text-code">data-troca-cena</span>: com a gaveta inferior aberta ou recolhida, o <span class="text-code">trava_cena.js</span> põe <span class="text-code">inert</span> nele, e a <span class="text-code">.dica-trava</span>, que fica fora da marca, diz o porquê. Partial: <span class="text-code">mapping/_historico_gaveta.html</span>.</p>
         </div>
       </div>
+
+      <!-- ===== SPEC faq/001 ===== -->
+      <!-- .texto-markdown — a amostra do editor (faq/002) já como o renderizador a entrega -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">.texto-markdown · tudo o que o editor oferece</span>
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_1fr]">
+          <pre class="card-well p-4 text-[12px] leading-relaxed font-mono text-rocha-900 overflow-x-auto whitespace-pre-wrap"># Título de nível 1
+## Título de nível 2
+### Título de nível 3
+#### Título de nível 4
+##### Título de nível 5
+###### Título de nível 6
+
+Texto com **negrito**, *itálico*, ~~riscado~~,
+`codigo` e um [link](https://www.prefeitura.sp.gov.br/).
+
+- item
+- item com sublista
+  - subitem
+
+1. primeiro
+2. segundo
+
+- [x] tarefa feita
+- [ ] tarefa por fazer
+
+&gt; Citação de uma norma ou aviso.
+
+| Entrada | Resultado |
+|---|---|
+| codlog | linha |
+| contribuinte | polígono |
+
+---
+
+```
+bloco de código
+```
+
+&lt;script&gt;alert(1)&lt;/script&gt;</pre>
+
+          <div class="card-well p-5">
+            <div class="texto-markdown">
+              <h3>Título de nível 1</h3>
+              <h3>Título de nível 2</h3>
+              <h3>Título de nível 3</h3>
+              <h4>Título de nível 4</h4>
+              <h4>Título de nível 5</h4>
+              <h4>Título de nível 6</h4>
+              <p>Texto com <strong>negrito</strong>, <em>itálico</em>, <s>riscado</s>, <code>codigo</code> e um <a href="https://www.prefeitura.sp.gov.br/" rel="noopener noreferrer">link</a>.</p>
+              <ul>
+                <li>item</li>
+                <li>item com sublista
+                  <ul><li>subitem</li></ul>
+                </li>
+              </ul>
+              <ol>
+                <li>primeiro</li>
+                <li>segundo</li>
+              </ol>
+              <ul>
+                <li><input type="checkbox" checked disabled> tarefa feita</li>
+                <li><input type="checkbox" disabled> tarefa por fazer</li>
+              </ul>
+              <blockquote><p>Citação de uma norma ou aviso.</p></blockquote>
+              <table>
+                <thead><tr><th>Entrada</th><th>Resultado</th></tr></thead>
+                <tbody>
+                  <tr><td>codlog</td><td>linha</td></tr>
+                  <tr><td>contribuinte</td><td>polígono</td></tr>
+                </tbody>
+              </table>
+              <hr>
+              <pre><code>bloco de código</code></pre>
+              <p>&lt;script&gt;alert(1)&lt;/script&gt;</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- link de referência — o .item-menu existente, com glifo e apoio próprios -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">Link de referência · .item-menu existente</span>
+        <div class="links-referencia max-w-2xl">
+          <!-- do sistema: mesma aba -->
+          <a href="#" class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-sistema"/></svg></span>
+            <span class="item-menu-rotulo">
+              Conferir um documento
+              <span class="item-menu-apoio">Nesta plataforma</span>
+            </span>
+          </a>
+          <!-- externo: aba nova -->
+          <a href="https://www.prefeitura.sp.gov.br/" target="_blank" rel="noopener noreferrer" class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-externo"/></svg></span>
+            <span class="item-menu-rotulo">
+              Portal da Prefeitura de São Paulo
+              <span class="item-menu-apoio">prefeitura.sp.gov.br<span class="sr-only"> (abre em nova aba)</span></span>
+            </span>
+          </a>
+        </div>
+      </div>
+
+      <!-- .faq-item — estados -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">.faq-item · estados</span>
+        <div class="grid gap-6 lg:grid-cols-2 items-start">
+
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-base-content/60">fechado · pública × interna (leitor logado)</span>
+            <div class="placa-clara faq-lista">
+              <details class="faq-item">
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Como recupero minha senha?</span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta">
+                  <div class="texto-markdown"><p>Na tela de login, use <strong>Esqueci minha senha</strong>.</p></div>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Quem pode emitir a certidão de lançamento?</span>
+                  <span class="marca-interna">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                    Interna
+                  </span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta">
+                  <div class="texto-markdown"><p>Servidores da DIMAP-1 com a competência de emissão.</p></div>
+                </div>
+              </details>
+            </div>
+
+            <span class="text-overline text-base-content/60 mt-4">aberto · só texto (sem links, relacionadas podadas)</span>
+            <div class="placa-clara faq-lista">
+              <details class="faq-item" open>
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Por que um lote aparece em rosa mais escuro?</span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta">
+                  <div class="texto-markdown">
+                    <p>O rosa mais escuro marca o <strong>lote condominial</strong>: um lote com várias unidades, cada uma com seu número de contribuinte.</p>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-base-content/60">aberto · com links e relacionadas</span>
+            <div class="placa-clara faq-lista">
+              <details class="faq-item" open>
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Como confiro se uma certidão é autêntica?</span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta">
+                  <div class="texto-markdown">
+                    <p>Toda certidão traz um <strong>código de conferência</strong> no rodapé. Com ele, qualquer pessoa confere o documento, sem login.</p>
+                  </div>
+                  <div class="faq-item-rodape">
+                    <div class="etched-line h-[3px] w-full"></div>
+                    <div class="faq-item-rodape-bloco">
+                      <span class="text-overline">Para saber mais</span>
+                      <div class="links-referencia">
+                        <a href="#" class="item-menu">
+                          <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-sistema"/></svg></span>
+                          <span class="item-menu-rotulo">Conferir um documento<span class="item-menu-apoio">Nesta plataforma</span></span>
+                        </a>
+                        <a href="https://www.prefeitura.sp.gov.br/" target="_blank" rel="noopener noreferrer" class="item-menu">
+                          <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-externo"/></svg></span>
+                          <span class="item-menu-rotulo">Portal da Prefeitura<span class="item-menu-apoio">prefeitura.sp.gov.br<span class="sr-only"> (abre em nova aba)</span></span></span>
+                        </a>
+                      </div>
+                    </div>
+                    <div class="faq-item-rodape-bloco">
+                      <span class="text-overline">Perguntas relacionadas</span>
+                      <div class="chips-relacionadas">
+                        <a href="#" class="chip-relacionada" data-rola-faq>
+                          <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+                          O que a certidão de lançamento atesta?
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <!-- .respostas-abertas -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">.respostas-abertas · .fechar-resposta · .recolher-respostas</span>
+        <div class="flex flex-wrap items-start gap-10">
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-base-content/60">com respostas abertas</span>
+            <div class="w-60">
+              <div class="respostas-abertas placa-clara">
+                <nav class="respostas-abertas-conteudo" aria-label="Respostas abertas">
+                  <span class="text-overline px-2">Respostas abertas</span>
+                  <div class="respostas-abertas-lista">
+                    <div class="respostas-abertas-grupo">
+                      <span class="text-overline respostas-abertas-tema">Busca no mapa</span>
+                      <div class="respostas-abertas-item" data-resposta-aberta="demo-1">
+                        <a href="#" class="respostas-abertas-link" title="Como encontro um imóvel pelo número de contribuinte?">Como encontro um imóvel pelo número de contribuinte?</a>
+                        <button type="button" class="fechar-resposta etched" data-fecha-faq="demo-1" aria-label="Fechar a resposta: Como encontro um imóvel pelo número de contribuinte?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      </div>
+                      <div class="respostas-abertas-item" data-resposta-aberta="demo-2">
+                        <a href="#" class="respostas-abertas-link" title="Por que o ponto do endereço cai no meio da quadra?">Por que o ponto do endereço cai no meio da quadra?</a>
+                        <button type="button" class="fechar-resposta etched" data-fecha-faq="demo-2" aria-label="Fechar a resposta: Por que o ponto do endereço cai no meio da quadra?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      </div>
+                    </div>
+                    <div class="respostas-abertas-grupo">
+                      <span class="text-overline respostas-abertas-tema">Certidões</span>
+                      <div class="respostas-abertas-item" data-resposta-aberta="demo-3">
+                        <a href="#" class="respostas-abertas-link" title="Como confiro se uma certidão é autêntica?">Como confiro se uma certidão é autêntica?</a>
+                        <button type="button" class="fechar-resposta etched" data-fecha-faq="demo-3" aria-label="Fechar a resposta: Como confiro se uma certidão é autêntica?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="etched-line h-[3px]" aria-hidden="true"></div>
+                </nav>
+                <button type="button" class="recolher-respostas opacity-100 pointer-events-auto" data-recolher-respostas>
+                  <svg class="etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-recolher"/></svg>
+                  Recolher respostas
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-base-content/60">nenhuma aberta, ou tela estreita: só o rodapé</span>
+              <div class="respostas-abertas placa-clara w-fit">
+                <button type="button" class="recolher-respostas">
+                  <svg class="etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-recolher"/></svg>
+                  Recolher respostas
+                </button>
+              </div>
+          </div>
+        </div>
+      </div>
+    
     </section>
 
     <!-- ============ 4. ORGANISMOS ============ -->
@@ -5080,6 +5408,79 @@
         </div>
         <p class="text-xs text-base-content/60">Abrir e fechar é <span class="text-code">checkbox</span> nativo — <span class="text-code">.gaveta-toggle:checked + .gaveta-inferior</span>, irmão <strong>imediato</strong>, e não <span class="text-code">:root:has()</span> nem <span class="text-code">~</span>: assim duas gavetas convivem no mesmo documento sem que marcar uma abra a outra. Nenhum estado de gaveta vive em JavaScript. A alça e o ✕ apontam para o mesmo <span class="text-code">for</span> e desmarcam o campo.</p>
       </div>
+
+      <!-- ===== SPEC faq/001 ===== -->
+      <div class="grid gap-6 lg:grid-cols-[15rem_1fr] items-start">
+        <!-- .indice-temas-faq -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">.indice-temas-faq</span>
+          <div class="glass-panel p-3">
+          <nav class="indice-temas-faq flex" aria-label="Temas">
+            <span class="text-overline px-3 pt-1 pb-1">Temas</span>
+            <a href="#" class="item-menu"><span class="item-menu-rotulo">Busca no mapa</span><span class="text-overline">5</span></a>
+            <a href="#" class="item-menu"><span class="item-menu-rotulo">Certidões</span><span class="text-overline">2</span></a>
+            <a href="#" class="item-menu"><span class="item-menu-rotulo">Acesso e senha</span><span class="text-overline">2</span></a>
+          </nav>
+          </div>
+        </div>
+
+        <!-- .secao-tema-faq — tema com FAQ direto no tema e dois subtemas -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">.secao-tema-faq</span>
+          <div class="glass-panel p-6">
+          <section class="secao-tema-faq">
+            <header class="secao-tema-faq-cabecalho">
+              <h2 class="painel-titulo">Busca no mapa</h2>
+              <span class="text-overline">5 perguntas</span>
+            </header>
+            <div class="placa-clara faq-lista">
+              <details class="faq-item">
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Que tipos de entrada a barra de busca entende?</span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta"><div class="texto-markdown"><p>Logradouro, endereço com número e número de contribuinte.</p></div></div>
+              </details>
+            </div>
+            <div class="secao-subtema-faq">
+              <h3 class="faq-subtema">Endereços</h3>
+              <div class="placa-clara faq-lista">
+                <details class="faq-item">
+                  <summary class="faq-item-pergunta">
+                    <span class="faq-item-texto">O que é um endereço externo?</span>
+                    <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                  </summary>
+                  <div class="faq-item-resposta"><div class="texto-markdown"><p>Um endereço achado fora das bases oficiais da Prefeitura.</p></div></div>
+                </details>
+                <details class="faq-item">
+                  <summary class="faq-item-pergunta">
+                    <span class="faq-item-texto">Por que o ponto do endereço cai no meio da quadra?</span>
+                    <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                  </summary>
+                  <div class="faq-item-resposta"><div class="texto-markdown"><p>O ponto é interpolado pela numeração do logradouro.</p></div></div>
+                </details>
+              </div>
+            </div>
+            <div class="secao-subtema-faq">
+              <h3 class="faq-subtema">Lotes e contribuintes</h3>
+              <div class="placa-clara faq-lista">
+                <details class="faq-item">
+                  <summary class="faq-item-pergunta">
+                    <span class="faq-item-texto">Como encontro um imóvel pelo número de contribuinte?</span>
+                    <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                  </summary>
+                  <div class="faq-item-resposta"><div class="texto-markdown"><p>Digite o número na barra de busca, com ou sem pontuação.</p></div></div>
+                </details>
+                <details class="faq-item">
+                  <summary class="faq-item-pergunta">
+                    <span class="faq-item-texto">Por que um lote aparece em rosa mais escuro?</span>
+                    <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                  </summary>
+                  <div class="faq-item-resposta"><div class="texto-markdown"><p>É um lote condominial.</p></div></div>
+                </details>
+              </div>
+            </div>
+          
     </section>
 
     <footer class="text-center text-xs text-base-content/60 pb-8 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">

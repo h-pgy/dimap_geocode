@@ -1,6 +1,6 @@
 ---
 spec: faq/002
-versao: v11
+versao: v15
 atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
@@ -17,6 +17,10 @@ changelog:
   - v9: a FAQ do sistema passa a vir da seed de faq/008
   - v10: exclusão lógica com restauração, e a FAQ do sistema deixa de ser excluível
   - v11: lista de edição na tabela de vidro, e a relacionada excluída fica inerte até a restauração
+  - v12: a conferência de pergunta ocupada passa a ser a de faq/001, e o link do formulário se resolve em interno ou externo
+  - v13: cadastro de palavras-chave e escolha delas numa árvore horizontal no formulário
+  - v14: o vínculo com as telas passa a se chamar rota vinculada, como em faq/006
+  - v15: caminhos seguem a estrutura de pacotes de faq/001
 ---
 
 # SPEC faq/002 — Edição da FAQ pelo administrador
@@ -44,7 +48,9 @@ própria, para manter a FAQ em dia sem depender de deploy nem de desenvolvedor.
 - [ ] Pergunta ou variação já usada por outra FAQ devolve o formulário com a mensagem em português no
       campo exato, e nada é gravado. Trocar a pergunta principal por uma variação da própria FAQ é
       aceito.
-- [ ] O administrador cria tema e subtema e renomeia temas existentes pela própria área de edição.
+- [ ] O administrador cria e renomeia temas, subtemas e palavras-chave pela própria área de edição, e
+      marca as palavras-chave da FAQ numa árvore horizontal: escolher uma palavra abre as filhas dela
+      na coluna ao lado, e o que já foi marcado continua marcado ao trocar de ramo.
 - [ ] Excluir uma FAQ a tira da página, da busca e da lista de edição, sem apagá-la do banco, e libera
       as perguntas dela para outra FAQ. Restaurá-la a devolve como rascunho; se uma pergunta dela foi
       reaproveitada nesse meio-tempo, a restauração é recusada com a pergunta ocupada na mensagem.
@@ -89,15 +95,18 @@ class Edicao(BaseModel):
 ## 4 · Fora de escopo
 - Anexos documentais (PDF/DOCX) com extração de texto na edição — faq/003.
 - Envio de imagens no editor e modal de metadados — faq/004.
-- Vínculo da FAQ às telas do sistema — faq/006.
+- Rotas vinculadas da FAQ (as telas em que o widget de ajuda a oferece) — faq/006.
 - Abrir `faq:admin_nova` já preenchido a partir do painel de buscas — faq/007.
-- Excluir ou mover tema — sem dono ainda; hoje tema com FAQ é protegido (`PROTECT`).
+- Excluir ou mover tema ou palavra-chave — sem dono ainda; hoje os dois são protegidos (`PROTECT`).
 - Expurgo definitivo de FAQ excluída — sem dono ainda.
 - Histórico de versões da FAQ — sem dono ainda.
 - Transferir a autoria de uma FAQ para outro administrador — sem dono ainda.
 
 ## 5 · Peças de referência a compor
-- `@apps/faq/cadastro.py` → `gravar_faq` (faq/001): a criação; esta SPEC acrescenta a regravação ao lado.
+- `@apps/faq/conteudo/cadastro.py` → `gravar_faq` (faq/001): a criação; a regravação desta SPEC compõe com ela.
+- `@apps/faq/conteudo/cadastro.py` → `conferir_perguntas_livres` e `PerguntaJaRespondida` (faq/001): a pergunta ocupada.
+- `@apps/faq/taxonomia/cadastro.py` → `gravar_palavra_chave` (faq/001): a criação da palavra-chave, já com as relacionadas.
+- `@services/domain/faq/conteudo/links.py` → `resolver_destino` (faq/001) e `DOMINIOS_DO_SISTEMA`: o link digitado.
 - `@services/utils/markdown` → `RenderizadorMarkdown` (faq/001): a FAQ editada é exibida por ele.
 - `@services/utils/erros_formulario` → o erro de formulário com o campo destacado.
 - `@services/domain/listagem_gestao` → `ListadorTabela` e `ConsultaListagem`: filtro por coluna e ordenação.
@@ -112,7 +121,7 @@ class Edicao(BaseModel):
 
 > O comentário didático destes blocos existe só aqui e **não é portado** (CLAUDE.md §7.2).
 
-**`services/domain/faq/autoria.py`** — a regra de quem altera o quê. É pura, e o app a usa tanto para
+**`services/domain/faq/edicao/autoria.py`** — a regra de quem altera o quê. É pura, e o app a usa tanto para
 filtrar a lista quanto para recusar o id forjado.
 
 ```python
@@ -143,7 +152,7 @@ def superusuario_requerido(view: Callable[..., HttpResponse]) -> Callable[..., H
     return _protegida
 ```
 
-**`apps/faq/consulta.py`** — a FAQ alheia some com 404, e não com 403: a existência dela não é
+**`apps/faq/gestao/consulta.py`** — a FAQ alheia some com 404, e não com 403: a existência dela não é
 informação para quem não é o autor. A excluída também: só a restauração a enxerga.
 
 ```python
@@ -173,18 +182,19 @@ def faqs_editaveis(
     )
 ```
 
-**`apps/faq/cadastro.py`** — a regravação. As formulações antigas saem antes de as novas entrarem, na
+**`apps/faq/gestao/cadastro.py`** — a regravação. As perguntas antigas saem antes de as novas entrarem, na
 mesma transação. Assim, promover uma variação a pergunta principal não colide com ela mesma no UNIQUE.
 
 ```python
 @transaction.atomic
 def regravar_faq(edicao: Edicao) -> None:
     registro = faq_editavel(edicao.faq.id, edicao.editor)
-    _conferir_formulacoes_livres(edicao.faq)          # mensagem por campo antes do IntegrityError
-    registro.formulacoes.all().delete()
+    # faq/001: a própria FAQ não conta, e a colisão sobe como PerguntaJaRespondida antes do IntegrityError.
+    conferir_perguntas_livres([edicao.faq.pergunta, *edicao.faq.variacoes], faq_id=edicao.faq.id)
+    registro.perguntas.all().delete()
     registro.links.all().delete()
     _aplicar_campos(registro, edicao.faq)             # resposta_markdown, tema, palavras-chave, visibilidade, situação
-    _gravar_formulacoes(registro, edicao.faq)
+    _gravar_perguntas(registro, edicao.faq)
     _gravar_links(registro, edicao.faq.resposta.links)
     registro.relacionadas.set(_relacionadas_regravadas(registro, edicao.faq.relacionadas))
 
@@ -200,25 +210,26 @@ def _relacionadas_regravadas(registro: FaqModel, pedidas: list[int]) -> set[int]
         FaqModel.objects.filter(pk__in=pedidas, situacao__in=SITUACOES_ATIVAS).values_list("pk", flat=True)
     )
     return ativas | excluidas
-
-
-def _conferir_formulacoes_livres(faq: Faq) -> None:
-    # Pré-checagem para devolver o erro no campo certo (skill erros-de-formulario). O UNIQUE do banco
-    # continua sendo a garantia: duas gravações simultâneas passam daqui e uma morre no IntegrityError.
-    chaves = {f.chave: campo for campo, f in _formulacoes_com_campo(faq)}
-    ocupadas = (
-        FormulacaoModel.objects.filter(chave__in=chaves)
-        .exclude(faq_id=faq.id)
-        .values_list("chave", flat=True)
-    )
-    if ocupadas:
-        raise FormulacaoOcupada(campos=[chaves[c] for c in ocupadas])
 ```
 
-`gravar_faq` (faq/001) passa a chamar a mesma `_conferir_formulacoes_livres` antes de criar, e recusa
-`EXCLUIDA` como a `Edicao`.
+`gravar_faq` (faq/001) passa a recusar `EXCLUIDA` como a `Edicao`.
 
-**`apps/faq/cadastro.py`** — exclusão e restauração. `Formulacao.chave` (faq/001) passa a `null=True`:
+**`apps/faq/gestao/formularios.py`** — o formulário traduz o que o domínio recusou para o controle certo
+(skill `erros-de-formulario`). O link chega como texto e só vira `LinkReferencia` aqui.
+
+```python
+def campos_ocupados(erro: PerguntaJaRespondida, faq: Faq) -> list[str]:
+    # A mensagem vai no controle da pergunta ocupada e não diz qual FAQ a tem, embora o erro saiba (Caveats).
+    campos = {p.chave: campo for campo, p in _perguntas_com_campo(faq)}
+    return [campos[o.pergunta.chave] for o in erro.ocupadas]
+
+
+def link_do_formulario(titulo: str, url: str) -> LinkReferencia:
+    # URL recusada (`//x`, `javascript:`, sem host) volta como ValidationError no controle daquele link.
+    return LinkReferencia(titulo=titulo, destino=resolver_destino(url, DOMINIOS_DO_SISTEMA))
+```
+
+**`apps/faq/gestao/cadastro.py`** — exclusão e restauração. `Pergunta.chave` (faq/001) passa a `null=True`:
 a chave nula libera a pergunta no UNIQUE, que não compara nulos, e o texto fica para a restauração.
 
 ```python
@@ -229,23 +240,23 @@ def excluir_faq(faq_id: int, editor: Editor) -> None:
         raise PermissionDenied              # FAQ do sistema: 403, e nada muda
     registro.situacao = Situacao.EXCLUIDA
     registro.save(update_fields=["situacao", "atualizado_em"])
-    registro.formulacoes.update(chave=None)
+    registro.perguntas.update(chave=None)
 
 
 @transaction.atomic
 def restaurar_faq(faq_id: int, editor: Editor) -> None:
     registro = faq_editavel(faq_id, editor, situacoes=frozenset({Situacao.EXCLUIDA}))
-    formulacoes = list(registro.formulacoes.all())
-    for formulacao in formulacoes:
-        formulacao.chave = normalize_text(formulacao.texto)
-    # Mesma pré-checagem da regravação: a pergunta reaproveitada por outra FAQ volta na mensagem.
-    _conferir_chaves_livres(formulacoes, faq_id=registro.pk)
-    FormulacaoModel.objects.bulk_update(formulacoes, ["chave"])
+    linhas = list(registro.perguntas.all())
+    # Mesma conferência da regravação: a pergunta reaproveitada por outra FAQ volta na mensagem.
+    conferir_perguntas_livres([Pergunta(texto=l.texto) for l in linhas], faq_id=registro.pk)
+    for linha in linhas:
+        linha.chave = normalize_text(linha.texto)
+    PerguntaModel.objects.bulk_update(linhas, ["chave"])
     registro.situacao = Situacao.RASCUNHO   # volta fora da página: republicar é decisão do admin
     registro.save(update_fields=["situacao", "atualizado_em"])
 ```
 
-**`apps/faq/context.py`** — o formulário recebe as relacionadas separadas: as ativas viram controle
+**`apps/faq/gestao/context.py`** — o formulário recebe as relacionadas separadas: as ativas viram controle
 (link e gesto de remover), as excluídas só aparecem marcadas. A página do leitor não precisa de nada
 novo: `MontarIndice` (faq/001) já poda a relacionada que não é `PUBLICADA`.
 
@@ -312,7 +323,38 @@ O resto do que o Crepe oferece (títulos de qualquer nível, riscado, lista de t
 horizontal) o renderizador de faq/001 cobre, e o teste `test_renderizador_cobre_o_markdown_do_editor`
 fixa isso.
 
-**Rotas** — todas protegidas por `superusuario_requerido`:
+**Árvore horizontal de palavras-chave** — colunas lado a lado, uma por nível, até três. Escolher uma
+palavra troca as colunas à direita pela coluna das filhas dela, num GET HTMX. As marcadas ficam numa
+lista à parte, fora das colunas, e é ela que leva os ids ao `<form>`: trocar de ramo descarta colunas,
+nunca marcação. A navegação e a marcação são HTMX, sem JS próprio.
+
+**`apps/faq/taxonomia/palavras_chave.py`** — a coluna é a única consulta da árvore. Ela recebe as marcadas para
+devolver o checkbox de cada filha já no estado certo.
+
+```python
+class OpcaoPalavraChave(BaseModel):
+    pk: int
+    nome: str
+    marcada: bool
+    tem_filhas: bool
+
+
+def coluna_de_palavras_chave(pai_id: int | None, marcadas: set[int]) -> list[OpcaoPalavraChave]:
+    filhas = PalavraChaveModel.objects.filter(pai_id=pai_id).annotate(qtd_filhas=Count("filhas"))
+    return [
+        OpcaoPalavraChave(
+            pk=f.pk,
+            nome=f.nome,
+            marcada=f.pk in marcadas,
+            tem_filhas=f.qtd_filhas > 0,           # sem filhas, escolher não abre coluna
+        )
+        for f in filhas.order_by(Lower("nome"))
+    ]
+```
+
+**Rotas** — todas protegidas por `superusuario_requerido`. As da FAQ ficam em `apps/faq/gestao/urls.py`,
+as de tema e palavra-chave em `apps/faq/taxonomia/urls.py`, e as duas listas entram na de
+`apps/faq/urls.py` (faq/001):
 
 | Rota | O que faz |
 |---|---|
@@ -323,6 +365,8 @@ fixa isso.
 | `faq:admin_situacao` | publicar / despublicar (POST) |
 | `faq:admin_excluir` | modal de confirmação (GET) e exclusão lógica (POST); recusada na FAQ do sistema |
 | `faq:admin_restaurar` | restauração como rascunho (POST), pelo gesto da linha excluída |
+| `faq:admin_palavras_chave_coluna` | a coluna das filhas (GET, alvo do HTMX); sem `pai`, as raízes; as marcadas chegam pelo `hx-include` da lista |
+| `faq:admin_palavra_chave_nova` / `faq:admin_palavra_chave_renomear` | palavras-chave, em qualquer dos três níveis |
 | `faq:admin_tema_novo` / `faq:admin_tema_renomear` | temas e subtemas |
 
 A entrada da área no painel (aba, grupo, glifo) é perguntada ao usuário na retomada, pela skill `painel`.
@@ -339,9 +383,9 @@ dependência de front-end mantida por terceiros e um passo de build a mais no co
 
 **A pré-checagem revela que uma pergunta já existe, mesmo quando ela está no rascunho de outro
 administrador.** A unicidade é global, e esconder a colisão deixaria o administrador sem saber por que
-a gravação falhou. O que vaza é só que a formulação está ocupada, não a FAQ nem o autor.
+a gravação falhou. O que vaza é só que a pergunta está ocupada, não a FAQ nem o autor.
 
-**Regravar apaga e recria formulações e links.** É o jeito mais simples de manter o UNIQUE consistente
+**Regravar apaga e recria perguntas e links.** É o jeito mais simples de manter o UNIQUE consistente
 quando uma variação vira pergunta principal. Os ids dessas linhas não são estáveis, e nada pode apontar
 para eles.
 
@@ -351,11 +395,11 @@ conta com a existência dela. Duas edições simultâneas sobre a mesma FAQ do s
 última gravação vence", sem aviso, e uma FAQ do sistema despublicada fica fora da página até alguém
 republicá-la.
 
-**A FAQ excluída fica no banco com a chave das formulações nula.** É o que libera a pergunta no UNIQUE
+**A FAQ excluída fica no banco com a chave das perguntas nula.** É o que libera a pergunta no UNIQUE
 sem perder o texto que a restauração recalcula. "Chave nula ⇔ FAQ excluída" depende de `excluir_faq` e
 `restaurar_faq` serem as únicas portas dessa transição.
 
-**A FAQ excluída mantém os vínculos: relacionadas, telas, anexos e imagens.** Toda leitura de 001 a 007
+**A FAQ excluída mantém os vínculos: relacionadas, rotas vinculadas, anexos e imagens.** Toda leitura de 001 a 007
 filtra por `PUBLICADA`, então ela some sem tocar nessas SPECs, e a restaurada volta inteira. O custo é
 que toda consulta nova sobre FAQ precisa lembrar desse filtro.
 
@@ -377,8 +421,8 @@ precisa de paginação, como a de execuções.
   despublicam a mesma FAQ sem autor, e ela continua sem autor; o botão de excluir não aparece para
   ela, e o POST forjado em `faq:admin_excluir` dá 403 sem mudar nada. *(marker `banco`)*
 - `test_formulario_devolve_erro_no_campo` — parametrizado: variação igual à pergunta de outra FAQ
-  volta com a mensagem em português no controle daquela variação, e subtema sob subtema, no campo
-  `pai`; nada muda no banco. *(marker `banco`)*
+  volta com a mensagem em português no controle daquela variação, e subtema sob subtema e
+  palavra-chave sob uma de terceiro nível, no campo `pai`; nada muda no banco. *(marker `banco`)*
 - `test_lista_de_faqs_filtra_ordena_e_revela_excluidas` — `faq:admin_corpo` filtra por tema e
   ordena por pergunta; a excluída só aparece com `excluidas=1`, marcada e com o gesto de restaurar, e
   a FAQ do sistema sai sem o gesto de excluir. *(marker `banco`)*
@@ -396,3 +440,7 @@ precisa de paginação, como a de execuções.
 - `test_relacionada_excluida_fica_inerte_e_volta_na_restauracao` — com A e B relacionadas e B
   excluída: `/faq/` não mostra B na resposta de A, o formulário de A traz B só como inerte, regravar A
   mantém o vínculo, e restaurar e republicar B o devolve na resposta de A. *(marker `banco`)*
+- `test_arvore_de_palavras_chave_abre_filhas_e_preserva_marcadas` — `faq:admin_palavras_chave_coluna`
+  sem `pai` devolve só as raízes; com `pai=IPTU` devolve as filhas de `IPTU`, em ordem alfabética, com
+  o checkbox da filha que veio no `hx-include` já marcado; marcar uma palavra num ramo, abrir outro e
+  marcar outra, e salvar, grava as duas na FAQ. *(marker `banco`)*

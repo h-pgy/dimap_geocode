@@ -28,6 +28,7 @@ urlpatterns: list[URLResolver | URLPattern] = [
     path("endereco-externo/", include("apps.geocodificacao_externa.urls")),
     path("street-view/", include("apps.street_view.urls")),
     path("certidao-lancamento/", include("apps.certidao_lancamento.urls")),
+    path("faq/", include("apps.faq.urls")),
     path("", include("apps.documentos.urls")),
 ]
 

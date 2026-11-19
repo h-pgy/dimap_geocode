@@ -1,0 +1,4 @@
+<div class="respostas-abertas-item" data-resposta-aberta="faq-{{ item.faq.id }}" hidden>
+  <a href="#faq-{{ item.faq.id }}" class="respostas-abertas-link" data-rola-faq title="{{ item.faq.pergunta.texto }}">{{ item.faq.pergunta.texto }}</a>
+  <button type="button" class="fechar-resposta etched" data-fecha-faq="faq-{{ item.faq.id }}" aria-label="Fechar a resposta: {{ item.faq.pergunta.texto }}"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+</div>

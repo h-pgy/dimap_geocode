@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC faq/001 — Página de FAQ (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação, nunca recriados.
+       Sem Leaflet: a ortofoto é pré-gerada (SPEC design/010), não mapa vivo. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss.
+       Servir com root na RAIZ do projeto (Live Server); via file:// o fetch é bloqueado. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== TOKEN · MATERIAL: PLACA CLARA ==================== */
+      .placa-clara {
+        @apply rounded-2xl bg-white/55 border border-white/70;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 6px 20px rgba(7, 58, 84, 0.16), 0 0 18px rgba(72, 202, 228, 0.18);
+      }
+
+      /* ==================== ÁTOMO · MARCA DE FAQ INTERNA ==================== */
+      .marca-interna {
+        @apply inline-flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full
+               text-[11px] font-medium uppercase tracking-[0.12em] text-rocha-700
+               bg-white/40 border border-white/60;
+      }
+      .marca-interna svg { @apply w-3 h-3; }
+
+      /* ==================== ÁTOMO · TÍTULO DE SUBTEMA ==================== */
+      .faq-subtema {
+        @apply px-1 text-[13px] font-bold uppercase tracking-[0.12em] text-rocha-700;
+      }
+
+      /* ==================== ÁTOMO · CHIP DE FAQ RELACIONADA ==================== */
+      .chip-relacionada {
+        @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-left
+               text-[13px] font-medium text-base-content/90
+               bg-white/45 border border-white/60
+               transition-all duration-200
+               hover:bg-white/70 hover:text-agua-700
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
+      }
+      .chip-relacionada svg { @apply w-4 h-4 shrink-0 text-agua-600; }
+
+      /* ==================== MOLÉCULA · TEXTO MARKDOWN ==================== */
+      .texto-markdown {
+        @apply flex flex-col gap-3 max-w-[72ch] text-[15px] leading-relaxed text-base-content/90;
+      }
+      .texto-markdown h3 { @apply mt-2 text-[18px] font-bold leading-snug text-rocha-950; }
+      .texto-markdown h4 { @apply mt-1 text-[15px] font-bold leading-snug text-rocha-950; }
+      .texto-markdown strong { @apply font-bold text-rocha-950; }
+      .texto-markdown s { @apply text-base-content/55; }
+      .texto-markdown a {
+        @apply font-medium text-agua-700 underline decoration-agua-400/60 underline-offset-2
+               transition-colors duration-200 hover:text-agua-800 hover:decoration-agua-600;
+      }
+      .texto-markdown ul { @apply flex flex-col gap-1 pl-6 list-disc marker:text-agua-600; }
+      .texto-markdown ol { @apply flex flex-col gap-1 pl-6 list-decimal marker:font-bold marker:text-agua-700; }
+      .texto-markdown li > :is(ul, ol) { @apply mt-1; }
+      .texto-markdown li:has(> input[type="checkbox"]) { @apply flex items-start gap-2 -ml-6; }
+      .texto-markdown input[type="checkbox"] {
+        @apply relative mt-[0.2em] w-4 h-4 shrink-0 appearance-none rounded-[0.3rem]
+               bg-white/30 border border-white/45;
+        box-shadow: var(--sombra-poco-fina);
+      }
+      .texto-markdown input[type="checkbox"]:checked { @apply bg-agua-600/90 border-agua-500/60; }
+      .texto-markdown input[type="checkbox"]:checked::after {
+        content: "";
+        @apply absolute w-2 h-1 border-b-2 border-l-2;
+        border-color: rgba(13, 27, 42, 0.75);
+        top: 42%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+        filter: url(#etched-onsen);
+      }
+      .texto-markdown blockquote {
+        @apply pl-4 border-l-[3px] border-agua-300/80 text-base-content/75;
+      }
+      .texto-markdown :not(pre) > code {
+        @apply px-1.5 py-0.5 rounded-md font-mono text-[0.88em] font-medium text-agua-700 bg-white/45;
+      }
+      .texto-markdown pre {
+        @apply p-3 overflow-x-auto rounded-(--radius-placa) bg-white/30 border border-white/45
+               font-mono text-[13px] leading-relaxed text-rocha-950;
+        box-shadow: var(--sombra-poco);
+      }
+      .texto-markdown hr {
+        @apply h-[3px] my-1 border-0 rounded-full;
+        background-color: rgba(13, 27, 42, 0.14);
+      }
+      .texto-markdown table {
+        @apply block w-fit max-w-full overflow-x-auto border-separate border-spacing-0
+               rounded-(--radius-placa) bg-white/30 border border-white/45 text-[14px];
+        box-shadow: var(--sombra-poco);
+      }
+      .texto-markdown th {
+        @apply px-3 py-2 text-left text-[11px] font-medium uppercase tracking-[0.14em] text-rocha-700 bg-white/55;
+      }
+      .texto-markdown td { @apply px-3 py-2 align-top border-t border-white/55; }
+
+      /* ==================== MOLÉCULA · ITEM DE FAQ (accordion) ==================== */
+      .faq-lista { @apply flex flex-col gap-0.5 p-1.5; }
+      .faq-item {
+        @apply rounded-(--radius-placa) border border-transparent
+               scroll-mt-6 transition-[background-color,border-color,box-shadow,margin] duration-300;
+        interpolate-size: allow-keywords;
+      }
+      .faq-item::details-content {
+        block-size: 0;
+        overflow-y: clip;
+        transition: block-size 300ms ease, content-visibility 300ms allow-discrete;
+      }
+      .faq-item[open]::details-content { block-size: auto; }
+      .faq-item:not([open]):not(:last-child) { box-shadow: 0 1px 0 rgba(13, 27, 42, 0.07), 0 2px 0 rgba(255, 255, 255, 0.6); }
+      .faq-item:not([open]):hover { @apply bg-white/40; }
+      .faq-item[open] {
+        @apply my-1 bg-transparent border-white/45;
+        box-shadow: var(--sombra-poco);
+      }
+      .faq-item-pergunta {
+        @apply flex items-center gap-3 px-4 py-3.5 list-none cursor-pointer select-none
+               rounded-(--radius-placa) text-[15px] font-medium text-rocha-950
+               transition-colors duration-200 hover:text-agua-700
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
+      }
+      .faq-item-pergunta::-webkit-details-marker { @apply hidden; }
+      .faq-item[open] > .faq-item-pergunta { @apply font-bold text-madeira-700; }
+      .faq-item-texto { @apply flex-1 min-w-0; }
+      .faq-item-seta { @apply w-5 h-5 shrink-0 transition-transform duration-300; }
+      .faq-item[open] .faq-item-seta {
+        @apply rotate-180;
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      .faq-item:target[open] { @apply border-agua-400/60; }
+      .faq-item-resposta { @apply flex flex-col gap-5 px-4 pt-1 pb-5; }
+      .faq-item-rodape { @apply flex flex-col gap-4; }
+      .faq-item-rodape-bloco { @apply flex flex-col gap-2; }
+      .links-referencia { @apply grid gap-1.5 sm:grid-cols-2; }
+      .chips-relacionadas { @apply flex flex-wrap gap-2; }
+
+      /* ==================== ÁTOMO · FECHAR RESPOSTA ==================== */
+      .fechar-resposta {
+        @apply grid place-items-center w-5 h-5 shrink-0 rounded-full cursor-pointer
+               transition-all duration-300 origin-center;
+      }
+      .fechar-resposta svg {
+        @apply w-3 h-3;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.25;
+        stroke-linecap: round;
+      }
+      .fechar-resposta:hover,
+      .fechar-resposta:focus-visible {
+        @apply scale-[1.25] outline-none;
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+
+      /* ==================== ÁTOMO · RECOLHER RESPOSTAS ==================== */
+      .recolher-respostas {
+        @apply flex items-center gap-2 w-full px-2 py-1.5 rounded-(--radius-field) cursor-pointer
+               text-[13px] font-medium text-base-content/75 whitespace-nowrap
+               opacity-45 pointer-events-none
+               transition-[background-color,color,opacity] duration-300
+               hover:bg-white/60 hover:text-agua-700
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
+      }
+      .recolher-respostas svg { @apply w-4 h-4 shrink-0; }
+      .recolher-respostas:is(:hover, :focus-visible) svg {
+        filter: url(#etched-onsen) drop-shadow(0 0 6px rgba(72, 202, 228, 0.7));
+        color: rgba(0, 119, 182, 0.85);
+      }
+      .faq-conjunto:has(.faq-item[open]) .recolher-respostas { @apply opacity-100 pointer-events-auto; }
+
+      /* ==================== MOLÉCULA · RESPOSTAS ABERTAS ==================== */
+      .respostas-abertas { @apply flex flex-col gap-1 p-1.5 pointer-events-auto; }
+      .respostas-abertas-conteudo { @apply flex flex-col gap-2 px-1.5 pt-1.5; }
+      .respostas-abertas-lista {
+        @apply flex flex-col gap-2.5 max-h-[calc(100dvh-14rem)] overflow-y-auto;
+        scrollbar-width: thin;
+      }
+      .respostas-abertas-grupo { @apply flex flex-col gap-0.5; }
+      .respostas-abertas-grupo:not(:has(.respostas-abertas-item:not([hidden]))) { @apply hidden; }
+      .respostas-abertas-tema { @apply px-2 pt-0.5; }
+      .respostas-abertas-item {
+        @apply flex items-center gap-1 pr-1 rounded-(--radius-field) transition-colors duration-200 hover:bg-white/60;
+      }
+      .respostas-abertas-link {
+        @apply flex-1 min-w-0 truncate px-2 py-1.5 rounded-(--radius-field)
+               text-[13px] text-base-content/85 transition-colors duration-200 hover:text-agua-700
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-agua-400/70;
+      }
+
+      /* ==================== ORGANISMO · SEÇÃO DE TEMA ==================== */
+      .secao-tema-faq { @apply flex flex-col gap-5 scroll-mt-6; }
+      .secao-tema-faq-cabecalho { @apply flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1; }
+      .secao-subtema-faq { @apply flex flex-col gap-2; }
+
+      /* ==================== ORGANISMO · ÍNDICE DE TEMAS ==================== */
+      .indice-temas-faq { @apply sticky top-6 flex-col gap-1.5; }
+
+      /* ==================== ORGANISMO · CONJUNTO DA FAQ ==================== */
+      .faq-conjunto {
+        @apply grid items-start gap-8 p-5 sm:p-6 lg:grid-cols-[13rem_minmax(0,1fr)];
+      }
+      .faq-corpo { @apply flex flex-col gap-6 min-w-0 xl:flex-row xl:items-start; }
+      .faq-temas { @apply flex flex-col gap-6 min-w-0 xl:flex-1; }
+
+      /* ==================== ORGANISMO · COLUNA DAS RESPOSTAS ABERTAS ==================== */
+      .faq-lateral {
+        @apply sticky bottom-6 z-10 flex flex-col items-end pointer-events-none
+               xl:top-6 xl:bottom-auto xl:w-60 xl:shrink-0 xl:items-stretch;
+      }
+      .faq-lateral .respostas-abertas-conteudo { @apply hidden xl:flex; }
+      .faq-conjunto:not(:has(.faq-item[open])) .respostas-abertas-conteudo { @apply hidden; }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen text-base-content antialiased">
+  <!-- Filtros de gravação (templates/partials/_filtros_gravacao.html, incluído no base.html) + glifos -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <filter id="etched-onsen" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="1.4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="1" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-1.1" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="0.7" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+      <filter id="etched-onsen-lg" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feOffset in="SourceAlpha" dx="0" dy="4" result="desceu"/>
+        <feGaussianBlur in="desceu" stdDeviation="3" result="desceuBorrado"/>
+        <feComposite in="SourceAlpha" in2="desceuBorrado" operator="out" result="bandaDeCima"/>
+        <feFlood flood-color="#073a54" flood-opacity="0.8" result="tintaEscura"/>
+        <feComposite in="tintaEscura" in2="bandaDeCima" operator="in" result="sombraInterna"/>
+        <feOffset in="SourceAlpha" dx="0" dy="-3" result="subiu"/>
+        <feGaussianBlur in="subiu" stdDeviation="2" result="subiuBorrado"/>
+        <feComposite in="SourceAlpha" in2="subiuBorrado" operator="out" result="bandaDeBaixo"/>
+        <feFlood flood-color="#ffffff" flood-opacity="0.95" result="tintaClara"/>
+        <feComposite in="tintaClara" in2="bandaDeBaixo" operator="in" result="luzInterna"/>
+        <feMerge>
+          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="sombraInterna"/>
+          <feMergeNode in="luzInterna"/>
+        </feMerge>
+      </filter>
+
+      <!-- partial previsto: faq/partials/_glifos_faq.html -->
+      <g id="glifo-seta-baixo"><path d="M6 9l6 6 6-6"/></g>
+      <g id="glifo-cadeado">
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+      </g>
+      <g id="glifo-link-externo">
+        <path d="M14 4h6v6"/>
+        <path d="M20 4l-9 9"/>
+        <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>
+      </g>
+      <g id="glifo-link-sistema">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 3v5h5"/>
+        <path d="M9 14.5h6"/>
+        <path d="M12.6 12 15 14.5 12.6 17"/>
+      </g>
+      <g id="glifo-pergunta">
+        <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/>
+        <path d="M9.8 9.6a2.3 2.3 0 0 1 4.4.9c0 1.5-2.2 2-2.2 3.3"/>
+        <path d="M12 16.6v.1"/>
+      </g>
+      <g id="glifo-recolher">
+        <path d="M7 4l5 5 5-5"/>
+        <path d="M7 20l5-5 5 5"/>
+      </g>
+      <g id="glifo-x">
+        <path d="M6 6l12 12"/>
+        <path d="M18 6L6 18"/>
+      </g>
+      <g id="glifo-entrar">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+        <path d="M10 17l5-5-5-5"/>
+        <path d="M15 12H3"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 p-8 max-w-6xl mx-auto flex flex-col gap-16">
+    <header class="border-b border-base-200 pb-4">
+      <p class="text-overline text-agua-700">Mock de validação</p>
+      <h1 class="text-3xl font-bold tracking-tight text-madeira-700 mt-1">SPEC faq/001 — Página de FAQ</h1>
+      <nav class="flex flex-wrap gap-4 mt-3 text-xs text-base-content/70">
+        <a href="#tokens" class="link-tabela-onsen">1 · Tokens</a>
+        <span>·</span>
+        <a href="#atomos" class="link-tabela-onsen">2 · Átomos</a>
+        <span>·</span>
+        <a href="#moleculas" class="link-tabela-onsen">3 · Moléculas</a>
+        <span>·</span>
+        <a href="#organismos" class="link-tabela-onsen">4 · Organismos</a>
+        <span>·</span>
+        <a href="#tela" class="link-tabela-onsen font-semibold text-agua-700">5 · Tela montada</a>
+      </nav>
+    </header>
+
+    <!-- ==================================================================== -->
+    <!-- 1 · TOKENS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="tokens" class="flex flex-col gap-6">
+      <h2 class="text-lg font-bold text-madeira-700">1 · Tokens</h2>
+
+      <!-- .placa-clara — sobre a placa de vidro, ao lado do poço que ela inverte -->
+      <div class="glass-panel p-6 grid gap-6 sm:grid-cols-2">
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">.placa-clara · em relevo</span>
+          <div class="placa-clara h-24"></div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">.card-well · rebaixado (existente)</span>
+          <div class="card-well h-24"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 2 · ÁTOMOS                                                            -->
+    <!-- ==================================================================== -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <h2 class="text-lg font-bold text-madeira-700">2 · Átomos</h2>
+
+      <div class="glass-panel p-6 grid gap-8 md:grid-cols-3">
+        <!-- .marca-interna -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.marca-interna</span>
+          <span class="marca-interna w-fit">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+            Interna
+          </span>
+        </div>
+
+        <!-- .faq-subtema -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.faq-subtema</span>
+          <h3 class="faq-subtema">Lotes e contribuintes</h3>
+        </div>
+
+        <!-- .chip-relacionada -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline">.chip-relacionada</span>
+          <a href="#atomos" class="chip-relacionada w-fit">
+            <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+            O que a certidão de lançamento atesta?
+          </a>
+          <!-- relacionada interna, para o servidor logado -->
+          <a href="#atomos" class="chip-relacionada w-fit">
+            <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+            Quem pode emitir a certidão de lançamento?
+            <span class="marca-interna">
+              <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+              Interna
+            </span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 3 · MOLÉCULAS                                                         -->
+    <!-- ==================================================================== -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <h2 class="text-lg font-bold text-madeira-700">3 · Moléculas</h2>
+
+      <!-- .texto-markdown — a amostra do editor (faq/002) já como o renderizador a entrega -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">.texto-markdown · tudo o que o editor oferece</span>
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_1fr]">
+          <pre class="card-well p-4 text-[12px] leading-relaxed font-mono text-rocha-900 overflow-x-auto whitespace-pre-wrap"># Título de nível 1
+## Título de nível 2
+### Título de nível 3
+#### Título de nível 4
+##### Título de nível 5
+###### Título de nível 6
+
+Texto com **negrito**, *itálico*, ~~riscado~~,
+`codigo` e um [link](https://www.prefeitura.sp.gov.br/).
+
+- item
+- item com sublista
+  - subitem
+
+1. primeiro
+2. segundo
+
+- [x] tarefa feita
+- [ ] tarefa por fazer
+
+&gt; Citação de uma norma ou aviso.
+
+| Entrada | Resultado |
+|---|---|
+| codlog | linha |
+| contribuinte | polígono |
+
+---
+
+```
+bloco de código
+```
+
+&lt;script&gt;alert(1)&lt;/script&gt;</pre>
+
+          <div class="card-well p-5">
+            <div class="texto-markdown">
+              <h3>Título de nível 1</h3>
+              <h3>Título de nível 2</h3>
+              <h3>Título de nível 3</h3>
+              <h4>Título de nível 4</h4>
+              <h4>Título de nível 5</h4>
+              <h4>Título de nível 6</h4>
+              <p>Texto com <strong>negrito</strong>, <em>itálico</em>, <s>riscado</s>, <code>codigo</code> e um <a href="https://www.prefeitura.sp.gov.br/" rel="noopener noreferrer">link</a>.</p>
+              <ul>
+                <li>item</li>
+                <li>item com sublista
+                  <ul><li>subitem</li></ul>
+                </li>
+              </ul>
+              <ol>
+                <li>primeiro</li>
+                <li>segundo</li>
+              </ol>
+              <ul>
+                <li><input type="checkbox" checked disabled> tarefa feita</li>
+                <li><input type="checkbox" disabled> tarefa por fazer</li>
+              </ul>
+              <blockquote><p>Citação de uma norma ou aviso.</p></blockquote>
+              <table>
+                <thead><tr><th>Entrada</th><th>Resultado</th></tr></thead>
+                <tbody>
+                  <tr><td>codlog</td><td>linha</td></tr>
+                  <tr><td>contribuinte</td><td>polígono</td></tr>
+                </tbody>
+              </table>
+              <hr>
+              <pre><code>bloco de código</code></pre>
+              <p>&lt;script&gt;alert(1)&lt;/script&gt;</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- link de referência — o .item-menu existente, com glifo e apoio próprios -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">Link de referência · .item-menu existente</span>
+        <div class="links-referencia max-w-2xl">
+          <!-- do sistema: mesma aba -->
+          <a href="#moleculas" class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-sistema"/></svg></span>
+            <span class="item-menu-rotulo">
+              Conferir um documento
+              <span class="item-menu-apoio">Nesta plataforma</span>
+            </span>
+          </a>
+          <!-- externo: aba nova -->
+          <a href="https://www.prefeitura.sp.gov.br/" target="_blank" rel="noopener noreferrer" class="item-menu">
+            <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-externo"/></svg></span>
+            <span class="item-menu-rotulo">
+              Portal da Prefeitura de São Paulo
+              <span class="item-menu-apoio">prefeitura.sp.gov.br<span class="sr-only"> (abre em nova aba)</span></span>
+            </span>
+          </a>
+        </div>
+      </div>
+
+      <!-- .faq-item — estados -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">.faq-item · estados</span>
+        <div class="grid gap-6 lg:grid-cols-2 items-start">
+
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-base-content/60">fechado · pública × interna (leitor logado)</span>
+            <div class="placa-clara faq-lista">
+              <details class="faq-item">
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Como recupero minha senha?</span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta">
+                  <div class="texto-markdown"><p>Na tela de login, use <strong>Esqueci minha senha</strong>.</p></div>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Quem pode emitir a certidão de lançamento?</span>
+                  <span class="marca-interna">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                    Interna
+                  </span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta">
+                  <div class="texto-markdown"><p>Servidores da DIMAP-1 com a competência de emissão.</p></div>
+                </div>
+              </details>
+            </div>
+
+            <span class="text-overline text-base-content/60 mt-4">aberto · só texto (sem links, relacionadas podadas)</span>
+            <div class="placa-clara faq-lista">
+              <details class="faq-item" open>
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Por que um lote aparece em rosa mais escuro?</span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta">
+                  <div class="texto-markdown">
+                    <p>O rosa mais escuro marca o <strong>lote condominial</strong>: um lote com várias unidades, cada uma com seu número de contribuinte.</p>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-base-content/60">aberto · com links e relacionadas</span>
+            <div class="placa-clara faq-lista">
+              <details class="faq-item" open>
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Como confiro se uma certidão é autêntica?</span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta">
+                  <div class="texto-markdown">
+                    <p>Toda certidão traz um <strong>código de conferência</strong> no rodapé. Com ele, qualquer pessoa confere o documento, sem login.</p>
+                  </div>
+                  <div class="faq-item-rodape">
+                    <div class="etched-line h-[3px] w-full"></div>
+                    <div class="faq-item-rodape-bloco">
+                      <span class="text-overline">Para saber mais</span>
+                      <div class="links-referencia">
+                        <a href="#moleculas" class="item-menu">
+                          <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-sistema"/></svg></span>
+                          <span class="item-menu-rotulo">Conferir um documento<span class="item-menu-apoio">Nesta plataforma</span></span>
+                        </a>
+                        <a href="https://www.prefeitura.sp.gov.br/" target="_blank" rel="noopener noreferrer" class="item-menu">
+                          <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-externo"/></svg></span>
+                          <span class="item-menu-rotulo">Portal da Prefeitura<span class="item-menu-apoio">prefeitura.sp.gov.br<span class="sr-only"> (abre em nova aba)</span></span></span>
+                        </a>
+                      </div>
+                    </div>
+                    <div class="faq-item-rodape-bloco">
+                      <span class="text-overline">Perguntas relacionadas</span>
+                      <div class="chips-relacionadas">
+                        <a href="#moleculas" class="chip-relacionada" data-rola-faq>
+                          <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+                          O que a certidão de lançamento atesta?
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <!-- .respostas-abertas -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <span class="text-overline">.respostas-abertas · .fechar-resposta · .recolher-respostas</span>
+        <div class="flex flex-wrap items-start gap-10">
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-base-content/60">com respostas abertas</span>
+            <div class="w-60">
+              <div class="respostas-abertas placa-clara">
+                <nav class="respostas-abertas-conteudo" aria-label="Respostas abertas">
+                  <span class="text-overline px-2">Respostas abertas</span>
+                  <div class="respostas-abertas-lista">
+                    <div class="respostas-abertas-grupo">
+                      <span class="text-overline respostas-abertas-tema">Busca no mapa</span>
+                      <div class="respostas-abertas-item" data-resposta-aberta="demo-1">
+                        <a href="#moleculas" class="respostas-abertas-link" title="Como encontro um imóvel pelo número de contribuinte?">Como encontro um imóvel pelo número de contribuinte?</a>
+                        <button type="button" class="fechar-resposta etched" data-fecha-faq="demo-1" aria-label="Fechar a resposta: Como encontro um imóvel pelo número de contribuinte?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      </div>
+                      <div class="respostas-abertas-item" data-resposta-aberta="demo-2">
+                        <a href="#moleculas" class="respostas-abertas-link" title="Por que o ponto do endereço cai no meio da quadra?">Por que o ponto do endereço cai no meio da quadra?</a>
+                        <button type="button" class="fechar-resposta etched" data-fecha-faq="demo-2" aria-label="Fechar a resposta: Por que o ponto do endereço cai no meio da quadra?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      </div>
+                    </div>
+                    <div class="respostas-abertas-grupo">
+                      <span class="text-overline respostas-abertas-tema">Certidões</span>
+                      <div class="respostas-abertas-item" data-resposta-aberta="demo-3">
+                        <a href="#moleculas" class="respostas-abertas-link" title="Como confiro se uma certidão é autêntica?">Como confiro se uma certidão é autêntica?</a>
+                        <button type="button" class="fechar-resposta etched" data-fecha-faq="demo-3" aria-label="Fechar a resposta: Como confiro se uma certidão é autêntica?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="etched-line h-[3px]" aria-hidden="true"></div>
+                </nav>
+                <button type="button" class="recolher-respostas opacity-100 pointer-events-auto" data-recolher-respostas>
+                  <svg class="etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-recolher"/></svg>
+                  Recolher respostas
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <span class="text-overline text-base-content/60">nenhuma aberta, ou tela estreita: só o rodapé</span>
+              <div class="respostas-abertas placa-clara w-fit">
+                <button type="button" class="recolher-respostas">
+                  <svg class="etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-recolher"/></svg>
+                  Recolher respostas
+                </button>
+              </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 4 · ORGANISMOS                                                        -->
+    <!-- ==================================================================== -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <h2 class="text-lg font-bold text-madeira-700">4 · Organismos</h2>
+
+      <div class="grid gap-6 lg:grid-cols-[15rem_1fr] items-start">
+        <!-- .indice-temas-faq -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">.indice-temas-faq</span>
+          <div class="glass-panel p-3">
+          <nav class="indice-temas-faq flex" aria-label="Temas">
+            <span class="text-overline px-3 pt-1 pb-1">Temas</span>
+            <a href="#organismos" class="item-menu"><span class="item-menu-rotulo">Busca no mapa</span><span class="text-overline">5</span></a>
+            <a href="#organismos" class="item-menu"><span class="item-menu-rotulo">Certidões</span><span class="text-overline">2</span></a>
+            <a href="#organismos" class="item-menu"><span class="item-menu-rotulo">Acesso e senha</span><span class="text-overline">2</span></a>
+          </nav>
+          </div>
+        </div>
+
+        <!-- .secao-tema-faq — tema com FAQ direto no tema e dois subtemas -->
+        <div class="flex flex-col gap-2">
+          <span class="text-overline">.secao-tema-faq</span>
+          <div class="glass-panel p-6">
+          <section class="secao-tema-faq">
+            <header class="secao-tema-faq-cabecalho">
+              <h2 class="painel-titulo">Busca no mapa</h2>
+              <span class="text-overline">5 perguntas</span>
+            </header>
+            <div class="placa-clara faq-lista">
+              <details class="faq-item">
+                <summary class="faq-item-pergunta">
+                  <span class="faq-item-texto">Que tipos de entrada a barra de busca entende?</span>
+                  <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                </summary>
+                <div class="faq-item-resposta"><div class="texto-markdown"><p>Logradouro, endereço com número e número de contribuinte.</p></div></div>
+              </details>
+            </div>
+            <div class="secao-subtema-faq">
+              <h3 class="faq-subtema">Endereços</h3>
+              <div class="placa-clara faq-lista">
+                <details class="faq-item">
+                  <summary class="faq-item-pergunta">
+                    <span class="faq-item-texto">O que é um endereço externo?</span>
+                    <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                  </summary>
+                  <div class="faq-item-resposta"><div class="texto-markdown"><p>Um endereço achado fora das bases oficiais da Prefeitura.</p></div></div>
+                </details>
+                <details class="faq-item">
+                  <summary class="faq-item-pergunta">
+                    <span class="faq-item-texto">Por que o ponto do endereço cai no meio da quadra?</span>
+                    <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                  </summary>
+                  <div class="faq-item-resposta"><div class="texto-markdown"><p>O ponto é interpolado pela numeração do logradouro.</p></div></div>
+                </details>
+              </div>
+            </div>
+            <div class="secao-subtema-faq">
+              <h3 class="faq-subtema">Lotes e contribuintes</h3>
+              <div class="placa-clara faq-lista">
+                <details class="faq-item">
+                  <summary class="faq-item-pergunta">
+                    <span class="faq-item-texto">Como encontro um imóvel pelo número de contribuinte?</span>
+                    <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                  </summary>
+                  <div class="faq-item-resposta"><div class="texto-markdown"><p>Digite o número na barra de busca, com ou sem pontuação.</p></div></div>
+                </details>
+                <details class="faq-item">
+                  <summary class="faq-item-pergunta">
+                    <span class="faq-item-texto">Por que um lote aparece em rosa mais escuro?</span>
+                    <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                  </summary>
+                  <div class="faq-item-resposta"><div class="texto-markdown"><p>É um lote condominial.</p></div></div>
+                </details>
+              </div>
+            </div>
+          </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 5 · TELA MONTADA                                                      -->
+    <!-- ==================================================================== -->
+    <section id="tela" class="flex flex-col gap-10">
+      <h2 class="text-lg font-bold text-madeira-700">5 · Tela montada</h2>
+
+      <!-- ================================================================ -->
+      <!-- estado: visitante sem login                                       -->
+      <!-- ================================================================ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline text-agua-700">Estado · visitante sem login</span>
+
+        <!-- página: faq/pagina.html -->
+        <div class="flex flex-col gap-6">
+
+          <!-- fica na página: marca e widget vêm do base.html (aqui sem o fixed) -->
+          <div class="flex items-center justify-between">
+            <span class="glass-panel rounded-full! px-5 py-2.5 text-lg font-black tracking-tight text-madeira-700">DIMAP GeoCoder</span>
+            <a href="#tela" class="glass-panel rounded-full! p-1.5 flex items-center gap-3 transition-glass hover:bg-white/60">
+              <span class="w-11 h-11 rounded-full bg-rocha-800 border border-white/40 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(7,58,84,0.3)]">
+                <svg class="w-5 h-5 text-agua-300 drop-shadow-[0_0_6px_rgba(72,202,228,0.6)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              </span>
+              <span class="pr-4">
+                <span class="block text-sm font-bold leading-tight">Entrar</span>
+                <span class="block text-[10px] uppercase tracking-wide font-medium leading-tight mt-0.5 text-madeira-600">Área do Usuário</span>
+              </span>
+            </a>
+          </div>
+
+          <!-- fica na página: cabeçalho -->
+          <header class="glass-panel px-6 py-5 flex flex-col gap-1.5">
+            <p class="text-overline">Ajuda</p>
+            <h1 class="text-[30px] font-black tracking-tight text-madeira-700 leading-tight">Perguntas frequentes</h1>
+            <p class="painel-descricao">Dúvidas sobre o uso do GeoCoder, organizadas por tema. Clique numa pergunta para ver a resposta.</p>
+            <p class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px] text-base-content/70">
+              <svg class="w-4 h-4 text-rocha-700" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+              Você está vendo as perguntas públicas. Servidor da DIMAP?
+              <a href="#tela" class="link-tabela-onsen">Entre para ver também as internas</a>
+            </p>
+          </header>
+
+          <!-- fica na página: .faq-conjunto, a placa única do índice e dos temas -->
+          <div class="faq-conjunto glass-panel">
+            <nav class="indice-temas-faq hidden lg:flex" aria-label="Temas">
+              <span class="text-overline px-3 pt-1 pb-1">Temas</span>
+              <a href="#anon-tema-busca" class="item-menu" data-rola-faq><span class="item-menu-rotulo">Busca no mapa</span><span class="text-overline">5</span></a>
+              <a href="#anon-tema-certidoes" class="item-menu" data-rola-faq><span class="item-menu-rotulo">Certidões</span><span class="text-overline">2</span></a>
+              <a href="#anon-tema-acesso" class="item-menu" data-rola-faq><span class="item-menu-rotulo">Acesso e senha</span><span class="text-overline">2</span></a>
+            </nav>
+
+            <div class="faq-corpo">
+              <div class="faq-temas">
+
+                <!-- partial: faq/partials/_secao_tema.html -->
+                <section id="anon-tema-busca" class="secao-tema-faq">
+                  <header class="secao-tema-faq-cabecalho">
+                    <h2 class="painel-titulo">Busca no mapa</h2>
+                    <span class="text-overline">5 perguntas</span>
+                  </header>
+
+                  <div class="placa-clara faq-lista">
+                    <!-- partial: faq/partials/_item_faq.html -->
+                    <details id="anon-faq-1" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Que tipos de entrada a barra de busca entende?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta">
+                        <div class="texto-markdown">
+                          <p>A barra reconhece sozinha o que você digitou e escolhe como procurar:</p>
+                          <table>
+                            <thead><tr><th>Você digita</th><th>O mapa mostra</th></tr></thead>
+                            <tbody>
+                              <tr><td>Nome ou código do logradouro</td><td>A rua inteira, como linha</td></tr>
+                              <tr><td>Rua e número</td><td>Um ponto no endereço</td></tr>
+                              <tr><td>Número de contribuinte</td><td>O lote, como polígono</td></tr>
+                            </tbody>
+                          </table>
+                          <p>As sugestões aparecem enquanto você digita: não precisa apertar <em>Enter</em>.</p>
+                        </div>
+                      </div>
+                    </details>
+                    <!-- /partial -->
+                  </div>
+
+                  <div class="secao-subtema-faq">
+                    <h3 class="faq-subtema">Endereços</h3>
+                    <div class="placa-clara faq-lista">
+                      <details id="anon-faq-2" class="faq-item">
+                        <summary class="faq-item-pergunta">
+                          <span class="faq-item-texto">O que é um endereço externo?</span>
+                          <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                        </summary>
+                        <div class="faq-item-resposta">
+                          <div class="texto-markdown">
+                            <p>É um endereço que não está nas bases oficiais da Prefeitura e foi localizado por um serviço de mapas de fora. A posição é <strong>aproximada</strong> e não traz dados de IPTU.</p>
+                          </div>
+                        </div>
+                      </details>
+                      <details id="anon-faq-3" class="faq-item">
+                        <summary class="faq-item-pergunta">
+                          <span class="faq-item-texto">Por que o ponto do endereço cai no meio da quadra?</span>
+                          <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                        </summary>
+                        <div class="faq-item-resposta">
+                          <div class="texto-markdown">
+                            <p>O ponto é calculado pela numeração do logradouro: o número é distribuído ao longo do trecho entre o primeiro e o último número da quadra. Quando o endereço bate <strong>exatamente</strong> com um endereço fiscal, o mapa mostra o lote, e não o ponto.</p>
+                          </div>
+                        </div>
+                      </details>
+                    </div>
+                  </div>
+
+                  <div class="secao-subtema-faq">
+                    <h3 class="faq-subtema">Lotes e contribuintes</h3>
+                    <div class="placa-clara faq-lista">
+                      <!-- aberto -->
+                      <details id="anon-faq-4" class="faq-item" open>
+                        <summary class="faq-item-pergunta">
+                          <span class="faq-item-texto">Como encontro um imóvel pelo número de contribuinte?</span>
+                          <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                        </summary>
+                        <div class="faq-item-resposta">
+                          <div class="texto-markdown">
+                            <p>Digite o <strong>número de contribuinte</strong> na barra de busca, com ou sem pontos e traço: <code>012.345.6789-1</code> e <code>01234567891</code> levam ao mesmo lote.</p>
+                            <h3>Quando o lote não aparece</h3>
+                            <ol>
+                              <li>Confira se o número tem os 11 dígitos.</li>
+                              <li>Tente sem o dígito verificador: a sugestão mostra os lotes da mesma quadra.</li>
+                              <li>Se o imóvel for de condomínio, busque pelo número do <em>condomínio</em>, e não da unidade.</li>
+                            </ol>
+                            <blockquote><p>O cadastro do IPTU é atualizado uma vez por ano. Um lote desmembrado neste ano pode ainda aparecer inteiro.</p></blockquote>
+                          </div>
+                          <div class="faq-item-rodape">
+                            <div class="etched-line h-[3px] w-full"></div>
+                            <div class="faq-item-rodape-bloco">
+                              <span class="text-overline">Para saber mais</span>
+                              <div class="links-referencia">
+                                <a href="#tela" class="item-menu">
+                                  <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-sistema"/></svg></span>
+                                  <span class="item-menu-rotulo">Buscar no mapa<span class="item-menu-apoio">Nesta plataforma</span></span>
+                                </a>
+                                <a href="https://geosampa.prefeitura.sp.gov.br/" target="_blank" rel="noopener noreferrer" class="item-menu">
+                                  <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-externo"/></svg></span>
+                                  <span class="item-menu-rotulo">Mapa de lotes no GeoSampa<span class="item-menu-apoio">geosampa.prefeitura.sp.gov.br<span class="sr-only"> (abre em nova aba)</span></span></span>
+                                </a>
+                              </div>
+                            </div>
+                            <div class="faq-item-rodape-bloco">
+                              <span class="text-overline">Perguntas relacionadas</span>
+                              <div class="chips-relacionadas">
+                                <a href="#anon-faq-5" class="chip-relacionada" data-rola-faq>
+                                  <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+                                  Por que um lote aparece em rosa mais escuro?
+                                </a>
+                                <a href="#anon-faq-1" class="chip-relacionada" data-rola-faq>
+                                  <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+                                  Que tipos de entrada a barra de busca entende?
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </details>
+                      <details id="anon-faq-5" class="faq-item">
+                        <summary class="faq-item-pergunta">
+                          <span class="faq-item-texto">Por que um lote aparece em rosa mais escuro?</span>
+                          <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                        </summary>
+                        <div class="faq-item-resposta">
+                          <div class="texto-markdown">
+                            <p>O rosa mais escuro marca o <strong>lote condominial</strong>: um lote com várias unidades, cada uma com o seu número de contribuinte.</p>
+                          </div>
+                        </div>
+                      </details>
+                    </div>
+                  </div>
+                </section>
+                <!-- /partial -->
+
+                <div class="etched-line h-[3px]" aria-hidden="true"></div>
+
+                <section id="anon-tema-certidoes" class="secao-tema-faq">
+                  <header class="secao-tema-faq-cabecalho">
+                    <h2 class="painel-titulo">Certidões</h2>
+                    <span class="text-overline">2 perguntas</span>
+                  </header>
+                  <div class="placa-clara faq-lista">
+                    <details id="anon-faq-6" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Como confiro se uma certidão é autêntica?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta">
+                        <div class="texto-markdown">
+                          <p>Toda certidão emitida pela DIMAP traz um <strong>código de conferência</strong> no rodapé. Com ele, qualquer pessoa confere o documento, sem login.</p>
+                          <h4>O que conferir</h4>
+                          <ul>
+                            <li><input type="checkbox" disabled> O código do rodapé é aceito na página de conferência.</li>
+                            <li><input type="checkbox" disabled> O nome de quem emitiu é o mesmo do documento.</li>
+                            <li><input type="checkbox" disabled> A data de emissão é a mesma do documento.</li>
+                          </ul>
+                        </div>
+                        <div class="faq-item-rodape">
+                          <div class="etched-line h-[3px] w-full"></div>
+                          <div class="faq-item-rodape-bloco">
+                            <span class="text-overline">Para saber mais</span>
+                            <div class="links-referencia">
+                              <a href="#tela" class="item-menu">
+                                <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-sistema"/></svg></span>
+                                <span class="item-menu-rotulo">Conferir um documento<span class="item-menu-apoio">Nesta plataforma</span></span>
+                              </a>
+                            </div>
+                          </div>
+                          <!-- relacionada interna podada: só a pública aparece -->
+                          <div class="faq-item-rodape-bloco">
+                            <span class="text-overline">Perguntas relacionadas</span>
+                            <div class="chips-relacionadas">
+                              <a href="#anon-faq-7" class="chip-relacionada" data-rola-faq>
+                                <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+                                O que a certidão de lançamento atesta?
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </details>
+                    <details id="anon-faq-7" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">O que a certidão de lançamento atesta?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta">
+                        <div class="texto-markdown">
+                          <p>Que o imóvel está lançado no IPTU sob um determinado contribuinte, na data da emissão. Ela <strong>não</strong> atesta propriedade nem quitação.</p>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                </section>
+
+                <div class="etched-line h-[3px]" aria-hidden="true"></div>
+
+                <section id="anon-tema-acesso" class="secao-tema-faq">
+                  <header class="secao-tema-faq-cabecalho">
+                    <h2 class="painel-titulo">Acesso e senha</h2>
+                    <span class="text-overline">2 perguntas</span>
+                  </header>
+                  <div class="placa-clara faq-lista">
+                    <details id="anon-faq-8" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Esqueci minha senha. Como recupero?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta">
+                        <div class="texto-markdown">
+                          <p>Na tela de login, use <strong>Esqueci minha senha</strong> e informe o seu RF. O link de redefinição chega no e-mail cadastrado.</p>
+                        </div>
+                      </div>
+                    </details>
+                    <details id="anon-faq-9" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Onde encontro a senha de uso único do primeiro acesso?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta">
+                        <div class="texto-markdown">
+                          <p>Ela vem no e-mail de acesso, enviado quando o seu cadastro é criado. Não chegou? Peça o reenvio a quem cadastrou você.</p>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                </section>
+              </div>
+
+              <!-- fica na página: .faq-lateral, par de static/src/js/ui/faq.js -->
+              <aside class="faq-lateral">
+                <div class="respostas-abertas placa-clara">
+                  <nav class="respostas-abertas-conteudo" aria-label="Respostas abertas">
+                    <span class="text-overline px-2">Respostas abertas</span>
+                    <div class="respostas-abertas-lista">
+                      <div class="respostas-abertas-grupo">
+                        <span class="text-overline respostas-abertas-tema">Busca no mapa</span>
+                        <div class="respostas-abertas-item" data-resposta-aberta="anon-faq-1" hidden>
+                          <a href="#anon-faq-1" class="respostas-abertas-link" data-rola-faq title="Que tipos de entrada a barra de busca entende?">Que tipos de entrada a barra de busca entende?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="anon-faq-1" aria-label="Fechar a resposta: Que tipos de entrada a barra de busca entende?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="anon-faq-2" hidden>
+                          <a href="#anon-faq-2" class="respostas-abertas-link" data-rola-faq title="O que é um endereço externo?">O que é um endereço externo?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="anon-faq-2" aria-label="Fechar a resposta: O que é um endereço externo?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="anon-faq-3" hidden>
+                          <a href="#anon-faq-3" class="respostas-abertas-link" data-rola-faq title="Por que o ponto do endereço cai no meio da quadra?">Por que o ponto do endereço cai no meio da quadra?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="anon-faq-3" aria-label="Fechar a resposta: Por que o ponto do endereço cai no meio da quadra?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="anon-faq-4" hidden>
+                          <a href="#anon-faq-4" class="respostas-abertas-link" data-rola-faq title="Como encontro um imóvel pelo número de contribuinte?">Como encontro um imóvel pelo número de contribuinte?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="anon-faq-4" aria-label="Fechar a resposta: Como encontro um imóvel pelo número de contribuinte?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="anon-faq-5" hidden>
+                          <a href="#anon-faq-5" class="respostas-abertas-link" data-rola-faq title="Por que um lote aparece em rosa mais escuro?">Por que um lote aparece em rosa mais escuro?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="anon-faq-5" aria-label="Fechar a resposta: Por que um lote aparece em rosa mais escuro?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                      </div>
+                      <div class="respostas-abertas-grupo">
+                        <span class="text-overline respostas-abertas-tema">Certidões</span>
+                        <div class="respostas-abertas-item" data-resposta-aberta="anon-faq-6" hidden>
+                          <a href="#anon-faq-6" class="respostas-abertas-link" data-rola-faq title="Como confiro se uma certidão é autêntica?">Como confiro se uma certidão é autêntica?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="anon-faq-6" aria-label="Fechar a resposta: Como confiro se uma certidão é autêntica?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="anon-faq-7" hidden>
+                          <a href="#anon-faq-7" class="respostas-abertas-link" data-rola-faq title="O que a certidão de lançamento atesta?">O que a certidão de lançamento atesta?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="anon-faq-7" aria-label="Fechar a resposta: O que a certidão de lançamento atesta?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                      </div>
+                      <div class="respostas-abertas-grupo">
+                        <span class="text-overline respostas-abertas-tema">Acesso e senha</span>
+                        <div class="respostas-abertas-item" data-resposta-aberta="anon-faq-8" hidden>
+                          <a href="#anon-faq-8" class="respostas-abertas-link" data-rola-faq title="Esqueci minha senha. Como recupero?">Esqueci minha senha. Como recupero?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="anon-faq-8" aria-label="Fechar a resposta: Esqueci minha senha. Como recupero?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="anon-faq-9" hidden>
+                          <a href="#anon-faq-9" class="respostas-abertas-link" data-rola-faq title="Onde encontro a senha de uso único do primeiro acesso?">Onde encontro a senha de uso único do primeiro acesso?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="anon-faq-9" aria-label="Fechar a resposta: Onde encontro a senha de uso único do primeiro acesso?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="etched-line h-[3px]" aria-hidden="true"></div>
+                  </nav>
+                  <button type="button" class="recolher-respostas" data-recolher-respostas>
+                    <svg class="etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-recolher"/></svg>
+                    Recolher respostas
+                  </button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- estado: servidor logado                                          -->
+      <!-- ================================================================ -->
+      <div class="flex flex-col gap-3">
+        <span class="text-overline text-agua-700">Estado · servidor logado</span>
+
+        <!-- página: faq/pagina.html -->
+        <div class="flex flex-col gap-6">
+
+          <!-- fica na página: marca e widget vêm do base.html (aqui sem o fixed) -->
+          <div class="flex items-center justify-between">
+            <span class="glass-panel rounded-full! px-5 py-2.5 text-lg font-black tracking-tight text-madeira-700">DIMAP GeoCoder</span>
+            <a href="#tela" class="glass-panel rounded-full! p-1.5 flex items-center gap-3 transition-glass hover:bg-white/60">
+              <span class="avatar-glass w-11 h-11" style="--cor-unidade: #0096C7; --halo-escala: 0.5">
+                <svg viewBox="0 0 40 40" class="w-full h-full"><circle cx="20" cy="20" r="19" fill="#0096C7" fill-opacity="0.55"/><text x="20" y="25" text-anchor="middle" font-family="Roboto" font-weight="700" font-size="14" fill="#F2FBFF">MS</text></svg>
+              </span>
+              <span class="pr-4">
+                <span class="block text-sm font-bold leading-tight">Marina</span>
+                <span class="block text-[10px] uppercase tracking-wide font-medium leading-tight mt-0.5 text-madeira-600">DIMAP-1</span>
+              </span>
+            </a>
+          </div>
+
+          <!-- fica na página: cabeçalho -->
+          <header class="glass-panel px-6 py-5 flex flex-col gap-1.5">
+            <p class="text-overline">Ajuda</p>
+            <h1 class="text-[30px] font-black tracking-tight text-madeira-700 leading-tight">Perguntas frequentes</h1>
+            <p class="painel-descricao">Dúvidas sobre o uso do GeoCoder, organizadas por tema. Clique numa pergunta para ver a resposta.</p>
+            <p class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px] text-base-content/70">
+              As perguntas com a marca
+              <span class="marca-interna">
+                <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                Interna
+              </span>
+              aparecem só para servidores.
+            </p>
+          </header>
+
+          <!-- fica na página: .faq-conjunto, a placa única do índice e dos temas -->
+          <div class="faq-conjunto glass-panel">
+            <nav class="indice-temas-faq hidden lg:flex" aria-label="Temas">
+              <span class="text-overline px-3 pt-1 pb-1">Temas</span>
+              <a href="#serv-tema-busca" class="item-menu" data-rola-faq><span class="item-menu-rotulo">Busca no mapa</span><span class="text-overline">5</span></a>
+              <a href="#serv-tema-certidoes" class="item-menu" data-rola-faq><span class="item-menu-rotulo">Certidões</span><span class="text-overline">3</span></a>
+              <a href="#serv-tema-acesso" class="item-menu" data-rola-faq><span class="item-menu-rotulo">Acesso e senha</span><span class="text-overline">2</span></a>
+              <a href="#serv-tema-atos" class="item-menu" data-rola-faq><span class="item-menu-rotulo">Atos administrativos</span><span class="text-overline">2</span></a>
+            </nav>
+
+            <div class="faq-corpo">
+              <div class="faq-temas">
+
+                <!-- partial: faq/partials/_secao_tema.html -->
+                <section id="serv-tema-busca" class="secao-tema-faq">
+                  <header class="secao-tema-faq-cabecalho">
+                    <h2 class="painel-titulo">Busca no mapa</h2>
+                    <span class="text-overline">5 perguntas</span>
+                  </header>
+                  <div class="placa-clara faq-lista">
+                    <details id="serv-faq-1" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Que tipos de entrada a barra de busca entende?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta"><div class="texto-markdown"><p>Logradouro, endereço com número e número de contribuinte.</p></div></div>
+                    </details>
+                  </div>
+                  <div class="secao-subtema-faq">
+                    <h3 class="faq-subtema">Endereços</h3>
+                    <div class="placa-clara faq-lista">
+                      <details id="serv-faq-2" class="faq-item">
+                        <summary class="faq-item-pergunta">
+                          <span class="faq-item-texto">O que é um endereço externo?</span>
+                          <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                        </summary>
+                        <div class="faq-item-resposta"><div class="texto-markdown"><p>Um endereço localizado fora das bases oficiais, com posição aproximada.</p></div></div>
+                      </details>
+                      <details id="serv-faq-3" class="faq-item">
+                        <summary class="faq-item-pergunta">
+                          <span class="faq-item-texto">Por que o ponto do endereço cai no meio da quadra?</span>
+                          <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                        </summary>
+                        <div class="faq-item-resposta"><div class="texto-markdown"><p>O ponto é interpolado pela numeração do logradouro.</p></div></div>
+                      </details>
+                    </div>
+                  </div>
+                  <div class="secao-subtema-faq">
+                    <h3 class="faq-subtema">Lotes e contribuintes</h3>
+                    <div class="placa-clara faq-lista">
+                      <details id="serv-faq-4" class="faq-item">
+                        <summary class="faq-item-pergunta">
+                          <span class="faq-item-texto">Como encontro um imóvel pelo número de contribuinte?</span>
+                          <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                        </summary>
+                        <div class="faq-item-resposta"><div class="texto-markdown"><p>Digite o número na barra de busca, com ou sem pontuação.</p></div></div>
+                      </details>
+                      <details id="serv-faq-5" class="faq-item">
+                        <summary class="faq-item-pergunta">
+                          <span class="faq-item-texto">Por que um lote aparece em rosa mais escuro?</span>
+                          <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                        </summary>
+                        <div class="faq-item-resposta"><div class="texto-markdown"><p>É um lote condominial.</p></div></div>
+                      </details>
+                    </div>
+                  </div>
+                </section>
+                <!-- /partial -->
+
+                <div class="etched-line h-[3px]" aria-hidden="true"></div>
+
+                <section id="serv-tema-certidoes" class="secao-tema-faq">
+                  <header class="secao-tema-faq-cabecalho">
+                    <h2 class="painel-titulo">Certidões</h2>
+                    <span class="text-overline">3 perguntas</span>
+                  </header>
+                  <div class="placa-clara faq-lista">
+                    <!-- aberto, com relacionada interna visível -->
+                    <details id="serv-faq-6" class="faq-item" open>
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Como confiro se uma certidão é autêntica?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta">
+                        <div class="texto-markdown">
+                          <p>Toda certidão emitida pela DIMAP traz um <strong>código de conferência</strong> no rodapé. Com ele, qualquer pessoa confere o documento, sem login.</p>
+                          <h4>O que conferir</h4>
+                          <ul>
+                            <li><input type="checkbox" disabled> O código do rodapé é aceito na página de conferência.</li>
+                            <li><input type="checkbox" disabled> O nome de quem emitiu é o mesmo do documento.</li>
+                            <li><input type="checkbox" disabled> A data de emissão é a mesma do documento.</li>
+                          </ul>
+                        </div>
+                        <div class="faq-item-rodape">
+                          <div class="etched-line h-[3px] w-full"></div>
+                          <div class="faq-item-rodape-bloco">
+                            <span class="text-overline">Para saber mais</span>
+                            <div class="links-referencia">
+                              <a href="#tela" class="item-menu">
+                                <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-link-sistema"/></svg></span>
+                                <span class="item-menu-rotulo">Conferir um documento<span class="item-menu-apoio">Nesta plataforma</span></span>
+                              </a>
+                            </div>
+                          </div>
+                          <div class="faq-item-rodape-bloco">
+                            <span class="text-overline">Perguntas relacionadas</span>
+                            <div class="chips-relacionadas">
+                              <a href="#serv-faq-7" class="chip-relacionada" data-rola-faq>
+                                <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+                                O que a certidão de lançamento atesta?
+                              </a>
+                              <a href="#serv-faq-8" class="chip-relacionada" data-rola-faq>
+                                <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+                                Quem pode emitir a certidão de lançamento?
+                                <span class="marca-interna">
+                                  <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                                  Interna
+                                </span>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </details>
+                    <details id="serv-faq-7" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">O que a certidão de lançamento atesta?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta">
+                        <div class="texto-markdown">
+                          <p>Que o imóvel está lançado no IPTU sob um determinado contribuinte, na data da emissão. Ela <strong>não</strong> atesta propriedade nem quitação.</p>
+                        </div>
+                      </div>
+                    </details>
+                    <details id="serv-faq-8" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Quem pode emitir a certidão de lançamento?</span>
+                        <span class="marca-interna">
+                          <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                          Interna
+                        </span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta">
+                        <div class="texto-markdown">
+                          <p>Quem tem a competência <strong>Emitir certidão de lançamento</strong>, concedida ao cargo pela chefia da unidade. Sem ela, a ação não aparece na gaveta do lote.</p>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                </section>
+
+                <div class="etched-line h-[3px]" aria-hidden="true"></div>
+
+                <section id="serv-tema-acesso" class="secao-tema-faq">
+                  <header class="secao-tema-faq-cabecalho">
+                    <h2 class="painel-titulo">Acesso e senha</h2>
+                    <span class="text-overline">2 perguntas</span>
+                  </header>
+                  <div class="placa-clara faq-lista">
+                    <details id="serv-faq-9" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Esqueci minha senha. Como recupero?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta"><div class="texto-markdown"><p>Na tela de login, use <strong>Esqueci minha senha</strong> e informe o seu RF.</p></div></div>
+                    </details>
+                    <details id="serv-faq-10" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Onde encontro a senha de uso único do primeiro acesso?</span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta"><div class="texto-markdown"><p>No e-mail de acesso, enviado quando o seu cadastro é criado.</p></div></div>
+                    </details>
+                  </div>
+                </section>
+
+                <div class="etched-line h-[3px]" aria-hidden="true"></div>
+
+                <!-- tema só com FAQs internas: some para o visitante -->
+                <section id="serv-tema-atos" class="secao-tema-faq">
+                  <header class="secao-tema-faq-cabecalho">
+                    <h2 class="painel-titulo">Atos administrativos</h2>
+                    <span class="text-overline">2 perguntas</span>
+                  </header>
+                  <div class="placa-clara faq-lista">
+                    <details id="serv-faq-11" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Como concedo uma competência a um cargo?</span>
+                        <span class="marca-interna">
+                          <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                          Interna
+                        </span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta"><div class="texto-markdown"><p>No painel, em <strong>Conceder competência</strong>, escolha a atribuição e os cargos que a exercem.</p></div></div>
+                    </details>
+                    <details id="serv-faq-12" class="faq-item">
+                      <summary class="faq-item-pergunta">
+                        <span class="faq-item-texto">Por que uma ação não aparece no meu painel?</span>
+                        <span class="marca-interna">
+                          <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-cadeado"/></svg>
+                          Interna
+                        </span>
+                        <svg class="faq-item-seta etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-seta-baixo"/></svg>
+                      </summary>
+                      <div class="faq-item-resposta"><div class="texto-markdown"><p>A ação só se oferece a quem tem a competência para ela, pelo cargo e pela unidade.</p></div></div>
+                    </details>
+                  </div>
+                </section>
+              </div>
+
+              <!-- fica na página: .faq-lateral, par de static/src/js/ui/faq.js -->
+              <aside class="faq-lateral">
+                <div class="respostas-abertas placa-clara">
+                  <nav class="respostas-abertas-conteudo" aria-label="Respostas abertas">
+                    <span class="text-overline px-2">Respostas abertas</span>
+                    <div class="respostas-abertas-lista">
+                      <div class="respostas-abertas-grupo">
+                        <span class="text-overline respostas-abertas-tema">Busca no mapa</span>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-1" hidden>
+                          <a href="#serv-faq-1" class="respostas-abertas-link" data-rola-faq title="Que tipos de entrada a barra de busca entende?">Que tipos de entrada a barra de busca entende?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-1" aria-label="Fechar a resposta: Que tipos de entrada a barra de busca entende?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-2" hidden>
+                          <a href="#serv-faq-2" class="respostas-abertas-link" data-rola-faq title="O que é um endereço externo?">O que é um endereço externo?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-2" aria-label="Fechar a resposta: O que é um endereço externo?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-3" hidden>
+                          <a href="#serv-faq-3" class="respostas-abertas-link" data-rola-faq title="Por que o ponto do endereço cai no meio da quadra?">Por que o ponto do endereço cai no meio da quadra?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-3" aria-label="Fechar a resposta: Por que o ponto do endereço cai no meio da quadra?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-4" hidden>
+                          <a href="#serv-faq-4" class="respostas-abertas-link" data-rola-faq title="Como encontro um imóvel pelo número de contribuinte?">Como encontro um imóvel pelo número de contribuinte?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-4" aria-label="Fechar a resposta: Como encontro um imóvel pelo número de contribuinte?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-5" hidden>
+                          <a href="#serv-faq-5" class="respostas-abertas-link" data-rola-faq title="Por que um lote aparece em rosa mais escuro?">Por que um lote aparece em rosa mais escuro?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-5" aria-label="Fechar a resposta: Por que um lote aparece em rosa mais escuro?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                      </div>
+                      <div class="respostas-abertas-grupo">
+                        <span class="text-overline respostas-abertas-tema">Certidões</span>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-6" hidden>
+                          <a href="#serv-faq-6" class="respostas-abertas-link" data-rola-faq title="Como confiro se uma certidão é autêntica?">Como confiro se uma certidão é autêntica?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-6" aria-label="Fechar a resposta: Como confiro se uma certidão é autêntica?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-7" hidden>
+                          <a href="#serv-faq-7" class="respostas-abertas-link" data-rola-faq title="O que a certidão de lançamento atesta?">O que a certidão de lançamento atesta?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-7" aria-label="Fechar a resposta: O que a certidão de lançamento atesta?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-8" hidden>
+                          <a href="#serv-faq-8" class="respostas-abertas-link" data-rola-faq title="Quem pode emitir a certidão de lançamento?">Quem pode emitir a certidão de lançamento?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-8" aria-label="Fechar a resposta: Quem pode emitir a certidão de lançamento?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                      </div>
+                      <div class="respostas-abertas-grupo">
+                        <span class="text-overline respostas-abertas-tema">Acesso e senha</span>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-9" hidden>
+                          <a href="#serv-faq-9" class="respostas-abertas-link" data-rola-faq title="Esqueci minha senha. Como recupero?">Esqueci minha senha. Como recupero?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-9" aria-label="Fechar a resposta: Esqueci minha senha. Como recupero?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-10" hidden>
+                          <a href="#serv-faq-10" class="respostas-abertas-link" data-rola-faq title="Onde encontro a senha de uso único do primeiro acesso?">Onde encontro a senha de uso único do primeiro acesso?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-10" aria-label="Fechar a resposta: Onde encontro a senha de uso único do primeiro acesso?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                      </div>
+                      <div class="respostas-abertas-grupo">
+                        <span class="text-overline respostas-abertas-tema">Atos administrativos</span>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-11" hidden>
+                          <a href="#serv-faq-11" class="respostas-abertas-link" data-rola-faq title="Como concedo uma competência a um cargo?">Como concedo uma competência a um cargo?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-11" aria-label="Fechar a resposta: Como concedo uma competência a um cargo?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                        <div class="respostas-abertas-item" data-resposta-aberta="serv-faq-12" hidden>
+                          <a href="#serv-faq-12" class="respostas-abertas-link" data-rola-faq title="Por que uma ação não aparece no meu painel?">Por que uma ação não aparece no meu painel?</a>
+                          <button type="button" class="fechar-resposta etched" data-fecha-faq="serv-faq-12" aria-label="Fechar a resposta: Por que uma ação não aparece no meu painel?"><svg viewBox="0 0 24 24"><use href="#glifo-x"/></svg></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="etched-line h-[3px]" aria-hidden="true"></div>
+                  </nav>
+                  <button type="button" class="recolher-respostas" data-recolher-respostas>
+                    <svg class="etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-recolher"/></svg>
+                    Recolher respostas
+                  </button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- estado: sem nenhuma FAQ visível                                   -->
+      <!-- ================================================================ -->
+      <div class="grid gap-6 lg:grid-cols-2 items-start">
+
+        <!-- estado vazio · visitante sem login -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline text-agua-700">Estado vazio · visitante sem login</span>
+          <!-- página: faq/pagina.html -->
+          <div class="flex flex-col gap-6">
+            <header class="glass-panel px-6 py-5 flex flex-col gap-1.5">
+              <p class="text-overline">Ajuda</p>
+              <h1 class="text-[30px] font-black tracking-tight text-madeira-700 leading-tight">Perguntas frequentes</h1>
+            </header>
+            <!-- partial: faq/partials/_vazio.html -->
+            <div class="glass-panel px-6 py-12 flex flex-col items-center gap-3 text-center">
+              <svg class="w-14 h-14 etched etched-lg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+              <p class="text-[18px] font-bold text-rocha-950">Ainda não há perguntas públicas</p>
+              <p class="text-[13px] text-base-content/70 max-w-[40ch]">Quando as primeiras respostas forem publicadas, elas aparecem aqui, organizadas por tema. Servidor da DIMAP? Entre para ver também as perguntas internas.</p>
+              <a href="#tela" class="btn-etched btn-etched-swell etched etched-deeper mt-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-entrar"/></svg>
+                Entrar
+              </a>
+            </div>
+            <!-- /partial -->
+          </div>
+        </div>
+
+        <!-- estado vazio · servidor logado -->
+        <div class="flex flex-col gap-3">
+          <span class="text-overline text-agua-700">Estado vazio · servidor logado</span>
+          <!-- página: faq/pagina.html -->
+          <div class="flex flex-col gap-6">
+            <header class="glass-panel px-6 py-5 flex flex-col gap-1.5">
+              <p class="text-overline">Ajuda</p>
+              <h1 class="text-[30px] font-black tracking-tight text-madeira-700 leading-tight">Perguntas frequentes</h1>
+            </header>
+            <!-- partial: faq/partials/_vazio.html -->
+            <div class="glass-panel px-6 py-12 flex flex-col items-center gap-3 text-center">
+              <svg class="w-14 h-14 etched etched-lg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-pergunta"/></svg>
+              <p class="text-[18px] font-bold text-rocha-950">Ainda não há perguntas publicadas</p>
+              <p class="text-[13px] text-base-content/70 max-w-[40ch]">Quando as primeiras respostas forem publicadas, elas aparecem aqui, organizadas por tema.</p>
+            </div>
+            <!-- /partial -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+  <!-- par de static/src/js/ui/faq.js -->
+  <script type="module">
+    const DURACAO_MINIMA_MS = 250;
+    const DURACAO_MAXIMA_MS = 600;
+    const MS_POR_PIXEL = 0.4;
+    const MOVIMENTO_REDUZIDO = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    function alvoDe(hash) {
+      return hash ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+    }
+
+    function abrir(alvo) {
+      if (alvo?.matches(".faq-item")) alvo.open = true;
+    }
+
+    // Na aplicação quem rola é o .admin-shell; no mock, o documento.
+    function roladorDe(elemento) {
+      for (let pai = elemento.parentElement; pai; pai = pai.parentElement) {
+        const { overflowY } = getComputedStyle(pai);
+        if (/(auto|scroll)/.test(overflowY) && pai.scrollHeight > pai.clientHeight) return pai;
+      }
+      return document.scrollingElement;
+    }
+
+    function suavizar(x) {
+      return x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2;
+    }
+
+    function rolarAte(alvo, aoTerminar) {
+      const rolador = roladorDe(alvo);
+      const topoRolador = rolador === document.scrollingElement ? 0 : rolador.getBoundingClientRect().top;
+      const margem = parseFloat(getComputedStyle(alvo).scrollMarginTop) || 0;
+      const inicio = rolador.scrollTop;
+      const distancia = alvo.getBoundingClientRect().top - topoRolador - margem;
+      const duracao = MOVIMENTO_REDUZIDO.matches
+        ? 0
+        : Math.min(DURACAO_MAXIMA_MS, Math.max(DURACAO_MINIMA_MS, Math.abs(distancia) * MS_POR_PIXEL));
+      const partida = performance.now();
+
+      function passo(agora) {
+        const progresso = duracao ? Math.min(1, (agora - partida) / duracao) : 1;
+        rolador.scrollTop = inicio + distancia * suavizar(progresso);
+        if (progresso < 1) requestAnimationFrame(passo);
+        else aoTerminar();
+      }
+      requestAnimationFrame(passo);
+    }
+
+    document.addEventListener("click", (evento) => {
+      const recolher = evento.target.closest("[data-recolher-respostas]");
+      if (recolher) {
+        recolher.closest(".faq-conjunto").querySelectorAll(".faq-item[open]").forEach((item) => {
+          item.open = false;
+        });
+        return;
+      }
+      const fechar = evento.target.closest("[data-fecha-faq]");
+      if (fechar) {
+        const item = document.getElementById(fechar.dataset.fechaFaq);
+        if (item) item.open = false;
+        return;
+      }
+      const link = evento.target.closest("[data-rola-faq]");
+      const alvo = link && alvoDe(link.hash);
+      if (!alvo) return;
+      evento.preventDefault();
+      abrir(alvo);
+      // O hash entra só no fim: atualiza o :target e o histórico sem o salto nativo no meio da animação.
+      rolarAte(alvo, () => {
+        if (location.hash !== link.hash) location.hash = link.hash;
+      });
+    });
+
+    function sincronizarAbertas(conjunto) {
+      conjunto.querySelectorAll("[data-resposta-aberta]").forEach((item) => {
+        item.hidden = !document.getElementById(item.dataset.respostaAberta)?.open;
+      });
+    }
+
+    // `toggle` não borbulha: só a captura no documento enxerga todos os itens.
+    document.addEventListener("toggle", (evento) => {
+      const conjunto = evento.target.closest?.(".faq-conjunto");
+      if (conjunto && evento.target.matches(".faq-item")) sincronizarAbertas(conjunto);
+    }, true);
+
+    abrir(alvoDe(location.hash));
+    document.querySelectorAll(".faq-conjunto").forEach(sincronizarAbertas);
+  </script>
+</body>
+</html>

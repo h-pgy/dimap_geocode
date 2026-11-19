@@ -1,6 +1,6 @@
 ---
 spec: faq/007
-versao: v5
+versao: v9
 atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
@@ -11,6 +11,10 @@ changelog:
   - v3: registro sem prefixos e com limite por IP, fallback por palavras e agrupamento em numpy
   - v4: o limiar do fallback textual é calibrado no teste desta SPEC, e não sobre a seed
   - v5: painel de buscas no molde do registro de ações: card de busca com período, tabela de vidro e paginação
+  - v6: o registro de busca guarda o RF do leitor logado
+  - v7: o fallback textual acha a FAQ pelo ancestral da palavra-chave marcada
+  - v8: as telas de origem pré-preenchem as rotas vinculadas de faq/006
+  - v9: caminhos seguem a estrutura de pacotes de faq/001, e a linha da tabela de grupos de buscas vai para listagem_gestao, como a de FAQs
 ---
 
 # SPEC faq/007 — Busca em texto livre e sugestões a partir das buscas
@@ -31,9 +35,9 @@ resposta e lacunas virem novas FAQs.
 - [ ] Com o Ollama fora do ar, lento ou respondendo fora do contrato, a busca não falha: recua para a
       busca textual por palavras sobre perguntas, variações e palavras-chave das FAQs visíveis. Uma
       consulta curta acha a pergunta longa que contém as palavras dela.
-- [ ] Buscas efetivas (a partir do tamanho mínimo) são registradas com o texto digitado, a data, a
-      tela de origem (quando feitas pelo widget, e só se for uma tela declarada) e se encontraram
-      resposta próxima. Buscas vazias ou curtas demais não são registradas, e as pausas de uma mesma
+- [ ] Buscas efetivas (a partir do tamanho mínimo) são registradas com o texto digitado, a data, o
+      RF de quem buscou (quando logado), a tela de origem (quando feitas pelo widget, e só se for uma
+      tela declarada) e se encontraram resposta próxima. Buscas vazias ou curtas demais não são registradas, e as pausas de uma mesma
       digitação viram um registro só, com o texto final.
 - [ ] Acima do limite de buscas por minuto de um mesmo IP, a busca ainda responde, pela via textual,
       sem chamar o Ollama e sem registrar.
@@ -47,13 +51,13 @@ resposta e lacunas virem novas FAQs.
       grupo e filtro e ordenação por pergunta sugerida e por variações.
 - [ ] A partir de um grupo no painel, o administrador abre o formulário de nova FAQ (faq/002) já
       preenchido com a frase principal como pergunta, as demais como variações e as telas de origem
-      marcadas. Nada é gravado até ele salvar.
+      marcadas como rotas vinculadas. Nada é gravado até ele salvar.
 
 ## 3 · Domínio
 
 A ontologia da FAQ é a de [faq/001](001-pagina-de-faq.md#3--domínio), a das imagens é a de
 [faq/004](004-midias-da-faq.md#3--domínio), a do índice vetorial é a de
-[faq/005](005-indice-semantico.md#3--domínio) e a das telas é a de [faq/006](006-faq-da-tela.md#3--domínio).
+[faq/005](005-indice-semantico.md#3--domínio) e a das telas e rotas vinculadas é a de [faq/006](006-faq-da-tela.md#3--domínio).
 Esta SPEC pergunta a elas quais FAQs respondem a uma dúvida em texto livre e quais FAQs já cobrem
 cada grupo de dúvidas buscadas.
 
@@ -88,6 +92,7 @@ class RegistroBusca(BaseModel):
     """Fato de uma busca realizada; guarda `teve_cobertura` apurado no momento em que ocorreu."""
     frase: FraseBuscada
     digitacao: UUID                      # uma caixa de busca aberta; as pausas dela refinam o mesmo registro
+    leitor: Leitor                       # quem buscou: o RF, se logado (faq/001)
     tela_origem: str | None = None       # nome_rota quando buscado pelo widget; None = /faq/
     teve_cobertura: bool
     realizada_em: datetime
@@ -133,17 +138,18 @@ class GrupoBuscas(BaseModel):
 ## 4 · Fora de escopo
 - Geração automática do texto da resposta por LLM a partir dos anexos — sem dono ainda.
 - Arquivar ou marcar manualmente um grupo de buscas como ignorado no painel — sem dono ainda.
-- Registrar a identidade do usuário autor da busca — sem dono ainda (o registro é anônimo).
+- Painel das FAQs mais usadas, a partir do registro de quem buscou o quê — sem dono ainda.
 - Destacar o trecho exato dentro do texto do anexo no resultado da busca — sem dono ainda (mostra
   apenas o título do anexo ou a legenda da imagem).
 
 ## 5 · Peças de referência a compor
-- `@apps/faq/semantica.py` → `buscar_semelhantes` (faq/005): consulta vetorial sobre FAQs, anexos e imagens.
-- `@services/domain/faq/indexacao.py` → `PROMPT_CONSULTA`, `GeradorEmbedding` (faq/005): prompt e
+- `@apps/faq/indexacao/semantica.py` → `buscar_semelhantes` (faq/005): consulta vetorial sobre FAQs, anexos e imagens.
+- `@services/domain/faq/indexacao/embedding.py` → `PROMPT_CONSULTA`, `GeradorEmbedding` (faq/005): prompt e
   porta de vetorização das frases buscadas.
-- `@services/domain/faq/visibilidade.py` → `visibilidades_para`, `eh_visivel` (faq/001): filtro de
+- `@services/domain/faq/leitura/visibilidade.py` → `visibilidades_para`, `eh_visivel` (faq/001): filtro de
   visibilidade nos resultados e na checagem de FAQ próxima.
 - `@services/utils/normalization` → `normalize_text`: chave única da frase buscada.
+- `@apps/faq/leitor.py` → `leitor_de` (faq/001): a request vira `Leitor`, com o RF de quem buscou.
 - `@services/utils/fuzzy_matcher` → `fuzzy_match`: ranqueamento no fallback textual, com o algoritmo
   novo `token_set`.
 - `@apps/faq/acesso.py` → `superusuario_requerido` (faq/002): portão do painel de buscas.
@@ -151,8 +157,8 @@ class GrupoBuscas(BaseModel):
   cabeçalho, paginação depois do filtro e o período padrão.
 - `@templates/competencias/partials/` → `_busca_execucoes.html`, `_tabela_execucoes.html` e
   `_paginacao_execucoes.html` (SPEC painel/002): o molde do card de busca, da tabela e da paginação.
-- `@apps/faq/telas.py` → `telas_declaradas` (faq/006): conferência de `tela_origem` e da `tela` do
-  pré-preenchimento.
+- `@apps/faq/telas/declaracao.py` → `telas_declaradas` (faq/006): conferência de `tela_origem` e da `rota_vinculada`
+  do pré-preenchimento.
 - `numpy` → já está no `uv.lock` como dependência transitiva; entra como direta (`uv add numpy`) para
   o agrupamento.
 - Cache do Django (o padrão, em memória do processo) → contador do limite por IP.
@@ -163,14 +169,9 @@ class GrupoBuscas(BaseModel):
 
 > O comentário didático destes blocos existe só aqui e **não é portado** (CLAUDE.md §7.2).
 
-**`services/domain/faq/busca_textual.py`** — fallback puro quando o Ollama está fora do ar. Passa os
-textos brutos a `fuzzy_match` porque o módulo normaliza por dentro (skill `fuzzy-matcher`).
+**`services/domain/faq/busca/models/busca.py`** — a entrada e a saída da busca.
 
 ```python
-LIMIAR_SCORE_FUZZY = 70.0               # calibrado em test_fallback_textual_acha_pergunta_longa_...
-LIMIAR_DISTANCIA_BUSCA = 0.60
-
-
 class PedidoBuscaFaq(BaseModel):
     consulta: str = Field(max_length=300)
     leitor: Leitor
@@ -193,6 +194,14 @@ class ItemBuscaFaq(BaseModel):
 class ResultadoBuscaFaq(BaseModel):
     modo: ModoBusca
     itens: list[ItemBuscaFaq]
+```
+
+**`services/domain/faq/busca/busca_textual.py`** — fallback puro quando o Ollama está fora do ar. Passa
+os textos brutos a `fuzzy_match` porque o módulo normaliza por dentro (skill `fuzzy-matcher`).
+
+```python
+LIMIAR_SCORE_FUZZY = 70.0               # calibrado em test_fallback_textual_acha_pergunta_longa_...
+LIMIAR_DISTANCIA_BUSCA = 0.60
 
 
 class BuscarTextual:
@@ -201,6 +210,8 @@ class BuscarTextual:
 
     def pipeline(self, consulta: str, faqs: list[Faq], limite: int) -> list[Faq]:
         # Texto → ids das FAQs: a mesma palavra-chave em duas FAQs aponta para as duas, e nenhuma some.
+        # Cada palavra-chave entra com todos os nomes do `caminho` (faq/001): "IPTU" acha a FAQ marcada
+        # só com "IPTU › Certidão".
         # Cada FAQ fica com o melhor score entre os seus textos.
         candidatos = self._expandir_candidatos(faqs)          # dict[str, set[int]]
         if not candidatos:
@@ -214,14 +225,9 @@ class BuscarTextual:
 `"token_set"`, que usa `fuzz.token_set_ratio`. Os chamadores atuais continuam no `"levenshtein"`, e a
 skill `fuzzy-matcher` ganha a linha do algoritmo novo.
 
-**`services/domain/faq/agrupamento.py`** — agrupamento semântico guloso e cálculo do centróide
-normalizado de cada grupo, em domínio puro.
+**`services/domain/faq/busca/models/agrupamento.py`** — a entrada e a saída do agrupamento.
 
 ```python
-LIMIAR_AGRUPAMENTO_BUSCAS = 0.25         # distância cosseno máxima ao centróide do grupo
-MAXIMO_FRASES_AGRUPAMENTO = 500
-
-
 class FraseVetorizada(BaseModel):
     contagem: ContagemFrase
     vetor: list[float]
@@ -230,6 +236,14 @@ class FraseVetorizada(BaseModel):
 class GrupoComCentroide(BaseModel):
     grupo: GrupoBuscas
     centroide: list[float]               # usado pelo app para consultar a FAQ mais próxima no pgvector
+```
+
+**`services/domain/faq/busca/agrupamento.py`** — agrupamento semântico guloso e cálculo do centróide
+normalizado de cada grupo, em domínio puro.
+
+```python
+LIMIAR_AGRUPAMENTO_BUSCAS = 0.25         # distância cosseno máxima ao centróide do grupo
+MAXIMO_FRASES_AGRUPAMENTO = 500
 
 
 class AgruparBuscas:
@@ -265,7 +279,7 @@ class AgruparBuscas:
         return membros
 ```
 
-**`apps/faq/models.py`**
+**`apps/faq/models/busca.py`**
 
 ```python
 class FraseBuscada(models.Model):
@@ -280,12 +294,22 @@ class RegistroBusca(models.Model):
     frase = models.ForeignKey(FraseBuscada, on_delete=models.CASCADE, related_name="registros")
     digitacao = models.UUIDField(db_index=True)
     texto_original = models.CharField(max_length=300)
+    # FK pelo RF, e não pelo pk: o registro guarda a identidade que o Leitor carrega. Nulo = anônimo.
+    leitor = models.ForeignKey(
+        "user_admin.Perfil",
+        to_field="rf",
+        db_column="rf",
+        on_delete=models.SET_NULL,               # Perfil apagado (servidores fictícios): a busca fica anônima
+        null=True,
+        blank=True,
+        related_name="buscas_faq",
+    )
     tela_origem = models.CharField(max_length=120, null=True, blank=True)
     teve_cobertura = models.BooleanField()
     realizada_em = models.DateTimeField(auto_now_add=True, db_index=True)
 ```
 
-**`apps/faq/busca.py`** — orquestra busca semântica, fallback textual e registro da ocorrência.
+**`apps/faq/busca/busca.py`** — orquestra busca semântica, fallback textual e registro da ocorrência.
 
 ```python
 def buscar_na_faq(
@@ -309,6 +333,7 @@ def buscar_na_faq(
     registrar_busca(
         FraseBuscada(texto=pedido.consulta),
         pedido.digitacao,
+        pedido.leitor,
         pedido.tela_origem,
         teve_cobertura,
     )
@@ -325,6 +350,7 @@ def _buscar_textual(pedido: PedidoBuscaFaq) -> ResultadoBuscaFaq:
 def registrar_busca(
     frase: FraseBuscada,
     digitacao: UUID,
+    leitor: Leitor,
     tela_origem: str | None,
     teve_cobertura: bool,
 ) -> None:
@@ -351,12 +377,13 @@ def registrar_busca(
         frase=alvo,
         digitacao=digitacao,
         texto_original=frase.texto,
+        leitor_id=leitor.rf,                     # to_field="rf": o valor da FK é o próprio RF
         tela_origem=tela_origem,
         teve_cobertura=teve_cobertura,
     )
 ```
 
-**`services/domain/faq/registro_busca.py`** — quando a busca nova é a mesma dúvida ainda sendo escrita.
+**`services/domain/faq/busca/registro_busca.py`** — quando a busca nova é a mesma dúvida ainda sendo escrita.
 
 ```python
 def eh_continuacao(chave_anterior: str, chave_nova: str) -> bool:
@@ -364,7 +391,7 @@ def eh_continuacao(chave_anterior: str, chave_nova: str) -> bool:
     return chave_nova.startswith(chave_anterior) or chave_anterior.startswith(chave_nova)
 ```
 
-**`apps/faq/limite.py`** — o limite por IP. `FAQ_BUSCA_LIMITE_POR_MINUTO` vem do settings (padrão 30;
+**`apps/faq/busca/limite.py`** — o limite por IP. `FAQ_BUSCA_LIMITE_POR_MINUTO` vem do settings (padrão 30;
 quem digita com pausas faz uma busca a cada poucos segundos).
 
 ```python
@@ -379,7 +406,7 @@ A view lê o IP de `REMOTE_ADDR`, passa `dentro_do_limite(ip)` a `buscar_na_faq`
 `FAQ_OLLAMA_BUSCA` (faq/005, timeout de 3 s) e só repassa `tela_origem` se ela estiver em
 `telas_declaradas()`; outra vira `None`.
 
-**`apps/faq/indexador.py`** — estende o `ciclo` de faq/005 para vetorizar também as frases buscadas
+**`apps/faq/indexacao/indexador.py`** — estende o `ciclo` de faq/005 para vetorizar também as frases buscadas
 pendentes com `PROMPT_CONSULTA`, permitindo comparar cada grupo contra `TrechoIndexado` sem chamar o
 Ollama quando o administrador abre o painel.
 
@@ -400,9 +427,10 @@ def _indexar_frases_buscadas(gerador: GeradorEmbedding, modelo: ModeloEmbedding)
             FraseBuscadaModel.objects.bulk_update(pendentes, ["vetor", "modelo"])
 ```
 
-**`services/domain/faq/agrupamento.py`** — a linha da tabela de vidro envelopa o grupo. As duas
-colunas de texto são lidas pelo `ListadorTabela` existente; ocorrências, cobertura e FAQ mais próxima
-são colunas gravadas, sem filtro nem seta.
+**`services/domain/listagem_gestao/models/grupos_buscas.py`** — a lista de grupos é mais uma tabela de
+gestão, filtrada e ordenada pelo `ListadorTabela` existente, como a de FAQs (faq/002). A linha é
+materializada: as duas colunas de texto são lidas pelo listador, e ocorrências, cobertura e FAQ mais
+próxima são colunas gravadas, sem filtro nem seta.
 
 ```python
 class ColunaGrupoBuscas(StrEnum):
@@ -411,22 +439,16 @@ class ColunaGrupoBuscas(StrEnum):
 
 
 class LinhaGrupoBuscas(BaseModel):
-    item: GrupoComCentroide
-
-    @property
-    def pergunta_sugerida(self) -> str:
-        return self.item.grupo.pergunta_sugerida
-
-    @property
-    def variacoes(self) -> str:
-        return " · ".join(f.frase.texto for f in self.item.grupo.frases[1:])
+    posicao: int                           # índice do grupo na saída de AgruparBuscas
+    pergunta_sugerida: str
+    variacoes: str                         # "como tiro a certidão · onde emito a certidão"
 
 
 ConsultaGruposBuscas = ConsultaListagem[ColunaGrupoBuscas]
-listar_grupos_buscas = ListadorTabela[LinhaGrupoBuscas, ColunaGrupoBuscas]()
+ListarGruposBuscas = ListadorTabela[LinhaGrupoBuscas, ColunaGrupoBuscas]    # em listagem.py, ao lado dos outros
 ```
 
-**`apps/faq/sugestoes.py`** — agrega os registros do recorte, chama `AgruparBuscas`, aplica o
+**`apps/faq/sugestoes/sugestoes.py`** — agrega os registros do recorte, chama `AgruparBuscas`, aplica o
 cabeçalho, pagina e só então resolve a FAQ publicada mais próxima pelo centróide (consultando
 `TrechoIndexado` direto no Postgres). A ordem é a do registro de ações: filtro → página → enriquecimento.
 
@@ -438,13 +460,15 @@ def sugerir_grupos(
     pagina: int,
 ) -> Pagina[GrupoBuscas]:
     frases = _carregar_frases_vetorizadas(recorte, modelo, MAXIMO_FRASES_AGRUPAMENTO)
-    linhas = [LinhaGrupoBuscas(item=item) for item in agrupar_buscas(frases)]
+    grupos = agrupar_buscas(frases)
+    # A linha leva só o texto e a posição: a tabela de gestão não conhece o domínio da FAQ.
+    linhas = [_linha(posicao, item.grupo) for posicao, item in enumerate(grupos)]
     # Sem seta ativa, vale a ordem do agrupamento: mais ocorrências primeiro.
-    filtradas = listar_grupos_buscas(linhas, consulta)
+    filtradas = ListarGruposBuscas()(linhas, consulta)
     fatia = paginar(filtradas, pagina, TAMANHO_PAGINA)
     # A FAQ mais próxima custa uma consulta por grupo: só a página exibida paga.
     return Pagina(
-        linhas=tuple(_anexar_faq_proxima(linha.item, modelo) for linha in fatia.linhas),
+        linhas=tuple(_anexar_faq_proxima(grupos[linha.posicao], modelo) for linha in fatia.linhas),
         numero=fatia.numero,
         total_paginas=fatia.total_paginas,
         total_linhas=fatia.total_linhas,
@@ -454,13 +478,14 @@ def sugerir_grupos(
 `RecorteBuscas` nasce na view como `BuscaExecucoes` (SPEC painel/002): `inicio` e `fim` da query
 string, ou os últimos `JANELA_PADRAO_DIAS` a partir do `hoje` que a view passa.
 
-**Rotas e interface:**
+**Rotas e interface** — `faq:buscar` e `faq:widget_buscar` em `apps/faq/busca/urls.py`, as duas do
+painel em `apps/faq/sugestoes/urls.py`, e as duas listas entram na de `apps/faq/urls.py` (faq/001):
 
 | Rota | Acesso | Comportamento |
 |---|---|---|
 | `faq:buscar` | aberta (HTMX GET) | se `len(q.strip()) < MINIMO_CARACTERES_BUSCA`, devolve o partial da página inteira; senão chama `buscar_na_faq` e devolve `_resultados_busca.html` |
 | `faq:widget_buscar` | aberta (HTMX GET) | igual, com `tela_origem` opcional; com `q` curto/vazio restaura o partial de `faq:widget_tela` ou `faq:widget_todas` |
-| `faq:admin_buscas` | `superusuario_requerido` | página com o card de busca (`inicio`, `fim`, `sem_cobertura`) e a tabela de vidro dos grupos; cada linha tem o link para `faq:admin_nova` (faq/002) pré-preenchido via query string (`pergunta`, `variacao`, `tela`) |
+| `faq:admin_buscas` | `superusuario_requerido` | página com o card de busca (`inicio`, `fim`, `sem_cobertura`) e a tabela de vidro dos grupos; cada linha tem o link para `faq:admin_nova` (faq/002) pré-preenchido via query string (`pergunta`, `variacao`, `rota_vinculada`) |
 | `faq:admin_buscas_corpo` | `superusuario_requerido` | o `<tbody>` e a paginação, alvo do HTMX do card e do cabeçalho, que viajam juntos (`hx-include`) |
 
 O gatilho das caixas de busca usa `hx-trigger="input changed delay:500ms, search"`, para enviar só
@@ -469,10 +494,15 @@ ainda está em voo. O partial da caixa traz um `<input type="hidden" name="digit
 gerado pelo servidor a cada renderização da caixa, enviado por `hx-include`.
 
 **ALTERA faq/002: `faq:admin_nova` aceita valores iniciais por query string.** O GET lê `pergunta`,
-`variacao` (repetível) e `tela` (repetível) e só os põe como `initial` do formulário. Nada é gravado até
-o POST, que passa pelas validações de sempre, e `tela` fora de `telas_declaradas()` é descartada.
+`variacao` (repetível) e `rota_vinculada` (repetível) e só os põe como `initial` do formulário. Nada é
+gravado até o POST, que passa pelas validações de sempre, e `rota_vinculada` fora de `telas_declaradas()`
+é descartada.
 
 ## 7 · Caveats
+
+**O registro de busca guarda o RF de quem buscou.** O painel das FAQs mais usadas precisa saber quem
+buscou o quê, e o RF é a identidade com que o servidor entra no sistema. O texto buscado passa a ser
+dado ligado a um servidor identificável, e apagar o `Perfil` anonimiza as buscas dele em vez de apagá-las.
 
 **`FraseBuscada.chave` é guardada em coluna, embora seja derivada.** A normalização `normalize_text`
 não tem equivalente direto em SQL, e agrupar ocorrências equivalentes por `chave` é o que impede
@@ -510,10 +540,6 @@ teto. A FAQ mais próxima é calculada só para os grupos da página exibida.
 só existe depois da paginação. A ordem por ocorrências é a padrão, e some quando o administrador
 ordena por uma coluna de texto.
 
-**O domínio da FAQ passa a conhecer `listagem_gestao`.** A linha do grupo é tipada para o
-`ListadorTabela` genérico, em vez de recopiar filtro e ordenação. Uma mudança no contrato do listador
-atinge também o painel de buscas.
-
 **A cobertura do dia (`teve_cobertura`) e a FAQ mais próxima no painel podem divergir.** A primeira
 congela se o usuário encontrou resposta na hora da busca; a segunda consulta as FAQs publicadas hoje
 para mostrar se a lacuna continua aberta. Um grupo antigo "sem cobertura" pode já aparecer coberto por
@@ -531,14 +557,15 @@ Ollama no ar. O atraso máximo é o intervalo do indexador depois que o serviço
   `OllamaIndisponivel` ou `OllamaRespostaInvalida`, a busca retorna FAQs via `fuzzy_match` em
   `modo=textual_fallback` sem erro HTTP. *(marker `banco`)*
 - `test_fallback_textual_acha_pergunta_longa_e_palavra_chave_repetida` — em domínio puro,
-  "emitir certidão" acha "Como emito a certidão de lançamento do IPTU?", e uma palavra-chave presente
-  em duas FAQs devolve as duas.
+  "emitir certidão" acha "Como emito a certidão de lançamento do IPTU?", uma palavra-chave presente
+  em duas FAQs devolve as duas, e o nome do ancestral acha a FAQ marcada só com a folha.
 - `test_busca_curta_ou_vazia_nao_registra_e_restaura_lista` — texto menor que
   `MINIMO_CARACTERES_BUSCA` não cria `RegistroBusca` e devolve a listagem padrão na página e no
   widget. *(marker `banco`)*
 - `test_buscas_equivalentes_compartilham_frase_buscada` — `"Como tiro a certidão?"` e `"como tiro a
   certidao"`, em digitações diferentes, criam dois `RegistroBusca` (um com `tela_origem`) ligados à
-  mesma `FraseBuscada`; uma `tela_origem` fora de `telas_declaradas()` é gravada como `None`.
+  mesma `FraseBuscada`; uma `tela_origem` fora de `telas_declaradas()` é gravada como `None`; a busca
+  feita com login guarda o RF do leitor, e a anônima fica sem.
   *(marker `banco`)*
 - `test_pausas_da_mesma_digitacao_viram_um_registro` — "como emi" e depois "como emitir a certidão"
   na mesma `digitacao` deixam um registro, com o texto final, e a `FraseBuscada` de "como emi" deixa de
@@ -555,7 +582,7 @@ Ollama no ar. O atraso máximo é o intervalo do indexador depois que o serviço
   `faq:admin_buscas`. *(marker `banco`)*
 - `test_painel_indica_lacuna_ou_faq_proxima_e_preenche_nova_faq` — grupo distante é marcado como
   lacuna, grupo próximo exibe a FAQ correspondente, e o link de criação abre `faq:admin_nova` com
-  pergunta, variações e telas preenchidas sem gravar nada. *(marker `banco`)*
+  pergunta, variações e rotas vinculadas preenchidas sem gravar nada. *(marker `banco`)*
 - `test_painel_filtra_por_periodo_e_sem_cobertura` — sem período escolhido, valem os últimos 30
   dias; com o cabeçalho filtrando por variação, a paginação conta só os grupos que sobraram; registros
   fora de `inicio`/`fim`, e os já cobertos com o alternador ligado, saem dos totais. *(marker `banco`)*

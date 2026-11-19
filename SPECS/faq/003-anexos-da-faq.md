@@ -1,7 +1,7 @@
 ---
 spec: faq/003
-versao: v7
-atualizado_em: 2026-11-18
+versao: v8
+atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco, integration]
@@ -13,6 +13,7 @@ changelog:
   - v5: vídeos saem do épico
   - v6: OCR página a página, com prazo e sem disputar CPU com o web
   - v7: o vínculo do anexo é gravado com o formulário da FAQ, como o das imagens
+  - v8: caminhos seguem a estrutura de pacotes de faq/001
 ---
 
 # SPEC faq/003 — Anexos da FAQ com texto extraído
@@ -102,7 +103,7 @@ class Resposta(BaseModel):
 - `pypdf` (já é dependência) → leitura da camada de texto do PDF.
 - `@apps/documentos/models.py` → `DocumentoEmitido.arquivo`: o padrão de PDF em `bytea` na linha.
 - `@apps/faq/acesso.py` → `superusuario_requerido` (faq/002): portão do upload.
-- `@services/domain/faq/visibilidade.py` → `eh_visivel` (faq/001): base da regra de download.
+- `@services/domain/faq/leitura/visibilidade.py` → `eh_visivel` (faq/001): base da regra de download.
 - Skills: `erros-de-formulario`, `componentes-frontend`, `daisyui`, `htmx-skill`, `mock`,
   `escrever-testes`, `test-django-views`.
 
@@ -195,7 +196,7 @@ Os pacotes `tesseract-ocr`, `tesseract-ocr-por` e `poppler-utils` entram no `apt
 `docker/Dockerfile.web`, junto com `ENV OMP_THREAD_LIMIT=1`: por padrão o tesseract abre uma thread
 por núcleo e disputa a CPU com os outros requests do web.
 
-**`apps/faq/models.py`**
+**`apps/faq/models/arquivos.py`**
 
 ```python
 class Anexo(models.Model):
@@ -217,11 +218,11 @@ class Anexo(models.Model):
             models.CheckConstraint(condition=~Q(texto=""), name="faq_anexo_com_texto"),
         ]
 
-# Faq ganha:
-anexos = models.ManyToManyField(Anexo, blank=True, related_name="faqs")
+# Faq (apps/faq/models/conteudo.py) ganha:
+anexos = models.ManyToManyField("faq.Anexo", blank=True, related_name="faqs")
 ```
 
-**`apps/faq/anexos.py`** — o upload: hash primeiro, extração só se o arquivo é novo. O upload não
+**`apps/faq/anexos/recebimento.py`** — o upload: hash primeiro, extração só se o arquivo é novo. O upload não
 liga o anexo a FAQ nenhuma.
 
 ```python
@@ -257,7 +258,7 @@ checkboxes marcados. Assim a FAQ nova recebe anexo antes da primeira gravação,
 desligamento, e nenhuma rota liga ou desliga anexo fora do formulário. Um id de anexo que não existe
 devolve erro no campo de anexos, antes da gravação.
 
-**`services/domain/faq/visibilidade.py`** — a regra do download, ao lado das de faq/001.
+**`services/domain/faq/leitura/visibilidade.py`** — a regra do download, ao lado das de faq/001.
 
 ```python
 def anexo_eh_baixavel(faqs_do_anexo: list[Faq], leitor: Leitor) -> bool:
@@ -265,7 +266,7 @@ def anexo_eh_baixavel(faqs_do_anexo: list[Faq], leitor: Leitor) -> bool:
     return any(eh_visivel(f, leitor) for f in faqs_do_anexo)
 ```
 
-**Rotas:** `faq:anexo_baixar` (aberta, decidida por `anexo_eh_baixavel`, `Content-Disposition:
+**Rotas** (`apps/faq/anexos/urls.py`): `faq:anexo_baixar` (aberta, decidida por `anexo_eh_baixavel`, `Content-Disposition:
 attachment`), `faq:admin_anexo_enviar` (devolve o item da lista), `faq:admin_anexo_buscar` (busca por
 título, em HTMX) e `faq:admin_anexo_item` (o item da lista de um anexo escolhido na busca, acrescentado
 com `hx-swap="beforeend"`). As três de administração ficam atrás de `superusuario_requerido`.

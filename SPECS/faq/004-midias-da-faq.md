@@ -1,7 +1,7 @@
 ---
 spec: faq/004
-versao: v3
-atualizado_em: 2026-11-18
+versao: v4
+atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
 markers_obrigatorios: [banco]
@@ -9,6 +9,7 @@ changelog:
   - v1: versão inicial
   - v2: vídeos saem do escopo, e a SPEC fica só com imagens
   - v3: imagem só de endereço interno, e o reenvio mantém a legenda do primeiro envio
+  - v4: caminhos seguem a estrutura de pacotes de faq/001
 ---
 
 # SPEC faq/004 — Mídias da resposta: imagens
@@ -82,10 +83,10 @@ class Resposta(BaseModel):
 
 ## 5 · Peças de referência a compor
 - `@services/utils/markdown` → `RenderizadorMarkdown` (faq/001): estendido no §6 para liberar `<img>`.
-- `@services/domain/faq/visibilidade.py` → `eh_visivel` (faq/001): base da regra de visibilidade da imagem.
-- `@services/domain/faq/autoria.py` → `pode_editar` (faq/002): reuso e posse de imagem na edição.
+- `@services/domain/faq/leitura/visibilidade.py` → `eh_visivel` (faq/001): base da regra de visibilidade da imagem.
+- `@services/domain/faq/edicao/autoria.py` → `pode_editar` (faq/002): reuso e posse de imagem na edição.
 - `@apps/faq/acesso.py` → `superusuario_requerido` (faq/002): portão da rota de envio.
-- `@apps/faq/anexos.py` → padrão de `bytea` deduplicado por SHA-256 (faq/003).
+- `@apps/faq/anexos/recebimento.py` → padrão de `bytea` deduplicado por SHA-256 (faq/003).
 - `Pillow` (já é dependência) → conferência de integridade e formato real das imagens.
 - Skills: `ontologia`, `erros-de-formulario`, `componentes-frontend`, `daisyui`, `htmx-skill`,
   `mock`, `escrever-testes`, `test-django-views`.
@@ -94,7 +95,7 @@ class Resposta(BaseModel):
 
 > O comentário didático destes blocos existe só aqui e **não é portado** (CLAUDE.md §7.2).
 
-**`services/domain/faq/midia.py`** — validação pura da imagem e extração de referências (o limite vem
+**`services/domain/faq/arquivos/midia.py`** — validação pura da imagem e extração de referências (o limite vem
 do app a partir de `FAQ_IMAGEM_TAMANHO_MAXIMO_BYTES`, padrão 5 MB).
 
 ```python
@@ -115,7 +116,7 @@ só deixa passar o `src` que aponta para imagem do próprio sistema. O padrão c
 continua fora, como em faq/001. O filtro `markdown` do template passa `PADRAO_SRC_IMAGEM`.
 
 ```python
-PADRAO_SRC_IMAGEM = re.compile(r"^/faq/midias/\d+/$")     # apps/faq: o endereço de `faq:midia_exibir`
+PADRAO_SRC_IMAGEM = re.compile(r"^/faq/midias/\d+/$")     # apps/faq/midias/urls.py: o endereço de `faq:midia_exibir`
 
 
 def _filtrar_atributo(self, tag: str, atributo: str, valor: str) -> str | None:
@@ -126,8 +127,8 @@ def _filtrar_atributo(self, tag: str, atributo: str, valor: str) -> str | None:
     return valor
 ```
 
-**`services/domain/faq/visibilidade.py`** e **`services/domain/faq/autoria.py`** — estendem os dois
-módulos de faq/001 e faq/002:
+**`services/domain/faq/leitura/visibilidade.py`** e **`services/domain/faq/edicao/autoria.py`** —
+estendem os dois módulos de faq/001 e faq/002:
 
 ```python
 def midia_eh_visivel(faqs_da_midia: list[Faq], leitor: Leitor) -> bool:
@@ -142,7 +143,7 @@ def pode_usar_midia(midia: MidiaFaq, faqs_ligadas: list[Faq], editor: Editor) ->
     )
 ```
 
-**`apps/faq/models.py`**
+**`apps/faq/models/arquivos.py`**
 
 ```python
 class MidiaFaq(models.Model):
@@ -156,17 +157,18 @@ class MidiaFaq(models.Model):
     usuarios_upload = models.ManyToManyField("user_admin.Perfil", blank=True, related_name="midias_faq")
     enviado_em = models.DateTimeField(auto_now_add=True)
 
-# `Faq` ganha: midias = models.ManyToManyField(MidiaFaq, blank=True, related_name="faqs")
+# `Faq` (apps/faq/models/conteudo.py) ganha:
+# midias = models.ManyToManyField("faq.MidiaFaq", blank=True, related_name="faqs")
 ```
 
-**`apps/faq/midia.py`** — `receber_midia` valida a imagem com `validar_imagem` e deduplica por
+**`apps/faq/midias/recebimento.py`** — `receber_midia` valida a imagem com `validar_imagem` e deduplica por
 `hash_conteudo`, adicionando `editor.perfil_id` em `usuarios_upload` quando o arquivo já existe. No
 reenvio, a legenda e a descrição digitadas no modal são descartadas, como o título do anexo reenviado
 em faq/003, e o partial devolve a legenda que ficou, que é a que o editor insere no `![...]`.
-`gravar_faq` (faq/001) e `regravar_faq` (faq/002) passam a validar `pode_usar_midia` e a sincronizar
+`gravar_faq` (`apps/faq/conteudo/cadastro.py`) e `regravar_faq` (`apps/faq/gestao/cadastro.py`) passam a validar `pode_usar_midia` e a sincronizar
 `registro.midias` com `resposta.midias_referenciadas`.
 
-**Rotas e interface (`apps/faq/views.py` + `static/src/js/editor_markdown.js`):**
+**Rotas e interface (`apps/faq/midias/urls.py` e `views.py` + `static/src/js/editor_markdown.js`):**
 
 | Rota | Acesso | Comportamento |
 |---|---|---|

@@ -1,0 +1,26 @@
+{# Um tema raiz com as FAQs diretas e os subtemas. `secao` é uma SecaoTema; `ancora` o id da seção. #}
+<section id="{{ ancora }}" class="secao-tema-faq">
+  <header class="secao-tema-faq-cabecalho">
+    <h2 class="painel-titulo">{{ secao.tema.nome }}</h2>
+    <span class="text-overline">{{ secao.total }} pergunta{{ secao.total|pluralize:"s" }}</span>
+  </header>
+
+  {% if secao.itens %}
+    <div class="placa-clara faq-lista">
+      {% for item in secao.itens %}
+        {% include "faq/partials/pagina/_item_faq.html" %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% for sub in secao.subtemas %}
+    <div class="secao-subtema-faq">
+      <h3 class="faq-subtema">{{ sub.subtema.nome }}</h3>
+      <div class="placa-clara faq-lista">
+        {% for item in sub.itens %}
+          {% include "faq/partials/pagina/_item_faq.html" %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</section>
