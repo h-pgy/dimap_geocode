@@ -1,6 +1,6 @@
 ---
 spec: faq/003
-versao: v8
+versao: v9
 atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
@@ -14,6 +14,7 @@ changelog:
   - v6: OCR página a página, com prazo e sem disputar CPU com o web
   - v7: o vínculo do anexo é gravado com o formulário da FAQ, como o das imagens
   - v8: caminhos seguem a estrutura de pacotes de faq/001
+  - v9: o portão de superusuário vem de apps/core
 ---
 
 # SPEC faq/003 — Anexos da FAQ com texto extraído
@@ -102,7 +103,7 @@ class Resposta(BaseModel):
 ## 5 · Peças de referência a compor
 - `pypdf` (já é dependência) → leitura da camada de texto do PDF.
 - `@apps/documentos/models.py` → `DocumentoEmitido.arquivo`: o padrão de PDF em `bytea` na linha.
-- `@apps/faq/acesso.py` → `superusuario_requerido` (faq/002): portão do upload.
+- `@apps/core/acesso.py` → `superusuario_requerido` (faq/002): portão do upload.
 - `@services/domain/faq/leitura/visibilidade.py` → `eh_visivel` (faq/001): base da regra de download.
 - Skills: `erros-de-formulario`, `componentes-frontend`, `daisyui`, `htmx-skill`, `mock`,
   `escrever-testes`, `test-django-views`.

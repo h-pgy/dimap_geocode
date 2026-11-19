@@ -1,10 +1,17 @@
 {
   "name": "dimap-geocode",
   "private": true,
-  "description": "Build do CSS (Tailwind 4 + daisyUI 5) — consumido pelo serviço `tailwind` do docker compose.",
+  "description": "Build do CSS (Tailwind 4 + daisyUI 5) e bibliotecas de front-end servidas pelo próprio Django (SPEC infraestrutura/006).",
+  "dependencies": {
+    "@fontsource/roboto": "5.3.0",
+    "@fontsource/roboto-mono": "5.3.0",
+    "@geoman-io/leaflet-geoman-free": "2.20.8",
+    "htmx.org": "2.0.11",
+    "leaflet": "1.9.4"
+  },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.1.0",
+    "@tailwindcss/cli": "4.3.3",
     "daisyui": "5.7.4",
-    "tailwindcss": "^4.1.0"
+    "tailwindcss": "4.3.3"
   }
 }

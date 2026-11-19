@@ -1,6 +1,6 @@
 ---
 spec: faq/007
-versao: v9
+versao: v10
 atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
@@ -15,6 +15,7 @@ changelog:
   - v7: o fallback textual acha a FAQ pelo ancestral da palavra-chave marcada
   - v8: as telas de origem pré-preenchem as rotas vinculadas de faq/006
   - v9: caminhos seguem a estrutura de pacotes de faq/001, e a linha da tabela de grupos de buscas vai para listagem_gestao, como a de FAQs
+  - v10: o portão de superusuário vem de apps/core
 ---
 
 # SPEC faq/007 — Busca em texto livre e sugestões a partir das buscas
@@ -152,7 +153,7 @@ class GrupoBuscas(BaseModel):
 - `@apps/faq/leitor.py` → `leitor_de` (faq/001): a request vira `Leitor`, com o RF de quem buscou.
 - `@services/utils/fuzzy_matcher` → `fuzzy_match`: ranqueamento no fallback textual, com o algoritmo
   novo `token_set`.
-- `@apps/faq/acesso.py` → `superusuario_requerido` (faq/002): portão do painel de buscas.
+- `@apps/core/acesso.py` → `superusuario_requerido` (faq/002): portão do painel de buscas.
 - `@services/domain/listagem_gestao` → `ListadorTabela`, `paginar` e `JANELA_PADRAO_DIAS`: filtro do
   cabeçalho, paginação depois do filtro e o período padrão.
 - `@templates/competencias/partials/` → `_busca_execucoes.html`, `_tabela_execucoes.html` e

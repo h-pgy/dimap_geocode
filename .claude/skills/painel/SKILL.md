@@ -1,7 +1,7 @@
 ---
 name: painel
-description: Como acrescentar um item ao painel de ações — item livre e card de ação, o SVG que o
-  slug determina, grupo e aba novos. Use SEMPRE que for expor uma tela nova no painel e SEMPRE ao
+description: Como acrescentar um item ao painel de ações — item livre (de todo autenticado ou só
+  do superusuário) e card de ação, o SVG que o slug determina, grupo e aba novos. Use SEMPRE que for expor uma tela nova no painel e SEMPRE ao
   declarar uma ação administrativa.
 ---
 
@@ -33,15 +33,31 @@ sem card derruba a subida (`painel.E004`). Pergunte, nesta ordem:
    arquivo** — nenhum item chega ao painel com ícone escolhido por conta própria.
 8. **Item livre:** `nome` do card, `tooltip` (que é a descrição impressa nele) e `slug` — este
    determina a pasta do SVG. Na ação os três vêm do contrato e não se pergunta de novo.
-9. O `url_name` abre um **modal** ou é uma **tela própria**? Não se deduz do nome da rota — confira
+9. **Item livre:** é para todo servidor autenticado ou **só para o superusuário**?
+10. O `url_name` abre um **modal** ou é uma **tela própria**? Não se deduz do nome da rota — confira
    se o template dela tem `{% extends "base.html" %}` (ver "Modal ou página própria" abaixo).
 
 ## Acrescentar item livre
 
-Item livre é view protegida só por `login_required` — nunca entra no registro de ações
+Item livre é view protegida só por **autenticação** — nunca entra no registro de ações
 (`apps/competencias/registro.py`): não é concedível nem delegável, e ninguém confere competência
-sobre ela. É por isso que ela é o único tipo que **nunca** some da cascata (`resolucao.py`,
-`_visivel`) e não precisa de contrato de ação nenhum.
+sobre ela, por isso não precisa de contrato de ação nenhum. Há dois níveis, e só dois:
+
+| Nível | Declaração | Barreira na rota | Na cascata (`resolucao.py`, `_visivel`) |
+|---|---|---|---|
+| todo servidor autenticado | `somente_superusuario=False` (default) | `@login_required` | nunca some |
+| só superusuário | `somente_superusuario=True` | `superusuario_requerido` (`apps/core/acesso.py`: `@login_required` + 403 sem a marca) | some para quem não é superusuário |
+
+A marca de superusuário chega à cascata por `MontagemPainel.eh_superusuario`, que `apps/painel/views.py`
+preenche com `perfil.is_superuser`. **O card escondido não protege nada**: a barreira é sempre a da
+rota, e item com `somente_superusuario=True` sobre view só com `@login_required` é furo.
+
+Superusuário **não é competência**: não substitui ação administrativa. Se a rotina é um processo da
+DIMAP (precisa de cargo × unidade, ou de registro em `ExecucaoAcao`), ela é ação, não item livre.
+
+> Introduzido pela SPEC faq/002 (primeiro uso: grupo "FAQ" da aba Administração do Sistema). Antes
+> de ela estar implementada, confira no código se `ItemLivre.somente_superusuario` e
+> `superusuario_requerido` já existem.
 
 ```python
 # apps/painel/abas_declaradas.py
@@ -52,11 +68,13 @@ ItemLivre(
     url_name="<app>:<view>",
     # Só quando a rota pede o pk do perfil da sessão (ex.: a página do próprio perfil).
     argumento_perfil=None,
+    # True só quando a tela é do superusuário; a rota então usa `superusuario_requerido`.
+    somente_superusuario=False,
 )
 ```
 
-1. A view por trás de `url_name` é protegida por `@login_required` — sem competência nenhuma a
-   conferir, é só isso.
+1. A view por trás de `url_name` é protegida por `@login_required` — ou por `superusuario_requerido`
+   quando o item declara `somente_superusuario=True`. Sem competência nenhuma a conferir, é só isso.
 2. O SVG mora em `static/src/acoes/<app>/<nome>/icones/<variante>.svg`, mesmo gabarito das ações
    (`GABARITO_CAMINHO_ICONE`, `apps/competencias/checks.py`) — só a variante declarada em
    `variante_icone` é cobrada (default `VarianteIcone.GRANDE`).
@@ -150,7 +168,8 @@ Aba(
 
 - **Grupo vazio não renderiza.** Declarar um grupo sem item nenhum é válido (ex.: "Cargos em
   Comissão", que nasce assim de propósito) — ele só não aparece até ganhar o primeiro `ItemAcao`
-  ou `ItemLivre`.
+  ou `ItemLivre`. O mesmo vale para o grupo cujos itens são todos `somente_superusuario`: para o
+  servidor comum ele não existe, e a aba segue de pé se tiver outro grupo visível.
 - **`basica` é flag de UMA aba só.** Mais de uma aba básica não quebra nada tecnicamente, mas
   confunde qual delas abre por padrão (`painel/partials/_abas.html` marca `checked` em toda aba com
   `basica=True`) — não declare uma segunda sem necessidade real.

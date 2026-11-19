@@ -608,7 +608,7 @@
                     <a href="#tela-lista" class="hover-3d card-acao-alvo">
                       <div class="glass-bg glass-edge glass-shadow card-acao">
                         <span class="icone-acao icone-acao-grande icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#g-lista-faqs"/></svg></span>
-                        <div><p class="card-acao-nome">Lista de FAQs</p><p class="card-acao-descricao">As FAQs que você pode editar, com filtro, exclusão e restauração.</p></div>
+                        <div><p class="card-acao-nome">Lista de FAQs</p><p class="card-acao-descricao">Todas as FAQs, com filtro, exclusão e restauração.</p></div>
                       </div>
                       <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
                     </a>
@@ -658,7 +658,7 @@
             <!-- fica na página: cabeçalho, só arranjo -->
             <div>
               <h1 class="text-2xl font-bold tracking-tight text-madeira-700">FAQs</h1>
-              <p class="text-sm text-base-content/70 mt-1">As que você escreveu e as do sistema. Clique num cabeçalho para filtrar; na seta, para ordenar.</p>
+              <p class="text-sm text-base-content/70 mt-1">Todas as FAQs, de qualquer administrador e do sistema. Clique num cabeçalho para filtrar; na seta, para ordenar.</p>
             </div>
 
             <!-- partial: faq/partials/gestao/_aviso_lista.html — alvo hx-swap-oob da restauração recusada -->
@@ -729,6 +729,19 @@
                           <button type="button" class="sort-etched etched" aria-label="Ordenar por autor">▲</button>
                         </div>
                       </th>
+                      <th class="w-36">
+                        <div class="th-onsen" data-coluna="editado_por">
+                          <label class="th-onsen-campo"><span class="text-overline">Editado por</span><input class="th-onsen-input" placeholder="filtrar…" autocomplete="off"></label>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar por quem editou">▲</button>
+                        </div>
+                      </th>
+                      <!-- só ordena: data não se filtra por texto -->
+                      <th class="w-28">
+                        <div class="th-onsen" data-coluna="editado_em">
+                          <span class="text-overline">Editado em</span>
+                          <button type="button" class="sort-etched etched" aria-label="Ordenar pela data da edição">▲</button>
+                        </div>
+                      </th>
                       <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
                       <th class="w-14"><div class="th-onsen th-onsen-gravado"></div></th>
                     </tr>
@@ -742,6 +755,8 @@
                       <td><span class="badge badge-soft badge-success badge-sm">Publicada</span></td>
                       <td class="text-base-content/80">Pública</td>
                       <td><span class="text-overline">Sistema</span></td>
+                      <td class="text-base-content/80">Ana Ramos</td>
+                      <td><span class="td-momento">12/11/2026<span class="td-momento-hora">09:41</span></span></td>
                       <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
                       <!-- FAQ do sistema: sem gesto de excluir -->
                       <td></td>
@@ -752,6 +767,8 @@
                       <td><span class="badge badge-soft badge-success badge-sm">Publicada</span></td>
                       <td class="text-base-content/80">Pública</td>
                       <td class="text-base-content/80">Ana Ramos</td>
+                      <td class="text-base-content/80">Bruno Lima</td>
+                      <td><span class="td-momento">18/11/2026<span class="td-momento-hora">16:05</span></span></td>
                       <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
                       <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Excluir" data-abrir="modal-excluir-faq"><svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lixeira"/></svg></button></td>
                     </tr>
@@ -761,6 +778,8 @@
                       <td><span class="badge badge-soft badge-success badge-sm">Publicada</span></td>
                       <td><span class="marca-interna"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-cadeado"/></svg>Interna</span></td>
                       <td class="text-base-content/80">Ana Ramos</td>
+                      <td class="text-base-content/80">Ana Ramos</td>
+                      <td><span class="td-momento">03/11/2026<span class="td-momento-hora">10:12</span></span></td>
                       <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
                       <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Excluir" data-abrir="modal-excluir-faq"><svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lixeira"/></svg></button></td>
                     </tr>
@@ -770,6 +789,9 @@
                       <td><span class="badge badge-ghost badge-sm">Rascunho</span></td>
                       <td class="text-base-content/80">Pública</td>
                       <td><span class="text-overline">Sistema</span></td>
+                      <td><span class="td-alvo-vazio text-sm">—</span></td>
+                      <!-- estado: nunca editada (FAQ da seed) -->
+                      <td><span class="td-momento td-alvo-vazio">—</span></td>
                       <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
                       <td></td>
                     </tr>
@@ -779,6 +801,8 @@
                       <td><span class="badge badge-soft badge-error badge-sm">Excluída</span></td>
                       <td class="text-base-content/80">Pública</td>
                       <td class="text-base-content/80">Ana Ramos</td>
+                      <td class="text-base-content/80">Bruno Lima</td>
+                      <td><span class="td-momento">14/11/2026<span class="td-momento-hora">08:57</span></span></td>
                       <!-- excluída: não se edita — só se restaura -->
                       <td></td>
                       <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Restaurar como rascunho" data-restaurar-recusa><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-restaurar"/></svg></button></td>
@@ -789,6 +813,8 @@
                       <td><span class="badge badge-soft badge-error badge-sm">Excluída</span></td>
                       <td><span class="marca-interna"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-cadeado"/></svg>Interna</span></td>
                       <td class="text-base-content/80">Ana Ramos</td>
+                      <td class="text-base-content/80">Ana Ramos</td>
+                      <td><span class="td-momento">02/11/2026<span class="td-momento-hora">15:20</span></span></td>
                       <td></td>
                       <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Restaurar como rascunho"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-restaurar"/></svg></button></td>
                     </tr>
@@ -798,6 +824,9 @@
                       <td><span class="badge badge-soft badge-success badge-sm">Publicada</span></td>
                       <td class="text-base-content/80">Pública</td>
                       <td><span class="text-overline">Sistema</span></td>
+                      <td><span class="td-alvo-vazio text-sm">—</span></td>
+                      <!-- estado: nunca editada (FAQ da seed) -->
+                      <td><span class="td-momento td-alvo-vazio">—</span></td>
                       <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
                       <td></td>
                     </tr>
@@ -806,7 +835,9 @@
                       <td class="text-base-content/80">Certidões › Lançamento</td>
                       <td><span class="badge badge-ghost badge-sm">Rascunho</span></td>
                       <td><span class="marca-interna"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-cadeado"/></svg>Interna</span></td>
+                      <td class="text-base-content/80">Bruno Lima</td>
                       <td class="text-base-content/80">Ana Ramos</td>
+                      <td><span class="td-momento">19/11/2026<span class="td-momento-hora">11:30</span></span></td>
                       <td class="text-right"><a href="#tela-editar" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Editar"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lapis"/></svg></a></td>
                       <td class="text-right"><button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle" title="Excluir" data-abrir="modal-excluir-faq"><svg class="w-4 h-4 icon-etched icon-etched-critico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#g-lixeira"/></svg></button></td>
                     </tr>
@@ -827,7 +858,7 @@
             <div class="table-onsen-wrap">
               <table class="table table-onsen">
                 <tbody>
-                  <tr><td colspan="7" class="table-onsen-vazio"><span class="etched text-3xl block mb-2">⌕</span>Nenhuma FAQ corresponde aos filtros.</td></tr>
+                  <tr><td colspan="9" class="table-onsen-vazio"><span class="etched text-3xl block mb-2">⌕</span>Nenhuma FAQ corresponde aos filtros.</td></tr>
                 </tbody>
               </table>
             </div>

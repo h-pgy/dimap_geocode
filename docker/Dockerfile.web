@@ -36,6 +36,15 @@ COPY apps ./apps
 COPY services/utils/erros_formulario ./services/utils/erros_formulario
 RUN tailwindcss -i static/src/input.css -o static/dist/output.css --minify
 
+# Recorta de node_modules só o que vai ao navegador. Caminho inexistente quebra o build aqui.
+FROM css-deps AS vendor
+RUN mkdir -p /opt/vendor \
+ && cp -r /opt/node/node_modules/leaflet/dist                          /opt/vendor/leaflet \
+ && cp -r /opt/node/node_modules/@geoman-io/leaflet-geoman-free/dist   /opt/vendor/leaflet-geoman \
+ && cp    /opt/node/node_modules/htmx.org/dist/htmx.min.js             /opt/vendor/htmx.min.js \
+ && cp -r /opt/node/node_modules/@fontsource/roboto                    /opt/vendor/roboto \
+ && cp -r /opt/node/node_modules/@fontsource/roboto-mono               /opt/vendor/roboto-mono
+
 # --- Aplicação ---
 
 # Debian (trixie) pina as versões de GEOS, GDAL e PROJ — dependências de sistema
@@ -76,6 +85,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY . .
 # O .dockerignore exclui static/dist, então nada do host atropela o CSS assado acima.
 COPY --from=css-build /app/static/dist/output.css static/dist/output.css
+# Fora de /app: em desenvolvimento o bind mount esconderia /app/static/dist.
+COPY --from=vendor /opt/vendor /opt/vendor
 # --- Fim da base comum. Daqui pra baixo é só do web. ---
 
 # Entrypoint: roda migrações e repassa o controle ao CMD/command (fica em /

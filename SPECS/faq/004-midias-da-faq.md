@@ -1,6 +1,6 @@
 ---
 spec: faq/004
-versao: v4
+versao: v5
 atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
@@ -10,6 +10,7 @@ changelog:
   - v2: vídeos saem do escopo, e a SPEC fica só com imagens
   - v3: imagem só de endereço interno, e o reenvio mantém a legenda do primeiro envio
   - v4: caminhos seguem a estrutura de pacotes de faq/001
+  - v5: imagem ligada a qualquer FAQ passa a ser de uso de todo administrador, como a FAQ em faq/002, e o portão de superusuário vem de apps/core
 ---
 
 # SPEC faq/004 — Mídias da resposta: imagens
@@ -30,9 +31,9 @@ que fluxos visuais do sistema sejam compreendidos sem depender apenas de texto.
       legenda inválida devolve erro em português.
 - [ ] Reenvio do mesmo arquivo (mesmo SHA-256) não duplica o binário no banco, inclui o administrador
       em `usuarios_upload` e mantém a legenda e a descrição do primeiro envio, que o editor mostra.
-- [ ] Imagem ligada só a FAQ interna ou em rascunho dá 404 para quem não pode vê-la; na edição, o
-      administrador vê prévia do que enviou e não consegue vincular imagem de rascunho de outro
-      administrador.
+- [ ] Imagem ligada só a FAQ interna ou em rascunho dá 404 para quem não pode vê-la. Na edição, o
+      administrador vê a prévia e vincula qualquer imagem já ligada a alguma FAQ; imagem que não está
+      em FAQ alguma, só quem a enviou.
 - [ ] Editar a resposta removendo uma imagem do markdown desvincula a imagem da FAQ automaticamente.
 
 ## 3 · Domínio
@@ -84,8 +85,7 @@ class Resposta(BaseModel):
 ## 5 · Peças de referência a compor
 - `@services/utils/markdown` → `RenderizadorMarkdown` (faq/001): estendido no §6 para liberar `<img>`.
 - `@services/domain/faq/leitura/visibilidade.py` → `eh_visivel` (faq/001): base da regra de visibilidade da imagem.
-- `@services/domain/faq/edicao/autoria.py` → `pode_editar` (faq/002): reuso e posse de imagem na edição.
-- `@apps/faq/acesso.py` → `superusuario_requerido` (faq/002): portão da rota de envio.
+- `@apps/core/acesso.py` → `superusuario_requerido` (faq/002): portão da rota de envio.
 - `@apps/faq/anexos/recebimento.py` → padrão de `bytea` deduplicado por SHA-256 (faq/003).
 - `Pillow` (já é dependência) → conferência de integridade e formato real das imagens.
 - Skills: `ontologia`, `erros-de-formulario`, `componentes-frontend`, `daisyui`, `htmx-skill`,
@@ -128,7 +128,9 @@ def _filtrar_atributo(self, tag: str, atributo: str, valor: str) -> str | None:
 ```
 
 **`services/domain/faq/leitura/visibilidade.py`** e **`services/domain/faq/edicao/autoria.py`** —
-estendem os dois módulos de faq/001 e faq/002:
+estendem os dois módulos de faq/001 e faq/002. Todo administrador edita toda FAQ (faq/002), então a
+imagem já ligada a uma FAQ, de qualquer situação, é de uso de todos; a que não está em FAQ alguma
+(enviada numa edição não salva) é só de quem a enviou.
 
 ```python
 def midia_eh_visivel(faqs_da_midia: list[Faq], leitor: Leitor) -> bool:
@@ -136,11 +138,8 @@ def midia_eh_visivel(faqs_da_midia: list[Faq], leitor: Leitor) -> bool:
 
 
 def pode_usar_midia(midia: MidiaFaq, faqs_ligadas: list[Faq], editor: Editor) -> bool:
-    if editor.perfil_id in midia.usuarios_upload_ids:
-        return True
-    return any(f.situacao is Situacao.PUBLICADA and f.visibilidade is Visibilidade.PUBLICA for f in faqs_ligadas) or any(
-        pode_editar(f.autor_id, editor) for f in faqs_ligadas
-    )
+    # `faqs_ligadas` inclui as excluídas: a restauração devolve a FAQ com a imagem.
+    return editor.perfil_id in midia.usuarios_upload_ids or bool(faqs_ligadas)
 ```
 
 **`apps/faq/models/arquivos.py`**
@@ -188,8 +187,8 @@ banco, limitada por `FAQ_IMAGEM_TAMANHO_MAXIMO_BYTES`.
 banco.** Não há rotina de coleta de lixo ainda. Ela segue inacessível ao público (`midia_eh_visivel`
 exige FAQ visível vinculada) até existir limpeza.
 
-**Quem reenvia o mesmo arquivo passa a poder usar a imagem, mesmo que ela só esteja em rascunho de
-outro administrador.** Ele já tem os bytes, então o que se revela é só a legenda do primeiro envio. Não
+**Quem reenvia o mesmo arquivo passa a poder usar a imagem, mesmo que ela ainda não esteja em FAQ
+alguma.** Ele já tem os bytes, então o que se revela é só a legenda do primeiro envio. Não
 há rota que altere a imagem depois de enviada, e por isso estar em `usuarios_upload` dá direito de uso,
 não de edição. Quem esperava outra legenda no reenvio não consegue trocá-la; renomear fica sem dono.
 
@@ -207,9 +206,9 @@ HTML em vez de JSON preserva o HATEOAS do CLAUDE.md §3.1.
   código markdown não entram em `midias_referenciadas`.
 - `test_midia_respeita_visibilidade` — imagem ligada só a interna ou rascunho dá 404 para anônimo;
   ligada a FAQ pública publicada é entregue com o `content_type` gravado. *(marker `banco`)*
-- `test_upload_drag_and_drop_exige_legenda_deduplica_e_isola_rascunho` — envio sem `legenda` devolve
+- `test_upload_drag_and_drop_exige_legenda_deduplica_e_isola_orfa` — envio sem `legenda` devolve
   erro em português; reenvio do mesmo arquivo com outra legenda inclui o segundo admin em
-  `usuarios_upload` e devolve a legenda do primeiro envio; imagem de rascunho de outro admin, que o
-  segundo não enviou, é recusada na gravação. *(marker `banco`)*
+  `usuarios_upload` e devolve a legenda do primeiro envio; imagem do rascunho de outro admin é aceita
+  na gravação, e imagem que não está em FAQ alguma, enviada por outro, é recusada. *(marker `banco`)*
 - `test_editar_resposta_atualiza_vinculos_de_imagens` — remover imagem do markdown desvincula
   `Faq.midias`. *(marker `banco`)*

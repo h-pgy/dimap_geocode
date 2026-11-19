@@ -6,9 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DIMAP GeoCoder — Design System "Onsen de Inverno"</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'vendor/roboto/300.css' %}" />
+  <link rel="stylesheet" href="{% static 'vendor/roboto/400.css' %}" />
+  <link rel="stylesheet" href="{% static 'vendor/roboto/500.css' %}" />
+  <link rel="stylesheet" href="{% static 'vendor/roboto/700.css' %}" />
+  <link rel="stylesheet" href="{% static 'vendor/roboto/900.css' %}" />
+  <link rel="stylesheet" href="{% static 'vendor/roboto-mono/400.css' %}" />
+  <link rel="stylesheet" href="{% static 'vendor/roboto-mono/500.css' %}" />
+  <link rel="stylesheet" href="{% static 'vendor/roboto-mono/700.css' %}" />
 
   {# O MESMO output.css das demais páginas: o styleguide não consegue exibir peça que a #}
   {# aplicação não tenha (SPEC infraestrutura/004). #}
@@ -1955,7 +1960,7 @@
           </div>
           <div class="card-well p-5 flex items-center gap-5">
             <div class="avatar-glass w-28 h-28 shrink-0" style="--cor-unidade: #bc3a67">
-              <img src="https://picsum.photos/seed/dimap/200" alt="Foto de Marina Salles" class="w-full h-full object-cover" />
+              <img src="{% static 'img/exemplo/foto_de_perfil.svg' %}" alt="Foto de Marina Salles" class="w-full h-full object-cover" />
             </div>
             <div class="min-w-0">
               <h3 class="text-2xl font-bold tracking-tight text-madeira-700 truncate">Marina Salles</h3>

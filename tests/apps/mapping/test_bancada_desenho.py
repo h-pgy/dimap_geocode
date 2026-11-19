@@ -150,8 +150,10 @@ def test_toolbar_nativa_do_geoman_nunca_e_ligada() -> None:
 
 def test_geoman_carrega_depois_do_leaflet() -> None:
     conteudo = TEMPLATE_BASE.read_text(encoding="utf-8")
-    indice_leaflet = conteudo.index('src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"')
-    indice_geoman = conteudo.index('src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20/dist/leaflet-geoman.min.js"')
+    indice_leaflet = conteudo.index("{% static 'vendor/leaflet/leaflet.js' %}")
+    indice_geoman = conteudo.index(
+        "{% static 'vendor/leaflet-geoman/leaflet-geoman.min.js' %}"
+    )
     assert indice_geoman > indice_leaflet
 
 

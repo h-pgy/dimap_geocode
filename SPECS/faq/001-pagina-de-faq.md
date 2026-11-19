@@ -1,6 +1,6 @@
 ---
 spec: faq/001
-versao: v13
+versao: v14
 atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
@@ -19,6 +19,7 @@ changelog:
   - v11: palavra-chave vira entidade própria, em árvore de até três níveis e com relacionadas, ligada à FAQ por muitos-para-muitos
   - v12: o link de referência para o próprio sistema deixa de se chamar interno e se distingue da rota vinculada de faq/006
   - v13: estrutura de pacotes do épico, criada já nesta SPEC, com a persistência num lugar só e os modelos de entrada e saída por submódulo de domínio
+  - v14: a FAQ do sistema vira atributo calculado da FAQ, e o portão de superusuário sai da árvore do épico para apps/core
 ---
 
 # SPEC faq/001 — Página de FAQ
@@ -168,6 +169,11 @@ class Faq(BaseModel):
     autor_id: int | None = None                   # None = FAQ do sistema, sem autor (seed de faq/008)
     relacionadas: list[int] = []                  # ids de outras FAQs
 
+    @computed_field
+    @property
+    def eh_do_sistema(self) -> bool:
+        return self.autor_id is None
+
     @model_validator(mode="after")
     def _perguntas_distintas(self) -> Self:
         chaves = [self.pergunta.chave, *(v.chave for v in self.variacoes)]
@@ -244,7 +250,6 @@ apps/faq/
 ├── apps.py                    ●
 ├── urls.py                    ●  concatena os urlpatterns das pastas
 ├── leitor.py                  ●  leitor_de                                          001
-├── acesso.py                     superusuario_requerido                             002
 ├── models/                    ●
 │   ├── conteudo.py            ●  Faq, Pergunta, LinkReferencia                      001 · 002 · 003 · 004 · 008
 │   ├── taxonomia.py           ●  Tema, PalavraChave                                 001
@@ -313,7 +318,7 @@ services/domain/faq/
 │   └── indice.py              ●  MontarIndice                                       001
 ├── edicao/
 │   ├── models/edicao.py          Editor, Edicao                                     002
-│   └── autoria.py                pode_editar, pode_excluir, pode_usar_midia         002 · 004
+│   └── autoria.py                pode_excluir, pode_usar_midia                     002 · 004
 ├── arquivos/
 │   ├── models/
 │   │   ├── anexo.py              Anexo                                              003

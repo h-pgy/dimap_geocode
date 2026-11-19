@@ -116,6 +116,9 @@ class _Settings(BaseSettings):
         alias="DJANGO_CSRF_TRUSTED_ORIGINS",
     )
 
+    # Bibliotecas de front-end recortadas do node_modules no build da imagem (SPEC infraestrutura/006).
+    front_vendor_dir: Path = Field(default=Path("/opt/vendor"), alias="FRONT_VENDOR_DIR")
+
     # Domínios em que o sistema é servido (SPEC faq/001). Não sai do ALLOWED_HOSTS, cujo default é `*`.
     dominios_do_sistema: list[str] = Field(
         default_factory=lambda: ["localhost", "127.0.0.1"],
@@ -664,7 +667,13 @@ USE_TZ = True
 # Static files — saída do build do Tailwind/DaisyUI (CLAUDE.md, "Estrutura do Projeto").
 
 STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static" / "dist", BASE_DIR / "static" / "src"]
+FRONT_VENDOR_DIR = _env.front_vendor_dir
+
+STATICFILES_DIRS = [
+    BASE_DIR / "static" / "dist",
+    BASE_DIR / "static" / "src",
+    ("vendor", FRONT_VENDOR_DIR),
+]
 
 # Mídia enviada por upload (hoje só a foto de perfil, SPEC user_admin/006). Servir o
 # arquivo por rota é front-end e fica fora desta SPEC.

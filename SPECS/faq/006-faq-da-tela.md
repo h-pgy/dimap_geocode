@@ -1,6 +1,6 @@
 ---
 spec: faq/006
-versao: v6
+versao: v7
 atualizado_em: 2026-11-19
 testes_tdd: false
 implementado: false
@@ -12,6 +12,7 @@ changelog:
   - v4: o Faq vigente acompanha a palavra-chave em árvore de faq/001
   - v5: o vínculo da FAQ com a tela passa a se chamar rota vinculada, muitos-para-muitos e distinto do link de referência
   - v6: caminhos seguem a estrutura de pacotes de faq/001
+  - v7: o Faq vigente acompanha o atributo calculado eh_do_sistema de faq/001
 ---
 
 # SPEC faq/006 — FAQ da tela: rotas vinculadas e widget flutuante
@@ -68,6 +69,11 @@ class Faq(BaseModel):
     autor_id: int | None = None
     relacionadas: list[int] = []
     rotas_vinculadas: list[str] = []      # NOVO: `nome_rota` das telas em que o widget oferece a FAQ
+
+    @computed_field
+    @property
+    def eh_do_sistema(self) -> bool:
+        return self.autor_id is None
 ```
 
 **Mock:** [006-mock-widget-faq-da-tela.html](006-mock-widget-faq-da-tela.html) — leia a skill `mock`.
