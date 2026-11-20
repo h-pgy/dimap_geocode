@@ -1,6 +1,7 @@
 from .erros import PerguntaJaRespondida, PerguntaOcupada
 from .links import destino_gravado, resolver_destino
 from .models import (
+    Anexo,
     Faq,
     LinkDoSistema,
     LinkExterno,
@@ -12,6 +13,7 @@ from .models import (
 )
 
 __all__ = [
+    "Anexo",
     "Faq",
     "LinkDoSistema",
     "LinkExterno",

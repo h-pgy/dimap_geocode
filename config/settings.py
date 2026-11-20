@@ -262,6 +262,15 @@ class _Settings(BaseSettings):
     # banco não conhece esta regra — só a rota de cadastro por tela.
     enforce_prefeitura_email: bool = Field(default=True, alias="ENFORCE_PREFEITURA_EMAIL")
 
+    # Anexos da FAQ (SPEC faq/003): limites do arquivo e do OCR.
+    faq_anexo_tamanho_maximo_bytes: int = Field(
+        default=20_000_000, alias="FAQ_ANEXO_TAMANHO_MAXIMO_BYTES"
+    )
+    faq_anexo_paginas_maximas_ocr: int = Field(default=40, alias="FAQ_ANEXO_PAGINAS_MAXIMAS_OCR")
+    faq_anexo_prazo_ocr_s: float = Field(default=120.0, alias="FAQ_ANEXO_PRAZO_OCR_S")
+    faq_anexo_idioma_ocr: str = Field(default="por", alias="FAQ_ANEXO_IDIOMA_OCR")
+    faq_anexo_dpi_ocr: int = Field(default=200, alias="FAQ_ANEXO_DPI_OCR")
+
     admin_rf: str = Field(default="0000000", alias="ADMIN_RF")
     admin_email: str = Field(default="hpougy@sf.prefeitura.sp.gov.br", alias="ADMIN_EMAIL")
 
@@ -479,6 +488,13 @@ EMAIL_SMTP_RETRY_WAIT_MAX_SECONDS = _env.email_smtp_retry_wait_max_seconds
 
 # Cadastro de servidor (apps.user_admin.cadastro) — desligue só em ambiente de teste.
 ENFORCE_PREFEITURA_EMAIL = _env.enforce_prefeitura_email
+
+# Anexos da FAQ (apps.faq.anexos.recebimento → services.utils.extracao_texto).
+FAQ_ANEXO_TAMANHO_MAXIMO_BYTES = _env.faq_anexo_tamanho_maximo_bytes
+FAQ_ANEXO_PAGINAS_MAXIMAS_OCR = _env.faq_anexo_paginas_maximas_ocr
+FAQ_ANEXO_PRAZO_OCR_S = _env.faq_anexo_prazo_ocr_s
+FAQ_ANEXO_IDIOMA_OCR = _env.faq_anexo_idioma_ocr
+FAQ_ANEXO_DPI_OCR = _env.faq_anexo_dpi_ocr
 
 # Admin inicial do sistema (apps.user_admin.seeds.admin); e-mail vazio = seed não cria.
 ADMIN_RF = _env.admin_rf

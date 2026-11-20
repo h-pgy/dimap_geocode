@@ -1,0 +1,30 @@
+{# O texto extraído de um anexo da lista, no #poco-modal (fora do <form>). Só leitura. #}
+<input type="checkbox" id="modal-texto-anexo" class="modal-toggle" checked />
+<div class="modal modal-glass" role="dialog">
+  <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-3xl p-6 sm:p-8 flex flex-col gap-5">
+    <div class="flex items-start gap-3">
+      <span class="icon-bubble w-11 h-11 shrink-0 bg-agua-400/15 border-agua-600/30 text-agua-700">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-texto"/></svg>
+      </span>
+      <div class="min-w-0">
+        <h2 class="text-xl font-bold tracking-tight text-madeira-700 truncate" title="{{ anexo.titulo }}">{{ anexo.titulo }}</h2>
+        <p class="flex flex-wrap items-center gap-2 text-sm text-base-content/70 mt-1">
+          <span class="badge badge-sm badge-tipo-{{ anexo.tipo }}">{{ anexo.tipo }}</span>
+          {% if anexo.origem_texto == "ocr" %}
+            <span class="badge badge-sm badge-soft badge-info">Lido por OCR</span>
+          {% else %}
+            <span class="badge badge-sm badge-soft badge-success">Camada de texto</span>
+          {% endif %}
+          <span>{{ caracteres }} caracteres</span>
+        </p>
+      </div>
+    </div>
+    <div class="card-well px-5 py-4 max-h-[55vh] overflow-y-auto">
+      <p class="text-[14px] leading-relaxed text-base-content/90 whitespace-pre-wrap">{{ anexo.texto }}</p>
+    </div>
+    <div class="modal-action mt-0">
+      <label for="modal-texto-anexo" class="btn btn-glass btn-sm">Fechar</label>
+    </div>
+  </div>
+  <label class="modal-backdrop" for="modal-texto-anexo">Fechar</label>
+</div>

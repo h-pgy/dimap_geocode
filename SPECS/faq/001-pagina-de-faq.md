@@ -3,7 +3,7 @@ spec: faq/001
 versao: v14
 atualizado_em: 2026-11-19
 testes_tdd: false
-implementado: false
+implementado: true
 markers_obrigatorios: [banco]
 changelog:
   - v1: versão inicial

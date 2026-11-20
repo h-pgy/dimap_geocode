@@ -661,6 +661,12 @@ html[data-theme="dimap"] {
   .badge-linha    { @apply border border-accent/40 bg-accent/10 text-accent font-medium; }
   .badge-poligono { @apply border border-sakura-500/50 bg-sakura-400/15 text-sakura-700 font-medium; }
 
+  /* Badge do tipo de documento (SPEC faq/003): a mesma receita dos badges de geometria, uma escala
+     por formato. */
+  .badge-tipo-pdf  { @apply border border-sakura-500/50 bg-sakura-400/15 text-sakura-700 font-mono font-medium uppercase; }
+  .badge-tipo-docx { @apply border border-agua-600/40 bg-agua-500/15 text-agua-700 font-mono font-medium uppercase; }
+  .badge-tipo-odt  { @apply border border-accent/40 bg-accent/10 text-accent font-mono font-medium uppercase; }
+
   /* Toggle de vidro (SPEC user_admin/015): o trilho é o poço do .card-well em pílula e o botão é a
      gravação da SPEC 013 — um disco .etched em repouso que enche de água ao ir para o lado.
      Ligado não é outra cor de trilho: é o mesmo par repouso/entintado do resto do sistema, e por
@@ -1699,6 +1705,11 @@ html[data-theme="dimap"] {
   .chave-onsen-tripla:has(.chave-onsen-opcao:nth-of-type(3) input:checked) .chave-onsen-polegar {
     @apply translate-x-[200%];
   }
+
+  /* Modificador da .chave-onsen (SPEC faq/003): a mesma chave em registro menor, para quando ela só
+     acompanha o controle principal. */
+  .chave-onsen-pequena .chave-onsen-opcao { @apply px-3 py-1; }
+  .chave-onsen-pequena .chave-onsen-rotulo { @apply text-[10px] tracking-[0.1em]; }
 
   /* Chip de concessão (SPEC autorizacao/008): um cargo que exerce a atribuição, com o alvo de       */
   /* remover explícito e separado do rótulo — não se revoga por clique ambíguo.                      */
@@ -3585,6 +3596,31 @@ html[data-theme="dimap"] {
   }
   .chip-inerte-marca {
     @apply text-[10px] font-medium uppercase tracking-[0.14em] text-error/75;
+  }
+
+  /* ==================== MOLÉCULA · POÇO DE UPLOAD COMPACTO (SPEC faq/003) ==================== */
+  /* .upload-well + .upload-well-compacto: o mesmo poço tracejado, numa linha só — para o campo de
+     arquivo que é uma parte do formulário, e não o assunto da tela. */
+  .upload-well-compacto {
+    @apply flex-row flex-wrap items-center justify-start gap-x-3 gap-y-1.5 px-4 py-3 text-left;
+  }
+  .upload-well-compacto > svg { @apply w-5 h-5 shrink-0; }
+  .upload-well-compacto .file-input { @apply flex-1 min-w-48 max-w-xs; }
+  .upload-well-compacto .form-field-hint { @apply flex-1 min-w-48; }
+
+  /* ==================== MOLÉCULA · SELETOR DE ORIGEM (SPEC faq/003) ==================== */
+  /* .upload-well + .upload-well-compacto + .seletor-origem: um poço só. Em cima, o painel que a
+     chave escolhe — posição 1 o .seletor-origem-arquivo (enviar novo), posição 2 o
+     .seletor-origem-busca (escolher um já enviado); embaixo, centrada, a .chave-onsen-pequena.
+     O painel escondido guarda o que já foi escolhido nele. */
+  .seletor-origem { @apply flex-col flex-nowrap items-stretch gap-3; }
+  .seletor-origem > .chave-onsen { @apply self-center; }
+  .seletor-origem-arquivo { @apply flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 cursor-pointer; }
+  .seletor-origem-arquivo > svg { @apply w-5 h-5 shrink-0; }
+  .seletor-origem-busca { @apply flex flex-col gap-2 w-full; }
+  .seletor-origem:has(.chave-onsen-opcao:nth-of-type(2) input:checked) .seletor-origem-arquivo,
+  .seletor-origem:not(:has(.chave-onsen-opcao:nth-of-type(2) input:checked)) .seletor-origem-busca {
+    @apply hidden;
   }
 
   /* ==================== MOLÉCULA · EDITOR DE MARKDOWN (pele do Crepe) ==================== */

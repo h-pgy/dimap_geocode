@@ -46,10 +46,12 @@ class Pergunta(BaseModel):
 
 
 class Resposta(BaseModel):
-    """Conteúdo que responde às perguntas: texto markdown e links de referência."""
+    """Conteúdo que responde às perguntas: texto markdown, links de referência e anexos."""
 
     markdown: str = Field(min_length=1)
     links: list[LinkReferencia] = []
+    # Ids de Anexo; o vínculo não tem atributos.
+    anexos: list[int] = []
 
     @field_validator("markdown", mode="before")
     @classmethod

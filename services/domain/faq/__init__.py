@@ -1,4 +1,5 @@
 from .conteudo import (
+    Anexo,
     Faq,
     LinkDoSistema,
     LinkExterno,
@@ -21,12 +22,14 @@ from .leitura import (
     MontarIndice,
     SecaoSubtema,
     SecaoTema,
+    anexo_eh_baixavel,
     eh_visivel,
     visibilidades_para,
 )
 from .taxonomia import PROFUNDIDADE_PALAVRA_CHAVE, PalavraChave, Tema
 
 __all__ = [
+    "Anexo",
     "PROFUNDIDADE_PALAVRA_CHAVE",
     "Faq",
     "IndiceFaq",
@@ -50,6 +53,7 @@ __all__ = [
     "Edicao",
     "Editor",
     "destino_gravado",
+    "anexo_eh_baixavel",
     "eh_visivel",
     "pode_excluir",
     "resolver_destino",

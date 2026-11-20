@@ -1,5 +1,8 @@
 from collections.abc import Iterable
 
+from django.db.models import Prefetch
+
+from apps.faq.models import Anexo as AnexoModel
 from apps.faq.models import Faq as FaqModel
 from apps.faq.models import PalavraChave as PalavraChaveModel
 from apps.faq.models import Tema as TemaModel
@@ -27,6 +30,8 @@ def carregar_faqs(visibilidades: Iterable[Visibilidade]) -> list[Faq]:
             "perguntas",
             "links",
             "relacionadas",
+            # Só o id: o arquivo e o texto de cada anexo não entram na leitura da FAQ.
+            Prefetch("anexos", queryset=AnexoModel.objects.only("pk")),
             "palavras_chave__pai__pai",
         )
         .order_by("id")
@@ -51,6 +56,7 @@ def faq_do_registro(registro: FaqModel) -> Faq | None:
                 LinkReferencia(titulo=link.titulo, destino=destino_gravado(link.url))
                 for link in sorted(registro.links.all(), key=lambda link: link.ordem)
             ],
+            anexos=[anexo.pk for anexo in registro.anexos.all()],
         ),
         tema=_tema(registro.tema),
         palavras_chave=[_palavra_chave(p) for p in registro.palavras_chave.all()],

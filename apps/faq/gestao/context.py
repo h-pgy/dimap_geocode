@@ -2,6 +2,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from apps.core.tabela import colunas_da_tabela, marca_descendente
+from apps.faq.anexos.consulta import anexos_da_lista
+from apps.faq.anexos.recebimento import FAQ_ANEXO_TAMANHO_MAXIMO_BYTES
 from apps.faq.conteudo import faq_do_registro
 from apps.faq.models import Faq as FaqModel
 from apps.faq.models import Tema as TemaModel
@@ -21,7 +23,7 @@ from services.domain.listagem_gestao import (
 from services.utils.erros_formulario import RecusaDeFormulario
 
 from .consulta import SITUACOES_ATIVAS, SITUACOES_COM_EXCLUIDAS, faqs_editaveis
-from .formularios import ValoresFaq
+from .formularios import CONTROLE_NOVOS_ANEXOS, ValoresFaq
 
 ROTULOS_COLUNAS: Mapping[ColunaFaq, str] = {
     ColunaFaq.PERGUNTA: "Pergunta",
@@ -91,6 +93,9 @@ def contexto_formulario(
             else []
         ),
         "opcoes_relacionadas": opcoes_de_relacionada(registro),
+        "anexos_ligados": anexos_da_lista(valores.anexos_ids),
+        "recusa_novos_anexos": _recusa_do_controle(recusa, CONTROLE_NOVOS_ANEXOS),
+        "limite_mb": FAQ_ANEXO_TAMANHO_MAXIMO_BYTES // 1_000_000,
     }
 
 
@@ -160,3 +165,10 @@ def _linha(registro: FaqModel) -> LinhaFaq:
         eh_do_sistema=registro.autor_id is None,
         excluida=registro.situacao == Situacao.EXCLUIDA,
     )
+
+
+def _recusa_do_controle(recusa: RecusaDeFormulario | None, controle: str) -> list[str]:
+    # O campo de arquivo é preservado entre os swaps (hx-preserve): a mensagem mora ao lado dele.
+    if recusa is None:
+        return []
+    return [campo.mensagem for campo in recusa.campos if campo.controle == controle]

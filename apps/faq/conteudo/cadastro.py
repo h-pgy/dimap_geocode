@@ -82,6 +82,7 @@ def _criar(faq: Faq) -> int:
     )
     registro.palavras_chave.set(palavras_chave_persistidas(faq.palavras_chave))
     registro.relacionadas.set(faq.relacionadas)
+    registro.anexos.set(faq.resposta.anexos)
     return registro.pk
 
 

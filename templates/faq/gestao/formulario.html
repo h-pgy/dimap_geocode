@@ -34,11 +34,12 @@
     </div>
   </div>
 
-  {# Poço dos modais de tema e palavra-chave: fora do <form>, que não admite formulário aninhado. #}
+  {# Poço dos modais de tema, palavra-chave e texto do anexo: fora do <form>, que não admite formulário aninhado. #}
   <div id="poco-modal" class="poco-modal"></div>
 {% endblock %}
 
 {% block scripts %}
   <script type="module" src="{% static 'js/ui/select_onsen.js' %}"></script>
   <script type="module" src="{% static 'js/editor_markdown.js' %}"></script>
+  <script type="module" src="{% static 'js/ui/scroll_etched.js' %}"></script>
 {% endblock %}

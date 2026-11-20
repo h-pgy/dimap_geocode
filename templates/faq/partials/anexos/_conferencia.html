@@ -1,0 +1,34 @@
+{# Um veredito por arquivo escolhido; nada foi gravado. Cada escolha substitui a lista inteira. #}
+{% if conferencias %}
+  <p class="text-overline">Arquivos escolhidos · entram ao salvar</p>
+  <div class="card-well pb-2 table-onsen-poco flex flex-col">
+    <div class="table-onsen-wrap max-h-64">
+      <table class="table table-onsen table-onsen-compacta">
+        <tbody>
+          {% for conferencia in conferencias %}
+            <tr>
+              {% if not conferencia.eh_aceito %}
+                <td class="font-medium text-rocha-950">{{ conferencia.nome_arquivo }}<span class="block text-[12px] font-normal text-error whitespace-normal">{{ conferencia.recusa }}</span></td>
+              {% elif conferencia.eh_ocr %}
+                <td class="font-medium text-rocha-950">{{ conferencia.nome_arquivo }}<span class="block text-[12px] font-normal text-base-content/65 whitespace-normal">PDF escaneado: o texto será lido por OCR ao salvar, o que pode levar alguns minutos.</span></td>
+              {% else %}
+                <td class="font-medium text-rocha-950">{{ conferencia.nome_arquivo }}</td>
+              {% endif %}
+              <td class="w-20">{% if conferencia.tipo %}<span class="badge badge-sm badge-tipo-{{ conferencia.tipo }}">{{ conferencia.tipo }}</span>{% endif %}</td>
+              <td class="w-24 text-base-content/80 whitespace-nowrap tabular-nums">{{ conferencia.tamanho_bytes|filesizeformat }}</td>
+              <td class="w-36 text-right">
+                {% if not conferencia.eh_aceito %}
+                  <span class="badge badge-soft badge-error badge-sm whitespace-nowrap">Recusado</span>
+                {% elif conferencia.eh_ocr %}
+                  <span class="badge badge-soft badge-info badge-sm whitespace-nowrap">OCR ao salvar</span>
+                {% else %}
+                  <span class="badge badge-soft badge-success badge-sm whitespace-nowrap">Entra ao salvar</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}

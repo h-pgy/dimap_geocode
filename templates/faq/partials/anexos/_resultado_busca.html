@@ -1,0 +1,20 @@
+{% if termo %}
+  {% if anexos %}
+    <div class="flex flex-col gap-1.5">
+      {% for anexo in anexos %}
+        <button type="button"
+                class="item-menu"
+                hx-get="{% url 'faq:admin_bloco_anexos' %}"
+                hx-include="#lista-anexos"
+                hx-vals='{"adicionar": "{{ anexo.pk }}"}'
+                hx-target="#lista-anexos"
+                hx-swap="outerHTML">
+          <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg></span>
+          <span class="item-menu-rotulo">{{ anexo.titulo }}<span class="item-menu-apoio"><span class="uppercase">{{ anexo.tipo }}</span> · {{ anexo.tamanho_bytes|filesizeformat }}</span></span>
+        </button>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-[13px] italic text-base-content/55">Nenhum anexo com esse título.</p>
+  {% endif %}
+{% endif %}

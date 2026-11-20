@@ -7,7 +7,7 @@ from .models import (
     SecaoSubtema,
     SecaoTema,
 )
-from .visibilidade import eh_visivel, visibilidades_para
+from .visibilidade import anexo_eh_baixavel, eh_visivel, visibilidades_para
 
 __all__ = [
     "IndiceFaq",
@@ -17,6 +17,7 @@ __all__ = [
     "MontarIndice",
     "SecaoSubtema",
     "SecaoTema",
+    "anexo_eh_baixavel",
     "eh_visivel",
     "visibilidades_para",
 ]

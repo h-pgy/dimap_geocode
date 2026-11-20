@@ -23,6 +23,7 @@ from .context import (
     pode_excluir_registro,
 )
 from .formularios import (
+    CONTROLE_NOVOS_ANEXOS,
     PREFIXO_VARIACAO,
     LinkNoFormulario,
     ValoresFaq,
@@ -77,7 +78,9 @@ def nova(request: HttpRequest) -> HttpResponse:
             request, TEMPLATE_PAGINA_FORMULARIO, contexto_formulario(ValoresFaq())
         )
     valores = valores_do_post(request.POST)
-    desfecho = salvar_faq_nova(valores, _editor(request))
+    desfecho = salvar_faq_nova(
+        valores, _editor(request), request.FILES.getlist(CONTROLE_NOVOS_ANEXOS)
+    )
     if not isinstance(desfecho, int):
         return render(
             request,
@@ -99,7 +102,12 @@ def editar(request: HttpRequest, faq_id: int) -> HttpResponse:
             contexto_formulario(valores_do_registro(registro), registro),
         )
     valores = valores_do_post(request.POST)
-    desfecho = salvar_faq_existente(valores, registro, _editor(request))
+    desfecho = salvar_faq_existente(
+        valores,
+        registro,
+        _editor(request),
+        request.FILES.getlist(CONTROLE_NOVOS_ANEXOS),
+    )
     if not isinstance(desfecho, int):
         return render(
             request,

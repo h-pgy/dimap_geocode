@@ -3,10 +3,19 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from django.conf import settings
+from django.core.files.uploadedfile import UploadedFile
+from django.db import transaction
 from django.http import QueryDict
 from pydantic import BaseModel, ValidationError
 
+from apps.faq.anexos.recebimento import (
+    AnexosPreparados,
+    EnvioAnexo,
+    gravar_anexos,
+    preparar_anexos,
+)
 from apps.faq.conteudo import gravar_faq
+from apps.faq.models import Anexo as AnexoModel
 from apps.faq.models import Faq as FaqModel
 from apps.faq.models import PalavraChave as PalavraChaveModel
 from apps.faq.models import Tema as TemaModel
@@ -32,6 +41,7 @@ from services.utils.erros_formulario import (
     RegraDeErro,
     TradutorDeRecusa,
 )
+from services.utils.extracao_texto import ExtracaoImpossivel
 
 from .cadastro import regravar_faq
 from .consulta import SITUACOES_ATIVAS
@@ -45,6 +55,8 @@ CONTROLE_SITUACAO = "situacao"
 CONTROLE_VISIBILIDADE = "visibilidade"
 CONTROLE_PALAVRA_CHAVE = "palavra_chave"
 CONTROLE_RELACIONADA = "relacionada"
+CONTROLE_ANEXO = "anexo"
+CONTROLE_NOVOS_ANEXOS = "novos_anexos"
 # As linhas repetíveis levam um sufixo próprio: é ele que deixa o realce cair no controle exato.
 PREFIXO_VARIACAO = "variacao-"
 PREFIXO_LINK_TITULO = "link_titulo-"
@@ -57,7 +69,11 @@ ROTULO_LINK_URL = "Endereço do link"
 MENSAGEM_LINK_URL = (
     "Endereço do link: use um endereço do sistema (/…) ou externo (https://…)."
 )
+MENSAGEM_ANEXO_INEXISTENTE = (
+    "Um dos anexos marcados não existe mais. Recarregue a página."
+)
 TIPO_PERGUNTA_OCUPADA = "pergunta_ocupada"
+TIPO_EXTRACAO_IMPOSSIVEL = "extracao_impossivel"
 
 
 class VariacaoNoFormulario(BaseModel):
@@ -89,6 +105,7 @@ class ValoresFaq(BaseModel):
     palavras_chave_ids: list[int] = []
     links: list[LinkNoFormulario] = []
     relacionadas_ids: list[int] = []
+    anexos_ids: list[int] = []
     situacao: str = Situacao.RASCUNHO.value
     visibilidade: str = Visibilidade.PUBLICA.value
 
@@ -129,6 +146,7 @@ def valores_do_post(post: QueryDict) -> ValoresFaq:
         palavras_chave_ids=_inteiros(post.getlist(CONTROLE_PALAVRA_CHAVE)),
         links=links,
         relacionadas_ids=_inteiros(post.getlist(CONTROLE_RELACIONADA)),
+        anexos_ids=_inteiros(post.getlist(CONTROLE_ANEXO)),
         situacao=post.get(CONTROLE_SITUACAO) or Situacao.RASCUNHO.value,
         visibilidade=post.get(CONTROLE_VISIBILIDADE) or Visibilidade.PUBLICA.value,
     )
@@ -156,33 +174,60 @@ def valores_do_registro(registro: FaqModel) -> ValoresFaq:
         relacionadas_ids=[
             r.pk for r in registro.relacionadas.all() if r.situacao != Situacao.EXCLUIDA
         ],
+        anexos_ids=list(registro.anexos.values_list("pk", flat=True)),
         situacao=registro.situacao,
         visibilidade=registro.visibilidade,
     )
 
 
-def salvar_faq_nova(valores: ValoresFaq, editor: Editor) -> RecusaDeFormulario | int:
+def salvar_faq_nova(
+    valores: ValoresFaq,
+    editor: Editor,
+    arquivos: list[UploadedFile],
+) -> RecusaDeFormulario | int:
     lida = ler_faq(valores, faq_id=None, autor_id=editor.perfil_id)
     if lida.faq is None:
         assert lida.recusa is not None
         return lida.recusa
-    return _gravando(valores, lambda: gravar_faq(lida.faq))  # type: ignore[arg-type]
+    preparados = _preparando(valores, arquivos)
+    if isinstance(preparados, RecusaDeFormulario):
+        return preparados
+    faq = lida.faq
+
+    def _gravar() -> int:
+        return gravar_faq(_com_anexos(faq, preparados, editor))
+
+    return _gravando(valores, _gravar)
 
 
 def salvar_faq_existente(
-    valores: ValoresFaq, registro: FaqModel, editor: Editor
+    valores: ValoresFaq,
+    registro: FaqModel,
+    editor: Editor,
+    arquivos: list[UploadedFile],
 ) -> RecusaDeFormulario | int:
     lida = ler_faq(valores, faq_id=registro.pk, autor_id=registro.autor_id)
     if lida.faq is None:
         assert lida.recusa is not None
         return lida.recusa
-    edicao = Edicao(faq=lida.faq, editor=editor)
+    preparados = _preparando(valores, arquivos)
+    if isinstance(preparados, RecusaDeFormulario):
+        return preparados
+    faq = lida.faq
 
     def _regravar() -> int:
+        edicao = Edicao(faq=_com_anexos(faq, preparados, editor), editor=editor)
         regravar_faq(edicao)
         return registro.pk
 
     return _gravando(valores, _regravar)
+
+
+def envios_dos_arquivos(arquivos: list[UploadedFile]) -> list[EnvioAnexo]:
+    return [
+        EnvioAnexo(nome_arquivo=arquivo.name or "", conteudo=arquivo.read())
+        for arquivo in arquivos
+    ]
 
 
 def ler_faq(valores: ValoresFaq, faq_id: int | None, autor_id: int | None) -> FaqLida:
@@ -200,16 +245,21 @@ def ler_faq(valores: ValoresFaq, faq_id: int | None, autor_id: int | None) -> Fa
         for link in valores.links
         if link.titulo.strip() or link.url.strip()
     ]
+    anexos = _anexos_existentes(erros, valores.anexos_ids)
     resposta = _validar(
         erros,
         CONTROLE_RESPOSTA,
         lambda: Resposta(
-            markdown=valores.resposta_markdown, links=[link for link in links if link]
+            markdown=valores.resposta_markdown,
+            links=[link for link in links if link],
+            anexos=anexos,
         ),
     )
     tema = _tema(erros, valores.tema_id)
     situacao = _validar(
-        erros, CONTROLE_SITUACAO, lambda: _Situacao.model_validate({"valor": valores.situacao}).valor
+        erros,
+        CONTROLE_SITUACAO,
+        lambda: _Situacao.model_validate({"valor": valores.situacao}).valor,
     )
     visibilidade = _validar(
         erros,
@@ -272,10 +322,53 @@ class _Visibilidade(BaseModel):
 def _gravando(
     valores: ValoresFaq, gravar: Callable[[], int]
 ) -> RecusaDeFormulario | int:
+    # Uma transação só: a FAQ recusada leva junto, no rollback, os anexos novos.
     try:
-        return gravar()
+        with transaction.atomic():
+            return gravar()
     except PerguntaJaRespondida as erro:
         return TradutorDeRecusa(_catalogo(valores))(campos_ocupados(erro, valores))
+
+
+def _preparando(
+    valores: ValoresFaq, arquivos: list[UploadedFile]
+) -> RecusaDeFormulario | AnexosPreparados:
+    # Fora de transação: o OCR pode levar minutos e não deve segurar lock no banco.
+    erros: list[ErroBruto] = []
+    envios = _validar(
+        erros, CONTROLE_NOVOS_ANEXOS, lambda: envios_dos_arquivos(arquivos)
+    )
+    if erros:
+        return TradutorDeRecusa(_catalogo(valores))(erros)
+    try:
+        return preparar_anexos(envios)
+    except ExtracaoImpossivel as erro:
+        recusa = ErroBruto(
+            controle=CONTROLE_NOVOS_ANEXOS,
+            tipo=TIPO_EXTRACAO_IMPOSSIVEL,
+            mensagem=str(erro),
+        )
+        return TradutorDeRecusa(_catalogo(valores))([recusa])
+
+
+def _com_anexos(faq: Faq, preparados: AnexosPreparados, editor: Editor) -> Faq:
+    novos = gravar_anexos(preparados, editor)
+    anexos = list(dict.fromkeys([*faq.resposta.anexos, *novos]))
+    resposta = faq.resposta.model_copy(update={"anexos": anexos})
+    return faq.model_copy(update={"resposta": resposta})
+
+
+def _anexos_existentes(erros: list[ErroBruto], ids: list[int]) -> list[int]:
+    existentes = set(AnexoModel.objects.filter(pk__in=ids).values_list("pk", flat=True))
+    if existentes != set(ids):
+        erros.append(
+            ErroBruto(
+                controle=CONTROLE_ANEXO,
+                tipo="missing",
+                mensagem=MENSAGEM_ANEXO_INEXISTENTE,
+            )
+        )
+    return [i for i in ids if i in existentes]
 
 
 def _validar[T](erros: list[ErroBruto], controle: str, construir: Callable[[], T]) -> T:
@@ -407,6 +500,16 @@ def _catalogo(valores: ValoresFaq) -> Formulario:
             CampoDeFormulario(controle=CONTROLE_TEMA, rotulo="Tema"),
             CampoDeFormulario(controle=CONTROLE_SITUACAO, rotulo="Situação"),
             CampoDeFormulario(controle=CONTROLE_VISIBILIDADE, rotulo="Visibilidade"),
+            CampoDeFormulario(controle=CONTROLE_ANEXO, rotulo="Anexos"),
+            CampoDeFormulario(
+                controle=CONTROLE_NOVOS_ANEXOS,
+                rotulo="Arquivos",
+                regras={
+                    "bytes_too_short": RegraDeErro(
+                        mensagem="Um dos arquivos escolhidos está vazio."
+                    )
+                },
+            ),
             *(
                 CampoDeFormulario(
                     controle=link.controle_titulo, rotulo=ROTULO_LINK_TITULO

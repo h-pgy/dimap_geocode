@@ -1,0 +1,64 @@
+{# A lista vai no POST do salvar; o arquivo novo só é lido e gravado ao salvar (SPEC faq/003). #}
+<div class="card-well p-5 flex flex-col gap-4" id="secao-anexos">
+  <p class="text-overline">Anexos</p>
+
+  {% include "faq/partials/gestao/_lista_anexos.html" %}
+
+  <div class="seletor-origem upload-well upload-well-compacto">
+    <label class="seletor-origem-arquivo">
+      <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+      {# hx-preserve: o 422 do salvar troca o <form>, mas devolve este nó com os arquivos escolhidos. #}
+      {# hx-params: sem ele, o input dentro do <form> mandaria o formulário inteiro na conferência. #}
+      <input type="file"
+             id="campo-novos-anexos"
+             name="novos_anexos"
+             multiple
+             accept=".pdf,.docx,.doc,.odt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.oasis.opendocument.text"
+             class="file-input file-input-glass file-input-sm"
+             aria-label="Novos anexos"
+             hx-post="{% url 'faq:admin_anexo_conferir' %}"
+             hx-trigger="change"
+             hx-encoding="multipart/form-data"
+             hx-params="novos_anexos"
+             hx-target="#conferencia-anexos"
+             hx-swap="innerHTML"
+             hx-preserve />
+      <span class="form-field-hint">PDF, DOCX ou ODT, até {{ limite_mb }} MB. O título do anexo é o nome do arquivo.</span>
+    </label>
+    <div class="seletor-origem-busca">
+      <label class="input input-glass flex items-center gap-2 w-full">
+        <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+        {# hx-include: os da lista ficam fora do resultado. #}
+        <input type="search"
+               name="q"
+               placeholder="Título do anexo já enviado"
+               aria-label="Buscar anexo pelo título"
+               autocomplete="off"
+               hx-get="{% url 'faq:admin_anexo_buscar' %}"
+               hx-trigger="input changed delay:300ms, search"
+               hx-target="#resultado-busca-anexo"
+               hx-swap="innerHTML"
+               hx-params="q,anexo"
+               hx-include="#lista-anexos" />
+      </label>
+      <div id="resultado-busca-anexo"></div>
+    </div>
+    {# A chave só escolhe o painel visível: o salvar não lê `origem_anexo`. #}
+    <div class="card-well chave-onsen chave-onsen-pequena">
+      <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+      <label class="chave-onsen-opcao">
+        <input type="radio" name="origem_anexo" class="sr-only" checked />
+        <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+      </label>
+      <label class="chave-onsen-opcao">
+        <input type="radio" name="origem_anexo" class="sr-only" />
+        <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+      </label>
+    </div>
+  </div>
+
+  {% for mensagem in recusa_novos_anexos %}
+    <p class="text-[13px] text-error">{{ mensagem }}</p>
+  {% endfor %}
+  <div class="flex flex-col gap-2 empty:hidden" id="conferencia-anexos"></div>
+</div>

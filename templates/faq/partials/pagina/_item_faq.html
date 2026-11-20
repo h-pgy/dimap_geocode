@@ -1,5 +1,5 @@
 {# Uma FAQ em accordion. `item` é um ItemIndice; `faq_dom` o id do <details>. #}
-{% load faq_markdown %}
+{% load faq_markdown faq_anexos %}
 <details id="faq-{{ item.faq.id }}" class="faq-item">
   <summary class="faq-item-pergunta">
     <span class="faq-item-texto">{{ item.faq.pergunta.texto }}</span>
@@ -13,7 +13,8 @@
   </summary>
   <div class="faq-item-resposta">
     <div class="texto-markdown">{{ item.faq.resposta.markdown|markdown }}</div>
-    {% if item.faq.resposta.links or item.relacionadas %}
+    {% with anexos=anexos_por_faq|anexos_da:item.faq.id %}
+    {% if item.faq.resposta.links or item.relacionadas or anexos %}
       <div class="faq-item-rodape">
         <div class="etched-line h-[3px] w-full"></div>
         {% if item.faq.resposta.links %}
@@ -36,6 +37,19 @@
             </div>
           </div>
         {% endif %}
+        {% if anexos %}
+          <div class="faq-item-rodape-bloco">
+            <span class="text-overline">Documentos</span>
+            <div class="links-referencia">
+              {% for anexo in anexos %}
+                <a href="{% url 'faq:anexo_baixar' anexo.pk %}" class="item-menu" download>
+                  <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg viewBox="0 0 24 24"><use href="#glifo-documento"/></svg></span>
+                  <span class="item-menu-rotulo">{{ anexo.titulo }}<span class="item-menu-apoio"><span class="uppercase">{{ anexo.tipo }}</span> · {{ anexo.tamanho_bytes|filesizeformat }}</span></span>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
         {% if item.relacionadas %}
           <div class="faq-item-rodape-bloco">
             <span class="text-overline">Perguntas relacionadas</span>
@@ -51,5 +65,6 @@
         {% endif %}
       </div>
     {% endif %}
+    {% endwith %}
   </div>
 </details>

@@ -29,6 +29,7 @@ class Faq(models.Model):
         blank=True,
     )
     relacionadas = models.ManyToManyField("self", symmetrical=True, blank=True)
+    anexos = models.ManyToManyField("faq.Anexo", blank=True, related_name="faqs")
     # `atualizado_em` não serve: a seed (faq/008) também grava, e o `auto_now` a move sem editor.
     editado_por = models.ForeignKey(
         "user_admin.Perfil",

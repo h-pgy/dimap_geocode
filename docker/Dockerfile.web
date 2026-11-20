@@ -97,6 +97,15 @@ COPY --from=css-build /app/static/dist/output.css static/dist/output.css
 COPY --from=vendor /opt/vendor /opt/vendor
 # --- Fim da base comum. Daqui pra baixo é só do web. ---
 
+# OCR dos anexos da FAQ (SPEC faq/003): tesseract com o português e o poppler que rasteriza o PDF.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        poppler-utils \
+        tesseract-ocr \
+        tesseract-ocr-por \
+    && rm -rf /var/lib/apt/lists/*
+# Por padrão o tesseract abre uma thread por núcleo e disputa a CPU com os outros requests do web.
+ENV OMP_THREAD_LIMIT=1
+
 # Entrypoint: roda migrações e repassa o controle ao CMD/command (fica em /
 # para não ser escondido pelo bind mount do código em /app).
 COPY docker/entrypoint.sh /entrypoint.sh

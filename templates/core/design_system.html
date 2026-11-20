@@ -1616,9 +1616,94 @@
     </section>
 
     <!-- ============ 3. MOLÉCULAS ============ -->
+
     <section class="flex flex-col gap-8">
       <h2 class="section-title px-2">3 · Moléculas</h2>
       <div class="grid lg:grid-cols-2 gap-6">
+
+        <!-- ===== SPEC faq/003 ===== -->
+        <!-- .badge-tipo-* · .chave-onsen-pequena -->
+        <div class="glass-panel p-6 flex flex-col gap-4">
+          <p class="text-overline">.badge-tipo-* <span class="font-normal text-base-content/60">— um tom por formato de documento</span></p>
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="badge badge-sm badge-tipo-pdf">pdf</span>
+            <span class="badge badge-sm badge-tipo-docx">docx</span>
+            <span class="badge badge-sm badge-tipo-odt">odt</span>
+          </div>
+          <p class="text-overline">.chave-onsen + .chave-onsen-pequena <span class="font-normal text-base-content/60">— a chave que acompanha outro controle</span></p>
+          <div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="ds-chave-pequena" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="ds-chave-pequena" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- .seletor-origem · .upload-well-compacto -->
+        <div class="glass-panel p-6 flex flex-col gap-4">
+          <p class="text-overline">.seletor-origem <span class="font-normal text-base-content/60">— enviar arquivo × buscar já enviado</span></p>
+          <div class="seletor-origem upload-well upload-well-compacto">
+            <label class="seletor-origem-arquivo">
+              <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+              <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Arquivo de exemplo" />
+              <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB.</span>
+            </label>
+            <div class="seletor-origem-busca">
+              <label class="input input-glass flex items-center gap-2 w-full">
+                <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+                <input type="search" placeholder="Título do anexo já enviado" aria-label="Busca de exemplo" />
+              </label>
+            </div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="ds-seletor-a" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="ds-seletor-a" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+          <div class="seletor-origem upload-well upload-well-compacto">
+            <label class="seletor-origem-arquivo">
+              <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+              <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Arquivo de exemplo" />
+              <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB.</span>
+            </label>
+            <div class="seletor-origem-busca">
+              <label class="input input-glass flex items-center gap-2 w-full">
+                <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+                <input type="search" placeholder="Título do anexo já enviado" aria-label="Busca de exemplo" />
+              </label>
+            </div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="ds-seletor-b" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="ds-seletor-b" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+          <p class="text-overline">.upload-well + .upload-well-compacto <span class="font-normal text-base-content/60">— o poço numa linha só</span></p>
+          <label class="upload-well upload-well-compacto cursor-pointer">
+            <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+            <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Arquivo de exemplo" />
+            <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB.</span>
+          </label>
+        </div>
 
         <!-- Botão de ato grave (SPEC user_admin/022) -->
         <div class="glass-panel p-6 flex flex-col gap-4">

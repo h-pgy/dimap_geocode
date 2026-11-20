@@ -24,6 +24,9 @@ dependencies = [
     "markdown-it-py>=4.3.0",
     "mdit-py-plugins>=0.7.0",
     "nh3>=0.3.8",
+    "python-docx>=1.2.0",
+    "pdf2image>=1.17.0",
+    "pytesseract>=0.3.13",
 ]
 
 [dependency-groups]
@@ -54,6 +57,11 @@ plugins = ["mypy_django_plugin.main"]
 # reportlab não publica stubs nem `py.typed`; services/utils/pdf é a única costura do projeto
 # com ele (SPEC documentos_oficiais/001, Caveats), então o ignore fica isolado ao pacote.
 module = ["reportlab.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# pytesseract não publica `py.typed`; services/utils/extracao_texto/extrator_ocr.py é a única costura.
+module = ["pytesseract.*"]
 ignore_missing_imports = true
 
 [tool.django-stubs]

@@ -1,0 +1,48 @@
+{# Alvo outerHTML de faq:admin_bloco_anexos: o X e o clique num resultado da busca redesenham a tabela. #}
+{# Cada linha leva o próprio campo oculto; o salvar liga os que estão aqui e desliga os que saíram. #}
+<div class="card-well pb-2 table-onsen-poco flex flex-col {{ realce.anexo }}" id="lista-anexos" data-scroll-etched>
+  <div class="table-onsen-wrap max-h-64" data-rolador>
+    <table class="table table-onsen table-onsen-compacta">
+      <tbody>
+        {% for anexo in anexos_ligados %}
+          <tr>
+            <td class="font-medium text-rocha-950">{{ anexo.titulo }}<input type="hidden" name="anexo" value="{{ anexo.pk }}" /></td>
+            <td><span class="badge badge-sm badge-tipo-{{ anexo.tipo }}">{{ anexo.tipo }}</span></td>
+            <td class="text-base-content/80 whitespace-nowrap tabular-nums">{{ anexo.tamanho_bytes|filesizeformat }}</td>
+            <td>
+              {% if anexo.origem_texto == "ocr" %}
+                <span class="badge badge-soft badge-info badge-sm">OCR</span>
+              {% else %}
+                <span class="badge badge-soft badge-success badge-sm whitespace-nowrap">Camada de texto</span>
+              {% endif %}
+            </td>
+            <td class="text-right">
+              <button type="button"
+                      class="btn btn-ghost btn-glass btn-xs btn-circle tooltip tooltip-left"
+                      data-tip="Ler o texto extraído"
+                      aria-label="Ler o texto extraído"
+                      hx-get="{% url 'faq:admin_anexo_texto' anexo.pk %}"
+                      hx-target="#poco-modal"
+                      hx-swap="innerHTML settle:150ms"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-texto"/></svg></button>
+            </td>
+            <td class="text-right">
+              <button type="button"
+                      class="btn btn-ghost btn-glass btn-xs btn-circle tooltip tooltip-left"
+                      data-tip="Tirar desta FAQ"
+                      aria-label="Tirar desta FAQ"
+                      hx-get="{% url 'faq:admin_bloco_anexos' %}"
+                      hx-include="#lista-anexos"
+                      hx-vals='{"remover": "{{ anexo.pk }}"}'
+                      hx-target="#lista-anexos"
+                      hx-swap="outerHTML"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg></button>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="table-onsen-vazio">Nenhum anexo. Envie um arquivo ou busque um já enviado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+</div>
+{% if limpar_busca %}<div id="resultado-busca-anexo" hx-swap-oob="true"></div>{% endif %}

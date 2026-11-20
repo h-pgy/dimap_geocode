@@ -38,6 +38,7 @@ def regravar_faq(edicao: Edicao) -> None:
     _aplicar_campos(registro, edicao.faq)
     _gravar_perguntas(registro, edicao.faq)
     _gravar_links(registro, edicao.faq.resposta.links)
+    registro.anexos.set(edicao.faq.resposta.anexos)
     registro.relacionadas.set(
         _relacionadas_regravadas(registro, edicao.faq.relacionadas)
     )

@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dimap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEC faq/003 — Anexos da FAQ (mock de validação)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Fundo da área administrativa: os partials e o módulo da própria aplicação, nunca recriados. -->
+  <script type="module">
+    import { montarFundoAdmin } from "/.claude/skills/mock/examples/fundo-admin.js";
+    montarFundoAdmin();
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.4" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Tema (fonte única, SPEC design/004) + peças desta SPEC no MESMO bloco text/tailwindcss. -->
+  <script>
+    fetch("/static/src/tema-dimap.dev.css")
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((css) => {
+        const s = document.createElement("style");
+        s.type = "text/tailwindcss";
+        s.textContent = css + "\n" + document.getElementById("tokens-spec").textContent;
+        document.head.appendChild(s);
+      })
+      .catch(() => (document.body || document.documentElement).insertAdjacentHTML(
+        "afterbegin",
+        "<p style='padding:1rem;color:#b00;font-family:monospace'>tema-dimap.dev.css não carregou — sirva a RAIZ do projeto.</p>"));
+  </script>
+
+  <!-- Filtros de gravação: o partial da aplicação (incluído no base.html), não uma cópia. -->
+  <script>
+    fetch("/templates/partials/_filtros_gravacao.html")
+      .then((r) => r.text())
+      .then((html) => {
+        const limpo = html.replace(/\{[{%#][\s\S]*?[}%#]\}/g, "");
+        const inserir = () => document.body.insertAdjacentHTML("afterbegin", limpo);
+        document.body ? inserir() : document.addEventListener("DOMContentLoaded", inserir);
+      });
+  </script>
+
+  <!-- Peças desta SPEC, ainda fora do tema. Inerte, concatenado pelo loader acima. -->
+  <script type="text/css" id="tokens-spec">
+    @layer components {
+      /* ==================== ÁTOMO · BADGE DO TIPO DE DOCUMENTO ==================== */
+      /* badge + .badge-tipo-*: a mesma receita dos badges de geometria, uma escala por formato. */
+      .badge-tipo-pdf  { @apply border border-sakura-500/50 bg-sakura-400/15 text-sakura-700 font-mono font-medium uppercase; }
+      .badge-tipo-docx { @apply border border-agua-600/40 bg-agua-500/15 text-agua-700 font-mono font-medium uppercase; }
+      .badge-tipo-odt  { @apply border border-accent/40 bg-accent/10 text-accent font-mono font-medium uppercase; }
+
+      /* ==================== ÁTOMO · CHAVE PEQUENA ==================== */
+      /* .chave-onsen + .chave-onsen-pequena: a mesma chave em registro menor, para quando ela só
+         acompanha o controle principal. */
+      .chave-onsen-pequena .chave-onsen-opcao { @apply px-3 py-1; }
+      .chave-onsen-pequena .chave-onsen-rotulo { @apply text-[10px] tracking-[0.1em]; }
+
+
+      /* ==================== MOLÉCULA · POÇO DE UPLOAD COMPACTO ==================== */
+      /* .upload-well + .upload-well-compacto: o mesmo poço tracejado, numa linha só — para o campo de
+         arquivo que é uma parte do formulário, e não o assunto da tela. */
+      .upload-well-compacto {
+        @apply flex-row flex-wrap items-center justify-start gap-x-3 gap-y-1.5 px-4 py-3 text-left;
+      }
+      .upload-well-compacto > svg { @apply w-5 h-5 shrink-0; }
+      .upload-well-compacto .file-input { @apply flex-1 min-w-48 max-w-xs; }
+      .upload-well-compacto .form-field-hint { @apply flex-1 min-w-48; }
+
+      /* ==================== MOLÉCULA · SELETOR DE ORIGEM ==================== */
+      /* .upload-well + .upload-well-compacto + .seletor-origem: um poço só. Em cima, o painel que a
+         chave escolhe — posição 1 o .seletor-origem-arquivo (enviar novo), posição 2 o
+         .seletor-origem-busca (escolher um já enviado); embaixo, centrada, a .chave-onsen-pequena.
+         O painel escondido guarda o que já foi escolhido nele. */
+      .seletor-origem { @apply flex-col flex-nowrap items-stretch gap-3; }
+      .seletor-origem > .chave-onsen { @apply self-center; }
+      .seletor-origem-arquivo { @apply flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 cursor-pointer; }
+      .seletor-origem-arquivo > svg { @apply w-5 h-5 shrink-0; }
+      .seletor-origem-busca { @apply flex flex-col gap-2 w-full; }
+      .seletor-origem:has(.chave-onsen-opcao:nth-of-type(2) input:checked) .seletor-origem-arquivo,
+      .seletor-origem:not(:has(.chave-onsen-opcao:nth-of-type(2) input:checked)) .seletor-origem-busca {
+        @apply hidden;
+      }
+
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  <!-- Glifos novos: entram em faq/partials/gestao/_glifos_gestao.html e faq/partials/pagina/_glifos_faq.html -->
+  <svg class="hidden" aria-hidden="true">
+    <defs>
+      <g id="glifo-gestao-x"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></g>
+      <g id="glifo-gestao-documento"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></g>
+      <g id="glifo-gestao-busca"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></g>
+      <g id="glifo-gestao-texto"><path d="M4 6h16"/><path d="M4 10h16"/><path d="M4 14h10"/><path d="M4 18h7"/><circle cx="17.5" cy="17" r="2.5"/><path d="m19.3 18.8 1.7 1.7"/></g>
+      <g id="glifo-documento"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 11v6"/><path d="m9.5 14.5 2.5 2.5 2.5-2.5"/></g>
+    </defs>
+  </svg>
+
+  <div class="relative z-10 max-w-5xl mx-auto px-4 py-16 flex flex-col gap-12">
+    <h1 class="text-3xl font-black tracking-tight text-madeira-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]">SPEC faq/003 — mock de validação</h1>
+
+    <!-- 2 · ÁTOMOS -->
+    <section id="atomos" class="flex flex-col gap-6">
+      <h2 class="section-title px-2">2 · Átomos</h2>
+
+      <!-- .badge-tipo-pdf · .badge-tipo-docx · .badge-tipo-odt -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline">.badge-tipo-*</p>
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="badge badge-sm badge-tipo-pdf">pdf</span>
+          <span class="badge badge-sm badge-tipo-docx">docx</span>
+          <span class="badge badge-sm badge-tipo-odt">odt</span>
+          <span class="badge badge-tipo-pdf">pdf</span>
+          <span class="badge badge-tipo-docx">docx</span>
+          <span class="badge badge-tipo-odt">odt</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · MOLÉCULAS -->
+    <section id="moleculas" class="flex flex-col gap-6">
+      <h2 class="section-title px-2">3 · Moléculas</h2>
+
+      <!-- .seletor-origem -->
+      <div class="glass-panel p-6 grid gap-6 md:grid-cols-2">
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.seletor-origem — enviar arquivo</p>
+          <!-- .seletor-origem — posição 1: enviar arquivo -->
+          <div class="seletor-origem upload-well upload-well-compacto">
+            <label class="seletor-origem-arquivo">
+              <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+              <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Novos anexos" />
+              <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB. O título do anexo é o nome do arquivo.</span>
+            </label>
+            <div class="seletor-origem-busca">
+              <label class="input input-glass flex items-center gap-2 w-full">
+                <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+                <input type="search" placeholder="Título do anexo já enviado" aria-label="Buscar anexo pelo título" />
+              </label>
+              <div></div>
+            </div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="amostra-origem-a" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="amostra-origem-a" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-3">
+          <p class="text-overline">.seletor-origem — buscar já enviado</p>
+          <!-- .seletor-origem — posição 2: buscar já enviado -->
+          <div class="seletor-origem upload-well upload-well-compacto">
+            <label class="seletor-origem-arquivo">
+              <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+              <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Novos anexos" />
+              <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB. O título do anexo é o nome do arquivo.</span>
+            </label>
+            <div class="seletor-origem-busca">
+              <label class="input input-glass flex items-center gap-2 w-full">
+                <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+                <input type="search" placeholder="Título do anexo já enviado" value="certid" aria-label="Buscar anexo pelo título" />
+              </label>
+              <div>
+                <div class="flex flex-col gap-1.5">
+                  <!-- hx-get faq:admin_bloco_anexos com adicionar=pk, alvo #lista-anexos outerHTML; limpa a busca por OOB -->
+                  <button type="button" class="item-menu">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg></span>
+                    <span class="item-menu-rotulo">Manual da certidão de lançamento<span class="item-menu-apoio">PDF · 1,2 MB</span></span>
+                  </button>
+                  <button type="button" class="item-menu">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg></span>
+                    <span class="item-menu-rotulo">Certidão negativa — modelo<span class="item-menu-apoio">ODT · 46 KB</span></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="amostra-origem-b" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="amostra-origem-b" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- .upload-well + .upload-well-compacto -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <p class="text-overline">.upload-well + .upload-well-compacto</p>
+        <label class="upload-well upload-well-compacto cursor-pointer">
+          <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+          <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Novos anexos" />
+          <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB. O título do anexo é o nome do arquivo.</span>
+        </label>
+      </div>
+
+    </section>
+
+    <!-- 4 · ORGANISMOS -->
+    <section id="organismos" class="flex flex-col gap-6">
+      <h2 class="section-title px-2">4 · Organismos</h2>
+
+      <!-- estado: vazio (FAQ sem anexo, nada escolhido) -->
+      <div class="glass-panel p-6 flex flex-col gap-4">
+        <p class="text-[13px] text-base-content/70">estado: vazio</p>
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Anexos</p>
+          <!-- partial: faq/partials/gestao/_lista_anexos.html — alvo outerHTML de faq:admin_bloco_anexos (estado: vazio) -->
+          <div class="card-well pb-2 table-onsen-poco flex flex-col" id="lista-anexos" data-scroll-etched>
+            <div class="table-onsen-wrap max-h-64" data-rolador>
+              <table class="table table-onsen table-onsen-compacta">
+                <tbody>
+                <tr><td colspan="6" class="table-onsen-vazio">Nenhum anexo. Envie um arquivo ou busque um já enviado.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+          </div>
+          <!-- /partial -->
+          <!-- .seletor-origem — posição 1: enviar arquivo -->
+          <div class="seletor-origem upload-well upload-well-compacto">
+            <label class="seletor-origem-arquivo">
+              <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+              <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Novos anexos" />
+              <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB. O título do anexo é o nome do arquivo.</span>
+            </label>
+            <div class="seletor-origem-busca">
+              <label class="input input-glass flex items-center gap-2 w-full">
+                <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+                <input type="search" placeholder="Título do anexo já enviado" aria-label="Buscar anexo pelo título" />
+              </label>
+              <div></div>
+            </div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="organismo-vazio" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="organismo-vazio" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- estado: busca com resultados · e busca sem resultado -->
+      <div class="glass-panel p-6 grid gap-6 md:grid-cols-2">
+        <div class="card-well p-5 flex flex-col gap-3">
+          <!-- .seletor-origem — posição 2: buscar já enviado -->
+          <div class="seletor-origem upload-well upload-well-compacto">
+            <label class="seletor-origem-arquivo">
+              <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+              <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Novos anexos" />
+              <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB. O título do anexo é o nome do arquivo.</span>
+            </label>
+            <div class="seletor-origem-busca">
+              <label class="input input-glass flex items-center gap-2 w-full">
+                <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+                <input type="search" placeholder="Título do anexo já enviado" value="certid" aria-label="Buscar anexo pelo título" />
+              </label>
+              <div>
+                <div class="flex flex-col gap-1.5">
+                  <!-- hx-get faq:admin_bloco_anexos com adicionar=pk, alvo #lista-anexos outerHTML; limpa a busca por OOB -->
+                  <button type="button" class="item-menu">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg></span>
+                    <span class="item-menu-rotulo">Manual da certidão de lançamento<span class="item-menu-apoio">PDF · 1,2 MB</span></span>
+                  </button>
+                  <button type="button" class="item-menu">
+                    <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg></span>
+                    <span class="item-menu-rotulo">Certidão negativa — modelo<span class="item-menu-apoio">ODT · 46 KB</span></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="organismo-busca-a" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="organismo-busca-a" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="card-well p-5 flex flex-col gap-3">
+          <!-- .seletor-origem — posição 2: buscar já enviado -->
+          <div class="seletor-origem upload-well upload-well-compacto">
+            <label class="seletor-origem-arquivo">
+              <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+              <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Novos anexos" />
+              <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB. O título do anexo é o nome do arquivo.</span>
+            </label>
+            <div class="seletor-origem-busca">
+              <label class="input input-glass flex items-center gap-2 w-full">
+                <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+                <input type="search" placeholder="Título do anexo já enviado" value="xyz" aria-label="Buscar anexo pelo título" />
+              </label>
+              <div>
+                <p class="text-[13px] italic text-base-content/55">Nenhum anexo com esse título.</p>
+              </div>
+            </div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="organismo-busca-b" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="organismo-busca-b" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · TELA MONTADA -->
+    <section id="tela" class="flex flex-col gap-6">
+      <h2 class="section-title px-2">5 · Tela montada</h2>
+
+      <!-- página: faq/gestao/formulario.html — só a seção nova, entre Links e Relacionadas -->
+      <!-- estado: editar, com três anexos ligados e três arquivos escolhidos e conferidos -->
+      <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <h1 class="text-2xl font-bold tracking-tight text-madeira-700">Editar FAQ</h1>
+
+        <!-- partial: faq/partials/gestao/_secao_anexos.html -->
+        <div class="card-well p-5 flex flex-col gap-4" id="secao-anexos">
+          <p class="text-overline">Anexos</p>
+
+          <!-- partial: faq/partials/gestao/_lista_anexos.html — alvo outerHTML de faq:admin_bloco_anexos (remover e adicionar) -->
+          <div class="card-well pb-2 table-onsen-poco flex flex-col" id="lista-anexos" data-scroll-etched>
+            <div class="table-onsen-wrap max-h-64" data-rolador>
+              <table class="table table-onsen table-onsen-compacta">
+                <tbody>
+                <tr>
+                  <td class="font-medium text-rocha-950">Manual da certidão de lançamento<input type="hidden" name="anexo" value="12" /></td>
+                  <td><span class="badge badge-sm badge-tipo-pdf">pdf</span></td>
+                  <td class="text-base-content/80 whitespace-nowrap tabular-nums">1,2 MB</td>
+                  <td><span class="badge badge-soft badge-success badge-sm">Camada de texto</span></td>
+                  <td class="text-right">
+                    <!-- hx-get faq:admin_anexo_texto, alvo #poco-modal (fora do <form>) -->
+                    <label for="modal-texto-anexo" class="btn btn-ghost btn-glass btn-xs btn-circle tooltip tooltip-left" data-tip="Ler o texto extraído" aria-label="Ler o texto extraído"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-texto"/></svg></label>
+                  </td>
+                  <td class="text-right">
+                    <!-- hx-get faq:admin_bloco_anexos com remover=12, alvo #lista-anexos outerHTML -->
+                    <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle tooltip tooltip-left" data-tip="Tirar desta FAQ" aria-label="Tirar desta FAQ"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="font-medium text-rocha-950">Ofício escaneado de 2019<input type="hidden" name="anexo" value="15" /></td>
+                  <td><span class="badge badge-sm badge-tipo-pdf">pdf</span></td>
+                  <td class="text-base-content/80 whitespace-nowrap tabular-nums">3,4 MB</td>
+                  <td><span class="badge badge-soft badge-info badge-sm">OCR</span></td>
+                  <td class="text-right">
+                    <!-- hx-get faq:admin_anexo_texto, alvo #poco-modal (fora do <form>) -->
+                    <label for="modal-texto-anexo" class="btn btn-ghost btn-glass btn-xs btn-circle tooltip tooltip-left" data-tip="Ler o texto extraído" aria-label="Ler o texto extraído"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-texto"/></svg></label>
+                  </td>
+                  <td class="text-right">
+                    <!-- hx-get faq:admin_bloco_anexos com remover=15, alvo #lista-anexos outerHTML -->
+                    <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle tooltip tooltip-left" data-tip="Tirar desta FAQ" aria-label="Tirar desta FAQ"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="font-medium text-rocha-950">Roteiro de avaliação 2025<input type="hidden" name="anexo" value="18" /></td>
+                  <td><span class="badge badge-sm badge-tipo-docx">docx</span></td>
+                  <td class="text-base-content/80 whitespace-nowrap tabular-nums">84 KB</td>
+                  <td><span class="badge badge-soft badge-success badge-sm">Camada de texto</span></td>
+                  <td class="text-right">
+                    <!-- hx-get faq:admin_anexo_texto, alvo #poco-modal (fora do <form>) -->
+                    <label for="modal-texto-anexo" class="btn btn-ghost btn-glass btn-xs btn-circle tooltip tooltip-left" data-tip="Ler o texto extraído" aria-label="Ler o texto extraído"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-texto"/></svg></label>
+                  </td>
+                  <td class="text-right">
+                    <!-- hx-get faq:admin_bloco_anexos com remover=18, alvo #lista-anexos outerHTML -->
+                    <button type="button" class="btn btn-ghost btn-glass btn-xs btn-circle tooltip tooltip-left" data-tip="Tirar desta FAQ" aria-label="Tirar desta FAQ"><svg class="w-4 h-4 icon-etched" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-x"/></svg></button>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+          </div>
+          <!-- /partial -->
+
+          <!-- .seletor-origem — posição 1: enviar arquivo -->
+          <div class="seletor-origem upload-well upload-well-compacto">
+            <!-- campo de arquivo: id fixo, hx-post faq:admin_anexo_conferir no change, hx-params="novos_anexos", hx-preserve -->
+            <label class="seletor-origem-arquivo">
+              <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+              <input type="file" id="campo-novos-anexos" name="novos_anexos" multiple class="file-input file-input-glass file-input-sm" aria-label="Novos anexos" />
+              <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB. O título do anexo é o nome do arquivo.</span>
+            </label>
+            <div class="seletor-origem-busca">
+              <!-- hx-get faq:admin_anexo_buscar, input changed delay:300ms, hx-include="#lista-anexos", alvo #resultado-busca-anexo -->
+              <label class="input input-glass flex items-center gap-2 w-full">
+                <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+                <input type="search" name="q" placeholder="Título do anexo já enviado" aria-label="Buscar anexo pelo título" />
+              </label>
+              <div id="resultado-busca-anexo"></div>
+            </div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="origem-anexo" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="origem-anexo" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- partial: faq/partials/anexos/_conferencia.html — alvo do change do campo de arquivo; vazio até escolher arquivos, e cada escolha substitui a lista -->
+          <div class="flex flex-col gap-2" id="conferencia-anexos">
+            <p class="text-overline">Arquivos escolhidos · entram ao salvar</p>
+            <div class="card-well pb-2 table-onsen-poco flex flex-col">
+              <div class="table-onsen-wrap max-h-64">
+                <table class="table table-onsen table-onsen-compacta">
+                  <tbody>
+                <tr>
+                  <td class="font-medium text-rocha-950">orientacoes-iptu.odt</td>
+                  <td class="w-20"><span class="badge badge-sm badge-tipo-odt">odt</span></td>
+                  <td class="w-24 text-base-content/80 whitespace-nowrap tabular-nums">46 KB</td>
+                  <td class="w-36 text-right"><span class="badge badge-soft badge-success badge-sm whitespace-nowrap">Entra ao salvar</span></td>
+                </tr>
+                <tr>
+                  <td class="font-medium text-rocha-950">oficio-escaneado.pdf<span class="block text-[12px] font-normal text-base-content/65 whitespace-normal">PDF escaneado: o texto será lido por OCR ao salvar, o que pode levar alguns minutos.</span></td>
+                  <td class="w-20"><span class="badge badge-sm badge-tipo-pdf">pdf</span></td>
+                  <td class="w-24 text-base-content/80 whitespace-nowrap tabular-nums">3,4 MB</td>
+                  <td class="w-36 text-right"><span class="badge badge-soft badge-info badge-sm whitespace-nowrap">OCR ao salvar</span></td>
+                </tr>
+                <tr>
+                  <td class="font-medium text-rocha-950">planilha-antiga.doc<span class="block text-[12px] font-normal text-error whitespace-normal">Arquivos .doc (Word 97–2003) não são aceitos. Abra o arquivo no Word ou no LibreOffice, salve como DOCX e envie de novo.</span></td>
+                  <td class="w-20"></td>
+                  <td class="w-24 text-base-content/80 whitespace-nowrap tabular-nums">212 KB</td>
+                  <td class="w-36 text-right"><span class="badge badge-soft badge-error badge-sm whitespace-nowrap">Recusado</span></td>
+                </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <!-- /partial -->
+        </div>
+        <!-- /partial -->
+
+        <div class="flex justify-end gap-3 pt-1">
+          <a class="btn btn-ghost btn-glass">Cancelar</a>
+          <button type="button" class="btn btn-onsen">Salvar FAQ</button>
+        </div>
+      </form>
+
+      <!-- partial: faq/partials/anexos/_modal_texto.html — alvo de hx-get faq:admin_anexo_texto no #poco-modal.
+           No mock, o botão do texto ao lado de cada anexo abre este modal. -->
+      <!-- estado: texto por OCR -->
+      <input type="checkbox" id="modal-texto-anexo" class="modal-toggle" />
+      <div class="modal modal-glass" role="dialog">
+      <div class="modal-box glass-panel-thick modal-box-glass w-11/12 max-w-3xl p-6 sm:p-8 flex flex-col gap-5">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble w-11 h-11 shrink-0 bg-agua-400/15 border-agua-600/30 text-agua-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-texto"/></svg>
+          </span>
+          <div class="min-w-0">
+            <h2 class="text-xl font-bold tracking-tight text-madeira-700 truncate">Ofício escaneado de 2019</h2>
+            <p class="flex flex-wrap items-center gap-2 text-sm text-base-content/70 mt-1">
+              <span class="badge badge-sm badge-tipo-pdf">pdf</span>
+              <span class="badge badge-sm badge-soft badge-info">Lido por OCR</span>
+              <span>4.812 caracteres</span>
+            </p>
+          </div>
+        </div>
+        <div class="card-well px-5 py-4 max-h-[55vh] overflow-y-auto">
+          <p class="text-[14px] leading-relaxed text-base-content/90 whitespace-pre-wrap">PREFEITURA DO MUNICÍPIO DE SÃO PAULO
+SECRETARIA MUNICIPAL DA FAZENDA
+
+Ofício nº 123/2019 — DIMAP
+
+Senhor Contribuinte,
+
+Em atenção ao requerimento protocolado sob o nº 2019-0.123.456-7, informamos que o lançamento do Imposto Predial e Territorial Urbano do imóvel de contribuinte 098.112.0034-1 foi revisto conforme a Planta Genérica de Valores vigente.
+
+O valor venal de referência passa a ser calculado sobre a área construída de 132 m², padrão residencial horizontal 2-B.
+
+Atenciosamente,</p>
+        </div>
+        <div class="modal-action mt-0">
+          <label for="modal-texto-anexo" class="btn btn-glass btn-sm">Fechar</label>
+        </div>
+      </div>
+      <label class="modal-backdrop" for="modal-texto-anexo">Fechar</label>
+      </div>
+      <!-- /partial -->
+
+      <!-- estado: texto da camada de texto (DOCX, ODT, PDF digital) — só o selo muda -->
+      <div class="glass-panel p-4 flex flex-wrap items-center gap-2 text-sm text-base-content/70">
+        <span class="badge badge-sm badge-tipo-docx">docx</span>
+        <span class="badge badge-sm badge-soft badge-success">Camada de texto</span>
+        <span>12.330 caracteres</span>
+      </div>
+
+      <!-- estado: salvar recusado (422) — arquivos preservados (hx-preserve), mensagem abaixo do campo -->
+      <form class="glass-panel p-6 sm:p-8 flex flex-col gap-6">
+        <div class="card-well p-5 flex flex-col gap-4">
+          <p class="text-overline">Anexos</p>
+          <!-- partial: faq/partials/gestao/_lista_anexos.html — alvo outerHTML de faq:admin_bloco_anexos (estado: vazio) -->
+          <div class="card-well pb-2 table-onsen-poco flex flex-col" id="lista-anexos" data-scroll-etched>
+            <div class="table-onsen-wrap max-h-64" data-rolador>
+              <table class="table table-onsen table-onsen-compacta">
+                <tbody>
+                <tr><td colspan="6" class="table-onsen-vazio">Nenhum anexo. Envie um arquivo ou busque um já enviado.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="scroll-etched" data-barra aria-hidden="true"><div class="scroll-etched-thumb" data-polegar></div></div>
+          </div>
+          <!-- /partial -->
+          <!-- .seletor-origem — posição 1: enviar arquivo -->
+          <div class="seletor-origem upload-well upload-well-compacto">
+            <label class="seletor-origem-arquivo">
+              <svg class="icon-etched" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-gestao-documento"/></svg>
+              <input type="file" multiple class="file-input file-input-glass file-input-sm" aria-label="Novos anexos" />
+              <span class="form-field-hint">PDF, DOCX ou ODT, até 20 MB. O título do anexo é o nome do arquivo.</span>
+            </label>
+            <div class="seletor-origem-busca">
+              <label class="input input-glass flex items-center gap-2 w-full">
+                <svg class="w-4 h-4 text-rocha-700/70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><use href="#glifo-gestao-busca"/></svg>
+                <input type="search" placeholder="Título do anexo já enviado" aria-label="Buscar anexo pelo título" />
+              </label>
+              <div></div>
+            </div>
+            <div class="card-well chave-onsen chave-onsen-pequena">
+              <span class="chave-onsen-polegar glass-panel-thick" aria-hidden="true"></span>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="origem-anexo-422" class="sr-only" checked />
+                <span class="chave-onsen-rotulo etched etched-deeper">Arquivo novo</span>
+              </label>
+              <label class="chave-onsen-opcao">
+                <input type="radio" name="origem-anexo-422" class="sr-only" />
+                <span class="chave-onsen-rotulo etched etched-deeper">Já enviado</span>
+              </label>
+            </div>
+          </div>
+          <p class="text-[13px] text-error">oficio-escaneado.pdf: O OCR deste PDF passou do tempo limite. Divida o arquivo e envie as partes.</p>
+        </div>
+      </form>
+
+      <!-- página: faq/pagina.html — a resposta aberta, com o bloco novo no rodapé -->
+      <!-- fica no partial existente: faq/partials/pagina/_item_faq.html, bloco "Documentos" depois de "Para saber mais" -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col gap-4">
+        <p class="text-lg font-bold text-rocha-950">Como emito a certidão de lançamento?</p>
+        <p class="text-[15px] text-base-content/90">Localize o imóvel na busca, abra a gaveta e escolha <b>Ações → Certidão de lançamento</b>.</p>
+        <div class="faq-item-rodape">
+          <div class="etched-line h-[3px] w-full"></div>
+          <div class="faq-item-rodape-bloco">
+            <span class="text-overline">Documentos</span>
+            <div class="links-referencia">
+              <a href="#" class="item-menu" download>
+                <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-documento"/></svg></span>
+                <span class="item-menu-rotulo">Manual da certidão de lançamento<span class="item-menu-apoio">PDF · 1,2 MB</span></span>
+              </a>
+              <a href="#" class="item-menu" download>
+                <span class="icone-acao icone-acao-pequeno icone-acao-acende"><svg fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#glifo-documento"/></svg></span>
+                <span class="item-menu-rotulo">orientacoes-iptu<span class="item-menu-apoio">ODT · 46 KB</span></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
